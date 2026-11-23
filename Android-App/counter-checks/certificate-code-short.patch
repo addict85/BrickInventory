@@ -1,0 +1,17 @@
+Gegenprobe: Ein gekürzter Zertifikats-Code (letzte 24 Hex-Zeichen) wird angenommen
+Modul: core-security
+Test: ch.brickinventoryapp.security.CertificateCodeTest
+Rot: a shortened code is not a code
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt
+@@ -39,7 +39,7 @@
+         val parts = versionAndHash(payload) ?: return null
+         if (!parts[0].equals(VERSION, ignoreCase = true) || !parts[1].equals(HASH, ignoreCase = true)) return null
+         val hex = parts[2].filterNot { it == ':' || it.isWhitespace() }.lowercase()
+-        return hex.takeIf { it.length == HASH_BYTES * 2 && it.all { c -> c in "0123456789abcdef" } }
++        return hex.takeIf { it.length in 24..HASH_BYTES * 2 && it.all { c -> c in "0123456789abcdef" } }?.padStart(HASH_BYTES * 2, '0')
+     }
+ 
+     private fun versionAndHash(payload: String?): List<String>? {

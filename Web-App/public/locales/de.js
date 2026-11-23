@@ -445,6 +445,8 @@ window.I18N_DE = {
   'tls.valid_until': 'Gültig bis',
   'tls.fp_sha256': 'Fingerabdruck des öffentlichen Schlüssels (SHA-256, für die App)',
   'tls.fp_base64': 'Derselbe Wert in Base64 (wie im QR-Code)',
+  'tls.qr_hint':
+    'Fragt die App nach dem Zertifikat, dort „QR-Code scannen“ wählen und diesen Code scannen – sie vergleicht den ganzen Fingerabdruck.',
   'tls.download': 'Wurzelzertifikat herunterladen',
   'tls.without_ca':
     'Der Server läuft über HTTPS mit einem Zertifikat, das nicht von der eigenen Zertifizierungsstelle stammt. Nichts zu installieren.',

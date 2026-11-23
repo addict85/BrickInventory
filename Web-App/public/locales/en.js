@@ -440,6 +440,8 @@ window.I18N_EN = {
   'tls.valid_until': 'Valid until',
   'tls.fp_sha256': 'Public key fingerprint (SHA-256, for the app)',
   'tls.fp_base64': 'The same value in Base64 (as in the QR code)',
+  'tls.qr_hint':
+    'When the app asks about the certificate, choose “Scan QR code” there and scan this code – it compares the whole fingerprint.',
   'tls.download': 'Download root certificate',
   'tls.without_ca':
     'The server runs over HTTPS with a certificate that does not come from its own certificate authority. Nothing to install.',

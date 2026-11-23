@@ -1,0 +1,18 @@
+Gegenprobe: Ein nicht passender Code schweigt im Dialog
+Modul: app
+Test: ch.brickinventoryapp.app.CertificateDialogTest
+Rot: a scanned code that does not fit says so
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+@@ -188,8 +188,7 @@
+ 
+ /** A match closes the dialog and needs no text; every other result trusts nothing and says why. */
+ internal fun scanError(finding: CodeCheck?): Int? = when (finding) {
+-    null, CodeCheck.MATCHES -> null
+-    CodeCheck.FITS_NOT -> R.string.cert_scan_mismatch
++    null, CodeCheck.MATCHES, CodeCheck.FITS_NOT -> null
+     CodeCheck.UNKNOWN_VERSION -> R.string.cert_scan_unknown_version
+     CodeCheck.NOT_A_CODE -> R.string.cert_scan_not_code
+ }

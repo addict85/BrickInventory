@@ -1,0 +1,17 @@
+Gegenprobe: Ein gescannter Code übernimmt den Pin, was auch immer der Vergleich sagt
+Modul: core-state
+Test: ch.brickinventoryapp.state.RenderingAndTrustTest
+Rot: only a scanned code of the whole fingerprint trusts
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -250,7 +250,7 @@
+     override fun confirmByCode(pins: PinStore, payload: String?): CodeCheck {
+         val f = _open.value ?: return CodeCheck.FITS_NOT
+         if (f.kind == CertificateUnresolved.Kind.CODE_MISMATCH) return CodeCheck.FITS_NOT
+-        return CertificateCode.check(payload, f.fingerprint).also { if (it == CodeCheck.MATCHES) adopt(pins, f) }
++        return CertificateCode.check(payload, f.fingerprint).also { adopt(pins, f) }
+     }
+ 
+     private fun adopt(pins: PinStore, f: CertificateUnresolved) {

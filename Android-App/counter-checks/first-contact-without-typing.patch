@@ -6,10 +6,10 @@ Rot: on first contact it can be typed instead, then only the beginning is shown
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
-@@ -84,9 +84,6 @@
-                 Text(stringResource(text, host))
+@@ -133,9 +133,6 @@
                  FingerprintDisplay(question, writeOff, changed)
                  if (byDevice) Text(stringResource(R.string.cert_device_confirm), style = MaterialTheme.typography.bodySmall)
+                 scanChoice?.invoke()
 -                if (firstContact && !writeOff) {
 -                    TextButton(onClick = { typeInSelected = true }) { Text(stringResource(R.string.cert_first_contact_type)) }
 -                }

@@ -2,11 +2,17 @@ package ch.brickinventoryapp.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,14 +27,19 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
 import ch.brickinventoryapp.security.CertificateUnresolved
 import ch.brickinventoryapp.security.Transcript
 import ch.brickinventoryapp.security.fingerprintReadable
 import ch.brickinventoryapp.security.fingerprintStart
 import ch.brickinventoryapp.ui.components.FingerprintField
 import ch.brickinventoryapp.ui.components.OverlayGuard
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.windowSurface
 
@@ -45,12 +56,23 @@ fun CertificateDialog(
     onCancel: () -> Unit,
     /** With a screen lock a new key from Android 16 is confirmed with it; without one, typed off. */
     deviceSecure: Boolean = true,
+    /** Scanning the web app's certificate code; null where there is no camera (previews). */
+    codeScan: CodeScan? = null,
 ) {
     if (question.kind == CertificateUnresolved.Kind.CODE_MISMATCH) CodeDeviationDialog(question, onCancel)
-    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure)
+    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure, codeScan)
 }
 
-/** Everything except CODE_MISMATCH: trust after comparing or typing. */
+/**
+ * The scanner and what a scanned code decides (CertificateCode in core-security).
+ * A slot, so that the dialog stays testable without a camera.
+ */
+class CodeScan(
+    val trust: (payload: String) -> CodeCheck,
+    val scanner: @Composable (onResult: (String) -> Unit, onDismiss: () -> Unit) -> Unit,
+)
+
+/** Everything except CODE_MISMATCH: trust after scanning the web app's code, comparing or typing. */
 @Composable
 private fun CertificateQuestionDialog(
     question: CertificateUnresolved,
@@ -59,6 +81,32 @@ private fun CertificateQuestionDialog(
     onUserCa: () -> Unit,
     onCancel: () -> Unit,
     deviceSecure: Boolean,
+    codeScan: CodeScan?,
+) {
+    var scanning by rememberSaveable(question.fingerprint) { mutableStateOf(false) }
+    var codeFinding by rememberSaveable(question.fingerprint) { mutableStateOf<CodeCheck?>(null) }
+    val public = question.kind == CertificateUnresolved.Kind.FIRST_CONTACT || question.kind == CertificateUnresolved.Kind.KEY_NEW
+    // Only where the web app knows the fingerprint: under a public CA it shows none.
+    val scan = codeScan.takeIf { !public }
+    if (scanning && scan != null) {
+        ScannerDialog(scan, onDone = { scanning = false }) { codeFinding = it }
+        return
+    }
+    val scanChoice: (@Composable () -> Unit)? =
+        scan?.let { { ScanChoice(codeFinding) { codeFinding = null; scanning = true } } }
+    QuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure, scanChoice)
+}
+
+/** [scanChoice] replaces the old hint to scan a new sign-in code. */
+@Composable
+private fun QuestionDialog(
+    question: CertificateUnresolved,
+    userCaEnabled: Boolean,
+    trustOn: (input: String?) -> Boolean,
+    onUserCa: () -> Unit,
+    onCancel: () -> Unit,
+    deviceSecure: Boolean,
+    scanChoice: (@Composable () -> Unit)?,
 ) {
     var input by rememberSaveable(question.fingerprint) { mutableStateOf("") }
     var finding by remember(question.fingerprint) { mutableStateOf<Transcript?>(null) }
@@ -84,6 +132,7 @@ private fun CertificateQuestionDialog(
                 Text(stringResource(text, host))
                 FingerprintDisplay(question, writeOff, changed)
                 if (byDevice) Text(stringResource(R.string.cert_device_confirm), style = MaterialTheme.typography.bodySmall)
+                scanChoice?.invoke()
                 if (firstContact && !writeOff) {
                     TextButton(onClick = { typeInSelected = true }) { Text(stringResource(R.string.cert_first_contact_type)) }
                 }
@@ -96,7 +145,7 @@ private fun CertificateQuestionDialog(
                         error = { counted -> transcriptError(finding, counted) },
                     )
                     // Under a public CA the code carries no fingerprint; there it does not help.
-                    if (!public) Text(stringResource(R.string.cert_changed_qr), style = MaterialTheme.typography.bodySmall)
+                    if (!public && scanChoice == null) Text(stringResource(R.string.cert_changed_qr), style = MaterialTheme.typography.bodySmall)
                 }
                 // The only place where user CAs are asked about: on the error,
                 // with an explanation. Afterwards the dialog asks again (USER_CA), again for typing.
@@ -112,6 +161,37 @@ private fun CertificateQuestionDialog(
         },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) } },
     )
+}
+
+/** The scanner over everything; a full match closes the question, anything else comes back as [onFinding]. */
+@Composable
+private fun ScannerDialog(scan: CodeScan, onDone: () -> Unit, onFinding: (CodeCheck) -> Unit) {
+    Dialog(onDismissRequest = onDone, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        scan.scanner({ payload -> onDone(); onFinding(scan.trust(payload)) }, onDone)
+    }
+}
+
+/** The comfortable way first; the result of the last scan below it, the manual comparison stays. */
+@Composable
+private fun ScanChoice(finding: CodeCheck?, onScan: () -> Unit) {
+    OutlinedButton(onClick = onScan, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+        Icon(Icons.Default.QrCodeScanner, null)
+        Spacer(Modifier.width(Spacing.small))
+        Text(stringResource(R.string.cert_scan_qr))
+    }
+    Text(stringResource(R.string.cert_scan_explain), style = MaterialTheme.typography.bodySmall)
+    scanError(finding)?.let {
+        Text(stringResource(it), Modifier.announce(), color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** A match closes the dialog and needs no text; every other result trusts nothing and says why. */
+internal fun scanError(finding: CodeCheck?): Int? = when (finding) {
+    null, CodeCheck.MATCHES -> null
+    CodeCheck.FITS_NOT -> R.string.cert_scan_mismatch
+    CodeCheck.UNKNOWN_VERSION -> R.string.cert_scan_unknown_version
+    CodeCheck.NOT_A_CODE -> R.string.cert_scan_not_code
 }
 
 /** Without CT, when chosen on first contact, or a new key from Android 16 without a screen lock. */

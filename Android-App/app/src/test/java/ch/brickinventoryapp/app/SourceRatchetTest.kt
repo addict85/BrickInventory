@@ -526,8 +526,9 @@ class SourceRatchetTest {
     @Test
     fun `the public surface of the areas does not grow`() {
         // An area shows the app routes and destinations; what only it needs itself is internal.
-        // Much is still public because graphs and UI tests live in app.
-        val LIMIT_AREAS = 135
+        // Much is still public because graphs and UI tests live in app. 136 since CertificateQrScanner:
+        // the certificate dialog in app reuses the login area's QR scanner.
+        val LIMIT_AREAS = 136
         val module = Sources.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Only ${module.size} areas — does the search still apply?" }
         ratchet("public declarations of the areas", LIMIT_AREAS, public(module, 100),
