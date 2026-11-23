@@ -31,6 +31,7 @@ class AndroidLibraryConvention : Plugin<Project> {
         target.java17(android.compileOptions)
         target.guavaAtLeast()
         target.androidxAtLeast()
+        target.testLibrariesAtLeast()
         target.lockClasspaths()
     }
 }
@@ -48,6 +49,7 @@ class AndroidApplicationConvention : Plugin<Project> {
         target.java17(android.compileOptions)
         target.guavaAtLeast()
         target.androidxAtLeast()
+        target.testLibrariesAtLeast()
         target.lockClasspaths()
     }
 }

@@ -34,6 +34,18 @@ internal fun Project.guavaAtLeast() {
 }
 
 /**
+ * Robolectric and ML Kit bring protobuf-javalite 3.19.1 and jsoup 1.15.1 onto the unit-test
+ * classpath; both have fixed CVEs that Trivy reports from the lockfile. Only the test
+ * classpath, so the APK is untouched.
+ */
+internal fun Project.testLibrariesAtLeast() {
+    for (alias in listOf("protobufJavaliteAtLeast", "jsoupAtLeast")) {
+        val bib = libs.findLibrary(alias).get().get()
+        dependencies.constraints.add("testImplementation", "${bib.module}:${bib.versionConstraint.requiredVersion}")
+    }
+}
+
+/**
  * A module with few dependencies would on its own fall back to arch-core 2.0.0, tracing 1.1.0,
  * emoji2 1.2.0 or (via navigation-runtime) activity-ktx 1.7.1, which are not in the
  * checksum list and are unsigned. Constraints as for Guava raise
