@@ -31,7 +31,7 @@ export function buildSettingsRouter(
     const own = bearerToken(req);
     // LEAST over both deadlines: the user cares about the day on which this
     // device gets locked out.
-    const tokens = await d.account.sitzungen.accessesList(req.apiUser.user_id);
+    const tokens = await d.account.sessions.accessesList(req.apiUser.user_id);
     return {
       tokens: tokens.map(t => ({
         token_prefix: t.token.substring(0, 8),
@@ -58,7 +58,7 @@ export function buildSettingsRouter(
     const own = bearerToken(req);
     const ownDevice = ownAccess(own, req.pathArgs.tokenId);
     if (!ownDevice && !(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
-    return { deleted: await d.account.sitzungen.endAccess(uid, req.pathArgs.tokenId, ownDevice) };
+    return { deleted: await d.account.sessions.endAccess(uid, req.pathArgs.tokenId, ownDevice) };
   });
 
   // With password: a captured session must not be able to lock out the owner.
@@ -66,15 +66,15 @@ export function buildSettingsRouter(
   router.endpoint('POST /api/v2/settings/sessions/end-others', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
-    const { sitzungen, accesses, version } = await d.account.sitzungen.endOther(uid, {
-      sitzung: req.sessionID,
+    const { sessions, accesses, version } = await d.account.sessions.endOther(uid, {
+      session: req.sessionID,
       token: bearerToken(req),
       accesses: !!req.input.accesses,
     });
     // Only a real session remembers the version; otherwise the app would get one.
     if (perSession(req)) req.session.sitzungsVersion = version;
-    if (sitzungen || accesses) d.account.hintInBackground(uid, 'zugaenge_beendet');
-    return { deleted: sitzungen, accesses };
+    if (sessions || accesses) d.account.hintInBackground(uid, 'accesses_ended');
+    return { deleted: sessions, accesses };
   });
 
   /** Listed explicitly: the app only gets what it reads, no global
@@ -156,8 +156,8 @@ export function buildSettingsRouter(
   });
 
   router.endpoint('POST /api/v2/settings/household/redeem/check', requireToken, async req => {
-    const zuOft = await d.account.accountThrottled('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
-    if (zuOft) failDomain('zu_viele', 'too_many_requests', { minutes: zuOft.waitMin });
+    const tooOften = await d.account.accountThrottled('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
+    if (tooOften) failDomain('too_many', 'too_many_requests', { minutes: tooOften.waitMin });
     return { ...(await d.household.checkInvitation(req.apiUser.user_id, req.input.code)) };
   });
 

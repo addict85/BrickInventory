@@ -73,16 +73,16 @@ async function setDetail(_t, a) {
   const situation =
     await b.auswerten(`(() => { const s = document.getElementById('m-alert-state'), l = s.parentElement.querySelector('.close-view');
     return { marke: s.classList.contains('alert-badge'), unten: s.getBoundingClientRect().bottom, link: l.getBoundingClientRect().top }; })()`);
-  assert.ok(situation.marke, 'Zustand als Marke');
+  assert.ok(situation.marke, 'condition as a badge');
   assert.ok(
     situation.link >= situation.unten - 1,
-    `„Alle Preisalarme“ nicht in eigener Zeile: ${JSON.stringify(situation)}`,
+    `„Alle Preisalarme“ not on a row of its own: ${JSON.stringify(situation)}`,
   );
   const field = await b.auswerten(`(() => { const f = document.getElementById('instr-desc');
     return { stil: f.getAttribute('style'), hoehe: f.getBoundingClientRect().height, balken: getComputedStyle(document.querySelector('#set-modal .modal')).scrollbarWidth }; })()`);
   assert.equal(field.stil, null, 'Inline-Stil am Beschreibungsfeld');
-  assert.ok(field.hoehe >= 36, `Beschreibungsfeld ${field.hoehe} px hoch`);
-  assert.equal(field.balken, 'thin', 'Scrollleiste im Dialog wie die der Seite');
+  assert.ok(field.hoehe >= 36, `description field ${field.hoehe} px high`);
+  assert.equal(field.balken, 'thin', 'scrollbar in the dialog like the one of the page');
   await b.auswerten(`(() => { const f = document.getElementById('m-alert-val'); f.value = '';
     f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await a.ruhig(3000);
@@ -142,8 +142,8 @@ async function hintergrund(_t, a) {
     await a.ruhig(1000);
     const m = await b.auswerten(`({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
       rolle: !!document.querySelector('#jobs-card .mon-role')?.checkVisibility() })`);
-    assert.ok(m.rolle, 'Testdaten: Etikett „Wiederholung nach Fehler“');
-    assert.ok(m.sw <= m.cw, `Seite breiter als das Fenster: ${m.sw} > ${m.cw}`);
+    assert.ok(m.rolle, 'test data: label „Wiederholung nach Fehler“');
+    assert.ok(m.sw <= m.cw, `page wider than the window: ${m.sw} > ${m.cw}`);
   } finally {
     await groesse(b, 1280, false);
   }
@@ -151,16 +151,16 @@ async function hintergrund(_t, a) {
   const bunt = await b.auswerten(
     `[...document.querySelectorAll('.mon-services .mon-name')].filter(n => !n.querySelector('svg.mon-icon > use') || n.querySelector('[fill^="#"]')).length`,
   );
-  assert.equal(bunt, 0, 'farbige Sinnbilder statt Strichsymbolen');
+  assert.equal(bunt, 0, 'coloured pictograms instead of line icons');
   await bis(`!!document.querySelector('.mon-kinds')`, 'Auftragsarten');
   const row = await b.auswerten(
     `[...document.querySelectorAll('.mon-kinds tbody tr')].find(z => /Wechselkurse/.test(z.textContent))?.textContent.replace(/\\s+/g, ' ')`,
   );
-  assert.match(row, /davon \d+ nach Fehler/, 'gescheiterter Versuch fehlt in der Übersicht');
+  assert.match(row, /davon \d+ nach Fehler/, 'failed attempt is missing in the overview');
   assert.notEqual(
     await b.auswerten(text('#settings-background h2')),
     await b.auswerten(text('#tab-monitor h1')),
-    'Abschnitt heisst wie die Seite',
+    'section is named like the page',
   );
 }
 
@@ -173,14 +173,14 @@ async function finanzen(_t, a) {
       menge: z.querySelector('.qbadge')?.textContent, je: z.querySelector('.fin-value .fin-per')?.textContent || '' }));
     return { zeilen, karte: document.getElementById('fin-cost-basis-sub').textContent, linie: ${text('#portfolio-chart')} }; })()`);
   const einzeln = f.zeilen.filter(z => z.menge === '×1');
-  assert.ok(einzeln.length >= 2, 'Testdaten: Zeilen mit Menge 1');
+  assert.ok(einzeln.length >= 2, 'test data: rows with quantity 1');
   assert.deepEqual(
     einzeln.filter(z => z.je),
     [],
-    'bei Menge 1 steht der Stückpreis noch neben dem Marktwert',
+    'at quantity 1 the unit price is still next to the market value',
   );
-  assert.doesNotMatch(f.karte, /Verglichen wird nur/, 'Erklärung in der Karte doppelt');
-  assert.doesNotMatch(f.linie, /der Positionen mit Marktpreis/, 'Erklärung am Diagramm doppelt');
+  assert.doesNotMatch(f.karte, /Verglichen wird nur/, 'explanation in the card twice');
+  assert.doesNotMatch(f.linie, /der Positionen mit Marktpreis/, 'explanation at the chart twice');
 }
 
 /** Since round 24 (N11) „Neu berechnen“ is missing entirely without a set; the empty state says once what to do. */
@@ -188,8 +188,8 @@ async function bauliste(_t, a) {
   await geh(a, '#/bauliste', `document.getElementById('tab-partslist').classList.contains('active')`, 'Bauliste');
   const k = await a.b.auswerten(`({ knopf: document.getElementById('btn-pl-gen').checkVisibility(),
     leer: document.getElementById('pl-sets').textContent.replace(/\\s+/g, ' ') })`);
-  assert.equal(k.knopf, false, '„Neu berechnen“ ohne Set sichtbar');
-  assert.match(k.leer, /entsteht sofort/, 'Leerzustand ohne Anleitung');
+  assert.equal(k.knopf, false, '„Neu berechnen“ visible without a set');
+  assert.match(k.leer, /entsteht sofort/, 'empty state without instructions');
 }
 
 async function bars(_t, a) {
@@ -224,7 +224,7 @@ async function bars(_t, a) {
   const oben =
     await b.auswerten(`(() => { const r = s => Math.round(document.querySelector(s).getBoundingClientRect().top);
     return [r('#parts-search'), r('#tab-parts .filter-bar > .vtgl')]; })()`);
-  assert.ok(Math.abs(oben[0] - oben[1]) < 4, `Ansichtsumschalter allein in der zweiten Zeile: ${oben}`);
+  assert.ok(Math.abs(oben[0] - oben[1]) < 4, `view toggle alone on the second line: ${oben}`);
   await b.auswerten(`document.getElementById('vg').click(); true`);
 }
 
@@ -252,7 +252,7 @@ async function drossel(_t, a) {
       const r = t.getBoundingClientRect(), z = t.querySelector('.toast-close').getBoundingClientRect();
       return { text: t.querySelector('.toast-text').textContent, oben: z.top - r.top, rechts: r.right - z.right }; })()`);
     assert.match(t.text, /^Zu viele Anfragen – in 4 Min\. wieder möglich\./);
-    assert.ok(t.oben < 12 && t.rechts < 12, `✕ nicht oben rechts (${breite} px): ${JSON.stringify(t)}`);
+    assert.ok(t.oben < 12 && t.rechts < 12, `✕ not at the top right (${breite} px): ${JSON.stringify(t)}`);
     await b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
   }
   await groesse(b, 1280, false);
@@ -292,8 +292,8 @@ async function offlineBand(_t, a) {
       const k = document.getElementById('btn-umenu').getBoundingClientRect();
       const oben = document.elementFromPoint(k.left + k.width / 2, k.top + k.height / 2);
       return { band: band.top, leiste: document.querySelector('nav').getBoundingClientRect().bottom, menue: !!oben?.closest('#btn-umenu') }; })()`);
-    assert.ok(m.menue, 'Benutzermenü verdeckt');
-    assert.ok(m.band >= m.leiste - 1, `Band über der Leiste: ${JSON.stringify(m)}`);
+    assert.ok(m.menue, 'user menu covered');
+    assert.ok(m.band >= m.leiste - 1, `band above the bar: ${JSON.stringify(m)}`);
   } finally {
     await b.tab('Network.emulateNetworkConditions', {
       offline: false,
@@ -312,7 +312,7 @@ async function kontrast(_t, a) {
   await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'forced-colors', value: 'active' }] });
   try {
     const rand = await b.auswerten(`getComputedStyle(document.querySelector('#tab-gallery .btn.bp')).borderTopWidth`);
-    assert.ok(parseFloat(rand) >= 1, `Hauptknopf ohne Rand: ${rand}`);
+    assert.ok(parseFloat(rand) >= 1, `main button without border: ${rand}`);
   } finally {
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   }
@@ -339,9 +339,9 @@ async function startupScaffold(_t, a) {
     const m =
       await b.auswerten(`({ sg: window.__sg, karte: document.querySelector('#gallery .sc').getBoundingClientRect().top,
       band: !document.getElementById('rb-hint').hidden })`);
-    assert.ok(m.band, 'Testdaten: Band ohne Rebrickable-Schlüssel');
-    assert.ok(m.sg.band, 'Gerüst ohne Platz für das Band');
-    assert.notEqual(m.sg.zusatz, 'none', '„Manager“ fehlt im Gerüst');
+    assert.ok(m.band, 'test data: band without a Rebrickable key');
+    assert.ok(m.sg.band, 'scaffold without room for the band');
+    assert.notEqual(m.sg.zusatz, 'none', '„Manager“ is missing in the scaffold');
     assert.ok(Math.abs(m.sg.kachel - m.karte) < 30, `Kacheln springen um ${Math.round(m.karte - m.sg.kachel)} px`);
   } finally {
     await b.tab('Page.removeScriptToEvaluateOnNewDocument', { identifier });
@@ -362,9 +362,13 @@ async function loeschen(_t, a, name) {
     `({ text: ${text('#cd-msg')}, wahl: [...document.querySelectorAll('#cd-choice label')].map(l => l.textContent.trim()),
       gewaehlt: document.querySelector('#cd-choice input:checked')?.closest('label')?.textContent.trim() })`,
   );
-  assert.match(frage.text, new RegExp(`${name} \\(ich\\) ×1, ${name}_kind ×1`), 'Konten und Stückzahlen fehlen');
-  assert.equal(frage.wahl.length, 3, `keine Auswahl: ${JSON.stringify(frage)}`);
-  assert.match(frage.gewaehlt || '', /\(ich\)/, `vorgewählt ist nicht das eigene Exemplar: ${JSON.stringify(frage)}`);
+  assert.match(
+    frage.text,
+    new RegExp(`${name} \\(ich\\) ×1, ${name}_kind ×1`),
+    'accounts and piece counts are missing',
+  );
+  assert.equal(frage.wahl.length, 3, `no choice: ${JSON.stringify(frage)}`);
+  assert.match(frage.gewaehlt || '', /\(ich\)/, `the preselected one is not the own copy: ${JSON.stringify(frage)}`);
   const vorher = b.eventList.length;
   await b.auswerten(
     `[...document.querySelectorAll('#cd-choice label')].find(l => l.textContent.includes('_kind')).querySelector('input').click();
@@ -375,9 +379,9 @@ async function loeschen(_t, a, name) {
   const ziel = b.eventList
     .slice(vorher)
     .find(e => e.method === 'Network.requestWillBeSent' && e.params.request.method === 'DELETE')?.params.request.url;
-  assert.match(ziel, /\/v2\/sets\/21318-1\?accounts=\d+$/, 'nur das Unterkonto gewählt');
+  assert.match(ziel, /\/v2\/sets\/21318-1\?accounts=\d+$/, 'only the sub-account selected');
   const active = `(() => { const e = document.activeElement; return e.tagName + ' ' + (e.dataset.arg || e.textContent.trim().slice(0, 20)); })()`;
-  assert.equal(await b.auswerten(active), 'DIV 21318-1', 'Fokus nicht auf dem bleibenden Set');
+  assert.equal(await b.auswerten(active), 'DIV 21318-1', 'focus not on the remaining set');
 
   const rowList = await b.auswerten(`[...document.querySelectorAll('#gallery .sc')].map(k => k.dataset.arg)`);
   const nr = rowList[1];
@@ -387,10 +391,10 @@ async function loeschen(_t, a, name) {
   assert.notEqual(
     await b.auswerten(`document.getElementById('confirm-modal').style.display`),
     'flex',
-    'Rückfrage vor dem eigenen Set',
+    'confirmation prompt before the own set',
   );
   await a.ruhig();
-  assert.equal(await b.auswerten(active), `DIV ${rowList[2]}`, 'Fokus nach dem Löschen nicht auf der nächsten Karte');
+  assert.equal(await b.auswerten(active), `DIV ${rowList[2]}`, 'focus after deleting not on the next card');
   await b.auswerten(
     `(() => { const k = [...document.querySelectorAll('#toasts .toast-action')].at(-1); k.focus(); k.click(); return true; })()`,
   );
@@ -431,11 +435,11 @@ async function signOut(_t, a, name) {
   const fremd = [`${name}_kind`, '199,99', 'Alle Themen', 'Sets im Katalog', 'Finanzen'].filter(s =>
     dom.html.includes(s),
   );
-  assert.deepEqual(fremd, [], 'Stand des vorigen Kontos im Dokument');
+  assert.deepEqual(fremd, [], "the previous account's state in the document");
   assert.deepEqual(
     mask,
     { titel: 'Sign in – BrickInventory', knopf: 'Sign in' },
-    'Anmeldemaske nicht in der Browsersprache',
+    'login form not in the browser language',
   );
   assert.equal(dom.title, 'Sets – BrickInventory');
   assert.equal(dom.live, '');

@@ -63,6 +63,7 @@ import java.io.File
  *   a file data/repository/Ergebnis.kt → red „German file names …: [Ergebnis.kt]“
  *   `// Lädt die Liste neu` in OutboxWorker.kt → red „German comment words …“ (expected 0, was 1)
  *   `assertEquals("Die Meldung fehlt", "broken", …)` in AbortTest → red “assertion messages are English”
+ *   `val preisKonto` in Contract.kt → red „German declarations …: preisKonto“
  */
 class SourceRatchetTest {
 
@@ -821,24 +822,19 @@ class SourceRatchetTest {
             m.walkTopDown().onEnter { it.name != "build" }.filter { it.isFile && it.extension in setOf("kt", "kts") }.toList()
         }
         assertTrue("Only ${files.size} Kotlin files found — does the search still apply?", files.size > 800)
-        // The only exception until API v2: what the generated contract declares, and its bridges.
-        val contract = files.single { it.name == "Vertrag.kt" }
-        val bridges = files.filter { it.name == "ContractNames.kt" }
-        val allowed = (listOf(contract) + bridges).flatMap { declaredNames(Sources.strip(it.readText())).toList() }.toSet() +
-            setOf("NEU", "KEINE", "UNBEKANNT", "RUHT", "UNTER")
-        val names = files.filter { it != contract && german(it.nameWithoutExtension) }.map { it.name }
+        // No exception: since API v2 the generated contract (Contract.kt) is English as well.
+        val names = files.filter { german(it.nameWithoutExtension) }.map { it.name }
         assertEquals("German file names (Kotlin): $names", emptyList<String>(), names)
-        val declared = files.filter { it != contract && it !in bridges }.flatMap { f ->
-            declaredNames(Sources.strip(f.readText())).filter { it !in allowed && german(it) }.map { "${f.name}: $it" }.toList()
+        val declared = files.flatMap { f ->
+            declaredNames(Sources.strip(f.readText())).filter { german(it) }.map { "${f.name}: $it" }.toList()
         }.distinct()
-        assertEquals("German declarations (only the contract keeps them until API v2):\n  " + declared.joinToString("\n  "),
-            emptyList<String>(), declared)
+        assertEquals("German declarations:\n  " + declared.joinToString("\n  "), emptyList<String>(), declared)
         // Comments: German words outside quotes; quoted UI texts and patch names (with hyphens) do not count.
         // A fixed ban, no longer a ratchet: every comment is English.
         val prose = Regex("""(?<![\w-])(der|die|das|und|nicht|wird|werden|auch|noch|wenn|weil|oder|sich)(?![\w-])""")
         val word = Regex("""(?<![\w-])[a-zäöüß]{4,}(?![\w-])""")
         val quoted = Regex("""„[^“\n]*“|"[^"\n]*"|`[^`\n]*`|«[^»\n]*»""")
-        val comments = files.filter { it != contract }.sumOf { f ->
+        val comments = files.sumOf { f ->
             // Strings first, so a `//` inside "https://…" is no comment.
             commentOrString.findAll(f.readText()).filter { !it.value.startsWith("\"") }.sumOf { c ->
                 val t = quoted.replace(c.value, "")

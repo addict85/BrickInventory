@@ -13,7 +13,7 @@ const path = require('node:path');
 const JS = path.join(__dirname, '..', 'public', 'js');
 const COMPONENT = 'components.js';
 const { buildTestBundle } = require('./helpers/bundle');
-process.env.TEST_BUENDEL = buildTestBundle(
+process.env.TEST_BUNDLE = buildTestBundle(
   'bausteine',
   "import { detailRow, loadDisplay } from './components.js';\nwindow.__build = { detailRow, loadDisplay };\n",
 );
@@ -25,7 +25,7 @@ function module_() {
   const filtered = alle.filter(f => f !== 'app.bundle.js' && f !== COMPONENT);
   // Self-proof: if the loop finds nothing, every check below would be
   // silently green.
-  assert.ok(filtered.length >= 10, `nur ${filtered.length} Frontend-Module gefunden — Pfad falsch?`);
+  assert.ok(filtered.length >= 10, `only ${filtered.length} frontend modules found — wrong path?`);
   return filtered;
 }
 
@@ -40,9 +40,7 @@ test('the detail row is no longer built by hand anywhere', () => {
   assert.deepEqual(
     treffer,
     [],
-    'Diese Stellen bauen die Detailzeile selbst:\n  ' +
-      treffer.join('\n  ') +
-      `\nSie gehört in ${COMPONENT} — detailRow(label, wert, optionen).`,
+    `These places build the detail row themselves:\n  ${treffer.join('\n  ')}\nIt belongs in ${COMPONENT} — detailRow(label, value, options).`,
   );
 });
 
@@ -57,9 +55,7 @@ test('the loading indicator is no longer built by hand anywhere', () => {
   assert.deepEqual(
     treffer,
     [],
-    'Diese Stellen bauen die Ladeanzeige selbst:\n  ' +
-      treffer.join('\n  ') +
-      `\nSie gehört in ${COMPONENT} — loadDisplay(text, optionen).`,
+    `These places build the loading display themselves:\n  ${treffer.join('\n  ')}\nIt belongs in ${COMPONENT} — loadDisplay(text, options).`,
   );
 });
 
@@ -75,7 +71,7 @@ test('the building block creates the markup the stylesheets expect', async () =>
     // And the stylesheets know every class that comes out.
     const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
     for (const regel of ['.dr', '.dl', '.dv', '.load-skeleton', '.skeleton-row'])
-      assert.ok(new RegExp('\\' + regel + '[\\s,{:]').test(css), `styles.css kennt ${regel} nicht`);
+      assert.ok(new RegExp('\\' + regel + '[\\s,{:]').test(css), `styles.css does not know ${regel}`);
   } finally {
     w.close();
   }

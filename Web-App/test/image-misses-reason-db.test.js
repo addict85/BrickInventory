@@ -59,9 +59,9 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     const m = await marker(sn);
     assert.ok(
       m,
-      'Ein 404 muss gemerkt werden — sonst wird jedes alte Set bei ' + 'jedem Blättern erneut beim CDN gesucht',
+      'A 404 must be remembered — otherwise every old set is searched ' + 'at the CDN again on every page turn',
     );
-    assert.match(m.reason || '', /404/, 'Der Grund fehlt — dann steht in image-diag wieder nur „gilt als fehlend"');
+    assert.match(m.reason || '', /404/, 'The reason is missing — then image-diag again only says „gilt als fehlend“');
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
 
@@ -89,15 +89,15 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
 
     const queueErr = alsError.filter(z => z.startsWith('[image-queue]'));
     const queueWarn = alsWarn.filter(z => z.startsWith('[image-queue]'));
-    assert.deepEqual(queueErr, [], `Ein reiner 404-Stapel wurde als error gemeldet: ${queueErr.join(' | ')}`);
+    assert.deepEqual(queueErr, [], `A pure 404 batch was reported as error: ${queueErr.join(' | ')}`);
     assert.equal(
       queueWarn.length,
       1,
-      `Erwartet GENAU eine warn-Zeile, bekam ${queueWarn.length}: ${queueWarn.join(' | ')}. ` +
-        'Keine hiesse, der Stapel schweigt jetzt ganz — und dann faellt auch nicht ' +
-        'mehr auf, WELCHE Sets kein Bild haben.',
+      `Expected EXACTLY one warn line, got ${queueWarn.length}: ${queueWarn.join(' | ')}. ` +
+        'None would mean the batch is now completely silent — and then nobody ' +
+        'notices anymore WHICH sets have no image.',
     );
-    assert.match(queueWarn[0], new RegExp(sn), 'Die Setnummer fehlt in der Meldung');
+    assert.match(queueWarn[0], new RegExp(sn), 'The set number is missing in the message');
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
 
@@ -129,13 +129,14 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     assert.equal(
       queueErr.length,
       1,
-      `Ein wiederholbarer Fehler muss als error gemeldet werden, bekam ` +
-        `${queueErr.length} error- und ${alsWarn.filter(z => z.startsWith('[image-queue]')).length} warn-Zeilen`,
+      `A retryable error must be reported as error, got ` +
+        `${queueErr.length} error and ${alsWarn.filter(z => z.startsWith('[image-queue]')).length} warn lines`,
     );
     assert.match(
       queueErr[0],
       /wird erneut versucht/,
-      'Die Meldung sagt nicht, dass es wiederholt wird — genau das unterscheidet ' + 'sie vom 404, der endgueltig ist',
+      'The message does not say that it is retried — that is exactly what distinguishes ' +
+        'it from the 404, which is final',
     );
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
@@ -151,13 +152,13 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     await enqueue(sn);
     const e = await IQ._workStack();
     await IM._writeBuffer();
-    assert.equal(e.notLoaded, 1, 'Der Fehlschlag muss trotzdem gezählt werden');
+    assert.equal(e.notLoaded, 1, 'The failure must still be counted');
     assert.equal(
       await marker(sn),
       undefined,
-      'Ein vorübergehender Fehler wurde als „Bild existiert nicht" vermerkt. ' +
-        'Genau so verschwinden Bilder für sieben Tage, ohne dass je etwas ' +
-        'daran war — und niemand sieht, dass es überhaupt einen Versuch gab.',
+      'A transient error was recorded as „Bild existiert nicht“. ' +
+        'That is exactly how images disappear for seven days without anything ' +
+        'ever being wrong with them — and nobody sees that there was an attempt at all.',
     );
     assert.match(IQ.message(e), /Download fehlgeschlagen/);
   });
@@ -173,17 +174,17 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     assert.match(
       proxy,
       /status === 404[\s\S]{0,200}rememberMissing/,
-      'Im Proxy hängt die Fehlanzeige nicht mehr am 404',
+      'In the proxy the miss no longer depends on the 404',
     );
     assert.match(
       job,
       /info\.status === 404/,
-      'Der Job unterscheidet den 404 nicht — dann sperrt wieder jeder ' + 'Netzwerkfehler das Bild für sieben Tage aus',
+      'The job does not distinguish the 404 — then every ' + 'network error locks the image out for seven days again',
     );
     assert.doesNotMatch(
       job,
       /\n\s*rememberMissing\(k, 'set:' \+ r\.set_number\);/,
-      'Es gibt wieder einen unbedingten Vermerk für Sets',
+      'There is an unconditional note for sets again',
     );
   });
 
@@ -221,11 +222,11 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
 
     await t.test('image-diag names the flag and the reason', async () => {
       const a = await (await fetch(`${base}/api/v2/admin/image-diag/${P}_1`)).json();
-      assert.ok(a.marker, 'Ausgerechnet die Tabelle, die den Abruf verhindert, ' + 'kam in der Diagnose nicht vor');
+      assert.ok(a.marker, 'Of all things, the table that prevents the fetch ' + 'did not appear in the diagnosis');
       assert.match(a.marker.reason || '', /404/);
       assert.ok(
         a.hints.some(h => /als fehlend/.test(h)),
-        'Der Klartext-Hinweis fehlt — dann muss man die Antwort erst deuten',
+        'The plain-text hint is missing — then one first has to interpret the response',
       );
     });
 
@@ -238,12 +239,11 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
         })
       ).json();
       assert.equal(r.removed, 1);
-      assert.equal(await marker(`${P}_1`), undefined, 'Der Eintrag steht noch');
+      assert.equal(await marker(`${P}_1`), undefined, 'The entry is still there');
       assert.equal(
         IM.isKnownMissing(`set:${P}_1`),
         false,
-        'Im Arbeitsspeicher gilt das Bild weiter als fehlend — dann ändert ' +
-          'sich bis zum nächsten Auffrischen nichts',
+        'In memory the image still counts as missing — then ' + 'nothing changes until the next refresh',
       );
     });
 
@@ -260,8 +260,8 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
       const t2 = await db.get(`SELECT 1 FROM image_misses WHERE cache_key = $1`, ['thumb:/irgendwo/xyz_thumb.jpg']);
       assert.ok(
         t2,
-        'Ein Lauf ohne Angabe hat die Vorschau-Vermerke mitgenommen — ' +
-          'die haben einen anderen Zweck als „Bild gibt es nicht"',
+        'A run without a parameter took the preview notes along — ' +
+          'they have a different purpose than „Bild gibt es nicht“',
       );
       await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['thumb:/irgendwo/xyz_thumb.jpg']);
     });

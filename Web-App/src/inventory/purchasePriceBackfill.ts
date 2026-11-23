@@ -1,6 +1,6 @@
 import { setEstimatedPrice } from './acquisitions';
 import { attempts } from '../infra/result';
-import { setTimeout as warte } from 'node:timers/promises';
+import { setTimeout as sleep } from 'node:timers/promises';
 import type { InventoryContext } from './context';
 
 function log(msg: string) {
@@ -9,7 +9,7 @@ function log(msg: string) {
 
 /** Acquisitions without a purchase price (BrickLink at the daily limit) get the market price. Every row is
  * attempted; failed ones make the step fail at the end so that run() reports it. */
-async function jeRow<Z>(kind: string, rows: Z[], f: (z: Z) => Promise<boolean>): Promise<void> {
+async function perRow<Z>(kind: string, rows: Z[], f: (z: Z) => Promise<boolean>): Promise<void> {
   if (!rows.length) return;
   log(`${kind} ohne Kaufpreis: ${rows.length}`);
   let done = 0;
@@ -20,14 +20,14 @@ async function jeRow<Z>(kind: string, rows: Z[], f: (z: Z) => Promise<boolean>):
     } catch (e) {
       error.push(e);
     }
-    await warte(1500); // spare BrickLink's daily quota
+    await sleep(1500); // spare BrickLink's daily quota
   }
   log(`${kind} nachgetragen: ${done} von ${rows.length}`);
   if (error.length) throw new AggregateError(error, `${kind}: ${error.length} von ${rows.length} gescheitert`);
 }
 
 async function backfillAcquisitions(k: InventoryContext) {
-  await jeRow('Erfassungen', await k.backfill.setEntriesWithoutPrice(), async row => {
+  await perRow('Erfassungen', await k.backfill.setEntriesWithoutPrice(), async row => {
     const price = await k.finances.currentMarketPrice(row.set_number, row.user_id, row.condition || null);
     return !!price && (await setEstimatedPrice(k, 'set', row.id, price));
   });
@@ -35,7 +35,7 @@ async function backfillAcquisitions(k: InventoryContext) {
 
 // The same gap as for the sets, for part and figure acquisitions.
 async function backfillPartsEntries(k: InventoryContext) {
-  await jeRow('Teile-Erfassungen', await k.backfill.partEntriesWithoutPrice(), async row => {
+  await perRow('Teile-Erfassungen', await k.backfill.partEntriesWithoutPrice(), async row => {
     const price = await k.finances.currentPartMarketPrice(
       row.part_number,
       row.color_id,
@@ -47,7 +47,7 @@ async function backfillPartsEntries(k: InventoryContext) {
 }
 
 async function backfillMinifigsEntries(k: InventoryContext) {
-  await jeRow('Figuren-Erfassungen', await k.backfill.minifigEntriesWithoutPrice(), async row => {
+  await perRow('Figuren-Erfassungen', await k.backfill.minifigEntriesWithoutPrice(), async row => {
     // The account's own BrickLink number before the shared one.
     const price = await k.finances.currentMinifigMarketPrice(
       row.fig_number,

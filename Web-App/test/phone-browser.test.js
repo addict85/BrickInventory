@@ -66,8 +66,9 @@ test('finance tiles on the phone', t => {
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
   assert.equal(e.ueber.length, 3);
-  for (const k of e.ueber) assert.ok(k.rechts <= e.breite, `${k.name} ragt ${k.rechts - e.breite} px über den Rand`);
+  for (const k of e.ueber)
+    assert.ok(k.rechts <= e.breite, `${k.name} sticks out ${k.rechts - e.breite} px over the edge`);
 });

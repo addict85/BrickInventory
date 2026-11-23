@@ -93,7 +93,7 @@ test('acquisitions only apply under their key', { concurrency: 1 }, async t => {
 
   await t.test('part, different key: change', async () => {
     assert.equal(await callFn('PUT', `/api/v2/parts/3001/4/acquisitions/${b}`, { quantity: 99 }), 404);
-    assert.equal((await partRow(b)).quantity, 4, 'Zeile von Teil B wurde geändert');
+    assert.equal((await partRow(b)).quantity, 4, 'Row of part B was changed');
   });
 
   await t.test('part, same number, different color: change', async () => {
@@ -103,22 +103,22 @@ test('acquisitions only apply under their key', { concurrency: 1 }, async t => {
 
   await t.test('part, different key: delete', async () => {
     assert.equal(await callFn('DELETE', `/api/v2/parts/3001/4/acquisitions/${b}`), 404);
-    assert.ok(await partRow(b), 'Erfassung von Teil B wurde gelöscht');
+    assert.ok(await partRow(b), 'Acquisition of part B was deleted');
   });
 
   await t.test('moving under a foreign key: part', async () => {
     assert.equal(await callFn('PUT', `/api/v2/parts/3001/4/acquisitions/${b}`, { owner_user_id: kind }), 404);
-    assert.equal(Number((await partRow(b)).user_id), haupt, 'Erfassung von Teil B ist beim Ziel gelandet');
+    assert.equal(Number((await partRow(b)).user_id), haupt, 'Acquisition of part B ended up at the target');
     const onKind = await db.all('SELECT part_number FROM parts WHERE user_id=$1', [kind]);
-    assert.deepEqual(onKind, [], 'beim Ziel entstand eine Teilezeile unter dem Schlüssel der Anfrage');
+    assert.deepEqual(onKind, [], 'at the target a part row was created under the key of the request');
   });
 
   await t.test('figure: change, delete, move under a foreign key', async () => {
     const f2 = await figId('sk0002');
     assert.equal(await callFn('PUT', `/api/v2/minifigs/sk0001/acquisitions/${f2}`, { quantity: 99 }), 404);
-    assert.equal((await figRow(f2)).quantity, 3, 'Zeile von Figur B wurde geändert');
+    assert.equal((await figRow(f2)).quantity, 3, 'Row of minifig B was changed');
     assert.equal(await callFn('DELETE', `/api/v2/minifigs/sk0001/acquisitions/${f2}`), 404);
-    assert.ok(await figRow(f2), 'Erfassung von Figur B wurde gelöscht');
+    assert.ok(await figRow(f2), 'Acquisition of minifig B was deleted');
     assert.equal(await callFn('PUT', `/api/v2/minifigs/sk0001/acquisitions/${f2}`, { owner_user_id: kind }), 404);
     assert.equal(Number((await figRow(f2)).user_id), haupt);
     assert.deepEqual(await db.all('SELECT fig_number FROM minifigs WHERE user_id=$1', [kind]), []);

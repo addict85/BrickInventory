@@ -74,37 +74,37 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
     await b.auswerten(
       `document.querySelector('#set-modal details.more-menu').open = true; document.getElementById('btn-md').focus(); document.getElementById('btn-md').click(); true`,
     );
-    await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
+    await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Confirmation');
     assert.equal(
       await b.auswerten(`document.querySelector('#set-modal details.more-menu').open`),
       false,
-      'Menü klappt bei der Wahl zu',
+      'Menu closes on selection',
     );
     await printEscape();
     assert.equal(await b.auswerten(`document.getElementById('confirm-modal').style.display`), 'none');
     assert.equal(
       await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.more-menu > summary')`),
       true,
-      `Fokus auf ${await fokus()}`,
+      `Focus on ${await fokus()}`,
     );
   });
 
   await t.test('Escape with a collapsed menu: focus on more actions', async () => {
     await b.auswerten(`document.getElementById('btn-md').click(); true`);
-    await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
+    await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Confirmation');
     await b.auswerten(`document.querySelector('#set-modal details.more-menu').open = false; true`);
     await printEscape();
     assert.equal(
       await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.more-menu > summary')`),
       true,
-      `Fokus auf ${await fokus()}`,
+      `Focus on ${await fokus()}`,
     );
   });
   await printEscape();
 
   await t.test('passkeys check box 24 px', async () => {
     await b.auswerten(`document.querySelector('.umenu-item[data-arg="profile"]').click(); true`);
-    await bis(`!!document.getElementById('pw-pk')?.checkVisibility()`, 'Konto');
+    await bis(`!!document.getElementById('pw-pk')?.checkVisibility()`, 'Account');
     const r = await b.auswerten(
       `(() => { const r = document.getElementById('pw-pk').getBoundingClientRect(); return [r.width, r.height]; })()`,
     );
@@ -155,7 +155,7 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
         assert.equal(
           await b.auswerten(`!!document.getElementById('btn-passkey')?.checkVisibility()`),
           true,
-          'Passkey-Knopf fehlt',
+          'Passkey button is missing',
         );
         for (const f of await b.auswerten(LAYOUT(false))) funde.push(`${dunkel ? 'dark' : 'hell'}: ${f}`);
       }

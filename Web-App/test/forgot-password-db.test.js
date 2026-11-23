@@ -76,7 +76,7 @@ test('forgot-password finds the email regardless of case', { concurrency: 1 }, a
     });
     assert.equal(r.status, 200);
     const j = await r.json();
-    assert.equal(j.success, true, 'die Antwort ist IMMER success:true (Anti-Enumeration)');
+    assert.equal(j.success, true, 'the response is ALWAYS success:true (anti-enumeration)');
     // The truth is not in the response but in the table.
     const row = await db.get(`SELECT reset_token FROM users WHERE username = $1`, [USERNAME]);
     const gesetzt = !!row.reset_token;
@@ -85,22 +85,10 @@ test('forgot-password finds the email regardless of case', { concurrency: 1 }, a
   };
 
   try {
-    assert.equal(
-      await forgot('forgot.case@example.ch'),
-      true,
-      'Kleinschreibung muss die gemischt geschriebene Adresse finden',
-    );
-    assert.equal(
-      await forgot('FORGOT.CASE@EXAMPLE.CH'),
-      true,
-      'Grossschreibung muss die gemischt geschriebene Adresse finden',
-    );
-    assert.equal(await forgot('Forgot.Case@Example.CH'), true, 'die exakte Schreibweise funktioniert weiterhin');
-    assert.equal(
-      await forgot('gibt.es.nicht@example.ch'),
-      false,
-      'eine unbekannte Adresse setzt weiterhin KEINEN Token',
-    );
+    assert.equal(await forgot('forgot.case@example.ch'), true, 'Lower case must find the mixed-case address');
+    assert.equal(await forgot('FORGOT.CASE@EXAMPLE.CH'), true, 'Upper case must find the mixed-case address');
+    assert.equal(await forgot('Forgot.Case@Example.CH'), true, 'the exact spelling still works');
+    assert.equal(await forgot('gibt.es.nicht@example.ch'), false, 'an unknown address still sets NO token');
   } finally {
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
     await new Promise(r => srv.close(r));
@@ -165,14 +153,10 @@ test('reset link only with APP_BASE_URL, never from the Host header — even out
     environment({ APP_BASE_URL: undefined });
     const bekannt = await forgot('forgot.host@example.ch');
     const unbekannt = await forgot('gibt.es.nicht@example.ch');
-    assert.equal(
-      bekannt.token,
-      false,
-      'Reset-Code an den Host aus dem Header — ohne APP_BASE_URL darf keiner entstehen',
-    );
+    assert.equal(bekannt.token, false, 'Reset code to the host from the header — without APP_BASE_URL none may arise');
     assert.equal(bekannt.status, 503);
     assert.equal(bekannt.body.code, 'password_reset_not_configured');
-    assert.deepEqual(unbekannt, bekannt, 'Die Antwort verrät die E-Mail: bekannt und unbekannt unterscheiden sich');
+    assert.deepEqual(unbekannt, bekannt, 'The response reveals the e-mail: known and unknown differ');
 
     environment({ APP_BASE_URL: 'https://lego.example.org/' });
     output.length = 0;
@@ -180,7 +164,7 @@ test('reset link only with APP_BASE_URL, never from the Host header — even out
     assert.equal(mit.status, 200);
     assert.equal(mit.token, true);
     const link = await waitOnLink();
-    assert.match(link, /https:\/\/lego\.example\.org\/reset-password#token=…$/, 'der Token steht im Fragment');
+    assert.match(link, /https:\/\/lego\.example\.org\/reset-password#token=…$/, 'the token is in the fragment');
     assert.doesNotMatch(link, /boese/);
   } finally {
     console.log = altLog;
@@ -231,12 +215,12 @@ test('at most one link per account in 15 minutes, and every response takes equal
   const erste = await forgot(`${USERNAME}@example.ch`);
   assert.ok(erste.token);
   const zweite = await forgot(`${USERNAME}@example.ch`);
-  assert.equal(zweite.token, erste.token, 'zweiter Link innerhalb der Pause — das Postfach lässt sich fluten');
-  assert.deepEqual(zweite.body, erste.body, 'die Antwort verrät die Pause');
+  assert.equal(zweite.token, erste.token, 'second link within the pause — the mailbox can be flooded');
+  assert.deepEqual(zweite.body, erste.body, 'the response reveals the pause');
   // After the pause (expiry lies less than 45 minutes ahead) there is one again.
   await db.run(`UPDATE users SET reset_token_expires = NOW() + INTERVAL '44 minutes' WHERE username = $1`, [USERNAME]);
-  assert.notEqual((await forgot(`${USERNAME}@example.ch`)).token, erste.token, 'nach der Pause kein neuer Link');
+  assert.notEqual((await forgot(`${USERNAME}@example.ch`)).token, erste.token, 'no new link after the pause');
   const unbekannt = await forgot(`gibt.es.nicht.${process.pid}@example.ch`);
   for (const r of [erste, zweite, unbekannt])
-    assert.ok(r.duration >= 390, `Antwort nach ${r.duration} ms — die Dauer verrät die Adresse`);
+    assert.ok(r.duration >= 390, `Response after ${r.duration} ms — the duration reveals the address`);
 });

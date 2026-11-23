@@ -32,7 +32,7 @@ const schreibt = (o, path) => o.aufrufe.filter(a => a.method === 'PUT' && a.url.
 const choose = (o, id, wert) => {
   const s = o.d.getElementById(id);
   s.value = wert;
-  assert.equal(s.value, wert, `${id} bietet „${wert}“ nicht an`);
+  assert.equal(s.value, wert, `${id} does not offer „${wert}“`);
   s.dispatchEvent(new o.w.Event('change', { bubbles: true }));
 };
 
@@ -65,21 +65,21 @@ test("web app: in the set detail choose from the owner's stock or type a new one
     klick(o, { click: 'openModal', arg: SN });
     assert.ok(
       await warte(() => o.d.querySelector('#m-storage-sel option[value="Regal A"]'), 4000),
-      'der Vorrat des Besitzers fehlt in der Auswahl',
+      'the stock of the owner is missing in the selection',
     );
     assert.ok(
       o.aufrufe.some(a => /\/v2\/storage\/locations\?owner=7$/.test(a.url)),
-      'nicht nach der Liste des Besitzers gefragt',
+      'not asked for the list of the owner',
     );
     assert.equal(o.d.getElementById('m-storage-sel').value, 'Keller');
     choose(o, 'm-storage-sel', 'Regal A');
-    assert.ok(await warte(() => schreibt(o, `/v2/sets/${SN}/storage`).length === 1), 'die Wahl speichert nicht');
+    assert.ok(await warte(() => schreibt(o, `/v2/sets/${SN}/storage`).length === 1), 'the choice does not save');
     assert.deepEqual(JSON.parse(schreibt(o, `/v2/sets/${SN}/storage`)[0].body), { storage: 'Regal A' });
     const auswahl = o.d.getElementById('m-storage-sel');
     auswahl.selectedIndex = [...auswahl.options].findIndex(x => x.dataset.new === '1');
-    assert.ok(auswahl.selectedIndex > 0, 'kein Eintrag „neuer Ort“');
+    assert.ok(auswahl.selectedIndex > 0, 'no entry „neuer Ort“');
     auswahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
-    assert.equal(o.d.getElementById('m-storage').style.display, '', '„neuer Ort“ öffnet kein Textfeld');
+    assert.equal(o.d.getElementById('m-storage').style.display, '', '„neuer Ort“ opens no text field');
     assert.equal(o.d.getElementById('m-storage').value, '');
   } finally {
     o.w.close();
@@ -101,18 +101,18 @@ test('web app: the part has the field and saves, the figure does not', async () 
     klick(o, { click: 'openSetItemDetail', arg: 'part', arg2: '3001', arg3: '5' });
     assert.ok(
       await warte(() => o.d.querySelector('#setitem-storage-sel option[value="Kiste 3"]')),
-      'Teil: kein Lagerortfeld',
+      'Part: no storage location field',
     );
     choose(o, 'setitem-storage-sel', 'Kiste 3');
     assert.ok(
       await warte(() => schreibt(o, '/v2/parts/3001/5/storage').length === 1),
-      'Teil: die Wahl speichert nicht',
+      'Part: the choice does not save',
     );
     o.d.getElementById('setitem-modal').classList.remove('open');
     klick(o, { click: 'openSetItemDetail', arg: 'fig', arg2: 'sw0001', arg3: '0' });
     assert.ok(await warte(() => o.d.getElementById('setitem-tit').textContent === 'Figur'));
     await o.ruhig();
-    assert.equal(o.d.getElementById('setitem-storage'), null, 'Figur: das Feld steht auch bei Figuren');
+    assert.equal(o.d.getElementById('setitem-storage'), null, 'Minifig: the field is there for minifigs too');
   } finally {
     o.w.close();
   }
@@ -128,16 +128,16 @@ test('web app: the filter stands next to the account filter and goes to the serv
       assert.equal(
         o.d.getElementById(`storage-${view}`).parentElement,
         o.d.getElementById(`scope-${view}`).parentElement,
-        `${view}: die beiden Filter stehen nicht beieinander`,
+        `${view}: the two filters are not next to each other`,
       );
     assert.ok(
       await warte(() => o.d.querySelector('#storage-gallery option[value="Regal A"]')),
-      'der Filter kennt den Ort nicht',
+      'the filter does not know the location',
     );
     choose(o, 'storage-gallery', 'Regal A');
     assert.ok(
       await warte(() => o.aufrufe.some(a => /\/v2\/sets\?.*storage=Regal(\+|%20)A/.test(a.url))),
-      'der Filter geht nicht an den Server',
+      'the filter does not go to the server',
     );
   } finally {
     o.w.close();
@@ -167,7 +167,7 @@ test('the length limit is the same in server, error text and web app', async () 
     assert.equal(
       Number(o.d.getElementById('m-storage').getAttribute('maxlength')),
       max,
-      'Das Eingabefeld der Webapp begrenzt anders',
+      'The input field of the web app limits differently',
     );
   } finally {
     o.w.close();

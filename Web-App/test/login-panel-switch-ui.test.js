@@ -39,7 +39,7 @@ test('forgot password: title, explanation and Enter submits', async () => {
   );
   try {
     klick(d, 'link-forgot');
-    assert.equal(d.querySelector('#panel-forgot h1').textContent.trim(), 'Passwort vergessen', 'Titel');
+    assert.equal(d.querySelector('#panel-forgot h1').textContent.trim(), 'Passwort vergessen', 'Title');
     assert.match(d.title, /^Passwort vergessen – /);
     const field = d.getElementById('forgot-email');
     assert.match(d.getElementById(field.getAttribute('aria-describedby')).textContent, /Link/);

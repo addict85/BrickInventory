@@ -123,7 +123,7 @@ test('a timestamp in the query part does not fetch the image anew', async () => 
   geholt.length = 0;
   const a = await hole('https://cdn.rebrickable.com/media/sets/10294-1.jpg?1700000000');
   assert.equal(a.status, 200);
-  assert.ok(await bis(() => imagesInCache() >= 1), 'das erste Bild landet nicht im Cache');
+  assert.ok(await bis(() => imagesInCache() >= 1), 'the first image does not end up in the cache');
   const b = await hole('https://cdn.rebrickable.com/media/sets/10294-1.jpg?1800000000#x');
   assert.equal(b.status, 200);
   // Only for logged-in users: a shared cache must not hold the response.
@@ -143,10 +143,10 @@ test('the fourth foreign image is throttled, hits and other accounts are not', a
   const fourthItem = await fetch(basis + encodeURIComponent('https://cdn.rebrickable.com/media/parts/d4.png'));
   assert.equal(fourthItem.status, 429);
   assert.ok(Number(fourthItem.headers.get('retry-after')) > 0);
-  assert.ok(await bis(() => imagesInCache() >= 5), 'd1 bis d3 landen nicht im Cache');
-  assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d1.png')).status, 200, 'Cache-Treffer gedrosselt');
+  assert.ok(await bis(() => imagesInCache() >= 5), 'd1 to d3 do not end up in the cache');
+  assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d1.png')).status, 200, 'Cache hit throttled');
   konto += 1;
-  assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d4.png')).status, 200, 'anderes Konto gedrosselt');
+  assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d4.png')).status, 200, 'other account throttled');
   // The cache keeps writing after the response; if the file only lands in the
   // next test, it counts against the cap there (seen like that in the full run).
   const bilder = () => fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length;
@@ -195,7 +195,7 @@ test('only images leave the image proxy', async () => {
       cdnType = typ;
       const r = await fetch(basis + encodeURIComponent(`https://cdn.rebrickable.com/media/parts/${address}`));
       await r.arrayBuffer();
-      assert.equal(r.status, 415, `${typ} ging als Bild hinaus`);
+      assert.equal(r.status, 415, `${typ} went out as an image`);
     }
   } finally {
     cdnType = 'image/png';
@@ -214,13 +214,13 @@ test('a missing image comes as a placeholder, and the server remembers it', asyn
       return { status: r.status, typ: r.headers.get('content-type'), rumpf: Buffer.from(await r.arrayBuffer()) };
     };
     const erst = await fetchRaw();
-    assert.equal(erst.status, 200, 'Ein 404 des CDN geht als Fehler an den Browser');
+    assert.equal(erst.status, 200, 'A 404 of the CDN goes to the browser as an error');
     assert.equal(erst.typ, 'image/svg+xml');
-    assert.ok(erst.rumpf.equals(platzhalter), 'Ausgeliefert wird nicht der Platzhalter');
-    assert.equal(geholt.length, 2, 'Vor dem Aufgeben fragt der Proxy einmal ohne Referer nach');
+    assert.ok(erst.rumpf.equals(platzhalter), 'The placeholder is not delivered');
+    assert.equal(geholt.length, 2, 'Before giving up the proxy asks once more without a referer');
     const zweit = await fetchRaw();
     assert.ok(zweit.status === 200 && zweit.rumpf.equals(platzhalter));
-    assert.equal(geholt.length, 2, 'Das fehlende Bild wird nicht gemerkt — jede Kachel fragt das CDN erneut');
+    assert.equal(geholt.length, 2, 'The missing image is not remembered — every tile asks the CDN again');
   } finally {
     cdnStatus = 200;
   }
@@ -238,7 +238,7 @@ test('only 404 is remembered, no 403', async () => {
       await r.arrayBuffer();
       assert.equal(r.status, 403);
     }
-    assert.equal(geholt.length, 4, 'Ein 403 wurde gemerkt — der zweite Abruf ging nicht ans CDN');
+    assert.equal(geholt.length, 4, 'A 403 was remembered — the second fetch did not go to the CDN');
   } finally {
     cdnStatus = 200;
   }
@@ -262,7 +262,7 @@ test('the cap deletes the image unused the longest', async () => {
   put('a'.repeat(40), 20);
   put('b'.repeat(40), 10);
   put('c'.repeat(40), 1);
-  assert.equal(await cleanImageCacheOn(4000, now * 1000), 0, 'unter der Grenze wird nichts gelöscht');
+  assert.equal(await cleanImageCacheOn(4000, now * 1000), 0, 'nothing is deleted below the limit');
   assert.equal(await cleanImageCacheOn(3000, now * 1000), 3);
   assert.deepEqual(
     fs

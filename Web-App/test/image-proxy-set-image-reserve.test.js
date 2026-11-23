@@ -87,12 +87,12 @@ test('image proxy reserves set images for images/sets', async t => {
     assert.deepEqual(
       fs.readFileSync(abgelegt),
       Buffer.alloc(300, 1),
-      'was der Proxy hat, liegt danach unter images/sets',
+      'what the proxy has is under images/sets afterwards',
     );
     assert.deepEqual(
       fs.readdirSync(SET_IMAGES_DIR).filter(n => n.startsWith(fehlt) && n.endsWith('.part')),
       [],
-      'keine halbe Datei bleibt liegen',
+      'no half file is left behind',
     );
   });
   await t.test('if image and preview already lie in images/sets, there is no note', async () => {

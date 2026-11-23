@@ -76,8 +76,8 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
     // Five accesses with four attempts each: none reaches its own limit (5).
     for (let z = 0; z < 5; z++) for (let i = 0; i < 4; i++) ist.push(await versuch(`t:${z}`));
     assert.deepEqual([...new Set(ist)], [400]);
-    assert.equal(await versuch('t:0'), 429, 'der 21. Versuch aus einem ratenden Zugang');
-    assert.equal(await versuch('t:4', PASS), 429, 'auch mit dem richtigen Passwort, ohne Prüfung');
+    assert.equal(await versuch('t:0'), 429, 'the 21st attempt from a guessing access');
+    assert.equal(await versuch('t:4', PASS), 429, 'even with the correct password, without a check');
   });
 
   await t.test("the owner's clean access keeps confirming", async () => {
@@ -87,8 +87,8 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
   await t.test('mail and log on reaching the brake, the mail once a day', async () => {
     for (let i = 0; i < 40 && mails.length < 1; i++) await new Promise(r => setTimeout(r, 25));
     await new Promise(r => setTimeout(r, 200));
-    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, kind: 'bestaetigung_gebremst' }]);
-    const gebremst = zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === 'bestaetigung_gebremst');
+    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, kind: 'confirmation_throttled' }]);
+    const gebremst = zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === 'confirmation_throttled');
     assert.deepEqual(
       gebremst.map(z => [z.kontext.konto, z.kontext.kind]),
       [[uid, 'passwort']],
@@ -101,6 +101,9 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
     for (let i = 0; i < 5; i++) await versuch('t:neu');
     await new Promise(r => setTimeout(r, 200));
     assert.equal(mails.length, 1, JSON.stringify(mails));
-    assert.equal(zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === 'bestaetigung_gebremst').length, 2);
+    assert.equal(
+      zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === 'confirmation_throttled').length,
+      2,
+    );
   });
 });

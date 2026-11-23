@@ -8,22 +8,22 @@ import { hashPasswordImmediately } from './passwordHash';
 import type { AccountContext } from './context';
 
 export async function createStartAdmin(k: AccountContext): Promise<void> {
-  if (await k.startVerwalter.accountsPresent()) {
-    if (!(await k.startVerwalter.openStartPassword())) removeStartPassword();
+  if (await k.startAdmin.accountsPresent()) {
+    if (!(await k.startAdmin.openStartPassword())) removeStartPassword();
     return;
   }
   const envPassword = k.config.adminPassword;
-  const mangel = envPassword !== '' ? passwordLack(envPassword, 'admin') : null;
-  if (mangel)
-    console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${mangel}); es gilt ein zufälliges Startpasswort.`);
-  const fromEnvironment = envPassword !== '' && !mangel;
+  const lack = envPassword !== '' ? passwordLack(envPassword, 'admin') : null;
+  if (lack)
+    console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${lack}); es gilt ein zufälliges Startpasswort.`);
+  const fromEnvironment = envPassword !== '' && !lack;
   const password = fromEnvironment ? envPassword : crypto.randomBytes(15).toString('base64url'); // 20 characters, URL-safe
   // Before creating: if the file is not writable, startup aborts instead of
   // leaving behind an account with a password nobody knows.
   const file = fromEnvironment ? null : writeStartPassword('admin', password);
   // Same cost as every account: with less, a failed attempt against "admin" would answer measurably faster.
   const hash = hashPasswordImmediately(password);
-  await k.startVerwalter.createAdmin(hash, !fromEnvironment);
+  await k.startAdmin.createAdmin(hash, !fromEnvironment);
   if (!file) console.log('✅ Erstes Administratorkonto erstellt (Passwort aus ADMIN_PASSWORD).');
   else
     console.log(

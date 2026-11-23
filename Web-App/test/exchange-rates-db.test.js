@@ -34,7 +34,7 @@ const { portOf } = require('./helpers/server');
 
 const NAME = `kurse_${process.pid}`;
 const SET = `7${process.pid}1-1`,
-  TEIL = `wk${process.pid}`,
+  PART = `wk${process.pid}`,
   FARBE = 4;
 
 /** A ZIP file with a CSV, as the ECB delivers it. */
@@ -89,7 +89,7 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
   const { reloadRates } = _req('src/finances/exchangeRates.js');
 
   await t.test('first the history, then the daily rates', async () => {
-    assert.deepEqual(await reloadRates(local), { source: 'historie', rates: 5 }, 'N/A und leere Spalten zählen nicht');
+    assert.deepEqual(await reloadRates(local), { source: 'historie', rates: 5 }, 'N/A and empty columns do not count');
     assert.deepEqual(await reloadRates(local), { source: 'tag', rates: 2 });
     assert.deepEqual(abgerufen, ['/stats/eurofxref/eurofxref-hist.zip', '/stats/eurofxref/eurofxref-daily.xml']);
     const r = await db.get(`SELECT per_eur FROM exchange_rates WHERE currency = 'CHF' AND day = '2026-01-07'`);
@@ -129,9 +129,9 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
     const { gainAndLoss } = _req('src/finances/financeCalc.js');
     const pnl = await gainAndLoss(uid, [uid]);
     const z = pnl.sets.find(s => s.set_number === SET);
-    assert.equal(z.purchase_price, (92.5 + 38) / 2, 'mengengewichtet über die umgerechneten Preise');
+    assert.equal(z.purchase_price, (92.5 + 38) / 2, 'quantity-weighted over the converted prices');
     assert.equal(pnl.totals.converted_purchase_prices, 2);
-    assert.equal(pnl.totals.foreign_currency_purchases, 1, 'XAU ohne Kurs bleibt draussen');
+    assert.equal(pnl.totals.foreign_currency_purchases, 1, 'XAU without a rate stays out');
     const { valueSets } = _req('src/finances/financeCalc.js');
     const b = await valueSets(uid, [uid]);
     assert.equal(b.converted_purchase_prices, 2);
@@ -141,15 +141,15 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
   await t.test('price history', async () => {
     const { priceHistorySet } = _req('src/finances/priceHistory.js');
     const v = await priceHistorySet([uid], SET, 'CHF');
-    assert.equal(v.purchase_price, 92.5, 'die erste Erfassung, umgerechnet');
+    assert.equal(v.purchase_price, 92.5, 'the first acquisition, converted');
     assert.equal(v.by_condition.N.purchase_price, (92.5 + 38) / 2);
   });
 
   await t.test('Teil', async () => {
-    await holdsPart(db, uid, TEIL, { colorId: FARBE, quantity: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
+    await holdsPart(db, uid, PART, { colorId: FARBE, quantity: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
     await db.run(`UPDATE part_acquisitions SET currency = 'USD' WHERE user_id = $1`, [uid]);
     const { priceHistoryPart } = _req('src/finances/priceHistory.js');
-    const v = await priceHistoryPart([uid], TEIL, FARBE, 'CHF');
+    const v = await priceHistoryPart([uid], PART, FARBE, 'CHF');
     // 2 USD / 1,26 × 0,96 = 1,5238
     assert.equal(v.by_condition.N.purchase_price, 1.5238);
   });

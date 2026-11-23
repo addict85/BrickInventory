@@ -13,7 +13,7 @@ export function cachePricesForSets(db: DbInterface, values: (string[] | string |
 
 export function setEntriesToValue(db: DbInterface, l: FinancesReadContract, userId: number, setNumber: string) {
   return db.all<{ quantity: number; condition: string | null }>(
-    `SELECT quantity, condition FROM ${l.setErfassungen('= $1')} e WHERE set_number=$2`,
+    `SELECT quantity, condition FROM ${l.setAcquisitions('= $1')} e WHERE set_number=$2`,
     [userId, setNumber],
   );
 }

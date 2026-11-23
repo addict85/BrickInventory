@@ -82,6 +82,63 @@ function chartUnavailable(offline, d) {
   return html`${html`<div class="empty empty-state small error-state" role="status"><div class="empty-ico">${ico('warning')}</div>`}${html`<h2>${tRaw('chart.unavailable')}</h2><p>${reason}</p>`}${details ? html`<details class="error-details"><summary>${tRaw('list.details')}</summary><code>${details}</code></details>` : ''}${html`<button type="button" class="btn bs" data-reading data-click="loadPortfolioChart">${ico('refresh')}<span>${tRaw('list.again')}</span></button></div>`}`;
 }
 
+/** @param {boolean} disabled */
+function setPeriodButtons(disabled) {
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.period-choice .period-btn')).forEach(b => {
+    b.disabled = disabled;
+  });
+}
+
+/** Points with real timestamps where d.chart has them (same order as points): then they sit on a time axis
+ * instead of by index. The last point is the header value, the others scaled to it.
+ * @param {import('../../frontend-types/api').ApiSuccess<'GET', '/v2/finance/portfolio-history'>} d the portfolio history
+ * @param {{ chart?: { values?: { values?: { x: string }[] }[] } }} untyped its chart @param {number} grandTotal */
+function curvePoints(d, untyped, grandTotal) {
+  const lastVal = d.points[d.points.length - 1].value || 1;
+  const scale = lastVal > 0 ? grandTotal / lastVal : 1;
+  /** @type {number[]} */
+  const times = untyped.chart?.values?.[0]?.values?.map((/** @type {{ x: string }} */ v) => moment(v.x)) || [];
+  const withTime = times.length === d.points.length && times.every(Number.isFinite);
+  return d.points.map((/** @type {{ x_label?: string, value: number }} */ p, /** @type {number} */ i) => ({
+    day: p.x_label || '',
+    time: withTime ? times[i] : undefined,
+    total: i === d.points.length - 1 ? grandTotal : parseFloat((p.value * scale).toFixed(2)),
+  }));
+}
+
+/** Without a market value there is no trend: the history then only carries the purchase price, and
+ * "0.0 %" next to "—" would claim no movement. @param {HTMLElement} pnlEl
+ * @param {import('../../frontend-types/api').ApiSuccess<'GET', '/v2/finance/portfolio-history'>} d
+ * @param {{ total: number, time?: number }[]} points @param {number} grandTotal */
+function showPeriodChange(pnlEl, d, points, grandTotal) {
+  const periodText = {
+    week: 'finance.change.week',
+    month: 'finance.change.month',
+    year: 'finance.change.year',
+    max: 'finance.change.max',
+  }[_chartPeriod];
+  // "since Sept 4" instead of "since the start": the percentage's reference point stays visible.
+  const start = points[0]?.time;
+  const since =
+    _chartPeriod === 'max' && start !== undefined && Number.isFinite(start)
+      ? tRaw('finance.change.since', { date: fmtDate(new Date(start)) })
+      : '';
+  const period = periodText ? html`<span class="pnl-period">${since ? since : tRaw(periodText)}</span>` : '';
+  if (!(financeHeaderValue > 0)) {
+    pnlEl.replaceChildren();
+    return;
+  }
+  if (d.period_change_pct != null) {
+    setHtml(pnlEl, html`${pnlBadge(d.period_change_pct)}${period}`);
+    return;
+  }
+  // Fallback: first chart point vs current
+  const purchaseBaseline = parseFloat(d.purchase_total || '0');
+  const firstVal = purchaseBaseline > 0 && points.length <= 2 ? purchaseBaseline : (points[0]?.total ?? 0);
+  if (firstVal > 0 && grandTotal > 0)
+    setHtml(pnlEl, html`${pnlBadge(((grandTotal - firstVal) / firstVal) * 100)}${period}`);
+}
+
 export async function loadPortfolioChart() {
   const el = G('portfolio-chart');
   if (!el) return;
@@ -94,9 +151,7 @@ export async function loadPortfolioChart() {
   if (!d.success) {
     if (d.status === 401) return;
     // Without history no period selects anything; "retry" is the only available action.
-    document.querySelectorAll('.period-choice .period-btn').forEach(b => {
-      /** @type {HTMLButtonElement} */ (b).disabled = true;
-    });
+    setPeriodButtons(true);
     setHtml(el, chartUnavailable(!!d.networkError, d));
     return;
   }
@@ -108,71 +163,27 @@ export async function loadPortfolioChart() {
   );
   const dataPoints = untyped.data_points ?? d.points?.length ?? 0;
   _lastCurve = null;
+  const noHistory = !d.points?.length || dataPoints < 2;
   // With no history at all ("Max" empty) there is no period to choose from.
-  const fullyEmpty = (!d.points?.length || dataPoints < 2) && _chartPeriod === 'max';
-  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.period-choice .period-btn')).forEach(b => {
-    b.disabled = fullyEmpty;
-  });
-  if (!d.points?.length || dataPoints < 2) {
+  setPeriodButtons(noHistory && _chartPeriod === 'max');
+  if (noHistory) {
     setHtml(el, chartEmpty());
-    const emptyPnl = G('portfolio-pnl');
-    if (emptyPnl) emptyPnl.replaceChildren();
+    G('portfolio-pnl')?.replaceChildren();
     return;
   }
 
   const cur = d.currency || accountCurrency;
-  // New API: points has {x_label, value, y_frac}, y_axis has {label, value, frac} Convert to legacy format
-  // for portfolioChartSVG: [{day, total}]
   const grandTotal = financeHeaderValue || d.points[d.points.length - 1].value;
-  const lastVal = d.points[d.points.length - 1].value || 1;
-  const scale = lastVal > 0 ? grandTotal / lastVal : 1;
-  // The timestamps live in d.chart (same order as points); with them the points sit on a real time axis
-  // instead of by index.
-  const times = untyped.chart?.values?.[0]?.values?.map(v => moment(v.x)) || [];
-  const withTime = times.length === d.points.length && times.every(Number.isFinite);
-  const finalChartData = d.points.map((p, i) => ({
-    day: p.x_label || '',
-    time: withTime ? times[i] : undefined,
-    total: i === d.points.length - 1 ? grandTotal : parseFloat((p.value * scale).toFixed(2)),
-  }));
+  const finalChartData = curvePoints(d, untyped, grandTotal);
   _lastCurve = finalChartData;
   _curveWidth = chartWidth(el);
   setHtml(
     el,
     portfolioChartSVG(finalChartData, _chartPeriod, _curveWidth, _costBasis, cur, _costBasisText || undefined),
   );
-
   // P&L: use server-computed period_change_pct (compares period start vs current)
   const pnlEl = G('portfolio-pnl');
-  if (pnlEl) {
-    // Without a market value there is no trend: the history then only carries the purchase price, and
-    // "0.0 %" next to "—" would claim no movement.
-    const periodText = {
-      week: 'finance.change.week',
-      month: 'finance.change.month',
-      year: 'finance.change.year',
-      max: 'finance.change.max',
-    }[_chartPeriod];
-    // "since Sept 4" instead of "since the start": the percentage's reference point stays visible.
-    const start = finalChartData[0]?.time;
-    const since =
-      _chartPeriod === 'max' && start !== undefined && Number.isFinite(start)
-        ? tRaw('finance.change.since', { date: fmtDate(new Date(start)) })
-        : '';
-    const period = periodText ? html`<span class="pnl-period">${since ? since : tRaw(periodText)}</span>` : '';
-    if (!(financeHeaderValue > 0)) pnlEl.replaceChildren();
-    else if (d.period_change_pct != null) {
-      setHtml(pnlEl, html`${pnlBadge(d.period_change_pct)}${period}`);
-    } else {
-      // Fallback: first chart point vs current
-      const purchaseBaseline = parseFloat(d.purchase_total || '0');
-      const firstVal = purchaseBaseline > 0 && finalChartData.length <= 2 ? purchaseBaseline : finalChartData[0].total;
-      if (firstVal > 0 && grandTotal > 0) {
-        const pct = ((grandTotal - firstVal) / firstVal) * 100;
-        setHtml(pnlEl, html`${pnlBadge(pct)}${period}`);
-      }
-    }
-  }
+  if (pnlEl) showPeriodChange(pnlEl, d, finalChartData, grandTotal);
 }
 
 // ── Register handlers with the dispatcher (see js/registry.js) ──────────────

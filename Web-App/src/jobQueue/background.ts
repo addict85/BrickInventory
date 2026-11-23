@@ -1,7 +1,7 @@
 /** Web UI and app read the same response. */
 import type { JobKind } from './jobs';
-import { pullBefore, repeat, abortAb, endPause } from './service';
-import { hatSchedule, planeNext, pullPlanBefore } from './schedule';
+import { pullBefore, repeat, abortJob, endPause } from './service';
+import { hasSchedule, planNext, pullPlanBefore } from './schedule';
 import { failDomain } from '../infra/errorTexts';
 import type { JobsContext } from './context';
 
@@ -9,7 +9,7 @@ const HEARTBEAT_APPLIES_SEC = 120;
 const STATUS = ['pending', 'running', 'error', 'cancelled', 'done'] as const;
 
 function checkKind(k: JobsContext, kind: string): JobKind {
-  if (!k.arten.fromValue(kind)) failDomain('ungueltig', 'unknown_job');
+  if (!k.kinds.fromValue(kind)) failDomain('invalid', 'unknown_job');
   return kind as JobKind;
 }
 
@@ -25,7 +25,7 @@ export async function jobsInOverview(
   const kind = filter.kind ? checkKind(k, filter.kind) : null;
   const [jobs, summary, pauses, heartbeat] = await Promise.all([
     k.jobs.jobList(status, kind),
-    k.jobs.numbersJeKindAndStatus(),
+    k.jobs.countsByKindAndStatus(),
     k.jobs.runningPauses(),
     k.runState.readState('jobs_lebenszeichen'),
   ]);
@@ -43,18 +43,18 @@ export async function jobsInOverview(
 }
 
 /** For a scheduled kind the next regular appointment is pending afterwards. */
-export async function auftragAbbrechen(k: JobsContext, key: number) {
+export async function cancelJob(k: JobsContext, key: number) {
   // The response names the identifier as text like the overview (bigint).
   const id = String(key);
-  const a = await abortAb(k, id);
-  if (!a) failDomain('konflikt', 'job_not_changeable');
-  await planeNext(k, a.type);
+  const a = await abortJob(k, id);
+  if (!a) failDomain('conflict', 'job_not_changeable');
+  await planNext(k, a.type);
   return { id, status: 'cancelled' };
 }
 
 export async function retryJob(k: JobsContext, key: number) {
   const id = String(key);
-  if (!(await repeat(k, id))) failDomain('konflikt', 'job_not_changeable');
+  if (!(await repeat(k, id))) failDomain('conflict', 'job_not_changeable');
   return { id, status: 'pending' };
 }
 
@@ -67,6 +67,6 @@ export async function emptyJobKind(k: JobsContext, kindRaw: string) {
 export async function jobKindNow(k: JobsContext, kindRaw: string) {
   const kind = checkKind(k, kindRaw);
   await endPause(k, kind);
-  const started = hatSchedule(k, kind) ? await pullPlanBefore(k, kind) : (await pullBefore(k, kind)) > 0;
+  const started = hasSchedule(k, kind) ? await pullPlanBefore(k, kind) : (await pullBefore(k, kind)) > 0;
   return { kind, started };
 }

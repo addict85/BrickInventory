@@ -72,9 +72,9 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
 
   await t.test('invitation code in groups of four', async () => {
     await b.auswerten(klick('.umenu-item[data-arg="household"]'));
-    await bis(`document.getElementById('household-invite-box')?.checkVisibility()`, 'Haushalt');
+    await bis(`document.getElementById('household-invite-box')?.checkVisibility()`, 'Household');
     await b.auswerten(klick('[data-click="createHouseholdInvite"]'));
-    await bis(`!!document.getElementById('household-invite-code').value`, 'Code erzeugt');
+    await bis(`!!document.getElementById('household-invite-code').value`, 'Code created');
     assert.match(await b.auswerten(`document.getElementById('household-invite-code').value`), CODE);
   });
 
@@ -88,7 +88,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     // As typed: lower case and without dashes.
     await b.auswerten(`document.getElementById('household-redeem-code').value = ${JSON.stringify(code.replace(/-/g, '').toLowerCase())};
       document.querySelector('[data-click="redeemHouseholdInvite"]').click(); true`);
-    await bis(open, 'Bestätigung');
+    await bis(open, 'Confirmation');
     assert.equal(await b.auswerten(text('#cd-title')), `Einladung von „${OTHERS}“ annehmen?`);
     assert.match(
       await b.auswerten(text('#cd-msg')),
@@ -100,7 +100,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
       document.querySelector('[data-click="redeemHouseholdInvite"]').click(); true`);
     await bis(
       `[...document.querySelectorAll('#toasts .toast.error')].some(x => /abgelaufen|ungültig/i.test(x.textContent))`,
-      'Absage',
+      'Refusal',
     );
     assert.equal(await b.auswerten(open), false);
     const fremd = await fetch(`http://127.0.0.1:${port}/api/v2/settings/household/redeem/check`, {
@@ -134,7 +134,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
       'Toast',
     );
     await b.auswerten(klick('.ntab[data-tab="parts"]'));
-    await bis(`document.getElementById('tab-parts').classList.contains('active')`, 'Teile');
+    await bis(`document.getElementById('tab-parts').classList.contains('active')`, 'Parts');
     assert.equal(
       await b.auswerten(
         `[...document.querySelectorAll('#toasts .toast')].filter(x => /nicht in deiner Sammlung/.test(x.textContent)).length`,
@@ -145,7 +145,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
 
   await t.test('delete cross: Del on the card', async () => {
     await geh('sammlung');
-    await bis(`!!document.querySelector('#gallery .sc')`, 'Sammlung');
+    await bis(`!!document.querySelector('#gallery .sc')`, 'Collection');
     // Only once the collection has finished loading: a later rebuild would replace the
     // focused card, and Delete would go to the body of the page.
     await ruhig();
@@ -157,10 +157,10 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     assert.deepEqual(z, { taste: 'Delete', cross: 'true', fokus: true });
     for (const type of ['rawKeyDown', 'keyUp'])
       await b.tab('Input.dispatchKeyEvent', { type, key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
-    await bis(`!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'gelöscht');
-    assert.equal(await b.auswerten(open), false, 'Rückfrage vor Wiederherstellbarem');
+    await bis(`!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'deleted');
+    assert.equal(await b.auswerten(open), false, 'Confirmation before something restorable');
     await b.auswerten(`[...document.querySelectorAll('#toasts .toast-action')].at(-1).click(); true`);
-    await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'zurückgeholt');
+    await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'restored');
     await ruhig();
   });
 
@@ -174,7 +174,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
 
   await t.test('background jobs: every service with an icon', async () => {
     await b.auswerten(klick('.ntab[data-tab="monitor"]'));
-    await bis(`document.querySelectorAll('.mon-services .mon-name').length >= 6`, 'Dienste');
+    await bis(`document.querySelectorAll('.mon-services .mon-name').length >= 6`, 'Services');
     const ohne = await b.auswerten(
       `[...document.querySelectorAll('.mon-services .mon-name')].filter(n => !n.querySelector('svg.mon-icon *')).map(n => n.textContent.trim())`,
     );
@@ -185,17 +185,17 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     const zeichen = async () => {
       await geh('sammlung');
       await geh('finanzen');
-      await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finanzen', 300);
+      await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finances', 300);
       return b.auswerten(
         `({ rot: document.querySelectorAll('#fin-tbl tbody .pst-err').length, grau: document.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody .pst-empty').length })`,
       );
     };
     // Without a price in the cache and without BrickLink access the fetch fails.
     await holdsSet(db, app.uid, '60001-1', 1, { preis: 20, am: '2026-06-03T10:00:00Z' });
-    assert.deepEqual(await zeichen(), { rot: 1, grau: 0 }, 'ein einzelner Fehlschlag bleibt rot');
+    assert.deepEqual(await zeichen(), { rot: 1, grau: 0 }, 'a single failure stays red');
     for (const nr of ['60002-1', '60003-1', '60004-1', '60005-1', '60006-1'])
       await holdsSet(db, app.uid, nr, 1, { preis: 20, am: '2026-06-03T10:00:00Z' });
-    assert.deepEqual(await zeichen(), { rot: 0, grau: 6 }, 'fehlt er fast überall, ist es kein Alarm');
+    assert.deepEqual(await zeichen(), { rot: 0, grau: 6 }, 'if it is missing almost everywhere, it is no alarm');
     await db.run(`DELETE FROM set_acquisitions WHERE user_id = $1 AND set_number LIKE '6000_-1'`, [app.uid]);
     await db.run(`DELETE FROM sets WHERE user_id = $1 AND set_number LIKE '6000_-1'`, [app.uid]);
   });
@@ -220,7 +220,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     assert.doesNotMatch(
       await b.auswerten(text('#portfolio-chart .cost-basis-line')),
       /gesamt|bewertete/,
-      'am Telefon kurz',
+      'short on the phone',
     );
     await b.auswerten(
       `(() => { const s = document.getElementById('scope-finance'); s.value = 'all'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
@@ -244,19 +244,19 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
     await b.auswerten(`scrollTo(0, 0); true`);
     await sobald('z.text');
-    assert.equal((await b.auswerten(knopf)).text, true, 'oben mit Beschriftung');
+    assert.equal((await b.auswerten(knopf)).text, true, 'at the top with a label');
     await b.auswerten(`scrollTo(0, 400); true`);
     await sobald('!z.text && z.breit === 56');
     assert.deepEqual(
       await b.auswerten(knopf),
       { breit: 56, text: false, name: 'Set hinzufügen' },
-      'beim Rollen nur das Symbol',
+      'only the icon when scrolling',
     );
     await b.auswerten(`scrollTo(0, 0); document.documentElement.style.fontSize = '200%'; true`);
     await sobald('!z.text && z.breit <= 120');
     try {
       const z = await b.auswerten(knopf);
-      assert.equal(z.text, false, 'bei 200 % nur das Symbol');
+      assert.equal(z.text, false, 'only the icon at 200 %');
       assert.ok(z.breit <= 120, `schmal: ${z.breit} px`);
     } finally {
       await b.auswerten(`document.documentElement.style.fontSize = ''; true`);
@@ -273,7 +273,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${roh}` });
     await bis(
       `/neu-${process.pid}@example\\.org/.test(document.getElementById('verify-target')?.textContent || '')`,
-      'Ziel genannt',
+      'Target named',
     );
     assert.match(await b.auswerten(text('#verify-target')), new RegExp(`Konto „${NAME}“`));
   });

@@ -18,7 +18,7 @@ test('every dialog has a name', async () => {
   const { w, d } = await openUi();
   try {
     const dialoge = [...d.querySelectorAll('[role="dialog"]')];
-    assert.ok(dialoge.length >= 15, `nur ${dialoge.length} Dialoge gefunden`);
+    assert.ok(dialoge.length >= 15, `only ${dialoge.length} dialogs found`);
     const ohne = dialoge
       .filter(dl => {
         if ((dl.getAttribute('aria-label') || '').trim()) return false;

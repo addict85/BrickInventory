@@ -34,8 +34,8 @@ const POOL = new https.Agent({
 
 export interface ImageFetch {
   maxBytes: number;
-  zeitlimitMs?: number;
-  kopfzeilen?: Record<string, string>;
+  timeoutMs?: number;
+  headers?: Record<string, string>;
   hosts?: readonly string[];
   redirects?: number;
   /** The image proxy keeps connections open; single requests do not need that. */
@@ -46,15 +46,15 @@ export interface ImageFetch {
 const options = (o: ImageFetch) => ({
   hosts: o.hosts ?? ALLOWED_IMAGE_HOSTS,
   maxBytes: o.maxBytes,
-  zeitlimitMs: o.zeitlimitMs ?? 30_000,
-  kopfzeilen: o.kopfzeilen ?? { ...IMAGE_HEADERS },
+  timeoutMs: o.timeoutMs ?? 30_000,
+  headers: o.headers ?? { ...IMAGE_HEADERS },
   ...(o.redirects !== undefined ? { redirects: o.redirects } : {}),
   ...(o.pool ? { agent: POOL } : {}),
   ...(o.signal ? { signal: o.signal } : {}),
 });
 
 /** Header and limited stream: for the proxy and files. */
-export function oeffneBild(url: string, o: ImageFetch): Promise<FetchStream> {
+export function openImage(url: string, o: ImageFetch): Promise<FetchStream> {
   return openHttps(url, options(o));
 }
 

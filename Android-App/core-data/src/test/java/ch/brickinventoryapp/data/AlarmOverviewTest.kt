@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.contract.Preisalarm
+import ch.brickinventoryapp.contract.PriceAlert
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.TestApi
@@ -27,16 +27,16 @@ class AlarmOverviewTest {
 
     /**
      * Executed against a test server. Counter-check: in
-     * SetsApi `@GET("api/v1/alerts")` to "api/v1/alarme" → red.
+     * SetsApi `@GET("api/v2/alerts")` to "api/v2/alarme" → red.
      */
     @Test
     fun `the app fetches all alerts via the common route`() {
-        val paths = PathServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
+        val paths = PathServer("/api/v2/alerts" to """{"success":true,"alerts":[]}""")
         try {
             runBlocking {
                 testAlarmRepository(TestApi.forTarget(paths.server)).refreshAlerts()
             }
-            assertEquals(listOf("GET /api/v1/alerts"), paths.requests.toList())
+            assertEquals(listOf("GET /api/v2/alerts"), paths.requests.toList())
         } finally {
             paths.server.shutdown()
         }
@@ -54,7 +54,7 @@ class AlarmOverviewTest {
                 ?: m.getAnnotation(DELETE::class.java)?.value
         }
         assertTrue("No changing addresses found — does reflection still work?", changing.size > 10)
-        val secondRoute = changing.filter { it.startsWith("api/v1/alerts") }
+        val secondRoute = changing.filter { it.startsWith("api/v2/alerts") }
         assertTrue("A second write path has appeared: $secondRoute", secondRoute.isEmpty())
     }
 
@@ -66,11 +66,11 @@ class AlarmOverviewTest {
      */
     @Test
     fun `a missing besitzt field does not kill the row`() {
-        val alarm = BrickJson.decodeFromString(Preisalarm.serializer(),
-            """{"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}""")
-        assertTrue("Without the field the set counts as not present — the whole section would be dead", alarm.besitzt)
-        val gone = BrickJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
-        assertFalse(gone.besitzt)
+        val alarm = BrickJson.decodeFromString(PriceAlert.serializer(),
+            """{"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF"}""")
+        assertTrue("Without the field the set counts as not present — the whole section would be dead", alarm.owns)
+        val gone = BrickJson.decodeFromString(PriceAlert.serializer(), """{"set_number":"75192-1","owns":false}""")
+        assertFalse(gone.owns)
     }
 
     // The opposite direction — „does the WEB APP have the section too?“ — deliberately does

@@ -13,8 +13,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const QUELLE = path.join(ROOT, 'docs', 'openapi-v2.json');
-const ZIEL = path.join(ROOT, 'frontend-types', 'contract.d.ts');
+const SOURCE_FILE = path.join(ROOT, 'docs', 'openapi-v2.json');
+const TARGET_FILE = path.join(ROOT, 'frontend-types', 'contract.d.ts');
 
 const NAME = /^[A-Za-z_$][\w$]*$/;
 const key = (/** @type {string} */ k) => (NAME.test(k) ? k : JSON.stringify(k));
@@ -82,11 +82,11 @@ function create(doc) {
   );
   const routes = [];
   for (const [path, ops] of Object.entries(doc.paths || {})) {
-    const muster = path.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
+    const pattern = path.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
     for (const [method, op] of Object.entries(/** @type {Record<string, any>} */ (ops))) {
       const schema = op.responses?.['200']?.content?.['application/json']?.schema;
       if (!schema) continue;
-      const p = muster.includes('${') ? '`' + muster + '`' : `'${muster}'`;
+      const p = pattern.includes('${') ? '`' + pattern + '`' : `'${pattern}'`;
       routes.push(`  | { m: '${method.toUpperCase()}'; p: ${p}; a: ${type(schema, '  ')} }`);
     }
   }
@@ -95,8 +95,8 @@ function create(doc) {
   for (const [path, ops] of Object.entries(doc.paths || {})) {
     const schema = ops.get?.responses?.['200']?.content?.['text/event-stream']?.schema;
     if (!schema) continue;
-    const muster = path.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
-    const p = muster.includes('${') ? '`' + muster + '`' : `'${muster}'`;
+    const pattern = path.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
+    const p = pattern.includes('${') ? '`' + pattern + '`' : `'${pattern}'`;
     streams.push(`  | { p: ${p}; e: ${type(schema, '  ')} }`);
   }
   from.push(
@@ -109,11 +109,11 @@ function create(doc) {
 }
 
 /** Right away in Biome format, otherwise every rerun would be a format finding. @param {string} text @returns {string} */
-function formatiert(text) {
+function formatted(text) {
   const biome = path.join(ROOT, 'node_modules', '@biomejs', 'biome', 'bin', 'biome');
   const r = require('node:child_process').spawnSync(
     process.execPath,
-    [biome, 'format', `--stdin-file-path=${path.relative(ROOT, ZIEL)}`],
+    [biome, 'format', `--stdin-file-path=${path.relative(ROOT, TARGET_FILE)}`],
     { cwd: ROOT, input: text, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
   );
   if (r.status !== 0) throw new Error(`biome format scheiterte (Exit ${r.status}):\n${r.stderr}`);
@@ -121,8 +121,8 @@ function formatiert(text) {
 }
 
 if (require.main === module) {
-  fs.writeFileSync(ZIEL, formatiert(create(JSON.parse(fs.readFileSync(QUELLE, 'utf8')))));
-  console.log(`geschrieben: ${path.relative(ROOT, ZIEL)}`);
+  fs.writeFileSync(TARGET_FILE, formatted(create(JSON.parse(fs.readFileSync(SOURCE_FILE, 'utf8')))));
+  console.log(`geschrieben: ${path.relative(ROOT, TARGET_FILE)}`);
 }
 
-module.exports = { QUELLE, ZIEL, create, formatiert };
+module.exports = { SOURCE_FILE, TARGET_FILE, create, formatted };

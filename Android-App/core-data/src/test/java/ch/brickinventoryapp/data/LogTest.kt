@@ -51,7 +51,7 @@ class LogTest {
     fun `in the release build the wrapper writes nothing`() {
         AppLog.active = false
         AppLog.warning("Preisalarm", "Abruf fehlgeschlagen", RuntimeException("https://nas/api?token=geheim"))
-        AppLog.note("OkHttp", "--> GET https://nas/api/v1/sets")
+        AppLog.note("OkHttp", "--> GET https://nas/api/v2/sets")
         assertTrue(written.toString(), written.isEmpty())
 
         AppLog.active = true
@@ -66,7 +66,7 @@ class LogTest {
         level?.let { reader.level = it }
         server.enqueue(MockResponse().setHeader("Set-Cookie", "sid=geheim-antwort").setBody("geheim-rumpf"))
         val c = OkHttpClient.Builder().addInterceptor(reader).build()
-        c.newCall(Request.Builder().url(server.url("/api/v1/auth/login"))
+        c.newCall(Request.Builder().url(server.url("/api/v2/auth/login"))
             .header("Authorization", "Bearer geheim-token").header("Cookie", "sid=geheim-sitzung")
             .post("""{"password":"geheim-pw"}""".toRequestBody("application/json".toMediaType())).build())
             .execute().use { it.body.string() }

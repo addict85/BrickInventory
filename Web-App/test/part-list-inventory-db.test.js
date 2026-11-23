@@ -102,10 +102,10 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     assert.equal(
       holding['3001|0']?.total,
       6,
-      'Genau Marcos Befund: 3 Stück je Bausatz, das Set zweimal besessen — ' +
-        `erwartet 6, bekommen ${holding['3001|0']?.total}. Zählt sets.quantity nicht mit?`,
+      'Exactly what Marco reported: 3 pieces per kit, the set owned twice — ' +
+        `expected 6, got ${holding['3001|0']?.total}. Is sets.quantity not counted?`,
     );
-    assert.equal(holding['3001|0']?.loose, 0, 'Ein Set-Teil ist nicht „lose"');
+    assert.equal(holding['3001|0']?.loose, 0, 'A set part is not „lose"');
   });
 
   await t.test('a set owned once stays as it was', () => {
@@ -119,7 +119,7 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     assert.equal(
       holding['3003|0']?.loose,
       7,
-      'Manuell erfasste Teile sind genau das, was „nur manuell erfasste Teile" zählt',
+      'Manually recorded parts are exactly what „nur manuell erfasste Teile“ counts',
     );
   });
 
@@ -131,10 +131,10 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     assert.equal(
       holding['trn241|0']?.total,
       2,
-      'Die Figur steckt in einem zweimal besessenen Set — erwartet 2, bekommen ' +
-        `${holding['trn241|0']?.total}. Wird die Tabelle minifigs gar nicht gelesen?`,
+      'The figure is in a set owned twice — expected 2, got ' +
+        `${holding['trn241|0']?.total}. Is the minifigs table not read at all?`,
     );
-    assert.equal(holding['trn241|0']?.loose, 0, 'Eine Figur aus einem Set ist nicht „lose"');
+    assert.equal(holding['trn241|0']?.loose, 0, 'A figure from a set is not „lose"');
   });
 
   await t.test('manually captured figures count as loose', () => {
@@ -146,7 +146,7 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     // The reason for LEFT instead of INNER: a deleted set would otherwise let its
     // part rows vanish without a trace — and the comparison would report a
     // part as missing that stands there.
-    assert.equal(holding['3004|0']?.total, 4, 'Ohne passende sets-Zeile wurde der Posten ganz weggejoint');
+    assert.equal(holding['3004|0']?.total, 4, 'Without a matching sets row the item was joined away entirely');
   });
 });
 

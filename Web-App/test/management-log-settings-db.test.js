@@ -100,7 +100,7 @@ test('server settings in the admin log', { concurrency: 1 }, async t => {
       (await db.get(`SELECT value FROM global_settings WHERE key = 'smtp_host'`))?.value,
       'mail.neu.example',
     );
-    assert.equal((await eigene()).length, 1, 'kein Eintrag für eine Änderung, die nicht gilt');
+    assert.equal((await eigene()).length, 1, 'no entry for a change that does not apply');
   });
 
   await t.test('… also with an invalid currency that is checked before the transaction', async () => {
@@ -110,7 +110,7 @@ test('server settings in the admin log', { concurrency: 1 }, async t => {
       (await db.get(`SELECT value FROM global_settings WHERE key = 'smtp_host'`))?.value,
       'mail.neu.example',
     );
-    assert.equal((await eigene()).length, 1, 'kein Eintrag für eine Änderung, die nicht gilt');
+    assert.equal((await eigene()).length, 1, 'no entry for a change that does not apply');
   });
 
   await t.test('a valid currency applies together with the other account values', async () => {

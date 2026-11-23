@@ -45,13 +45,13 @@ async function confirm(d, { passwort, code }) {
   const modal = d.getElementById('confirm-modal');
   assert.ok(
     await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
-    'der Passwortdialog erscheint',
+    'the password dialog appears',
   );
   /** @type {HTMLInputElement} */ (d.getElementById('cd-pw')).value = passwort;
   d.getElementById('cd-confirm').click();
   await takt(20);
   const codeWrap = d.getElementById('cd-code-wrap');
-  assert.ok(await warte(() => !codeWrap.hidden && modal.style.display === 'flex'), 'der Code-Dialog erscheint');
+  assert.ok(await warte(() => !codeWrap.hidden && modal.style.display === 'flex'), 'the code dialog appears');
   if (code === undefined) return;
   /** @type {HTMLInputElement} */ (d.getElementById('cd-code')).value = code;
   d.getElementById('cd-confirm').click();
@@ -63,9 +63,9 @@ test('delete everything asks for the code', async () => {
   try {
     d.getElementById('btn-dall').click();
     await confirm(d, { passwort: 'Mein-Passwort-1', code: '654321' });
-    assert.ok(await warte(() => callIt.length === 2), `nur ${callIt.length} Anfrage(n)`);
+    assert.ok(await warte(() => callIt.length === 2), `only ${callIt.length} request(s)`);
     assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '654321' }]);
-    assert.equal(d.getElementById('cd-passkey').hidden, true, 'ohne Passkey-Fähigkeit kein Passkey-Knopf');
+    assert.equal(d.getElementById('cd-passkey').hidden, true, 'no passkey button without passkey capability');
   } finally {
     w.close();
   }
@@ -81,9 +81,9 @@ test('creating an account asks for the code', async () => {
     d.getElementById('nu-p').value = 'Lang-genug-Passwort-1';
     d.getElementById('btn-cu').click();
     await confirm(d, { passwort: 'Verwalter-Passwort-1', code: '111222' });
-    assert.ok(await warte(() => callIt.length === 2), `nur ${callIt.length} Anfrage(n)`);
+    assert.ok(await warte(() => callIt.length === 2), `only ${callIt.length} request(s)`);
     assert.equal(callIt[1].admin_password, 'Verwalter-Passwort-1');
-    assert.equal(callIt[1].code, '111222', 'die zweite Anfrage trägt den Code');
+    assert.equal(callIt[1].code, '111222', 'the second request carries the code');
   } finally {
     w.close();
   }
@@ -124,10 +124,13 @@ test('the passkey replaces the code', async () => {
     d.getElementById('btn-dall').click();
     await confirm(d, { passwort: 'Mein-Passwort-1' });
     const knopf = d.getElementById('cd-passkey');
-    assert.equal(knopf.hidden, false, 'der Passkey-Knopf erscheint');
+    assert.equal(knopf.hidden, false, 'the passkey button appears');
     knopf.click();
-    assert.ok(await warte(() => callIt.length === 2), `der Passkey ersetzt den Code: nur ${callIt.length} Anfrage(n)`);
-    assert.equal(callIt[1].passkey?.id, 'pk1', 'der Passkey ersetzt den Code');
+    assert.ok(
+      await warte(() => callIt.length === 2),
+      `the passkey replaces the code: only ${callIt.length} request(s)`,
+    );
+    assert.equal(callIt[1].passkey?.id, 'pk1', 'the passkey replaces the code');
     assert.equal(callIt[1].code, undefined);
   } finally {
     w.close();
@@ -142,7 +145,7 @@ test('emptying the trash asks for password and code', async () => {
   try {
     d.getElementById('trash-empty').click();
     await confirm(d, { passwort: 'Mein-Passwort-1', code: '246810' });
-    assert.ok(await warte(() => callIt.length === 2), `nur ${callIt.length} Anfrage(n)`);
+    assert.ok(await warte(() => callIt.length === 2), `only ${callIt.length} request(s)`);
     assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '246810' }]);
   } finally {
     w.close();
@@ -163,7 +166,7 @@ test('deleting a voucher asks for password and code', async () => {
     assert.ok(await warte(() => d.querySelector('[data-click="deleteVoucher"]')), 'Gutscheinliste');
     d.querySelector('[data-click="deleteVoucher"]').click();
     await confirm(d, { passwort: 'Mein-Passwort-1', code: '135790' });
-    assert.ok(await warte(() => callIt.length === 2), `nur ${callIt.length} Anfrage(n)`);
+    assert.ok(await warte(() => callIt.length === 2), `only ${callIt.length} request(s)`);
     assert.deepEqual(callIt[1], { password: 'Mein-Passwort-1', code: '135790' });
   } finally {
     w.close();
@@ -194,12 +197,12 @@ test('the voucher PDF only opens after confirmation, with the ticket', async () 
     const modal = d.getElementById('confirm-modal');
     assert.ok(
       await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
-      'der Passwortdialog erscheint',
+      'the password dialog appears',
     );
-    assert.deepEqual(fetches, [], 'das PDF wird vor der Bestätigung abgerufen');
+    assert.deepEqual(fetches, [], 'the PDF is fetched before the confirmation');
     d.getElementById('cd-pw').value = 'Mein-Passwort-1';
     d.getElementById('cd-confirm').click();
-    assert.ok(await warte(() => fetches.length === 1), 'kein Abruf des PDFs');
+    assert.ok(await warte(() => fetches.length === 1), 'no fetch of the PDF');
     assert.deepEqual(releases, [{ password: 'Mein-Passwort-1' }]);
     assert.match(fetches[0], /\/api\/v2\/vouchers\/3\/pdf\?ticket=T-123$/);
   } finally {
@@ -227,13 +230,13 @@ test('the voucher list shows the mask, number and PIN only after confirmation', 
     const modal = d.getElementById('confirm-modal');
     assert.ok(
       await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
-      'der Passwortdialog erscheint',
+      'the password dialog appears',
     );
     d.getElementById('cd-pw').value = 'Mein-Passwort-1';
     d.getElementById('cd-confirm').click();
     assert.ok(
       await warte(() => d.querySelector('.voucher-pin code')?.textContent === '4711'),
-      'die PIN erscheint nach der Bestätigung',
+      'the PIN appears after the confirmation',
     );
     assert.equal(d.querySelector('.voucher-num').textContent, '6123 4567 8901 2');
     assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }]);

@@ -392,8 +392,8 @@ test('every API endpoint is classified', () => {
   assert.deepEqual(
     missing,
     [],
-    `Neue/unklassifizierte Endpunkte — bitte in test/api-inventory.test.js einordnen ` +
-      `(und bei "paritaet" ein Paar in test/api-parity.test.js ergänzen):\n  ${missing.join('\n  ')}`,
+    `New/unclassified endpoints — please classify them in test/api-inventory.test.js ` +
+      `(and for "paritaet" add a pair in test/api-parity.test.js):\n  ${missing.join('\n  ')}`,
   );
 });
 
@@ -402,16 +402,16 @@ test('no orphaned classification entries', () => {
   const stale = Object.keys(C)
     .filter(e => !eps.has(e))
     .sort();
-  assert.deepEqual(stale, [], `Klassifizierte Endpunkte existieren nicht mehr:\n  ${stale.join('\n  ')}`);
+  assert.deepEqual(stale, [], `Classified endpoints no longer exist:\n  ${stale.join('\n  ')}`);
 });
 
-/** Every address the Android app calls (shared/app-schnittstelle.json). */
+/** Every address the Android app calls (shared/app-interface.json). */
 function androidAddresses() {
   const { appRoutes, appAddresses } = require('./helpers/contract');
   const _req = require('./helpers/sources').buildAndRequire();
   const routen = appRoutes(_req);
-  const adressen = appAddresses(_req);
-  const found = new Set(routen.map(r => `${r.methode} ${comparable(r.path)}`));
+  const adressen = appAddresses();
+  const found = new Set(routen.map(r => `${r.method} ${comparable(r.path)}`));
   // Built by hand: the method is not given, so under all verbs. That can relieve
   // one address too many, but wrongly accuse none.
   for (const a of adressen)
@@ -428,7 +428,7 @@ test('no "nur-web" is in truth called by the Android app', () => {
   const app = androidAddresses();
   // Self-proof: if the pattern no longer matches, the set would be empty and the
   // test green without having checked anything. MEASURED there are over 90.
-  assert.ok(app.size >= 80, `Nur ${app.size} Android-Adressen gefunden — Muster veraltet?`);
+  assert.ok(app.size >= 80, `Only ${app.size} Android addresses found — pattern outdated?`);
 
   const falsch = Object.entries(C)
     .filter(([, k]) => k === 'nur-web')
@@ -442,10 +442,7 @@ test('no "nur-web" is in truth called by the Android app', () => {
   assert.deepEqual(
     falsch,
     [],
-    'Diese Endpunkte sind als „nur-web" eingetragen, die Android-App ruft sie aber:\n  ' +
-      falsch.join('\n  ') +
-      '\nEntweder die Beschriftung ist veraltet (dann auf nur-v1 setzen), oder der ' +
-      'Aufruf in der App gehoert dort nicht hin.',
+    `These endpoints are listed as „nur-web“, but the Android app calls them:\n  ${falsch.join('\n  ')}\nEither the label is outdated (then set it to nur-v1), or the call does not belong in the app.`,
   );
 });
 

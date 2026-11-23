@@ -118,12 +118,16 @@ test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
             [u, nr],
           )
         ).rows;
-      assert.deepEqual(await farben(A, 'KF1'), [{ f: 9999, k: [[9999, 2]] }], 'NULL wird 9999 samt Erfassungen');
-      assert.deepEqual(await farben(A, 'KF2'), [{ f: 9999, k: [[9999, 1]] }], 'selbst gewähltes [No Color] wird 9999');
-      assert.deepEqual(await farben(B, 'KF2'), [{ f: 0, k: [[0, 4]] }], 'ein fremder Name beweist nichts');
-      assert.deepEqual(await farben(A, 'KF3'), [{ f: 0, k: [] }], 'Schwarz bleibt Schwarz');
+      assert.deepEqual(
+        await farben(A, 'KF1'),
+        [{ f: 9999, k: [[9999, 2]] }],
+        'NULL becomes 9999 including acquisitions',
+      );
+      assert.deepEqual(await farben(A, 'KF2'), [{ f: 9999, k: [[9999, 1]] }], 'a self-chosen [No Color] becomes 9999');
+      assert.deepEqual(await farben(B, 'KF2'), [{ f: 0, k: [[0, 4]] }], 'a foreign name proves nothing');
+      assert.deepEqual(await farben(A, 'KF3'), [{ f: 0, k: [] }], 'black stays black');
       assert.deepEqual(await farben(A, 'KF4'), [{ f: 0, k: [[0, 3]] }], 'Notlisten-Black (13) zieht auf 0');
-      assert.deepEqual(await farben(A, 'KF5'), [{ f: 9999, k: [[9999, 7]] }], 'gleiche Erfassungen werden addiert');
+      assert.deepEqual(await farben(A, 'KF5'), [{ f: 9999, k: [[9999, 7]] }], 'identical acquisitions are added up');
       assert.deepEqual(await farben(A, 'KF6'), [{ f: 0, k: [] }], 'Set-Teile bleiben');
       const spalte = (
         await c.query(`SELECT is_nullable, column_default FROM information_schema.columns
@@ -187,7 +191,7 @@ test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
         const not = await colorList(); // no key, no fetch
         assert.equal(not.find(f => f.id === 0)?.name, 'Black');
         assert.equal(not.find(f => f.id === 9999)?.name, '[No Color/Any Color]');
-        assert.ok(!not.some(f => f.id === 13), 'die Notliste führt nur echte Rebrickable-IDs');
+        assert.ok(!not.some(f => f.id === 13), 'the fallback list holds only real Rebrickable IDs');
         await db.run(
           `INSERT INTO rb_colors (id,name,rgb) VALUES (0,'Black','05131D'),(13,'Pink','FC97AC'),(-1,'[Unknown]','0033B2')`,
         );

@@ -71,12 +71,12 @@ test('startup skeleton follows the device setting and the design', async t => {
       assert.equal(m.dunkel, fall.dunkel, 'data-dark am <html>');
       assert.ok(
         fall.dunkel ? m.hell < 0.05 : m.hell > 0.3,
-        `Grund ${fall.dunkel ? 'dark' : 'hell'}, Helligkeit ${m.hell.toFixed(3)}`,
+        `background ${fall.dunkel ? 'dark' : 'light'}, lightness ${m.hell.toFixed(3)}`,
       );
       assert.deepEqual(
         m.leiste,
         fall.dunkel ? ['#14181d', '#14181d'] : ['#f8fafc', '#f8fafc'],
-        'Farbe der Browserleiste (theme-color)',
+        'colour of the browser bar (theme-color)',
       );
       assert.equal(
         m.kopf,

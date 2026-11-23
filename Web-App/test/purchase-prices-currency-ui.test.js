@@ -99,7 +99,7 @@ test('purchase price dialog: currency per row, the sum follows', async () => {
     field.dispatchEvent(new o.w.FocusEvent('blur'));
     assert.ok(
       await warte(() => text(o.d.getElementById('acq-total-price').textContent) === '1.309,58 €', 1500),
-      `Summe: ${o.d.getElementById('acq-total-price').textContent}`,
+      `total: ${o.d.getElementById('acq-total-price').textContent}`,
     );
   } finally {
     o.w.close();
@@ -117,7 +117,7 @@ test('Escape returns focus to the trigger', async () => {
     o.d.dispatchEvent(new o.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     assert.ok(
       await warte(() => o.d.activeElement?.matches?.('#set-modal [data-click="openAcqModal"]'), 2000),
-      `Fokus auf ${o.d.activeElement?.outerHTML?.slice(0, 80)}`,
+      `focus on ${o.d.activeElement?.outerHTML?.slice(0, 80)}`,
     );
   } finally {
     o.w.close();
@@ -216,7 +216,7 @@ test('finances: ≈ and number of estimates', async () => {
     assert.match(purchaseCell.querySelector('[title]').getAttribute('title'), /geschätzt/);
     const titanic = zeilen.find(z => z.dataset.arg === '10294-1');
     assert.doesNotMatch(titanic.textContent, /≈/);
-    assert.match(burg.querySelector('.fin-sub').textContent, /Kaufpreis geschätzt/, 'auch in der Telefonzeile');
+    assert.match(burg.querySelector('.fin-sub').textContent, /Kaufpreis geschätzt/, 'also in the phone row');
     assert.ok(await warte(() => !o.d.getElementById('fin-basis').hidden));
     assert.match(o.d.getElementById('fin-basis').textContent, /1 geschätzter Kaufpreis/);
   } finally {
@@ -229,8 +229,8 @@ test('adding a set sends currency and date', async () => {
   try {
     o.d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
     await takt(10);
-    assert.equal(o.d.getElementById('add-currency').value, 'EUR', 'Vorgabe ist die Kontowährung');
-    assert.match(o.d.getElementById('add-date').value, /^\d{4}-\d{2}-\d{2}$/, 'Vorgabe heute');
+    assert.equal(o.d.getElementById('add-currency').value, 'EUR', 'the default is the account currency');
+    assert.match(o.d.getElementById('add-date').value, /^\d{4}-\d{2}-\d{2}$/, 'default today');
     o.d.getElementById('add-num').value = '10326-1';
     o.d.getElementById('add-price').value = '260,66';
     o.d.getElementById('add-currency').value = 'USD';
@@ -253,7 +253,7 @@ test('entry dialogs consistent', async () => {
     assert.equal(o.d.getElementById('ap-qty-inline').labels[0].textContent.trim(), 'Anzahl');
     for (const id of ['add-set-modal', 'add-part-modal', 'add-fig-modal']) {
       const dialog = o.d.getElementById(id);
-      assert.ok(dialog.querySelector('input[type=date]'), `${id}: kein Datumsfeld`);
+      assert.ok(dialog.querySelector('input[type=date]'), `${id}: no date field`);
       const sichtbar =
         dialog.textContent +
         [...dialog.querySelectorAll('[placeholder]')].map(e => e.getAttribute('placeholder')).join(' ');

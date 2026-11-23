@@ -83,8 +83,8 @@ test('every address of the web app exists on the server', () => {
 
   // Self-proof in both directions: if one of the patterns finds nothing, the
   // error list would be empty and the test green without having checked anything.
-  assert.ok(server.size >= 120, `Nur ${server.size} Server-Routen gefunden — Muster veraltet?`);
-  assert.ok(aufrufe.length >= 100, `Nur ${aufrufe.length} Webapp-Aufrufe gefunden — Muster veraltet?`);
+  assert.ok(server.size >= 120, `Only ${server.size} server routes found — pattern outdated?`);
+  assert.ok(aufrufe.length >= 100, `Only ${aufrufe.length} web app calls found — pattern outdated?`);
 
   const absent = [
     ...new Set(
@@ -95,10 +95,10 @@ test('every address of the web app exists on the server', () => {
   assert.deepEqual(
     absent,
     [],
-    'Diese Adressen ruft die Webapp auf, der Server hat sie nicht:\n  ' +
+    'The web app calls these addresses, the server does not have them:\n  ' +
       absent.join('\n  ') +
-      '\nIm Browser scheitert das erst zur Laufzeit — und wo der Aufruf auf ' +
-      '.catch(() => null) endet, fehlt danach still ein Teil der Anzeige.',
+      '\nIn the browser this only fails at runtime — and where the call ends in ' +
+      '.catch(() => null), part of the display is then silently missing.',
   );
 });
 
@@ -314,18 +314,18 @@ const NUR_WEB = new Map([
 ]);
 
 test('what only the web app can do has a reason', () => {
-  // The app's Retrofit routes (shared/app-schnittstelle.json); `{x}` becomes `:X`.
+  // The app's Retrofit routes (shared/app-interface.json); `{x}` becomes `:X`.
   const appPaths = new Set(
     require('./helpers/contract')
       .appRoutes(require('./helpers/sources').buildAndRequire())
       .map(r => form(r.path.replace(/\{[^}]+\}/g, ':X'))),
   );
   // MEASURED, there are 94 addresses.
-  assert.ok(appPaths.size >= 60, `Nur ${appPaths.size} App-Adressen — Muster veraltet?`);
+  assert.ok(appPaths.size >= 60, `Only ${appPaths.size} app addresses — pattern outdated?`);
 
   const webPaths = new Set(webCalls().map(a => a.path));
   // MEASURED, there are 68.
-  assert.ok(webPaths.size >= 50, `Nur ${webPaths.size} Webapp-Adressen — Muster veraltet?`);
+  assert.ok(webPaths.size >= 50, `Only ${webPaths.size} web app addresses — pattern outdated?`);
 
   const nurWeb = [...webPaths].filter(p => !appPaths.has(p)).sort();
 
@@ -333,11 +333,11 @@ test('what only the web app can do has a reason', () => {
   assert.deepEqual(
     unjustified,
     [],
-    'Diese Adressen ruft nur die Webapp auf, und es steht kein Grund dabei:\n  ' +
+    'Only the web app calls these addresses, and no reason is given:\n  ' +
       unjustified.join('\n  ') +
-      '\nEntweder die App zieht nach — dann sind die beiden Oberflächen wieder ' +
-      'gleich viel wert —, oder es gibt einen Grund; der gehört dann in NUR_WEB, ' +
-      'damit ihn der Nächste nicht neu herleiten muss.',
+      '\nEither the app catches up — then both interfaces are worth ' +
+      'the same again —, or there is a reason; it then belongs in NUR_WEB, ' +
+      'so that the next person does not have to work it out again.',
   );
 
   // The same rule as for every exception list in this tree: an entry
@@ -348,9 +348,9 @@ test('what only the web app can do has a reason', () => {
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Einträge in NUR_WEB beschreiben nichts mehr:\n  ' +
+    'These entries in NUR_WEB no longer describe anything:\n  ' +
       veraltet.join('\n  ') +
-      '\nEntweder ruft die App die Adresse inzwischen auch auf (dann Eintrag ' +
-      'streichen), oder die Webapp ruft sie nicht mehr auf (dann ebenfalls).',
+      '\nEither the app now calls the address too (then remove the ' +
+      'entry), or the web app no longer calls it (then likewise).',
   );
 });

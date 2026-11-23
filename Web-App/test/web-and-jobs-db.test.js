@@ -160,13 +160,13 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
       ).id;
       await db.run(`SELECT pg_notify('jobs', 'images')`);
       await warte(1500);
-      assert.equal((await auftrag(id)).status, 'pending', 'Der Web-Prozess hat einen Auftrag belegt');
+      assert.equal((await auftrag(id)).status, 'pending', 'The web process claimed a job');
       erster = id;
     });
 
     await t.test('the web process sees the startup state of the job process', async () => {
       const vorher = await hole(port, '/api/v2/startup-status');
-      assert.equal(vorher.body.ready, false, 'Vorbedingung: ohne Job-Prozess ist der Katalog nicht geprüft');
+      assert.equal(vorher.body.ready, false, 'precondition: without a job process the catalogue is not checked');
       jobs = starte('jobs', jobsPort);
       let r;
       for (let i = 0; i < 120; i++) {
@@ -186,7 +186,7 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
       }
       assert.equal(z.status, 'done', jobs.log.slice(-1500));
       assert.match(jobs.log, /Rolle jobs/);
-      await assert.rejects(hole(jobsPort, '/api/v2/health'), /ECONNREFUSED/, 'Der Job-Prozess lauscht auf einem Port');
+      await assert.rejects(hole(jobsPort, '/api/v2/health'), /ECONNREFUSED/, 'The job process listens on a port');
     });
 
     await t.test('every API response names the interface version', async () => {
@@ -194,7 +194,7 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
       const { API_VERSION, API_MIN_APP } = _req('src/http/apiVersion.js');
       assert.equal(r.headers['x-api-version'], String(API_VERSION));
       assert.equal(r.headers['x-api-min-app'], String(API_MIN_APP));
-      assert.equal(r.body.db_pool, undefined, 'Pool-Zahlen ohne Anmeldung');
+      assert.equal(r.body.db_pool, undefined, 'pool numbers without login');
       assert.equal(r.body.status, 'ok');
     });
 
@@ -215,7 +215,7 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
 
     await t.test('rejects writing requests from foreign sites', async () => {
       const r = await hole(port, '/api/v2/auth/logout', { methode: 'POST', kopf: { 'sec-fetch-site': 'cross-site' } });
-      assert.equal(r.status, 403, 'src/http/origin.ts hängt nicht in server.ts');
+      assert.equal(r.status, 403, 'src/http/origin.ts is not hooked into server.ts');
     });
 
     await t.test('SIGTERM: the job process returns its running job', async () => {
@@ -232,9 +232,9 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
       assert.equal(jobs.exitCode, 0, jobs.log.slice(-1500));
       assert.equal(web.exitCode, 0, web.log.slice(-1500));
       for (const p of [jobs, web]) assert.match(p.log, /\[shutdown\] Datenbankverbindungen geschlossen/);
-      assert.match(jobs.log, /\[auftraege\] beendet/, 'Der Job-Prozess hat seinen Worker nicht angehalten');
+      assert.match(jobs.log, /\[auftraege\] beendet/, 'The job process did not stop its worker');
       const z = await auftrag(id);
-      assert.notEqual(z.status, 'running', 'Ein Auftrag blieb belegt');
+      assert.notEqual(z.status, 'running', 'A job stayed claimed');
     });
   } finally {
     await finish(web);

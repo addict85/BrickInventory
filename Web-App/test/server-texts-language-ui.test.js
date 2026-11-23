@@ -40,7 +40,7 @@ test('tile subtitles in the UI language', async () => {
   );
   try {
     await reiter(w, 'monitor');
-    assert.ok(await warte(() => d.body.textContent.includes('No pending entries'), 3000), 'Brickset-Kachel übersetzt');
+    assert.ok(await warte(() => d.body.textContent.includes('No pending entries'), 3000), 'Brickset tile translated');
     assert.ok(d.body.textContent.includes('Collection: 3 images not cached yet · 2 catalogue images queued'));
     assert.doesNotMatch(d.getElementById('tab-monitor').textContent, /Keine |ausstehend|Bilder/);
   } finally {

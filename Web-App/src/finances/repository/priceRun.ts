@@ -8,11 +8,11 @@ export interface PriceSpace {
 }
 
 export async function inventoryPlaces(db: DbInterface, l: FinancesReadContract): Promise<PriceSpace[]> {
-  return db.all<PriceSpace>(`SELECT DISTINCT user_id, set_number FROM ${l.setBestand()} s`);
+  return db.all<PriceSpace>(`SELECT DISTINCT user_id, set_number FROM ${l.setHoldings()} s`);
 }
 
 export async function wantedListsPlaces(db: DbInterface, l: FinancesReadContract): Promise<PriceSpace[]> {
-  return db.all<PriceSpace>(`SELECT DISTINCT user_id, set_number FROM ${l.merkliste()} w`);
+  return db.all<PriceSpace>(`SELECT DISTINCT user_id, set_number FROM ${l.wantedList()} w`);
 }
 
 type StateRow = { set_number: string; c: string | null };
@@ -25,7 +25,7 @@ export async function recordedStates(
 ): Promise<StateRow[]> {
   return db.all<StateRow>(
     `SELECT set_number, COALESCE(condition,'N') AS c
-       FROM ${l.setErfassungen('= $1')} e WHERE set_number = ANY($2)
+       FROM ${l.setAcquisitions('= $1')} e WHERE set_number = ANY($2)
       GROUP BY set_number, COALESCE(condition,'N')`,
     [userId, setNumbers],
   );
@@ -39,7 +39,7 @@ export async function desiredStates(
 ): Promise<StateRow[]> {
   return db.all<StateRow>(
     `SELECT DISTINCT set_number, COALESCE(condition,'N') AS c
-       FROM ${l.merkliste('= $1')} w WHERE set_number = ANY($2)`,
+       FROM ${l.wantedList('= $1')} w WHERE set_number = ANY($2)`,
     [userId, setNumbers],
   );
 }

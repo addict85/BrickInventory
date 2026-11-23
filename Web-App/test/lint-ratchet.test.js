@@ -38,11 +38,11 @@ function probeTree() {
 
 function ratchetFn(kind, schranken, wurzel) {
   const env = { ...process.env };
-  if (wurzel) env.LINT_WURZEL = wurzel;
+  if (wurzel) env.LINT_ROOT = wurzel;
   if (schranken) {
     const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lint-')), 's.json');
     fs.writeFileSync(datei, JSON.stringify(schranken));
-    env.LINT_SCHRANKEN = datei;
+    env.LINT_LIMITS = datei;
   }
   const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'lint-ratchet.js'), kind], {
     cwd: ROOT,
@@ -61,7 +61,7 @@ for (const kind of ['lint', 'format']) {
     const ist = Number(/\] (\d+) /.exec(r.aus)?.[1]);
     assert.ok(ist >= 0 && ist <= LIMITS[kind], r.aus);
     // Leeway for cleanups in parallel branches; more means: tighten the limit.
-    assert.ok(LIMITS[kind] - ist <= 50, `Schranke ${LIMITS[kind]}, gezählt ${ist}: nachziehen`);
+    assert.ok(LIMITS[kind] - ist <= 50, `Limit ${LIMITS[kind]}, counted ${ist}: tighten it`);
   });
 
   test(`${kind}: counts the findings of a sample tree`, () => {
@@ -84,8 +84,8 @@ test('typecheck:tests: red above the limit, the existing code keeps it', () => {
     const env = { ...process.env };
     if (limit !== null) {
       const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tt-')), 's.json');
-      fs.writeFileSync(datei, JSON.stringify({ testtypen: limit }));
-      env.LINT_SCHRANKEN = datei;
+      fs.writeFileSync(datei, JSON.stringify({ testTypes: limit }));
+      env.LINT_LIMITS = datei;
     }
     return spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'check-test-types.js')], {
       cwd: ROOT,
@@ -96,7 +96,7 @@ test('typecheck:tests: red above the limit, the existing code keeps it', () => {
   };
   const echt = lauf(null);
   assert.equal(echt.status, 0, echt.stdout + echt.stderr);
-  assert.match(echt.stdout, new RegExp(`\\] 0 Meldungen \\(Schranke ${LIMITS.testtypen}\\)`));
+  assert.match(echt.stdout, new RegExp(`\\] 0 Meldungen \\(Schranke ${LIMITS.testTypes}\\)`));
   const toTight = lauf(-1);
   assert.equal(toTight.status, 1, toTight.stdout + toTight.stderr);
   assert.match(toTight.stderr, /0 Meldungen, erlaubt sind -1/);

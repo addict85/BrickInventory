@@ -63,7 +63,7 @@ test("purchase price and condition land in the owner's account", { concurrency: 
     // 1. The price — the branch that was already right before.
     await changeSet(mainId, SET, { purchase_price: 99 });
     let s = await state();
-    assert.equal(s.erf.p, 99, 'Die Erfassung traegt den neuen Preis nicht');
+    assert.equal(s.erf.p, 99, 'The acquisition does not carry the new price');
 
     // 2. The condition — exactly here the change disappeared.
     //    Counter-check: in writeInLastEntry ownerId replaced by the caller
@@ -73,19 +73,19 @@ test("purchase price and condition land in the owner's account", { concurrency: 
     assert.equal(
       s.erf.condition,
       'U',
-      'Die letzte Erfassung traegt den neuen Zustand nicht — die Aenderung hat ' +
-        'keine Zeile getroffen und wurde trotzdem als Erfolg gemeldet',
+      'The last acquisition does not carry the new condition — the change hit ' +
+        'no row and was still reported as a success',
     );
-    assert.equal(s.erf.p, 99, 'Die Zustandsaenderung hat den Preis mitgenommen');
+    assert.equal(s.erf.p, 99, 'The condition change took the price along');
 
     // 3. And both still stand with the OWNER, not with the caller.
-    assert.equal(s.set.user_id, subId, 'Die Aenderung hat eine Zeile im falschen Konto angelegt');
+    assert.equal(s.set.user_id, subId, 'The change created a row in the wrong account');
     assert.equal(s.erf.user_id, subId);
     const foreignOnes = await db.get('SELECT COUNT(*)::int n FROM sets WHERE set_number=$1 AND user_id=$2', [
       SET,
       mainId,
     ]);
-    assert.equal(foreignOnes.n, 0, 'Eine Preis- oder Zustandsaenderung hat eine eigene Zeile erzeugt');
+    assert.equal(foreignOnes.n, 0, 'A price or condition change created a row of its own');
 
     // 4. The quantity, on the other hand, deliberately goes to the OWN account: whoever increases gets
     //    an own purchase price entry instead of changing the inventory of another account.
@@ -100,7 +100,7 @@ test("purchase price and condition land in the owner's account", { concurrency: 
         [mainId, 1],
         [subId, 1],
       ].sort((a, b) => a[0] - b[0]),
-      'ohne Angabe eines Kontos landet die neue Menge beim Aufrufer',
+      'without an account given, the new quantity lands with the caller',
     );
   } finally {
     await aufraeumen();
@@ -124,7 +124,7 @@ test('the last entry is written in exactly one place', () => {
     }
   };
   go(ROOT);
-  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 40, `Only ${dateien.length} source files found — the search no longer works`);
 
   const placeList = [];
   for (const f of dateien) {
@@ -143,7 +143,7 @@ test('the last entry is written in exactly one place', () => {
   assert.deepEqual(
     placeList,
     ['src/inventory/repository/purchases.ts'],
-    'Die letzte Erfassung wird an mehr als einer Stelle beschrieben — genau so ' +
-      'sind Preis und Zustand mit verschiedenen Konten auseinandergelaufen',
+    'The last acquisition is written in more than one place — that is exactly how ' +
+      'price and condition drifted apart across different accounts',
   );
 });

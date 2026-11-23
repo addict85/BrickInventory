@@ -49,8 +49,8 @@ const items = n =>
     items: { kind: 'part', blId: `9${i}9${i}`, blColor: null, quantity: 1, condition: null, maxPrice: null },
     rbId: null,
     rbColor: null,
-    rbFarbName: null,
-    rbFarbHex: null,
+    rbColorName: null,
+    rbColorHex: null,
     confidence: null,
     colorPending: false,
   }));
@@ -83,7 +83,7 @@ test('wanted resolution via Rebrickable aborts with a reason', { concurrency: 1 
   await t.test('server error 500 is not “unknown”', async () => {
     const { ergebnis, anfragen } = await withResponse(500, () => resolveViaRebrickableOn(items(3)));
     assert.equal(ergebnis.aborted, 'failure');
-    assert.equal(anfragen, 1, 'nach dem ersten Fehler weiter gefragt');
+    assert.equal(anfragen, 1, 'kept asking after the first error');
   });
 
   await t.test('daily limit: aborted with reason kontingent', async () => {
@@ -92,6 +92,6 @@ test('wanted resolution via Rebrickable aborts with a reason', { concurrency: 1 
     await k.setQuotaBack('rebrickable');
     const { ergebnis, anfragen } = await withResponse(404, () => resolveViaRebrickableOn(items(3)));
     assert.equal(ergebnis.aborted, 'quota');
-    assert.equal(anfragen, 1, 'nur der eine Aufruf des Kontingents ging hinaus');
+    assert.equal(anfragen, 1, 'only the one quota call went out');
   });
 });

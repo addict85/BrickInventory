@@ -111,6 +111,83 @@ function plRemoveSet(i) {
   if (_plSets.length) plGenerate();
 }
 
+/** Merging happens by the Rebrickable number, because the inventory is queried by it: several mold
+ * variants share one BrickLink number, and merged by it the demand would count twice, the inventory once.
+ * @param {Record<string, PlPart>} combined @param {string} setNumber @param {Record<string, number>} rbToBlColor
+ * @returns {Promise<boolean>} false when the list could not be read */
+async function plAddSetParts(combined, setNumber, rbToBlColor) {
+  const d = await api('GET', `/v2/sets/${encodeURIComponent(setNumber)}/parts-list`);
+  if (!d.success) return false;
+  for (const p of d.parts || []) {
+    const key = `${p.part_number}|${p.color_id || 0}`;
+    const quantity = parseInt(String(p.total_quantity || 1), 10);
+    if (combined[key]) {
+      combined[key].quantity += quantity;
+      continue;
+    }
+    combined[key] = {
+      part_number: p.part_number,
+      bl_part_number: p.bl_part_number || p.part_number,
+      part_name: p.part_name || p.part_number,
+      color_name: p.color_name || '–',
+      color_hex: p.color_hex || null,
+      color_id: p.color_id || 0,
+      bl_color_id: p.bl_color_id ?? rbToBlColor[p.color_id] ?? null,
+      quantity,
+      image_local: null,
+      image_url: p.image_url || null,
+    };
+  }
+  return true;
+}
+
+/** @param {Record<string, PlPart>} combined @param {string} setNumber */
+async function plAddSetFigs(combined, setNumber) {
+  const dm = await api('GET', `/v2/sets/${encodeURIComponent(setNumber)}/minifigs-list`);
+  if (!dm?.success) return;
+  for (const f of dm.figs || []) {
+    const figQty = parseInt(String(f.quantity || 1), 10);
+    const key = `fig:${esc(f.fig_number)}`;
+    if (combined[key]) {
+      combined[key].quantity += figQty;
+      continue;
+    }
+    combined[key] = {
+      part_number: f.fig_number,
+      bl_part_number: f.fig_number,
+      part_name: f.fig_name || f.fig_number,
+      color_name: tRaw('detail.minifigs'),
+      color_hex: 'f5a800',
+      color_id: 0,
+      quantity: figQty,
+      image_url: f.image_url || null,
+      is_fig: true,
+    };
+  }
+}
+
+/** The RB→BL color mapping from the server (rb_colors.bl_color_id); without it the BL color stays open. */
+async function plColorMap() {
+  try {
+    const cm = await api('GET', '/v2/parts/bl-color-map');
+    // The values are color numbers; the contract only names the map as open (Record<string, unknown>).
+    if (cm?.success) return /** @type {Record<string, number>} */ (cm.map);
+  } catch (_) {}
+  return /** @type {Record<string, number>} */ ({});
+}
+
+/** @param {number} errors @param {{ set_number: string }[]} known @param {{ set_number: string }[]} unknown */
+function plSummary(errors, known, unknown) {
+  const parts = (_plParts || []).reduce((s, x) => s + (Number(x.quantity) || 0), 0).toLocaleString(locale());
+  return (
+    `${tRaw('pl.summary_parts', { n: (_plParts || []).length, parts })} ${tRaw('pl.summary_sets', { n: known.length })}` +
+    (errors ? ` (${tRaw('monitor.errors_n', { n: errors })})` : '') +
+    (unknown.length
+      ? ` · ${tRaw('pl.unknown_n', { n: unknown.length, numbers: unknown.map(s => s.set_number).join(', ') })}`
+      : '')
+  );
+}
+
 async function plGenerate() {
   // A typed number not yet added counts too: "create" should not fail because of a forgotten click.
   if (G('pl-setnr')?.value.trim()) {
@@ -132,15 +209,7 @@ async function plGenerate() {
   /** @type {Record<string, PlPart>} key "part number|color" or "fig:number" */
   const combined = {};
   let errors = 0;
-
-  // Load RB→BL color mapping from server (from rb_colors.bl_color_id)
-  /** @type {Record<string, number>} */
-  let rbToBlColor = {};
-  try {
-    const cm = await api('GET', '/v2/parts/bl-color-map');
-    // The values are color numbers; the contract only names the map as open (Record<string, unknown>).
-    if (cm?.success) rbToBlColor = /** @type {Record<string, number>} */ (cm.map);
-  } catch (_) {}
+  const rbToBlColor = await plColorMap();
   _rbToBlColor = rbToBlColor;
 
   const known = _plSets.filter(s => !s.unknown),
@@ -149,63 +218,13 @@ async function plGenerate() {
     G('pl-status').textContent = tRaw('pl.loading_set', { set: s.set_number });
     // Use user-independent CSV endpoints (work for all users regardless of import history)
     try {
-      const d = await api('GET', `/v2/sets/${encodeURIComponent(s.set_number)}/parts-list`);
-      if (d.success && d.parts?.length) {
-        for (const p of d.parts) {
-          const blNum = p.bl_part_number || p.part_number;
-          // Merging happens by the Rebrickable number, because the inventory is queried by it:
-          // several mold variants share one BrickLink number, and merged by it the demand would count
-          // twice, the inventory once.
-          const key = `${p.part_number}|${p.color_id || 0}`;
-          if (combined[key]) {
-            combined[key].quantity += parseInt(String(p.total_quantity || 1), 10);
-          } else {
-            combined[key] = {
-              part_number: p.part_number,
-              bl_part_number: blNum,
-              part_name: p.part_name || p.part_number,
-              color_name: p.color_name || '–',
-              color_hex: p.color_hex || null,
-              color_id: p.color_id || 0,
-              bl_color_id: p.bl_color_id ?? rbToBlColor[p.color_id] ?? null,
-              quantity: parseInt(String(p.total_quantity || 1), 10),
-              image_local: null,
-              image_url: p.image_url || null,
-            };
-          }
-        }
-      } else if (!d.success) {
-        errors++;
-      }
+      if (!(await plAddSetParts(combined, s.set_number, rbToBlColor))) errors++;
     } catch (e) {
       console.error('plGenerate parts error for', s.set_number, e);
       errors++;
     }
-
-    // Fetch minifigures from CSV (user-independent)
     try {
-      const dm = await api('GET', `/v2/sets/${encodeURIComponent(s.set_number)}/minifigs-list`);
-      if (dm?.success && dm.figs?.length) {
-        for (const f of dm.figs) {
-          const figQty = parseInt(String(f.quantity || 1), 10);
-          const key = `fig:${esc(f.fig_number)}`;
-          if (combined[key]) {
-            combined[key].quantity += figQty;
-          } else {
-            combined[key] = {
-              part_number: f.fig_number,
-              bl_part_number: f.fig_number,
-              part_name: f.fig_name || f.fig_number,
-              color_name: tRaw('detail.minifigs'),
-              color_hex: 'f5a800',
-              color_id: 0,
-              quantity: figQty,
-              image_url: f.image_url || null,
-              is_fig: true,
-            };
-          }
-        }
-      }
+      await plAddSetFigs(combined, s.set_number);
     } catch (e) {
       console.error('plGenerate figs error for', s.set_number, e);
     }
@@ -213,15 +232,33 @@ async function plGenerate() {
 
   if (run !== _plRun) return;
   _plParts = Object.values(combined);
-  G('pl-status').textContent =
-    `${tRaw('pl.summary_parts', { n: _plParts.length, parts: _plParts.reduce((s, x) => s + (Number(x.quantity) || 0), 0).toLocaleString(locale()) })} ${tRaw('pl.summary_sets', { n: known.length })}` +
-    (errors ? ` (${tRaw('monitor.errors_n', { n: errors })})` : '') +
-    (unknown.length
-      ? ` · ${tRaw('pl.unknown_n', { n: unknown.length, numbers: unknown.map(s => s.set_number).join(', ') })}`
-      : '');
+  G('pl-status').textContent = plSummary(errors, known, unknown);
   G('btn-pl-gen').disabled = false;
   plRenderTable(errors);
   plExportStatus();
+}
+
+/** Writes the owned quantity into every field and counts what is still missing.
+ * @param {HTMLInputElement[]} fields @param {Record<string, { loose?: number, total?: number }> | undefined} holding
+ * @param {boolean} onlyLose */
+function plApplyHoldings(fields, holding, onlyLose) {
+  let hit = 0,
+    missing = 0,
+    missingKinds = 0;
+  for (const el of fields) {
+    const [num, color] = String(el.dataset.key || '').split('__');
+    const entry = holding?.[`${num}|${parseInt(color, 10) || 0}`];
+    const have = (entry ? (onlyLose ? entry.loose : entry.total) : 0) ?? 0;
+    el.value = String(have);
+    if (have > 0) hit++;
+    const needs = parseInt(el.dataset.need ?? '', 10) || 0;
+    if (have < needs) {
+      missing += needs - have;
+      missingKinds++;
+    }
+  }
+
+  return { hit, missing, missingKinds };
 }
 
 /**
@@ -257,21 +294,7 @@ async function plFillStock() {
     return;
   }
 
-  let hit = 0,
-    missing = 0,
-    missingKinds = 0;
-  for (const el of fields) {
-    const [num, color] = String(el.dataset.key || '').split('__');
-    const entry = d.holding?.[`${num}|${parseInt(color, 10) || 0}`];
-    const have = (entry ? (onlyLose ? entry.loose : entry.total) : 0) ?? 0;
-    el.value = String(have);
-    if (have > 0) hit++;
-    const needs = parseInt(el.dataset.need ?? '', 10) || 0;
-    if (have < needs) {
-      missing += needs - have;
-      missingKinds++;
-    }
-  }
+  const { hit, missing, missingKinds } = plApplyHoldings(fields, d.holding, onlyLose);
 
   const status = G('pl-status');
   if (!status) return;
@@ -300,6 +323,20 @@ function plExportStatus() {
     }
   }
   for (const id of ['btn-pl-pdf', 'btn-pl-bl', 'pl-bl-condition']) G(id).disabled = empty;
+}
+
+/** One row of the parts list. @param {PlPart} p */
+function plPartRow(p) {
+  // Build image source: prefer local cached file, then stored URL, then Rebrickable CDN
+  const imgSrc = p.image_url || '';
+  const img = imgSrc
+    ? imageTag({ src: imgUrl(thumbUrl(imgSrc) || imgSrc, true), alt: '', class: 'image-44', ph: 'teil' })
+    : html`<span class="image-ph image-44" aria-hidden="true">${placeholderContent('teil')}</span>`;
+  const pkey = `${p.part_number}__${p.color_id || 0}`;
+  // No fallback to the Rebrickable color number: that would yield a valid file with the wrong color.
+  // Empty means unknown; plExportBricklink leaves such items out and names them.
+  const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
+  return html`<div data-style="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-style="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number || p.part_number}</span><span data-style="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-style="font-weight:700;font-size:var(--fs-3);width:6.5em;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-style="width:6.5em;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number || p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name || ''}" data-type="${(p.bl_part_number || p.part_number || 'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number || p.part_number} ${p.color_name || ''}" data-style="width:58px;height:28px;border:1px solid var(--field-border);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
 }
 
 function plRenderTable(error = 0) {
@@ -338,18 +375,8 @@ function plRenderTable(error = 0) {
       (a.bl_part_number || a.part_number).localeCompare(b.bl_part_number || b.part_number, undefined, {
         numeric: true,
       }),
-    )) {
-      // Build image source: prefer local cached file, then stored URL, then Rebrickable CDN
-      const imgSrc = p.image_url || '';
-      const img = imgSrc
-        ? imageTag({ src: imgUrl(thumbUrl(imgSrc) || imgSrc, true), alt: '', class: 'image-44', ph: 'teil' })
-        : html`<span class="image-ph image-44" aria-hidden="true">${placeholderContent('teil')}</span>`;
-      const pkey = `${p.part_number}__${p.color_id || 0}`;
-      // No fallback to the Rebrickable color number: that would yield a valid file with the wrong color.
-      // Empty means unknown; plExportBricklink leaves such items out and names them.
-      const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
-      markup = html`${markup}${html`<div data-style="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-style="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number || p.part_number}</span><span data-style="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-style="font-weight:700;font-size:var(--fs-3);width:6.5em;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-style="width:6.5em;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number || p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name || ''}" data-type="${(p.bl_part_number || p.part_number || 'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number || p.part_number} ${p.color_name || ''}" data-style="width:58px;height:28px;border:1px solid var(--field-border);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`}`;
-    }
+    ))
+      markup = html`${markup}${plPartRow(p)}`;
     markup = html`${markup}</div></div>`;
   }
   // Summary shown in status bar above table
@@ -527,6 +554,38 @@ function missingParts() {
   return missing;
 }
 
+/** @param {Record<string, MissingPart>} blMap @param {string} key @param {MissingPart} item */
+function addMissing(blMap, key, item) {
+  const there = blMap[key];
+  if (there) there.qty += item.qty;
+  else blMap[key] = item;
+}
+
+/** The parts of a minifig; false if they could not be read (then the whole figure goes on the list).
+ * @param {Record<string, MissingPart>} blMap @param {MissingPart} m */
+async function addMinifigParts(blMap, m) {
+  try {
+    const dp = await api('GET', `/v2/minifigs/${encodeURIComponent(m.part)}/parts`);
+    if (!dp?.success || !dp.parts?.length) return false;
+    // MinifigParts does not name the fields of a row; this is how src/minifigs delivers them.
+    const parts =
+      /** @type {{ part_number: string, bl_part_number?: string | null, color_id: number, bl_color_id?: number | null, quantity?: number }[]} */ (
+        dp.parts
+      );
+    for (const p of parts) {
+      const blNum = p.bl_part_number || p.part_number;
+      // The same rule as in the table: no mapping means UNKNOWN, not "take the
+      // Rebrickable number".
+      const blColId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? null;
+      const qty = parseInt(String(p.quantity || 1), 10) * m.qty;
+      addMissing(blMap, `P|${blNum}|${blColId}`, { type: 'P', part: blNum, color: blColId, qty });
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 /** Resolve figures into their parts and add up identical BrickLink number+color.
  * @param {MissingPart[]} missing @returns {Promise<MissingPart[]>} */
 async function resolveMinifigs(missing) {
@@ -534,37 +593,10 @@ async function resolveMinifigs(missing) {
   /** @type {Record<string, MissingPart>} key "kind|part number|color" */
   const blMap = {};
   for (const m of missing) {
-    if (m.type === 'M') {
-      try {
-        const dp = await api('GET', `/v2/minifigs/${encodeURIComponent(m.part)}/parts`);
-        if (dp?.success && dp.parts?.length) {
-          // MinifigParts does not name the fields of a row; this is how src/minifigs delivers them.
-          const parts =
-            /** @type {{ part_number: string, bl_part_number?: string | null, color_id: number, bl_color_id?: number | null, quantity?: number }[]} */ (
-              dp.parts
-            );
-          for (const p of parts) {
-            const blNum = p.bl_part_number || p.part_number;
-            // The same rule as in the table: no mapping means UNKNOWN, not "take the
-            // Rebrickable number".
-            const blColId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? null;
-            const key = `P|${blNum}|${blColId}`;
-            const qty = parseInt(String(p.quantity || 1), 10) * m.qty;
-            if (blMap[key]) blMap[key].qty += qty;
-            else blMap[key] = { type: 'P', part: blNum, color: blColId, qty };
-          }
-          continue;
-        }
-      } catch (_) {}
+    if (m.type !== 'M') addMissing(blMap, `P|${m.part}|${m.color || 0}`, { ...m });
+    else if (!(await addMinifigParts(blMap, m)))
       // Fallback: add whole minifig
-      const key = `M|${m.part}|0`;
-      if (blMap[key]) blMap[key].qty += m.qty;
-      else blMap[key] = { type: 'M', part: m.part, color: 0, qty: m.qty };
-    } else {
-      const key = `P|${m.part}|${m.color || 0}`;
-      if (blMap[key]) blMap[key].qty += m.qty;
-      else blMap[key] = { ...m };
-    }
+      addMissing(blMap, `M|${m.part}|0`, { type: 'M', part: m.part, color: 0, qty: m.qty });
   }
   return Object.values(blMap);
 }

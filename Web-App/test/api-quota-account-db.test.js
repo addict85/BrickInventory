@@ -48,7 +48,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
     assert.equal((await zaehle(kind)).allowed, true);
     const thirdOne = await zaehle(kind);
     assert.equal(thirdOne.allowed, false);
-    assert.equal(thirdOne.jeAccount, true);
+    assert.equal(thirdOne.perAccount, true);
     assert.equal((await k.quotaOverview('brickset')).count, 2);
     assert.equal((await asRequest(kind, () => k.quotaFree('brickset'))).allowed, false);
   });
@@ -61,7 +61,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
     const thirdOne = await zaehle(konten[2]);
     assert.equal(thirdOne.allowed, false);
     assert.equal((await asRequest(konten[2], () => k.quotaFree('brickset'))).allowed, false);
-    assert.equal((await zaehle(chef)).allowed, true, 'Verwalter haben die andere Hälfte');
+    assert.equal((await zaehle(chef)).allowed, true, 'Admins have the other half');
     assert.equal((await k.quotaOverview('brickset')).count, 5);
   });
 
@@ -82,7 +82,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
       require('./helpers/sources').testServices().jobQueue,
       {
         exchange_rates: {
-          ausfuehren: async () => {
+          run: async () => {
             for (let i = 0; i < 3; i++) results.push((await k.checkAndCountQuota('brickset')).allowed);
           },
         },
@@ -94,15 +94,15 @@ test('daily quota per account', { concurrency: 1 }, async t => {
       /* until the table is empty */
     }
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
-    assert.deepEqual(results, [true, true, false], 'Im Auftrag gilt das Viertel des Kontos');
+    assert.deepEqual(results, [true, true, false], 'On behalf, a quarter of the account applies');
   });
 
   await t.test('admins and background only count in the total', async () => {
     await k.setQuotaBack('brickset');
     for (let i = 0; i < 2; i++) assert.equal((await zaehle(kind)).allowed, true);
-    for (let i = 0; i < 5; i++) assert.equal((await zaehle(chef)).allowed, true, `Verwalter ${i + 1}`);
-    assert.equal((await k.checkAndCountQuota('brickset')).allowed, true, 'Hintergrund');
-    assert.equal((await k.checkAndCountQuota('brickset')).allowed, false, 'gesamt voll');
+    for (let i = 0; i < 5; i++) assert.equal((await zaehle(chef)).allowed, true, `Admin ${i + 1}`);
+    assert.equal((await k.checkAndCountQuota('brickset')).allowed, true, 'Background');
+    assert.equal((await k.checkAndCountQuota('brickset')).allowed, false, 'total full');
     assert.equal((await k.quotaOverview('brickset')).count, 8);
   });
 });

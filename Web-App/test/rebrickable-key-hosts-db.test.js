@@ -78,11 +78,11 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
           }
         : { status: 200, body: '{}' };
     await fetchSetParts('10294-1');
-    assert.ok(fetches.length >= 1, 'die Attrappe sah keinen Abruf — die Gegenprobe bewiese nichts');
+    assert.ok(fetches.length >= 1, 'the dummy saw no fetch — the counter-check would prove nothing');
     assert.deepEqual(
       fetches.filter(a => new URL(a.url).hostname !== 'rebrickable.com').map(a => a.url),
       [],
-      'ein Abruf ging an einen anderen Host',
+      'a fetch went to another host',
     );
   });
 
@@ -102,14 +102,14 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
             }),
           };
     const r = await fetchSetParts('10294-1');
-    assert.equal(r.parts.length, 2, 'die zweite Seite fehlt');
+    assert.equal(r.parts.length, 2, 'the second page is missing');
   });
 
   await t.test('rebrickableRaw reaches no other host', async () => {
     fetches.length = 0;
     const r = await rebrickableRaw('https://lego.brickinstructions.com/x', 'geheim-123');
     assert.equal(r.status, 0);
-    assert.equal(fetches.length, 0, 'der Abruf mit Schlüssel ging hinaus');
+    assert.equal(fetches.length, 0, 'the fetch with a key went out');
   });
 
   await t.test(
@@ -118,12 +118,12 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
       fetches.length = 0;
       responseFor = () => ({ status: 200, body: '{}' });
       await httpsGetRobust('https://api.upcitemdb.com/prod/trial/lookup?upc=1', {}, 3000);
-      assert.equal(fetches.length, 1, 'die EAN-Suche ohne Schlüssel muss weiter gehen');
+      assert.equal(fetches.length, 1, 'the EAN search without a key must keep working');
       fetches.length = 0;
       await httpsGetRobust('https://api.upcitemdb.com/prod/x', { Authorization: 'key geheim-123' }, 3000).catch(
         () => null,
       );
-      assert.deepEqual(withKey(), [], 'ein Abruf mit Schlüssel ging an upcitemdb');
+      assert.deepEqual(withKey(), [], 'a fetch with a key went to upcitemdb');
     },
   );
 });

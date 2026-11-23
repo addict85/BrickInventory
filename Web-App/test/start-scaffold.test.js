@@ -37,7 +37,7 @@ test.after(() =>
 test('the hash matches the delivered block', async () => {
   const html = await startPageHtml();
   const block = /<style id="start-style">([\s\S]*?)<\/style>/.exec(html);
-  assert.ok(block, 'kein Startgerüst-Stil im ausgelieferten HTML');
+  assert.ok(block, 'no start scaffold style in the served HTML');
   const erwartet = `'sha256-${crypto.createHash('sha256').update(block[1]).digest('base64')}'`;
   assert.equal(startPageStyleHash(false), erwartet);
 });
@@ -48,15 +48,15 @@ test('before the first stylesheet and before every blocking script', () => {
   assert.ok(scaffold > 0);
   const firstStylesheet = html.search(/<link rel="stylesheet"/);
   const firstScript = html.search(/<script (?!defer)[^>]*src=/);
-  assert.ok(scaffold < firstStylesheet, 'vor dem ersten Stylesheet');
-  assert.ok(scaffold < firstScript, 'vor dem ersten blockierenden Skript');
+  assert.ok(scaffold < firstStylesheet, 'before the first stylesheet');
+  assert.ok(scaffold < firstScript, 'before the first blocking script');
 });
 
 test('logged in: skeleton gone, app there', async () => {
   const { w, d } = await openUi({});
   try {
     await warte(() => !d.getElementById('start-skeleton'));
-    assert.equal(d.getElementById('start-skeleton'), null, 'angemeldet: Gerüst weg');
+    assert.equal(d.getElementById('start-skeleton'), null, 'logged in: scaffold gone');
   } finally {
     w.close();
   }
@@ -81,9 +81,9 @@ test('Stein (blue): header blue, background blue-gray', () => {
   const w = new JSDOM(html).window;
   try {
     const kopf = w.getComputedStyle(w.document.querySelector('#start-skeleton .sg-header'));
-    assert.equal(kopf.backgroundColor, 'rgb(61, 90, 128)', 'die Kopfkachel ist blau wie im Stein-Design');
+    assert.equal(kopf.backgroundColor, 'rgb(61, 90, 128)', 'the header tile is blue as in the brick design');
     const reason = w.getComputedStyle(w.document.querySelector('#start-skeleton'));
-    assert.equal(reason.getPropertyValue('--sg-bg').trim(), '#c9d5e2', 'der Grund ist blaugrau, nicht weiss');
+    assert.equal(reason.getPropertyValue('--sg-bg').trim(), '#c9d5e2', 'the background is blue-grey, not white');
   } finally {
     w.close();
   }
@@ -101,6 +101,10 @@ test('without a session: no app tiles in the skeleton, with a session yes', asyn
       w.close();
     }
   };
-  assert.deepEqual(sichtbar(await startPageHtml()), [false, false, false], 'ohne Sitzung: keine App-Kacheln im Gerüst');
-  assert.deepEqual(sichtbar(await startPageHtml(1)), [true, true, true], 'mit Sitzung: Kopf, Leiste und Kacheln');
+  assert.deepEqual(
+    sichtbar(await startPageHtml()),
+    [false, false, false],
+    'without a session: no app tiles in the scaffold',
+  );
+  assert.deepEqual(sichtbar(await startPageHtml(1)), [true, true, true], 'with a session: header, bar and tiles');
 });

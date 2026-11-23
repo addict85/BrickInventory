@@ -76,7 +76,7 @@ class OldServerPinTest {
         val pin = spkiFingerprint(cert(CADDY_ROOT))
         assertEquals(RedemptionOutcome.REDEEMED, redeemer.redeem(oldServer(), "altes-token", pin))
         val a = server.takeRequest(1, TimeUnit.SECONDS)!!
-        assertEquals("/brick/api/v1/auth/logout", a.path)
+        assertEquals("/brick/api/v2/auth/logout", a.path)
         assertEquals("Bearer altes-token", a.getHeader("Authorization"))
     }
 

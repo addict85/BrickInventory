@@ -92,16 +92,16 @@ test('BrickLink quota per HTTP call', { concurrency: 1 }, async t => {
     await put('api_limit_bricklink', '100');
     await newTag();
     const p = await fetchPrice(SN, 'N', 'sold', 'EUR', 24);
-    assert.equal(parseFloat(p.avg_price), 12.5, 'der Rückfall auf Angebote hat keinen Preis geliefert');
-    assert.equal(aufrufe.length, 2, `erwartet zwei Abrufe, gesehen: ${aufrufe.join(' | ')}`);
-    assert.equal(await zaehler(), 2, 'das Kontingent zählt nicht jeden Abruf');
+    assert.equal(parseFloat(p.avg_price), 12.5, 'the fallback to offers delivered no price');
+    assert.equal(aufrufe.length, 2, `expected two fetches, seen: ${aufrufe.join(' | ')}`);
+    assert.equal(await zaehler(), 2, 'the quota does not count every fetch');
   });
 
   await t.test('an exhausted quota also stops the fallback', async () => {
     await put('api_limit_bricklink', '1');
     await newTag();
     await fetchPrice(SN, 'N', 'sold', 'EUR', 24).catch(() => null);
-    assert.equal(aufrufe.length, 1, `über das Limit hinaus abgerufen: ${aufrufe.join(' | ')}`);
+    assert.equal(aufrufe.length, 1, `fetched beyond the limit: ${aufrufe.join(' | ')}`);
     assert.equal(await zaehler(), 1);
   });
 });

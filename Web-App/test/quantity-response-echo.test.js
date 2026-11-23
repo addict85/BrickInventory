@@ -45,8 +45,8 @@ test('the route delivers the quantity at all', { concurrency: 1 }, async t => {
         body: JSON.stringify({ quantity }),
       })
     ).json();
-  assert.equal((await put(3)).quantity, 3, 'die Route liefert die Menge');
-  assert.equal((await put(1)).quantity, 1, 'auch nach dem Verringern');
+  assert.equal((await put(3)).quantity, 3, 'the route returns the quantity');
+  assert.equal((await put(1)).quantity, 1, 'also after decreasing');
 });
 
 test('the web app takes the quantity from the response', async () => {
@@ -64,13 +64,13 @@ test('the web app takes the quantity from the response', async () => {
   try {
     assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => d.getElementById('m-qty')?.value === '3'), 'Das Detail zeigt die Menge nicht');
+    assert.ok(await warte(() => d.getElementById('m-qty')?.value === '3'), 'The detail does not show the quantity');
     d.getElementById('m-qty').value = '1';
     d.getElementById('m-qty').dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT')), 'Die Menge wird nicht gespeichert');
+    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT')), 'The quantity is not saved');
     assert.ok(
       await warte(() => d.getElementById('m-qty').value === '2'),
-      `Das Feld behält die eigene Annahme: ${d.getElementById('m-qty').value}`,
+      `The field keeps its own assumption: ${d.getElementById('m-qty').value}`,
     );
   } finally {
     w.close();

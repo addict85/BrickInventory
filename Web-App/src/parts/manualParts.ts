@@ -1,11 +1,11 @@
 /** Here and not in a route, because the session route and the v1 factory both
  * reach for it — a route shouldn't import another route. */
-import type { Sicht } from '../household';
+import type { Viewer } from '../household';
 import { publicError } from '../infra/error';
 import { Degradations, attempts } from '../infra/result';
-import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
+import { csvSharedFields, csvRowsFromRequest, csvFirst, type CsvRow } from '../infra/csvExport';
 import { quantityRequest } from '../inventory';
-import { KEINE_FARBE } from '../catalog';
+import { NO_COLOR } from '../catalog';
 import type { Sources } from '../externalSources';
 import * as V0 from '../infra/validate';
 import { moneyInput } from '../infra/money';
@@ -30,12 +30,12 @@ export async function manualPartPurchase(
   );
   return {
     effectiveUnitPrice: r.unitPrice,
-    effectivePurchasePrice: r.kaufpreis,
-    erfassungsPreis: r.erfassungsPreis,
+    effectivePurchasePrice: r.purchasePrice,
+    acquisitionPrice: r.acquisitionPrice,
     effectiveCondition: r.condition,
     // null when there is nothing to flag.
     priceFromState: r.priceFromState,
-    geschaetzt: r.geschaetzt,
+    estimated: r.estimated,
   };
 }
 
@@ -70,7 +70,7 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
   // Validated in this order: with several errors, the first one reports.
   const name = V.optionalText(rawBody?.part_name, 200);
   const image = V.optionalImageUrl(rawBody?.image_url);
-  const input = { name, kategorie: V.optionalText(rawBody?.category_name, 100), image };
+  const input = { name, category: V.optionalText(rawBody?.category_name, 100), image };
   const { part_name, found } = await partDescription(k, uid, part_number, color_id, input);
 
   // Only existence counts: the quantity adds up via a second acquisition.
@@ -80,7 +80,7 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
   }
 
   // One calculation, the same one used in the CSV import.
-  const { erfassungsPreis, effectiveCondition, priceFromState, geschaetzt } = await manualPartPurchase(k, uid, {
+  const { acquisitionPrice, effectiveCondition, priceFromState, estimated } = await manualPartPurchase(k, uid, {
     partNumber: part_number,
     colorId: color_id,
     unitPrice: unit_price,
@@ -91,16 +91,16 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
 
   // Description applies to ALL accounts (catalog), the stock to one.
   await k.catalog.rememberPart(part_number, found?.part_name, found?.category_name);
-  await k.catalog.rememberPart(part_number, input.name, input.kategorie, k.db, uid);
+  await k.catalog.rememberPart(part_number, input.name, input.category, k.db, uid);
   await k.catalog.rememberPartColor(part_number, color_id, null, rbColorCode, found?.image_url);
   await k.catalog.rememberPartColor(part_number, color_id, color_name, color_hex, input.image, null, k.db, uid);
 
   // Price, condition and quantity live in the acquisition, not on the row.
-  await k.inventory.manuell.createRow('part', uid, [part_number, color_id]);
+  await k.inventory.manual.createRow('part', uid, [part_number, color_id]);
   await k.inventory.bookDailyEntry('part', uid, [part_number, color_id], {
     quantity,
-    price: erfassungsPreis,
-    geschaetzt,
+    price: acquisitionPrice,
+    estimated,
     condition: effectiveCondition,
     createdAt: acquiredAt,
   });
@@ -117,29 +117,29 @@ async function partDescription(
   uid: number,
   part_number: string,
   color_id: number,
-  input: { name: string | null; kategorie: string | null; image: string | null },
+  input: { name: string | null; category: string | null; image: string | null },
 ) {
   let part_name = input.name;
   let image_url = input.image;
   let found: Awaited<ReturnType<Sources['lookupPart']>> | null = null;
   if (part_name) return { part_name, found };
 
-  const hasColor = color_id !== KEINE_FARBE;
+  const hasColor = color_id !== NO_COLOR;
   const local = await k.catalog.catalogPart(part_number, hasColor ? color_id : null, uid);
   if (local) {
     part_name = local.name;
     image_url = image_url || local.image;
   }
 
-  // `hatImage` instead of `image_url`: a local path would fail the URL check, but
+  // `hasImage` instead of `image_url`: a local path would fail the URL check, but
   // still proves the fetch has nothing more to get.
-  if (!part_name || !(image_url || local?.hatImage)) {
+  if (!part_name || !(image_url || local?.hasImage)) {
     // Without Rebrickable, the part gets logged with whatever the catalog already knows.
     const fetch = await attempts(
       'parts:lookupPart',
       k.externalSources.sources.lookupPart(part_number, hasColor ? color_id : null),
     );
-    found = fetch.ok ? fetch.wert : null;
+    found = fetch.ok ? fetch.value : null;
     // `||`: what the catalog already knew stays as-is.
     if (found) part_name = part_name || found.part_name;
   }
@@ -168,7 +168,7 @@ async function additionalAcquisition(
     price: (rePrice ?? 0) > 0 ? rePrice : null,
     condition: reCond,
     createdAt: e.acquiredAt,
-    geschaetzt: reEntered === null,
+    estimated: reEntered === null,
   });
 }
 
@@ -222,7 +222,7 @@ export async function changeManualPart(
 
 export async function listPartAcquisitions(
   k: PartsContext,
-  uidChoice: Sicht | number[],
+  uidChoice: Viewer | number[],
   partNumber: string,
   colorId: string | number,
 ) {
@@ -241,76 +241,77 @@ export function manualPartExists(
   return k.manualParts.manualPartRow(uid, partNumber, colorId);
 }
 
+type PartImportResult = { part_number: string; action: string; error?: string };
+
+async function partInfo(k: PartsContext, partNumber: string, colorId: number, typedName: string | null) {
+  if (typedName) return { partName: typedName, imageUrl: null, categoryName: null };
+  const fetch = await attempts(
+    'parts:import-lookupPart',
+    k.externalSources.sources.lookupPart(partNumber, colorId === NO_COLOR ? null : colorId),
+  );
+  const info = fetch.ok ? fetch.value : null;
+  return {
+    partName: info ? info.part_name : null,
+    imageUrl: info ? info.image_url : null,
+    categoryName: info ? info.category_name : null,
+  };
+}
+
+async function importPartRow(
+  k: PartsContext,
+  uid: number,
+  row: CsvRow,
+  partNumber: string,
+  colorId: number,
+): Promise<PartImportResult> {
+  const colorName = csvFirst(row, 'color_name', 'Farbe') || null;
+  const { quantity: qty, price: unitPrice, recordedAt: acquiredAt, condition: rawCondition } = csvSharedFields(row);
+  const typed = row.part_name || row.Name || null;
+  const { partName, imageUrl, categoryName } = await partInfo(k, partNumber, colorId, typed);
+  const { acquisitionPrice, effectiveCondition, estimated } = await manualPartPurchase(k, uid, {
+    partNumber,
+    colorId,
+    unitPrice,
+    condition: rawCondition,
+  });
+  const acquisition = {
+    quantity: qty,
+    price: acquisitionPrice,
+    estimated,
+    condition: effectiveCondition || 'N',
+    createdAt: acquiredAt || k.clock.date().toISOString().slice(0, 10),
+  };
+  if (await manualPartExists(k, uid, partNumber, colorId)) {
+    await k.inventory.bookDailyEntry('part', uid, [partNumber, colorId], acquisition);
+    return { part_number: partNumber, action: 'updated' };
+  }
+  // Catalog before stock: better a description without stock than the other way round.
+  const colorHex = await k.manualParts.rbColorHex(colorId);
+  if (typed) await k.catalog.rememberPart(partNumber, partName, null, k.db, uid);
+  else await k.catalog.rememberPart(partNumber, partName, categoryName);
+  await k.catalog.rememberPartColor(partNumber, colorId, null, colorHex, imageUrl);
+  await k.catalog.rememberPartColor(partNumber, colorId, colorName, null, null, null, k.db, uid);
+  await k.inventory.manual.createRow('part', uid, [partNumber, colorId]);
+  await k.inventory.bookDailyEntry('part', uid, [partNumber, colorId], acquisition);
+  return { part_number: partNumber, action: 'added' };
+}
+
 /** Same pricing rule as when adding by hand; one bad row doesn't abort the rest. */
 export async function importPartsCsv(k: PartsContext, uid: number, text: string) {
-  const { records, cleaned, uebersprungen } = csvRowsFromRequest(text);
-  let added = 0,
-    updated = 0,
-    errors = 0;
-  const results: Array<{ part_number: string; action: string; error?: string }> = [];
-
+  const { records, cleaned, skipped } = csvRowsFromRequest(text);
+  const results: PartImportResult[] = [];
   for (const row of cleaned) {
-    const partNumber = String(row.part_number || row.Teilenummer || row.part_num || Object.values(row)[0] || '').trim();
+    const partNumber = String(
+      csvFirst(row, 'part_number', 'Teilenummer', 'part_num') || Object.values(row)[0] || '',
+    ).trim();
     if (!partNumber) continue;
     const colorId = V0.colorId(row.color_id ?? row['Farb-ID']);
-    const colorName = row.color_name || row.Farbe || null;
-    const { quantity: qty, preis: unitPrice, recordedAt: acquiredAt, condition: rawCondition } = csvSharedFields(row);
-
     try {
-      let partName = row.part_name || row.Name || null;
-      const typed = !!partName;
-      let imageUrl: string | null = null,
-        categoryName: string | null = null;
-      if (!partName) {
-        const fetch = await attempts(
-          'parts:import-lookupPart',
-          k.externalSources.sources.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
-        );
-        const info = fetch.ok ? fetch.wert : null;
-        if (info) {
-          partName = info.part_name;
-          imageUrl = info.image_url;
-          categoryName = info.category_name;
-        }
-      }
-      const { erfassungsPreis, effectiveCondition, geschaetzt } = await manualPartPurchase(k, uid, {
-        partNumber,
-        colorId,
-        unitPrice,
-        condition: rawCondition,
-      });
-      const acquisition = {
-        quantity: qty,
-        price: erfassungsPreis,
-        geschaetzt,
-        condition: effectiveCondition || 'N',
-        createdAt: acquiredAt || k.clock.datum().toISOString().slice(0, 10),
-      };
-
-      if (await manualPartExists(k, uid, partNumber, colorId)) {
-        await k.inventory.bookDailyEntry('part', uid, [partNumber, colorId], acquisition);
-        updated++;
-        results.push({ part_number: partNumber, action: 'updated' });
-        continue;
-      }
-      // Catalog before stock: better a description without stock than the other way round.
-      const colorHex = await k.manualParts.rbColorHex(colorId);
-      if (typed) await k.catalog.rememberPart(partNumber, partName, null, k.db, uid);
-      else await k.catalog.rememberPart(partNumber, partName, categoryName);
-      await k.catalog.rememberPartColor(partNumber, colorId, null, colorHex, imageUrl);
-      await k.catalog.rememberPartColor(partNumber, colorId, colorName, null, null, null, k.db, uid);
-      await k.inventory.manuell.createRow('part', uid, [partNumber, colorId]);
-      await k.inventory.bookDailyEntry('part', uid, [partNumber, colorId], acquisition);
-      added++;
-      results.push({ part_number: partNumber, action: 'added' });
+      results.push(await importPartRow(k, uid, row, partNumber, colorId));
     } catch (e) {
-      errors++;
-      results.push({
-        part_number: partNumber,
-        action: 'error',
-        error: publicError(e, 'parts-csv:row').error,
-      });
+      results.push({ part_number: partNumber, action: 'error', error: publicError(e, 'parts-csv:row').error });
     }
   }
-  return { added, updated, errors, records, results, uebersprungen };
+  const count = (action: string) => results.filter(r => r.action === action).length;
+  return { added: count('added'), updated: count('updated'), errors: count('error'), records, results, skipped };
 }

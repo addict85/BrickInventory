@@ -88,7 +88,7 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     const base = `http://127.0.0.1:${srv.address().port}`;
     const keks = r => (r.headers.get('set-cookie') || '').split(';')[0];
     const alt = keks(await fetch(`${base}/vorher`));
-    assert.match(alt, /^connect\.sid=/, 'Vorbedingung: eine Sitzung vor der Anmeldung');
+    assert.match(alt, /^connect\.sid=/, 'Precondition: a session before the sign-in');
     const login = await fetch(`${base}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: alt },
@@ -96,23 +96,23 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     });
     assert.equal(login.status, 200, await login.text());
     const neu = keks(login);
-    assert.match(neu, /^connect\.sid=/, 'die Anmeldung setzt kein Cookie');
-    assert.notEqual(neu, alt, 'die Sitzungs-ID von vor der Anmeldung gilt weiter');
+    assert.match(neu, /^connect\.sid=/, 'the sign-in sets no cookie');
+    assert.notEqual(neu, alt, 'the session ID from before the sign-in stays valid');
     const ich = async c => (await (await fetch(`${base}/api/v2/auth/me`, { headers: { cookie: c } })).json()).loggedIn;
     assert.equal(await ich(neu), true);
-    assert.equal(await ich(alt), false, 'die alte ID ist angemeldet');
+    assert.equal(await ich(alt), false, 'the old ID is signed in');
   });
 
   await t.test('login counter: a second process sees the lock', async () => {
     const IP = '203.0.113.7';
     const a = _req('src/account/loginLimiter.js');
-    assert.equal(await a.loginAllowed(IP, COUNTER), null, 'Vorbedingung: frei');
+    assert.equal(await a.loginAllowed(IP, COUNTER), null, 'Precondition: free');
     for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.loginFailed(IP, COUNTER);
     // A freshly loaded module has empty memory, like a second worker process.
     const datei = path.join(ROOT, 'dist', 'src', 'account', 'loginLimiter.js');
     delete require.cache[datei];
     const b = require(datei);
-    assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
+    assert.notEqual(a, b, 'Precondition: two module instances');
     const konto = require('./helpers/sources').testArea('account');
     assert.equal((await b.loginAllowed(konto, IP, COUNTER))?.code, 'too_many_failed_attempts');
   });
@@ -124,12 +124,12 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     console.warn = () => {};
     await db.run('ALTER TABLE rate_limit_attempts RENAME TO rate_limit_attempts_weg');
     try {
-      assert.equal(await l.loginAllowed(IP, COUNTER), null, 'ein Datenbankfehler sperrt die Anmeldung');
+      assert.equal(await l.loginAllowed(IP, COUNTER), null, 'a database error locks the sign-in');
       for (let i = 0; i < l.MAX_ATTEMPTS; i++) await l.loginFailed(IP, COUNTER);
       assert.equal(
         (await l.loginAllowed(IP, COUNTER))?.code,
         'too_many_failed_attempts',
-        'ohne Datenbank keine Bremse',
+        'no brake without a database',
       );
     } finally {
       await db.run('ALTER TABLE rate_limit_attempts_weg RENAME TO rate_limit_attempts');
@@ -145,7 +145,7 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
       body: JSON.stringify({ username: NAME, password: PASS }),
     });
     const { token } = await login.json();
-    assert.ok(token, 'Vorbedingung: ein Token');
+    assert.ok(token, 'Precondition: a token');
     assert.equal((await fetch(`${base}/api/v2/stats`, { headers: { authorization: `Bearer ${token}` } })).status, 200);
     assert.equal((await fetch(`${base}/api/v2/stats?token=${token}`)).status, 401);
     assert.equal((await fetch(`${base}/api/v2/stats?access_token=${token}`)).status, 401);
@@ -169,7 +169,7 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     };
     const da = async () => !!(await db.get('SELECT 1 FROM price_cache WHERE set_number = $1', [SN]));
     assert.equal(await leeren(uid, 0), 403);
-    assert.equal(await da(), true, 'ein gewöhnliches Konto hat den Cache geleert');
+    assert.equal(await da(), true, 'an ordinary account cleared the cache');
     assert.equal(await leeren(verwalter, 1), 200);
     assert.equal(await da(), false);
   });
@@ -269,10 +269,10 @@ test('minifigures and finances request preview images', async () => {
   });
   try {
     await reiter(w, 'minifigs');
-    assert.ok(await warte(() => d.querySelector('#figs-list img')), 'keine Figurenkachel');
+    assert.ok(await warte(() => d.querySelector('#figs-list img')), 'no minifig tile');
     assert.match(d.querySelector('#figs-list img').getAttribute('src'), /^\/api\/v1\/img-proxy\?.*&thumb=1/);
     await reiter(w, 'finance');
-    assert.ok(await warte(() => d.querySelector('#fin-tbl .fin-image img')), 'kein Bild in der Finanztabelle');
+    assert.ok(await warte(() => d.querySelector('#fin-tbl .fin-image img')), 'no image in the finance table');
     assert.match(d.querySelector('#fin-tbl .fin-image img').getAttribute('src'), /^\/api\/v1\/img-proxy\?.*&thumb=1/);
   } finally {
     w.close();
@@ -295,7 +295,7 @@ test('the web app appends no token to an address', () => {
   ];
   const treffer = [];
   for (const voll of dateien) {
-    assert.ok(fs.existsSync(voll), `${path.basename(voll)} steht nicht mehr dort — Pfad im Test veraltet`);
+    assert.ok(fs.existsSync(voll), `${path.basename(voll)} is no longer there — path in the test outdated`);
     const src = ohneKommentare(fs.readFileSync(voll, 'utf8'));
     if (append.some(re => re.test(src))) treffer.push(path.basename(voll));
   }
@@ -313,7 +313,7 @@ test('every price query on price_cache names the currency', () => {
   const reader = require('./helpers/sources')
     .allSources()
     .filter(d => read(d).includes('FROM price_cache'));
-  assert.ok(reader.length >= 4, `nur ${reader.length} Leser von price_cache gefunden — Suche veraltet?`);
+  assert.ok(reader.length >= 4, `only ${reader.length} readers of price_cache found — search outdated?`);
   const ohne = [];
   for (const datei of reader) {
     const src = read(datei);

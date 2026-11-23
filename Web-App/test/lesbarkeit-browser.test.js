@@ -197,33 +197,33 @@ test('contrast, file fields and tile font', t => {
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.ok(e.kontrast.length >= 16);
-  assert.ok(e.kontrast.filter(k => k.name.startsWith('dark ')).length === 35, 'Die dunklen Varianten fehlen');
+  assert.ok(e.kontrast.filter(k => k.name.startsWith('dark ')).length === 35, 'The dark variants are missing');
   assert.deepEqual(
     e.darkReason.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`),
     [],
-    'Die Karte der dunklen Variante ist hell',
+    'The card of the dark variant is light',
   );
   // hochglanz inherits the colors of noppe; the other four stay distinguishable.
-  assert.equal(new Set(e.brands).size, 4, `Markenfarben dunkel: ${e.brands}`);
+  assert.equal(new Set(e.brands).size, 4, `Brand colors dark: ${e.brands}`);
   assert.equal(e.farbton.length, 4);
   assert.deepEqual(
     e.farbton.filter(f => f.rot).map(f => f.name),
     [],
-    'Preis in Rot — liest sich als Verlust',
+    'Price in red — reads as a loss',
   );
   assert.deepEqual(
     e.kontrast.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
     [],
   );
-  assert.equal(e.fokus, true, 'Datei-Feld fokussierbar: Tab übersprang CSV und BrickLink XML');
+  assert.equal(e.fokus, true, 'File field focusable: Tab skipped CSV and BrickLink XML');
   assert.ok(e.snum >= 12 && e.smeta >= 12, `Kachelschrift ${e.snum}/${e.smeta} px`);
-  assert.ok(e.space >= 0.22, `Wortabstand ${e.space} em — „Set hinzufügen“ liest sich wie ein Wort`);
+  assert.ok(e.space >= 0.22, `Word spacing ${e.space} em — „Set hinzufügen“ reads like one word`);
   assert.equal(e.ring.length, 2);
   for (const r of e.ring) {
     assert.ok(r.stil !== 'none' && r.breite >= 3, `Fokusring ${r.name}: ${r.breite}px ${r.stil}`);
-    assert.ok(r.wert >= 3, `Fokusring ${r.name}: nur ${r.wert}:1 gegen den Grund`);
+    assert.ok(r.wert >= 3, `Focus ring ${r.name}: only ${r.wert}:1 against the background`);
   }
 });

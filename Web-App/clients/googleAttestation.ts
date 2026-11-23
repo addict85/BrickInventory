@@ -12,10 +12,10 @@ export const revocationListFetch: RevocationFetch = async signal => {
   const r = await holeHttps(REVOCATION_LIST, {
     hosts: HOSTS,
     maxBytes: 8 * 1024 * 1024,
-    zeitlimitMs: 60_000,
+    timeoutMs: 60_000,
     redirects: 0,
     ...(signal ? { signal } : {}),
   });
   if (r.status !== 200) throw new Error(`Widerrufsliste: HTTP ${r.status}`);
-  return r.koerper;
+  return r.body;
 };

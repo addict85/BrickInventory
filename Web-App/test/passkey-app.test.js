@@ -73,8 +73,8 @@ test('the origin is base64url of the hash, regardless of the notation it is ente
   withEnvironment(t, { PASSKEY_ANDROID_CERTIFICATES: `${WITH_COLON.toLowerCase()}, ${HASH.toString('hex')}` });
   const erwartet =
     'android:apk-key-hash:' + HASH.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  assert.match(HASH.toString('base64'), /[+/]/, 'Die Probe deckt die Ersetzung nicht ab');
-  assert.deepEqual(androidOrigins(), [erwartet], 'Doppelt eingetragen zählt einmal');
+  assert.match(HASH.toString('base64'), /[+/]/, 'The probe does not cover the replacement');
+  assert.deepEqual(androidOrigins(), [erwartet], 'entered twice counts once');
 });
 
 test('a wrong fingerprint or package name is a startup error with a name', () => {

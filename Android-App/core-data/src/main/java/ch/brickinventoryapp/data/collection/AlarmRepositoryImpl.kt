@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.collection
 
-import ch.brickinventoryapp.contract.PreisalarmRequest
+import ch.brickinventoryapp.contract.PriceAlertRequest
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.api.SetsApi
@@ -47,7 +47,7 @@ internal class AlarmRepositoryImpl @Inject constructor(
     override suspend fun setPriceAlarm(setNumber: String, direction: AlarmDirection, threshold: Money,
                                        condition: Condition): Outcome<Unit> =
         store.caughtUp({ r -> r.alert?.takeIf { r.success }?.let { FollowUp.AlarmSet(it.asView()) } }) {
-            safeCall { api.setPriceAlarm(setNumber, PreisalarmRequest(direction = direction, threshold = threshold.asDouble(), condition = condition)) }
+            safeCall { api.setPriceAlarm(setNumber, PriceAlertRequest(direction = direction, threshold = threshold.asDouble(), condition = condition)) }
         }.promised({ it.success }) { }
 
     override suspend fun deletePriceAlert(setNumber: String, condition: Condition): Outcome<Unit> =

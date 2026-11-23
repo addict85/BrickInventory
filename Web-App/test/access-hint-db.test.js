@@ -89,13 +89,13 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
       await new Promise(r => setTimeout(r, 25));
     return gesendet
       .filter(m => m.type === type && NAMEN.some(n => m.an === `${n}@example.org`))
-      .map(m => ({ an: m.an.split('@')[0], konto: m.konto, durch: m.durch, name: m.passkey }))
+      .map(m => ({ an: m.an.split('@')[0], konto: m.account, durch: m.actor, name: m.passkey }))
       .sort((a, b) => a.an.localeCompare(b.an));
   };
 
   await t.test('new token', async () => {
     await callFn('POST', '/token-create', { password: PASS, label: 'Tablet' });
-    assert.deepEqual(await mails('token_neu', 1), [
+    assert.deepEqual(await mails('token_added', 1), [
       { an: NAMEN[0], konto: undefined, durch: undefined, name: 'Tablet' },
     ]);
   });
@@ -103,7 +103,7 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
   await t.test('new QR access', async () => {
     await callFn('POST', '/qr-token', { password: PASS });
     assert.deepEqual(
-      (await mails('qr_zugang_neu', 1)).map(m => m.an),
+      (await mails('qr_access_added', 1)).map(m => m.an),
       [NAMEN[0]],
     );
   });
@@ -153,7 +153,7 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
       [[NAMEN[1], NAMEN[0]]],
     );
     assert.deepEqual(
-      (await mails('verwaltung_faktor_entfernt', 3)).map(m => [m.an, m.konto]),
+      (await mails('admin_factor_removed', 3)).map(m => [m.an, m.konto]),
       [
         [NAMEN[0], NAMEN[1]],
         [NAMEN[2], NAMEN[1]],
@@ -166,11 +166,11 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
     await callFn('PUT', `/users/${zwei}/password`, { password: 'Neues-Langes-Passwort-9', admin_password: PASS });
     await faellig();
     assert.deepEqual(
-      (await mails('passwort_durch_verwalter', 1)).map(m => [m.an, m.durch]),
+      (await mails('password_by_admin', 1)).map(m => [m.an, m.durch]),
       [[NAMEN[1], NAMEN[0]]],
     );
     assert.deepEqual(
-      (await mails('verwaltung_passwort_gesetzt', 3)).map(m => [m.an, m.konto]),
+      (await mails('admin_password_set', 3)).map(m => [m.an, m.konto]),
       [
         [NAMEN[0], NAMEN[1]],
         [NAMEN[2], NAMEN[1]],
@@ -182,7 +182,7 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
   await t.test('token from login (new device)', async () => {
     gesendet.length = 0;
     await callFn('POST', '/login', { username: NAMEN[2], password: PASS, label: 'Handy' });
-    assert.deepEqual(await mails('token_neu', 1), [
+    assert.deepEqual(await mails('token_added', 1), [
       { an: NAMEN[2], konto: undefined, durch: undefined, name: 'Handy' },
     ]);
   });
@@ -193,12 +193,12 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
     const code = versatz => zf.hotp(zf.fromBase32(secret), zf.timeStep() + versatz);
     await callFn('POST', '/second-factor/confirm', { code: code(0) });
     assert.deepEqual(
-      (await mails('zweiter_faktor_eingerichtet', 1)).map(m => m.an),
+      (await mails('second_factor_enabled', 1)).map(m => m.an),
       [NAMEN[0]],
     );
     await callFn('POST', '/second-factor/disable', { password: PASS, code: code(1) });
     assert.deepEqual(
-      (await mails('zweiter_faktor_abgeschaltet', 1)).map(m => m.an),
+      (await mails('second_factor_disabled', 1)).map(m => m.an),
       [NAMEN[0]],
     );
   });

@@ -70,19 +70,19 @@ export async function occupiedSpace(folder: string): Promise<number> {
 
 /** Uploads can be private (invoices): readable only by the service, even
  * if the folder already existed with looser permissions. */
-export async function privaterFolder(wurzel: string, name: string): Promise<string> {
-  const folder = path.join(wurzel, name);
+export async function privateFolder(root: string, name: string): Promise<string> {
+  const folder = path.join(root, name);
   await fs.promises.mkdir(folder, { recursive: true, mode: 0o700 });
-  for (const o of [wurzel, folder]) await fs.promises.chmod(o, 0o700);
+  for (const o of [root, folder]) await fs.promises.chmod(o, 0o700);
   return folder;
 }
 
 /** A file into an account's private folder: extension from the MIME type, never
  * from the client's name; the name random so that it cannot be guessed. */
-export function privaterReceive(o: {
+export function privateReceive(o: {
   folder: (req: Request) => Promise<string>;
   prefix: (req: Request) => string;
-  typen: Record<string, string>;
+  types: Record<string, string>;
   maxBytes: number;
 }) {
   return multer({
@@ -94,15 +94,15 @@ export function privaterReceive(o: {
         );
       },
       filename: (req, file, cb) => {
-        const ext = fromTable(o.typen, file.mimetype);
-        if (!ext) return cb(fileError('falscher_typ', 'file_type_wrong'), '');
+        const ext = fromTable(o.types, file.mimetype);
+        if (!ext) return cb(fileError('unsupported_type', 'file_type_wrong'), '');
         cb(null, `${o.prefix(req).replace(/[^a-z0-9-]/gi, '_')}_${crypto.randomBytes(12).toString('hex')}${ext}`);
       },
     }),
     limits: { ...FORM_LIMITS, fileSize: o.maxBytes },
     fileFilter: (_req, file, cb) => {
-      if (fromTable(o.typen, file.mimetype)) cb(null, true);
-      else cb(fileError('falscher_typ', 'file_type_wrong'));
+      if (fromTable(o.types, file.mimetype)) cb(null, true);
+      else cb(fileError('unsupported_type', 'file_type_wrong'));
     },
   });
 }
@@ -131,8 +131,8 @@ export async function totalSufficesFor(length: number): Promise<boolean> {
 }
 
 /** The path comes from the request (multer); the service does not touch what would lie outside the storage. */
-export function belowRoot(wurzel: string, file: string): string {
-  const w = path.resolve(wurzel);
+export function belowRoot(root: string, file: string): string {
+  const w = path.resolve(root);
   const d = path.resolve(file);
   if (!d.startsWith(w + path.sep)) throw new Error(`Upload ausserhalb von ${w}`);
   return d;
@@ -140,15 +140,15 @@ export function belowRoot(wurzel: string, file: string): string {
 
 /** After writing: readable only by the service, content matches the type, and the
  * quota holds even without Content-Length (chunked). Otherwise the file is gone again. */
-export async function checkReceivedFile(wurzel: string, received: string, mime: string): Promise<void> {
-  const file = belowRoot(wurzel, received);
+export async function checkReceivedFile(root: string, received: string, mime: string): Promise<void> {
+  const file = belowRoot(root, received);
   await fs.promises.chmod(file, 0o600);
   const refusal = !(await contentFitsToType(file, mime))
-    ? fileError('ungueltig', 'file_content_wrong')
+    ? fileError('invalid', 'file_content_wrong')
     : (await occupiedSpace(path.dirname(file))) > uploadQuotaBytes()
-      ? fileError('zu_gross', 'upload_quota_full', { mb: Math.round(uploadQuotaBytes() / 1024 / 1024) })
+      ? fileError('too_large', 'upload_quota_full', { mb: Math.round(uploadQuotaBytes() / 1024 / 1024) })
       : !(await totalSufficesFor(0))
-        ? fileError('speicher_voll', 'upload_total_full', { mb: uploadTotalMb() })
+        ? fileError('storage_full', 'upload_total_full', { mb: uploadTotalMb() })
         : null;
   if (!refusal) return;
   await fs.promises.rm(file, { force: true });

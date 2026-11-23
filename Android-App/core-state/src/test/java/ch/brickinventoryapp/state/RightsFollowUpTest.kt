@@ -35,7 +35,7 @@ class RightsFollowUpTest {
 
     @Test
     fun `a revoked right is followed up once, then no longer asked`() = runBlocking {
-        paths.responses["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":false}}"""
+        paths.responses["/api/v2/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":false}}"""
         t.session.loggedIn(admin = true)
         assertTrue("on the transition there is a message", t.session.followUpRights(account))
         assertFalse(t.session.state.value.isAdmin)
@@ -46,7 +46,7 @@ class RightsFollowUpTest {
 
     @Test
     fun `without a response from auth me the 403 applies`() = runBlocking {
-        paths.codes["/api/v1/auth/me"] = 500
+        paths.codes["/api/v2/auth/me"] = 500
         t.session.loggedIn(admin = true)
         assertTrue(t.session.followUpRights(account))
         assertFalse(t.session.state.value.isAdmin)
@@ -54,7 +54,7 @@ class RightsFollowUpTest {
 
     @Test
     fun `if auth me still reports the right, it stays`() = runBlocking {
-        paths.responses["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":true}}"""
+        paths.responses["/api/v2/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":true}}"""
         t.session.loggedIn(admin = true)
         assertFalse(t.session.followUpRights(account))
         assertTrue(t.session.state.value.isAdmin)

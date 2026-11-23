@@ -35,7 +35,7 @@ test('add set exactly once', async () => {
     await warte(() => !!d.querySelector('#gallery .empty.empty-state'));
     const buttonList = sichtbar(w, '#tab-gallery [data-click="openCapture"][data-arg="set"]');
     assert.equal(buttonList.length, 1);
-    assert.ok(buttonList[0].closest('#gallery .empty.empty-state'), 'der sichtbare Knopf steht nicht im Leerzustand');
+    assert.ok(buttonList[0].closest('#gallery .empty.empty-state'), 'the visible button is not in the empty state');
     assert.match(d.querySelector('#gallery .empty.empty-state').textContent, /Noch keine Sets/);
   } finally {
     w.close();

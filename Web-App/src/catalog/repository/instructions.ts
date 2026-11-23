@@ -21,7 +21,7 @@ export function deleteInstructionsOfSets(db: DbInterface, setNumber: string) {
   return db.run('DELETE FROM shared_instructions WHERE set_number = $1', [setNumber]);
 }
 
-export function hatBrickinstructions(db: DbInterface, setNumber: string) {
+export function hasBrickinstructions(db: DbInterface, setNumber: string) {
   return db.get<Hit>("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [
     setNumber,
   ]);

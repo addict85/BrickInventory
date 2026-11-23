@@ -32,20 +32,12 @@ test('gallery: the trash is not in the tab order', async () => {
   try {
     await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
     const galerie = d.getElementById('gallery');
-    assert.equal(galerie.querySelectorAll('.delbtn').length, 2, 'die Kacheln tragen keinen Papierkorb');
+    assert.equal(galerie.querySelectorAll('.delbtn').length, 2, 'the tiles carry no trash can');
     const imTab = tabbar(galerie);
-    assert.deepEqual(
-      imTab.filter(el => el.classList.contains('delbtn')).length,
-      0,
-      'ein Papierkorb steht in der Tab-Folge',
-    );
-    assert.equal(imTab.length, 2, 'je Kachel genau ein Halt');
+    assert.deepEqual(imTab.filter(el => el.classList.contains('delbtn')).length, 0, 'a trash can is in the tab order');
+    assert.equal(imTab.length, 2, 'exactly one stop per tile');
     for (const b of galerie.querySelectorAll('.delbtn'))
-      assert.equal(
-        b.getAttribute('aria-hidden'),
-        'true',
-        'der Papierkorb steckt als zweite Schaltfläche in der Kachel',
-      );
+      assert.equal(b.getAttribute('aria-hidden'), 'true', 'the trash can sits in the tile as a second button');
   } finally {
     w.close();
   }
@@ -63,15 +55,15 @@ test('wishlist: without a name the number appears once, space stays on the right
     await warte(() => d.querySelector('.mk-row'));
     const row = d.querySelector('.mk-row');
     const n = (row.textContent.match(/99999-1/g) || []).length;
-    assert.equal(n, 1, `Merkliste: Nummer einmal — steht ${n}-mal da`);
+    assert.equal(n, 1, `wanted list: number once — it appears ${n} times`);
     // Since 29.10. the class (styles.css) holds the space; the row carries no inline style any more.
-    assert.equal(row.getAttribute('style'), null, 'die Zeile trägt wieder einen Inline-Stil');
+    assert.equal(row.getAttribute('style'), null, 'the row carries an inline style again');
     assert.match(
       require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'styles.css'), 'utf8'),
       /\.mk-row\{[^}]*padding:10px 44px 10px 10px/,
-      'rechts kein Platz für den Papierkorb',
+      'no room on the right for the trash can',
     );
-    assert.equal(tabbar(row).filter(el => el !== row).length, 0, 'der Papierkorb steht in der Tab-Folge');
+    assert.equal(tabbar(row).filter(el => el !== row).length, 0, 'the trash can is in the tab order');
   } finally {
     w.close();
   }

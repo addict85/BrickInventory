@@ -76,20 +76,20 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
     assert.ok(layers.length >= 3, `Testdaten: ${layers}`);
     assert.ok(
       layers[0] === 2 && layers.every((e, i) => i === 0 || e <= layers[i - 1] + 1),
-      `Überschriften im Assistenten: ${layers}`,
+      `headings in the wizard: ${layers}`,
     );
   });
 
   await t.test('check key: error at the field, in plain text', async () => {
     const check = `document.querySelector('#setup-modal .wiz-step.active [data-click="setupSource"]').click(); true`;
-    const state = `({ fehler: document.getElementById('wiz-error-rebrickable').textContent, ungueltig: document.getElementById('wiz-rb').getAttribute('aria-invalid'),
+    const state = `({ fehler: document.getElementById('wiz-error-rebrickable').textContent, invalid: document.getElementById('wiz-rb').getAttribute('aria-invalid'),
       fokus: document.activeElement?.id, zeichen: document.getElementById('wiz-status-rebrickable').className,
       toasts: [...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent) })`;
     await b.auswerten(check);
     await bis(`document.getElementById('wiz-error-rebrickable').textContent !== ''`, 'Fehler am leeren Feld', 50);
     const leer = await b.auswerten(state);
     assert.match(leer.fehler, /Schlüssel eintragen/);
-    assert.deepEqual([leer.ungueltig, leer.fokus, leer.toasts], ['true', 'wiz-rb', []]);
+    assert.deepEqual([leer.invalid, leer.fokus, leer.toasts], ['true', 'wiz-rb', []]);
     await b.auswerten(`document.getElementById('wiz-rb').value = 'probe-schluessel'; true`);
     await b.auswerten(check);
     await bis(
@@ -100,10 +100,10 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
     const z = await b.auswerten(state);
     assert.ok(
       await db.get("SELECT 1 FROM global_settings WHERE key = 'rebrickable_api_key'"),
-      'in der Einrichtung speichert der Assistent den ersten Schlüssel ohne Passwortfrage',
+      'during setup the wizard saves the first key without a password prompt',
     );
-    assert.match(z.fehler, /Technische Details/, 'die technische Ursache steht aufklappbar dabei');
-    assert.match(z.zeichen, /missing/, '✗ neben dem Titel');
+    assert.match(z.fehler, /Technische Details/, 'the technical cause is shown alongside, expandable');
+    assert.match(z.zeichen, /missing/, '✗ next to the title');
     assert.deepEqual(z.toasts, []);
     await b.auswerten(
       `document.getElementById('toasts').append(Object.assign(document.createElement('div'), { className: 'toast success', textContent: 'Verbindung steht' })); document.getElementById('wiz-next').click(); true`,
@@ -111,7 +111,7 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
     assert.equal(
       await b.auswerten(`document.querySelectorAll('#toasts .toast').length`),
       0,
-      'Meldungen bleiben nicht über den Schrittwechsel stehen',
+      'messages do not stay across the step change',
     );
     await b.auswerten(`document.getElementById('wiz-back').click(); true`);
     // The wizard has stored the sample key; the banner below needs it missing.
@@ -128,7 +128,7 @@ test('setup wizard only above an empty collection', { concurrency: 1, timeout: 3
       300,
     );
     await ruhig();
-    assert.equal(await b.auswerten(open), false, 'Assistent über der gefüllten Sammlung');
-    assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), false, 'Hinweisband fehlt');
+    assert.equal(await b.auswerten(open), false, 'wizard above the filled collection');
+    assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), false, 'hint band is missing');
   });
 });

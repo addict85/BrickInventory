@@ -125,7 +125,7 @@ class ImageHostGuardTest {
         server.enqueue(MockResponse().setBody("bild"))
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brickfremd/bild.png"))
         server.enqueue(MockResponse().setBody("bild"))
-        assertEquals(200, fetchWithBase("/brick", "/brick/api/v1/bild.png"))
+        assertEquals(200, fetchWithBase("/brick", "/brick/api/v2/bild.png"))
         assertEquals("Bearer GEHEIM", server.takeRequest().getHeader("Authorization"))
         val foreign = server.takeRequest()
         assertEquals("/fremd/bild.png", foreign.path)
@@ -142,7 +142,7 @@ class ImageHostGuardTest {
     fun `a redirect within the base path keeps the token`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brick/bilder/b.png"))
         server.enqueue(MockResponse().setBody("bild"))
-        assertEquals(200, fetchWithBase("/brick", "/brick/api/v1/bild.png"))
+        assertEquals(200, fetchWithBase("/brick", "/brick/api/v2/bild.png"))
         server.takeRequest()
         val target = server.takeRequest()
         assertEquals("/brick/bilder/b.png", target.path)

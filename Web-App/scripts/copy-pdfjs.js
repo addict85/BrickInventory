@@ -13,7 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const DATEIEN = ['pdf.min.mjs', 'pdf.worker.min.mjs'];
+const FILES = ['pdf.min.mjs', 'pdf.worker.min.mjs'];
 
 /** @returns the copied version, or null without an installed pdfjs-dist */
 function copyPdfjs(target = ROOT, source = ROOT) {
@@ -22,7 +22,7 @@ function copyPdfjs(target = ROOT, source = ROOT) {
   const version = JSON.parse(fs.readFileSync(path.join(pkg, 'package.json'), 'utf8')).version;
   const folder = path.join(target, 'public', 'vendor', 'pdfjs');
   fs.mkdirSync(folder, { recursive: true });
-  for (const d of DATEIEN) fs.copyFileSync(path.join(pkg, 'build', d), path.join(folder, d));
+  for (const d of FILES) fs.copyFileSync(path.join(pkg, 'build', d), path.join(folder, d));
   const boot = path.join(target, 'public', 'js', 'pdfjs-boot.js');
   const alt = fs.readFileSync(boot, 'utf8');
   const fresh = alt.replace(/(\/vendor\/pdfjs\/[\w.]+\.mjs\?v=)[\w.-]+/g, `$1${version}`);
@@ -30,7 +30,7 @@ function copyPdfjs(target = ROOT, source = ROOT) {
   return version;
 }
 
-module.exports = { copyPdfjs, DATEIEN };
+module.exports = { copyPdfjs, FILES };
 
 if (require.main === module) {
   const version = copyPdfjs(process.argv[2] ? path.resolve(process.argv[2]) : ROOT);

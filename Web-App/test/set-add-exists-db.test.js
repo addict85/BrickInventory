@@ -104,14 +104,14 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
         const ago = await state(sn);
         const r = await erfassen(path, sn);
         assert.equal(r.status, 200, `${wer}/${name}: ${r.status}`);
-        assert.equal(r.body?.action, 'exists', `${wer}/${name}: erwartet action=exists, war ${JSON.stringify(r.body)}`);
+        assert.equal(r.body?.action, 'exists', `${wer}/${name}: expected action=exists, was ${JSON.stringify(r.body)}`);
         assert.match(
           r.typ,
           /application\/json/,
-          `${wer}/${name}: die Antwort muss gewöhnliches JSON sein — es gibt nichts zu verfolgen`,
+          `${wer}/${name}: the response must be ordinary JSON — there is nothing to follow`,
         );
         const nach = await state(sn);
-        assert.deepEqual(nach, ago, `${wer}/${name}: es wurde geschrieben, obwohl das Set schon da ist`);
+        assert.deepEqual(nach, ago, `${wer}/${name}: something was written although the set already exists`);
       }
     }
 
@@ -121,7 +121,7 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
     const withoutSuffix = OWN.replace(/-\d+$/, '');
     const ago = await state(OWN);
     const r = await erfassen('/api/v2/sets', withoutSuffix);
-    assert.equal(r.body?.action, 'exists', 'ohne Suffix eingegeben muss dasselbe Set erkannt werden');
+    assert.equal(r.body?.action, 'exists', 'entered without a suffix, the same set must be recognised');
     assert.deepEqual(await state(OWN), ago);
 
     // 3. The pre-query says the same as the capture — otherwise the
@@ -134,8 +134,8 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
       [withoutSuffix, true],
     ]) {
       const e = await (await fetch(`${base}/api/v2/sets/exists/${encodeURIComponent(sn)}`)).json();
-      assert.equal(e.exists, erwartet, `exists für ${sn}`);
-      if (erwartet) assert.ok(e.owner_user_id > 0, `Besitzer fehlt für ${sn}`);
+      assert.equal(e.exists, erwartet, `exists for ${sn}`);
+      if (erwartet) assert.ok(e.owner_user_id > 0, `owner missing for ${sn}`);
     }
     // Without a hit the pre-query names the number as it would be created (with suffix).
     const newWithoutSuffix = NEU.replace(/-1$/, '');
@@ -147,7 +147,7 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
     assert.equal(
       bothOnes.owner_user_id,
       mainId,
-      'bei zwei Besitzern muss die eigene Zeile gewinnen — die Detailansicht soll die eigene zeigen',
+      'with two owners the own row must win — the detail view should show the own one',
     );
     assert.equal(bothOnes.is_self, true);
 
@@ -161,7 +161,7 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
       condition: 'N',
       ifPresent: 'aufstocken',
     });
-    assert.equal(erg.action, 'updated', 'der Import muss aufstocken — sonst steht der CSV-Import still');
+    assert.equal(erg.action, 'updated', 'the import must top up — otherwise the CSV import stalls');
     assert.equal((await state(KIND)).quantity, vorImport.quantity + 1);
   } finally {
     await aufraeumen();
@@ -187,5 +187,5 @@ test('one rule for set numbers: normalizeSetNumber', () => {
     ['ab-12', 'ab-12'],
     ['4002!!', '4002-1'],
   ])
-    assert.equal(normalizeSetNumber(eingabe), erwartet, `bei "${eingabe}"`);
+    assert.equal(normalizeSetNumber(eingabe), erwartet, `for "${eingabe}"`);
 });

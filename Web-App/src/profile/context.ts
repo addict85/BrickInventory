@@ -12,7 +12,7 @@ export interface ProfileDependencies {
   config: Readonly<AppConfig>;
   db: Db;
   clock: Clock;
-  faecher: Compartments;
+  compartments: Compartments;
   settings: SettingsServices;
   account: AccountServices;
   mail: MailServices;

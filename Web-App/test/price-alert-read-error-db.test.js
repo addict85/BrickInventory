@@ -45,7 +45,7 @@ test('price alerts: a read error is not an empty list', { concurrency: 1 }, asyn
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const p = testServices().finances.preisalarm;
+  const p = testServices().finances.priceAlert;
   const SN = `92${String(process.pid).slice(-4)}-1`;
 
   await t.test('all alerts', () => assert.rejects(p.allAlerts(uid), /Tabelle gestört/));

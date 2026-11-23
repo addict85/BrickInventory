@@ -120,7 +120,7 @@ test('wishlist: search, condition, sorting, owner', async t => {
     // The starting point: four parameters were added, and a call without
     // them must still return the same list in the same order.
     const liste = await M.wantedItemsOf(alle, undefined, 'EUR');
-    assert.equal(liste.length, 6, `${liste.length} statt 6 Merkposten`);
+    assert.equal(liste.length, 6, `${liste.length} instead of 6 wanted items`);
     // Default added_desc: the most recently added first.
     assert.equal(liste[0].set_number, '75192-1');
   });
@@ -141,10 +141,10 @@ test('wishlist: search, condition, sorting, owner', async t => {
     // That is not broken, but it is not what was asked for; to the person
     // searching it looks as if the filter does not work.
     const liste = await M.wantedItemsOf(alle, undefined, 'EUR', { search: '50%' });
-    assert.deepEqual(nummern(liste), ['60000-1/N'], `Die Maskierung greift nicht: ${nummern(liste).join(', ')}`);
+    assert.deepEqual(nummern(liste), ['60000-1/N'], `The masking does not work: ${nummern(liste).join(', ')}`);
     // The counter-check for it: WITHOUT a percent sign the same search finds both.
     const bothOnes = await M.wantedItemsOf(alle, undefined, 'EUR', { search: '50' });
-    assert.equal(bothOnes.length, 2, `„50" findet ${bothOnes.length} statt 2 — Seed veraltet?`);
+    assert.equal(bothOnes.length, 2, `„50" finds ${bothOnes.length} instead of 2 — seed outdated?`);
   });
 
   await t.test('4. the condition filters, an unknown value does not', async () => {
@@ -164,7 +164,7 @@ test('wishlist: search, condition, sorting, owner', async t => {
     assert.equal(
       nachName[nachName.length - 1].set_number,
       '99999-1',
-      `Ohne Namen steht nicht hinten: ${nummern(nachName).join(', ')}`,
+      `Without a name it is not at the back: ${nummern(nachName).join(', ')}`,
     );
     assert.equal(nachName[0].name, 'Feuerwehr 5000er');
 
@@ -174,7 +174,7 @@ test('wishlist: search, condition, sorting, owner', async t => {
     assert.equal(
       afterPrice[afterPrice.length - 1].market_price,
       null,
-      'Ein Merkposten ohne Preis steht nicht am Ende.',
+      'A wanted item without a price is not at the end.',
     );
 
     const afterNumber = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'num_asc' });
@@ -197,8 +197,8 @@ test('wishlist: search, condition, sorting, owner', async t => {
     // ORDER BY is no longer a sorting but a function as text.
     for (const boese of ['constructor', 'toString', '__proto__', 'gibtsnicht']) {
       const liste = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: boese });
-      assert.equal(liste.length, 6, `${boese} hat die Liste verändert`);
-      assert.equal(liste[0].set_number, '75192-1', `${boese} hat die Reihenfolge verändert`);
+      assert.equal(liste.length, 6, `${boese} changed the list`);
+      assert.equal(liste[0].set_number, '75192-1', `${boese} changed the order`);
     }
   });
 
@@ -213,7 +213,7 @@ test('wishlist: search, condition, sorting, owner', async t => {
       sort: 'num_asc',
     });
     assert.deepEqual(nummern(liste), ['10179-1/N']);
-    assert.equal(liste[0].market_price, 500, 'Die Währung ist beim Zählen verrutscht.');
+    assert.equal(liste[0].market_price, 500, 'The currency slipped while counting.');
   });
 
   await db.pool.end().catch(() => {});

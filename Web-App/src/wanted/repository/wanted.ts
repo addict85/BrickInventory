@@ -1,4 +1,4 @@
-import { setBestand } from '../../../db/inventoryView';
+import { setHoldings } from '../../../db/inventoryView';
 import type { DbInterface, Hit } from '../../../db/database';
 import { marketPriceSql } from '../../../db/moneySql';
 import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSearch';
@@ -19,13 +19,13 @@ export function removeWantedEntry(db: DbInterface, userId: number, setNumber: st
   return db.run('DELETE FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [userId, setNumber, c]);
 }
 
-export function isWanted(db: DbInterface, zuId: number, sn: string, c: string) {
-  return db.get<Hit>('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
+export function isWanted(db: DbInterface, toId: number, sn: string, c: string) {
+  return db.get<Hit>('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [toId, sn, c]);
 }
 
-export function transferWantedEntry(db: DbInterface, zuId: number, ofId: number, sn: string, c: string) {
+export function transferWantedEntry(db: DbInterface, toId: number, ofId: number, sn: string, c: string) {
   return db.run('UPDATE wanted SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [
-    zuId,
+    toId,
     ofId,
     sn,
     c,
@@ -69,20 +69,20 @@ export type WantedRow = {
 
 export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedSelection, currency: string) {
   const values: unknown[] = [userIds];
-  let wo = '';
+  let where = '';
   if (f.setOnly) {
     values.push(f.setOnly);
-    wo += ` AND w.set_number = $${values.length}`;
+    where += ` AND w.set_number = $${values.length}`;
   }
   // Number AND name, as in the gallery; the name comes from the JOIN on rb_sets.
   if (f.search) {
     values.push(containsPattern(f.search));
-    wo +=
+    where +=
       ` AND (w.set_number ILIKE $${values.length}${LIKE_ESCAPE}` + ` OR rb.name ILIKE $${values.length}${LIKE_ESCAPE})`;
   }
   if (f.condition) {
     values.push(f.condition);
-    wo += ` AND w.condition = $${values.length}`;
+    where += ` AND w.condition = $${values.length}`;
   }
   // fromTable(): direct access would also find inherited properties like "constructor".
   const order = fromTable(WANTED_SORTS, f.sort, WANTED_SORTS.added_desc);
@@ -95,7 +95,7 @@ export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedS
             pa.direction AS alarm_direction, pa.threshold AS alarm_threshold,
             pa.triggered AS alarm_triggered,
             ${marketPriceSql('pc')} AS market_price,
-            EXISTS (SELECT 1 FROM ${setBestand('= ANY($1)')} s
+            EXISTS (SELECT 1 FROM ${setHoldings('= ANY($1)')} s
                      WHERE s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
@@ -110,7 +110,7 @@ export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedS
        LEFT JOIN price_cache pc ON pc.set_number = w.set_number
                                AND pc.condition = w.condition
                                AND pc.currency_code = ${pCurrency}
-      WHERE w.user_id = ANY($1)${wo}
+      WHERE w.user_id = ANY($1)${where}
       ORDER BY ${order}, w.set_number, w.condition`,
     values,
   );

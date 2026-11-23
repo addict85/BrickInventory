@@ -49,7 +49,7 @@ test('no test reads a source file that does not exist', () => {
     .readdirSync(__dirname)
     .filter(f => f.endsWith('.test.js'))
     .sort();
-  assert.ok(dateien.length > 100, `Nur ${dateien.length} Testdateien gefunden — Ordner umbenannt?`);
+  assert.ok(dateien.length > 100, `Only ${dateien.length} test files found — folder renamed?`);
 
   const kaputt = [];
   const open = [];
@@ -102,23 +102,23 @@ test('no test reads a source file that does not exist', () => {
   // search expression, not trigger on every new test file.
   assert.ok(
     geprueft > 380,
-    `Nur ${geprueft} Quellpfade gefunden (gemessen waren es 768) — die Muster sind ` +
-      'veraltet, und diese Pruefung sieht damit fast nichts mehr an.',
+    `Only ${geprueft} source paths found (768 were measured) — the patterns are ` +
+      'outdated, and this check then looks at almost nothing.',
   );
 
   assert.deepEqual(
     kaputt,
     [],
-    'Diese Testdateien lesen eine Quelldatei, die es nicht (mehr) gibt. Je nach ' +
-      'Test heisst das ein Absturz — oder, schlimmer, eine Pruefung, die nichts ' +
-      'mehr findet und deshalb schweigt.',
+    'These test files read a source file that does not exist (anymore). Depending on the ' +
+      'test that means a crash — or, worse, a check that no longer finds ' +
+      'anything and therefore stays silent.',
   );
 
   // A second spelling of the same path is allowed; a VARIABLE segment
   // does take away the check's view though. A few cases are legitimate (a test
   // that goes through a list of files) — the number just must not grow
   // without anyone noticing. …
-  assert.ok(absent.length <= 3, `${absent.length} Abwesenheits-Zusicherungen (erlaubt: 3):\n  ` + absent.join('\n  '));
+  assert.ok(absent.length <= 3, `${absent.length} absence assertions (allowed: 3):\n  ` + absent.join('\n  '));
 
   // MEASURED: 62, and the number is not the problem it seems at first
   // glance. Almost all are LOOP VARIABLES (`f`, `datei`, `rel`,
@@ -126,10 +126,10 @@ test('no test reads a source file that does not exist', () => {
   // good pattern; writing it out would make the tests worse.
   assert.ok(
     open.length <= 76,
-    `${open.length} Pfade mit variablem Segment (gemessen waren es 76):\n  ` +
+    `${open.length} paths with a variable segment (76 were measured):\n  ` +
       open.join('\n  ') +
-      '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
-      'variables Segment nimmt dieser Pruefung die Sicht.',
+      '\nWhere possible, the path belongs spelled out — a ' +
+      'variable segment takes away this check’s view.',
   );
 });
 
@@ -166,19 +166,13 @@ test('whoever processes the image queue clears it beforehand', () => {
   // Self-proof: without a finding the assertion below checks nothing.
   assert.ok(
     betroffen.length >= 5,
-    `Nur ${betroffen.length} Dateien arbeiten die Warteschlange ab — Muster veraltet? ` +
-      'Ohne Fund besteht diese Pruefung stillschweigend.',
+    `Only ${betroffen.length} files process the queue — pattern outdated? ` +
+      'Without a match this check passes silently.',
   );
 
   assert.deepEqual(
     ohne,
     [],
-    'Diese Testdateien arbeiten die Bild-Warteschlange ab, ohne sie vorher zu leeren:\n  ' +
-      ohne.join('\n  ') +
-      '\n\n_arbeiteStapel() nimmt die aeltesten Notizen der GANZEN Tabelle. Bleibt aus ' +
-      'einer frueher gelaufenen Datei etwas liegen, arbeitet der Stapel DEREN Zeilen ab ' +
-      'und der Test misst etwas anderes, als er glaubt — und zwar nur manchmal, je ' +
-      'nachdem, was vorher lief. Abhilfe: `await emptyQueue(db)` nach dem ' +
-      'Schema-Vorbau (helpers/image-queue.js).',
+    `These test files process the image queue without emptying it first:\n  ${ohne.join('\n  ')}\n\n_arbeiteStapel() takes the oldest notes of the WHOLE table. If something is left over from a file that ran earlier, the batch processes THOSE rows and the test measures something other than it believes — and only sometimes, depending on what ran before. Remedy: \`await emptyQueue(db)\` after the schema setup (helpers/image-queue.js).`,
   );
 });

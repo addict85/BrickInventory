@@ -778,10 +778,10 @@ class UisRulesTest {
     fun `empty wishlist offers remembering and scanning`() {
         val world = Examples.World(ContextTexts())
         try {
-            world.paths.responses["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
+            world.paths.responses["/api/v2/wanted"] = """{"success":true,"item":[]}"""
             val vm = world.wantedList().also { it.loadWanted() }
             show { WantedRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOpenSingle = { _, _ -> }) }
-            driveUntil("watchlist", ready = { !(world.paths.requests.none { "/api/v1/wanted" in it } || vm.wantedState.value.fetch.loading) })
+            driveUntil("watchlist", ready = { !(world.paths.requests.none { "/api/v2/wanted" in it } || vm.wantedState.value.fetch.loading) })
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.wanted_add_first)).fetchSemanticsNode()
             compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).fetchSemanticsNode()
@@ -919,7 +919,7 @@ class UisRulesTest {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
                     SetCard(SetView(setNumber = "21318-1", name = "Baumhaus"), "", images, {},
-                        price = TilePrice(Money.from(180.0), null, "kauf"), currency = CurrencyCode("CHF"))
+                        price = TilePrice(Money.from(180.0), null, "purchase"), currency = CurrencyCode("CHF"))
                 }
                 // Older servers without kachel_quelle delivered only market prices.
                 Box(Modifier.weight(1f)) {

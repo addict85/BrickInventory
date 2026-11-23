@@ -44,11 +44,11 @@ replace('src/catalog/partsEnrichment.js', {
 
 test('result: value, substitute and reported failure', async () => {
   const { attempts: versuche, valueOr } = _req('src/infra/result.js');
-  assert.deepEqual(await versuche('probe', Promise.resolve([])), { ok: true, wert: [] });
+  assert.deepEqual(await versuche('probe', Promise.resolve([])), { ok: true, value: [] });
   const r = await versuche('probe', async () => {
     throw new Error('weg');
   });
-  assert.deepEqual(r, { ok: false, error: { kontext: 'probe', reason: 'weg' } });
+  assert.deepEqual(r, { ok: false, error: { context: 'probe', reason: 'weg' } });
   assert.equal(valueOr(r, 'ersatz'), 'ersatz');
 });
 
@@ -90,7 +90,7 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
     // With catalog and image: the follow-up work then asks no network for the master, only the steps after it.
     await require('./helpers/inventory').catalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
     try {
-      await nacharbeit.ausfuehren(
+      await nacharbeit.run(
         { set_number: SN, user_id: 0, kind: 'zweit' },
         {
           progress: async f => {
@@ -103,7 +103,7 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
       await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
     }
     assert.deepEqual(
-      states.map(f => f.ohne),
+      states.map(f => f.without),
       [['teile-anreichern', 'bilder']],
     );
   });

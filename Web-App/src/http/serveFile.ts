@@ -33,12 +33,12 @@ export function responseOnFileError(res: Response, err: unknown): void {
 
 /** With the folder as `root`: with the whole path every file would answer 404
  * as soon as the installation lives under a dot folder. */
-export function sendeDatei(res: Response, filePath: string, done: (err?: Error) => void): void {
+export function sendFile(res: Response, filePath: string, done: (err?: Error) => void): void {
   res.sendFile(path.basename(filePath), { root: path.dirname(filePath) }, done);
 }
 
 export function deliverFile(res: Response, filePath: string): void {
-  sendeDatei(res, filePath, (err?: Error) => {
+  sendFile(res, filePath, (err?: Error) => {
     if (err) responseOnFileError(res, err);
   });
 }

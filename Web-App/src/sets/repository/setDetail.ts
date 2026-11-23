@@ -1,17 +1,17 @@
 import type { DbInterface, Hit } from '../../../db/database';
 import { quantityScalar } from '../../../db/stockQuantity';
 import { blJoin, blNumberSql } from '../../../db/blMappingSql';
-import type { CatalogPart, ListenTeil, SetMaster } from '../rows';
+import type { CatalogPart, ListedPart, SetMaster } from '../rows';
 import { setMasterJoin, SET } from '../../../db/catalogView';
 
 /** Details from rb_sets, image and figures from set_catalog (0108). A placeholder
  * "Set …" only says that some account captured the number. */
 export function setMaster(db: DbInterface, setNumber: string) {
   return db.get<SetMaster>(
-    `SELECT ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme,
+    `SELECT ${SET.name} AS name, ${SET.year} AS year, ${SET.theme} AS theme,
            ${SET.parts} AS pieces, c.minifigs, c.image_url, c.image_local,
-           ${SET.name} = 'Set ' || rs.set_num AND ${SET.jahr} IS NULL AND ${SET.thema} IS NULL
-             AND ${SET.parts} IS NULL AS platzhalter
+           ${SET.name} = 'Set ' || rs.set_num AND ${SET.year} IS NULL AND ${SET.theme} IS NULL
+             AND ${SET.parts} IS NULL AS placeholder
       FROM (SELECT $1::text AS nr) x
       ${setMasterJoin('x.nr')}
       LEFT JOIN set_catalog c ON c.set_number = x.nr
@@ -22,8 +22,8 @@ export function setMaster(db: DbInterface, setNumber: string) {
 
 export function setCatalog(db: DbInterface, setNumber: string) {
   return db.get<SetMaster>(
-    `SELECT ${SET.name} AS name, c.image_local, c.image_url, ${SET.jahr} AS year,
-           ${SET.parts} AS pieces, ${SET.thema} AS theme, c.minifigs
+    `SELECT ${SET.name} AS name, c.image_local, c.image_url, ${SET.year} AS year,
+           ${SET.parts} AS pieces, ${SET.theme} AS theme, c.minifigs
       FROM rb_sets rs LEFT JOIN rb_themes rt ON rt.id = rs.theme_id
       LEFT JOIN set_catalog c ON c.set_number = rs.set_num
      WHERE rs.set_num = $1`,
@@ -56,7 +56,7 @@ export function catalogPartsOfSets(db: DbInterface, setNumber: string) {
 }
 
 export function inventoryPartsOfSets(db: DbInterface, invId: number) {
-  return db.all<ListenTeil>(
+  return db.all<ListedPart>(
     `SELECT ip.part_num AS part_number, ip.color_id, ip.quantity AS total_quantity, ip.is_spare,
               COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
               p.name AS part_name, p.part_img_url AS rb_image_url,

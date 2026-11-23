@@ -31,7 +31,7 @@ test('legacy data once per database', { concurrency: 1 }, async t => {
 
   await t.test('the first start upgrades and sets the marker', async () => {
     const r = await legacyStockUpgrade(require('./helpers/sources').testServices());
-    assert.ok(r && typeof r.umgeschluesselt === 'number', JSON.stringify(r));
+    assert.ok(r && typeof r.rekeyed === 'number', JSON.stringify(r));
     assert.ok(await readState(LEGACY_STOCK_BRAND));
   });
 

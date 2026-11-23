@@ -68,6 +68,21 @@
           }
         }
       }
+    },
+    {
+      "includes": ["server.ts", "src/**", "routes/**", "startup/**", "scripts/**", "public/js/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": {
+              "level": "error",
+              "options": {
+                "maxAllowedComplexity": 20
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

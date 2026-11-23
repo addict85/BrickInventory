@@ -59,7 +59,7 @@ test('in the sample tree the script reports exactly the dead references in comme
 test('the codebase has no dead references', () => {
   const r = lauf(path.join(__dirname, '..'));
   const gesehen = Number(/(\d+) Pfadverweise/.exec(r.stderr)?.[1]);
-  assert.ok(gesehen > 200, `nur ${gesehen} Verweise gefunden — greift die Suche noch?\n${r.stderr}`);
-  assert.equal(r.stdout, '', 'Pfad auf die heutige Datei ändern; Geschichte gehört in den Commit');
+  assert.ok(gesehen > 200, `only ${gesehen} references found — does the search still work?\n${r.stderr}`);
+  assert.equal(r.stdout, '', 'Change the path to the current file; history belongs in the commit');
   assert.equal(r.status, 0);
 });

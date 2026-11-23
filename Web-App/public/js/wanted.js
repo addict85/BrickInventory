@@ -155,33 +155,22 @@ export async function loadWanted() {
   const filter = new URLSearchParams(wantedParams());
   filter.delete('sort');
   const filtered = !!filter.toString();
-  if (filtered)
-    reportHits(
-      _wantedItems.length
-        ? tRaw('match.wanted', { n: _wantedItems.length })
-        : G('mks')?.value.trim()
-          ? tRaw('common.no_hits', { query: G('mks').value.trim() })
-          : tRaw('wanted.no_results'),
-    );
-  setHtml(
-    target,
-    _wantedItems.length
-      ? joinHtml(_wantedItems.map(row))
-      : filtered
-        ? emptyState({
-            ico: 'search',
-            title: G('mks')?.value.trim()
-              ? tRaw('common.no_hits', { query: G('mks').value.trim() })
-              : tRaw('wanted.no_results'),
-            button: resetButton('wanted'),
-          })
-        : emptyState({
-            ico: 'wanted',
-            title: tRaw('wanted.empty'),
-            text: tRaw('wanted.empty_hint'),
-            button: { text: tRaw('wanted.first'), click: 'focusField', arg: 'mk-num', kind: 'bs' },
-          }),
-  );
+  if (filtered) reportHits(_wantedItems.length ? tRaw('match.wanted', { n: _wantedItems.length }) : noHitsText());
+  setHtml(target, _wantedItems.length ? joinHtml(_wantedItems.map(row)) : wantedEmpty(filtered));
+}
+
+/** "Nothing found", with the search text when there is one. */
+const noHitsText = (q = G('mks')?.value.trim()) =>
+  q ? tRaw('common.no_hits', { query: q }) : tRaw('wanted.no_results');
+/** @param {boolean} filtered */
+function wantedEmpty(filtered) {
+  if (filtered) return emptyState({ ico: 'search', title: noHitsText(), button: resetButton('wanted') });
+  return emptyState({
+    ico: 'wanted',
+    title: tRaw('wanted.empty'),
+    text: tRaw('wanted.empty_hint'),
+    button: { text: tRaw('wanted.first'), click: 'focusField', arg: 'mk-num', kind: 'bs' },
+  });
 }
 
 /**

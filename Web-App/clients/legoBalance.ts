@@ -17,17 +17,17 @@ export type LegoFetch = (
 }>;
 
 export const legoFetch: LegoFetch = async (url, init = {}) => {
-  const methode = init.method === 'POST' ? 'POST' : 'GET';
+  const method = init.method === 'POST' ? 'POST' : 'GET';
   const r = await holeHttps(url, {
     hosts: ALLOWED_BALANCE_HOSTS,
-    methode,
-    zeitlimitMs: 20_000,
-    maxBytes: methode === 'POST' ? 512 * 1024 : 4 * 1024 * 1024,
-    kopfzeilen: (init.headers ?? {}) as Record<string, string>,
-    ...(typeof init.body === 'string' ? { rumpf: init.body } : {}),
+    method,
+    timeoutMs: 20_000,
+    maxBytes: method === 'POST' ? 512 * 1024 : 4 * 1024 * 1024,
+    headers: (init.headers ?? {}) as Record<string, string>,
+    ...(typeof init.body === 'string' ? { bodyText: init.body } : {}),
   });
-  const text = r.koerper.toString('utf8'),
-    cookies = r.kopf['set-cookie'] ?? [];
+  const text = r.body.toString('utf8'),
+    cookies = r.head['set-cookie'] ?? [];
   return {
     ok: r.status >= 200 && r.status < 300,
     status: r.status,

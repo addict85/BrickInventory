@@ -73,7 +73,7 @@ test('parts fallback for foreign sets', async t => {
                   VALUES (1,'3001',4,6,false)`);
 
     const r = await partsQuery([uid], { set_number: '10280-1' });
-    assert.equal(r.source, 'csv_cache', `Quelle war ${r.source}`);
+    assert.equal(r.source, 'csv_cache', `source was ${r.source}`);
     assert.equal(r.total, 1);
     assert.equal(r.parts[0].part_number, '3001');
   });
@@ -101,7 +101,7 @@ test('image downloads are capped', () => {
   assert.doesNotMatch(
     body,
     /fs\.writeFileSync|fs\.existsSync/,
-    'blockierende Dateizugriffe im Anfragepfad — dieselbe Sache wie in routes/parts.ts',
+    'blocking file access in the request path — the same thing as in routes/parts.ts',
   );
   // fetchImage (clients/imageCdn.ts) goes via the same helper with a redirect limit.
   assert.match(
@@ -109,7 +109,7 @@ test('image downloads are capped', () => {
     /(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
     'eigener Abruf statt des Helfers mit Umleitungsgrenze',
   );
-  assert.match(body, /MAX_BYTES/, 'kein Grössendeckel — eine beliebig grosse Antwort landet komplett im Speicher');
+  assert.match(body, /MAX_BYTES/, 'no size cap — an arbitrarily large response lands completely in memory');
 });
 
 test('write endpoints without login carry a throttle', () => {
@@ -119,11 +119,21 @@ test('write endpoints without login carry a throttle', () => {
   // middleware or in the body), or it counts attempts per IP. qr-login had …
   const src = ohneKommentare(require('./helpers/sources').loginSource());
   // Old form router.post('/pfad' and contract form router.endpoint('POST /api/v2/auth/pfad'.
-  const placeList = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpoint\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
-  assert.ok(placeList.length >= 6, `nur ${placeList.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
+  // Every route ends the body of the one before, reading ones too: a POST used to pass
+  // because the GET /me after it reads req.session.userId.
+  const placeList = [
+    ...src.matchAll(/router\.(?:(get|post|put|delete)\(\s*'|endpoint\(\s*'(GET|POST|PUT|DELETE) )([^']+)'/g),
+  ];
+  assert.ok(placeList.length >= 6, `only ${placeList.length} endpoints found — the check would test nothing`);
+  /** Writing without login or throttle, on purpose. */
+  const WITHOUT = {
+    'POST /api/v2/auth/logout': 'beendet nur die Sitzung oder das Token, mit dem es gerufen wird',
+  };
 
   const open = [];
   for (let i = 0; i < placeList.length; i++) {
+    const method = (placeList[i][1] ?? placeList[i][2]).toUpperCase();
+    if (method === 'GET') continue;
     const von = placeList[i].index;
     const bis = i + 1 < placeList.length ? placeList[i + 1].index : src.length;
     const rumpf = src.slice(von, bis);
@@ -131,9 +141,10 @@ test('write endpoints without login carry a throttle', () => {
       /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|login\(|req\.session\??\.?\.?userId/.test(
         rumpf,
       );
-    if (!protectedOne) open.push(`${(placeList[i][1] ?? placeList[i][2]).toUpperCase()} ${placeList[i][3]}`);
+    const name = `${method} ${placeList[i][3]}`;
+    if (!protectedOne && !Object.hasOwn(WITHOUT, name)) open.push(name);
   }
-  assert.deepEqual(open, [], `weder Anmeldung noch Drossel: ${open.join(', ')}`);
+  assert.deepEqual(open, [], `neither login nor throttle: ${open.join(', ')}`);
 });
 
 test('CSV export defuses formulas, the own import reverses it', () => {
@@ -142,13 +153,13 @@ test('CSV export defuses formulas, the own import reverses it', () => {
   // A field that Excel would execute when opening.
   assert.equal(defuse('=HYPERLINK("http://x";"Klick")'), `'=HYPERLINK("http://x";"Klick")`);
   for (const start of ['=', '+', '-', '@', '\t', '\r']) {
-    assert.equal(defuse(`${start}böse`)[0], "'", `${JSON.stringify(start)} nicht entschärft`);
+    assert.equal(defuse(`${start}böse`)[0], "'", `${JSON.stringify(start)} not defused`);
   }
 
   // Numbers stay numbers — otherwise every negative purchase price would come back with an apostrophe
   // and the own importer would read it as text.
   for (const zahl of ['-5', '-5.00', '-5,00', '42']) {
-    assert.equal(defuse(zahl), zahl, `${zahl} wurde fälschlich entschärft`);
+    assert.equal(defuse(zahl), zahl, `${zahl} was wrongly defused`);
   }
 
   // Harmless texts stay unchanged.
@@ -175,13 +186,13 @@ test('CSV export defuses formulas, the own import reverses it', () => {
  */
 test('CSV export: separators in the field are quoted, formulas also defused after whitespace', () => {
   const { csvField, toCsv, defuse, defusingUndo, csvRowsFromRequest } = _reqCsv('src/infra/csvExport.js');
-  assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 bleibt eine Zelle');
+  assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 stays one cell');
   for (const t of ['a\rb', 'a\tb', 'a\nb', 'a,b', 'a"b']) assert.equal(csvField(t)[0], '"', JSON.stringify(t));
   for (const boese of [' =1+1', '\u3000=1+1', '＝1+1', '＋1', '\n=1']) {
-    assert.equal(defuse(boese)[0], "'", `${JSON.stringify(boese)} nicht entschärft`);
+    assert.equal(defuse(boese)[0], "'", `${JSON.stringify(boese)} not defused`);
     assert.equal(defusingUndo(defuse(boese)), boese);
   }
-  assert.equal(defuse(' -5 '), ' -5 ', 'Zahlen mit Leerraum bleiben Zahlen');
+  assert.equal(defuse(' -5 '), ' -5 ', 'numbers with whitespace stay numbers');
   const csv = toCsv(['a', 'b'], [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }]);
   assert.deepEqual(csvRowsFromRequest(csv).cleaned, [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }], 'Rundlauf');
   const row = csv.split('\r\n')[1];
@@ -199,12 +210,12 @@ test('all three CSV import paths defuse back', () => {
   assert.equal(
     setCsvRows("set_number,quantity\n'-10001-1,1\n").rows[0].sn,
     '-10001-1',
-    'Sets: ein hier erzeugter Export käme mit Hochkomma zurück',
+    'sets: an export produced here would come back with an apostrophe',
   );
   assert.equal(
     csvRowsFromRequest("part_number,quantity\n'=X1,1\n").cleaned[0].part_number,
     '=X1',
-    'Teile und Figuren: ein hier erzeugter Export käme mit Hochkomma zurück',
+    'parts and figures: an export produced here would come back with an apostrophe',
   );
 });
 
@@ -266,10 +277,10 @@ test('the CSV progress stream survives back pressure on the first write', async 
   assert.deepEqual(
     error.map(e => e.message),
     [],
-    'cleanup() greift auf noch nicht angelegte Hörer zu',
+    'cleanup() accesses listeners that are not created yet',
   );
   // Cleaned up: no listener stays hanging on the signal path.
   for (let i = 0; i < 40 && zahl.ab < zahl.an; i++) await new Promise(r => setTimeout(r, 50));
-  assert.ok(zahl.an > 0, 'der Strom horchte gar nicht — greift die Zählung noch?');
-  assert.equal(zahl.ab, zahl.an, 'kein Hörer bleibt am Signalweg hängen');
+  assert.ok(zahl.an > 0, 'the stream did not listen at all — does the count still work?');
+  assert.equal(zahl.ab, zahl.an, 'no listener stays attached to the signal');
 });

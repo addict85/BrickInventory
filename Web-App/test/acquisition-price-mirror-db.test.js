@@ -65,17 +65,17 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ purchase_price: 107.0 }),
       });
-      assert.equal(r.status, 200, `${name}: die Änderung muss angenommen werden`);
+      assert.equal(r.status, 200, `${name}: the change must be accepted`);
 
       const erfasst = parseFloat(
         (await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [id])).purchase_price,
       );
-      assert.equal(erfasst, 107.0, `${name}: die Erfassung muss den neuen Preis tragen`);
+      assert.equal(erfasst, 107.0, `${name}: the acquisition must carry the new price`);
       assert.equal(
         await kachel(),
         107.0,
-        `${name}: die Kachel zieht den neuen Preis nicht mit — Galerie, Finanzübersicht und ` +
-          'Detail-Kachel rechnen aus den Erfassungen und zeigen dann den alten Wert',
+        `${name}: the tile does not take over the new price — gallery, finance overview and ` +
+          'detail tile compute from the acquisitions and then show the old value',
       );
     }
 
@@ -100,8 +100,8 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
     assert.equal(
       await kachel(),
       125.0,
-      'Die Kachel muss den Mittelwert über BEIDE Erfassungen zeigen (50 und 200). ' +
-        'Bei 200 zählt weiterhin nur die neueste — die Regel der gelöschten Spalte.',
+      'The tile must show the mean over BOTH acquisitions (50 and 200). ' +
+        'At 200 only the newest still counts — the rule of the deleted column.',
     );
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});

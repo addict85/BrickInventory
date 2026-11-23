@@ -106,20 +106,20 @@ function clientsAccess(o = {}) {
   const throttle = { waitForSlot: async () => {}, throttle: (/** @type {number} */ ms) => seen.throttled.push(ms) };
   return {
     seen,
-    schluessel: async (/** @type {string} */ n) => /** @type {Record<string, string>} */ (keys)[n] ?? '',
-    zaehle: async (/** @type {string} */ api) => {
+    key: async (/** @type {string} */ n) => /** @type {Record<string, string>} */ (keys)[n] ?? '',
+    count: async (/** @type {string} */ api) => {
       seen.counted.push(api);
       return { allowed: o.allowed ?? true, count: 7, limit: 100 };
     },
     quotaStatus: async () => ({ count: 100, limit: 100, remaining: 0 }),
-    drossel: { foreground: throttle, hintergrund: throttle },
+    throttle: { foreground: throttle, background: throttle },
     bricksetReserve: async (
       /** @type {string} */ setNumber,
       /** @type {string} */ error,
       /** @type {boolean} */ soon,
     ) => {
       seen.reserved.push({ setNumber, error, soon });
-      return { versuch: 1, vorgemerkt: o.queued ?? true, hoechstens: 3 };
+      return { attempt: 1, queued: o.queued ?? true, atMost: 3 };
     },
     bricksetForgotten: async (/** @type {string} */ setNumber) => {
       seen.forgotten.push(setNumber);

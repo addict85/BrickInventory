@@ -20,7 +20,7 @@ const IMAGE_FIELD = /image_url|image_local|imageUrl|set_img_url|thumbUrl\(/;
 // on every response of the real server; the rule below relies on that.
 test('no src attribute inserts an image field without imgUrl()/fullUrl()', () => {
   const dateien = fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'app.bundle.js');
-  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
+  assert.ok(dateien.length >= 10, `Only ${dateien.length} scripts — does the search still match?`);
 
   const treffer = [];
   let geprueft = 0;
@@ -52,11 +52,11 @@ test('no src attribute inserts an image field without imgUrl()/fullUrl()', () =>
       pruefe(ausdruck, m.index);
     }
   }
-  assert.ok(geprueft >= 5, `Nur ${geprueft} src-Einsetzungen gefunden — greift die Suche noch?`);
+  assert.ok(geprueft >= 5, `Only ${geprueft} src insertions found — does the search still match?`);
   assert.deepEqual(
     treffer,
     [],
-    'Hier steht eine Bildadresse ungefiltert im src. Ist sie absolut (CDN), ' +
-      "blockt die Richtlinie img-src 'self' das Laden — genau Marcos Befund.",
+    'Here an image address stands unfiltered in src. If it is absolute (CDN), ' +
+      "the policy img-src 'self' blocks loading — exactly Marco’s finding.",
   );
 });

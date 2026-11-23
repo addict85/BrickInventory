@@ -51,25 +51,25 @@ async function financesOffline(_t, a) {
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
     // Since round 24 (M2) the error stands at the top of the chart box, the cards drop away.
-    await bis(`!!document.querySelector('#portfolio-chart .error-state')`, 'Fehlerzustand oben');
+    await bis(`!!document.querySelector('#portfolio-chart .error-state')`, 'Error state at the top');
     const z = await b.auswerten(`({
       karten: document.getElementById('fin-sum').checkVisibility() ? 'sichtbar' : 'weg',
       hints: document.querySelectorAll('#tab-finance .fval-hint').length,
       erneut: [...document.querySelectorAll('#tab-finance [data-click="loadFinance"], #tab-finance [data-click="loadPortfolioChart"]')].filter(e => e.checkVisibility()).length,
       zeitraum: [...document.querySelectorAll('.period-choice .period-btn')].map(k => k.disabled) })`);
-    assert.equal(z.karten, 'weg', 'Karten ohne Zahl');
-    assert.equal(z.hints, 0, '„Keine Verbindung“ in den Karten');
-    assert.equal(z.erneut, 1, 'genau ein „Erneut versuchen“');
-    assert.deepEqual(z.zeitraum, [true, true, true, true], 'Zeitraumknöpfe bedienbar');
+    assert.equal(z.karten, 'weg', 'Cards without a number');
+    assert.equal(z.hints, 0, '„Keine Verbindung“ in the cards');
+    assert.equal(z.erneut, 1, 'exactly one „Erneut versuchen“');
+    assert.deepEqual(z.zeitraum, [true, true, true, true], 'Period buttons usable');
   } finally {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
   }
   // Back on the network the list loads by itself; otherwise the button helps.
   await b.auswerten(`document.querySelector('#tab-finance [data-click="loadFinance"]')?.click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
+  await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finances after reload', 200);
   await bis(
     `[...document.querySelectorAll('.period-choice .period-btn')].every(k => !k.disabled)`,
-    'Zeitraum wieder frei',
+    'Period free again',
   );
   await ruhig();
 }
@@ -78,9 +78,9 @@ async function purchasePriceDialog(_t, a) {
   const { b, bis, ruhig } = a;
   await groesse(b, 1280);
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-  await bis(`!!document.querySelector('#gallery [data-click="openModal"][data-arg="21318-1"]')`, 'Kachel');
+  await bis(`!!document.querySelector('#gallery [data-click="openModal"][data-arg="21318-1"]')`, 'Tile');
   await b.auswerten(`document.querySelector('#gallery [data-click="openModal"][data-arg="21318-1"]').click(); true`);
-  await bis(`!!document.querySelector('[data-click="openAcqModal"]')`, 'Knopf Kaufpreise');
+  await bis(`!!document.querySelector('[data-click="openAcqModal"]')`, 'Button purchase prices');
   await ruhig();
   await b.auswerten(`document.querySelector('[data-click="openAcqModal"]').click(); true`);
   await bis(`document.querySelectorAll('.acq-table tbody tr').length === 2`, 'Kaufpreis-Tabelle');
@@ -91,14 +91,14 @@ async function purchasePriceDialog(_t, a) {
       const st = getComputedStyle(s); c.font = st.font;
       const noetig = c.measureText(s.selectedOptions[0].text).width + parseFloat(st.paddingLeft) + 16;
       return s.getBoundingClientRect().width < noetig; }).map(s => s.selectedOptions[0].text); })()`);
-  assert.deepEqual(gekuerzt, [], 'Auswahl gekürzt');
+  assert.deepEqual(gekuerzt, [], 'Selection shortened');
 
   const field = `document.querySelector('.acq-table tbody tr:first-child .acq-price')`;
   const enter = wert =>
     b.auswerten(`(() => { const f = ${field}; f.focus(); f.value = ${JSON.stringify(wert)};
     f.dispatchEvent(new Event('input', { bubbles: true })); f.value = ${JSON.stringify(wert)}; f.blur(); return true; })()`);
   await enter('-5');
-  await bis(`!!document.querySelector('.acq-table .field-error:not([hidden])')`, 'Meldung am Preis');
+  await bis(`!!document.querySelector('.acq-table .field-error:not([hidden])')`, 'Message at the price');
   const m = await b.auswerten(`(() => { const t = document.querySelector('.acq-table'), w = t.closest('.tw');
     const zeile = t.querySelector('tbody tr:first-child'), danach = zeile.nextElementSibling;
     const meldung = t.querySelector('.field-error');
@@ -107,15 +107,15 @@ async function purchasePriceDialog(_t, a) {
       headers: [...t.querySelectorAll('thead th')].filter(th => th.getBoundingClientRect().right > w.getBoundingClientRect().right + 1).map(th => th.textContent.trim()),
       zustand: t.querySelector('tbody tr:first-child select').getBoundingClientRect().width }; })()`);
   assert.equal(m.text, 'Der Kaufpreis kann nicht negativ sein.');
-  assert.equal(m.ownRow, true, 'keine Meldungszeile unter der Zeile');
-  assert.equal(m.spalten, m.cells, 'Meldung über alle Spalten');
-  assert.equal(m.rollt, false, 'Tabelle rollt seitlich');
-  assert.deepEqual(m.headers, [], 'Spalten rutschen aus dem Bild');
+  assert.equal(m.ownRow, true, 'no message line below the row');
+  assert.equal(m.spalten, m.cells, 'Message across all columns');
+  assert.equal(m.rollt, false, 'Table scrolls sideways');
+  assert.deepEqual(m.headers, [], 'Columns slide out of view');
   assert.ok(m.zustand >= 80, `„Zustand“ nur ${m.zustand} px breit`);
   await enter('12,x');
   await bis(
     `/„12,x“ ist kein Betrag/.test(${text('.acq-table .field-error')})`,
-    'Unlesbares heisst weiter „kein Betrag“',
+    'Unreadable still means „kein Betrag“',
   );
   await enter('199,99');
   await bis(`document.querySelector('.field-error-row')?.hidden === true`, 'Meldungszeile verschwindet');
@@ -127,7 +127,7 @@ async function financesPhone(_t, a) {
   await groesse(b, 390, 844);
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-    await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="figs"] tbody tr')`, 'Finanzen mit Figuren', 200);
+    await bis(`!!document.querySelector('#fin-tbl [data-fin-kind="figs"] tbody tr')`, 'Finances with minifigs', 200);
     await ruhig();
     const row = name =>
       b.auswerten(`(() => { const r = [...document.querySelectorAll('#fin-tbl tbody tr')].find(x => x.textContent.includes(${JSON.stringify(name)}));
@@ -139,7 +139,7 @@ async function financesPhone(_t, a) {
     const doc = await row('Doc Brown');
     assert.match(doc.unter, /Kaufpreis 9,00 €/, 'Figur ohne Kaufpreis unter dem Namen');
     assert.equal(doc.wert, 'kein Marktpreis');
-    assert.equal(doc.guv, null, 'zweiter Strich neben dem Wert');
+    assert.equal(doc.guv, null, 'second dash next to the value');
     // N1: between “Brick 2 x 4” and “(Schwarz)” there is a word space.
     const abstand =
       await b.auswerten(`(() => { const k = [...document.querySelectorAll('#fin-tbl [data-fin-kind="parts"] .row-open')].find(x => x.textContent.includes('(Schwarz)'));
@@ -149,7 +149,7 @@ async function financesPhone(_t, a) {
       const a = r.getBoundingClientRect(), f = farbe.getClientRects()[0];
       // In der nächsten Zeile ist der Umbruch der Abstand.
       return Math.abs(f.top - a.top) > 3 ? 99 : f.left - a.right; })()`);
-    assert.ok(abstand >= 2, `${abstand} px zwischen „4“ und „(Schwarz)“`);
+    assert.ok(abstand >= 2, `${abstand} px between „4“ and „(Schwarz)“`);
   } finally {
     await groesse(b, 1280);
   }
@@ -161,23 +161,23 @@ async function setNumberFields(_t, a) {
     await b.auswerten(`['add-num', 'mk-num', 'pl-setnr', 'alert-new-set'].map(id => { const f = document.getElementById(id);
     return [id, f.inputMode || '', f.getAttribute('autocapitalize'), f.getAttribute('autocorrect'), f.spellcheck]; })`);
   for (const [id, modus, gross, correction, spelling] of felder) {
-    assert.notEqual(modus, 'numeric', `${id}: Zifferntastatur ohne Bindestrich und Buchstaben`);
+    assert.notEqual(modus, 'numeric', `${id}: numeric keyboard without hyphen and letters`);
     assert.equal(gross, 'off', `${id}: Grossschreibung`);
     assert.equal(correction, 'off', `${id}: Autokorrektur`);
-    assert.equal(spelling, false, `${id}: Rechtschreibprüfung`);
+    assert.equal(spelling, false, `${id}: spell check`);
   }
 }
 
 async function tilePurchases(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-  await bis(`!!document.querySelector('#gallery [data-arg="21318-1"] .tile-date')`, 'Kachel Tree House');
+  await bis(`!!document.querySelector('#gallery [data-arg="21318-1"] .tile-date')`, 'Tile Tree House');
   const k = await b.auswerten(`(() => { const d = document.querySelector('#gallery [data-arg="21318-1"] .tile-date');
     return { text: d.textContent.replace(/\\s+/g, ' ').trim(), etikett: d.querySelector(':scope > span')?.textContent,
       lose: [...d.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim() && !/^\\d{2}\\.\\d{2}\\.\\d{4}$/.test(n.textContent.trim())).map(n => n.textContent) }; })()`);
   assert.equal(k.text, '2 Käufe, zuletzt 02.06.2026');
-  assert.equal(k.etikett, '2 Käufe, zuletzt', 'Etikett ohne eigenes Element');
-  assert.deepEqual(k.lose, [], 'loser Text neben dem Datum');
+  assert.equal(k.etikett, '2 Käufe, zuletzt', 'Label without its own element');
+  assert.deepEqual(k.lose, [], 'loose text next to the date');
 }
 
 async function momentsWithTag(_t, a) {
@@ -190,7 +190,7 @@ async function momentsWithTag(_t, a) {
   for (const wann of [morgen, spaeter])
     await db.run(`INSERT INTO jobs (type, due_at) VALUES ('account_files', $1)`, [wann.toISOString()]);
   await b.auswerten(`document.getElementById('ntab-monitor').click(); true`);
-  await bis(`/Dateien gelöschter Konten/.test(document.getElementById('tab-monitor').textContent)`, 'Aufträge');
+  await bis(`/Dateien gelöschter Konten/.test(document.getElementById('tab-monitor').textContent)`, 'Jobs');
   await b.auswerten(`document.querySelector('.mon-single')?.setAttribute('open', ''); true`);
   const z =
     await b.auswerten(`(() => { const zeilen = [...document.querySelectorAll('#tab-monitor tr')].filter(r => r.textContent.includes('Dateien gelöschter Konten'));
@@ -207,26 +207,26 @@ async function momentsWithTag(_t, a) {
   );
   assert.ok(
     z.some(s => s.includes(`${tag}, 10:03`)),
-    `Einzelauftrag in drei Tagen mit Datum: ${alle}`,
+    `Single job in three days with a date: ${alle}`,
   );
 }
 
 async function legendTogether(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl .fin-legend')`, 'Legende');
+  await bis(`!!document.querySelector('#fin-tbl .fin-legend')`, 'Legend');
   try {
     for (const breite of [700, 820, 1000, 1280]) {
       await groesse(b, breite);
-      await bis(`innerWidth === ${breite}`, 'Fenstergrösse');
+      await bis(`innerWidth === ${breite}`, 'Window size');
       const l =
         await b.auswerten(`(() => { const e = [...document.querySelectorAll('#fin-tbl .fin-legend .legend-entry')];
         return { n: e.length, zeichen: e.filter(x => x.querySelector('.legend-char')).length,
           getrennt: e.filter(x => new Set([...x.getClientRects()].map(r => Math.round(r.top))).size > 1
             || Math.abs(x.querySelector('.legend-char').getBoundingClientRect().top - x.getBoundingClientRect().top) > 8).map(x => x.textContent.trim()) }; })()`);
-      assert.equal(l.n, 3, `${breite} px: Einträge`);
-      assert.equal(l.zeichen, 3, `${breite} px: Zeichen`);
-      assert.deepEqual(l.getrennt, [], `${breite} px: Zeichen und Text getrennt`);
+      assert.equal(l.n, 3, `${breite} px: entries`);
+      assert.equal(l.zeichen, 3, `${breite} px: symbols`);
+      assert.deepEqual(l.getrennt, [], `${breite} px: symbol and text separated`);
     }
   } finally {
     await groesse(b, 1280);
@@ -239,7 +239,7 @@ async function schrift200Phone(_t, a) {
   await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); scrollTo(0, 0); true`);
-    await bis(`!!document.querySelector('#gallery .sc')`, 'Sammlung');
+    await bis(`!!document.querySelector('#gallery .sc')`, 'Collection');
     await ruhig();
     const z = await b.auswerten(`(() => {
       const k = [...document.querySelectorAll('#tab-gallery .brick-stats .bstat')].filter(e => e.checkVisibility());
@@ -253,10 +253,10 @@ async function schrift200Phone(_t, a) {
         .filter(l => l.getBoundingClientRect().width <= 1 || l.scrollWidth > l.clientWidth + 1).map(l => l.textContent.trim());
       return { reihen: new Set(tops).size, verwaist, leiste: Math.round(nav.getBoundingClientRect().height), namen,
         ziele: [...nav.querySelectorAll('.ntab')].filter(t => t.checkVisibility()).map(t => Math.round(t.getBoundingClientRect().height)) }; })()`);
-    assert.ok(z.reihen > 1, `Testaufbau: Die Kennzahlen brechen nicht um (${z.reihen} Reihe)`);
-    assert.deepEqual(z.verwaist, [], 'Zeile beginnt mit „·“');
-    assert.ok(z.leiste <= 100, `Leiste ${z.leiste} px hoch`);
-    assert.deepEqual(z.namen, [], 'Beschriftung der Leiste abgeschnitten');
+    assert.ok(z.reihen > 1, `Test setup: the key figures do not wrap (${z.reihen} row)`);
+    assert.deepEqual(z.verwaist, [], 'Row starts with „·“');
+    assert.ok(z.leiste <= 100, `Bar ${z.leiste} px high`);
+    assert.deepEqual(z.namen, [], 'Label of the bar cut off');
     assert.ok(Math.min(...z.ziele) >= 44, `Tippziel ${Math.min(...z.ziele)} px`);
   } finally {
     await b.auswerten(`document.documentElement.style.removeProperty('font-size'); true`);

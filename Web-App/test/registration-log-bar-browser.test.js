@@ -66,9 +66,9 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
         return { heights: k.map(x => Math.round(x.getBoundingClientRect().height)), ring: getComputedStyle(b).outlineWidth,
           hell: grund.reduce((s, x) => s + x, 0) / 3, levels: [...document.querySelectorAll('.lvbtn')].map(x => x.textContent.trim()) }; })()`),
       );
-      assert.ok(Math.min(...m.heights) >= 24, `Knöpfe ${m.heights.join(', ')} px`);
+      assert.ok(Math.min(...m.heights) >= 24, `buttons ${m.heights.join(', ')} px`);
       assert.equal(m.ring, '3px');
-      assert.ok(dunkel ? m.hell < 80 : m.hell > 200, `Grund ${m.hell} bei dunkel=${dunkel}`);
+      assert.ok(dunkel ? m.hell < 80 : m.hell > 200, `background ${m.hell} with dark=${dunkel}`);
       assert.deepEqual(
         m.levels.map(s => s.replace(/^\W+\s*/, '')),
         ['Hinweise', 'Warnungen', 'Fehler'],
@@ -86,7 +86,7 @@ test('theme, log window, bottom bar and registration', { timeout: 300_000 }, asy
       const heights = await b.auswerten(
         `[...document.querySelectorAll('.ntab')].filter(n => n.offsetParent).map(n => Math.round(n.getBoundingClientRect().height))`,
       );
-      assert.ok(heights.length >= 4 && Math.min(...heights) >= 44, `Leiste ${heights.join(', ')} px`);
+      assert.ok(heights.length >= 4 && Math.min(...heights) >= 44, `bar ${heights.join(', ')} px`);
     } finally {
       await groesse(1280, 900, false);
     }

@@ -36,7 +36,7 @@ test('a read access after a connection loss is retried', async () => {
 test('a write access after a connection loss', async () => {
   const a = onceAbort('08006');
   await assert.rejects(queryWithRetry(a.fn, false), { code: '08006' });
-  assert.equal(a.versuche(), 1, 'Die Zeile stünde sonst womöglich doppelt da');
+  assert.equal(a.versuche(), 1, 'Otherwise the row might show up twice');
 });
 
 test('deadlock and startup phase may retry once even when writing', async () => {

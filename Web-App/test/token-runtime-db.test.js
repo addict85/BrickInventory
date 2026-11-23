@@ -93,7 +93,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       method: 'POST',
       body: { username: NAME, password: PASS, without_token: true },
     });
-    assert.equal(an.status, 200, `Anmeldung scheiterte: ${JSON.stringify(an.body)}`);
+    assert.equal(an.status, 200, `login failed: ${JSON.stringify(an.body)}`);
     const keks = an.cookie.split(';')[0];
 
     // ── 0. A code only with session AND password ──────────────────────────
@@ -105,7 +105,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       headers: { cookie: keks },
       body: { validity: '6m' },
     });
-    assert.equal(withoutPw.status, 400, `ohne Passwort: ${withoutPw.status} ${JSON.stringify(withoutPw.body)}`);
+    assert.equal(withoutPw.status, 400, `without a password: ${withoutPw.status} ${JSON.stringify(withoutPw.body)}`);
     const falsch = await callFn('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
@@ -118,7 +118,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       headers: { authorization: `Bearer ${device}` },
       body: { validity: 'unbegrenzt', password: PASS },
     });
-    assert.equal(perToken.status, 403, 'Mit einem Token allein darf kein neuer Zugang entstehen');
+    assert.equal(perToken.status, 403, 'A token alone must not create new access');
 
     // ── 1. The choice lands at the nonce ───────────────────────────────────
     const sechs = await callFn('/qr-token', {
@@ -127,21 +127,21 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       body: { validity: '6m', password: PASS },
     });
     assert.equal(sechs.status, 200, JSON.stringify(sechs.body));
-    assert.equal(sechs.body.token_days, 180, 'Sechs Monate sind 180 Tage');
+    assert.equal(sechs.body.token_days, 180, 'Six months are 180 days');
 
     // ── 2. Redeeming creates BOTH periods ──────────────────────────
     const ein = await link(sechs.body, keks);
     assert.equal(ein.status, 200, JSON.stringify(ein.body));
     const z = await row(ein.body.token);
-    assert.ok(z, 'Zum ausgegebenen Token muss eine Zeile existieren');
-    assert.equal(z.sliding, true, 'Die Gleitfrist bleibt — sie ist der Rueckhalt gegen vergessene Geraete');
+    assert.ok(z, 'A row must exist for the issued token');
+    assert.equal(z.sliding, true, 'The sliding period stays — it is the backstop against forgotten devices');
     assert.ok(
       Math.abs(daysAhead(z.hard_expires_at) - 180) < 1,
-      `Die feste Frist soll 180 Tage betragen, gemessen: ${daysAhead(z.hard_expires_at)}`,
+      `The fixed period should be 180 days, measured: ${daysAhead(z.hard_expires_at)}`,
     );
     assert.ok(
       daysAhead(z.expires_at) < daysAhead(z.hard_expires_at),
-      'Die gleitende Frist (90 Tage) liegt frueher — sie greift zuerst, genau wie zugesagt',
+      'The sliding period (90 days) is earlier — it applies first, just as promised',
     );
 
     // ── 3. The redeemer can choose NOTHING ────────────────────────
@@ -150,7 +150,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     // wish in the body of the REDEMPTION. If this assertion falls, the
     // whole innovation is a vulnerability instead of a hardening.
     const ohne = await callFn('/qr-token', { method: 'POST', headers: { cookie: keks }, body: { password: PASS } });
-    assert.equal(ohne.body.token_days, 180, 'Ohne Wahl gilt die Höchstdauer von 180 Tagen');
+    assert.equal(ohne.body.token_days, 180, 'Without a choice the maximum duration of 180 days applies');
     const versuch = await callFn('/qr-login', {
       method: 'POST',
       body: { token: ohne.body.token, validity: 'unbegrenzt', token_days: 3650 },
@@ -162,9 +162,9 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     const zv = await row(redeemed.body.token);
     assert.ok(
       zv.hard_expires_at && Math.abs(daysAhead(zv.hard_expires_at) - 180) < 1,
-      'Das einloesende Geraet darf sich keine Laufzeit erteilen — sonst reicht ein abfotografierter Code',
+      'The redeeming device must not grant itself a lifetime — otherwise a photographed code would suffice',
     );
-    assert.ok(zv.expires_at, 'Und erst recht keine unbegrenzte: Der Zugang muss die gewoehnliche Gleitfrist tragen');
+    assert.ok(zv.expires_at, 'And certainly no unlimited one: the access must carry the ordinary sliding period');
 
     // 3b. There is no "unlimited" any more: the old choice and one above the bound give the bound.
     for (const [wahl, tage] of [
@@ -176,11 +176,11 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
         headers: { cookie: keks },
         body: { validity: wahl, password: PASS },
       });
-      assert.equal(r.body.token_days, tage, `„${wahl}" ergibt die Höchstdauer aus TOKEN_MAX_DAYS`);
+      assert.equal(r.body.token_days, tage, `„${wahl}" yields the maximum duration from TOKEN_MAX_DAYS`);
       const ze = await row((await link(r.body, keks)).body.token);
       assert.ok(
         Math.abs(daysAhead(ze.hard_expires_at) - Number(tage)) < 1,
-        `${wahl}: feste Frist ${ze.hard_expires_at}`,
+        `${wahl}: hard expiry ${ze.hard_expires_at}`,
       );
       assert.equal(ze.never_expires, false);
     }
@@ -207,8 +207,8 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
         headers: { cookie: keks },
         body: { validity: nonsense, password: PASS },
       });
-      assert.equal(r.status, 200, `„${nonsense}" soll nicht scheitern, sondern nichts waehlen`);
-      assert.equal(r.body.token_days, 180, `„${nonsense}" darf nur die Vorgabe von 180 Tagen ergeben`);
+      assert.equal(r.status, 200, `„${nonsense}" should not fail but choose nothing`);
+      assert.equal(r.body.token_days, 180, `„${nonsense}" may only yield the default of 180 days`);
     }
 
     // ── 5. The fixed period locks out even when the sliding one is open ──
@@ -222,7 +222,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     });
     const zugang = await link(abgelaufen.body, keks);
     const roh = zugang.body.token;
-    assert.ok(await auth.userForToken(roh), 'Frisch ausgestellt muss der Zugang gelten');
+    assert.ok(await auth.userForToken(roh), 'Freshly issued, the access must be valid');
     await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() - INTERVAL '1 day' WHERE token = $1`, [
       auth.tokenDigest(roh),
     ]);
@@ -230,7 +230,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     assert.equal(
       await auth.userForToken(roh),
       null,
-      'Ist der feste Termin erreicht, gilt der Zugang nicht mehr — auch wenn die Gleitfrist noch laeuft',
+      'Once the fixed date is reached the access is no longer valid — even if the sliding period is still running',
     );
   } finally {
     await new Promise(r => srv.close(r));
@@ -248,21 +248,21 @@ test('QR access: the UI chooses when CREATING, not when redeeming', () => {
   );
   assert.ok(
     !/qr-login/.test(einst),
-    'Die Webapp loest keine QR-Codes ein — taete sie es, waere hier die zweite Stelle, ' +
-      'an der eine Laufzeit gewaehlt werden koennte',
+    'The web app does not redeem QR codes — if it did, this would be the second place ' +
+      'where a lifetime could be chosen',
   );
 
   // And the selection must exist in the markup at all — a field that
   // einstellungen.js reads but nobody fills would be silently ineffective.
   const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
-  assert.ok(/id="qr-validity"/.test(html), 'Das Auswahlfeld fehlt in der Oberflaeche');
+  assert.ok(/id="qr-validity"/.test(html), 'The select field is missing in the interface');
 
   // And the selection matches the list of the server
   const serverList = [...auth.RUNTIME_CHOICES];
-  for (const w of serverList) assert.notEqual(auth.runtimeDays(w), null, `${w} kennt der Server nicht`);
+  for (const w of serverList) assert.notEqual(auth.runtimeDays(w), null, `the server does not know ${w}`);
   const markupList = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)].map(m => m[1]);
-  assert.deepEqual(markupList, serverList, 'Die Auswahl im Markup und die Liste in TOKEN_RUNTIMES laufen auseinander');
-  assert.ok(serverList.length >= 2, 'Die Liste des Servers ist zu kurz');
+  assert.deepEqual(markupList, serverList, 'The choice in the markup and the list in TOKEN_RUNTIMES drift apart');
+  assert.ok(serverList.length >= 2, "The server's list is too short");
   // No longer offered, but still accepted from older pages; it means the bound (3b above).
   assert.equal(auth.runtimeDays('unbegrenzt'), 0);
 });

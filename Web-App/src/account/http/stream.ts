@@ -8,12 +8,12 @@ import type { AccountServices } from '../area';
 import { lineToV1 } from '../../http/apiV1Alias';
 
 export interface Stream {
-  sende(data: object): void;
-  ende(): void;
+  send(data: object): void;
+  end(): void;
   /** Runs along at the end, even if the client or the watch triggers it. */
   atEnd(f: () => void): void;
-  readonly zu: boolean;
-  /** Like sende(), but StromGeschlossen when the stream is closed: the work behind it aborts. */
+  readonly closed: boolean;
+  /** Like send(), but StromGeschlossen when the stream is closed: the work behind it aborts. */
   sendOrAbort(data: object): void;
 }
 
@@ -33,55 +33,55 @@ export interface StreamOptions {
   heartbeat?: boolean;
 }
 
-export function openStream(konto: AccountServices, req: Request, res: Response, o: StreamOptions = {}): Stream {
+export function openStream(account: AccountServices, req: Request, res: Response, o: StreamOptions = {}): Stream {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-store, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
   const deregister = [registerSse(res)];
-  let zu = false,
+  let closed = false,
     lastUsed = '';
-  const ende = () => {
-    if (zu) return;
-    zu = true;
+  const end = () => {
+    if (closed) return;
+    closed = true;
     for (const f of deregister) f();
     if (!res.writableEnded) res.end();
   };
   deregister.push(
-    watchViaAccess(konto, req, () => {
+    watchViaAccess(account, req, () => {
       res.write(sseAccessEnded(!!res.locals.apiV1));
-      ende();
+      end();
     }),
   );
   if (o.heartbeat !== false) {
     const clock = setInterval(() => res.write(': keep-alive\n\n'), 20_000);
     deregister.push(() => clearInterval(clock));
   }
-  req.on('close', ende);
-  const sende = (data: object) => {
-    if (zu || res.destroyed) return;
+  req.on('close', end);
+  const send = (data: object) => {
+    if (closed || res.destroyed) return;
     const json = JSON.stringify(lineToV1(res, data));
     if (o.onlyChanges && json === lastUsed) return;
     lastUsed = json;
     if (!res.write(`data: ${json}\n\n`) && o.backpressure) {
       console.warn(`[strom] Gegendruck (${o.backpressure}) — Verbindung wird geschlossen`);
-      ende();
+      end();
     }
   };
   return {
-    sende,
-    ende,
+    send,
+    end,
     atEnd: f => {
-      if (zu) f();
+      if (closed) f();
       else deregister.push(f);
     },
-    get zu() {
-      return zu;
+    get closed() {
+      return closed;
     },
     sendOrAbort: data => {
-      if (zu) throw new StreamClosed();
-      sende(data);
+      if (closed) throw new StreamClosed();
+      send(data);
     },
   };
 }

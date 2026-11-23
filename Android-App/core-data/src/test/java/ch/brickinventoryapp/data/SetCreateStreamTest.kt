@@ -55,7 +55,7 @@ class SetCreateStreamTest {
     @Test
     fun `a done with success false is an error with sentence, a done with success the completion`() {
         server.enqueue(stream("data: {\"step\":\"meta\",\"set\":\"Falke\"}\n\n" +
-            "data: {\"step\":\"done\",\"success\":true,\"action\":\"added\",\"set_number\":\"10305-1\",\"ergaenzung\":\"ausstehend\"}\n\n"))
+            "data: {\"step\":\"done\",\"success\":true,\"action\":\"added\",\"set_number\":\"10305-1\",\"supplement\":\"pending\"}\n\n"))
         server.enqueue(stream("data: {\"step\":\"done\",\"success\":false,\"error\":\"voll\"}\n\n"))
         assertEquals(listOf(SetCreateStep.MasterData("Falke"),
             SetCreateStep.Done(SetRecorded(number = "10305-1", created = true, supplementPending = true))), steps())

@@ -46,7 +46,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
   await t.test('setHtml() builds the collection, innerHTML outside throws TypeError', async () => {
     assert.ok(
       (await app.b.auswerten(`document.querySelectorAll('#gallery .sc').length`)) > 0,
-      'keine Kachel in der Sammlung',
+      'no tile in the collection',
     );
     const error = await app.b.auswerten(`(() => {
       const versuch = (f) => { try { f(); return 'kein Fehler'; } catch (e) { return e.name; } };

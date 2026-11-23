@@ -97,7 +97,7 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
       return {};
     }
   };
-  assert.equal(lesbar(original).pin, PIN, 'Vorbedingung: die PIN ist aus dem PDF lesbar');
+  assert.equal(lesbar(original).pin, PIN, 'Precondition: the PIN is readable from the PDF');
 
   await t.test('uploaded: encrypted on disk, delivered decrypted', async () => {
     const fd = new FormData();
@@ -107,7 +107,7 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
     assert.equal(r.status, 200, JSON.stringify(b));
     const roh = fs.readFileSync(path.join(vouchers, `${b.voucher.id}.pdf`));
     const ofDisk = lesbar(roh);
-    assert.ok(ofDisk.pin !== PIN && ofDisk.number !== NR, 'PIN und Kartennummer stehen im Klartext auf der Platte');
+    assert.ok(ofDisk.pin !== PIN && ofDisk.number !== NR, 'PIN and card number are stored in plain text on disk');
     assert.notEqual(roh.subarray(0, 5).toString('latin1'), '%PDF-');
     const { ticket } = await (
       await fetch(`${ziel.base}/api/v2/vouchers/${b.voucher.id}/pdf-grant`, {
@@ -119,7 +119,7 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
     const aus = Buffer.from(
       await (await fetch(`${ziel.base}/api/v2/vouchers/${b.voucher.id}/pdf?ticket=${ticket}`)).arrayBuffer(),
     );
-    assert.ok(aus.equals(original), 'das ausgelieferte PDF ist nicht das hochgeladene');
+    assert.ok(aus.equals(original), 'the delivered PDF is not the uploaded one');
   });
 
   await t.test('the plaintext legacy data is encrypted at startup', async () => {
@@ -127,9 +127,9 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
     fs.writeFileSync(alt, original);
     const { encryptLegacyVoucherFiles, readVoucherPdf } = _req('src/vouchers/voucherFiles.js');
     assert.ok((await encryptLegacyVoucherFiles()) >= 1);
-    assert.notEqual(lesbar(fs.readFileSync(alt)).pin, PIN, 'der Altbestand bleibt Klartext');
+    assert.notEqual(lesbar(fs.readFileSync(alt)).pin, PIN, 'the existing files stay plain text');
     assert.ok((await readVoucherPdf(alt)).equals(original));
-    assert.equal(await encryptLegacyVoucherFiles(), 0, 'ein zweiter Lauf verschlüsselt doppelt');
+    assert.equal(await encryptLegacyVoucherFiles(), 0, 'a second run encrypts twice');
   });
 
   await t.test('deleting an account removes instructions and vouchers', async () => {
@@ -141,7 +141,7 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
       body: JSON.stringify({ admin_password: ADMIN_PW, code: codes.shift() }),
     });
     assert.equal(r.status, 200, await r.text());
-    assert.equal(fs.existsSync(uploads), false, 'data/uploads/<id> bleibt nach dem Löschen liegen');
-    assert.equal(fs.existsSync(vouchers), false, 'data/vouchers/<id> bleibt nach dem Löschen liegen');
+    assert.equal(fs.existsSync(uploads), false, 'data/uploads/<id> remains after deletion');
+    assert.equal(fs.existsSync(vouchers), false, 'data/vouchers/<id> remains after deletion');
   });
 });

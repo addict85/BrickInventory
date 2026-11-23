@@ -25,7 +25,7 @@ import androidx.compose.ui.test.performTextReplacement
 import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
-import ch.brickinventoryapp.contract.Gutschein
+import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.finances.ui.VoucherConfirmation
 import ch.brickinventoryapp.finances.ui.VoucherStep
@@ -183,7 +183,7 @@ class FlowTest {
     fun `changing the quantity sends a step to the server`() {
         val w = Examples.World().also { world = it }
         val vm = w.setDetail()
-        w.paths.responses["/api/v1/sets/75192-1"] =
+        w.paths.responses["/api/v2/sets/75192-1"] =
             """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Millennium Falcon","quantity":2}}"""
         show {
             SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "",
@@ -197,7 +197,7 @@ class FlowTest {
             SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .performScrollToNode(plus)
         compose.onNode(plus).performClick()
-        compose.waitUntil(10_000) { w.paths.requestsTo("PUT /api/v1/sets/75192-1").isNotEmpty() }
+        compose.waitUntil(10_000) { w.paths.requestsTo("PUT /api/v2/sets/75192-1").isNotEmpty() }
         assertTrue(w.paths.bodyBytes.any { it.contains("\"quantity_delta\":1") })
     }
 
@@ -231,7 +231,7 @@ class FlowTest {
 
     /** The state of the voucher card; the tests of the confirmation change it. */
     private var condition by mutableStateOf(VoucherUiState(vouchers = listOf(
-        Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView())))
+        Voucher(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView())))
 
     /** The Android level the page chooses by; Robolectric itself runs against API 35. */
     private var level by mutableStateOf(Build.VERSION.SDK_INT)

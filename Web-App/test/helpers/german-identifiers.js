@@ -33,42 +33,83 @@ function isGerman(id) {
   return p.slice(1).some(w => /^(die|der|das|dem|den)$/.test(w));
 }
 
-/** Code without comments and without the contents of strings and templates. */
+/** Code without comments and without the contents of strings and templates.
+ *  Code inside `${…}` is scanned again, so a nested string or template there
+ *  does not end the outer template early and turn its text into "code". */
 function codeOnly(src) {
-  let out = '';
   let i = 0;
-  while (i < src.length) {
-    const c = src[i];
-    const n = src[i + 1];
-    if (c === '/' && n === '/') {
-      while (i < src.length && src[i] !== '\n') i++;
-    } else if (c === '/' && n === '*') {
-      i = src.indexOf('*/', i + 2);
-      i = i < 0 ? src.length : i + 2;
-    } else if (c === "'" || c === '"') {
-      i++;
-      while (i < src.length && src[i] !== c && src[i] !== '\n') i += src[i] === '\\' ? 2 : 1;
-      i++;
-      out += "''";
-    } else if (c === '`') {
-      // Template: drop the text, keep the code in ${…} (one nesting level is enough here).
-      i++;
-      while (i < src.length && src[i] !== '`') {
-        if (src[i] === '\\') i += 2;
-        else if (src[i] === '$' && src[i + 1] === '{') {
-          const end = src.indexOf('}', i);
-          out += ` ${src.slice(i + 2, end < 0 ? src.length : end)} `;
-          i = end < 0 ? src.length : end + 1;
-        } else i++;
+  /** Scans code until an unmatched `}` (inside a template) or the end. */
+  function code(inTemplate) {
+    let out = '';
+    let depth = 0;
+    while (i < src.length) {
+      const c = src[i];
+      const n = src[i + 1];
+      if (c === '/' && n === '/') {
+        while (i < src.length && src[i] !== '\n') i++;
+      } else if (c === '/' && n === '*') {
+        i = src.indexOf('*/', i + 2);
+        i = i < 0 ? src.length : i + 2;
+      } else if (c === "'" || c === '"') {
+        i++;
+        while (i < src.length && src[i] !== c && src[i] !== '\n') i += src[i] === '\\' ? 2 : 1;
+        i++;
+        out += "''";
+      } else if (c === '/' && /(^|[(,=:[!&|?{};+\-*%<>~^]|\breturn)\s*$/.test(out.slice(-12))) {
+        // A regex literal: its quotes and backticks are no strings.
+        regex();
+        out += "''";
+      } else if (c === '`') {
+        i++;
+        out += ` ${template()} `;
+      } else if (c === '{') {
+        depth++;
+        out += c;
+        i++;
+      } else if (c === '}') {
+        if (inTemplate && depth === 0) {
+          i++;
+          return out;
+        }
+        depth--;
+        out += c;
+        i++;
+      } else {
+        out += c;
+        i++;
       }
-      i++;
-      out += "''";
-    } else {
-      out += c;
+    }
+    return out;
+  }
+  /** Skips a regex literal including its flags; `/` inside a class does not end it. */
+  function regex() {
+    let inClass = false;
+    i++;
+    while (i < src.length && src[i] !== '\n') {
+      const c = src[i];
+      if (c === '\\') i++;
+      else if (c === '[') inClass = true;
+      else if (c === ']') inClass = false;
+      else if (c === '/' && !inClass) break;
       i++;
     }
+    i++;
+    while (/[a-z]/.test(src[i] ?? '')) i++;
   }
-  return out;
+  /** Drops the text of a template and keeps the code of its `${…}` parts. */
+  function template() {
+    let out = "''";
+    while (i < src.length && src[i] !== '`') {
+      if (src[i] === '\\') i += 2;
+      else if (src[i] === '$' && src[i + 1] === '{') {
+        i += 2;
+        out += ` ${code(true)} `;
+      } else i++;
+    }
+    i++;
+    return out;
+  }
+  return code(false);
 }
 
 /** Distinct German identifiers of one source text. */

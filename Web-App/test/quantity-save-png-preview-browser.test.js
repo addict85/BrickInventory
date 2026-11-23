@@ -76,7 +76,7 @@ async function closeQuantityOn(_t, a) {
     await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'geschlossen');
     await a.warte(800);
     await a.ruhig();
-    assert.equal(await quantityOf(a.db, [a.uid], '10300-1'), soll, `${knopf} und sofort geschlossen: verloren`);
+    assert.equal(await quantityOf(a.db, [a.uid], '10300-1'), soll, `${knopf} and closed immediately: lost`);
   }
 }
 
@@ -96,9 +96,9 @@ async function transparentPreview(_t, a, nr) {
       const g = c.getContext('2d'); g.drawImage(bild, 0, 0);
       return { quelle: i.currentSrc.replace(/^.*\\/images\\//, ''), typ: r.headers.get('content-type'),
         rand: g.getImageData(0, 0, 1, 1).data[3], innen: g.getImageData(3, 2, 1, 1).data[3] }; })()`);
-    assert.match(m.quelle, /_thumb\.jpg$/, `Testdaten: Kachel zeigt die Vorschau: ${JSON.stringify(m)}`);
-    assert.equal(m.typ, 'image/png', `Vorschau mit falschem Typ: ${JSON.stringify(m)}`);
-    assert.deepEqual([m.rand, m.innen], [255, 0], `Transparenz ging verloren: ${JSON.stringify(m)}`);
+    assert.match(m.quelle, /_thumb\.jpg$/, `test data: tile shows the preview: ${JSON.stringify(m)}`);
+    assert.equal(m.typ, 'image/png', `preview with wrong type: ${JSON.stringify(m)}`);
+    assert.deepEqual([m.rand, m.innen], [255, 0], `transparency was lost: ${JSON.stringify(m)}`);
   } finally {
     await b.auswerten(`document.documentElement.removeAttribute('data-dark'); true`);
   }
@@ -118,7 +118,7 @@ test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, asy
       // How the app stores set images: <nr>.jpg, next to it the preview from vorschauErzeugenAus.
       fs.mkdirSync(ordner, { recursive: true });
       fs.writeFileSync(path.join(ordner, `${nr}.jpg`), checkerboard());
-      assert.ok(await req('src/images/thumbs.js').previewFrom(`/images/sets/${nr}.jpg`), 'Vorschau');
+      assert.ok(await req('src/images/thumbs.js').previewFrom(`/images/sets/${nr}.jpg`), 'preview');
       await catalogSet(db, nr, { name: 'Durchsichtig', year: 2020, theme: 'Bildprobe', pieces: 10 });
       await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_number_with_version($1)', [
         nr,

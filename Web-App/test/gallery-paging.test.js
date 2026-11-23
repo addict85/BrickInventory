@@ -92,7 +92,7 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
   await t.test('without page_size everything, with page_size pages and total', async () => {
     const alle = await hole('/sets');
     assert.equal(alle.sets.length, 5);
-    assert.equal(alle.themes, undefined, 'ohne page_size keine Themenliste');
+    assert.equal(alle.themes, undefined, 'no theme list without page_size');
     const s1 = await hole('/sets?page=1&page_size=2&sort=num_asc');
     const s3 = await hole('/sets?page=3&page_size=2&sort=num_asc');
     assert.deepEqual([s1.sets.map(s => s.set_number), s1.total], [['77101-1', '77102-1'], 5]);
@@ -101,9 +101,9 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
 
   await t.test('the theme list comes over the whole inventory and only on page 1', async () => {
     const s1 = await hole('/sets?page=1&page_size=1&sort=num_asc');
-    assert.deepEqual([...s1.themes].sort(), ['Burg', 'Stadt', 'Weltraum'], 'Themen der übrigen Seiten fehlen');
+    assert.deepEqual([...s1.themes].sort(), ['Burg', 'Stadt', 'Weltraum'], 'Themes of the other pages are missing');
     const s2 = await hole('/sets?page=2&page_size=1&sort=num_asc');
-    assert.ok(!s2.themes?.length, `Folgeseite trägt Themen: ${s2.themes}`);
+    assert.ok(!s2.themes?.length, `Follow-up page carries themes: ${s2.themes}`);
   });
 
   await t.test('minifigures count per figure, not per set, and load page by page', async () => {

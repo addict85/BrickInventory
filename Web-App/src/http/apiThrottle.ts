@@ -12,7 +12,7 @@ export const BUDGET = 600;
 /** Job starts per account and window — in addition to the consumption above. */
 export const JOB_BUDGET = 20;
 
-export const COST = { normal: 1, abruf: 5, preis: 20, auftrag: 25 } as const;
+export const COST = { normal: 1, fetch: 5, price: 20, job: 25 } as const;
 
 /** What starts a job, an upload or a run of several seconds.
  * Deliberately enumerated instead of "everything under /admin": a new route should
@@ -55,13 +55,13 @@ const FOREIGN_FETCH: ReadonlySet<Key> = new Set<Key>([
 ]);
 
 /** @param path relative to /api/v2, as apiThrottle sees it there */
-export function classification(method: string, path: string): { kosten: number; auftrag: boolean } {
+export function classification(method: string, path: string): { cost: number; job: boolean } {
   const k = keyForRequest(method === 'HEAD' ? 'GET' : method, `/api/v2${path}`);
-  if (!k) return { kosten: COST.normal, auftrag: false };
-  if (JOBS.has(k)) return { kosten: COST.auftrag, auftrag: true };
-  if (PRICE_FETCH.has(k)) return { kosten: COST.preis, auftrag: false };
-  if (FOREIGN_FETCH.has(k) || k.startsWith('GET /api/v2/catalog')) return { kosten: COST.abruf, auftrag: false };
-  return { kosten: COST.normal, auftrag: false };
+  if (!k) return { cost: COST.normal, job: false };
+  if (JOBS.has(k)) return { cost: COST.job, job: true };
+  if (PRICE_FETCH.has(k)) return { cost: COST.price, job: false };
+  if (FOREIGN_FETCH.has(k) || k.startsWith('GET /api/v2/catalog')) return { cost: COST.fetch, job: false };
+  return { cost: COST.normal, job: false };
 }
 
 /** The store of the budget (src/throttle, claimApiBudget); src/http knows only its shape. */
@@ -74,17 +74,17 @@ export interface BudgetStore {
 
 /** Rejected requests do not count, otherwise an attack would extend its own lock endlessly. */
 export async function checkBudget(store: BudgetStore, uid: number, method: string, path: string, now = Date.now()) {
-  const { kosten, auftrag } = classification(method, path);
+  const { cost, job } = classification(method, path);
   const r = await store.claimApiBudget(uid, {
-    cost: kosten,
-    job: auftrag,
+    cost: cost,
+    job: job,
     windowS: WINDOW_MS / 1000,
     budget: BUDGET,
     jobBudget: JOB_BUDGET,
     nowMs: now,
   });
   const restSec = Math.max(1, Number(r.rest_s) || 1);
-  return { erlaubt: r.allowed, kosten, auftrag, restSec, units: r.units, jobs: r.jobs };
+  return { allowed: r.allowed, cost, job, restSec, units: r.units, jobs: r.jobs };
 }
 
 /** Behind loginAtInbox: without an account there is nothing to limit, and
@@ -107,11 +107,11 @@ export function apiThrottle(store: BudgetStore) {
     res.setHeader('RateLimit-Limit', String(BUDGET));
     res.setHeader('RateLimit-Remaining', String(Math.max(0, BUDGET - r.units)));
     res.setHeader('RateLimit-Reset', String(r.restSec));
-    if (r.erlaubt) {
+    if (r.allowed) {
       next();
       return;
     }
     res.setHeader('Retry-After', String(r.restSec));
-    sendError(req, res, 'zu_viele', 'too_many_requests', { minutes: Math.max(1, Math.ceil(r.restSec / 60)) });
+    sendError(req, res, 'too_many', 'too_many_requests', { minutes: Math.max(1, Math.ceil(r.restSec / 60)) });
   };
 }

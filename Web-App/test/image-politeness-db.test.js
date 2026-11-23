@@ -64,32 +64,32 @@ test('the image server is queried gently', { concurrency: 1 }, async t => {
       assert.equal(
         maxConcurrent,
         1,
-        `${maxConcurrent} Downloads liefen gleichzeitig — gefordert ist ` +
-          'sequenziell, gerade weil Parallelität einer Heuristik auffällt',
+        `${maxConcurrent} downloads ran at the same time — required is ` +
+          'sequential, precisely because parallelism stands out to a heuristic',
       );
     });
 
     await t.test('at least half a second apart', () => {
-      assert.ok(spacing.length >= 5, `nur ${spacing.length} Abstände gemessen`);
+      assert.ok(spacing.length >= 5, `only ${spacing.length} gaps measured`);
       const smallest = Math.min(...spacing);
-      assert.ok(smallest >= 500, `kleinster Abstand ${smallest} ms — gefordert sind mindestens 500`);
+      assert.ok(smallest >= 500, `smallest gap ${smallest} ms — at least 500 are required`);
     });
 
     await t.test('the intervals are not all the same', () => {
       // An exactly equal spacing is itself a pattern: a heuristic that
       // looks for machines recognizes evenness more easily than irregularity.
       const only = new Set(spacing.map(a => Math.round(a / 50)));
-      assert.ok(only.size > 1, 'Alle Abstände sind gleich — die Verzögerung muss zufällig streuen');
+      assert.ok(only.size > 1, 'All gaps are equal — the delay must scatter randomly');
     });
 
     await t.test('at most 30 requests per minute', () => {
       // The rate results from batch size and tick; both come from the
       // module so that the test repeats no number that may change.
       const { BATCH: stapel, TICK_MS: takt } = _req('src/images/imageDemandRun.js');
-      assert.ok(stapel > 0 && takt > 0, 'STAPEL oder TAKT_MS nicht auffindbar');
+      assert.ok(stapel > 0 && takt > 0, '„STAPEL“ or „TAKT_MS“ not found');
       const jeMinute = stapel * (60_000 / takt);
-      assert.ok(jeMinute <= 30, `${jeMinute} Anfragen je Minute — höchstens 30 sind gewollt`);
-      assert.equal(n, stapel, `${n} Bilder in einem Durchgang statt ${stapel}`);
+      assert.ok(jeMinute <= 30, `${jeMinute} requests per minute — at most 30 are wanted`);
+      assert.equal(n, stapel, `${n} images in one pass instead of ${stapel}`);
     });
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
@@ -130,15 +130,15 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   thumbTimes.length = 0;
   try {
     const n = (await _req('src/images/imageDemandRun.js')._workStack()).total;
-    assert.equal(n, 10, `${n} Vorschauen statt 10 — Vorbedingung stimmt nicht`);
+    assert.equal(n, 10, `${n} previews instead of 10 — precondition does not hold`);
     const abst = thumbTimes.slice(1).map((z, i) => z - thumbTimes[i]);
-    assert.ok(abst.length >= 5, `nur ${abst.length} Abstände`);
+    assert.ok(abst.length >= 5, `only ${abst.length} gaps`);
     const smallest = Math.min(...abst);
     assert.ok(
       smallest >= 500,
-      `kleinster Abstand zwischen zwei Verkleinerungen: ${smallest} ms. Ohne ` +
-        'Pause rechnet der Job zehn davon am Stück — auf schwacher Hardware ist ' +
-        'die CPU dann belegt, und Datenbankabfragen laufen in den Zeitfehler.',
+      `smallest gap between two downscalings: ${smallest} ms. Without ` +
+        'a pause the job computes ten of them in a row — on weak hardware ' +
+        'the CPU is then busy, and database queries run into the timeout.',
     );
   } finally {
     for (const f of dateien) fs.rmSync(f, { force: true });
@@ -148,13 +148,13 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   }
 });
 
-// Counter-check (09.11.2026): bildUserAgent() back to `BrickInventoryManager/…` → red
+// Counter-check (09.11.2026): imageUserAgent() back to `BrickInventoryManager/…` → red
 // “the image job fetches with the proxy's browser identifier”.
 test("the image job fetches with the proxy's browser identifier", () => {
   const dist = path.join(ROOT, 'dist', 'src/images/setImages.js');
-  assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js fehlt — erst bauen');
+  assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js is missing — build first');
   const { IMAGE_HEADERS } = require(path.join(ROOT, 'dist', 'clients/imageCdn.js'));
-  const ua = require(dist).imageUserAgent({ bildUserAgent: null });
-  assert.equal(ua, IMAGE_HEADERS['User-Agent'], 'der Bild-Auftrag holt mit der Browser-Kennung des Proxys');
+  const ua = require(dist).imageUserAgent({ imageUserAgent: null });
+  assert.equal(ua, IMAGE_HEADERS['User-Agent'], 'the image job fetches with the browser identifier of the proxy');
   assert.match(ua, /^Mozilla\/5\.0 /);
 });

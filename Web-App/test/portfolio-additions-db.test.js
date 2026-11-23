@@ -66,24 +66,21 @@ test('the portfolio percentage measures prices, not additional purchases', { con
     await setWith(1, 6, 100, 110);
     await setWith(2, 6, 100, 110);
     const vorher = await kurve();
-    assert.equal(vorher.period_change_pct, 10, `Grundfall stimmt nicht: ${vorher.period_change_pct} statt +10 %`);
+    assert.equal(vorher.period_change_pct, 10, `base case is wrong: ${vorher.period_change_pct} instead of +10 %`);
 
     // The case from Marco's screenshot: 24 sets added today
     for (let i = 3; i <= 26; i++) await setWith(i, 1, 50, 50);
     const nachher = await kurve();
     assert.ok(
       nachher.period_change_pct <= vorher.period_change_pct + 0.01,
-      `Das Erfassen hat die Prozentzahl ERHÖHT: ${vorher.period_change_pct} → ` +
-        `${nachher.period_change_pct}. Genau das war Marcos Befund (+850 %).`,
+      `Recording RAISED the percentage: ${vorher.period_change_pct} → ` +
+        `${nachher.period_change_pct}. That is exactly what Marco reported (+850 %).`,
     );
     assert.ok(
       nachher.period_change_pct >= 0,
-      `Zukäufe dürfen das Vorzeichen nicht drehen, war: ${nachher.period_change_pct}`,
+      `Additional purchases must not flip the sign, was: ${nachher.period_change_pct}`,
     );
-    assert.ok(
-      nachher.period_change_pct <= 10,
-      'Kein Set hat sich um mehr als 10 % bewegt — mehr darf die Summe nicht zeigen',
-    );
+    assert.ok(nachher.period_change_pct <= 10, 'No set moved by more than 10 % — the total must not show more');
 
     // Opposite direction: if a PRICE moves, it must show — otherwise
     // a hard-wired zero would be green too.
@@ -96,14 +93,14 @@ test('the portfolio percentage measures prices, not additional purchases', { con
     const risen = await kurve();
     assert.ok(
       risen.period_change_pct > nachher.period_change_pct + 50,
-      `Eine Preisverdopplung muss sich zeigen, war: ${risen.period_change_pct}`,
+      `A price doubling must show, was: ${risen.period_change_pct}`,
     );
 
     // And the curve itself must have no jump any more: the first point
     // already contains all 26 sets. Without the backfill only the value of the
     // two old ones would stand there.
     const p = risen.points.map(x => x.value);
-    assert.ok(p[0] > 1000, `Der erste Punkt enthält nicht den ganzen Bestand (2×100 + 24×50 = 1400), war: ${p[0]}`);
+    assert.ok(p[0] > 1000, `The first point does not contain the whole stock (2×100 + 24×50 = 1400), was: ${p[0]}`);
 
     // All periods must make the same statement — the monthly resolution
     // (year/max) has its own path for the starting point, and that one has
@@ -114,8 +111,8 @@ test('the portfolio percentage measures prices, not additional purchases', { con
     assert.equal(
       only.length,
       1,
-      `Die Zeiträume sind sich uneinig: ${JSON.stringify(values)} — bei Daten aus ` +
-        'einer einzigen Woche müssen Woche, Monat, Jahr und Max dasselbe zeigen',
+      `The periods disagree: ${JSON.stringify(values)} — with data from ` +
+        'a single week, week, month, year and max must show the same',
     );
   } finally {
     await aufraeumen();

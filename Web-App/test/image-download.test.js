@@ -59,21 +59,25 @@ function aufraeumen() {
 
 test('the building blocks', () => {
   assert.equal(bd.imageExtension(`${CDN}/300121.PNG?x=1`), 'png');
-  assert.equal(bd.imageExtension('https://cdn.rebrickable.com/a/b.html'), 'jpg', 'Endung aus der Adresse übernommen');
+  assert.equal(
+    bd.imageExtension('https://cdn.rebrickable.com/a/b.html'),
+    'jpg',
+    'Extension taken over from the address',
+  );
   assert.equal(bd.imageExtension('https://cdn.rebrickable.com/a/b.svg'), 'jpg');
   for (const inherited of ['constructor', 'tostring', '__proto__'])
     assert.equal(
       bd.imageExtension(`https://cdn.rebrickable.com/a/b.${inherited}`),
       'jpg',
-      `${inherited} als Endung übernommen`,
+      `${inherited} taken over as extension`,
     );
   assert.ok(bd.imageTypeAllowed('image/jpeg; charset=binary'));
   for (const typ of ['image/svg+xml', 'text/html', '', undefined])
-    assert.equal(bd.imageTypeAllowed(typ), false, `${typ} als Bild erlaubt`);
+    assert.equal(bd.imageTypeAllowed(typ), false, `${typ} allowed as an image`);
   for (const gut of ['3001', '973pb0123c01', 'fig-000123', '10294-1', 0, 4])
     assert.equal(bd.filePart(gut), String(gut));
   for (const badOne of ['a/../../x', '../x', 'a..b', '.versteckt', 'a\\b', '', 'x'.repeat(65)])
-    assert.equal(bd.filePart(badOne), null, `${badOne} als Dateiname erlaubt`);
+    assert.equal(bd.filePart(badOne), null, `${badOne} allowed as a file name`);
   assert.equal(bd.targetInFolder('/a/b', '../c'), null);
   assert.equal(bd.targetInFolder('/a/b', 'c.png'), '/a/b/c.png');
 });
@@ -104,18 +108,18 @@ test('downloadImage', { concurrency: 1 }, async t => {
       'https://rebrickable.com.boese.example/x.png',
     ])
       assert.equal(await downloadImage(address, NUMBER, 0, 'part'), null, address);
-    assert.deepEqual(aufrufe, [], 'fremder Host wird abgerufen');
+    assert.deepEqual(aufrufe, [], 'foreign host is fetched');
   });
 
   await t.test('no image: nothing saved', async tt => {
     for (const typ of ['image/svg+xml', 'text/html']) {
       aufraeumen();
       placeAfter(tt, { typ, body: Buffer.from('<svg onload="alert(1)"/>') });
-      assert.equal(await downloadImage(`${CDN}/x.png`, NUMBER, 0, 'part'), null, `${typ} gespeichert`);
+      assert.equal(await downloadImage(`${CDN}/x.png`, NUMBER, 0, 'part'), null, `${typ} saved`);
       assert.deepEqual(
         fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMBER)),
         [],
-        'SVG gespeichert',
+        'SVG saved',
       );
     }
   });
@@ -125,7 +129,7 @@ test('downloadImage', { concurrency: 1 }, async t => {
     const boese = `a/../../../${NUMBER}`;
     tt.after(() => fs.rmSync(path.join(DATA_DIR, `${NUMBER}_0.png`), { force: true }));
     assert.equal(await downloadImage(`${CDN}/x.png`, boese, 0, 'part'), null);
-    assert.deepEqual(aufrufe, [], 'Pfad aus der Teilenummer');
+    assert.deepEqual(aufrufe, [], 'Path from the part number');
     assert.equal(fs.existsSync(path.join(DATA_DIR, `${NUMBER}_0.png`)), false);
   });
 
@@ -133,7 +137,7 @@ test('downloadImage', { concurrency: 1 }, async t => {
     aufraeumen();
     const block = Buffer.alloc(1024 * 1024, 1);
     placeAfter(tt, { body: /** @type {any} */ (Array(bd.IMAGE_MAX_BYTES / block.length + 2).fill(block)) });
-    assert.equal(await downloadImage(`${CDN}/x.png`, NUMBER, 0, 'part'), null, 'übergrosses Bild gespeichert');
+    assert.equal(await downloadImage(`${CDN}/x.png`, NUMBER, 0, 'part'), null, 'oversized image saved');
     assert.deepEqual(
       fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMBER)),
       [],

@@ -40,8 +40,8 @@ function instance(t, uid) {
   const app = _req('startup/app.js').buildApp({
     pool: db.systemWebPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: 'zwei-instanzen-geheimnis-lang-genug',
-    dienste,
+    sessionSecret: 'zwei-instanzen-geheimnis-lang-genug',
+    services: dienste,
     sessionStorage: (req, _res, next) => {
       req.session = { userId: uid };
       next();
@@ -53,7 +53,7 @@ function instance(t, uid) {
     await db.pool.end();
   });
   const base = `http://localhost:${portOf(srv)}`;
-  return { db, dienste, clock, get: p => fetch(base + p) };
+  return { db, services: dienste, clock, get: p => fetch(base + p) };
 }
 
 test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, async t => {
@@ -68,7 +68,7 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
     b = instance(t, eins);
   const remaining = r => Number(r.headers.get('ratelimit-remaining'));
   const claim = (inst, konto, method, p, now) =>
-    q.asAccount(konto, () => checkBudget(inst.dienste.throttle, konto, method, p, now));
+    q.asAccount(konto, () => checkBudget(inst.services.throttle, konto, method, p, now));
   const clear = () => data.run('DELETE FROM api_budget');
 
   await t.test('both instances draw on one budget', async () => {
@@ -81,10 +81,10 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
   await t.test('what one instance used up gives 429 on the other', async () => {
     await clear();
     const now = Date.now();
-    assert.equal((await claim(a, eins, 'GET', '/sets', now)).erlaubt, true);
+    assert.equal((await claim(a, eins, 'GET', '/sets', now)).allowed, true);
     // The rest of the budget in one claim: BUDGET - 1 units of cost 1 would take 599 queries.
     await q.asAccount(eins, () =>
-      a.dienste.throttle.claimApiBudget(eins, {
+      a.services.throttle.claimApiBudget(eins, {
         cost: BUDGET - 1,
         job: false,
         windowS: WINDOW_MS / 1000,
@@ -103,8 +103,8 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
     await clear();
     const now = 2_000_000_000_000;
     for (let i = 0; i < BUDGET; i++) await claim(a, eins, 'GET', '/sets', now);
-    assert.equal((await claim(b, eins, 'GET', '/sets', now)).erlaubt, false);
-    assert.equal((await claim(b, zwei, 'GET', '/sets', now)).erlaubt, true);
+    assert.equal((await claim(b, eins, 'GET', '/sets', now)).allowed, false);
+    assert.equal((await claim(b, zwei, 'GET', '/sets', now)).allowed, true);
   });
 
   await t.test('rejected requests do not count; after the window it starts anew', async () => {
@@ -113,43 +113,43 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
     for (let i = 0; i < BUDGET; i++) await claim(a, eins, 'GET', '/sets', now);
     let ab;
     for (let i = 0; i < 5; i++) ab = await claim(b, eins, 'GET', '/sets', now + 1000);
-    assert.equal(ab.erlaubt, false);
-    assert.equal(ab.units, BUDGET, 'die Abweisung darf den Zähler nicht weiter hochziehen');
-    assert.equal(ab.restSec, WINDOW_MS / 1000 - 1, 'Retry-After nennt das Ende des Fensters');
+    assert.equal(ab.allowed, false);
+    assert.equal(ab.units, BUDGET, 'the rejection must not push the counter up further');
+    assert.equal(ab.restSec, WINDOW_MS / 1000 - 1, 'Retry-After names the end of the window');
     const neu = await claim(a, eins, 'GET', '/sets', now + WINDOW_MS);
-    assert.deepEqual([neu.erlaubt, neu.units, neu.restSec], [true, 1, WINDOW_MS / 1000]);
+    assert.deepEqual([neu.allowed, neu.units, neu.restSec], [true, 1, WINDOW_MS / 1000]);
   });
 
   await t.test('the job pot applies before the general budget, across instances', async () => {
     await clear();
     const now = 2_000_000_000_000;
     for (let i = 0; i < JOB_BUDGET; i++)
-      assert.equal((await claim(i % 2 ? a : b, eins, 'POST', '/sets/partslist-pdf', now)).erlaubt, true);
+      assert.equal((await claim(i % 2 ? a : b, eins, 'POST', '/sets/partslist-pdf', now)).allowed, true);
     const ab = await claim(a, eins, 'POST', '/sets/partslist-pdf', now);
-    assert.deepEqual([ab.erlaubt, ab.auftrag], [false, true]);
-    assert.equal(ab.units, JOB_BUDGET * COST.auftrag, 'sonst hätte das allgemeine Budget zugemacht, nicht der Topf');
-    assert.equal((await claim(b, eins, 'GET', '/sets', now)).erlaubt, true);
+    assert.deepEqual([ab.allowed, ab.job], [false, true]);
+    assert.equal(ab.units, JOB_BUDGET * COST.job, 'otherwise the general budget would have closed, not the bucket');
+    assert.equal((await claim(b, eins, 'GET', '/sets', now)).allowed, true);
   });
 
   // The tickets as the voucher routes use them: issued with the approval, redeemed by the GET.
   await q.asAccount(eins, () =>
-    a.dienste.vouchers.createVoucher(eins, { number: '6299-0000-0001', pin: null, amount: 5, currency: 'CHF' }),
+    a.services.vouchers.createVoucher(eins, { number: '6299-0000-0001', pin: null, amount: 5, currency: 'CHF' }),
   );
-  const ticketOn = inst => q.asAccount(eins, () => inst.dienste.vouchers.releaseExport(eins));
+  const ticketOn = inst => q.asAccount(eins, () => inst.services.vouchers.releaseExport(eins));
   const redeem = (inst, konto, ticket, ziel = 'export') =>
-    q.asAccount(konto, () => inst.dienste.vouchers.redeemTicket(ticket, konto, ziel));
+    q.asAccount(konto, () => inst.services.vouchers.redeemTicket(ticket, konto, ziel));
 
   await t.test('a ticket issued on A is redeemed once on B', async () => {
     const ticket = await ticketOn(a);
     assert.equal(await redeem(b, eins, ticket), true);
-    assert.equal(await redeem(a, eins, ticket), false, 'ein zweites Mal');
+    assert.equal(await redeem(a, eins, ticket), false, 'a second time');
     assert.equal(await data.get('SELECT count(*)::int AS n FROM pdf_tickets').then(r => r.n), 0);
   });
 
   await t.test('only for its account and target', async () => {
     const ticket = await ticketOn(a);
-    assert.equal(await redeem(b, zwei, ticket), false, 'fremdes Konto');
-    assert.equal(await redeem(b, eins, ticket, '12'), false, 'anderes Ziel');
+    assert.equal(await redeem(b, zwei, ticket), false, 'foreign account');
+    assert.equal(await redeem(b, eins, ticket, '12'), false, 'different target');
   });
 
   await t.test('after 60 s it no longer applies (set clock instead of waiting)', async () => {
@@ -160,7 +160,7 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
     await ticketOn(a);
     a.clock.ago(61_000);
     const { inSystemContext } = _req('src/infra/accountContext.js');
-    assert.equal(await inSystemContext('Test', () => a.dienste.vouchers.cleanupTickets()), 1);
+    assert.equal(await inSystemContext('Test', () => a.services.vouchers.cleanupTickets()), 1);
   });
 
   await t.test('two real servers answer at the same time', async () => {

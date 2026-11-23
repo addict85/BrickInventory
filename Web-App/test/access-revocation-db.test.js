@@ -98,7 +98,7 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
       const r = await callFn('DELETE', `/settings/tokens/${teil}`, eigen, { password: PASS });
       assert.equal(r.status, 400, `${teil}: ${JSON.stringify(r.body)}`);
     }
-    assert.equal(await gilt(fremd), true, 'ein Präfix hat den Zugang widerrufen');
+    assert.equal(await gilt(fremd), true, 'a prefix revoked the access');
   });
 
   await t.test('a foreign access needs the password', async () => {
@@ -106,7 +106,7 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
     assert.ok(ohne.status >= 400 && ohne.status < 500, JSON.stringify(ohne.body));
     const falsch = await callFn('DELETE', `/settings/tokens/${kennung(fremd)}`, eigen, { password: 'falsch-falsch-1' });
     assert.ok(falsch.status >= 400 && falsch.status < 500, JSON.stringify(falsch.body));
-    assert.equal(await gilt(fremd), true, 'ohne richtiges Passwort widerrufen');
+    assert.equal(await gilt(fremd), true, 'revoked without the correct password');
   });
 
   await t.test('a foreign account revokes nothing', async () => {
@@ -114,14 +114,14 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
     const r = await callFn('DELETE', `/settings/tokens/${kennung(fremd)}`, tokB, { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.deleted, 0);
-    assert.equal(await gilt(fremd), true, 'ein anderes Konto hat den Zugang widerrufen');
+    assert.equal(await gilt(fremd), true, 'another account revoked the access');
   });
 
   await t.test('with password it works, and the owner gets a notice', async () => {
     const r = await callFn('DELETE', `/settings/tokens/${kennung(fremd)}`, eigen, { password: PASS });
     assert.deepEqual([r.status, r.body.deleted], [200, 1], JSON.stringify(r.body));
     assert.equal(await gilt(fremd), false);
-    assert.equal(await gilt(eigen), true, 'der eigene ist mitgegangen');
+    assert.equal(await gilt(eigen), true, 'the own session went along');
     assert.deepEqual(await hints('access_ended', 1), [
       { an: `${NAMEN[0]}@example.org`, kind: 'access_ended', name: 'Tablet' },
     ]);
@@ -132,7 +132,7 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
     const r = await callFn('DELETE', `/settings/tokens/${kennung(kurz)}`, kurz);
     assert.deepEqual([r.status, r.body.deleted], [200, 1], JSON.stringify(r.body));
     assert.equal(await gilt(kurz), false);
-    assert.equal((await hints('access_ended', 2)).length, 1, 'das eigene Abmelden meldet sich als fremder Widerruf');
+    assert.equal((await hints('access_ended', 2)).length, 1, 'signing out oneself reports as a foreign revocation');
   });
 
   await t.test('all others: one confirmed call, the own one stays', async () => {
@@ -140,11 +140,11 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
       y = await auth.createToken(uidA, 'Y', true);
     const ohne = await callFn('POST', '/settings/sessions/end-others', eigen, { accesses: true });
     assert.ok(ohne.status >= 400 && ohne.status < 500, JSON.stringify(ohne.body));
-    assert.equal(await gilt(x), true, 'ohne Passwort beendet');
+    assert.equal(await gilt(x), true, 'ended without a password');
     const r = await callFn('POST', '/settings/sessions/end-others', eigen, { password: PASS, accesses: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.accesses, 2);
     assert.deepEqual([await gilt(x), await gilt(y), await gilt(eigen)], [false, false, true]);
-    assert.equal((await hints('zugaenge_beendet', 1)).length, 1);
+    assert.equal((await hints('accesses_ended', 1)).length, 1);
   });
 });

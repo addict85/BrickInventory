@@ -98,10 +98,10 @@ test('no substitute value in a transaction', { concurrency: 1 }, async t => {
     const klein = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND quantity = 1', [uid])).id;
 
     await assert.rejects(deleteAcquisition('set', uid, klein, [SET]), (/** @type {any} */ e) => {
-      assert.equal(e.code, '22003', `statt der Ursache kam ${e.code}: ${e.message}`);
+      assert.equal(e.code, '22003', `instead of the cause came ${e.code}: ${e.message}`);
       return true;
     });
-    assert.ok(await haltRow(db, uid, SET), 'Die Bestandszeile ist weg');
+    assert.ok(await haltRow(db, uid, SET), 'The holding row is gone');
     assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id = $1', [uid])).n, 3);
   });
 });

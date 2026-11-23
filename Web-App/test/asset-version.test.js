@@ -18,15 +18,12 @@ test('all ?v= references in index.html carry the version from package.json', () 
   const references = [...html.matchAll(/(?:src|href)="([^"]*\?v=([^"&]*))"/g)];
   // Self-proof: if the pattern finds nothing, the check below would be silently
   // green. MEASURED there are eight.
-  assert.ok(references.length >= 5, `Nur ${references.length} versionierte Verweise gefunden — Muster veraltet?`);
+  assert.ok(references.length >= 5, `Only ${references.length} versioned references found — pattern outdated?`);
 
   const falsch = references.filter(m => m[2] !== version).map(m => `${m[1]}   (erwartet ?v=${version})`);
   assert.deepEqual(
     falsch,
     [],
-    'Diese Verweise tragen eine andere Version als package.json:\n  ' +
-      falsch.join('\n  ') +
-      '\nDer Browser holt sie bis zu sieben Tage lang aus dem Cache (server.ts, ' +
-      'maxAge 7d) — der Deploy bliebe für genau diese Datei wirkungslos.',
+    `These references carry a different version than package.json:\n  ${falsch.join('\n  ')}\nThe browser takes them from its cache for up to seven days (server.ts, maxAge 7d) — the deploy would have no effect for exactly this file.`,
   );
 });

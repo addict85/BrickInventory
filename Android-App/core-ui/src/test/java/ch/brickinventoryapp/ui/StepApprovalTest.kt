@@ -42,7 +42,7 @@ class StepApprovalTest {
     private fun signature(with: PrivateKey) =
         Signature.getInstance(StepApproval.SIGNATURE_SCHEME).apply { initSign(with) }
 
-    /** A server that checks like `routes/api_v1/device.ts`: signature over exactly its message. */
+    /** A server that checks like `routes/api/device.ts`: signature over exactly its message. */
     private class Server(private val key: PublicKey, var challenge: StepResponse) : StepBinding {
         val releases = mutableListOf<String>()
         override suspend fun challenge(action: StepAction) = challenge

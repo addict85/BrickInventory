@@ -32,10 +32,10 @@ test('no new column change in db/database.ts', () => {
 
   assert.ok(
     treffer.length <= INVENTORY_ALTER,
-    `db/database.ts hat ${treffer.length} "ALTER TABLE … ADD COLUMN", erlaubt sind höchstens ` +
-      `${INVENTORY_ALTER}. Eine NEUE Spalte gehört nach db/migrations/ — initSchema() läuft nur ` +
-      `bei einer Versionsänderung, und ein stiller Fehlschlag dort ist dauerhaft. Genau so ist ` +
-      `api_tokens.sliding im Betrieb ausgeblieben und hat die Anmeldung zerlegt.`,
+    `db/database.ts has ${treffer.length} "ALTER TABLE … ADD COLUMN", at most ` +
+      `${INVENTORY_ALTER} are allowed. A NEW column belongs in db/migrations/ — initSchema() only runs ` +
+      `on a version change, and a silent failure there is permanent. That is exactly how ` +
+      `api_tokens.sliding went missing in production and broke the login.`,
   );
 
   // Since db/base.sql there is no schema at all in db/database.ts any more; the
@@ -49,7 +49,7 @@ test('api_tokens.sliding exists on a fresh and on a migrated database', async t 
   if (!db) return;
   const spalte = await db.get(`SELECT data_type FROM information_schema.columns
     WHERE table_schema = current_schema() AND table_name = 'api_tokens' AND column_name = 'sliding'`);
-  assert.equal(spalte?.data_type, 'boolean', 'api_tokens.sliding fehlt');
+  assert.equal(spalte?.data_type, 'boolean', 'api_tokens.sliding is missing');
   // A grown database gets it from the migration: column gone, its statement again.
   await db.run('ALTER TABLE api_tokens DROP COLUMN sliding');
   t.after(() => db.run('ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding BOOLEAN NOT NULL DEFAULT FALSE'));
@@ -57,12 +57,12 @@ test('api_tokens.sliding exists on a fresh and on a migrated database', async t 
   const mit = dateien.filter(f =>
     /api_tokens ADD COLUMN IF NOT EXISTS sliding/i.test(fs.readFileSync(path.join(ROOT, 'db/migrations', f), 'utf8')),
   );
-  assert.equal(mit.length, 1, `sliding in ${mit.length} Migrationen`);
+  assert.equal(mit.length, 1, `sliding in ${mit.length} migrations`);
   const instruction = /ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding[^;]*;/i.exec(
     fs.readFileSync(path.join(ROOT, 'db/migrations', mit[0]), 'utf8').replace(/^\s*--.*$/gm, ''),
   )[0];
   await db.exec(instruction);
   const wieder = await db.get(`SELECT data_type FROM information_schema.columns
     WHERE table_schema = current_schema() AND table_name = 'api_tokens' AND column_name = 'sliding'`);
-  assert.equal(wieder?.data_type, 'boolean', `die Migration ${mit[0]} legt die Spalte nicht an`);
+  assert.equal(wieder?.data_type, 'boolean', `the migration ${mit[0]} does not create the column`);
 });

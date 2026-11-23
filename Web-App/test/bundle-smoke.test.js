@@ -23,17 +23,17 @@ placeBundleSafe();
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 test('the bundle is built', () => {
-  assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js fehlt trotz placeBundleSafe()');
+  assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js is missing despite placeBundleSafe()');
 });
 
 test('index.html loads the bundle and the language file in the right order', () => {
   const iLocale = HTML.indexOf('/locales/');
   const iBundle = HTML.indexOf('app.bundle.js');
-  assert.ok(iLocale > 0, 'Sprachdatei fehlt');
-  assert.ok(iBundle > 0, 'Bündel fehlt');
+  assert.ok(iLocale > 0, 'Language file is missing');
+  assert.ok(iBundle > 0, 'Bundle is missing');
   assert.ok(
     iLocale < iBundle,
-    'Die Sprachdatei muss VOR dem Bündel stehen — i18n.js liest window.I18N_DE beim Auswerten',
+    'The language file must come BEFORE the bundle — i18n.js reads window.I18N_DE on evaluation',
   );
 });
 
@@ -55,9 +55,9 @@ test('the bundle can be evaluated without throwing', async () => {
   try {
     window.eval(fs.readFileSync(BUNDLE, 'utf8'));
   } catch (e) {
-    assert.fail(`Bündel wirft beim Auswerten: ${e.message}`);
+    assert.fail(`Bundle throws on evaluation: ${e.message}`);
   }
-  assert.deepEqual(errors, [], `Fehler beim Auswerten: ${errors.join('; ')}`);
+  assert.deepEqual(errors, [], `Errors on evaluation: ${errors.join('; ')}`);
 
   // Close the window, otherwise the app keeps the process open: startApp() sets up
   // intervals for status queries, and jsdom timers keep running as real
@@ -114,18 +114,18 @@ test('api() delivers an object on every failure instead of throwing', async () =
     const core = await import(`file://${path.join(ROOT, 'public', 'js', 'api.js')}`);
 
     const ok = await core.api('GET', '/ok');
-    assert.equal(ok.success, true, 'Der Normalfall muss unverändert durchgehen');
+    assert.equal(ok.success, true, 'The normal case must pass through unchanged');
     assert.equal(ok.wert, 42);
 
     // The case that used to throw: error status with an HTML body.
     const html = await core.api('GET', '/html502');
-    assert.equal(html.success, false, 'Eine HTML-Fehlerseite muss als Fehlschlag ankommen');
+    assert.equal(html.success, false, 'An HTML error page must arrive as a failure');
     assert.equal(html.status, 502);
-    assert.ok(html.error, 'Ohne Text hätte der Aufrufer nichts anzuzeigen');
+    assert.ok(html.error, 'Without a text the caller would have nothing to show');
 
     // Server error WITH its own message: it must be passed through.
     const json = await core.api('GET', '/json500');
-    assert.equal(json.error, 'kaputt', 'Die Servermeldung darf nicht überschrieben werden');
+    assert.equal(json.error, 'kaputt', 'The server message must not be overwritten');
 
     // JSON without success/error (e.g. from an intermediate layer) is completed.
     const bare = await core.api('GET', '/bare500');
@@ -136,7 +136,7 @@ test('api() delivers an object on every failure instead of throwing', async () =
     globalThis.fetch = () => Promise.reject(new Error('offline'));
     const netz = await core.api('GET', '/x');
     assert.equal(netz.success, false);
-    assert.equal(netz.networkError, true, 'Offline soll unterscheidbar bleiben');
+    assert.equal(netz.networkError, true, 'Offline should remain distinguishable');
   } finally {
     srv.close();
     dom.window.close();
@@ -181,7 +181,7 @@ test('a 401 leads back to the login, not into a dead UI', async () => {
     '/v2/parts': { $status: 401, success: false, error: 'Nicht angemeldet', code: 'not_signed_in' },
   });
   try {
-    assert.equal(d.getElementById('login-screen').style.display, 'none', 'Vorbedingung: angemeldet');
+    assert.equal(d.getElementById('login-screen').style.display, 'none', 'precondition: signed in');
     await reiter(w, 'parts');
     assert.ok(await warte(() => d.getElementById('login-screen').style.display === 'flex'), 'no login after 401');
     assert.equal(d.getElementById('app').style.display, 'none');

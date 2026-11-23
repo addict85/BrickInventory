@@ -157,7 +157,7 @@ test('CSP reports', async t => {
     assert.deepEqual(log, ['[csp] script-src blockierte ? auf ?']);
     await melde({ 'csp-report': { 'effective-directive': 'Freitext mit Leerzeichen!' } }, 'application/csp-report');
     await melde({ 'csp-report': { 'effective-directive': 'X'.repeat(30) } }, 'application/csp-report');
-    assert.deepEqual(log, [], 'keine Direktive, keine Zeile');
+    assert.deepEqual(log, [], 'no directive, no line');
   });
 
   await t.test("the browser's image view reports nothing, an SVG does", async () => {

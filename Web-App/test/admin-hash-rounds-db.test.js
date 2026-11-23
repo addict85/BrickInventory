@@ -39,7 +39,7 @@ test('admin account with the same number of rounds', async t => {
     console.log = echt;
   }
   const admin = await db.get("SELECT password_hash FROM users WHERE username = 'admin'");
-  assert.ok(admin, 'kein Verwalterkonto angelegt');
+  assert.ok(admin, 'no admin account created');
   const { ARGON2_PREFIX } = _req('src/account/passwordHash.js');
   assert.ok(admin.password_hash.startsWith(ARGON2_PREFIX), admin.password_hash.slice(0, 40));
 });

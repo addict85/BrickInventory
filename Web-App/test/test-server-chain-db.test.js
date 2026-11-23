@@ -54,12 +54,12 @@ test('testServer runs through the real chain', { concurrency: 1 }, async t => {
         body: '{}',
       });
     const fremd = await sende('https://boese.example');
-    assert.equal(fremd.status, 403, 'fremde Herkunft mit Sitzungskeks: 403');
+    assert.equal(fremd.status, 403, 'foreign origin with a session cookie: 403');
     assert.equal((await fremd.json()).code, 'foreign_origin');
     assert.notEqual(
       (await (await sende(base)).json().catch(() => ({}))).code,
       'foreign_origin',
-      'die eigene Herkunft kommt durch, sonst bewiese die 403 oben nichts',
+      'the own origin gets through, otherwise the 403 above would prove nothing',
     );
   });
 
@@ -69,6 +69,6 @@ test('testServer runs through the real chain', { concurrency: 1 }, async t => {
     const r = await jobs(ohne);
     assert.equal(r.status, 403);
     assert.equal((await r.json()).code, 'second_factor_mandatory');
-    assert.equal((await jobs(mit)).status, 200, 'mit zweitem Faktor kommt er durch');
+    assert.equal((await jobs(mit)).status, 200, 'with a second factor it gets through');
   });
 });

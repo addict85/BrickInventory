@@ -50,10 +50,10 @@ test('the rule itself', () => {
   assert.equal(
     passwordLack('Mein-Name-Ist-Lego', 'mein-name-ist-lego'),
     'password_too_common',
-    'der Benutzername als Passwort',
+    'the user name as password',
   );
   // argon2id reads the whole password: long sentences and umlauts work, only oversize does not.
-  assert.equal(passwordLack('ä'.repeat(1024)), null, '1024 Zeichen gehen noch');
+  assert.equal(passwordLack('ä'.repeat(1024)), null, '1024 characters still work');
   assert.equal(passwordLack('a'.repeat(1025)), 'password_too_long');
 });
 
@@ -210,7 +210,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
         r => r.split(' ')[1],
       ),
       '200',
-      'ein anderes Passwort geht (Prüfung des Tokens)',
+      'another password works (check of the token)',
     );
     await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
       ziel,
@@ -297,7 +297,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
       environment({ ADMIN_PASSWORD: undefined });
     }
     const admin = await db.get("SELECT password_hash, must_change_password FROM users WHERE username = 'admin'");
-    assert.equal(await passwordFits('passwort123', admin.password_hash), false, 'das schwache Passwort gilt');
+    assert.equal(await passwordFits('passwort123', admin.password_hash), false, 'the weak password counts');
     assert.equal(admin.must_change_password, true);
     assert.ok(
       warnings.some(w => /ADMIN_PASSWORD wird nicht verwendet/.test(w)),

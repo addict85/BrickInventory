@@ -80,28 +80,28 @@ test('session: always read, written only every few minutes', async t => {
     for (let i = 0; i < N; i++) letzte = await (await fetch(a.base + '/bild', { headers: { cookie: keksA } })).json();
     count = false;
 
-    assert.equal(howOften(LESEN), N, `gelesen wird bei jeder Anfrage — erwartet ${N}, gezählt ${howOften(LESEN)}`);
+    assert.equal(howOften(LESEN), N, `it is read on every request — expected ${N}, counted ${howOften(LESEN)}`);
     // EXACTLY one, and both deviations are errors: more means the
     // throttling does not apply; ZERO means it throttles too much and the
     // expiry time is never carried along.
     assert.equal(
       howOften(WRITE),
       1,
-      `${howOften(WRITE)} Schreibvorgänge bei ${N} Anfragen — erwartet genau 1 ` +
-        `(mehr: die Drosselung greift nicht; keiner: sie drosselt zu viel)`,
+      `${howOften(WRITE)} writes for ${N} requests — expected exactly 1 ` +
+        `(more: the throttle does not work; none: it throttles too much)`,
     );
 
     // ── 2. The session lives on ─────────────────────────────────────────
     // Without this assertion „not writing at all any more" would be the best grade.
-    assert.equal(letzte.uid, 990601, 'die Sitzung muss über alle Anfragen hinweg gültig bleiben');
+    assert.equal(letzte.uid, 990601, 'the session must stay valid across all requests');
 
     // ── 3. And the expiry time really stands in the database ──────────────
     const sid = decodeURIComponent(keksA.split('=')[1]).slice(2).split('.')[0];
     const row = await db.get('SELECT expire FROM user_sessions WHERE sid = $1', [sid]);
-    assert.ok(row?.expire, 'die Sitzungszeile muss eine Ablaufzeit tragen');
+    assert.ok(row?.expire, 'the session row must carry an expiry time');
     assert.ok(
       new Date(row.expire).getTime() > Date.now(),
-      'die Ablaufzeit muss in der Zukunft liegen — sonst ist die Sitzung sofort tot',
+      'the expiry time must be in the future — otherwise the session is dead immediately',
     );
 
     // ── COUNTER-CHECK: without a period every request writes ───────────────────────
@@ -117,7 +117,7 @@ test('session: always read, written only every few minutes', async t => {
     assert.equal(
       howOften(WRITE),
       N,
-      `Gegenprobe: ohne Frist müssten es ${N} Schreibvorgänge sein, gezählt ${howOften(WRITE)}`,
+      `counter-check: without a period there would have to be ${N} writes, counted ${howOften(WRITE)}`,
     );
 
     // ── 4. And startup/app.ts uses the throttling at all ──────────────────
@@ -128,7 +128,7 @@ test('session: always read, written only every few minutes', async t => {
     assert.match(
       source,
       /touchThrottle\(sessionStorage[,)]/,
-      'startup/app.ts drosselt seinen Sitzungsspeicher nicht — dann zahlt die Webapp weiter zwei Abfragen je Anfrage',
+      'startup/app.ts does not throttle its session store — then the web app keeps paying two queries per request',
     );
   } finally {
     db.pool.query = altQuery;

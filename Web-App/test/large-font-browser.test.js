@@ -88,9 +88,9 @@ test('large font and narrow devices: collection readable', { timeout: 180_000 },
   ]) {
     await t.test(`${breite} px, ${schrift === 32 ? '200' : '100'} %`, async () => {
       const m = await fall(breite, schrift);
-      assert.equal(m.rem, schrift, 'Grundschrift nicht übernommen');
+      assert.equal(m.rem, schrift, 'Base font not taken over');
       assert.deepEqual(m.funde, []);
-      assert.equal(m.spalten, spalten, 'Spalten im Raster');
+      assert.equal(m.spalten, spalten, 'Columns in the grid');
     });
   }
 });

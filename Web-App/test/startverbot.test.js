@@ -78,7 +78,7 @@ test('example database password: startup refused', { timeout: 30_000 }, async ()
     { DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@127.0.0.1:1/x' },
   ]) {
     const { code, log } = await starte(env);
-    assert.equal(code, 1, `der Server läuft mit dem Beispielpasswort weiter: ${log.slice(-400)}`);
+    assert.equal(code, 1, `the server keeps running with the example password: ${log.slice(-400)}`);
     assert.match(log, /Beispielpasswort .*Start verweigert/);
   }
 });
@@ -124,7 +124,7 @@ test('without APP_BASE_URL in production: startup refused, only explicitly allow
   const ohne = await starte(db);
   assert.equal(ohne.code, 1, ohne.log.slice(-400));
   assert.match(ohne.log, /APP_BASE_URL fehlt im Betrieb: .*Start verweigert/);
-  assert.doesNotMatch(ohne.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
+  assert.doesNotMatch(ohne.log, /Database initialisation failed/, 'the ban comes before the database');
   // With the exception it starts up to the database, reported loudly.
   const erlaubt = await starte({ ...db, APP_BASE_URL_MISSING_OK: '1' });
   assert.match(
@@ -145,7 +145,7 @@ test('npm start sets NODE_ENV=production', () => {
 });
 
 test('outside production no ban, with an own password none', () => {
-  assert.deepEqual(startBans({ NODE_ENV: 'development' }), [], 'ausserhalb von Produktion kein Verbot');
+  assert.deepEqual(startBans({ NODE_ENV: 'development' }), [], 'outside production no ban');
   const basis = { NODE_ENV: 'production', PGPASSWORD: 'eigenes', APP_BASE_URL: 'https://lego.example.org' };
   assert.deepEqual(startBans({ ...basis, TRUST_PROXY: '172.28.73.10' }), []);
   assert.equal(startBans({ ...basis, TRUST_PROXY: '1' }).length, 1);

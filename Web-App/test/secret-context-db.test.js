@@ -106,14 +106,14 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(
       [await pinOf(a, ga.id), await pinOf(b, gb.id)],
       ['1111', '3333'],
-      'Vorbedingung: lesbar am eigenen Ort',
+      'precondition: readable at its own place',
     );
     const row = async id => db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);
     // PIN from account a to account b, number within a from one row to another.
     await db.run('UPDATE vouchers SET pin = $1 WHERE id = $2', [(await row(ga.id)).pin, gb.id]);
     await db.run('UPDATE vouchers SET number = $1 WHERE id = $2', [(await row(ga.id)).number, ga2.id]);
-    assert.equal(await stumm(() => pinOf(b, gb.id)), null, 'PIN in fremdem Konto lesbar');
-    assert.equal(await stumm(async () => (await gr.voucher(a, ga2.id)).number), '', 'Nummer in anderer Zeile lesbar');
+    assert.equal(await stumm(() => pinOf(b, gb.id)), null, 'PIN readable in a foreign account');
+    assert.equal(await stumm(async () => (await gr.voucher(a, ga2.id)).number), '', 'number readable in another row');
 
     // TOTP secret from a to b.
     const secretA = await zf.beginSetup(a);
@@ -123,8 +123,8 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
       'UPDATE second_factor SET secret = (SELECT secret FROM second_factor WHERE user_id = $1) WHERE user_id = $2',
       [a, b],
     );
-    assert.equal(await stumm(() => zf.confirmSetup(b, codeA)), null, 'fremdes TOTP-Geheimnis lesbar');
-    assert.ok(await zf.confirmSetup(a, codeA), 'Vorbedingung: am eigenen Ort gilt der Code');
+    assert.equal(await stumm(() => zf.confirmSetup(b, codeA)), null, 'foreign TOTP secret readable');
+    assert.ok(await zf.confirmSetup(a, codeA), 'precondition: the code is valid at its own place');
 
     // SMTP password into the row of an API key.
     await settings.setGlobalSetting('smtp_pass', 'Smtp-Geheim-1');
@@ -134,7 +134,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.equal(
       await stumm(() => settings.getGlobalSetting('brickset_api_key')),
       null,
-      'Wert in anderer Spalte lesbar',
+      'value readable in another column',
     );
 
     // Stored response of an idempotency key into the entry of another account.
@@ -157,17 +157,17 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     const da = path.join(dateien.VOUCHER_DIR, String(a), `${ga.id}.pdf`),
       db_ = path.join(dateien.VOUCHER_DIR, String(b), `${gb.id}.pdf`);
     await dateien.writeVoucherPdf(da, PDF);
-    assert.ok((await dateien.readVoucherPdf(da)).equals(PDF), 'Vorbedingung: am eigenen Ort lesbar');
+    assert.ok((await dateien.readVoucherPdf(da)).equals(PDF), 'precondition: readable at its own place');
     fs.mkdirSync(path.dirname(db_), { recursive: true });
     fs.copyFileSync(da, db_);
-    assert.equal(await stumm(() => dateien.readVoucherPdf(db_)), null, 'PDF an fremdem Ort lesbar');
+    assert.equal(await stumm(() => dateien.readVoucherPdf(db_)), null, 'PDF readable at a foreign place');
   });
 
   await t.test('plain text and v1 are rejected on read', async () => {
     const k = g.context('probe', 1);
     assert.equal(await stumm(() => g.decrypt('klartext', k)), null);
     assert.equal(await stumm(() => g.decrypt(alsV1('alt'), k)), null);
-    assert.equal(g.readOldValue(alsV1('alt'), k), 'alt', 'nur das Umschlüsseln liest v1');
+    assert.equal(g.readOldValue(alsV1('alt'), k), 'alt', 'only the re-keying reads v1');
     await db.run("UPDATE global_settings SET value = 'eingeschleust' WHERE key = 'smtp_pass'");
     assert.equal(await stumm(() => settings.getGlobalSetting('smtp_pass')), null);
     const pdf = path.join(dateien.VOUCHER_DIR, String(a), 'klartext.pdf');

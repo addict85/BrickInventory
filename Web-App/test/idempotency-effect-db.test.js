@@ -62,10 +62,10 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
   app.post('/api/v2/parts', async (req, res) => {
     await db.transaction(async tx => {
       await tx.run(`INSERT INTO ${tabelle} VALUES ($1)`, [req.get('Idempotency-Key')]);
-      if (rollback) throw new Error('zurückgerollt');
+      if (rollback) throw new Error('rolled back');
     });
     if (danach === 'abbrechen') return void res.socket.destroy();
-    if (danach === 'scheitern') throw new Error('nach dem COMMIT');
+    if (danach === 'scheitern') throw new Error('after the COMMIT');
     res.json({ success: true });
   });
   app.use((_e, _req, res, _next) => {
@@ -97,7 +97,7 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
 
   await t.test('aborted after the COMMIT', async () => {
     danach = 'abbrechen';
-    assert.equal(await sende('k-abbruch'), null, 'Vorbedingung: Die Verbindung reisst ab');
+    assert.equal(await sende('k-abbruch'), null, 'Precondition: the connection breaks off');
     await orphan('k-abbruch');
     danach = 'antworten';
     const r = await sende('k-abbruch');

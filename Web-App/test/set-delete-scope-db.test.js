@@ -92,7 +92,7 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
       method: 'DELETE',
       headers: { authorization: 'Bearer falsch' },
     });
-    assert.equal(ohne.status, 401, 'der App-Weg darf nicht über die Sitzung laufen');
+    assert.equal(ohne.status, 401, 'the app path must not go through the session');
     // One address, two credentials: session (web app) and token (app).
     const credential = (name, uid) => (name === 'Android' ? { authorization: `Bearer ${token[uid]}` } : {});
     for (const [name, base, path] of [
@@ -101,15 +101,15 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
     ]) {
       await anlegen(subId);
       const r = await fetch(`${base}${path}`, { method: 'DELETE', headers: credential(name, mainId) });
-      assert.equal(r.status, 200, `${name}: das Löschen darf nicht mehr in 404 enden`);
+      assert.equal(r.status, 200, `${name}: deleting must no longer end in 404`);
       const b = await holding(subId);
-      assert.equal(b.set, false, `${name}: das Set muss weg sein`);
-      assert.equal(b.parts, 0, `${name}: die Teile dürfen nicht als Waisen zurückbleiben`);
+      assert.equal(b.set, false, `${name}: the set must be gone`);
+      assert.equal(b.parts, 0, `${name}: the parts must not stay behind as orphans`);
       assert.equal(
         b.acq,
         0,
-        `${name}: die Kaufpreis-Erfassungen müssen mit — sonst tauchen sie beim erneuten ` +
-          'Hinzufügen desselben Sets wieder auf',
+        `${name}: the purchase price acquisitions must go too — otherwise they reappear when ` +
+          'the same set is added again',
       );
     }
 
@@ -121,10 +121,10 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
     ]) {
       await anlegen(mainId);
       const r = await fetch(`${baseSub}${path}`, { method: 'DELETE', headers: credential(name, subId) });
-      assert.equal(r.status, 404, `${name}: ein Unterkonto darf rückwärts nicht löschen`);
+      assert.equal(r.status, 404, `${name}: a sub-account must not delete backwards`);
       const b = await holding(mainId);
-      assert.equal(b.set, true, `${name}: das Set des Hauptkontos muss unangetastet bleiben`);
-      assert.equal(b.parts, 1, `${name}: auch die Teile bleiben`);
+      assert.equal(b.set, true, `${name}: the main account's set must stay untouched`);
+      assert.equal(b.parts, 1, `${name}: the parts stay too`);
     }
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});

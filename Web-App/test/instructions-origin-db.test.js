@@ -45,26 +45,22 @@ test('instructions: the server says which one was uploaded by the user', { concu
   try {
     // ── 1. Detail: every row carries its origin ────────────────────────────
     const detail = await readSet(uid, SN);
-    assert.ok(detail, 'Set nicht gefunden');
-    assert.equal(
-      detail.instructions.length,
-      2,
-      'Es sollen beide Anleitungen ankommen — geteilt und selbst hochgeladen',
-    );
+    assert.ok(detail, 'Set not found');
+    assert.equal(detail.instructions.length, 2, 'Both instructions should arrive — shared and self-uploaded');
 
     const geteilt = detail.instructions.find(i => i.description === 'Anleitung automatisch');
     const eigene = detail.instructions.find(i => i.description === 'Anleitung selbst');
-    assert.ok(geteilt && eigene, 'Beide Anleitungen sollen in der Liste stehen');
+    assert.ok(geteilt && eigene, 'Both instructions should be in the list');
 
     assert.equal(
       geteilt.is_manual,
       false,
-      'Die automatisch importierte Anleitung ist NICHT selbst hochgeladen — kein Papierkorb',
+      'The automatically imported instruction is NOT self-uploaded — no trash button',
     );
     assert.equal(
       eigene.is_manual,
       true,
-      'Die selbst hochgeladene Anleitung traegt is_manual=true — nur hier ein Papierkorb',
+      'The self-uploaded instruction carries is_manual=true — only here a trash button',
     );
 
     // ── 2. Counter-check of the old rule: `id != null` separates nothing ───
@@ -75,18 +71,18 @@ test('instructions: the server says which one was uploaded by the user', { concu
     assert.notEqual(
       geteilt.id,
       null,
-      'Gemessen: auch die geteilte Anleitung bringt eine id mit — die alte Regel trennte nicht',
+      'Measured: the shared instruction also brings an id — the old rule did not separate',
     );
-    assert.notEqual(eigene.id, null, 'Die eigene Anleitung bringt ebenfalls eine id mit');
+    assert.notEqual(eigene.id, null, 'The own instruction brings an id as well');
 
     // ── 3. List: the same marking so that the tile counts the same ─────────
     const { sets } = await readSets(uid, {});
     const inList = sets.find(s => s.set_number === SN);
-    assert.ok(inList, 'Set fehlt in der Galerie');
+    assert.ok(inList, 'Set is missing in the gallery');
     assert.deepEqual(
       inList.instructions.map(i => i.is_manual).sort(),
       [false, true],
-      'Auch die Galerie soll beide Herkuenfte unterscheiden',
+      'The gallery should also distinguish both origins',
     );
   } finally {
     await db.run(`DELETE FROM shared_instructions WHERE set_number=$1`, [SN]).catch(() => {});

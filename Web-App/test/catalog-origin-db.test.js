@@ -101,7 +101,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
       part_name: 'Annas Name',
       image_url: 'https://cdn.rebrickable.com/media/anna.jpg',
     });
-    assert.deepEqual(fetches, [], 'mit Namen wird nicht nachgeschlagen');
+    assert.deepEqual(fetches, [], 'with a name no lookup happens');
     assert.deepEqual(
       { ...(await eigen(A, '3001')) },
       { part_name: 'Annas Name', image_url: 'https://cdn.rebrickable.com/media/anna.jpg' },
@@ -112,7 +112,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
   await t.test('another account still asks Rebrickable', async () => {
     fetches = [];
     await addManualPart(B, { part_number: '3001', color_id: 4, quantity: 1 });
-    assert.deepEqual(fetches, ['lookupPart 3001'], 'Annas Eingabe zählt für Bruno nicht als bekannt');
+    assert.deepEqual(fetches, ['lookupPart 3001'], 'Anna’s input does not count as known for Bruno');
     assert.deepEqual(
       { ...(await common('3001')) },
       { part_name: 'Brick 2 x 4', image_url: 'https://cdn.rebrickable.com/media/parts/3001.jpg' },

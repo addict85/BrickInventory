@@ -49,7 +49,7 @@ test('revocation list as a job', { concurrency: 1 }, async t => {
 
   await t.test('the scheduled job stores the list and schedules the next run', async () => {
     await d.jobQueue.pullPlanBefore('revocation_list', 0);
-    const worker = _req('jobs/startJobs.js').startJobWorker(d, { arten: ['revocation_list'], taktMs: 50 });
+    const worker = _req('jobs/startJobs.js').startJobWorker(d, { kinds: ['revocation_list'], tickMs: 50 });
     try {
       await bis(async () => (await gespeichert()) !== null, 10_000);
     } finally {
@@ -59,7 +59,7 @@ test('revocation list as a job', { concurrency: 1 }, async t => {
     assert.equal(l.nummern.length, 5);
     assert.ok(l.nummern.includes('c35747a084470c3135aeefe2b8d40cd6'));
     assert.ok(Math.abs(Date.now() - new Date(l.state).getTime()) < 60_000);
-    assert.ok(fetches[0] instanceof AbortSignal, 'Der Abruf bekommt das Signal des Auftrags');
+    assert.ok(fetches[0] instanceof AbortSignal, 'The fetch gets the signal of the job');
     const planRow = () =>
       db.get(
         `SELECT EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek FROM jobs
@@ -67,13 +67,13 @@ test('revocation list as a job', { concurrency: 1 }, async t => {
       );
     await bis(async () => (await planRow())?.in_sek > 60, 5000);
     const plan = await planRow();
-    assert.ok(plan?.in_sek > 5 * 3600 && plan.in_sek <= 6 * 3600, `nächster Lauf in ${plan?.in_sek} s`);
+    assert.ok(plan?.in_sek > 5 * 3600 && plan.in_sek <= 6 * 3600, `next run in ${plan?.in_sek} s`);
   });
 
   await t.test('an unreadable response or a network error leaves the last good list in place', async () => {
     const vorher = await gespeichert();
     const lauf = () =>
-      _req('jobs/startJobs.js').editor(d).revocation_list.ausfuehren({}, { signal: new AbortController().signal });
+      _req('jobs/startJobs.js').editor(d).revocation_list.run({}, { signal: new AbortController().signal });
     for (const kaputt of ['<html>Wartung</html>', '{"entries": {"zz": {"status": "REVOKED"}}}', '{}']) {
       response = async () => Buffer.from(kaputt);
       await assert.rejects(lauf(), kaputt);

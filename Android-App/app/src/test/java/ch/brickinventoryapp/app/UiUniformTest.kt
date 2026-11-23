@@ -207,8 +207,8 @@ class UiUniformTest {
     @Test
     @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
     fun `background work stands in form width on the tablet`() {
-        world.paths.responses["/api/v1/admin/auftraege"] = """{"success":true,"auftraege":[],"zusammenfassung":[],"pausen":[],
-            "bildbedarf":0,"job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
+        world.paths.responses["/api/v2/admin/job-queue"] = """{"success":true,"jobs":[],"summary":[],"pauses":[],
+            "image_demand":0,"job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
         val api = world.t.api
         val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages)
         runBlocking { vm.loadBackground() }
@@ -334,7 +334,7 @@ class UiUniformTest {
 
     @Test
     fun `minifigures can be sorted`() {
-        world.paths.responses["/api/v1/minifigs"] = """{"success":true,"figs":[
+        world.paths.responses["/api/v2/minifigs"] = """{"success":true,"figs":[
             {"fig_number":"sw0003","fig_name":"Anakin","quantity":1},
             {"fig_number":"sw0001","fig_name":"Luke","quantity":1},
             {"fig_number":"sw0002","fig_name":"Han","quantity":5}]}"""
@@ -356,24 +356,24 @@ class UiUniformTest {
 
     @Test
     fun `deleting a part offers undo and deletes only afterwards`() {
-        world.paths.responses["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
+        world.paths.responses["/api/v2/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
             "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12}]}"""
         val vm = world.parts().also { it.loadParts() }
         drive("parts") { vm.partsState.value.manualParts?.isNotEmpty() == true }
         vm.partDeleteReserve("3001", 5, null, "Brick 2 x 4")
         drive("vorgemerkt") { true }
         assertTrue("marked is missing in the list", vm.partsState.value.manualParts.orEmpty().isEmpty())
-        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v1/parts/3001/5").isEmpty())
+        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v2/parts/3001/5").isEmpty())
         vm.delete.undo()
         assertEquals("undo brings it back", 1, vm.partsState.value.manualParts.orEmpty().size)
         vm.partDeleteReserve("3001", 5, null, "Brick 2 x 4")
         vm.delete.execute()
-        drive("deleted") { requests("DELETE /api/v1/parts/3001/5").isNotEmpty() }
+        drive("deleted") { requests("DELETE /api/v2/parts/3001/5").isNotEmpty() }
     }
 
     @Test
     fun `deleting a storage location offers undo and deletes only afterwards`() {
-        world.paths.responses["/api/v1/storage/locations"] = """{"success":true,"orte":[
+        world.paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"}]}"""
         val vm = settings().also { it.loadOwnLocations() }
         show { LocationsRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
@@ -381,14 +381,14 @@ class UiUniformTest {
         vm.locationDeleteReserve(vm.storageState.value.own.first { it.id == 3 })
         short()
         assertEquals("marked is missing in the list", listOf(4), vm.storageState.value.own.map { it.id })
-        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v1/storage/locations/3").isEmpty())
+        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v2/storage/locations/3").isEmpty())
         compose.onNodeWithText(ctx.getString(R.string.common_undo)).performClick()
         short()
         assertEquals("undo brings it back", 2, vm.storageState.value.own.size)
-        assertTrue("undo does not delete", requests("DELETE /api/v1/storage/locations/3").isEmpty())
+        assertTrue("undo does not delete", requests("DELETE /api/v2/storage/locations/3").isEmpty())
         vm.locationDeleteReserve(vm.storageState.value.own.first { it.id == 3 })
         vm.locationRoute.execute()
-        drive("deleted") { requests("DELETE /api/v1/storage/locations/3").isNotEmpty() }
+        drive("deleted") { requests("DELETE /api/v2/storage/locations/3").isNotEmpty() }
     }
 
     @Test
@@ -400,13 +400,13 @@ class UiUniformTest {
         short()
         assertTrue("marked is missing in the list",
             compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isEmpty())
-        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isEmpty())
+        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v2/sets/75192-1/acquisitions/1").isEmpty())
         compose.onNodeWithText(ctx.getString(R.string.common_undo)).performClick()
         short()
-        assertTrue("undo does not delete", requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isEmpty())
+        assertTrue("undo does not delete", requests("DELETE /api/v2/sets/75192-1/acquisitions/1").isEmpty())
         vm.purchaseDeleteReserve(ItemKind.SET, Examples.SET, 0, 1)
         vm.purchaseRoute.execute()
-        drive("deleted") { requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isNotEmpty() }
+        drive("deleted") { requests("DELETE /api/v2/sets/75192-1/acquisitions/1").isNotEmpty() }
     }
 
     // ── One header for part details, one word for „kein Preis“ ──
@@ -417,7 +417,7 @@ class UiUniformTest {
 
     @Test
     fun `part without market price says no price yet`() {
-        world.paths.responses["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
+        world.paths.responses["/api/v2/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
             "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12,"image_local":"/beispiel/teil1.png"}]}"""
         val parts = world.parts().also { it.loadParts() }
         drive("parts") { parts.partsState.value.manualParts?.isNotEmpty() == true }
@@ -433,8 +433,8 @@ class UiUniformTest {
     @Test
     @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
     fun `part from sets has the same header as a self-added one`() {
-        world.paths.responses["/api/v1/parts/3001/5/sets"] = """{"success":true,
-            "item":{"nummer":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","category_name":"Bricks",
+        world.paths.responses["/api/v2/parts/3001/5/sets"] = """{"success":true,
+            "item":{"number":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","category_name":"Bricks",
                     "image_local":"/beispiel/teil1.png","total_quantity":12},
             "sets":[{"set_number":"75192-1","set_name":"Millennium Falcon","quantity":8,"owner_user_id":1}]}"""
         val vm = world.parts().also { it.loadParts() }

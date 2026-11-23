@@ -50,39 +50,39 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
   try {
     // 1. There and back — including the conversion into a string.
     await setGlobalSetting(A, 42);
-    assert.equal(await getGlobalSetting(A), '42', 'die Spalte ist TEXT; eine Zahl muss als Zeichenkette zurückkommen');
+    assert.equal(await getGlobalSetting(A), '42', 'the column is TEXT; a number must come back as a string');
     await setGlobalSetting(A, 'zwei');
-    assert.equal(await getGlobalSetting(A), 'zwei', 'der zweite Aufruf muss überschreiben');
+    assert.equal(await getGlobalSetting(A), 'zwei', 'the second call must overwrite');
     assert.equal(await getGlobalSetting(`gibt_es_nicht_${process.pid}`, 'ersatz'), 'ersatz');
     await assert.rejects(
       setGlobalSetting(`gibt_es_nicht_${process.pid}`, 'x'),
       { code: 'value_invalid' },
-      'ein Schlüssel ohne Regel wird nicht geschrieben',
+      'a key without a rule is not written',
     );
 
     // 2. Run state: deleted means the row is gone.
     await setState(T, 'x');
     assert.equal(await readState(T), 'x');
     await deleteState(T);
-    assert.equal(await readState(T), null, 'abgearbeitet heisst: die Zeile ist weg');
+    assert.equal(await readState(T), null, 'processed means: the row is gone');
     await setGlobalSetting(T, 'bleibt');
 
     // 3. Several keys in ONE call — the reason for `key = ANY($1)`.
     await setGlobalSetting(B, 'x');
     await deleteGlobalValues(A, B);
-    assert.equal(await getGlobalSetting(A), null, 'A muss weg sein');
-    assert.equal(await getGlobalSetting(B), null, 'B muss weg sein');
-    assert.ok(await getGlobalSetting(T), 'T war nicht genannt und muss stehen bleiben');
+    assert.equal(await getGlobalSetting(A), null, 'A must be gone');
+    assert.equal(await getGlobalSetting(B), null, 'B must be gone');
+    assert.ok(await getGlobalSetting(T), 'T was not named and must stay');
 
     // 4. The dangerous case: no key named. The table carries the
     //    registration lock, the API limits and the BrickLink credentials —
     //    an accidental emptying could not be undone.
     const zahl = await holding();
-    assert.ok(zahl > 0, 'für diese Probe muss die Tabelle etwas enthalten');
+    assert.ok(zahl > 0, 'for this probe the table must contain something');
     await deleteGlobalValues();
-    assert.equal(await holding(), zahl, 'ein Aufruf ohne Schlüssel darf NICHTS löschen');
+    assert.equal(await holding(), zahl, 'a call without keys must delete NOTHING');
     await deleteGlobalValues(...[]);
-    assert.equal(await holding(), zahl, 'auch ein leeres Array darf NICHTS löschen');
+    assert.equal(await holding(), zahl, 'an empty array must delete NOTHING either');
   } finally {
     await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [alle]).catch(() => {});
     for (const z of vorher)

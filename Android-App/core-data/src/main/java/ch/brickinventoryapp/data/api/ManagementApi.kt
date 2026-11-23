@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.data.api
 
 import ch.brickinventoryapp.contract.ApiLimitsResponse
-import ch.brickinventoryapp.contract.AuftraegeResponse
-import ch.brickinventoryapp.contract.AuftragAenderung
-import ch.brickinventoryapp.contract.AuftragsArtLeerung
-import ch.brickinventoryapp.contract.AuftragsArtStart
 import ch.brickinventoryapp.contract.BricksetQueueResponse
 import ch.brickinventoryapp.contract.CacheStatsResponse
 import ch.brickinventoryapp.contract.CacheTtlResponse
-import ch.brickinventoryapp.contract.CsvImportErgebnis
+import ch.brickinventoryapp.contract.CsvImportResult
 import ch.brickinventoryapp.contract.GenericAdminResponse
+import ch.brickinventoryapp.contract.JobChange
+import ch.brickinventoryapp.contract.JobKindDrain
+import ch.brickinventoryapp.contract.JobKindStart
+import ch.brickinventoryapp.contract.JobQueueResponse
 import ch.brickinventoryapp.contract.JobsResponse
-import ch.brickinventoryapp.contract.ProtokollResponse
+import ch.brickinventoryapp.contract.LogResponse
 import ch.brickinventoryapp.contract.StartupStatus
 import retrofit2.Response
 import retrofit2.http.Body
@@ -36,47 +36,47 @@ interface ManagementApi {
     // `Part` is the annotation here, hence the type stands as `okhttp3.MultipartBody.Part`.
     // Three calls instead of one with a path parameter, because they are three routers.
     @Multipart
-    @POST("api/v1/sets/import/csv")
-    suspend fun importSetsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    @POST("api/v2/sets/import/csv")
+    suspend fun importSetsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportResult>
 
     @Multipart
-    @POST("api/v1/parts/import/csv")
-    suspend fun importPartsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    @POST("api/v2/parts/import/csv")
+    suspend fun importPartsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportResult>
 
     @Multipart
-    @POST("api/v1/minifigs/import/csv")
-    suspend fun importMinifigsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    @POST("api/v2/minifigs/import/csv")
+    suspend fun importMinifigsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportResult>
 
     // The wishlist does NOT lie under an own old router like sets,
-    // parts and minifigures, but completely in `routes/api_v1/wanted.ts` —
+    // parts and minifigures, but completely in `routes/api/wanted.ts` —
     // hence its import stands there and not under the wishlist routes.
     @Multipart
-    @POST("api/v1/wanted/import/csv")
-    suspend fun importWantedCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    @POST("api/v2/wanted/import/csv")
+    suspend fun importWantedCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportResult>
 
     // Price alerts. The address lies under /alerts and not under
     // /sets/<nr>/alert because the file carries MANY sets — the single route
     // next to it sets exactly one alert.
     @Multipart
-    @POST("api/v1/alerts/import/csv")
-    suspend fun importAlertsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    @POST("api/v2/alerts/import/csv")
+    suspend fun importAlertsCsv(@Part file: okhttp3.MultipartBody.Part): Response<CsvImportResult>
 
     // ── Server log (admins only) ──
     //
     // User management (/auth/users) is deliberately missing here: it belongs at the
     // computer, not on the phone.
-    @GET("api/v1/admin/logs")
-    suspend fun getLog(@Query("minutes") minutes: Int): Response<ProtokollResponse>
+    @GET("api/v2/admin/logs")
+    suspend fun getLog(@Query("minutes") minutes: Int): Response<LogResponse>
 
     /**
      * Startup state of the server — without sign-in because it is needed before
      * anyone can sign in.
      */
-    @GET("api/v1/startup-status")
+    @GET("api/v2/startup-status")
     suspend fun getStartupStatus(): Response<StartupStatus>
 
     // ── Admin / Monitoring ────────────────────────────────────────────────────
-    @GET("api/v1/admin/jobs")
+    @GET("api/v2/admin/jobs")
     suspend fun getJobs(): Response<JobsResponse>
 
     /**
@@ -84,43 +84,43 @@ interface ManagementApi {
      * "priceJob", minutes }` for the price job. A JsonObject because the server
      * distinguishes by the present field; the converter cannot write Map<String, Any>.
      */
-    @POST("api/v1/admin/job-schedule")
+    @POST("api/v2/admin/job-schedule")
     suspend fun setJobSchedule(@Body body: kotlinx.serialization.json.JsonObject): Response<GenericAdminResponse>
 
     /**
      * Queue missing catalog images. Not redownloadMissingImages: that fetches the
      * images of the stock.
      */
-    @POST("api/v1/admin/catalog-images")
+    @POST("api/v2/admin/catalog-images")
     suspend fun queueCatalogImages(): Response<GenericAdminResponse>
 
     /**
      * Switch the global design — admins only, so that it does not only work at the
      * computer.
      */
-    @POST("api/v1/settings/admin/theme")
+    @POST("api/v2/settings/admin/theme")
     suspend fun setAppTheme(@Body body: Map<String, String>): Response<GenericAdminResponse>
 
-    @GET("api/v1/admin/brickset-queue")
+    @GET("api/v2/admin/brickset-queue")
     suspend fun getBricksetQueue(): Response<BricksetQueueResponse>
 
-    @POST("api/v1/admin/brickset-queue/{setNumber}/retry")
+    @POST("api/v2/admin/brickset-queue/{setNumber}/retry")
     suspend fun retryBricksetEntry(
         @Path("setNumber") setNumber: String
     ): Response<GenericAdminResponse>
 
-    @DELETE("api/v1/admin/brickset-queue/{setNumber}")
+    @DELETE("api/v2/admin/brickset-queue/{setNumber}")
     suspend fun deleteBricksetEntry(
         @Path("setNumber") setNumber: String
     ): Response<GenericAdminResponse>
 
-    @GET("api/v1/admin/cache-stats")
+    @GET("api/v2/admin/cache-stats")
     suspend fun getCacheStats(): Response<CacheStatsResponse>
 
-    @GET("api/v1/admin/cache-ttl")
+    @GET("api/v2/admin/cache-ttl")
     suspend fun getCacheTtl(): Response<CacheTtlResponse>
 
-    @POST("api/v1/admin/cache-ttl")
+    @POST("api/v2/admin/cache-ttl")
     suspend fun setCacheTtl(
         @Body body: Map<String, String>
     ): Response<GenericAdminResponse>
@@ -130,60 +130,60 @@ interface ManagementApi {
      * admins only: `price_cache` belongs to nobody, and every rebuild costs
      * requests from the shared daily quota.
      */
-    @POST("api/v1/admin/cache-clear")
+    @POST("api/v2/admin/cache-clear")
     suspend fun clearCache(
         @Body body: Map<String, Boolean> = emptyMap()
     ): Response<GenericAdminResponse>
 
     // The global default condition stands under getGlobalDefaultCondition()
-    // (api/v1/settings/default-condition).
+    // (api/v2/settings/default-condition).
 
-    @GET("api/v1/admin/api-limits")
+    @GET("api/v2/admin/api-limits")
     suspend fun getApiLimits(): Response<ApiLimitsResponse>
 
-    @PUT("api/v1/admin/api-limits")
+    @PUT("api/v2/admin/api-limits")
     suspend fun setApiLimits(
         @Body body: Map<String, Int>
     ): Response<GenericAdminResponse>
 
-    @POST("api/v1/admin/redownload-missing-images")
+    @POST("api/v2/admin/redownload-missing-images")
     suspend fun redownloadMissingImages(): Response<GenericAdminResponse>
 
     /**
      * Background work from the job table; without [status] only „open“
      * and „running“. Only with full scope, otherwise 403.
      */
-    @GET("api/v1/admin/auftraege")
+    @GET("api/v2/admin/job-queue")
     suspend fun getBackgroundJobs(
         @Query("status") status: String? = null,
-        @Query("art") kind: String? = null,
-    ): Response<AuftraegeResponse>
+        @Query("kind") kind: String? = null,
+    ): Response<JobQueueResponse>
 
     /** Only for „open“ and „running“, otherwise 409. */
-    @POST("api/v1/admin/auftraege/{id}/abbrechen")
-    suspend fun requestJobCancel(@Path("id") id: String): Response<AuftragAenderung>
+    @POST("api/v2/admin/job-queue/{id}/cancel")
+    suspend fun requestJobCancel(@Path("id") id: String): Response<JobChange>
 
     /** Only for „error“ and „cancelled“, otherwise 409. */
-    @POST("api/v1/admin/auftraege/{id}/wiederholen")
-    suspend fun repeatJob(@Path("id") id: String): Response<AuftragAenderung>
+    @POST("api/v2/admin/job-queue/{id}/retry")
+    suspend fun repeatJob(@Path("id") id: String): Response<JobChange>
 
-    @POST("api/v1/admin/auftraege/art/{art}/jetzt")
-    suspend fun startJobKind(@Path("art") kind: String): Response<AuftragsArtStart>
+    @POST("api/v2/admin/job-queue/kind/{kind}/now")
+    suspend fun startJobKind(@Path("kind") kind: String): Response<JobKindStart>
 
-    @DELETE("api/v1/admin/auftraege/art/{art}")
-    suspend fun emptyJobKind(@Path("art") kind: String): Response<AuftragsArtLeerung>
+    @DELETE("api/v2/admin/job-queue/kind/{kind}")
+    suspend fun emptyJobKind(@Path("kind") kind: String): Response<JobKindDrain>
 
-    @POST("api/v1/admin/trigger-csv-sync")
+    @POST("api/v2/admin/trigger-csv-sync")
     suspend fun triggerCsvSync(): Response<GenericAdminResponse>
 
-    @POST("api/v1/admin/reimport-instructions")
+    @POST("api/v2/admin/reimport-instructions")
     suspend fun reimportInstructions(): Response<GenericAdminResponse>
 
-    @POST("api/v1/admin/trigger-price-job")
+    @POST("api/v2/admin/trigger-price-job")
     suspend fun triggerPriceJob(): Response<GenericAdminResponse>
 
     // Admin-level global default
-    @POST("api/v1/admin/default-condition")
+    @POST("api/v2/admin/default-condition")
     suspend fun setDefaultCondition(
         @Body body: Map<String, String>
     ): Response<GenericAdminResponse>

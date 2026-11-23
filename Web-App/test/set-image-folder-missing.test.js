@@ -56,8 +56,8 @@ test('the image lands even if the folder is missing', async t => {
     https.globalAgent.destroy();
     https.globalAgent = echt;
   });
-  assert.ok(SET_IMAGES_DIR.startsWith(wurzel), 'der Ordner liegt im Testverzeichnis');
-  assert.equal(fs.existsSync(SET_IMAGES_DIR), false, 'der Ordner fehlt vor dem Abruf');
+  assert.ok(SET_IMAGES_DIR.startsWith(wurzel), 'the folder lives in the test directory');
+  assert.equal(fs.existsSync(SET_IMAGES_DIR), false, 'the folder is missing before the fetch');
   assert.equal(
     await downloadSetImage('https://cdn.rebrickable.com/media/sets/10001-1.jpg', '10001-1'),
     '/images/sets/10001-1.jpg',

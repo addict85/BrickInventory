@@ -36,8 +36,8 @@ async function werkbank(rebuild) {
     assert.notEqual(
       code,
       vorher,
-      'Die Gegenprobe hat ihre Stelle im Quelltext nicht gefunden. Entweder ' +
-        'heisst sie anders — dann diese Datei nachziehen — oder es gibt sie nicht mehr.',
+      'The counter-check did not find its place in the source. Either ' +
+        'it has a different name — then update this file — or it no longer exists.',
     );
   }
 
@@ -197,7 +197,7 @@ test('zoom in the PDF viewer', async t => {
     assert.equal(
       b.w.document.getElementById('pdf-viewer-zoom-out').disabled,
       true,
-      '1x ist der untere Anschlag — darunter gibt es nichts zu sehen.',
+      '1x is the lower stop — there is nothing to see below it.',
     );
     assert.equal(b.platzhalter().length, SEITEN);
   });
@@ -218,7 +218,7 @@ test('zoom in the PDF viewer', async t => {
     const nachher = parseFloat(b.platzhalter()[0].style.width);
     assert.ok(
       Math.abs(nachher / vorher - 1.25) < 0.01,
-      `Platzhalter ging von ${vorher} auf ${nachher} — das sind nicht 1,25x.`,
+      `Placeholder went from ${vorher} to ${nachher} — that is not 1.25x.`,
     );
   });
 
@@ -243,9 +243,9 @@ test('zoom in the PDF viewer', async t => {
     const nachher = b.place();
     assert.ok(
       Math.abs(nachher - vorher) < 1,
-      `Die Stelle ist von ${vorher.toFixed(1)} auf ${nachher.toFixed(1)} gewandert ` +
-        `(${Math.abs(nachher - vorher).toFixed(1)} Einheiten). Beim Zoomen soll ` +
-        `der Punkt in der Sichtfeldmitte stehen bleiben.`,
+      `The spot moved from ${vorher.toFixed(1)} to ${nachher.toFixed(1)} ` +
+        `(${Math.abs(nachher - vorher).toFixed(1)} units). When zooming ` +
+        `the point in the middle of the viewport should stay put.`,
     );
   });
 
@@ -263,9 +263,9 @@ test('zoom in the PDF viewer', async t => {
     const nachher = b.place();
     assert.ok(
       Math.abs(nachher - vorher) > 100,
-      `Ohne Ankerrechnung muesste die Stelle deutlich wandern, sie ging aber nur ` +
-        `von ${vorher.toFixed(1)} auf ${nachher.toFixed(1)}. Dann misst der Fall ` +
-        `darueber nichts.`,
+      `Without the anchor calculation the spot would have to move clearly, but it only went ` +
+        `from ${vorher.toFixed(1)} to ${nachher.toFixed(1)}. Then the case ` +
+        `above measures nothing.`,
     );
   });
 
@@ -277,14 +277,11 @@ test('zoom in the PDF viewer', async t => {
     assert.equal(
       b.beobachtet.length,
       vorher + SEITEN,
-      'Ein IntersectionObserver meldet sich NICHT von selbst, wenn ein ' +
-        'beobachtetes Element nur seine Groesse aendert. Ohne erneutes observe() ' +
-        'blieben die sichtbaren Seiten nach dem Zoomen leer.',
+      'An IntersectionObserver does NOT report by itself when an ' +
+        'observed element only changes its size. Without a new observe() ' +
+        'the visible pages would stay empty after zooming.',
     );
-    assert.ok(
-      b.platzhalter()[0].querySelector('canvas'),
-      'Seite 1 ist sichtbar und muesste wieder eine Leinwand haben.',
-    );
+    assert.ok(b.platzhalter()[0].querySelector('canvas'), 'Page 1 is visible and should have a canvas again.');
   });
 
   /**
@@ -303,7 +300,7 @@ test('zoom in the PDF viewer', async t => {
     b.anhalten = true;
     b.aktionen.pdfZoomIn(); // stage 1: jobs stay hanging
     await b.warte(40);
-    assert.ok(b.openRender.length > 0, 'Die Werkbank haelt keinen Auftrag an — der Fall misst nichts.');
+    assert.ok(b.openRender.length > 0, 'The workbench does not hold a job — the case measures nothing.');
     const alte = b.openRender.splice(0);
     const oldWidths = alte.map(r => r.breite);
 
@@ -334,10 +331,10 @@ test('zoom in the PDF viewer', async t => {
     assert.deepEqual(
       veraltet,
       [],
-      `Leinwaende mit der alten Aufloesung (${r.oldWidths.join(', ')}px) haengen in ` +
-        `Platzhaltern, die inzwischen ${r.soll}px breit sind. Sie werden gestreckt ` +
-        `— und der neue Durchlauf kehrt oben um, weil schon eine Leinwand da ist. ` +
-        `Die Seite bliebe grob. Dagegen steht der Generationszaehler in _renderPdfPage.`,
+      `Canvases with the old resolution (${r.oldWidths.join(', ')}px) hang in ` +
+        `placeholders that are now ${r.soll}px wide. They are stretched ` +
+        `— and the new pass turns back at the top because a canvas is already there. ` +
+        `The page would stay coarse. The generation counter in _renderPdfPage guards against that.`,
     );
   });
 
@@ -346,10 +343,10 @@ test('zoom in the PDF viewer', async t => {
     const veraltet = r.haengen.filter(w => w !== r.soll);
     assert.ok(
       veraltet.length > 0,
-      `Ohne den Zaehler muesste mindestens eine veraltete Leinwand (eine von ` +
-        `${r.oldWidths.join(', ')}px) in einem ${r.soll}px breiten Platzhalter ` +
-        `landen; haengen geblieben sind ${r.haengen.join(', ') || 'gar keine'}. ` +
-        `Dann prueft der Fall darueber nichts.`,
+      `Without the counter at least one stale canvas (one of ` +
+        `${r.oldWidths.join(', ')}px) would have to land in a ${r.soll}px wide placeholder; ` +
+        `stuck are ${r.haengen.join(', ') || 'none at all'}. ` +
+        `Then the case above checks nothing.`,
     );
   });
 
@@ -368,7 +365,7 @@ test('zoom in the PDF viewer', async t => {
       );
     rad(false);
     await b.warte(40);
-    assert.equal(b.faktor(), 1, 'Ohne Zusatztaste bleibt das Rad beim Rollen.');
+    assert.equal(b.faktor(), 1, 'Without a modifier key the wheel keeps scrolling.');
     rad(true);
     await b.warte(40);
     assert.equal(b.faktor(), 1.25);
@@ -395,8 +392,7 @@ test('zoom in the PDF viewer', async t => {
     assert.equal(
       b.faktor(),
       1.25,
-      'Ein Raddreh hat mehr als einen Schritt bewirkt — dann sammelt jedes ' +
-        'geoeffnete PDF einen weiteren Zuhoerer an.',
+      'One wheel turn caused more than one step — then every ' + 'opened PDF collects another listener.',
     );
   });
 });
@@ -408,11 +404,11 @@ test('placeholder is dimmed, the rendered page stays white', async () => {
   const reason = b.platzhalter()[0].style.background;
   assert.ok(
     reason && !/^(#fff|#ffffff|white|rgb\(255, ?255, ?255\))$/i.test(reason),
-    `Platzhalter ist gedämpft (${reason})`,
+    `placeholder is dimmed (${reason})`,
   );
-  assert.ok(b.backgrounds.length > 0, 'es wurde gerendert');
+  assert.ok(b.backgrounds.length > 0, 'it was rendered');
   assert.ok(
     b.backgrounds.every(h => h === '#fff'),
-    'Seite bleibt weiss',
+    'page stays white',
   );
 });

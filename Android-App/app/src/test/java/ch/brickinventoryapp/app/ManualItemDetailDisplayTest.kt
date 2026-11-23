@@ -62,9 +62,9 @@ class ManualItemDetailDisplayTest {
 
     @Test
     fun `the detail view shows value tiles, market price and price history, without a large price row`() {
-        world.paths.responses["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
+        world.paths.responses["/api/v2/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
             "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12,"avg_price":0.37,"purchase_price":0.25}]}"""
-        world.paths.responses["/api/v1/parts/3001/5/price-history"] = """{"success":true,"currency":"CHF",
+        world.paths.responses["/api/v2/parts/3001/5/price-history"] = """{"success":true,"currency":"CHF",
             "by_condition":{"N":{"market_price":0.41,"purchase_price":0.25}},
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":0.33},{"x":"2026-09-01","y":0.35},{"x":"2026-10-01","y":0.41}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-09-01","2026-10-01"]}}"""

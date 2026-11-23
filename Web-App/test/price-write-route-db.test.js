@@ -84,13 +84,12 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
     assert.equal(
       await fetchAndCachePrice(JOB, 'N', 'sold', 'EUR', 24),
       'skipped',
-      'Der zweite Lauf darf BrickLink nicht erneut fragen — die Antwort steht im Cache, ' +
-        'auch wenn sie „kein Preis" lautet',
+      'The second run must not ask BrickLink again — the answer is in the cache, ' + 'even if it is „kein Preis“',
     );
     assert.equal(
       fetches.length,
       afterRun1,
-      `Zweiter Lauf hat ${fetches.length - afterRun1} zusaetzliche BrickLink-Abrufe gekostet`,
+      `The second run cost ${fetches.length - afterRun1} additional BrickLink fetches`,
     );
 
     // 2. The same case via the request path leaves behind the same.
@@ -101,12 +100,12 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
 
     const j = await traces(JOB),
       w = await traces(ROUTE);
-    assert.deepEqual(j.cache, w.cache, 'Job und Anfrageweg hinterlassen unterschiedliche price_cache-Zeilen');
-    assert.deepEqual(j.hist, w.hist, 'Job und Anfrageweg hinterlassen unterschiedliche price_history-Punkte');
+    assert.deepEqual(j.cache, w.cache, 'Job and request path leave different price_cache rows');
+    assert.deepEqual(j.hist, w.hist, 'Job and request path leave different price_history points');
     assert.equal(
       afterRun1,
       fetchesRoute,
-      `Job braucht ${afterRun1} Abrufe, der Anfrageweg ${fetchesRoute} — fuer dieselbe Auskunft`,
+      `The job needs ${afterRun1} fetches, the request path ${fetchesRoute} — for the same information`,
     );
 
     // And what is left behind is also the right thing: the null row for the
@@ -165,7 +164,7 @@ test('the write rule exists in only one place', () => {
   };
   go(ROOT);
   // Self-proof: if the search found nothing, the rule below would be vacuously true.
-  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 40, `Only ${dateien.length} source files found — the search no longer works`);
 
   const cacheWriter = [],
     historyWriter = [];
@@ -184,11 +183,11 @@ test('the write rule exists in only one place', () => {
   assert.deepEqual(
     cacheWriter,
     ['src/finances/repository/priceCache.ts'],
-    'price_cache wird an mehr als einer Stelle beschrieben — genau daran sind die ' + 'beiden Wege auseinandergelaufen',
+    'price_cache is written in more than one place — exactly that is how the ' + 'two paths drifted apart',
   );
   assert.deepEqual(
     historyWriter,
     ['src/finances/repository/priceCache.ts'],
-    'Ein Verlaufspunkt wird an mehr als einer Stelle gesetzt',
+    'A history point is set in more than one place',
   );
 });

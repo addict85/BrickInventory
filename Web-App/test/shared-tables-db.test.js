@@ -46,7 +46,7 @@
  *      red: “… via db/” ['src/images → price_alerts', 'src/images → sets', 'src/images → wanted']
  *   N  src/catalog/repository/catalogSearch.ts imports mengeJoin again from db/stockQuantity → red:
  *      the same check, ['src/catalog → set_acquisitions']
- *   O  setBestand in db/inventoryView.ts reads `FROM parts` → red at the self-proof „setBestand liest
+ *   O  setHoldings in db/inventoryView.ts reads `FROM parts` → red at the self-proof „setHoldings liest
  *      sets“; if it assembles the name at runtime, it stays green: the result is what is counted.
  *
  * If a file chooses the table name at runtime, what counts is what it reads and writes when called via a recording
@@ -56,7 +56,7 @@
  *      upwards” ['src/inventory → instructions']; the regex on literal names saw neither
  *   Q  cacheNumbers() in src/catalog/repository/catalogCache.ts again counts zaehle('price_cache') →
  *      red: “measured as registered” and “never read upwards” ['src/catalog → price_cache']
- *   R  src/wanted/repository/wanted.ts again reads `FROM sets s` instead of setBestand() → red:
+ *   R  src/wanted/repository/wanted.ts again reads `FROM sets s` instead of setHoldings() → red:
  *      „25 direkte Lesestellen (abwärts), erlaubt sind 24“
  *
  * Every account makes the inputs in its own name (asAccount) as the runtime role, as in
@@ -656,7 +656,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
        WHERE c.relkind IN ('r', 'p') AND NOT EXISTS (
          SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'user_id' AND NOT a.attisdropped)`)
     ).map(z => z.t);
-    assert.ok(ohne.length > 30, `nur ${ohne.length} Tabellen gefunden — greift die Abfrage noch?`);
+    assert.ok(ohne.length > 30, `only ${ohne.length} tables found — does the query still work?`);
     assert.deepEqual(ohne.sort(), Object.keys(SHARED).sort());
   });
 
@@ -665,19 +665,19 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
   await t.test('table names at runtime: measured as registered', async () => {
     const bekannt = new Set(Object.values(BESITZER).flat());
     const dateien = filesWithNamesToRuntime();
-    assert.ok(dateien.length > 5, `nur ${dateien.length} Dateien — greift die Suche noch?`);
+    assert.ok(dateien.length > 5, `only ${dateien.length} files — does the search still work?`);
     for (const d of dateien) gemessen[d] = await measureFile(d, bekannt);
-    assert.deepEqual(gemessen, DYNAMIC, 'Neue Datei oder neue Tabelle zur Laufzeit: in DYNAMISCH eintragen');
+    assert.deepEqual(gemessen, DYNAMIC, 'New file or new table at runtime: add it to DYNAMISCH');
   });
 
   await t.test('every writing site on a catalog table is registered', () => {
     const { tabellen, dynamic } = writingPlaces();
-    assert.ok(tabellen.size > 40, `nur ${tabellen.size} Tabellen beschrieben — greift die Suche noch?`);
-    assert.ok(dynamic.size > 0, 'Selbstbeweis: Schreibstellen mit Namen zur Laufzeit werden erkannt');
+    assert.ok(tabellen.size > 40, `only ${tabellen.size} tables written — does the search still work?`);
+    assert.ok(dynamic.size > 0, 'self-proof: write sites with names at runtime are recognised');
     assert.deepEqual(
       [...dynamic].filter(d => !gemessen[d]),
       [],
-      'Schreibstelle mit Namen zur Laufzeit ohne Messung',
+      'write site with a name at runtime without measurement',
     );
     for (const [d, { schreibt }] of Object.entries(gemessen))
       for (const name of schreibt) (tabellen.get(name) ?? tabellen.set(name, new Set()).get(name)).add(d);
@@ -691,8 +691,8 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(
       ist,
       soll,
-      'Eine Katalogtabelle bekommt einen neuen Schreiber: Kommt der Wert aus einer ' +
-        'geprüften Quelle, hier eintragen; ist es eine Eingabe, gehört sie in eine Tabelle des Kontos.',
+      'A catalogue table gets a new writer: if the value comes from a ' +
+        'checked source, add it here; if it is an input, it belongs in a table of the account.',
     );
   });
 
@@ -705,20 +705,20 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     const doppelt = Object.values(BESITZER)
       .flat()
       .filter((x, i, a) => a.indexOf(x) !== i);
-    assert.deepEqual(doppelt, [], 'Eine Tabelle hat genau einen Besitzer');
-    assert.ok(alle.length > 60, `nur ${alle.length} Tabellen gefunden — greift die Abfrage noch?`);
-    assert.deepEqual(alle.filter(x => !besitzer.has(x)).sort(), [], 'Tabelle ohne Besitzer: in BESITZER eintragen');
+    assert.deepEqual(doppelt, [], 'A table has exactly one owner');
+    assert.ok(alle.length > 60, `only ${alle.length} tables found — does the query still work?`);
+    assert.deepEqual(alle.filter(x => !besitzer.has(x)).sort(), [], 'table without an owner: add it to BESITZER');
     assert.deepEqual(
       [...besitzer.keys()].filter(x => !alle.includes(x)).sort(),
       [],
-      'BESITZER nennt eine Tabelle, die es nicht gibt',
+      'BESITZER names a table that does not exist',
     );
     const fremd = [];
     // Tables outside the schema (copies before migrations, temporary ones) have no owner.
     for (const [tabelle, dateien] of writingPlaces().tabellen)
       for (const d of dateien)
         if (besitzer.has(tabelle) && areaOf(d) !== besitzer.get(tabelle)) fremd.push(`${d} → ${tabelle}`);
-    assert.ok(Object.keys(gemessen).length > 5, 'Selbstbeweis: die Messung der Namen zur Laufzeit lief');
+    assert.ok(Object.keys(gemessen).length > 5, 'self-proof: the measurement of the names at runtime ran');
     for (const [d, { schreibt }] of Object.entries(gemessen))
       for (const tabelle of schreibt)
         if (areaOf(d) !== besitzer.get(tabelle) && !fremd.includes(`${d} → ${tabelle}`))
@@ -726,7 +726,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(
       fremd.sort(),
       [...FREMDSCHREIBER].sort(),
-      'Schreib-SQL gehört in den Besitzer-Bereich der Tabelle; andere Bereiche rufen dessen Dienst.',
+      "Write SQL belongs in the owner area of the table; other areas call that area's service.",
     );
   });
 
@@ -743,22 +743,25 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
         ziele.add(m[1]);
         if (besitzer.get(m[1]) !== besitzer.get(tabelle)) fremd.add(`${besitzer.get(tabelle)} → ${m[1]}`);
       }
-    assert.ok(ziele.has('parts_version_user'), `Selbstbeweis: Trigger-Ziele ${[...ziele]} — greift die Suche noch?`);
+    assert.ok(
+      ziele.has('parts_version_user'),
+      `self-proof: trigger targets ${[...ziele]} — does the search still work?`,
+    );
     assert.deepEqual(
       [...fremd].sort(),
       Object.keys(TRIGGER_FREMDZIELE).sort(),
-      'Ein Trigger schreibt in die Tabelle eines anderen Bereichs: dem Besitzer zuordnen oder in TRIGGER_FREMDZIELE begründen.',
+      'A trigger writes into the table of another area: assign it to the owner or justify it in TRIGGER_FREMDZIELE.',
     );
   });
 
   await t.test('foreign scopes never read upwards, otherwise fewer tables directly', async () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
-    assert.ok(besitzer.size > 60, `nur ${besitzer.size} Tabellen in docs/architecture.md — greift die Suche noch?`);
+    assert.ok(besitzer.size > 60, `only ${besitzer.size} tables in docs/architecture.md — does the search still work?`);
     const levels = stufenAusDoku();
-    assert.ok(levels.size > 20, `nur ${levels.size} Stufen in docs/architecture.md — greift die Suche noch?`);
+    assert.ok(levels.size > 20, `only ${levels.size} levels in docs/architecture.md — does the search still work?`);
     const je = { aufwärts: [], katalog: [], abwärts: [] };
     const pairs = new Set(foreignReader(besitzer));
-    assert.ok(Object.keys(gemessen).length > 5, 'Selbstbeweis: die Messung der Namen zur Laufzeit lief');
+    assert.ok(Object.keys(gemessen).length > 5, 'self-proof: the measurement of the names at runtime ran');
     // What the measurement sees via an imported read building block is counted by the check via db/ below.
     const viaDb = new Set(readerViaDb(await readingBlocks(_req)));
     for (const [d, { liest }] of Object.entries(gemessen))
@@ -768,17 +771,17 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
       }
     for (const paar of [...pairs].sort()) {
       const [b, tabelle] = paar.split(' → ');
-      assert.ok(levels.has(b), `${b} hat keine Stufe`);
+      assert.ok(levels.has(b), `${b} has no level`);
       je[readDirection(levels, b, besitzer.get(tabelle))].push(paar);
     }
     // Self-proof of the classification, on real levels.
     assert.equal(readDirection(levels, 'src/finances', besitzer.get('sets')), 'aufwärts');
-    assert.ok(je.abwärts.includes('src/management → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
-    assert.ok(je.katalog.length > 10, 'Selbstbeweis: Katalogtabellen werden gelesen');
+    assert.ok(je.abwärts.includes('src/management → sets'), 'self-proof: the administration reads sets directly');
+    assert.ok(je.katalog.length > 10, 'self-proof: catalogue tables are read');
     assert.deepEqual(
       je.aufwärts,
       [],
-      'Ein tieferer Bereich liest die Tabelle eines höheren: Form im eigenen Lesevertrag nennen, SQL über src/services.ts reichen.',
+      'A lower area reads the table of a higher one: name the shape in its own read contract, pass the SQL via src/services.ts.',
     );
     for (const [type, limit] of [
       ['katalog', KATALOG_LESER_HOECHSTENS],
@@ -786,7 +789,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     ]) {
       assert.ok(
         je[type].length <= limit,
-        `${je[type].length} direkte Lesestellen (${type}), erlaubt sind ${limit}.\n${je[type].join('\n')}`,
+        `${je[type].length} direct read sites (${type}), allowed are ${limit}.\n${je[type].join('\n')}`,
       );
       if (je[type].length < limit)
         console.log(`  ℹ fremde Leser (${type}): ${je[type].length} (Schranke ${limit}) — Schranke nachziehen`);
@@ -798,22 +801,22 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     const levels = stufenAusDoku();
     const bausteine = await readingBlocks(_req);
     // Self-proof: what the building blocks read comes from their result, also via constants.
-    assert.deepEqual(bausteine.inventoryView?.setBestand, ['sets'], 'setBestand liest sets');
-    assert.deepEqual(bausteine.accessView?.familieLebt, ['api_tokens']);
-    assert.ok(bausteine.inventoryView?.setZaehlt?.includes('price_alerts'), 'setZaehlt liest über ZAEHLT');
-    assert.ok(bausteine.stockQuantity?.quantityOfSets?.includes('sets'), 'asynchrone Bausteine zählen');
+    assert.deepEqual(bausteine.inventoryView?.setHoldings, ['sets'], 'setBestand reads sets');
+    assert.deepEqual(bausteine.accessView?.familyAlive, ['api_tokens']);
+    assert.ok(bausteine.inventoryView?.setCounts?.includes('price_alerts'), 'setZaehlt reads via ZAEHLT');
+    assert.ok(bausteine.stockQuantity?.quantityOfSets?.includes('sets'), 'asynchronous building blocks count');
     const reader = readerViaDb(bausteine);
-    assert.ok(reader.includes('src/sets → set_acquisitions'), 'Selbstbeweis: sets liest eigene Käufe über db/');
-    assert.ok(reader.includes('src/services.ts → price_alerts'), 'Selbstbeweis: `* as` zählt alle Exporte');
+    assert.ok(reader.includes('src/sets → set_acquisitions'), 'self-proof: sets reads its own purchases via db/');
+    assert.ok(reader.includes('src/services.ts → price_alerts'), 'self-proof: `* as` counts all exports');
     const upward = reader.filter(paar => {
       const [b, tabelle] = paar.split(' → ');
-      assert.ok(levels.has(b), `${b} hat keine Stufe`);
+      assert.ok(levels.has(b), `${b} has no level`);
       return besitzer.has(tabelle) && levels.get(besitzer.get(tabelle)) > levels.get(b);
     });
     assert.deepEqual(
       upward,
       [],
-      'Ein Bereich liest über db/ aufwärts: die Form in seinen Lesevertrag (src/<bereich>/lesevertrag.ts), den Baustein über src/services.ts reichen.',
+      'An area reads upwards via db/: put the shape in its read contract (src/<bereich>/lesevertrag.ts), pass the building block via src/services.ts.',
     );
   });
 

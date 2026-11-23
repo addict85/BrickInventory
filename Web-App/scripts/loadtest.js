@@ -37,7 +37,7 @@ const dbModule = require(path.join(ROOT, 'dist/db/database.js'));
 const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 // The routes call the areas via their wiring, as in the server.
 const wiring = require(path.join(ROOT, 'dist/startup/wiring.js'));
-const dienste = wiring.buildServices(db);
+const services = wiring.buildServices(db);
 
 /**
  * Readable text of a caught error.
@@ -192,8 +192,8 @@ function buildApp() {
   return require(path.join(ROOT, 'dist/startup/app.js')).buildApp({
     pool: db.pool,
     config: require(path.join(ROOT, 'dist/src/infra/config.js')).config(),
-    sitzungsGeheimnis: 'lasttest-sitzungsgeheimnis-lang-genug',
-    dienste,
+    sessionSecret: 'lasttest-sitzungsgeheimnis-lang-genug',
+    services,
     sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {
       req.session = { userId: USER.id, username: USER.username, isAdmin: false };
       next();

@@ -70,7 +70,7 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
       const { acquireSet } = require('./helpers/sources').areaPage('sets');
       await assert.rejects(
         acquireSet({ requester: uid, setNumber: 'abc', quantity: 1, condition: 'N', ifPresent: 'aufstocken' }),
-        (/** @type {any} */ e) => e.kind === 'ungueltig' && e.code === 'set_number_invalid',
+        (/** @type {any} */ e) => e.kind === 'invalid' && e.code === 'set_number_invalid',
       );
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);
       const { possibleSetNumber } = _req('src/infra/setNumber.js');

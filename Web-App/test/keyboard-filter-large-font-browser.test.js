@@ -81,14 +81,14 @@ async function enterFromEachField(_t, a) {
   for (const field of ['add-num', 'add-qty', 'add-price', 'add-date']) {
     await b.auswerten(CLOSE);
     await b.auswerten(addOpenSet);
-    await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
+    await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog open');
     await b.auswerten(`(() => { document.getElementById('add-num').value = '21318-1';
       document.getElementById('${field}').focus(); return true; })()`);
     const vorher = anfragen();
     await taste(b, 'Enter', 13);
-    await bis(`!document.getElementById('add-unknown').hidden`, `Enter aus ${field} schickt nicht ab`, 50);
+    await bis(`!document.getElementById('add-unknown').hidden`, `Enter from ${field} does not submit`, 50);
     await a.ruhig(2000);
-    assert.equal(anfragen() - vorher, 1, `Enter aus ${field}: Abfragen`);
+    assert.equal(anfragen() - vorher, 1, `Enter from ${field}: queries`);
     assert.match(await b.auswerten(text('#add-unknown')), /schon in deiner Sammlung/);
   }
   // Part and minifigure: without a number the dialog reports it at the result, submitted from the price field.
@@ -100,7 +100,7 @@ async function enterFromEachField(_t, a) {
     await b.auswerten(`(() => { document.querySelector('.tab.active [data-click="openCapture"][data-arg="${type}"]').click();
       document.getElementById('${result}').textContent = ''; document.getElementById('${field}').focus(); return true; })()`);
     await taste(b, 'Enter', 13);
-    await bis(`/erforderlich/.test(${text(`#${result}`)})`, `Enter aus ${field}`, 50);
+    await bis(`/erforderlich/.test(${text(`#${result}`)})`, `Enter from ${field}`, 50);
     assert.equal(await b.auswerten(text(`#${result}`)), meldung);
   }
   await b.auswerten(CLOSE);
@@ -110,21 +110,21 @@ async function draftDiscarded(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   await b.auswerten(addOpenSet);
-  await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
+  await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog open');
   await b.auswerten(`(() => { document.getElementById('add-num').value = '10276-1';
     const p = document.getElementById('add-price'); p.value = '12'; p.focus(); return true; })()`);
   await taste(b, 'Escape', 27);
-  await bis(`!document.getElementById('add-set-modal').classList.contains('open')`, 'Esc schliesst');
+  await bis(`!document.getElementById('add-set-modal').classList.contains('open')`, 'Esc closes');
   await b.auswerten(addOpenSet);
   const m =
     await b.auswerten(`({ preis: document.getElementById('add-price').value, nr: document.getElementById('add-num').value,
     datum: document.getElementById('add-date').value,
     abbrechen: [...document.querySelectorAll('#add-set-modal .capture-footer .btn')].map(k => k.textContent.trim()) })`);
-  assert.deepEqual([m.preis, m.nr], ['', ''], `Esc verwirft den Entwurf nicht: ${JSON.stringify(m)}`);
-  assert.match(m.datum, /^\d{4}-\d{2}-\d{2}$/, 'Kaufdatum steht wieder auf heute');
+  assert.deepEqual([m.preis, m.nr], ['', ''], `Esc does not discard the draft: ${JSON.stringify(m)}`);
+  assert.match(m.datum, /^\d{4}-\d{2}-\d{2}$/, 'Purchase date is back to today');
   assert.deepEqual(m.abbrechen, ['Abbrechen', 'Hinzufügen']);
   await b.auswerten(`document.querySelector('#add-set-modal .capture-footer .btn.bs').click(); true`);
-  await bis(`!document.getElementById('add-set-modal').classList.contains('open')`, '„Abbrechen“ schliesst');
+  await bis(`!document.getElementById('add-set-modal').classList.contains('open')`, '„Abbrechen“ closes');
 }
 
 async function finanzenFehler(_t, a) {
@@ -148,15 +148,15 @@ async function finanzenFehler(_t, a) {
     const m = await b.auswerten(`(() => { const k = document.querySelector('.tab.active .error-state button');
       return { inBox: !!k?.closest('#portfolio-chart'), unten: k?.getBoundingClientRect().bottom, hoehe: innerHeight,
         karten: document.getElementById('fin-sum').checkVisibility(), strich: [...document.querySelectorAll('#fin-sum .fval')].filter(f => f.checkVisibility() && f.textContent.trim() === '—').length }; })()`);
-    assert.ok(m.inBox, `Fehler nicht im Diagrammkasten: ${JSON.stringify(m)}`);
-    assert.ok(m.unten <= m.hoehe, `„Erneut versuchen“ nicht im ersten Bildschirm: ${JSON.stringify(m)}`);
-    assert.equal(m.karten, false, 'Karten ohne Zahl stehen über dem Fehler');
+    assert.ok(m.inBox, `Error not in the chart box: ${JSON.stringify(m)}`);
+    assert.ok(m.unten <= m.hoehe, `„Erneut versuchen“ not in the first screen: ${JSON.stringify(m)}`);
+    assert.equal(m.karten, false, 'Cards without a number are above the error');
     await b.auswerten(
       `window.__fehler = false; document.querySelector('#portfolio-chart .error-state button').click(); true`,
     );
     await bis(
       `document.getElementById('fin-sum').checkVisibility() && /€/.test(${text('#fin-cost-basis')})`,
-      'nach „Erneut versuchen“',
+      'after „Erneut versuchen“',
     );
   } finally {
     await b.tab('Page.removeScriptToEvaluateOnNewDocument', { identifier });
@@ -179,7 +179,7 @@ async function filterKnopf(_t, a) {
         ['#/merkliste', '#tab-wanted', '#mk-list .mk-row'],
       ]) {
         await geh(a, hash, `!!document.querySelector('${bereit}')`, tab);
-        assert.deepEqual(await rowList(tab), muster, `${tab} bei ${breite} px`);
+        assert.deepEqual(await rowList(tab), muster, `${tab} at ${breite} px`);
         await b.auswerten(`document.querySelector('${tab} .filter-button').click(); true`);
         await bis(
           `document.querySelector('${tab} .filter-bar > select').checkVisibility()`,
@@ -201,11 +201,11 @@ async function entfDeletes(_t, a) {
     await taste(b, 'Tab', 9);
     if (await b.auswerten(`document.activeElement.matches('#gallery .sc')`)) break;
   }
-  await bis(`document.activeElement.matches('#gallery .sc')`, 'Karte mit Tab erreicht', 5);
+  await bis(`document.activeElement.matches('#gallery .sc')`, 'Card reached with Tab', 5);
   const m =
     await b.auswerten(`(() => { const d = document.activeElement.querySelector('.delbtn'), r = d.getBoundingClientRect();
     return { breite: r.width, deckend: getComputedStyle(d.parentElement).opacity, etikett: getComputedStyle(d, '::before').content }; })()`);
-  assert.ok(m.breite > 0 && m.deckend === '1', `Papierkorb unsichtbar: ${JSON.stringify(m)}`);
+  assert.ok(m.breite > 0 && m.deckend === '1', `Trash button invisible: ${JSON.stringify(m)}`);
   assert.equal(m.etikett, '"Entf löscht"');
 }
 
@@ -213,7 +213,7 @@ async function setsTabelle(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   await b.auswerten(`document.getElementById('vl').click(); true`);
-  await bis(`!!document.querySelector('#gallery table')`, 'Tabelle');
+  await bis(`!!document.querySelector('#gallery table')`, 'Table');
   try {
     const t = await b.auswerten(`(() => { const kopf = [...document.querySelectorAll('#gallery thead th')];
       const z = document.querySelector('#gallery tr[data-arg="10294-1"]');
@@ -221,16 +221,16 @@ async function setsTabelle(_t, a) {
         datum: z.children[kopf.findIndex(k => k.textContent.trim() === 'Gekauft am')]?.textContent.trim(),
         namen: [...z.querySelectorAll('.rows-actions button')].map(k => k.getAttribute('aria-label')),
         bunt: !!z.querySelector('.rows-actions [fill^="#"]') }; })()`);
-    assert.equal(t.headers.length, t.cells, 'Spalten ohne Kopf');
+    assert.equal(t.headers.length, t.cells, 'Columns without a header');
     assert.deepEqual(
       t.headers.filter(k => !k),
       [],
-      `leere Spaltenköpfe: ${JSON.stringify(t.headers)}`,
+      `empty column headers: ${JSON.stringify(t.headers)}`,
     );
-    assert.ok(!t.headers.includes('In der App eingetragen'), 'Aufnahmedatum statt Kaufdatum');
+    assert.ok(!t.headers.includes('In der App eingetragen'), 'Recording date instead of purchase date');
     assert.equal(t.datum, '01.06.2026', 'Kaufdatum');
     assert.deepEqual(t.namen, ['Teile von Titanic neu importieren', 'Titanic löschen']);
-    assert.equal(t.bunt, false, 'buntes Sinnbild in der Zeile');
+    assert.equal(t.bunt, false, 'colorful symbol in the row');
 
     const sequence = `[...document.querySelectorAll('#gallery tbody tr')].map(z => z.children[2].textContent.trim())`;
     const state = `document.querySelector('#gallery [data-arg="name"]').closest('th').getAttribute('aria-sort')`;
@@ -242,13 +242,13 @@ async function setsTabelle(_t, a) {
       [...auf].sort((x, y) => x.localeCompare(y, 'de')),
     );
     await b.auswerten(`document.querySelector('#gallery [data-click="sortSets"][data-arg="name"]').click(); true`);
-    await bis(`${state} === 'descending'`, 'Name absteigend');
+    await bis(`${state} === 'descending'`, 'Name descending');
     await a.ruhig();
-    assert.deepEqual(await b.auswerten(sequence), [...auf].reverse(), 'absteigend nicht sortiert');
+    assert.deepEqual(await b.auswerten(sequence), [...auf].reverse(), 'not sorted descending');
     assert.equal(
       await b.auswerten(`document.activeElement.dataset.arg`),
       'name',
-      'Fokus nach dem Sortieren nicht am Kopf',
+      'Focus not on the header after sorting',
     );
   } finally {
     await b.auswerten(`(() => { const s = document.getElementById('gsort'); s.value = 'added_desc';
@@ -261,7 +261,7 @@ async function giftAndMinifigs(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   await b.auswerten(`document.getElementById('vl').click(); true`);
-  await bis(`!!document.querySelector('#gallery tr[data-arg="10300-1"]')`, 'Tabelle');
+  await bis(`!!document.querySelector('#gallery tr[data-arg="10300-1"]')`, 'Table');
   const tabelle =
     await b.auswerten(`(() => { const i = [...document.querySelectorAll('#gallery thead th')].findIndex(k => k.textContent.trim() === 'Minifiguren');
     return document.querySelector('#gallery tr[data-arg="10300-1"]').children[i].textContent.trim(); })()`);
@@ -273,8 +273,8 @@ async function giftAndMinifigs(_t, a) {
   const d = await b.auswerten(`({ kauf: ${text('#m-acq-summary')}, figuren: ${text('#m-minifigs-val')} })`);
   assert.match(d.kauf, /Geschenk/);
   assert.doesNotMatch(d.kauf, /0,00/, 'Kaufpreis 0 als Betrag');
-  assert.equal(tabelle, '4', 'Testdaten: Katalog kennt 4 Figuren');
-  assert.equal(d.figuren, tabelle, 'Tabelle und Detail zählen verschieden');
+  assert.equal(tabelle, '4', 'Test data: catalog knows 4 minifigs');
+  assert.equal(d.figuren, tabelle, 'Table and detail count differently');
   await b.auswerten(CLOSE);
 }
 
@@ -296,8 +296,8 @@ async function brick320(_t, a) {
         breit: document.documentElement.scrollWidth }; })()`);
     assert.equal(m.zeilen, 1, `aktiver Reiter bricht um: ${JSON.stringify(m)}`);
     assert.equal(m.reihen, 1, `Sammlungswahl zweireihig: ${JSON.stringify(m)}`);
-    assert.ok(Math.abs(m.zu - m.knopf) < 2 && m.band < 70, `× in eigener Zeile: ${JSON.stringify(m)}`);
-    assert.ok(m.breit <= 320, `Seite breiter als das Fenster: ${m.breit}`);
+    assert.ok(Math.abs(m.zu - m.knopf) < 2 && m.band < 70, `× in its own row: ${JSON.stringify(m)}`);
+    assert.ok(m.breit <= 320, `Page wider than the window: ${m.breit}`);
   } finally {
     await b.auswerten(`document.documentElement.setAttribute('data-theme', ${JSON.stringify(alt || 'classic')}); true`);
     await groesse(b, 1280, false);
@@ -316,7 +316,7 @@ async function addLargeFont(_t, a) {
     const m = await b.auswerten(`(() => { const r = id => document.getElementById(id).getBoundingClientRect();
       return { preis: r('add-price').width, oben: r('add-price').top, waehrung: r('add-currency').top }; })()`);
     assert.ok(m.preis >= 200, `Preisfeld zu schmal: ${JSON.stringify(m)}`);
-    assert.ok(m.waehrung > m.oben, `Währung nicht unter dem Preis: ${JSON.stringify(m)}`);
+    assert.ok(m.waehrung > m.oben, `Currency not below the price: ${JSON.stringify(m)}`);
   } finally {
     await b.auswerten(`${CLOSE}; document.documentElement.style.fontSize = ''; true`);
     await groesse(b, 1280, false);
@@ -335,7 +335,7 @@ async function largeFontDetail(_t, a) {
     const m = await b.auswerten(`(() => { const m = document.querySelector('#set-modal .modal').getBoundingClientRect();
       const k = document.querySelector('#set-modal .mhd').getBoundingClientRect(), f = document.querySelector('#set-modal .mfooter').getBoundingClientRect();
       return { inhalt: Math.round(Math.min(f.top, m.bottom) - k.bottom), modal: Math.round(m.height) }; })()`);
-    assert.ok(m.inhalt >= 400, `Kopf und Fuss lassen dem Inhalt zu wenig: ${JSON.stringify(m)}`);
+    assert.ok(m.inhalt >= 400, `Header and footer leave too little to the content: ${JSON.stringify(m)}`);
   } finally {
     await b.auswerten(`${CLOSE}; document.documentElement.style.fontSize = ''; true`);
     await groesse(b, 1280, false);
@@ -360,7 +360,7 @@ async function offlineBand(_t, a) {
     await bis(`!document.getElementById('offline-band').hidden`, 'Offline-Band');
     const m = await b.auswerten(`({ rb: document.getElementById('rb-hint').checkVisibility(),
       band: document.getElementById('offline-band').getBoundingClientRect().height })`);
-    assert.equal(m.rb, false, 'Rebrickable-Hinweis neben dem Offline-Band');
+    assert.equal(m.rb, false, 'Rebrickable hint next to the offline band');
     assert.ok(m.band < 60, `Offline-Band ${m.band} px`);
   } finally {
     await b.tab('Network.emulateNetworkConditions', {
@@ -372,7 +372,7 @@ async function offlineBand(_t, a) {
     await groesse(b, 1280, false);
   }
   await b.auswerten(`document.getElementById('gsort').dispatchEvent(new Event('change')); true`);
-  await bis(`document.getElementById('offline-band').hidden`, 'wieder verbunden', 300).catch(() => {});
+  await bis(`document.getElementById('offline-band').hidden`, 'connected again', 300).catch(() => {});
 }
 
 async function wertlinie(_t, a) {
@@ -386,7 +386,7 @@ async function wertlinie(_t, a) {
         return { linie: getComputedStyle(document.querySelector('#portfolio-chart svg polyline')).stroke,
           betrag: getComputedStyle(document.getElementById('portfolio-current')).color,
           leiste: getComputedStyle(document.querySelector('#fin-sum .fstat.hi')).borderTopColor }; })()`);
-      assert.equal(m.linie, m.betrag, `${design}: Wertlinie nicht in der Farbe der Beträge`);
+      assert.equal(m.linie, m.betrag, `${design}: value line not in the color of the amounts`);
       if (design === 'noppe' || design === 'hochglanz') assert.equal(m.leiste, m.linie, `${design}: Marktwert-Leiste`);
     }
   } finally {
@@ -406,13 +406,13 @@ async function rueckgaengig(_t, a) {
   await b.auswerten(`(() => { const k = document.querySelector('#gallery .sc[data-arg="75192-1"]'); k.focus();
     k.querySelector('.delbtn').click(); return true; })()`);
   // Restorable: no question (js/deletion.js).
-  await bis(`!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'gelöscht');
+  await bis(`!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'deleted');
   await a.ruhig();
   await b.auswerten(
     `(() => { const k = [...document.querySelectorAll('#toasts .toast-action')].at(-1); k.focus(); k.click(); return true; })()`,
   );
-  await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'zurückgeholt');
-  await bis(`document.activeElement?.dataset?.arg === '75192-1'`, 'Fokus auf der zurückgeholten Karte', 60);
+  await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"]')`, 'restored');
+  await bis(`document.activeElement?.dataset?.arg === '75192-1'`, 'Focus on the restored card', 60);
 }
 
 async function cancelSingleLine(_t, a) {
@@ -421,7 +421,7 @@ async function cancelSingleLine(_t, a) {
   await b.auswerten(`document.querySelectorAll('#tab-monitor details').forEach(d => { d.open = true; }); true`);
   await bis(
     `[...document.querySelectorAll('#jobs-card .mon-buttons .btn')].some(k => k.textContent.trim() === 'Abbrechen')`,
-    'Abbrechen',
+    'Cancel',
   );
   const h = await b.auswerten(`(() => { const k = [...document.querySelectorAll('#jobs-card .mon-buttons .btn')];
     const hoehe = t => Math.max(...k.filter(x => x.textContent.trim() === t).map(x => x.getBoundingClientRect().height));
@@ -442,9 +442,9 @@ async function emptyCollection(_t, a, kid) {
       const w = document.querySelector('#tab-gallery .collection-choice').getBoundingClientRect();
       return { text: ${text('#gallery .empty p')}, rechts: innerWidth - s.right, oben: s.top - w.top,
         titel: getComputedStyle(document.querySelector('#tab-gallery .ph h1')).opacity }; })()`);
-    assert.equal(m.titel, '0', 'Testdaten: Titel am Telefon unsichtbar');
+    assert.equal(m.titel, '0', 'Test data: title invisible on the phone');
     assert.match(m.text, /••• oben rechts/);
-    assert.ok(m.rechts < 40 && Math.abs(m.oben) < 20, `••• nicht oben rechts: ${JSON.stringify(m)}`);
+    assert.ok(m.rechts < 40 && Math.abs(m.oben) < 20, `••• not at the top right: ${JSON.stringify(m)}`);
   } finally {
     await groesse(b, 1280, false);
   }

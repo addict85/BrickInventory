@@ -115,7 +115,7 @@ async function putImages(t, db, uid, req) {
   t.after(weg);
   for (const [nr, w, h, f] of IMAGES) {
     fs.writeFileSync(path.join(ordner, `${nr}.jpg`), png(w, h, f));
-    assert.ok(await req('src/images/thumbs.js').previewFrom(`/images/sets/${nr}.jpg`), `Vorschau ${nr}`);
+    assert.ok(await req('src/images/thumbs.js').previewFrom(`/images/sets/${nr}.jpg`), `preview ${nr}`);
     await catalogSet(db, nr, { name: `Bildprobe ${nr}`, year: 2020, theme: 'Bildprobe', pieces: 100 });
     await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_number_with_version($1)', [
       nr,
@@ -141,18 +141,18 @@ const IMAGE_SIZE = sel => `(() => [...document.querySelectorAll(${JSON.stringify
   }))()`;
 
 function checkImages(m, wo, count) {
-  assert.equal(m.length, count, `${wo}: ${m.length} Bilder statt ${count}`);
+  assert.equal(m.length, count, `${wo}: ${m.length} images instead of ${count}`);
   for (const x of m) {
     const soll = IMAGES.find(([nr]) => nr === x.nr);
-    assert.ok(soll && x.geladen, `${wo}: ${x.nr} nicht geladen`);
+    assert.ok(soll && x.geladen, `${wo}: ${x.nr} not loaded`);
     const source = Number(soll[1]) / Number(soll[2]);
     // A preview may be smaller, but not shaped differently: a square one would mean „zugeschnitten“.
-    assert.ok(Math.abs(x.datei / source - 1) < 0.05, `${wo}: ${x.nr} Datei ${x.datei} statt ${source} (zugeschnitten)`);
+    assert.ok(Math.abs(x.datei / source - 1) < 0.05, `${wo}: ${x.nr} file ${x.datei} instead of ${source} (cropped)`);
     assert.ok(
       Math.abs(x.painted / source - 1) < 0.05,
-      `${wo}: ${x.nr} gemalt ${x.painted} statt ${source} (gestreckt)`,
+      `${wo}: ${x.nr} painted ${x.painted} instead of ${source} (stretched)`,
     );
-    assert.ok(!x.raus, `${wo}: ${x.nr} ragt aus seinem Rahmen`);
+    assert.ok(!x.raus, `${wo}: ${x.nr} sticks out of its frame`);
   }
 }
 
@@ -184,7 +184,7 @@ async function bilder(_t, a) {
           return Object.values(m).map(s => [...s]); })()`);
         assert.ok(
           reihen.every(r => r.length === 1),
-          `${wo}: Bildflächen einer Reihe verschieden: ${JSON.stringify(reihen)}`,
+          `${wo}: image areas within a row differ: ${JSON.stringify(reihen)}`,
         );
         if (!telefon) {
           await b.auswerten(`document.getElementById('vl').click(); true`);
@@ -234,15 +234,15 @@ async function minusAtOne(_t, a) {
         beschreibung: document.getElementById(k.getAttribute('aria-describedby') || '-')?.textContent || '' }; })()`);
   const vorher = writing();
   const m = await state();
-  assert.equal(m.gesperrt, 'true', `„−“ bei einem Exemplar nicht gesperrt: ${JSON.stringify(m)}`);
+  assert.equal(m.gesperrt, 'true', `„−“ not disabled with one copy: ${JSON.stringify(m)}`);
   assert.equal(m.titel, 'Zum Entfernen: „Set löschen“ unter „Weitere Aktionen“');
-  assert.equal(m.beschreibung, m.titel, 'Vorleser hören den Hinweis nicht');
+  assert.equal(m.beschreibung, m.titel, 'screen readers do not hear the hint');
   await b.auswerten(`document.getElementById('m-qty-dec').click(); true`);
   await a.warte(700);
-  assert.deepEqual([(await state()).wert, writing() - vorher], ['1', 0], '„−“ bei 1 hat etwas getan');
+  assert.deepEqual([(await state()).wert, writing() - vorher], ['1', 0], '„−“ at 1 did something');
   await b.auswerten(`document.querySelector('[data-click="mQtyInc"]').click(); true`);
   await bis(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'false'`, '„−“ frei bei 2');
-  assert.equal((await state()).titel, '', 'Hinweis bleibt bei 2 stehen');
+  assert.equal((await state()).titel, '', 'hint stays at 2');
   await bis(`document.querySelector('#m-quantity .field-status')?.textContent.trim() !== ''`, 'saved');
   await a.ruhig();
   await b.auswerten(`document.getElementById('m-qty-dec').click(); true`);
@@ -285,11 +285,11 @@ async function floatingButton(_t, a) {
             return r.height > 0 && r.bottom > f.top && r.top < f.bottom && r.right > f.left && r.left < f.right; });
           return { buttonTop: Math.round(f.top), letzte: unten && { text: unten.e.textContent.trim().slice(0, 40), unten: Math.round(unten.r.bottom) },
             ueber: ueber.map(e => e.textContent.trim().slice(0, 30) || e.tagName) }; })()`);
-        assert.ok(m.letzte, `${tab} ${breite} px: keine letzte Zeile gefunden`);
-        assert.deepEqual(m.ueber, [], `${tab} ${breite} px: vom Knopf verdeckt: ${JSON.stringify(m)}`);
+        assert.ok(m.letzte, `${tab} ${breite} px: no last row found`);
+        assert.deepEqual(m.ueber, [], `${tab} ${breite} px: covered by the button: ${JSON.stringify(m)}`);
         assert.ok(
           m.letzte.unten <= m.buttonTop,
-          `${tab} ${breite} px: letzte Zeile unter dem Knopf: ${JSON.stringify(m)}`,
+          `${tab} ${breite} px: last row under the button: ${JSON.stringify(m)}`,
         );
       }
     }
@@ -322,7 +322,7 @@ async function tabellenansicht(_t, a) {
       falcon: [zelle('75192-1', 'Kaufpreis'), zelle('75192-1', 'Marktwert')], geschenk: zelle('10300-1', 'Kaufpreis') }; })()`);
   await b.auswerten(`document.getElementById('vg').click(); true`);
   assert.match(m.untertitel, /Kaufpreis und Marktwert|Kaufpreis, Marktwert/, 'Testdaten: Untertitel verspricht beides');
-  assert.ok(m.kopf.includes('Kaufpreis') && m.kopf.includes('Marktwert'), `Spalten fehlen: ${m.kopf.join(' | ')}`);
+  assert.ok(m.kopf.includes('Kaufpreis') && m.kopf.includes('Marktwert'), `columns missing: ${m.kopf.join(' | ')}`);
   assert.match(m.falcon[0], /^650,00\s€$/);
   assert.match(m.falcon[1], /^801,50\s€\s*\+23,3\s%$/, `Marktwert mit Entwicklung: ${m.falcon[1]}`);
   assert.equal(m.geschenk, 'Geschenk');
@@ -342,10 +342,10 @@ async function financeColumns(_t, a) {
     const teil = [...document.querySelectorAll('[data-fin-kind="parts"] tbody tr')].find(z => /250/.test(z.textContent) && /0,12/.test(z.textContent));
     return { leer, headers: [...document.querySelectorAll('[data-fin-kind="sets"] thead th')].map(k => k.textContent.trim()),
       teil: teil && [...teil.children].map(sichtbar).filter(x => /0,12/.test(x)) }; })()`);
-  assert.ok(!m.headers.includes('Stückpreis'), `Spalte „Stückpreis“ steht noch da: ${m.headers.join(' | ')}`);
-  assert.deepEqual(m.leer, [], 'Spalte ohne einen Wert');
-  assert.ok(m.teil, 'Testdaten: Teil zu 0,12 € je Stück');
-  assert.equal(m.teil.length, 1, `Stückpreis doppelt: ${JSON.stringify(m.teil)}`);
+  assert.ok(!m.headers.includes('Stückpreis'), `column „Stückpreis“ is still there: ${m.headers.join(' | ')}`);
+  assert.deepEqual(m.leer, [], 'column without a value');
+  assert.ok(m.teil, 'test data: part at 0.12 € per piece');
+  assert.equal(m.teil.length, 1, `unit price twice: ${JSON.stringify(m.teil)}`);
   assert.match(m.teil[0], /^30,00\s€\s*je 0,12\s€$/);
 }
 
@@ -356,7 +356,7 @@ async function financeTerms(_t, a) {
   try {
     await geh(a, '#/finanzen', `!document.getElementById('fin-basis').hidden`, 'Finanzen');
     const telefon = await b.auswerten(zeilen);
-    assert.ok(telefon <= 3, `Erklärzeile am Telefon über ${telefon} Zeilen`);
+    assert.ok(telefon <= 3, `explanation row on the phone over ${telefon} lines`);
   } finally {
     await groesse(b, 1280, false);
   }
@@ -365,10 +365,10 @@ async function financeTerms(_t, a) {
     await b.auswerten(`({ titel: ${text('#fin-cost-basis-title')}, help: document.getElementById('fin-cost-basis-title').title,
     unter: ${text('#fin-cost-basis-sub')}, zeilen: ${zeilen}, basis: ${text('#fin-basis')} })`);
   assert.equal(m.titel, 'Kaufpreis (bewertete Positionen)');
-  assert.match(m.help, /Kauf- und Marktpreis/, 'Erklärung im Tooltip fehlt');
+  assert.match(m.help, /Kauf- und Marktpreis/, 'explanation in the tooltip is missing');
   assert.match(m.unter, /^Insgesamt bezahlt: [\d.]+,\d\d €$/);
-  assert.ok(m.zeilen <= 1, `Erklärzeile über ${m.zeilen} Zeilen: ${m.basis}`);
-  assert.match(m.basis, /je Kauf und Konto/, 'Testdaten: mehrere Zeilen je Position, die Erklärung steht im Tooltip');
+  assert.ok(m.zeilen <= 1, `explanation row over ${m.zeilen} lines: ${m.basis}`);
+  assert.match(m.basis, /je Kauf und Konto/, 'test data: several rows per item, the explanation is in the tooltip');
 }
 
 /** Reloads the page (like round 24): the error should come on the first load, not over an old state. */
@@ -386,7 +386,7 @@ async function serverErrorAdmin(_t, a) {
     await bis(`!window.__alt && !!document.querySelector('.tab.active .error-state')`, 'Error', 300);
     const m = await b.auswerten(text('.tab.active .error-state'));
     assert.match(m, /Hintergrundarbeiten → „Protokoll anzeigen“/, m);
-    assert.doesNotMatch(m, /hilft der Administrator/, 'Verwalter wird an sich selbst verwiesen');
+    assert.doesNotMatch(m, /hilft der Administrator/, 'admin is referred to themselves');
   } finally {
     await b.tab('Page.removeScriptToEvaluateOnNewDocument', { identifier });
     await b.auswerten(`location.reload(); true`);
@@ -418,13 +418,13 @@ async function jobs(_t, a) {
       const zusatz = td.querySelector('.mon-extra').getBoundingClientRect(), zelle = td.getBoundingClientRect();
       return { balken, idle, rechts: Math.round(zelle.right - parseFloat(getComputedStyle(td).paddingRight) - zahl.right),
         darunter: zusatz.top >= zahl.bottom - 1, text: td.textContent.replace(/\\s+/g, ' ').trim() }; })()`);
-    assert.ok(m.balken.length > 0, 'Testdaten: ein laufender Dienst mit Balken');
+    assert.ok(m.balken.length > 0, 'test data: a running service with a bar');
     assert.ok(
       m.balken.every(k => /mon-running/.test(k)) && !m.idle,
-      `Balken nicht nur beim laufenden Dienst: ${JSON.stringify(m)}`,
+      `bar not only for the running service: ${JSON.stringify(m)}`,
     );
-    assert.ok(Math.abs(m.rechts) <= 1, `Zahl „Offen“ nicht rechtsbündig: ${JSON.stringify(m)}`);
-    assert.ok(m.darunter, `„davon … nach Fehler“ nicht unter der Zahl: ${JSON.stringify(m)}`);
+    assert.ok(Math.abs(m.rechts) <= 1, `number „Offen“ not right-aligned: ${JSON.stringify(m)}`);
+    assert.ok(m.darunter, `„davon … nach Fehler“ not below the number: ${JSON.stringify(m)}`);
     assert.match(m.text, /^\d+\s*davon \d+ nach Fehler$/);
   } finally {
     await b.auswerten(`window.fetch = window.__echt; true`);
@@ -434,7 +434,7 @@ async function jobs(_t, a) {
 async function zweiterFaktor(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/konto', `!!document.querySelector('#sf-surface [data-click="newRecoveryCodes"]')`, 'Konto');
-  assert.equal(await b.auswerten(`!!document.querySelector('#sf-surface input')`), false, 'Codefeld für zwei Aktionen');
+  assert.equal(await b.auswerten(`!!document.querySelector('#sf-surface input')`), false, 'code field for two actions');
   const dialog = `({ offen: document.getElementById('confirm-modal').style.display === 'flex', titel: ${text('#cd-title')},
     code: !document.getElementById('cd-code-wrap').hidden, pw: !document.getElementById('cd-pw-wrap').hidden })`;
   // New codes: the code in its own dialog.
@@ -480,8 +480,8 @@ async function bauliste(_t, a) {
       const m = await b.auswerten(`({ field: document.getElementById('pl-setnr').getBoundingClientRect().width,
         karte: document.querySelector('#tab-partslist .ph').getBoundingClientRect().width })`);
       if (telefon)
-        assert.ok(m.field >= m.karte - 1, `${breite} px: Feld nicht über die ganze Breite: ${JSON.stringify(m)}`);
-      else assert.ok(m.field >= 480, `${breite} px: Feld für mehrere Setnummern zu schmal: ${JSON.stringify(m)}`);
+        assert.ok(m.field >= m.karte - 1, `${breite} px: field does not span the full width: ${JSON.stringify(m)}`);
+      else assert.ok(m.field >= 480, `${breite} px: field too narrow for several set numbers: ${JSON.stringify(m)}`);
     }
   } finally {
     await groesse(b, 1280, false);
@@ -497,8 +497,8 @@ async function wantedTo(_t, a) {
       await b.auswerten(`(() => { const d = document.getElementById('mk-box'), h = d.querySelector('summary h2');
       const kd = d.getBoundingClientRect(), kh = h.getBoundingClientRect();
       return { offen: d.open, oben: Math.round(kh.top - kd.top), unten: Math.round(kd.bottom - kh.bottom) }; })()`);
-    assert.equal(m.offen, false, 'Testdaten: am Telefon zugeklappt');
-    assert.ok(Math.abs(m.oben - m.unten) <= 2, `Leerraum unter der zugeklappten Karte: ${JSON.stringify(m)}`);
+    assert.equal(m.offen, false, 'test data: collapsed on the phone');
+    assert.ok(Math.abs(m.oben - m.unten) <= 2, `empty space below the collapsed card: ${JSON.stringify(m)}`);
   } finally {
     await groesse(b, 1280, false);
   }

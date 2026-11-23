@@ -84,16 +84,16 @@ test('the parts list names the parts with both numbers', { concurrency: 1 }, asy
   await t.test('`part_number` is the Rebrickable number', () => {
     assert.ok(
       nach('3070b'),
-      'Die Antwort kennt `3070b` nicht. Steht dort die BrickLink-Nummer 3070, ' +
-        'sucht der Bestandsabgleich in `parts` nach einer Nummer, die es dort ' +
-        'nicht gibt — genau Marcos „Teile fehlen".\n' +
-        'Geliefert wurde: ' +
+      'The response does not know `3070b`. If it shows the BrickLink number 3070, ' +
+        'the stock comparison looks in `parts` for a number that does not ' +
+        "exist there — exactly Marco's „Teile fehlen“.\n" +
+        'Returned was: ' +
         d.parts.map(p => p.part_number).join(', '),
     );
     assert.equal(
       nach('3070b').bl_part_number,
       '3070',
-      'Die BrickLink-Nummer muss daneben stehen bleiben — Anzeige und Export leben davon',
+      'The BrickLink number must stay next to it — display and export depend on it',
     );
   });
 
@@ -101,20 +101,20 @@ test('the parts list names the parts with both numbers', { concurrency: 1 }, asy
     // The reason why the key had to move along: on the
     // BrickLink number 3070b and 3069b would merge into one row — with
     // added-up demand (6) under one of the two numbers.
-    assert.ok(nach('3069b'), 'Die zweite Nummer ist verschluckt worden');
-    assert.equal(nach('3070b').total_quantity, 4, 'Der Bedarf von 3070b stimmt nicht mehr');
-    assert.equal(nach('3069b').total_quantity, 2, 'Der Bedarf von 3069b stimmt nicht mehr');
+    assert.ok(nach('3069b'), 'The second number was swallowed');
+    assert.equal(nach('3070b').total_quantity, 4, 'The demand for 3070b is no longer right');
+    assert.equal(nach('3069b').total_quantity, 2, 'The demand for 3069b is no longer right');
     assert.equal(
       nach('3069b').bl_part_number,
       '3070',
-      'Beide tragen dieselbe BrickLink-Nummer — der Export fasst sie dort wieder zusammen',
+      'Both carry the same BrickLink number — the export merges them there again',
     );
   });
 
   await t.test('without a mapping the number stays as it is', () => {
     // The opposite direction: where there is no BrickLink number, nothing may
     // be invented — both fields then carry the Rebrickable number.
-    assert.ok(nach('3001'), '3001 fehlt ganz');
+    assert.ok(nach('3001'), '3001 is missing entirely');
     assert.equal(nach('3001').bl_part_number, '3001');
   });
 });

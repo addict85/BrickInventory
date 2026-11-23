@@ -17,20 +17,20 @@ test('voucher: both gaps at once, required marked', async () => {
   try {
     await sicht(w, 'vouchers');
     for (const id of ['v-number', 'v-amount']) {
-      assert.match(d.querySelector(`label[for="${id}"]`).textContent, /\*$/, `${id} ohne Stern`);
+      assert.match(d.querySelector(`label[for="${id}"]`).textContent, /\*$/, `${id} without an asterisk`);
       assert.equal(d.getElementById(id).getAttribute('aria-required'), 'true');
     }
     d.querySelector('[data-click="saveVoucher"]').click();
     await warte(() => d.getElementById('v-amount-error'));
     for (const id of ['v-number', 'v-amount']) {
       const f = d.getElementById(`${id}-error`);
-      assert.ok(f && !f.hidden && /ausfüllen/.test(f.textContent), `${id}: keine Meldung`);
+      assert.ok(f && !f.hidden && /ausfüllen/.test(f.textContent), `${id}: no message`);
     }
-    assert.equal(d.activeElement?.id, 'v-number', 'Fokus nicht im ersten leeren Feld');
+    assert.equal(d.activeElement?.id, 'v-number', 'focus not in the first empty field');
     assert.equal(
       aufrufe.some(a => a.method === 'POST' && a.url.includes('/v2/vouchers')),
       false,
-      'leeres Formular ging an den Server',
+      'empty form went to the server',
     );
   } finally {
     w.close();

@@ -50,9 +50,9 @@ test('known login: address only stored as a fingerprint', { concurrency: 1 }, as
       `SELECT key FROM rate_limit_attempts WHERE key LIKE 'login-bekannt|%' OR key LIKE 'login-erfolg|%'`,
     );
     const mine = zeilen.filter(z => z.key.endsWith(`|konto:${uid}`));
-    assert.equal(mine.length, 4, 'je Adresse eine Bekannt- und eine Erfolgszeile');
+    assert.equal(mine.length, 4, 'one known row and one success row per address');
     for (const { key } of mine) {
-      assert.ok(!key.includes('203.0.113') && !key.includes('2001:db8'), `Klartext in ${key}`);
+      assert.ok(!key.includes('203.0.113') && !key.includes('2001:db8'), `Plain text in ${key}`);
     }
   });
 

@@ -5,7 +5,7 @@
  * and checked across two instances in test/web-two-instances-db.test.js.
  *
  * Counter-checks:
- *   E  COST.preis = 1                        → red: “routes with BrickLink or foreign fetch …”
+ *   E  COST.price = 1                        → red: “routes with BrickLink or foreign fetch …”
  *   F  (15.11.2026) einordnung() back to regexes `^…$` on the path → red:
  *      “a trailing slash costs …” (partslist-pdf/ costs 1 instead of 25)
  *   G  (22.11.2026) in apiThrottle() Retry-After left out → red: “the route answers 429 …”;
@@ -19,22 +19,22 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { classification, apiThrottle, BUDGET, COST } = _req('src/http/apiThrottle.js');
 
 test('catalog fetches cost more than reading', () => {
-  assert.equal(classification('GET', '/catalog/sets').kosten, COST.abruf);
-  assert.equal(classification('GET', '/sets').kosten, COST.normal);
-  assert.equal(classification('POST', '/minifigs/import/csv').auftrag, true);
-  assert.equal(classification('GET', '/settings/export/data').auftrag, true);
+  assert.equal(classification('GET', '/catalog/sets').cost, COST.fetch);
+  assert.equal(classification('GET', '/sets').cost, COST.normal);
+  assert.equal(classification('POST', '/minifigs/import/csv').job, true);
+  assert.equal(classification('GET', '/settings/export/data').job, true);
 });
 
 test('a trailing slash costs as much as the route Express finds', () => {
   for (const [m, p, k] of [
-    ['POST', '/sets/partslist-pdf/', COST.auftrag],
-    ['POST', '/sets/import/csv//', COST.auftrag],
-    ['GET', '/wanted/10294-1/prices/', COST.preis],
-    ['POST', '/vouchers/3/balance/', COST.abruf],
-    ['GET', '/catalog/sets/', COST.abruf],
-    ['HEAD', '/settings/export/data/', COST.auftrag],
+    ['POST', '/sets/partslist-pdf/', COST.job],
+    ['POST', '/sets/import/csv//', COST.job],
+    ['GET', '/wanted/10294-1/prices/', COST.price],
+    ['POST', '/vouchers/3/balance/', COST.fetch],
+    ['GET', '/catalog/sets/', COST.fetch],
+    ['HEAD', '/settings/export/data/', COST.job],
   ])
-    assert.equal(classification(m, p).kosten, k, `${m} ${p}`);
+    assert.equal(classification(m, p).cost, k, `${m} ${p}`);
 });
 
 test('routes with BrickLink or third-party fetches cost more than reading', () => {
@@ -42,7 +42,7 @@ test('routes with BrickLink or third-party fetches cost more than reading', () =
     ['GET', '/wanted/10294-1/prices'],
     ['GET', '/sets/10294-1/price'],
   ])
-    assert.equal(classification(m, p).kosten, COST.preis, `${m} ${p}`);
+    assert.equal(classification(m, p).cost, COST.price, `${m} ${p}`);
   for (const [m, p] of [
     ['POST', '/sets'],
     ['GET', '/sets/barcode/123'],
@@ -51,11 +51,11 @@ test('routes with BrickLink or third-party fetches cost more than reading', () =
     ['POST', '/minifigs'],
     ['POST', '/vouchers/3/balance'],
   ])
-    assert.equal(classification(m, p).kosten, COST.abruf, `${m} ${p}`);
-  assert.ok(COST.preis > COST.abruf);
+    assert.equal(classification(m, p).cost, COST.fetch, `${m} ${p}`);
+  assert.ok(COST.price > COST.fetch);
   // The price route must not drain the shared quota with the whole budget.
-  const n = Math.floor(BUDGET / COST.preis);
-  assert.ok(n * 4 <= 150, `${n} Anfragen je Fenster = bis zu ${n * 4} BrickLink-Aufrufe`);
+  const n = Math.floor(BUDGET / COST.price);
+  assert.ok(n * 4 <= 150, `${n} requests per window = up to ${n * 4} BrickLink calls`);
 });
 
 test('the route answers 429 with Retry-After and error code', async t => {

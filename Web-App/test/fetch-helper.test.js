@@ -88,7 +88,7 @@ class Umlenker extends https.Agent {
 }
 
 const agent = new https.Agent({ ca: cert });
-const opt = (mehr = {}) => ({ hosts: [`localhost:${port}`], maxBytes: 1000, zeitlimitMs: 3000, agent, ...mehr });
+const opt = (mehr = {}) => ({ hosts: [`localhost:${port}`], maxBytes: 1000, timeoutMs: 3000, agent, ...mehr });
 const basis = () => `https://localhost:${port}`;
 
 test.before(async () => {
@@ -104,24 +104,24 @@ async function reason(promise) {
   try {
     await promise;
   } catch (e) {
-    assert.ok(e instanceof FetchError, `kein AbrufFehler: ${e}`);
+    assert.ok(e instanceof FetchError, `no AbrufFehler: ${e}`);
     return e.reason;
   }
-  assert.fail('kein Fehler');
+  assert.fail('no error');
 }
 
 test('a relative redirect is resolved against the starting address', async () => {
   const r = await holeHttps(`${basis()}/relativ`, opt());
   assert.equal(r.status, 200);
   assert.equal(r.url, `${basis()}/bild.jpg`);
-  assert.equal(r.koerper.length, IMAGE.length);
+  assert.equal(r.body.length, IMAGE.length);
 });
 
 // Counter-check (measured 02.11.2026): in abruf.ts the condition “only GET follows”
 // removed → red (the POST lands as GET on /bild.jpg, status 200).
 test('a POST follows no redirect', async () => {
   const vorher = gesehen.length;
-  const r = await holeHttps(`${basis()}/relativ`, opt({ methode: 'POST', rumpf: '{"a":1}' }));
+  const r = await holeHttps(`${basis()}/relativ`, opt({ method: 'POST', bodyText: '{"a":1}' }));
   assert.equal(r.status, 302);
   assert.deepEqual(
     gesehen.slice(vorher).map(g => g.path),
@@ -140,7 +140,7 @@ test('a foreign host is rejected', async () => {
   assert.equal(
     gesehen.slice(vorher).filter(g => g.host.startsWith('example.org')).length,
     0,
-    'fremder Host wurde abgerufen',
+    'foreign host was fetched',
   );
 });
 
@@ -163,11 +163,11 @@ test('Authorization does not stay on a host change', async () => {
     `${basis()}/wechsel`,
     opt({
       hosts: [`localhost:${port}`, `127.0.0.1:${port}`],
-      kopfzeilen: { Authorization: 'key geheim', Cookie: 'a=b' },
+      headers: { Authorization: 'key geheim', Cookie: 'a=b' },
     }),
   );
-  assert.equal(JSON.parse(r.koerper.toString()).auth, null);
-  assert.equal(gesehen.find(g => g.path === '/wechsel').auth, 'key geheim', 'der erste Sprung trägt den Schlüssel');
+  assert.equal(JSON.parse(r.body.toString()).auth, null);
+  assert.equal(gesehen.find(g => g.path === '/wechsel').auth, 'key geheim', 'the first hop carries the key');
 });
 
 test('body above the limit, announced or without a length', async () => {
@@ -175,7 +175,7 @@ test('body above the limit, announced or without a length', async () => {
   assert.equal(
     await reason(holeHttps(`${basis()}/gross-still`, opt())),
     'zu-gross',
-    'Körper ohne Längenangabe über der Grenze',
+    'Body without length header above the limit',
   );
   const a = await openHttps(`${basis()}/gross-still`, opt());
   const error = await new Promise(fertig => {
@@ -184,11 +184,11 @@ test('body above the limit, announced or without a length', async () => {
     s.on('error', fertig);
     s.on('end', () => fertig(null));
   });
-  assert.equal(error?.reason, 'zu-gross', 'der Strom endet nicht mit Fehler');
+  assert.equal(error?.reason, 'zu-gross', 'the stream does not end with an error');
 });
 
 test('a silent server runs into the timeout', async () => {
-  assert.equal(await reason(holeHttps(`${basis()}/still`, opt({ zeitlimitMs: 300 }))), 'time_limit');
+  assert.equal(await reason(holeHttps(`${basis()}/still`, opt({ timeoutMs: 300 }))), 'time_limit');
 });
 
 test('downloadSetImage survives every redirect', async t => {

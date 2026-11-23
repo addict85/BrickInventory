@@ -64,7 +64,6 @@ const STRUCTURE_FILES = {
   'clients-render-only.test.js': 'ban on money sums in the web app',
   'konfig.test.js': 'ban on reading process.env outside the configuration',
   'hardening-block1.test.js': 'ban on tokens in addresses, every price query names the currency',
-  'error-kind.test.js': 'only src/http maps error kinds to status',
   'one-error-language.test.js': 'ban on fixed error sentences in routes',
   'auth-parity.test.js': 'one password check and one brute-force counter',
   'email-verify.test.js': 'email verification lives in one place',

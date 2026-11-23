@@ -19,23 +19,23 @@ import { access, type ImageWorker, type ImagesDependencies, type ImagesContext }
 
 export type { ImageWorker, ImagesDependencies, ImagesContext } from './context';
 
-/** Without `bildwerk` the real one; a test passes its own (startup/wiring.ts buildServices). */
+/** Without `imageWorker` the real one; a test passes its own (startup/wiring.ts buildServices). */
 export function createImages(
-  a: Omit<ImagesDependencies, 'faecher' | 'bildwerk'> & { bildwerk?: ImageWorker | undefined },
+  a: Omit<ImagesDependencies, 'compartments' | 'imageWorker'> & { imageWorker?: ImageWorker | undefined },
   inspect?: Inspect<ImagesContext>,
 ) {
-  const bildwerk = a.bildwerk ?? {
+  const imageWorker = a.imageWorker ?? {
     loadSetImage: (url: string, sn: string, info?: { status?: number }) => downloadSetImage(a, url, sn, info),
     createPreview: previewFrom,
   };
   return buildArea(
-    { ...a, bildwerk, faecher: new Compartments() },
+    { ...a, imageWorker, compartments: new Compartments() },
     (db: Db) => access(db, a.readContract),
     (k: ImagesContext) => ({
       /** Limits of the image proxy and the cache from the passed configuration. */
       imageLimits: () => ({
         cacheMaxBytes: k.config.imageCacheMaxMb * 1024 * 1024,
-        fetchesJeMinute: k.config.imageFetchesJeMinute,
+        fetchesPerMinute: k.config.imageFetchesPerMinute,
       }),
       deleteExpired: bound(k)(imageDemandService.deleteExpired),
       catalogImagesReserve: bound(k)(imageDemandService.catalogImagesReserve),
@@ -50,8 +50,8 @@ export function createImages(
       atSetImageLoaded: bound(k)(imageDemandService.atSetImageLoaded),
       reportSetImageLoaded: bound(k)(imageDemandService.reportSetImageLoaded),
       // Looked up at call time: a test replaces parts of the image works after construction.
-      loadSetImage: (...a: Parameters<ImageWorker['loadSetImage']>) => k.bildwerk.loadSetImage(...a),
-      createPreview: (relPath: string) => k.bildwerk.createPreview(relPath),
+      loadSetImage: (...a: Parameters<ImageWorker['loadSetImage']>) => k.imageWorker.loadSetImage(...a),
+      createPreview: (relPath: string) => k.imageWorker.createPreview(relPath),
       forgetMissing: bound(k)(imageMisses.forgetMissing),
       startNone: bound(k)(imageMisses.setUpImageGaps),
       stopNone: bound(k)(imageMisses.stopNone),
@@ -61,12 +61,12 @@ export function createImages(
       setNumberInScope: bound(k)(imageScopeService.setNumberInScope),
       cdnForMissingImage: bound(k)(imageLookup.cdnForMissingImage),
       queueThumb: bound(k)(proxyThumbs.queueThumb),
-      cacheTreffer: bound(k)(imgCacheServe.cacheHit),
+      cacheHit: bound(k)(imgCacheServe.cacheHit),
       cleanImageCacheOn: imgCacheServe.cleanImageCacheOn,
       loadImage: bound(k)(imageFile.loadImage),
-      fitTailoredPreviews: (local: { web: string; datei: string }[]) => fitPreviews.fitTailoredPreviews(k, local),
-      openImage: (...x: Parameters<ImagesContext['externalSources']['sources']['oeffneBild']>) =>
-        k.externalSources.sources.oeffneBild(...x),
+      fitTailoredPreviews: (local: { web: string; file: string }[]) => fitPreviews.fitTailoredPreviews(k, local),
+      openImage: (...x: Parameters<ImagesContext['externalSources']['sources']['openImage']>) =>
+        k.externalSources.sources.openImage(...x),
     }),
     inspect,
   );

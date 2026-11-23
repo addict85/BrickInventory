@@ -50,12 +50,12 @@ test('the bar is created and appears on a scrollable page', () => {
   const bar = w.document.getElementById('app-scrollbar');
   assert.ok(
     bar,
-    'Kein Balken im Dokument. Er darf NICHT aus dem Markup kommen — das Skript ' +
-      'läuft vor dem Ende des Body, dort notiert gäbe es ihn beim Start nicht.',
+    'No bar in the document. It must NOT come from the markup — the script ' +
+      'runs before the end of the body, noted there it would not exist at start.',
   );
-  assert.equal(bar.style.display, 'block', 'Der Balken bleibt verborgen, obwohl die Seite rollbar ist');
+  assert.equal(bar.style.display, 'block', 'The bar stays hidden although the page is scrollable');
   const thumb = w.document.getElementById('app-scrollbar-thumb');
-  assert.ok(thumb && parseInt(thumb.style.height, 10) > 0, `Der Griff hat keine Höhe: ${thumb?.style.height}`);
+  assert.ok(thumb && parseInt(thumb.style.height, 10) > 0, `The thumb has no height: ${thumb?.style.height}`);
 });
 
 test('without a scroll area it disappears again', () => {

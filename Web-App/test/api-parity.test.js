@@ -225,17 +225,17 @@ test('API parity web app ↔ Android', async t => {
       assert.equal(
         withSession.status,
         200,
-        `${path} mit Sitzung -> ${withSession.status}: ${JSON.stringify(withSession.body)}`,
+        `${path} with session -> ${withSession.status}: ${JSON.stringify(withSession.body)}`,
       );
       assert.equal(
         withToken.status,
         200,
-        `${path} mit Token -> ${withToken.status}: ${JSON.stringify(withToken.body)}`,
+        `${path} with token -> ${withToken.status}: ${JSON.stringify(withToken.body)}`,
       );
       assert.deepEqual(
         core(withToken.body),
         core(withSession.body),
-        `${path}: Sitzung und Token liefern Verschiedenes — die Route hängt an der Auth-Art`,
+        `${path}: session and token deliver different things — the route depends on the auth type`,
       );
     });
   }
@@ -277,8 +277,8 @@ test('API parity web app ↔ Android', async t => {
       assert.equal(
         r.status,
         404,
-        `${alt} antwortet wieder — dann existiert die Logik erneut doppelt, und ` +
-          'genau das sollte der Umbau beenden',
+        `${alt} answers again — then the logic exists twice again, and ` +
+          'that is exactly what the rework was meant to end',
       );
     }
   });
@@ -304,10 +304,10 @@ test('API parity web app ↔ Android', async t => {
     assert.equal(
       v1.price_cache_ttl,
       '48',
-      'Ein GLOBAL gesetzter Wert erreicht die App nicht — liest die v1-Route ' +
-        'wieder selbst auf user_settings statt über readSettings()?',
+      'A GLOBALLY set value does not reach the app — does the v1 route ' +
+        'read user_settings itself again instead of going through readSettings()?',
     );
-    assert.equal(v1.currency, 'CHF', 'Der Wert des Nutzers muss den globalen überschreiben (global steht USD)');
+    assert.equal(v1.currency, 'CHF', 'The user value must override the global one (global is USD)');
   });
 
   await t.test('v1 valuation: total_value is an alias of totals.qty_avg', async () => {
@@ -324,13 +324,13 @@ test('API parity web app ↔ Android', async t => {
     assert.deepEqual(
       Object.keys(withToken).sort(),
       Object.keys(withSession).sort(),
-      'Sitzung und Token liefern verschiedene Felder — dann sieht die App etwas ' +
-        'anderes als die Webapp, je nachdem womit sie sich ausweist',
+      'Session and token deliver different fields — then the app sees something ' +
+        'different from the web app, depending on how it authenticates',
     );
     assert.equal(withToken.total_value, withSession.total_value);
     assert.ok(
       !('rate_limit' in withToken),
-      'rate_limit ist wieder in der Bewertung — es liest niemand, und es kostet ' + 'drei Abfragen je Aufruf',
+      'rate_limit is back in the rating — nobody reads it, and it costs ' + 'three queries per call',
     );
   });
 
@@ -347,8 +347,8 @@ test('API parity web app ↔ Android', async t => {
     const b = (await get('/api/v2/sets/75192-1/price-history')).body;
     const pts = h => (h || []).filter(x => !x.is_purchase_price);
     assert.equal(b.success, true);
-    assert.ok(pts(b.history_new).length + pts(b.history_used).length >= 2, 'kein Verlauf geliefert');
-    assert.ok(b.chart && Array.isArray(b.chart.values), 'chart fehlt');
+    assert.ok(pts(b.history_new).length + pts(b.history_used).length >= 2, 'no history delivered');
+    assert.ok(b.chart && Array.isArray(b.chart.values), 'chart is missing');
   });
 
   await t.test('price history part and minifigure: same shape as for the set', async () => {
@@ -359,8 +359,9 @@ test('API parity web app ↔ Android', async t => {
     const set = (await get('/api/v2/sets/75192-1/price-history')).body;
     for (const path of ['/api/v2/parts/3001/4/price-history', '/api/v2/minifigs/sw0001/price-history']) {
       const b = (await get(path)).body;
-      assert.equal(b.success, true, `${path} antwortet nicht`);
-      for (const k of felder) assert.ok(k in b, `${path}: Feld ${k} fehlt (das Set liefert es: ${typeof set[k]})`);
+      assert.equal(b.success, true, `${path} does not answer`);
+      for (const k of felder)
+        assert.ok(k in b, `${path}: field ${k} is missing (the set delivers it: ${typeof set[k]})`);
     }
   });
 
@@ -372,16 +373,16 @@ test('API parity web app ↔ Android', async t => {
     // is that it has the same effect via BOTH credentials — with a session on one
     // set, with a token on the other.
     const put = (p, extra = {}) => fetch(base + p, { method: 'PUT', headers: { ...hdr, ...extra }, body });
-    assert.equal((await put('/api/v2/sets/40567-1')).status, 200, 'Schreiben mit Sitzung');
+    assert.equal((await put('/api/v2/sets/40567-1')).status, 200, 'Writing with session');
     assert.equal(
       (await put('/api/v2/sets/40568-1', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).status,
       200,
-      'Schreiben mit Token',
+      'Writing with token',
     );
     const a = (await get('/api/v2/sets/40567-1')).body.set;
     const b = (await get('/api/v2/sets/40568-1')).body.set;
     for (const k of ['quantity', 'purchase_price', 'condition'])
-      assert.deepEqual(a[k], b[k], `Feld ${k} weicht ab — Sitzung und Token bewirken Verschiedenes`);
+      assert.deepEqual(a[k], b[k], `Field ${k} differs — session and token have different effects`);
     assert.equal(a.quantity, 4);
   });
 
@@ -403,17 +404,21 @@ test('API parity web app ↔ Android', async t => {
       headers: { ...hdr, authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' },
       body,
     });
-    assert.equal(rA.status, 200, 'Schreiben mit Sitzung');
-    assert.equal(rB.status, 200, 'Schreiben mit Token');
+    assert.equal(rA.status, 200, 'Writing with session');
+    assert.equal(rB.status, 200, 'Writing with token');
     const strip = a => a.map(({ quantity, purchase_price, condition }) => ({ quantity, purchase_price, condition }));
     const a = (await get('/api/v2/sets/40567-1/acquisitions')).body.acquisitions;
     const b = (await get('/api/v2/sets/40568-1/acquisitions')).body.acquisitions;
-    assert.deepEqual(strip(a), strip(b), 'Sitzung und Token bewirken Verschiedenes auf derselben Route');
+    assert.deepEqual(strip(a), strip(b), 'Session and token have different effects on the same route');
   });
 
   await t.test('DELETE set: web app and Android route have the same effect', async () => {
     // Likewise one route, both credentials.
-    assert.equal((await fetch(base + '/api/v2/sets/40567-1', { method: 'DELETE' })).status, 200, 'Löschen mit Sitzung');
+    assert.equal(
+      (await fetch(base + '/api/v2/sets/40567-1', { method: 'DELETE' })).status,
+      200,
+      'Deleting with session',
+    );
     assert.equal(
       (
         await fetch(base + '/api/v2/sets/40568-1', {
@@ -422,7 +427,7 @@ test('API parity web app ↔ Android', async t => {
         })
       ).status,
       200,
-      'Löschen mit Token',
+      'Deleting with token',
     );
     assert.equal((await get('/api/v2/sets/40567-1')).status, 404);
     assert.equal((await get('/api/v2/sets/40568-1')).status, 404);
@@ -432,14 +437,14 @@ test('API parity web app ↔ Android', async t => {
         USER.id,
         sn,
       ]);
-      assert.equal(left.n, 0, `verwaiste Erfassungen bei ${sn}`);
+      assert.equal(left.n, 0, `orphaned acquisitions for ${sn}`);
     }
   });
 
   await t.test('bearer token (Android auth) delivers the same as the session', async () => {
     const viaSession = await get('/api/v2/sets');
     const viaToken = await get('/api/v2/sets', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
-    assert.equal(viaToken.status, 200, `Bearer-Auth fehlgeschlagen: ${JSON.stringify(viaToken.body)}`);
+    assert.equal(viaToken.status, 200, `Bearer auth failed: ${JSON.stringify(viaToken.body)}`);
     assert.deepEqual(core(viaToken.body), core(viaSession.body));
   });
 
@@ -448,8 +453,8 @@ test('API parity web app ↔ Android', async t => {
     // with 404, and that would look like a passed rejection.
     const withToken = await get('/api/v2/sets', { 'x-no-session': '1' });
     const onlySession = await get('/api/v2/settings/raw', { 'x-no-session': '1' });
-    assert.equal(withToken.status, 401, 'requireToken laesst ohne Ausweis durch');
-    assert.equal(onlySession.status, 401, 'requireLogin laesst ohne Sitzung durch');
+    assert.equal(withToken.status, 401, 'requireToken lets through without credentials');
+    assert.equal(onlySession.status, 401, 'requireLogin lets through without a session');
   });
 
   srv.close();

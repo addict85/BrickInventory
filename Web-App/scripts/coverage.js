@@ -79,7 +79,7 @@ async function report(v8 = path.join(TARGET, 'v8'), target = TARGET) {
     umw.destroy();
   }
   const context = libReport.createContext({ dir: target, coverageMap: map, sourceFinder: () => '' });
-  for (const art of ['lcovonly', 'json-summary', 'text-summary']) reports.create(art).execute(context);
+  for (const kind of ['lcovonly', 'json-summary', 'text-summary']) reports.create(kind).execute(context);
   const areas = summarize(map);
   fs.writeFileSync(path.join(target, 'areas.json'), `${JSON.stringify(areas, null, 2)}\n`);
   return areas;
@@ -87,20 +87,20 @@ async function report(v8 = path.join(TARGET, 'v8'), target = TARGET) {
 
 /** Line coverage per area in percent, one decimal place. */
 function summarize(/** @type {any} */ map) {
-  /** @type {Record<string, { gedeckt: number, total: number }>} */
-  const sum = Object.fromEntries(Object.keys(AREAS).map(k => [k, { gedeckt: 0, total: 0 }]));
+  /** @type {Record<string, { hit: number, total: number }>} */
+  const sum = Object.fromEntries(Object.keys(AREAS).map(k => [k, { hit: 0, total: 0 }]));
   for (const file of map.files()) {
     const rel = path.relative(ROOT, file).split(path.sep).join('/');
     const z = map.fileCoverageFor(file).toSummary().lines;
     for (const [k, prefix] of Object.entries(AREAS)) {
       const b = sum[k];
       if (!b || !rel.startsWith(prefix)) continue;
-      b.gedeckt += z.covered;
+      b.hit += z.covered;
       b.total += z.total;
     }
   }
   return Object.fromEntries(
-    Object.entries(sum).map(([k, s]) => [k, s.total ? Math.floor((1000 * s.gedeckt) / s.total) / 10 : 0]),
+    Object.entries(sum).map(([k, s]) => [k, s.total ? Math.floor((1000 * s.hit) / s.total) / 10 : 0]),
   );
 }
 
@@ -122,13 +122,13 @@ function check(
 module.exports = { report, check, compact, summarize, AREAS };
 
 if (require.main === module) {
-  const art = process.argv[2];
+  const kind = process.argv[2];
   (async () => {
-    if (art === 'report') {
+    if (kind === 'report') {
       console.log(JSON.stringify(await report()));
       return;
     }
-    if (art === 'check') {
+    if (kind === 'check') {
       const file = path.join(TARGET, 'areas.json');
       if (!fs.existsSync(file)) {
         console.error('[coverage] coverage/areas.json fehlt — erst npm test -- --coverage');

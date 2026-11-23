@@ -26,7 +26,7 @@ test('inherited properties do NOT count as hits', () => {
   // Object function or Object.prototype would come back here — both truthy,
   // both landed unchecked in the SQL.
   for (const k of ['constructor', '__proto__', 'toString', 'valueOf', 'hasOwnProperty']) {
-    assert.strictEqual(fromTable(TABLE_NAME, k, 'VORGABE'), 'VORGABE', `Schlüssel ${k}`);
+    assert.strictEqual(fromTable(TABLE_NAME, k, 'VORGABE'), 'VORGABE', `Key ${k}`);
   }
 });
 
@@ -43,7 +43,7 @@ test('non-string keys are handled safely', () => {
     const r = fromTable(TABLE_NAME, k, 'VORGABE');
     // An array with a valid value may apply via einzelwert() —
     // everything else falls back to the default.
-    assert.ok(r === 'VORGABE' || r === 'rb.name ASC', `Schlüssel ${JSON.stringify(k)} ergab ${r}`);
+    assert.ok(r === 'VORGABE' || r === 'rb.name ASC', `Key ${JSON.stringify(k)} resulted in ${r}`);
   }
 });
 
@@ -59,7 +59,7 @@ const PLACES = [
   ['src/catalog/repository/catalogSearch.ts', 'ORDERS', /ORDERS\s*\[/],
   ['src/sets/repository/sets.ts', 'SET_SORTS', /SET_SORTS\s*\[/],
   // The extensions per MIME type of the uploads have been in the reception since 05.11.2026.
-  ['src/http/fileUpload.ts', 'o.typen', /o\.typen\s*\[/],
+  ['src/http/fileUpload.ts', 'o.types', /o\.types\s*\[/],
 ];
 
 for (const [datei, name, muster] of PLACES) {
@@ -71,7 +71,7 @@ for (const [datei, name, muster] of PLACES) {
       .split('\n')
       .filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*') && !z.trim().startsWith('/*'))
       .join('\n');
-    assert.ok(!muster.test(code), `${datei} greift noch direkt auf ${name}[…] zu — fromTable() verwenden.`);
+    assert.ok(!muster.test(code), `${datei} still accesses ${name}[…] directly — use fromTable().`);
     assert.match(code, new RegExp(`fromTable\\(\\s*${name}`), `${datei} sollte fromTable(${name}, …) benutzen.`);
   });
 }

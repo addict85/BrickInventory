@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.contract.mapping
 
+import ch.brickinventoryapp.contract.AccountName
 import ch.brickinventoryapp.contract.Acquisition
 import ch.brickinventoryapp.contract.AcquisitionTotals
 import ch.brickinventoryapp.contract.HouseholdMember
-import ch.brickinventoryapp.contract.KontoName
-import ch.brickinventoryapp.contract.Lagerort
-import ch.brickinventoryapp.contract.LagerortEintrag
+import ch.brickinventoryapp.contract.Storage
+import ch.brickinventoryapp.contract.StorageEntry
 import ch.brickinventoryapp.model.domain.AccountView
 import ch.brickinventoryapp.model.domain.LocationEntryView
 import ch.brickinventoryapp.model.domain.LocationView
@@ -21,7 +21,7 @@ fun HouseholdMember.asView() = MemberView(
     isSelf = isSelf,
 )
 
-fun KontoName.asView() = AccountView(
+fun AccountName.asView() = AccountView(
     id = id,
     username = username,
 )
@@ -43,13 +43,13 @@ fun AcquisitionTotals.asView() = PurchaseSumsView(
     amount = amount.asMoney(),
 )
 
-fun Lagerort.asView() = LocationView(
-    location = ort,
+fun Storage.asView() = LocationView(
+    location = location,
     sets = sets,
-    parts = teile,
+    parts = parts,
 )
 
-fun LagerortEintrag.asView() = LocationEntryView(
+fun StorageEntry.asView() = LocationEntryView(
     id = id,
     userId = userId,
     name = name,

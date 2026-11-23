@@ -4,7 +4,7 @@
  * Counter-check (measured 04.11.2026): imageType() returns the raw value as before
  * as soon as it starts with `image/` and is not SVG → red: “stored as
  * image/png, text/html …”.
- * (11.11.2026) in cacheTreffer() the ETag omitted (`etag: null`) →
+ * (11.11.2026) in cacheHit() the ETag omitted (`etag: null`) →
  * red: “the service names file, type, length and ETag without sending”.
  */
 const test = require('node:test');
@@ -85,7 +85,7 @@ test('delivery order of the image cache', async t => {
   await t.test('nothing in the cache → the caller has to fetch from the CDN', async () => {
     aufraeumen();
     const { done, streamed } = await callFn(dir, { wantThumb: false });
-    assert.equal(done, false, 'false heisst: nicht beantwortet, bitte holen');
+    assert.equal(done, false, 'false means: not answered, please fetch');
     assert.deepEqual(streamed, []);
   });
 
@@ -97,8 +97,8 @@ test('delivery order of the image cache', async t => {
     assert.deepEqual(
       streamed,
       [orig],
-      'Es darf NICHT auf die Verkleinerung gewartet werden — das war einmal ' +
-        'rund 150 ms je Bild und bei einer Kachelwand Sekunden',
+      'There must NOT be a wait for the downscaling — that once was ' +
+        'about 150 ms per image and seconds for a tile wall',
     );
     assert.equal(res.kopf['content-length'], '5000');
     assert.match(res.kopf['cache-control'] || '', /max-age=86400/);
@@ -109,7 +109,7 @@ test('delivery order of the image cache', async t => {
     datei(orig, 5000);
     datei(thumb, 900);
     const { streamed, res } = await callFn(dir, { wantThumb: true });
-    assert.deepEqual(streamed, [thumb], 'Die Vorschau hat Vorrang, wenn es sie gibt');
+    assert.deepEqual(streamed, [thumb], 'The preview has priority if it exists');
     assert.equal(res.kopf['content-type'], 'image/jpeg');
     assert.equal(res.kopf['content-length'], '900');
   });
@@ -119,7 +119,7 @@ test('delivery order of the image cache', async t => {
     datei(orig, 5000);
     datei(thumb, 900);
     const { streamed } = await callFn(dir, { wantThumb: false });
-    assert.deepEqual(streamed, [orig], 'Ohne ?thumb=1 gehört das Original raus, auch wenn eine Vorschau daliegt');
+    assert.deepEqual(streamed, [orig], 'Without ?thumb=1 the original goes out, even if a preview exists');
   });
 
   await t.test('a stub preview is discarded and the original delivered', async () => {
@@ -130,12 +130,8 @@ test('delivery order of the image cache', async t => {
     datei(orig, 5000);
     datei(thumb, 50);
     const { streamed } = await callFn(dir, { wantThumb: true });
-    assert.deepEqual(streamed, [orig], 'Die unbrauchbare Vorschau wurde ausgeliefert');
-    assert.equal(
-      fs.existsSync(thumb),
-      false,
-      'Die unbrauchbare Vorschau muss gelöscht werden, sonst bleibt sie ewig liegen',
-    );
+    assert.deepEqual(streamed, [orig], 'The unusable preview was delivered');
+    assert.equal(fs.existsSync(thumb), false, 'The unusable preview must be deleted, otherwise it stays forever');
   });
 
   await t.test('gen=0 computes nothing but only leaves a note', async () => {
@@ -144,7 +140,7 @@ test('delivery order of the image cache', async t => {
     aufraeumen();
     datei(orig, 5000);
     const { noted } = await callFn(dir, { wantThumb: true, createMay: false });
-    assert.deepEqual(noted, [1], 'Ohne Erzeugungsrecht muss vorgemerkt werden');
+    assert.deepEqual(noted, [1], 'Without the right to generate, it must be reserved');
   });
 
   await t.test('known state → 304 and NO image', async () => {
@@ -157,16 +153,16 @@ test('delivery order of the image cache', async t => {
     datei(thumb, 900);
 
     const v = await callFn(dir, { wantThumb: true, fresh: true });
-    assert.equal(v.done, true, '304 ist eine FERTIGE Antwort');
+    assert.equal(v.done, true, '304 is a FINISHED response');
     assert.equal(v.res.code, 304);
     assert.equal(v.res.beendet, true);
-    assert.deepEqual(v.streamed, [], 'Bei 304 darf kein Bild mehr rausgehen');
+    assert.deepEqual(v.streamed, [], 'On 304 no image may go out anymore');
 
     fs.unlinkSync(thumb);
     const o = await callFn(dir, { wantThumb: false, fresh: true });
     assert.equal(o.done, true);
     assert.equal(o.res.code, 304);
-    assert.deepEqual(o.streamed, [], 'Auch der Original-Zweig darf bei 304 nichts senden');
+    assert.deepEqual(o.streamed, [], 'The original branch must not send anything on 304 either');
   });
 
   await t.test('only image types leave the cache', async () => {
@@ -187,11 +183,7 @@ test('delivery order of the image cache', async t => {
       datei(orig, 5000);
       fs.writeFileSync(orig + '.ct', abgelegt);
       const { res } = await callFn(dir, { wantThumb: false });
-      assert.equal(
-        res.kopf['content-type'],
-        erwartet,
-        `Abgelegt als ${abgelegt} → ausgeliefert werden muss ${erwartet}`,
-      );
+      assert.equal(res.kopf['content-type'], erwartet, `Stored as ${abgelegt} → must be delivered as ${erwartet}`);
     }
   });
 
@@ -200,21 +192,21 @@ test('delivery order of the image cache', async t => {
     aufraeumen();
     datei(orig, 5000);
     fs.writeFileSync(orig + '.ct', 'image/png');
-    const { cacheHit: cacheTreffer } = _req('src/images/imgCacheServe.js');
-    const treffer = await cacheTreffer({
+    const { cacheHit } = _req('src/images/imgCacheServe.js');
+    const treffer = await cacheHit({
       cacheFile: orig,
       thumbFile: thumb,
       wantThumb: false,
       createMay: false,
       note() {},
     });
-    assert.equal(treffer.datei, orig);
-    assert.equal(treffer.typ, 'image/png');
-    assert.equal(treffer.groesse, 5000);
+    assert.equal(treffer.file, orig);
+    assert.equal(treffer.contentType, 'image/png');
+    assert.equal(treffer.size, 5000);
     assert.match(String(treffer.etag), /^"c-5000-\d+"$/);
     aufraeumen();
     assert.equal(
-      await cacheTreffer({ cacheFile: orig, thumbFile: thumb, wantThumb: false, createMay: false, note() {} }),
+      await cacheHit({ cacheFile: orig, thumbFile: thumb, wantThumb: false, createMay: false, note() {} }),
       null,
     );
   });

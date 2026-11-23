@@ -11,11 +11,11 @@ import type { CatalogContext } from './context';
 
 // rb_themes changes at most daily; the tree is built once per access
 // and remembered for an hour because every filter needs it.
-type ThemeNode = repo.Thema;
+type ThemeNode = repo.Theme;
 type ThemeTree = { byId: Map<number, ThemeNode>; children: Map<number, number[]>; pathName: Map<number, string> };
 const THEME_CACHE_TTL = 60 * 60 * 1000;
 const themesStorage = (k: CatalogContext) =>
-  k.faecher.slot('themenbaum', () => new Cache<0, ThemeTree>(1, THEME_CACHE_TTL));
+  k.compartments.slot('themenbaum', () => new Cache<0, ThemeTree>(1, THEME_CACHE_TTL));
 
 async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
   const remembered = themesStorage(k).hole(0);
@@ -71,9 +71,9 @@ function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: n
 export async function catalogMeta(k: CatalogContext) {
   const tree = await getThemeTree(k);
   const [counts, years, yearCounts] = await Promise.all([
-    k.catalogSearch.setsJeThema(),
+    k.catalogSearch.setsPerTheme(),
     k.catalogSearch.yearRange(),
-    k.catalogSearch.setsJeYear(),
+    k.catalogSearch.setsPerYear(),
   ]);
   const direct = new Map<number, number>();
   for (const c of counts) direct.set(c.theme_id, c.n);
@@ -105,7 +105,7 @@ async function choose(k: CatalogContext, f: CatalogFilter): Promise<repo.Catalog
 
 /** NULL years come first in descending order, as in the list. */
 export async function yearDistribution(k: CatalogContext, f: CatalogFilter, descending: boolean) {
-  return k.catalogSearch.setsJeYearFiltered(await choose(k, { q: f.q, themeId: f.themeId }), descending);
+  return k.catalogSearch.setsPerYearFiltered(await choose(k, { q: f.q, themeId: f.themeId }), descending);
 }
 
 export async function catalogPage(
@@ -150,14 +150,14 @@ export async function catalogSet(k: CatalogContext, userId: number, raw: string)
   // If the check fails, the link stays marked as unverified (resolved: false).
   if (!bricklink.resolved) {
     const r = await attempts('katalog:bricklink', resolveViaInterface(k, set.set_number));
-    if (r.ok) bricklink = r.wert;
+    if (r.ok) bricklink = r.value;
   }
   let image_local = imageIfPresent(set.image_local ?? `/images/sets/${fileMaster(set.set_number)}.jpg`);
   // Now store permanently; the preview and the entry in set_catalog are done by the image job.
   if (!image_local && set.image_url) {
     // Without a file the page shows image_url; the image job fetches it later.
     const r = await attempts('katalog:setBildHerunterladen', k.images.loadSetImage(set.image_url, set.set_number));
-    image_local = r.ok ? r.wert : null;
+    image_local = r.ok ? r.value : null;
     if (image_local) k.images.rememberUsed(String(set.image_url || ''), set.set_number);
   }
   return {

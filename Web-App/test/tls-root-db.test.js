@@ -144,12 +144,12 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
   const r = await zert();
   assert.equal(r.status, 200);
   assert.match(r.headers.get('content-type'), /application\/x-x509-ca-cert/);
-  assert.equal(tlsStatusFrom(await r.text()).fp, FP1, '/ca.crt liefert das Zertifikat selbst');
+  assert.equal(tlsStatusFrom(await r.text()).fp, FP1, '/ca.crt returns the certificate itself');
   // Also over HTTPS: before the installation the device does not trust the connection, name and header say so.
   assert.match(r.headers.get('content-disposition'), /filename="brickinventory-ca-fingerabdruck-pruefen\.crt"/);
   assert.match(r.headers.get('x-fingerabdruck-pruefen') ?? '', /SHA-256 vor dem Installieren/);
   const klar = await zert('http');
-  assert.equal(klar.status, 403, 'über HTTP keine Wurzel');
+  assert.equal(klar.status, 403, 'no root over HTTP');
   assert.doesNotMatch(await klar.text(), /BEGIN CERTIFICATE/);
   const tls = await (await callFn('/api/v2/settings/tls', { cookie })).json();
   assert.equal(tls.fp, FP1);
@@ -157,7 +157,7 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
   assert.equal(tls.https, true);
   const q = await qr();
   assert.equal(q.fp, FP1);
-  assert.equal(q.cert_sha256, tlsStatusFrom(PEM1).cert_sha256, 'Neben dem QR-Code steht der Wert zum Abgleich');
+  assert.equal(q.cert_sha256, tlsStatusFrom(PEM1).cert_sha256, 'Next to the QR code is the value for comparison');
   assert.equal(q.url, 'https://lego.test');
 
   // The file is swapped (new CA): the server rereads without a restart.

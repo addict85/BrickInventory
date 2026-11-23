@@ -59,7 +59,7 @@ test("duration in the language's notation", async () => {
     try {
       await reiter(o.w, 'monitor');
       const detail = () => text(o.d.getElementById('job-status-detail'));
-      assert.ok(await warte(() => /3 /.test(detail())), `kein Laufbericht: ${detail()}`);
+      assert.ok(await warte(() => /3 /.test(detail())), `no run report: ${detail()}`);
       assert.match(detail(), erwartet);
     } finally {
       o.w.close();
@@ -94,13 +94,13 @@ test('set without image: no button "enlarge image"', async () => {
       klick: image.dataset.click ?? knopf.dataset.click ?? null,
       gesperrt: knopf.disabled,
     });
-    assert.deepEqual(state(), { role: null, tab: -1, klick: null, gesperrt: true }, 'vor dem ersten Öffnen');
+    assert.deepEqual(state(), { role: null, tab: -1, klick: null, gesperrt: true }, 'before the first opening');
     await reiter(o.w, 'gallery');
     assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
     o.d.querySelector('#gallery [data-click="openModal"]').click();
     assert.ok(await warte(() => o.d.getElementById('set-modal').classList.contains('open')));
     assert.ok(await warte(() => /set-placeholder/.test(image.getAttribute('src') || '')));
-    assert.deepEqual(state(), { role: null, tab: -1, klick: null, gesperrt: true }, 'mit Platzhalter');
+    assert.deepEqual(state(), { role: null, tab: -1, klick: null, gesperrt: true }, 'with a placeholder');
   } finally {
     o.w.close();
   }
@@ -139,10 +139,10 @@ test('from the set detail to price alerts and storage locations', async () => {
       assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
       o.d.querySelector('#gallery [data-click="openModal"]').click();
       const knopf = () => o.d.querySelector(`#set-modal [data-click="viewFromDialog"][data-arg="${ziel}"]`);
-      assert.ok(await warte(knopf), `kein Weg zu ${ziel}`);
+      assert.ok(await warte(knopf), `no way to ${ziel}`);
       knopf().click();
       assert.ok(await warte(() => o.d.getElementById(`tab-${ziel}`).classList.contains('active')), ziel);
-      assert.equal(o.d.getElementById('set-modal').classList.contains('open'), false, `${ziel}: Dialog offen`);
+      assert.equal(o.d.getElementById('set-modal').classList.contains('open'), false, `${ziel}: dialog open`);
     }
   } finally {
     o.w.close();

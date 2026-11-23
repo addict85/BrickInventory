@@ -94,17 +94,17 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
     const fuer = [haupt, kind, haupt, kind, haupt, kind, haupt, kind];
     const r = await Promise.all(
       fuer.map(b =>
-        asAccount(haupt, () => sets.acquireSet({ requester: haupt, ownerWish: b, setNumber: SN, kaufpreis: null })),
+        asAccount(haupt, () => sets.acquireSet({ requester: haupt, ownerWish: b, setNumber: SN, purchasePrice: null })),
       ),
     );
     assert.equal(r.filter(x => x.action === 'added').length, 1, JSON.stringify(r.map(x => x.action)));
     const zeilen = await db.all('SELECT user_id FROM sets WHERE set_number = $1', [SN]);
-    assert.equal(zeilen.length, 1, 'Das Set steht mehrfach im Haushalt');
+    assert.equal(zeilen.length, 1, 'The set is in the household several times');
     const erf = await db.all('SELECT quantity, purchase_price FROM set_acquisitions WHERE set_number = $1', [SN]);
     assert.deepEqual(
       erf.map(z => [z.quantity, z.purchase_price]),
       [[1, null]],
-      'genau eine Erfassung, noch ohne Preis',
+      'exactly one acquisition, still without a price',
     );
   });
 
@@ -128,7 +128,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       },
       { action: 'added', set_number: SN2, name: `Set ${SN2}`, catalog_pending: true, supplement: 'pending' },
     );
-    assert.deepEqual(netz, [], 'Netzaufrufe in der Anfrage');
+    assert.deepEqual(netz, [], 'network calls in the request');
     // rb_sets does not know the set: the capture creates it as 'api', including the set_catalog row.
     assert.deepEqual(
       await db.get(
@@ -142,7 +142,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       "SELECT payload, dedupe_key FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1",
       [SN2],
     );
-    assert.ok(a, 'kein Auftrag eingestellt');
+    assert.ok(a, 'no job queued');
     assert.equal(a.payload.kind, 'ergaenzen');
     assert.equal(a.dedupe_key, `rework:${haupt}:${SN2}`);
   });
@@ -165,13 +165,13 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       [haupt, SN2],
     );
     assert.deepEqual(
-      { preis: Number(erf.purchase_price), geschaetzt: erf.price_estimated, condition: erf.condition },
-      { preis: 42, geschaetzt: true, condition: 'U' },
+      { preis: Number(erf.purchase_price), estimated: erf.price_estimated, condition: erf.condition },
+      { preis: 42, estimated: true, condition: 'U' },
     );
     assert.ok(netz.includes(`rebrickable ${SN2}`) && netz.includes(`preis ${SN2}`), JSON.stringify(netz));
     // A second run does not ask the catalog again: stream and job do not interfere.
     netz.length = 0;
     await asAccount(haupt, () => sets.setSupplement(SN2, haupt));
-    assert.equal(netz.filter(x => x.startsWith('preis')).length, 0, 'der Preis wurde doppelt geholt');
+    assert.equal(netz.filter(x => x.startsWith('preis')).length, 0, 'the price was fetched twice');
   });
 });

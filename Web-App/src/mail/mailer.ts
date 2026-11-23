@@ -273,50 +273,50 @@ export async function mailReady(
 }
 
 export type AccountNotice =
-  | 'passkey_neu'
-  | 'passwort_geaendert'
-  | 'passwort_zurueckgesetzt'
-  | 'token_neu'
-  | 'qr_zugang_neu'
+  | 'passkey_added'
+  | 'password_changed'
+  | 'password_reset'
+  | 'token_added'
+  | 'qr_access_added'
   | 'second_factor_removed'
   | 'admin_appointed'
-  | 'verwaltung_faktor_entfernt'
-  | 'token_wiederverwendet'
-  | 'passwort_durch_verwalter'
-  | 'verwaltung_passwort_gesetzt'
-  | 'zweiter_faktor_eingerichtet'
-  | 'zweiter_faktor_abgeschaltet'
-  | 'anmeldung_gebremst'
-  | 'anmeldung_tagesgrenze'
+  | 'admin_factor_removed'
+  | 'token_reused'
+  | 'password_by_admin'
+  | 'admin_password_set'
+  | 'second_factor_enabled'
+  | 'second_factor_disabled'
+  | 'login_throttled'
+  | 'login_daily_limit'
   | 'second_factor_locked'
-  | 'bestaetigung_gebremst'
+  | 'confirmation_throttled'
   | 'settings_changed'
   | 'access_ended'
-  | 'zugaenge_beendet'
+  | 'accesses_ended'
   | 'takeover_announced'
-  | 'verwaltung_uebernahme_angekuendigt'
-  | 'verwaltung_uebernahme_abgebrochen'
-  | 'alte_codes_ablauf'
-  | 'verwalter_aktion_ausgefuehrt'
-  | 'verwaltung_aktion_ausgefuehrt'
-  | 'anmeldung_freigeben';
+  | 'admin_takeover_announced'
+  | 'admin_takeover_cancelled'
+  | 'old_codes_expiry'
+  | 'admin_action_performed'
+  | 'admin_action_received'
+  | 'login_release';
 
-/** No secrets; a link only for cancelling or releasing, sent to the account itself. `haushalt` names the accounts that see
+/** No secrets; a link only for cancelling or releasing, sent to the account itself. `household` names the accounts that see
  * this collection: an intruder could have added themselves there. */
 /** What "forgot password" ended besides the password. */
-export type ResetSideEffects = { haushalt: string[]; einladungen: number; address: string | null };
+export type ResetSideEffects = { household: string[]; invitations: number; address: string | null };
 
 /** The one sentence about what happened to the account. */
 type NoticeDetails = {
   resolved?: ResetSideEffects | undefined;
   passkey?: string;
-  konto?: string | undefined;
-  durch?: string | undefined;
+  account?: string | undefined;
+  actor?: string | undefined;
   was?: string | undefined;
   bis?: string | undefined;
   /** Plain text of a link (cancelling an announcement, releasing a sign-in); only to the target. */
-  abbruch?: string | undefined;
-  freigabe?: string | undefined;
+  cancelToken?: string | undefined;
+  releaseToken?: string | undefined;
   address?: string | undefined;
 };
 
@@ -338,11 +338,11 @@ function takeover(o: NoticeDetails, en: boolean): { was: string; bis: string } {
 function sideEffectsSentence(g: ResetSideEffects | undefined, en: boolean): string {
   if (!g) return '';
   const parts: string[] = [];
-  if (g.haushalt.length)
+  if (g.household.length)
     parts.push(
       en
-        ? `the link to ${g.haushalt.map(n => `“${n}”`).join(', ')} (these accounts could see your collection)`
-        : `die Verknüpfung mit ${g.haushalt.map(n => `„${n}“`).join(', ')} (diese Konten sahen deine Sammlung)`,
+        ? `the link to ${g.household.map(n => `“${n}”`).join(', ')} (these accounts could see your collection)`
+        : `die Verknüpfung mit ${g.household.map(n => `„${n}“`).join(', ')} (diese Konten sahen deine Sammlung)`,
     );
   if (g.address)
     parts.push(
@@ -350,104 +350,154 @@ function sideEffectsSentence(g: ResetSideEffects | undefined, en: boolean): stri
         ? `the pending change of your email address to ${g.address}`
         : `die ausstehende Änderung deiner E-Mail-Adresse auf ${g.address}`,
     );
-  if (g.einladungen)
-    parts.push(en ? `${g.einladungen} open household invitation(s)` : `${g.einladungen} offene Haushaltseinladung(en)`);
+  if (g.invitations)
+    parts.push(en ? `${g.invitations} open household invitation(s)` : `${g.invitations} offene Haushaltseinladung(en)`);
   if (!parts.length) return '';
   return en ? ` Also removed: ${parts.join('; ')}.` : ` Ausserdem aufgehoben: ${parts.join('; ')}.`;
 }
 
 function takeoverSentences(o: NoticeDetails, en: boolean) {
+  const account = o.account ?? '';
+  const actor = o.actor ?? '';
+  const addressOr = o.address ?? '?';
   const u = takeover(o, en);
   return {
     takeover_announced: en
-      ? `the administrator “${o.durch ?? ''}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough) or open the link below; the change is then dropped. If you asked for it yourself, you need not do anything.`
-      : `der Administrator „${o.durch ?? ''}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt) oder öffne den Link unten; dann entfällt die Änderung. Hast du selbst darum gebeten, musst du nichts tun.`,
-    verwaltung_uebernahme_angekuendigt: en
-      ? `“${o.durch ?? ''}” wants to ${u.was} for the account “${o.konto ?? ''}”, effective ${u.bis} unless “${o.konto ?? ''}” signs in before then.`
-      : `„${o.durch ?? ''}“ will für das Konto „${o.konto ?? ''}“ ${u.was}, wirksam ab ${u.bis}, wenn sich „${o.konto ?? ''}“ bis dahin nicht anmeldet.`,
-    verwaltung_uebernahme_abgebrochen: en
-      ? `“${o.konto ?? ''}” signed in or cancelled by the link in the email; the announced change (${u.was}) is dropped.`
-      : `„${o.konto ?? ''}“ hat sich angemeldet oder über den Link in der Mail abgebrochen; die angekündigte Änderung (${u.was}) entfällt.`,
-    verwalter_aktion_ausgefuehrt: en
-      ? `the announced change by the administrator “${o.durch ?? ''}” took effect: ${u.was}.`
-      : `die angekündigte Änderung des Administrators „${o.durch ?? ''}“ ist wirksam: ${u.was}.`,
-    verwaltung_aktion_ausgefuehrt: en
-      ? `the change to the administrator account “${o.konto ?? ''}” announced by “${o.durch ?? ''}” took effect: ${u.was}.`
-      : `die von „${o.durch ?? ''}“ angekündigte Änderung am Administratorkonto „${o.konto ?? ''}“ ist wirksam: ${u.was}.`,
-    anmeldung_freigeben: en
-      ? `your account reached the limit of failed sign-in attempts. Signing in with the password from a new place (address ${o.address ?? '?'}) is blocked for now. If that was you, open the link below: it allows signing in from that address again. If not, ignore this email.`
-      : `für dein Konto ist die Grenze der Fehlversuche erreicht. Mit dem Passwort ist die Anmeldung von einem neuen Ort (Adresse ${o.address ?? '?'}) vorerst gesperrt. Warst du das, öffne den Link unten: Er schaltet die Anmeldung von dieser Adresse wieder frei. Sonst ignoriere diese Mail.`,
-    alte_codes_ablauf: en
+      ? `the administrator “${actor}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough) or open the link below; the change is then dropped. If you asked for it yourself, you need not do anything.`
+      : `der Administrator „${actor}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt) oder öffne den Link unten; dann entfällt die Änderung. Hast du selbst darum gebeten, musst du nichts tun.`,
+    admin_takeover_announced: en
+      ? `“${actor}” wants to ${u.was} for the account “${account}”, effective ${u.bis} unless “${account}” signs in before then.`
+      : `„${actor}“ will für das Konto „${account}“ ${u.was}, wirksam ab ${u.bis}, wenn sich „${account}“ bis dahin nicht anmeldet.`,
+    admin_takeover_cancelled: en
+      ? `“${account}” signed in or cancelled by the link in the email; the announced change (${u.was}) is dropped.`
+      : `„${account}“ hat sich angemeldet oder über den Link in der Mail abgebrochen; die angekündigte Änderung (${u.was}) entfällt.`,
+    admin_action_performed: en
+      ? `the announced change by the administrator “${actor}” took effect: ${u.was}.`
+      : `die angekündigte Änderung des Administrators „${actor}“ ist wirksam: ${u.was}.`,
+    admin_action_received: en
+      ? `the change to the administrator account “${account}” announced by “${actor}” took effect: ${u.was}.`
+      : `die von „${actor}“ angekündigte Änderung am Administratorkonto „${account}“ ist wirksam: ${u.was}.`,
+    login_release: en
+      ? `your account reached the limit of failed sign-in attempts. Signing in with the password from a new place (address ${addressOr}) is blocked for now. If that was you, open the link below: it allows signing in from that address again. If not, ignore this email.`
+      : `für dein Konto ist die Grenze der Fehlversuche erreicht. Mit dem Passwort ist die Anmeldung von einem neuen Ort (Adresse ${addressOr}) vorerst gesperrt. Warst du das, öffne den Link unten: Er schaltet die Anmeldung von dieser Adresse wieder frei. Sonst ignoriere diese Mail.`,
+    old_codes_expiry: en
       ? `you signed in with a recovery code from before 1 November 2026. Codes of that kind are only accepted until ${u.bis}. Create new recovery codes under Menu → Account → Two-factor authentication.`
       : `du hast dich mit einem Wiederherstellungscode von vor dem 01.11.2026 angemeldet. Codes dieser Art gelten nur noch bis ${u.bis}. Erzeuge unter Menü → Konto → Zweiter Faktor neue Wiederherstellungscodes.`,
+  };
+}
+
+function ownAccessSentences(o: NoticeDetails, en: boolean) {
+  const passkey = o.passkey ?? '';
+  return {
+    passkey_added: en
+      ? `a new passkey (“${passkey}”) was added to your account.`
+      : `deinem Konto wurde ein neuer Passkey („${passkey}“) hinzugefügt.`,
+    password_changed: en ? 'the password of your account was changed.' : 'das Passwort deines Kontos wurde geändert.',
+    password_reset:
+      (en
+        ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
+        : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.') +
+      sideEffectsSentence(o.resolved, en),
+    token_added: en
+      ? `a new app token (“${passkey}”) was created for your account.`
+      : `für dein Konto wurde ein neuer App-Zugang („${passkey}“) erzeugt.`,
+    qr_access_added: en
+      ? 'a QR code to sign in the app was created for your account.'
+      : 'für dein Konto wurde ein QR-Code zur Anmeldung der App erzeugt.',
+  };
+}
+
+function adminAccessSentences(o: NoticeDetails, en: boolean) {
+  const account = o.account ?? '';
+  const actor = o.actor ?? '';
+  return {
+    second_factor_removed: en
+      ? `the administrator “${actor}” removed the second factor of your account.`
+      : `der Administrator „${actor}“ hat den zweiten Faktor deines Kontos entfernt.`,
+    admin_appointed: en
+      ? `“${actor}” made the account “${account}” an administrator.`
+      : `„${actor}“ hat das Konto „${account}“ zum Administrator gemacht.`,
+    admin_factor_removed: en
+      ? `“${actor}” removed the second factor of the account “${account}”.`
+      : `„${actor}“ hat den zweiten Faktor des Kontos „${account}“ entfernt.`,
+    password_by_admin: en
+      ? `the administrator “${actor}” set a new password for your account. All sign-ins and app tokens were ended.`
+      : `der Administrator „${actor}“ hat ein neues Passwort für dein Konto gesetzt. Alle Anmeldungen und App-Zugänge wurden beendet.`,
+    admin_password_set: en
+      ? `“${actor}” set a new password for the account “${account}”.`
+      : `„${actor}“ hat ein neues Passwort für das Konto „${account}“ gesetzt.`,
+  };
+}
+
+function securitySentences(o: NoticeDetails, en: boolean) {
+  const account = o.account ?? '';
+  const actor = o.actor ?? '';
+  const passkey = o.passkey ?? '';
+  return {
+    second_factor_enabled: en
+      ? 'a second factor (authenticator app) was set up for your account. All other sign-ins and app tokens were ended.'
+      : 'für dein Konto wurde ein zweiter Faktor (Authenticator-App) eingerichtet. Alle anderen Anmeldungen und App-Zugänge wurden beendet.',
+    second_factor_disabled: en
+      ? 'the second factor of your account was turned off.'
+      : 'der zweite Faktor deines Kontos wurde abgeschaltet.',
+    login_throttled: en
+      ? 'there were several failed sign-in attempts for your account; further attempts are slowed down for now.'
+      : 'für dein Konto gab es mehrere fehlgeschlagene Anmeldeversuche; weitere Versuche werden vorerst gebremst.',
+    login_daily_limit: en
+      ? 'there were 50 failed sign-in attempts for your account within 24 hours. For now, signing in with the password only works together with the second factor; a passkey or “Forgot password” work as before. Change your password if it may be known.'
+      : 'für dein Konto gab es 50 fehlgeschlagene Anmeldeversuche in 24 Stunden. Mit dem Passwort geht die Anmeldung vorerst nur zusammen mit dem zweiten Faktor; Passkey und „Passwort vergessen“ gehen wie bisher. Ändere dein Passwort, falls es bekannt sein könnte.',
+    second_factor_locked: en
+      ? 'someone entered the right password for your account but many wrong codes of the second factor. For up to 24 hours, sign-in only works with a recovery code or a passkey. Change your password: it is probably known.'
+      : 'für dein Konto wurde das richtige Passwort, aber vielfach ein falscher Code des zweiten Faktors eingegeben. Bis zu 24 Stunden geht die Anmeldung nur mit einem Wiederherstellungscode oder Passkey. Ändere dein Passwort: Es ist vermutlich bekannt.',
+    confirmation_throttled: en
+      ? 'in a signed-in session or app of your account, the password or code was entered wrongly several times when confirming; further attempts are slowed down for now.'
+      : 'in einer angemeldeten Sitzung oder App deines Kontos wurde beim Bestätigen mehrmals ein falsches Passwort oder ein falscher Code eingegeben; weitere Versuche werden vorerst gebremst.',
+    settings_changed: en
+      ? `“${actor}” changed security-relevant settings: ${account}.`
+      : `„${actor}“ hat sicherheitsrelevante Einstellungen geändert: ${account}.`,
+    access_ended: en
+      ? `the app token “${passkey}” of your account was signed out from another device.`
+      : `der App-Zugang „${passkey}“ deines Kontos wurde von einem anderen Gerät aus abgemeldet.`,
+    accesses_ended: en
+      ? 'all other sign-ins and app tokens of your account were ended.'
+      : 'alle anderen Anmeldungen und App-Zugänge deines Kontos wurden beendet.',
+    token_reused: en
+      ? `an already replaced app token (“${passkey}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
+      : `ein schon ersetzter App-Zugang („${passkey}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   };
 }
 
 function noticeSentence(kind: AccountNotice, o: NoticeDetails, en: boolean): string {
   const sentences: Record<AccountNotice, string> = {
     ...takeoverSentences(o, en),
-    passkey_neu: en
-      ? `a new passkey (“${o.passkey ?? ''}”) was added to your account.`
-      : `deinem Konto wurde ein neuer Passkey („${o.passkey ?? ''}“) hinzugefügt.`,
-    passwort_geaendert: en ? 'the password of your account was changed.' : 'das Passwort deines Kontos wurde geändert.',
-    passwort_zurueckgesetzt:
-      (en
-        ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
-        : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.') +
-      sideEffectsSentence(o.resolved, en),
-    token_neu: en
-      ? `a new app token (“${o.passkey ?? ''}”) was created for your account.`
-      : `für dein Konto wurde ein neuer App-Zugang („${o.passkey ?? ''}“) erzeugt.`,
-    qr_zugang_neu: en
-      ? 'a QR code to sign in the app was created for your account.'
-      : 'für dein Konto wurde ein QR-Code zur Anmeldung der App erzeugt.',
-    second_factor_removed: en
-      ? `the administrator “${o.durch ?? ''}” removed the second factor of your account.`
-      : `der Administrator „${o.durch ?? ''}“ hat den zweiten Faktor deines Kontos entfernt.`,
-    admin_appointed: en
-      ? `“${o.durch ?? ''}” made the account “${o.konto ?? ''}” an administrator.`
-      : `„${o.durch ?? ''}“ hat das Konto „${o.konto ?? ''}“ zum Administrator gemacht.`,
-    verwaltung_faktor_entfernt: en
-      ? `“${o.durch ?? ''}” removed the second factor of the account “${o.konto ?? ''}”.`
-      : `„${o.durch ?? ''}“ hat den zweiten Faktor des Kontos „${o.konto ?? ''}“ entfernt.`,
-    passwort_durch_verwalter: en
-      ? `the administrator “${o.durch ?? ''}” set a new password for your account. All sign-ins and app tokens were ended.`
-      : `der Administrator „${o.durch ?? ''}“ hat ein neues Passwort für dein Konto gesetzt. Alle Anmeldungen und App-Zugänge wurden beendet.`,
-    verwaltung_passwort_gesetzt: en
-      ? `“${o.durch ?? ''}” set a new password for the account “${o.konto ?? ''}”.`
-      : `„${o.durch ?? ''}“ hat ein neues Passwort für das Konto „${o.konto ?? ''}“ gesetzt.`,
-    zweiter_faktor_eingerichtet: en
-      ? 'a second factor (authenticator app) was set up for your account. All other sign-ins and app tokens were ended.'
-      : 'für dein Konto wurde ein zweiter Faktor (Authenticator-App) eingerichtet. Alle anderen Anmeldungen und App-Zugänge wurden beendet.',
-    zweiter_faktor_abgeschaltet: en
-      ? 'the second factor of your account was turned off.'
-      : 'der zweite Faktor deines Kontos wurde abgeschaltet.',
-    anmeldung_gebremst: en
-      ? 'there were several failed sign-in attempts for your account; further attempts are slowed down for now.'
-      : 'für dein Konto gab es mehrere fehlgeschlagene Anmeldeversuche; weitere Versuche werden vorerst gebremst.',
-    anmeldung_tagesgrenze: en
-      ? 'there were 50 failed sign-in attempts for your account within 24 hours. For now, signing in with the password only works together with the second factor; a passkey or “Forgot password” work as before. Change your password if it may be known.'
-      : 'für dein Konto gab es 50 fehlgeschlagene Anmeldeversuche in 24 Stunden. Mit dem Passwort geht die Anmeldung vorerst nur zusammen mit dem zweiten Faktor; Passkey und „Passwort vergessen“ gehen wie bisher. Ändere dein Passwort, falls es bekannt sein könnte.',
-    second_factor_locked: en
-      ? 'someone entered the right password for your account but many wrong codes of the second factor. For up to 24 hours, sign-in only works with a recovery code or a passkey. Change your password: it is probably known.'
-      : 'für dein Konto wurde das richtige Passwort, aber vielfach ein falscher Code des zweiten Faktors eingegeben. Bis zu 24 Stunden geht die Anmeldung nur mit einem Wiederherstellungscode oder Passkey. Ändere dein Passwort: Es ist vermutlich bekannt.',
-    bestaetigung_gebremst: en
-      ? 'in a signed-in session or app of your account, the password or code was entered wrongly several times when confirming; further attempts are slowed down for now.'
-      : 'in einer angemeldeten Sitzung oder App deines Kontos wurde beim Bestätigen mehrmals ein falsches Passwort oder ein falscher Code eingegeben; weitere Versuche werden vorerst gebremst.',
-    settings_changed: en
-      ? `“${o.durch ?? ''}” changed security-relevant settings: ${o.konto ?? ''}.`
-      : `„${o.durch ?? ''}“ hat sicherheitsrelevante Einstellungen geändert: ${o.konto ?? ''}.`,
-    access_ended: en
-      ? `the app token “${o.passkey ?? ''}” of your account was signed out from another device.`
-      : `der App-Zugang „${o.passkey ?? ''}“ deines Kontos wurde von einem anderen Gerät aus abgemeldet.`,
-    zugaenge_beendet: en
-      ? 'all other sign-ins and app tokens of your account were ended.'
-      : 'alle anderen Anmeldungen und App-Zugänge deines Kontos wurden beendet.',
-    token_wiederverwendet: en
-      ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
-      : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
+    ...ownAccessSentences(o, en),
+    ...adminAccessSentences(o, en),
+    ...securitySentences(o, en),
   };
   return sentences[kind];
+}
+
+/** Cancelling a takeover or releasing a blocked sign-in: only with a public base URL. */
+function noticeLink(o: NoticeDetails, en: boolean): { url: string; button: string } | null {
+  const base = baseUrl();
+  if (base && o.cancelToken)
+    return {
+      url: `${base}/uebernahme-abbrechen#token=${o.cancelToken}`,
+      button: en ? 'Cancel the change' : 'Änderung abbrechen',
+    };
+  if (base && o.releaseToken)
+    return {
+      url: `${base}/anmeldung-freigeben#token=${o.releaseToken}`,
+      button: en ? 'Allow this sign-in' : 'Anmeldung freigeben',
+    };
+  return null;
+}
+
+function householdLine(household: string[] | undefined, en: boolean): string {
+  if (!household?.length) return '';
+  return en
+    ? `These accounts can see and change your collection: ${household.join(', ')}.`
+    : `Diese Konten sehen und ändern deine Sammlung: ${household.join(', ')}.`;
 }
 
 export async function sendAccountNoticeMail(
@@ -455,7 +505,7 @@ export async function sendAccountNoticeMail(
   to: string,
   username: string,
   kind: AccountNotice,
-  o: NoticeDetails & { lang?: string; haushalt?: string[] } = {},
+  o: NoticeDetails & { lang?: string; household?: string[] } = {},
 ) {
   const theme = await mailTheme(k);
   const en = o.lang === 'en';
@@ -463,28 +513,12 @@ export async function sendAccountNoticeMail(
   const subject = en
     ? 'BrickInventory Manager — Change to your account'
     : 'BrickInventory Manager — Änderung an deinem Konto';
-  const household = o.haushalt?.length
-    ? en
-      ? `These accounts can see and change your collection: ${o.haushalt.join(', ')}.`
-      : `Diese Konten sehen und ändern deine Sammlung: ${o.haushalt.join(', ')}.`
-    : '';
+  const household = householdLine(o.household, en);
   const note = en
     ? 'If this was not you, reset your password via “Forgot password”, check Menu → Account and Menu → Household — or ask the administrator.'
     : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Menü → Konto und Menü → Haushalt — oder wende dich an den Administrator.';
   const hello = en ? 'Hello' : 'Hallo';
-  const base = baseUrl();
-  const link =
-    base && o.abbruch
-      ? {
-          url: `${base}/uebernahme-abbrechen#token=${o.abbruch}`,
-          button: en ? 'Cancel the change' : 'Änderung abbrechen',
-        }
-      : base && o.freigabe
-        ? {
-            url: `${base}/anmeldung-freigeben#token=${o.freigabe}`,
-            button: en ? 'Allow this sign-in' : 'Anmeldung freigeben',
-          }
-        : null;
+  const link = noticeLink(o, en);
   const text = `${hello} ${username},\n\n${was}\n${link ? `\n${link.url}\n` : ''}${household ? `\n${household}\n` : ''}\n${note}\n\nBrickInventory Manager`;
   const html = `<p style="margin:0 0 8px">${hello} <strong>${esc(username)}</strong>,</p>
        <p style="margin:0 0 16px">${esc(was)}</p>${link ? emailBtn(link.url, link.button, theme) : ''}${household ? `<p style="margin:0 0 16px">${esc(household)}</p>` : ''}`;
@@ -581,6 +615,25 @@ function alertNumbers(theme: Awaited<ReturnType<typeof mailTheme>>, de: boolean,
 }
 
 // Without APP_BASE_URL the mail says why the button is missing.
+function alertWords(d: AlertMailData, de: boolean): { condition: string; direction: string } {
+  const used = d.condition === 'U',
+    below = d.direction === 'below';
+  if (de) return { condition: used ? 'gebraucht' : 'neu', direction: below ? 'unter' : 'über' };
+  return { condition: used ? 'used' : 'new', direction: below ? 'below' : 'above' };
+}
+
+/** The link is OPTIONAL: the price run has no request; without APP_BASE_URL
+ * the mail goes out without a button instead of pointing at a guessed host. */
+function alertUrl(setNumber: string): string {
+  const base = baseUrl();
+  if (!base)
+    hintWithoutBaseUrl(
+      'mailer',
+      'die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link.',
+    );
+  return base ? `${base}/?set=${encodeURIComponent(setNumber)}` : '';
+}
+
 export async function buildAlertMail(
   k: MailContext,
   d: AlertMailData,
@@ -588,19 +641,9 @@ export async function buildAlertMail(
   const theme = await mailTheme(k);
   const de = d.lang !== 'en';
   const money = (n: number) => `${d.currency} ${n.toFixed(2)}`;
-  const condition = d.condition === 'U' ? (de ? 'gebraucht' : 'used') : de ? 'neu' : 'new';
-  const direction = d.direction === 'below' ? (de ? 'unter' : 'below') : de ? 'über' : 'above';
+  const { condition, direction } = alertWords(d, de);
   const title = d.setName || d.setNumber;
-
-  // The link is OPTIONAL: the price run has no request; without APP_BASE_URL
-  // the mail goes out without a button instead of pointing at a guessed host.
-  const base = baseUrl();
-  if (!base)
-    hintWithoutBaseUrl(
-      'mailer',
-      'die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link.',
-    );
-  const url = base ? `${base}/?set=${encodeURIComponent(d.setNumber)}` : '';
+  const url = alertUrl(d.setNumber);
 
   const subject = de
     ? `Preisalarm: ${d.setNumber} liegt ${direction} ${money(d.threshold)}`
@@ -663,7 +706,7 @@ export async function buildAlertMail(
 /** A rejection while checking the server throws; sending itself reports how it went. */
 export async function sendSmtpTest(k: MailContext, to: string) {
   const verify = await testSmtp(k);
-  if ('code' in verify) failDomain('ungueltig', verify.code, 'vars' in verify ? verify.vars : undefined);
+  if ('code' in verify) failDomain('invalid', verify.code, 'vars' in verify ? verify.vars : undefined);
   return sendMail(k, {
     to,
     subject: 'BrickInventory Manager — SMTP Test',

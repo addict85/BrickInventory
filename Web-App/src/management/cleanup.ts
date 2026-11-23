@@ -5,14 +5,14 @@ import { errorMessage } from '../infra/error';
 import { cleanOldBackupsOn } from '../../db/migrate';
 import type { ManagementContext } from './context';
 
-type Step = [name: string, lauf: () => Promise<unknown>];
+type Step = [name: string, run: () => Promise<unknown>];
 
 async function runSteps(steps: Step[], job?: JobRun): Promise<void> {
   const error: string[] = [];
-  for (const [name, lauf] of steps) {
+  for (const [name, run] of steps) {
     checkAbort(job);
     try {
-      const n = await lauf();
+      const n = await run();
       if (typeof n === 'number' && n > 0) console.log(`[cleanup] ${name}: ${n} entfernt`);
     } catch (e) {
       error.push(`${name}: ${errorMessage(e)}`);
@@ -21,7 +21,7 @@ async function runSteps(steps: Step[], job?: JobRun): Promise<void> {
   if (error.length) throw new Error(error.join('; '));
 }
 
-function cleanup(k: ManagementContext, lauf?: JobRun): Promise<void> {
+function cleanup(k: ManagementContext, run?: JobRun): Promise<void> {
   return runSteps(
     [
       ...k.account.onCleanupSteps('stuendlich'),
@@ -32,11 +32,11 @@ function cleanup(k: ManagementContext, lauf?: JobRun): Promise<void> {
       ['Idempotenzschlüssel', k.idempotency.cleanupIdempotency],
       ['PDF-Tickets', k.vouchers.cleanupTickets],
     ],
-    lauf,
+    run,
   );
 }
 
-function cleanupDaily(k: ManagementContext, lauf?: JobRun): Promise<void> {
+function cleanupDaily(k: ManagementContext, run?: JobRun): Promise<void> {
   return runSteps(
     [
       ['Preisverlauf', k.finances.deleteOldPrices],
@@ -44,7 +44,7 @@ function cleanupDaily(k: ManagementContext, lauf?: JobRun): Promise<void> {
       ['Bild-Cache', () => k.images.cleanImageCacheOn(k.images.imageLimits().cacheMaxBytes, k.clock.now())],
       ['Kopien vor Migrationen', () => cleanOldBackupsOn(k.db)],
     ],
-    lauf,
+    run,
   );
 }
 

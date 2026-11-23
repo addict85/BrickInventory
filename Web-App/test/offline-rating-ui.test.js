@@ -56,7 +56,7 @@ function buildBundle() {
 }
 
 const BUNDLE_FILE = buildBundle();
-process.env.TEST_BUENDEL = BUNDLE_FILE;
+process.env.TEST_BUNDLE = BUNDLE_FILE;
 const { openUi, reiter, sicht, warte } = require('./helpers/ui');
 test.after(() => fs.rmSync(BUNDLE_FILE, { force: true }));
 
@@ -134,21 +134,21 @@ test('every registered action is classified exactly once', async () => {
   try {
     const { actionNames, WRITING_ACTIONS: s, READING_ACTIONS: l } = w.__rating;
     const namen = Array.from(actionNames());
-    assert.ok(namen.length > 150, `nur ${namen.length} Handler angemeldet — greift die Registry noch?`);
+    assert.ok(namen.length > 150, `only ${namen.length} handlers registered — does the registry still work?`);
     assert.deepEqual(
       namen.filter(n => !s.has(n) && !l.has(n)),
       [],
-      'nicht eingestuft: in verbindung.js eintragen',
+      'not classified: add it in verbindung.js',
     );
     assert.deepEqual(
       [...s, ...l].filter(n => !namen.includes(n)),
       [],
-      'eingestuft, aber nicht angemeldet',
+      'classified but not registered',
     );
     assert.deepEqual(
       [...s].filter(n => l.has(n)),
       [],
-      'doppelt eingestuft',
+      'classified twice',
     );
   } finally {
     w.close();
@@ -213,13 +213,13 @@ test('index.html and templates: exactly the writing ones locked offline', async 
       ['locations', '[data-click="deleteLocation"]'],
     ]) {
       await sicht(w, name);
-      assert.ok(await warte(() => d.querySelector(zeichen)), `${name}: ${zeichen} nicht gezeichnet`);
+      assert.ok(await warte(() => d.querySelector(zeichen)), `${name}: ${zeichen} not marked`);
     }
     const vorher = new Set([...d.querySelectorAll(SERVED)].filter(k => k.disabled));
     await offline(w);
     // What is drawn afterwards is locked by the observer.
     await sicht(w, 'alerts');
-    assert.ok(await warte(() => d.querySelector('#alerts-list [data-click="deleteAlert"]')), 'alarme nicht gezeichnet');
+    assert.ok(await warte(() => d.querySelector('#alerts-list [data-click="deleteAlert"]')), 'alarms not marked');
 
     const buttonList = [...d.querySelectorAll('[data-click]')].filter(
       k => !vorher.has(k) && !k.closest('#login-screen, .toast'),
@@ -241,8 +241,8 @@ test('index.html and templates: exactly the writing ones locked offline', async 
       'delSetStop',
       'stopDeleteWantedItem',
     ])
-      assert.ok(namen.has(n), `${n} kommt in den gezeichneten Knöpfen nicht vor`);
-    assert.ok([...namen].filter(n => !s.has(n)).length > 40, 'zu wenig lesende Knöpfe gezeichnet');
+      assert.ok(namen.has(n), `${n} does not occur among the marked buttons`);
+    assert.ok([...namen].filter(n => !s.has(n)).length > 40, 'too few reading buttons marked');
     // A field that saves on change counts like a writing button, whatever its data-click does.
     const writes = k => ['data-click', 'data-change', 'data-input'].some(a => s.has(k.getAttribute(a)));
     const falsch = buttonList
@@ -254,7 +254,7 @@ test('index.html and templates: exactly the writing ones locked offline', async 
       ...d.querySelectorAll('input:not([type=file])[data-change], select[data-change], input[data-input]'),
     ].filter(k => !vorher.has(k) && !k.closest('#login-screen'));
     const writers = felder.filter(k => s.has(k.getAttribute('data-change') || k.getAttribute('data-input')));
-    assert.ok(writers.length > 0, 'kein speicherndes Feld gezeichnet');
+    assert.ok(writers.length > 0, 'no saving field marked');
     assert.deepEqual(
       felder
         .filter(k => k.disabled !== writers.includes(k))
@@ -266,11 +266,11 @@ test('index.html and templates: exactly the writing ones locked offline', async 
     await reiter(w, 'gallery');
     d.querySelector('#gallery .delbtn[data-click="delSetStop"]').click();
     await ruhig();
-    assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'Löschabfrage geöffnet');
+    assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'delete prompt opened');
     assert.deepEqual(
       aufrufe.slice(beforeCalls).filter(a => a.method !== 'GET'),
       [],
-      'offline geschrieben',
+      'written while offline',
     );
   } finally {
     w.close();
@@ -295,7 +295,7 @@ test('buttons wired by id: data-writing locks, otherwise free', async () => {
       assert.equal(d.getElementById(id).disabled, true, id);
     for (const id of ['btn-cfg-export', 'btn-logout', 'vg', 'cd-cancel'])
       assert.equal(d.getElementById(id).disabled, false, id);
-    assert.equal(d.getElementById('btn-login').disabled, false, 'Anmeldung bleibt frei');
+    assert.equal(d.getElementById('btn-login').disabled, false, 'login stays free');
   } finally {
     w.close();
   }

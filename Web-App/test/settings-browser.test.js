@@ -23,7 +23,7 @@ const { chrome } = require('./helpers/app-browser');
 function smtpCard() {
   const d = new JSDOM(fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8')).window.document;
   const karte = d.getElementById('smtp-port')?.closest('.ssec');
-  assert.ok(karte, 'Die SMTP-Karte ist nicht mehr zu finden');
+  assert.ok(karte, 'The SMTP card can no longer be found');
   return karte.outerHTML;
 }
 
@@ -68,9 +68,9 @@ test('the port field stays in the card', t => {
       { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
     );
     const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-    assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+    assert.ok(m, 'The test page wrote no result');
     const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
     assert.ok(e.breite > 40, `${breite}: Port-Feld nur ${e.breite} px breit`);
-    assert.ok(e.port <= e.innen + 0.5, `${breite}: Port ragt ${Math.round(e.port - e.innen)} px über die Karte hinaus`);
+    assert.ok(e.port <= e.innen + 0.5, `${breite}: port sticks out ${Math.round(e.port - e.innen)} px beyond the card`);
   }
 });

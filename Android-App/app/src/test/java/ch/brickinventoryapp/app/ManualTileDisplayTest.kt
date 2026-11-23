@@ -96,7 +96,7 @@ class ManualTileDisplayTest {
 
     @Test
     fun `the manual part shows conditions, owners and the averaged purchase price`() {
-        world.paths.responses["/api/v1/parts/manual"] =
+        world.paths.responses["/api/v2/parts/manual"] =
             """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1","color_id":1,$fields}]}"""
         val vm = world.parts().also { it.loadParts() }
         wait("parts") { !vm.partsState.value.manualParts.isNullOrEmpty() }
@@ -107,7 +107,7 @@ class ManualTileDisplayTest {
 
     @Test
     fun `the manual figure shows conditions, owners and the averaged purchase price`() {
-        world.paths.responses["/api/v1/minifigs/manual"] =
+        world.paths.responses["/api/v2/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia",$fields}]}"""
         val vm = world.figures().also { it.loadMinifigs() }
         wait("figures") { !vm.minifigsState.value.manualFigs.isNullOrEmpty() }
@@ -119,8 +119,8 @@ class ManualTileDisplayTest {
     @Test
     fun `the key figures of the figures stay, even without figures from sets`() {
         // They mean the whole collection (/minifigs/stats), not the loaded list.
-        world.paths.responses["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
-        world.paths.responses["/api/v1/minifigs/manual"] =
+        world.paths.responses["/api/v2/minifigs"] = """{"success":true,"figs":[]}"""
+        world.paths.responses["/api/v2/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia","quantity":1}]}"""
         val vm = world.figures().also { it.loadMinifigs() }
         wait("figures") { vm.minifigsState.value.let { !it.manualFigs.isNullOrEmpty() && it.minifigStats.types > 0 } }

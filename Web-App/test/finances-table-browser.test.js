@@ -61,7 +61,7 @@ test('finance table can be recalculated and without wrapping in the header', {
     await warte(300);
   };
   await b.auswerten(`location.hash = '#/finanzen'; true`);
-  await bis(`document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length === 2`, 'Sets in der Finanztabelle');
+  await bis(`document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length === 2`, 'Sets in the finance table');
 
   await t.test('cost basis: the column yields the sum', async () => {
     const m = await b.auswerten(`(() => {
@@ -71,7 +71,7 @@ test('finance table can be recalculated and without wrapping in the header', {
       const cells = [...tab.querySelectorAll('tbody tr')].map(tr => tr.children[spalte]);
       return { spalte, zeilen: cells.map(z => zahl(z.firstChild.textContent)), je: cells.map(z => z.querySelector('.fin-per')?.textContent || ''),
                summe: zahl(tab.querySelector('tfoot .fin-footer-value').textContent) }; })()`);
-    assert.ok(m.spalte > 0, 'Spalte „Einstand“ fehlt');
+    assert.ok(m.spalte > 0, 'Column „Einstand“ is missing');
     assert.deepEqual(
       m.zeilen.slice().sort((a, b) => a - b),
       [50, 200],
@@ -82,7 +82,7 @@ test('finance table can be recalculated and without wrapping in the header', {
     );
     assert.ok(
       m.je.some(j => /^je .*100[.,]00/.test(j)),
-      `Stückpreis fehlt: ${JSON.stringify(m.je)}`,
+      `Unit price is missing: ${JSON.stringify(m.je)}`,
     );
   });
 

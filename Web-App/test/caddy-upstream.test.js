@@ -40,7 +40,7 @@ const { spawn, spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
-if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
+if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, but no Caddy (CADDY_BIN)');
 
 const COMPOSE = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 /** Caddy's startup script from compose.yaml ($$ → $); instead of `exec caddy` it outputs the value Caddy would get. */
@@ -96,7 +96,7 @@ test('VORGELAGERTER_PROXY is required: keiner or addresses', async t => {
   await t.test('a network spanning more than eight addresses only with PROXY_NETWORK_CONFIRMED=1', () => {
     for (const wert of ['172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
       const r = startScript(wert);
-      assert.notEqual(r.status, 0, `${wert}: Caddy startet ohne Bestätigung`);
+      assert.notEqual(r.status, 0, `${wert}: Caddy starts without confirmation`);
       assert.match(r.stderr, /PROXY_NETWORK_CONFIRMED=1/, wert);
       assert.deepEqual([startScript(wert, true).status, startScript(wert, true).stdout], [0, wert]);
     }
@@ -186,12 +186,12 @@ async function startCaddy(t, appPort, upstream) {
     if (bereit === 200 || versuch >= 3 || !error.includes('address already in use')) break;
     caddy.kill('SIGKILL');
   }
-  assert.equal(bereit, 200, `Caddy antwortet nicht (Exit ${caddy?.exitCode}): ${error.slice(-600)}`);
+  assert.equal(bereit, 200, `Caddy does not answer (exit ${caddy?.exitCode}): ${error.slice(-600)}`);
   return anfrage;
 }
 
 test('Caddy gives the app the client address behind an upstream proxy', {
-  skip: !CADDY && 'kein Caddy (CADDY_BIN)',
+  skip: !CADDY && 'no Caddy (CADDY_BIN)',
   timeout: 120_000,
 }, async t => {
   // The app returns which X-Forwarded-For arrives at it.
@@ -214,12 +214,12 @@ test('Caddy gives the app the client address behind an upstream proxy', {
     assert.equal(
       (await anfrage('GET', '/api/v2/sets', '6.6.6.6, 198.51.100.7')).rumpf,
       '198.51.100.7',
-      'mit VORGELAGERTER_PROXY sieht die App den Client',
+      'with VORGELAGERTER_PROXY the app sees the client',
     );
     assert.equal(
       (await anfrage('POST', '/api/v2/auth/login', '6.6.6.6, 198.51.100.7')).rumpf,
       '198.51.100.7',
-      'mit VORGELAGERTER_PROXY sieht die App den Client auch auf den Anmeldewegen',
+      'with VORGELAGERTER_PROXY the app sees the client on the sign-in paths too',
     );
   });
 

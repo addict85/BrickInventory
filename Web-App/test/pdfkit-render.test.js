@@ -29,9 +29,9 @@ function render(bauen) {
 }
 
 function isValidPdf(b, wo) {
-  assert.equal(b.slice(0, 5).toString(), '%PDF-', `${wo}: kein PDF-Kopf`);
-  assert.ok(b.slice(-1024).toString().includes('%%EOF'), `${wo}: keine EOF-Marke`);
-  assert.ok(b.length > 500, `${wo}: nur ${b.length} Bytes — das kann kein Dokument sein`);
+  assert.equal(b.slice(0, 5).toString(), '%PDF-', `${wo}: no PDF header`);
+  assert.ok(b.slice(-1024).toString().includes('%%EOF'), `${wo}: no EOF marker`);
+  assert.ok(b.length > 500, `${wo}: only ${b.length} bytes — that cannot be a document`);
 }
 
 test('the parts list export draws a valid PDF', async () => {
@@ -41,7 +41,7 @@ test('the parts list export draws a valid PDF', async () => {
     doc.moveDown(0.5);
     doc.font('Helvetica').fontSize(10);
     const lineHeight = doc.currentLineHeight();
-    assert.ok(lineHeight > 0, 'currentLineHeight() liefert keine Höhe mehr');
+    assert.ok(lineHeight > 0, 'currentLineHeight() no longer returns a height');
     doc.text('3001 · Brick 2x4 · Rot · 12×');
     doc.circle(120, 200, 6);
     doc.moveTo(50, 220);
@@ -86,8 +86,8 @@ test('images are embedded — JPEG and PNG', async () => {
     isValidPdf(b, 'Bildseiten');
     // Both image formats must end up as an XObject in the document.
     const text = b.toString('latin1');
-    assert.ok(text.includes('/DCTDecode'), 'Das JPEG wurde nicht eingebettet');
-    assert.ok(text.includes('/FlateDecode'), 'Das PNG wurde nicht eingebettet');
+    assert.ok(text.includes('/DCTDecode'), 'The JPEG was not embedded');
+    assert.ok(text.includes('/FlateDecode'), 'The PNG was not embedded');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -102,7 +102,7 @@ test('jpeg-exif is no longer in the dependency tree', () => {
   assert.deepEqual(
     treffer,
     [],
-    'jpeg-exif ist zurück. Es wird nicht mehr gepflegt und kam zuletzt über ' +
-      'pdfkit < 0.20 herein — dort ist es seither entfallen.',
+    'jpeg-exif is back. It is no longer maintained and last came in via ' +
+      'pdfkit < 0.20 — it has been dropped there since.',
   );
 });

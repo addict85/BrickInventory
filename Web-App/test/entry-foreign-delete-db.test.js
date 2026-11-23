@@ -55,10 +55,10 @@ test('delete foreign acquisitions', { concurrency: 1 }, async t => {
 
   await t.test('Teil', async () => {
     assert.equal(await removeIt(`/api/v2/parts/3001/4/acquisitions/${teil}`), 404);
-    assert.ok(await db.get('SELECT 1 FROM part_acquisitions WHERE id = $1', [teil]), 'die fremde Zeile ist weg');
+    assert.ok(await db.get('SELECT 1 FROM part_acquisitions WHERE id = $1', [teil]), 'the foreign row is gone');
   });
   await t.test('figure', async () => {
     assert.equal(await removeIt(`/api/v2/minifigs/sw0001/acquisitions/${figur}`), 404);
-    assert.ok(await db.get('SELECT 1 FROM minifig_acquisitions WHERE id = $1', [figur]), 'die fremde Zeile ist weg');
+    assert.ok(await db.get('SELECT 1 FROM minifig_acquisitions WHERE id = $1', [figur]), 'the foreign row is gone');
   });
 });

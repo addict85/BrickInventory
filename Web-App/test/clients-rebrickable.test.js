@@ -136,7 +136,7 @@ test('the part list page by page; 403 means refused', async t => {
     }),
   );
   const k = rb.createRebrickable(clientsAccess());
-  const { parts, verweigert } = await k.fetchSetParts('10294-1');
+  const { parts, refused } = await k.fetchSetParts('10294-1');
   assert.deepEqual(
     parts.map(p => [p.part.part_num, p.color.id, p.quantity, p.is_spare]),
     [
@@ -145,14 +145,14 @@ test('the part list page by page; 403 means refused', async t => {
       ['3003', 15, 1, true],
     ],
   );
-  assert.equal(verweigert, false);
-  assert.deepEqual(await k.fetchSetParts('geheim-1'), { parts: [], verweigert: true });
-  assert.deepEqual(await k.fetchSetParts('kaputt-1'), { parts: [], verweigert: false });
-  assert.deepEqual(await k.fetchSetParts('fehler-1'), { parts: [], verweigert: false });
-  assert.deepEqual(await k.fetchSetParts('fehlt-1'), { parts: [], verweigert: false });
+  assert.equal(refused, false);
+  assert.deepEqual(await k.fetchSetParts('geheim-1'), { parts: [], refused: true });
+  assert.deepEqual(await k.fetchSetParts('kaputt-1'), { parts: [], refused: false });
+  assert.deepEqual(await k.fetchSetParts('fehler-1'), { parts: [], refused: false });
+  assert.deepEqual(await k.fetchSetParts('fehlt-1'), { parts: [], refused: false });
   assert.deepEqual(await rb.createRebrickable(clientsAccess({ allowed: false })).fetchSetParts('10294-1'), {
     parts: [],
-    verweigert: false,
+    refused: false,
   });
   await assert.rejects(
     rb.createRebrickable(clientsAccess({ keys: { rebrickable_api_key: '' } })).fetchSetParts('10294-1'),
@@ -289,7 +289,7 @@ test('the instruction scrape takes only PDF links of LEGO and Rebrickable, each 
     { url: 'https://cdn.rebrickable.com/media/instructions/10294-1-b2.pdf', description: 'Anleitung 10294-1' },
   ]);
   assert.deepEqual(await k.scrapeInstructions('fehlt-1'), []);
-  assert.equal(stub.calls[0].headers.authorization, undefined, 'die Webseite bekommt keinen Schlüssel');
+  assert.equal(stub.calls[0].headers.authorization, undefined, 'the web page gets no key');
 });
 
 test('a dropped connection is retried, the third drop is thrown', async t => {
@@ -329,7 +329,7 @@ test('a hanging Rebrickable ends at the deadline: null for rebrickableJson', asy
     await new Promise(r => setImmediate(r));
   }
   assert.equal(await lauf, null);
-  assert.ok(stub.calls.length >= 1 && stub.calls.length <= 3, `${stub.calls.length} Anfragen`);
+  assert.ok(stub.calls.length >= 1 && stub.calls.length <= 3, `${stub.calls.length} requests`);
 });
 
 test('rebrickableRaw: no retry, a network error is status 0', async t => {
@@ -362,7 +362,7 @@ test('downloads: only allowed hosts, only complete files with the right start', 
   const cdn = n => `https://cdn.rebrickable.com/media/instructions/${n}`;
   assert.equal(await rb.downloadFile(cdn('ok.pdf'), ziel('ok.pdf'), undefined, PDF), true);
   assert.deepEqual(fs.readFileSync(ziel('ok.pdf')), pdf);
-  assert.equal(await rb.downloadFile(cdn('ok.pdf'), ziel('ok.pdf')), true, 'schon da');
+  assert.equal(await rb.downloadFile(cdn('ok.pdf'), ziel('ok.pdf')), true, 'already there');
   for (const [n, max] of /** @type {[string, number | undefined][]} */ ([
     ['klein.pdf', undefined],
     ['falsch.pdf', undefined],
@@ -370,7 +370,7 @@ test('downloads: only allowed hosts, only complete files with the right start', 
     ['gross.pdf', 1000],
   ])) {
     assert.equal(await rb.downloadFile(cdn(n), ziel(n), max, PDF), false, n);
-    assert.equal(fs.existsSync(ziel(n)), false, `${n} bleibt liegen`);
+    assert.equal(fs.existsSync(ziel(n)), false, `${n} stays behind`);
   }
   assert.equal(await rb.downloadFile('https://example.org/x.pdf', ziel('fremd.pdf')), false);
 });

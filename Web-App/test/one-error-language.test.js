@@ -34,7 +34,7 @@ test('no route sends a fixed error sentence', () => {
     ...tsFiles(path.join(ROOT, 'src')).map(([r, p]) => [r, p]),
     ...tsFiles(path.join(ROOT, 'jobs')).map(([r, p]) => [r, p]),
   ];
-  assert.ok(dateien.length >= 30, `Nur ${dateien.length} Dateien gefunden — dann prüft der Rest nichts.`);
+  assert.ok(dateien.length >= 30, `Only ${dateien.length} files found — then the rest checks nothing.`);
 
   const violations = [];
   const gebraucht = new Set();
@@ -76,19 +76,19 @@ test('no route sends a fixed error sentence', () => {
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ALLOWED beschreiben nichts mehr:\n  ' +
+    'These entries in ALLOWED no longer describe anything:\n  ' +
       veraltet.join('\n  ') +
-      '\nDie Datei enthaelt keinen festen Fehlersatz (mehr). Der Eintrag nimmt sie ' +
-      'trotzdem von der Pruefung aus — raus damit.',
+      '\nThe file no longer contains a fixed error sentence. The entry still exempts it ' +
+      'from the check — remove it.',
   );
 
   assert.deepEqual(
     violations,
     [],
-    'Diese Stellen schicken einen festen Satz statt sendError(req, res, …, code):\n  ' +
+    'These places send a fixed sentence instead of sendError(req, res, …, code):\n  ' +
       violations.join('\n  ') +
-      '\nDamit steht die Meldung nur in einer Sprache da — in einer Oberfläche, ' +
-      'die es in zweien gibt.',
+      '\nThat way the message exists in only one language — in an interface ' +
+      'that exists in two.',
   );
 });
 
@@ -96,7 +96,7 @@ test('every entry of the table has both languages and the same placeholders', ()
   // A missing placeholder means that in one language „{name}" stands on the screen.
   const { ERRORS, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
   const codes = Object.keys(ERRORS);
-  assert.ok(codes.length >= 60, `Nur ${codes.length} Einträge — greift die Tabelle noch?`);
+  assert.ok(codes.length >= 60, `Only ${codes.length} entries — does the table still work?`);
   const skewed = [];
   for (const code of codes) {
     const vars = {};
@@ -121,11 +121,11 @@ test('the web app tells the server which language it shows', async () => {
     const { w, aufrufe } = await openUi({}, { language });
     try {
       const api = aufrufe.filter(a => a.url.includes('/api/v2/'));
-      assert.ok(api.length >= 5, `nur ${api.length} Anfragen`);
+      assert.ok(api.length >= 5, `only ${api.length} requests`);
       assert.deepEqual(
         api.filter(a => a.headers['Accept-Language'] !== language).map(a => a.url),
         [],
-        `ohne Sprache ${language}`,
+        `without language ${language}`,
       );
     } finally {
       w.close();

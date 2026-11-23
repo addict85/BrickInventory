@@ -56,10 +56,10 @@ test('collection on the phone: card above the fold, prices without overlap', { t
     const m = await app.b.auswerten(messen);
     assert.ok(
       m.oben !== null && m.oben + 60 < m.leiste,
-      `${breite}: erste Karte über der Falz (oben ${m.oben}, Leiste ${m.leiste})`,
+      `${breite}: first card above the fold (top ${m.oben}, bar ${m.leiste})`,
     );
-    assert.ok(m.karten >= 2, `${breite}: zu wenig Preiszeilen geprüft (${m.karten})`);
-    assert.deepEqual(m.ueberlapp, [], `${breite}: Preis und Nachbar überlappen`);
+    assert.ok(m.karten >= 2, `${breite}: too few price rows checked (${m.karten})`);
+    assert.deepEqual(m.ueberlapp, [], `${breite}: price and neighbour overlap`);
     assert.equal(m.breit, breite, `${breite}: waagrechtes Scrollen`);
   }
 });

@@ -169,7 +169,7 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
       .createHash('sha256')
       .update(`POST ${path}\n${JSON.stringify({ password: PASS })}`)
       .digest('hex');
-    assert.deepEqual(await occurrences(alt), [], 'der SHA-256 des Rumpfs mit Passwort liegt in der Tabelle');
+    assert.deepEqual(await occurrences(alt), [], 'the SHA-256 of the body with the password is in the table');
     assert.match(
       (await db.get("SELECT request FROM idempotency WHERE user_id = $1 AND key = 'zf-1'", [uid])).request,
       /^h1:[0-9a-f]{64}$/,
@@ -182,13 +182,13 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
     assert.notEqual(
       abdruck({ password: 'a', x: 1 }),
       abdruck({ password: 'a', x: 2 }),
-      'der übrige Inhalt zählt weiter',
+      'the remaining content still counts',
     );
     const vorher = abdruck({ x: 1 });
     environment({ DATA_KEY: Buffer.alloc(32, 8).toString('base64') });
     secret._forgetKey();
     try {
-      assert.notEqual(abdruck({ x: 1 }), vorher, 'ohne Datenschlüssel nachrechenbar');
+      assert.notEqual(abdruck({ x: 1 }), vorher, 'recomputable without a data key');
     } finally {
       environment({ DATA_KEY: Buffer.alloc(32, 7).toString('base64') });
       secret._forgetKey();
@@ -227,7 +227,7 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
       );
     }
     assert.deepEqual(await occurrences('klartext-aus-frueher'), []);
-    assert.equal((await row('v1-1')).response, 'v1:AAAA', 'verschlüsselte Zeilen bleiben');
+    assert.equal((await row('v1-1')).response, 'v1:AAAA', 'encrypted rows stay');
     const r = await post('/storage/locations', 'alt-1', { name: 'Alt' });
     assert.equal(r.status, 409);
     assert.equal(r.body.code, 'idempotency_not_repeatable');
@@ -246,7 +246,7 @@ test('every writing route with access or code is on the list', () => {
     (responseIsSecret(methode, path.replace(/:\w+/g, '1')) ? found : fehlt).push(key);
   }
   assert.deepEqual(fehlt, []);
-  assert.ok(found.length >= 9, `nur ${found.length} Routen erkannt: ${found.join(', ')}`);
+  assert.ok(found.length >= 9, `only ${found.length} routes recognized: ${found.join(', ')}`);
   assert.equal(responseIsSecret('POST', '/api/v2/settings/household/invite'), true);
   assert.equal(responseIsSecret('POST', '/api/v2/vouchers/7/plaintext'), true);
   assert.equal(responseIsSecret('PUT', '/api/v2/parts/3001/5'), false);
@@ -254,7 +254,7 @@ test('every writing route with access or code is on the list', () => {
 
 test('every route with confirmation is not repeatable', () => {
   const withConfirmation = Object.entries(CONTRACT).filter(([, r]) => r.confirmation);
-  assert.ok(withConfirmation.length >= 20, `nur ${withConfirmation.length} Routen mit Bestätigung`);
+  assert.ok(withConfirmation.length >= 20, `only ${withConfirmation.length} routes with confirmation`);
   const retryable = withConfirmation
     .map(([k]) => k.split(' '))
     .filter(([m, p]) => !responseIsSecret(m, p.replace(/:\w+/g, '1')))

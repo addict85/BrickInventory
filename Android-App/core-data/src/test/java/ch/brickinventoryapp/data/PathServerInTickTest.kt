@@ -32,8 +32,8 @@ import org.junit.Test
 class PathServerInTickTest {
 
     private val paths = PathServer(
-        "/api/v1/finance/parts-valuation" to """{"success":true,"parts":[]}""",
-        "/api/v1/finance/minifigs-valuation" to """{"success":true,"total_value":"0.00","figs":[]}""",
+        "/api/v2/finance/parts-valuation" to """{"success":true,"parts":[]}""",
+        "/api/v2/finance/minifigs-valuation" to """{"success":true,"total_value":"0.00","figs":[]}""",
     )
     private val api = paths.onTick()
 
@@ -68,13 +68,13 @@ class PathServerInTickTest {
             paths.checkReadIn()
             fail("pruefeEinlesen blieb still")
         } catch (e: AssertionError) {
-            assertTrue(e.message, "GET /api/v1/finance/parts-valuation" in e.message.orEmpty())
+            assertTrue(e.message, "GET /api/v2/finance/parts-valuation" in e.message.orEmpty())
         }
     }
 
     @Test
     fun `a held-back response comes only with release, without a wall clock`() = runTest {
-        paths.missing += "/api/v1/finance/minifigs-valuation"
+        paths.missing += "/api/v2/finance/minifigs-valuation"
         val fetch = launch { api.getMinifigsValuation() }
         runCurrent()
         assertTrue("The fetch is still waiting", fetch.isActive)
@@ -82,12 +82,12 @@ class PathServerInTickTest {
         paths.release()
         runCurrent()
         assertTrue("After releasing it is done", fetch.isCompleted)
-        assertEquals(listOf("GET /api/v1/finance/minifigs-valuation"), paths.requests.toList())
+        assertEquals(listOf("GET /api/v2/finance/minifigs-valuation"), paths.requests.toList())
     }
 
     @Test
     fun `an aborted fetch gets no response after the release`() = runTest {
-        paths.missing += "/api/v1/finance/minifigs-valuation"
+        paths.missing += "/api/v2/finance/minifigs-valuation"
         val fetch = launch { api.getMinifigsValuation() }
         runCurrent()
         fetch.cancel()
@@ -105,7 +105,7 @@ class PathServerInTickTest {
             val values = runBlocking { List(2) { series.api.getMinifigsValuation().body()?.totalValue } }
             assertEquals(listOf("1.00", "2.00"), values)
             assertEquals(2, series.requestCount)
-            assertEquals("/api/v1/finance/minifigs-valuation", series.takeRequest().path)
+            assertEquals("/api/v2/finance/minifigs-valuation", series.takeRequest().path)
             series.checkReadIn()
         } finally {
             series.shutdown()

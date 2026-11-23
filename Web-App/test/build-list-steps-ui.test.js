@@ -30,7 +30,7 @@ const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-const TEIL = {
+const PART = {
   part_number: '3001',
   part_name: 'Brick 2 x 4',
   color_id: 4,
@@ -55,7 +55,7 @@ async function create(parts, nummern = '10294') {
   // Close the window without a list: kept open, jsdom would keep the test process alive.
   if (!(await warte(() => / aus \d+ Set/.test(o.d.getElementById('pl-status').textContent), 3000))) {
     o.w.close();
-    assert.fail('Liste erstellt');
+    assert.fail('List created');
   }
   return o;
 }
@@ -66,8 +66,8 @@ test('setup: labels, reset not red', async () => {
     assert.equal(text(d.querySelector('label[for="pl-setnr"]')), 'Setnummern (mehrere mit Komma trennen)');
     assert.equal(text(d.querySelector('label[for="pl-bl-condition"]')), 'Zustand für BrickLink');
     assert.equal(text(d.getElementById('btn-pl-gen')), 'Neu berechnen');
-    assert.equal(d.getElementById('btn-pl-reset').classList.contains('bd'), false, 'Zurücksetzen ist rot');
-    assert.equal(d.getElementById('pl-export').hidden, true, 'Exportieren vor dem ersten Ergebnis');
+    assert.equal(d.getElementById('btn-pl-reset').classList.contains('bd'), false, 'Reset is red');
+    assert.equal(d.getElementById('pl-export').hidden, true, 'Export before the first result');
   } finally {
     w.close();
   }
@@ -76,7 +76,7 @@ test('setup: labels, reset not red', async () => {
 test('adding computes immediately, without a second step; "recompute" only with a set', async () => {
   const o = await openUi({
     '/v2/sets/info/10294-1': { success: true, name: 'Titanic', in_catalog: true },
-    '/v2/sets/10294-1/parts-list': { success: true, parts: [TEIL] },
+    '/v2/sets/10294-1/parts-list': { success: true, parts: [PART] },
     '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
     '/v2/parts/bl-color-map': { success: true, map: { 4: 5 } },
   });
@@ -85,40 +85,36 @@ test('adding computes immediately, without a second step; "recompute" only with 
     await reiter(w, 'partslist');
     const haupt = () => [...d.querySelectorAll('#tab-partslist .btn.bp')].map(text);
     const gen = d.getElementById('btn-pl-gen');
-    assert.deepEqual(haupt(), ['Hinzufügen'], 'ohne Sets');
-    assert.equal(gen.hidden, true, '„Neu berechnen“ ohne Inhalt sichtbar');
+    assert.deepEqual(haupt(), ['Hinzufügen'], 'without sets');
+    assert.equal(gen.hidden, true, '„Neu berechnen“ visible without content');
     assert.match(
       text(d.getElementById('pl-sets')),
       /noch leer.*entsteht sofort/,
-      'der Leerzustand sagt nicht, was zu tun ist',
+      'the empty state does not say what to do',
     );
-    assert.equal(
-      d.querySelectorAll('#tab-partslist [data-i18n="pl.erst_set"]').length,
-      0,
-      'Leerzustand doppelt gesagt',
-    );
-    assert.equal(d.querySelector('#pl-sets button'), null, 'der Leerzustand hat einen eigenen Knopf');
+    assert.equal(d.querySelectorAll('#tab-partslist [data-i18n="pl.erst_set"]').length, 0, 'empty state said twice');
+    assert.equal(d.querySelector('#pl-sets button'), null, 'the empty state has a button of its own');
 
     d.getElementById('pl-setnr').value = '10294';
     d.getElementById('btn-pl-add').click();
-    assert.ok(await warte(() => / aus 1 Set/.test(d.getElementById('pl-status').textContent), 3000), 'keine Liste');
-    assert.ok(d.querySelector('#pl-result .pl-have-input'), 'die Tabelle fehlt');
-    assert.deepEqual(haupt(), ['Hinzufügen'], 'mit Set');
-    assert.equal(gen.hidden, false, '„Neu berechnen“ fehlt mit Set');
+    assert.ok(await warte(() => / aus 1 Set/.test(d.getElementById('pl-status').textContent), 3000), 'no list');
+    assert.ok(d.querySelector('#pl-result .pl-have-input'), 'the table is missing');
+    assert.deepEqual(haupt(), ['Hinzufügen'], 'with set');
+    assert.equal(gen.hidden, false, '„Neu berechnen“ missing with set');
   } finally {
     w.close();
   }
 });
 
 test('removing recomputes', async () => {
-  const { w, d } = await create([TEIL], '10294, 99999-1');
+  const { w, d } = await create([PART], '10294, 99999-1');
   try {
     d.querySelector('#pl-sets .pl-chip:nth-child(2) [data-click="plRemoveSet"]').click();
     assert.ok(
       await warte(() => text(d.getElementById('pl-status')) === '1 Sorte (6 Teile) aus 1 Set', 3000),
       text(d.getElementById('pl-status')),
     );
-    assert.ok(d.querySelector('#pl-result .pl-have-input'), 'die Tabelle fehlt');
+    assert.ok(d.querySelector('#pl-result .pl-have-input'), 'the table is missing');
   } finally {
     w.close();
   }
@@ -127,8 +123,8 @@ test('removing recomputes', async () => {
 test('empty result: reason, no exports', async () => {
   const { w, d } = await create([]);
   try {
-    assert.equal(d.getElementById('pl-options').hidden, true, 'Export und Optionen bei 0 Teilen');
-    assert.equal(d.getElementById('btn-pl-pdf').disabled, true, 'PDF bei 0 Teilen');
+    assert.equal(d.getElementById('pl-options').hidden, true, 'Export and options at 0 parts');
+    assert.equal(d.getElementById('btn-pl-pdf').disabled, true, 'PDF at 0 parts');
     assert.match(text(d.getElementById('pl-result')), /noch keine Teileliste vor.*Rebrickable/);
     assert.equal(text(d.getElementById('pl-status')), '0 Sorten (0 Teile) aus 1 Set');
   } finally {
@@ -137,7 +133,7 @@ test('empty result: reason, no exports', async () => {
 });
 
 test('unknown number: named in the chip, not counted', async () => {
-  const { w, d } = await create([TEIL], '10294, 99999-1');
+  const { w, d } = await create([PART], '10294, 99999-1');
   try {
     const chips = [...d.querySelectorAll('#pl-sets .pl-chip')].map(c => ({
       text: text(c),
@@ -157,7 +153,7 @@ test('unknown number: named in the chip, not counted', async () => {
 });
 
 test('result with parts: exports enabled, input fields labeled', async () => {
-  const { w, d } = await create([TEIL]);
+  const { w, d } = await create([PART]);
   try {
     assert.equal(d.getElementById('pl-options').hidden, false);
     assert.equal(d.getElementById('btn-pl-pdf').disabled, false);
@@ -169,9 +165,9 @@ test('result with parts: exports enabled, input fields labeled', async () => {
 });
 
 test('color groups in German, summary names the kinds', async () => {
-  const { w, d } = await create([TEIL, { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', total_quantity: 10 }]);
+  const { w, d } = await create([PART, { ...PART, part_number: '3003', part_name: 'Brick 2 x 2', total_quantity: 10 }]);
   try {
-    assert.match(text(d.getElementById('pl-result')), /^Rot \(2 Sorten\)/, 'Farbgruppe in der Sprache der Oberfläche');
+    assert.match(text(d.getElementById('pl-result')), /^Rot \(2 Sorten\)/, 'Color group in the UI language');
     assert.doesNotMatch(text(d.getElementById('pl-result')), /\bRed\b/);
     assert.equal(text(d.getElementById('pl-status')), '2 Sorten (16 Teile) aus 1 Set');
   } finally {

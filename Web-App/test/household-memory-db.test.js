@@ -60,13 +60,13 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     const afterFirst = linkQueries();
     for (let i = 0; i < 20; i++) await hh.householdOf(MAIN);
     count = false;
-    assert.equal(afterFirst, 2, 'der erste Aufruf soll die beiden Abfragen machen');
+    assert.equal(afterFirst, 2, 'the first call should make the two queries');
     assert.equal(
       linkQueries(),
       2,
-      `21 Aufrufe ergaben ${linkQueries()} Abfragen auf account_links — erwartet 2 (nur der erste)`,
+      `21 calls resulted in ${linkQueries()} queries on account_links — expected 2 (only the first)`,
     );
-    assert.deepEqual(erst.memberIds, [MAIN, UNTER], 'das Unterkonto gehört ins Blickfeld');
+    assert.deepEqual(erst.memberIds, [MAIN, UNTER], 'the sub-account belongs in the view');
 
     // ── 2. The member list is a fresh list ─────────────────────────────────
     const a = await hh.householdOf(MAIN);
@@ -75,7 +75,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     assert.deepEqual(
       b.memberIds,
       [MAIN, UNTER],
-      'wer die Mitgliederliste anfasst, darf den gemerkten Stand nicht verändern',
+      'whoever touches the member list must not change the remembered state',
     );
 
     // ── 3. After unlinking the view is small again immediately ─────────────
@@ -86,7 +86,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     assert.deepEqual(
       nachher.memberIds,
       [MAIN],
-      'nach unlinkAccounts() steht das gelöste Unterkonto noch im gemerkten Blickfeld',
+      'after unlinkAccounts() the unlinked sub-account is still in the remembered view',
     );
 
     // ── 4. The signal goes out to the other cluster workers ────────────────
@@ -98,11 +98,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     const angekommen = new Promise((auf, ab) => {
       const clock = setTimeout(
         () =>
-          ab(
-            new Error(
-              `kein NOTIFY auf Kanal "${hh.HOUSEHOLD_CHANNEL}" innerhalb von 3 s — die anderen Worker erfahren nichts`,
-            ),
-          ),
+          ab(new Error(`no NOTIFY on channel "${hh.HOUSEHOLD_CHANNEL}" within 3 s — the other workers learn nothing`)),
         3000,
       );
       listener.on('notification', m => {
@@ -130,7 +126,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     assert.equal(
       linkQueries(),
       2,
-      'Gegenprobe: nach reportHouseholdChange() wurde nicht neu gelesen (oder der Zähler zählt nicht mit)',
+      'Counter-check: after reportHouseholdChange() nothing was reread (or the counter does not count)',
     );
   } finally {
     db.pool.query = altQuery;

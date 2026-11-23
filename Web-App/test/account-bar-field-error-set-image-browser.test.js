@@ -75,15 +75,15 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       await bis(`!!document.querySelector('#portfolio-chart .error-state')`, 'Fehlerzustand');
       const error = await b.auswerten(sichtbar(ELEMENTS));
       assert.equal(error.length, 9);
-      assert.deepEqual(error, Array(9).fill(false), 'im Fehlerfall sichtbar');
+      assert.deepEqual(error, Array(9).fill(false), 'visible on error');
     } finally {
       await b.tab('Fetch.disable');
       b.listener.splice(b.listener.indexOf(intercept), 1);
     }
     await b.auswerten(`document.querySelector('#portfolio-chart .error-state button[data-click]').click(); true`);
-    await bis(`!!document.querySelector('#fin-tbl table')`, 'Tabelle nach „Erneut versuchen“');
+    await bis(`!!document.querySelector('#fin-tbl table')`, 'Table after „Erneut versuchen“');
     await ruhig();
-    assert.deepEqual(await b.auswerten(sichtbar(ELEMENTS)), Array(9).fill(true), 'nach Erfolg');
+    assert.deepEqual(await b.auswerten(sichtbar(ELEMENTS)), Array(9).fill(true), 'after success');
   });
 
   for (const [breite, telefon] of [
@@ -102,7 +102,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
             features: [{ name: 'prefers-color-scheme', value: dunkel ? 'dark' : 'light' }],
           });
           await zu(hash);
-          await bis(`!!document.querySelector(${JSON.stringify(leiste)})?.checkVisibility()`, `Leiste ${ansicht}`);
+          await bis(`!!document.querySelector(${JSON.stringify(leiste)})?.checkVisibility()`, `Bar ${ansicht}`);
           await b.auswerten(`scrollTo(0, document.documentElement.scrollHeight); true`);
           await ruhig(400);
           const m = await b.auswerten(`(() => {
@@ -114,15 +114,15 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
               oben: Math.round(r.top), unten: Math.round(r.bottom),
               soll: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-top')) || 0,
               lowerBar: unten ? Math.round(unten.getBoundingClientRect().top) : innerHeight,
-              grund: getComputedStyle(nav).backgroundColor,
+              reason: getComputedStyle(nav).backgroundColor,
               pageWider: document.documentElement.scrollWidth > innerWidth,
             };
           })()`);
-          assert.ok(m.gerollt > 300, `Seite zu kurz zum Rollen (${m.gerollt} px)`);
-          assert.ok(Math.abs(m.oben - m.soll) <= 1, `Leiste rollt weg: oben ${m.oben} px statt ${m.soll} px`);
-          assert.ok(m.unten < m.lowerBar, 'Leiste über der unteren Navigation');
-          assert.notEqual(m.reason, 'rgba(0, 0, 0, 0)', 'Leiste ohne eigenen Grund: Inhalt scheint durch');
-          assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
+          assert.ok(m.gerollt > 300, `Page too short to scroll (${m.gerollt} px)`);
+          assert.ok(Math.abs(m.oben - m.soll) <= 1, `Bar scrolls away: top ${m.oben} px instead of ${m.soll} px`);
+          assert.ok(m.unten < m.lowerBar, 'Bar above the bottom navigation');
+          assert.notEqual(m.reason, 'rgba(0, 0, 0, 0)', 'Bar without its own background: content shows through');
+          assert.equal(m.pageWider, false, 'Page wider than the window');
           if (ansicht !== 'Hintergrundarbeiten') return;
           // A jump to the very top: the heading is in view and not below the bar.
           await b.auswerten(`document.querySelector('${leiste} a[data-arg="mon-t-quotas"]').click(); true`);
@@ -131,11 +131,8 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
             await b.auswerten(`(() => { const h = document.getElementById('mon-t-quotas').getBoundingClientRect();
             return { fokus: document.activeElement.id, oben: h.top, unten: h.bottom,
               leiste: document.querySelector(${JSON.stringify(leiste)}).getBoundingClientRect().bottom, h: innerHeight }; })()`);
-          assert.equal(z.fokus, 'mon-t-quotas', 'Fokus auf der Überschrift');
-          assert.ok(
-            z.oben >= z.leiste - 1 && z.unten <= z.h,
-            `Überschrift verdeckt oder nicht im Bild: ${JSON.stringify(z)}`,
-          );
+          assert.equal(z.fokus, 'mon-t-quotas', 'Focus on the heading');
+          assert.ok(z.oben >= z.leiste - 1 && z.unten <= z.h, `Heading covered or not in view: ${JSON.stringify(z)}`);
         });
 
   await t.test('N2 field errors in the two-column dialog below their field', async () => {
@@ -143,7 +140,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
     await zu('#/sammlung');
     await b.auswerten(`document.querySelector('[data-click="openCapture"][data-arg="set"]').click(); true`);
-    await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
+    await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog open');
     await b.auswerten(`document.getElementById('add-qty').value = '0'; document.getElementById('add-price').value = 'abc';
       document.getElementById('btn-add').click(); true`);
     await bis(`!document.getElementById('add-price-error')?.hidden`, 'Feldfehler');
@@ -153,9 +150,9 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       return { id, links: Math.round(e.left - f.left), abstand: Math.round(e.top - f.bottom), breiter: e.width > f.width + 1 };
     })`);
     for (const x of m) {
-      assert.equal(x.links, 0, `${x.id}: Meldung nicht unter ihrem Feld (${x.links} px versetzt)`);
-      assert.ok(x.abstand >= 0 && x.abstand < 12, `${x.id}: ${x.abstand} px unter dem Feld`);
-      assert.equal(x.breiter, false, `${x.id}: Meldung breiter als ihre Spalte`);
+      assert.equal(x.links, 0, `${x.id}: message not below its field (${x.links} px offset)`);
+      assert.ok(x.abstand >= 0 && x.abstand < 12, `${x.id}: ${x.abstand} px below the field`);
+      assert.equal(x.breiter, false, `${x.id}: message wider than its column`);
     }
     await b.auswerten(`document.querySelector('[data-click="closeCapture"][data-arg="set"]').click(); true`);
   });
@@ -177,10 +174,10 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       await ruhig(300);
       const m = await b.auswerten(BAR);
       assert.equal(m.n, 5, `${breite} × ${hoehe}: Reiter`);
-      assert.equal(m.pageWider, false, `${breite} × ${hoehe}: Seite breiter als das Fenster`);
+      assert.equal(m.pageWider, false, `${breite} × ${hoehe}: page wider than the window`);
       for (const x of m.namen) {
-        assert.equal(x.breit, namen, `${breite} × ${hoehe}: Namen ${namen ? 'missing' : 'stehen da'}`);
-        if (namen) assert.ok(x.innen, `${breite} × ${hoehe}: Name ragt aus dem Reiter`);
+        assert.equal(x.breit, namen, `${breite} × ${hoehe}: names ${namen ? 'missing' : 'present'}`);
+        if (namen) assert.ok(x.innen, `${breite} × ${hoehe}: name sticks out of the tab`);
       }
     }
   });
@@ -197,11 +194,11 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       if (Math.abs(a.getBoundingClientRect().top - k.getBoundingClientRect().top) > 12) return [];
       return [Math.round((unten(k) - unten(a)) * 10) / 10];
     })`);
-    assert.ok(m.length >= 3, `zu wenige Zeilen mit beiden Abzeichen: ${m.length}`);
+    assert.ok(m.length >= 3, `too few rows with both badges: ${m.length}`);
     assert.deepEqual(
       m.filter(x => Math.abs(x) > 0.5),
       [],
-      `Versatz der Grundlinie in px: ${m.join(', ')}`,
+      `Baseline offset in px: ${m.join(', ')}`,
     );
   });
 
@@ -212,7 +209,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
     await bis(`/favicon\\.svg/.test(document.getElementById('m-img').getAttribute('src') || '')`, 'Set-Bild');
     const k = await b.auswerten(`(() => { const k = document.getElementById('m-img').parentElement; k.focus();
       return { tag: k.tagName, fokus: document.activeElement === k, name: k.getAttribute('aria-label') }; })()`);
-    assert.deepEqual(k, { tag: 'BUTTON', fokus: true, name: 'Bild vergrössern' }, 'kein Knopf um das Bild');
+    assert.deepEqual(k, { tag: 'BUTTON', fokus: true, name: 'Bild vergrössern' }, 'no button around the image');
     const enter = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 };
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...enter });
     await b.tab('Input.dispatchKeyEvent', { type: 'char', text: '\r', ...enter });
@@ -256,7 +253,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
     await bis(
       `document.documentElement.dataset.theme === 'hochglanz' &&
       getComputedStyle(document.querySelector('#fin-tbl .cond-new')).fontWeight === '800'`,
-      'Design hochglanz',
+      'Design „hochglanz“',
     );
     await ruhig();
     try {
@@ -277,9 +274,9 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
         for (let i = 0; i < ohne.length; i += 3)
           if (Math.abs(mit[i] - ohne[i]) + Math.abs(mit[i + 1] - ohne[i + 1]) + Math.abs(mit[i + 2] - ohne[i + 2]) > 60)
             values.push(kontrast(farbe, [ohne[i], ohne[i + 1], ohne[i + 2]]));
-        assert.ok(values.length > 20, `${sel}: keine Schriftpixel gefunden (${values.length})`);
+        assert.ok(values.length > 20, `${sel}: no text pixels found (${values.length})`);
         const min = Math.min(...values);
-        assert.ok(min >= 4.5, `${sel}: ${min.toFixed(2)}:1 unter der Schrift`);
+        assert.ok(min >= 4.5, `${sel}: ${min.toFixed(2)}:1 below the text`);
       }
     } finally {
       await b.auswerten(`window.__bimApplyTheme('classic'); true`);

@@ -13,9 +13,9 @@ import org.junit.Test
 
 /**
  * Three admin actions the web app can already do, in the app too: change the schedule
- * of a job (/v1/admin/job-schedule), queue missing catalog images
- * (/v1/admin/catalog-images), switch the global design (/v1/settings/admin/theme).
- * `schedules` from /api/v1/admin/jobs must be read in as well, otherwise the
+ * of a job (/v2/admin/job-schedule), queue missing catalog images
+ * (/v2/admin/catalog-images), switch the global design (/v2/settings/admin/theme).
+ * `schedules` from /api/v2/admin/jobs must be read in as well, otherwise the
  * value reaches nobody.
  *
  * Against a test server; state and display are checked by MonitoringReloadTest and
@@ -25,7 +25,7 @@ class ManagementGapsTest {
 
     /**
      * Executed against a test server. Counter-checks:
-     *   A  `@POST("api/v1/admin/catalog-images")` to "…/katalogbilder" → red
+     *   A  `@POST("api/v2/admin/catalog-images")` to "…/katalogbilder" → red
      *   B  setJobSchedule again with `Map<String, Any>` (state 8f4f9d3) → red:
      *      the kotlinx converter cannot write `Any`, the schedule never went
      *      out. Found while switching this test to a test server.
@@ -40,8 +40,8 @@ class ManagementGapsTest {
                 admin.queueCatalogImages()
                 admin.setAppTheme(Design.STUD)
             }
-            assertEquals(listOf("POST /api/v1/admin/job-schedule", "POST /api/v1/admin/catalog-images",
-                "POST /api/v1/settings/admin/theme"), paths.requests.toList())
+            assertEquals(listOf("POST /api/v2/admin/job-schedule", "POST /api/v2/admin/catalog-images",
+                "POST /api/v2/settings/admin/theme"), paths.requests.toList())
             assertTrue(paths.bodyBytes[0], "\"time\":\"07:05\"" in paths.bodyBytes[0] && "\"name\":\"prices\"" in paths.bodyBytes[0])
             assertEquals("""{"theme":"noppe"}""", paths.bodyBytes[2])
         } finally {

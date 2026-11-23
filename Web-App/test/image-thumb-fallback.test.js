@@ -78,18 +78,18 @@ test('if the preview is missing, the original comes before the CDN', async t => 
   };
 
   const a = await hole(`/images/parts/${NR}_thumb.jpg`);
-  assert.deepEqual([a.status, a.n], [200, fs.statSync(original).size], `geliefert: ${JSON.stringify(a)}`);
-  assert.ok(await bis(() => fs.existsSync(preview)), 'die fehlende Vorschau entsteht nicht');
+  assert.deepEqual([a.status, a.n], [200, fs.statSync(original).size], `delivered: ${JSON.stringify(a)}`);
+  assert.ok(await bis(() => fs.existsSync(preview)), 'the missing preview is not created');
 
   const b = await hole(`/images/parts/${NR}_thumb.jpg`);
-  assert.deepEqual([b.status, b.n], [200, fs.statSync(preview).size], 'jetzt gilt die Vorschau');
+  assert.deepEqual([b.status, b.n], [200, fs.statSync(preview).size], 'now the preview applies');
 
   fs.rmSync(original);
   fs.rmSync(preview);
   const c = await hole(`/images/parts/${NR}_thumb.jpg`);
-  assert.equal(c.status, 302, 'ohne Original führt der Weg zum Bild-Proxy');
+  assert.equal(c.status, 302, 'without an original the path leads to the image proxy');
   assert.match(c.location ?? '', /\/img-proxy\?url=.*zz-vorschau/);
 
   const d = await hole(`/images/parts/gibtsnicht-${process.pid}_thumb.jpg`);
-  assert.equal(d.status, 404, 'ohne Original und CDN-Adresse bleibt es bei 404');
+  assert.equal(d.status, 404, 'without an original and CDN address it stays 404');
 });

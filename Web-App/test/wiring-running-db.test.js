@@ -67,10 +67,10 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     const r = await fetch(`${ohne.base}/api/v2/sets/partslist-pdf/download/irgendwas`);
     assert.ok(
       r.status === 401 || r.status === 403,
-      `Erwartet 401 oder 403, bekam ${r.status}. Ohne requireToken lieferte diese ` +
-        'Adresse eine fertige Teileliste an jeden aus, der die Auftragsnummer errät.',
+      `Expected 401 or 403, got ${r.status}. Without requireToken this ` +
+        'address served a finished parts list to anyone who guesses the job number.',
     );
-    assert.notEqual(r.headers.get('content-type'), 'application/pdf', 'Es kam trotzdem ein PDF zurück');
+    assert.notEqual(r.headers.get('content-type'), 'application/pdf', 'A PDF came back anyway');
   });
 
   await t.test('2. the image proxy fetches nothing from a foreign host', async () => {
@@ -79,8 +79,8 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     assert.equal(
       r.status,
       403,
-      `Erwartet 403, bekam ${r.status}. Ohne die Hostprüfung holt der Server jede ` +
-        'Adresse, die ihm jemand unterschiebt — auch solche im eigenen Netz.',
+      `Expected 403, got ${r.status}. Without the host check the server fetches any ` +
+        'address someone slips it — including ones in the own network.',
     );
 
     // The opposite direction: an ALLOWED host must not fail at the filter.
@@ -92,8 +92,8 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     assert.notEqual(
       r2.status,
       403,
-      'Auch ein erlaubter Host wurde mit 403 abgewiesen — dann prüft der Proxy ' +
-        'nicht den Host, sondern lehnt grundsätzlich ab',
+      'An allowed host was rejected with 403 too — then the proxy does not check ' +
+        'the host but refuses in principle',
     );
   });
 
@@ -116,20 +116,20 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
       body: JSON.stringify({ username: 'neuling', email: 'n@example.org', password: '12345678901', language: 'de' }),
     });
     const b = await r.json().catch(() => ({}));
-    assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
+    assert.equal(r.status, 400, `expected 400, got ${r.status}: ${JSON.stringify(b)}`);
     // The response carries the translated SENTENCE, not the key — the
     // error language is central (src/infra/errorTexts.ts). So the sentence
     // is checked; it names the number that matters.
     assert.match(
       String(b.error || ''),
       /mindestens 12 Zeichen/,
-      `Abgelehnt wurde mit „${b.error}" — erwartet die Passwortlänge. Ein anderer ` +
-        'Grund hiesse, die Länge wurde gar nicht geprüft.',
+      `Rejected with „${b.error}" — expected the password length. Another ` +
+        'reason would mean the length was not checked at all.',
     );
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM users WHERE username='neuling'`)).c,
       0,
-      'Das Konto wurde trotz Ablehnung angelegt',
+      'The account was created despite the rejection',
     );
 
     // Opposite direction: twelve characters pass. Without it the rule would also be
@@ -139,7 +139,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling2', email: 'n2@example.org', password: 'zwoelf12Zchn', language: 'de' }),
     });
-    assert.notEqual(r2.status, 400, 'Auch zwölf Zeichen wurden mit 400 abgelehnt — dann ist die Grenze nicht zwölf');
+    assert.notEqual(r2.status, 400, 'Twelve characters were rejected with 400 too — then the limit is not twelve');
   });
 
   await t.test('4. a date on which a purchase already exists is rejected', async () => {
@@ -161,7 +161,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
         ORDER BY created_at`,
       [MAIN, SN],
     );
-    assert.equal(zeilen.length, 2, 'Vorbedingung: zwei Erfassungen an zwei Tagen');
+    assert.equal(zeilen.length, 2, 'precondition: two acquisitions on two days');
 
     // Move the OLDER one to the day of the younger one.
     const r = await fetch(`${mit.base}/api/v2/sets/${SN}/acquisitions/${zeilen[0].id}`, {
@@ -173,14 +173,14 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     assert.equal(
       r.status,
       409,
-      `Erwartet 409, bekam ${r.status}: ${JSON.stringify(b)}. Ohne die Tagesprüfung ` +
-        'landet das im eindeutigen Index und kommt als 500 zurück — ein Serverfehler ' +
-        'statt einer Auskunft.',
+      `Expected 409, got ${r.status}: ${JSON.stringify(b)}. Without the per-day check ` +
+        'this ends up in the unique index and comes back as 500 — a server error ' +
+        'instead of information.',
     );
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [MAIN, SN])).c,
       2,
-      'Trotz Ablehnung hat sich die Zahl der Erfassungen geändert',
+      'Despite the rejection the number of acquisitions changed',
     );
 
     // Opposite direction: a FREE day passes. Without it the rule would also be
@@ -193,8 +193,8 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     });
     assert.ok(
       r2.status < 400,
-      `Ein freier Tag wurde mit ${r2.status} abgelehnt — dann prüft die Route nicht ` +
-        'den Tag, sondern lehnt jede Datumsänderung ab',
+      `A free day was rejected with ${r2.status} — then the route does not check ` +
+        'the day but rejects every date change',
     );
   });
 
@@ -205,22 +205,22 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
       body: JSON.stringify({ to_user_id: KIND }),
     });
     const b = await r.json().catch(() => ({}));
-    assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
+    assert.equal(r.status, 400, `expected 400, got ${r.status}: ${JSON.stringify(b)}`);
     // As with the password length: the response carries the translated sentence,
     // not the key. `acquisition_ids` is literally in it — exactly
     // the field that is missing.
     assert.match(
       String(b.error || ''),
       /acquisition_ids/,
-      `Abgelehnt wurde mit „${b.error}". Verschoben wird über den KAUFPREIS: Drei ` +
-        'Erfassungen sind drei Käufe, die im Haushalt verschiedenen Kindern gehören ' +
-        'können — wer alles verschieben will, wählt alle Zeilen.',
+      `Rejected with „${b.error}". Moving goes via the PURCHASE PRICE: three ` +
+        'acquisitions are three purchases that can belong to different children in the household ' +
+        '— whoever wants to move everything selects all rows.',
     );
     // And nothing has moved.
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [KIND, SN])).c,
       0,
-      'Trotz Ablehnung hat das Kind das Set bekommen',
+      'Despite the rejection the child got the set',
     );
   });
 });

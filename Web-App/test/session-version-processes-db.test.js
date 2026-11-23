@@ -65,17 +65,17 @@ test('session version across all processes', { concurrency: 1 }, async t => {
   signals.listen('sitzung_version', fertig);
   await bis(() => bereit, 5000);
   signals.unlisten('sitzung_version', fertig);
-  assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
+  assert.ok(bereit, 'the listen connection did not come about');
 
   await t.test('an increment from another process applies immediately', async () => {
     const vorher = await sv.currentSessionVersion(uid);
     await higher();
-    assert.equal(await sv.currentSessionVersion(uid), vorher, 'Vorbedingung: der Zwischenspeicher trägt sie noch');
+    assert.equal(await sv.currentSessionVersion(uid), vorher, 'precondition: the cache still holds it');
     await anderer.query("SELECT pg_notify('sitzung_version', 'anderer')");
     const neu = await inDb();
     assert.ok(
       await bis(async () => (await sv.currentSessionVersion(uid)) === neu, 1000),
-      'die alte Version gilt im Zwischenspeicher weiter',
+      'the old version stays valid in the cache',
     );
   });
 

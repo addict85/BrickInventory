@@ -18,7 +18,7 @@ export function marketPriceFrom(row: PriceRecord): number | null {
   return qty > 0 ? qty : null;
 }
 
-export function hatPrice(row: PriceRecord): boolean {
+export function hasPrice(row: PriceRecord): boolean {
   return marketPriceFrom(row) !== null;
 }
 
@@ -87,13 +87,13 @@ export async function priceGuideQuery(
   currencyCode = 'EUR',
 ) {
   const first = await getPriceGuideRaw(k, setNumber, condition, guideType, currencyCode);
-  if (hatPrice(first) || guideType !== 'sold') {
+  if (hasPrice(first) || guideType !== 'sold') {
     return { ...first, guide_used: guideType };
   }
   // No sale in six months → use current offers.
   try {
     const alt = await getPriceGuideRaw(k, setNumber, condition, 'stock', currencyCode);
-    if (hatPrice(alt)) return { ...alt, guide_used: 'stock', guide_fallback: true };
+    if (hasPrice(alt)) return { ...alt, guide_used: 'stock', guide_fallback: true };
   } catch (_) {
     /* Fallback is optional — then the result stays empty */
   }

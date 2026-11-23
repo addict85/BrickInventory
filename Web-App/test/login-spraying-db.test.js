@@ -57,29 +57,29 @@ test('limit per address across all names', { concurrency: 1 }, async t => {
 
   await t.test('after 30 failed attempts against different names the address is locked', async () => {
     const anfrage = { ip: IP, socket: {}, headers: {} };
-    for (let i = 0; i < lim.MAX_JE_ADDRESS; i++) {
+    for (let i = 0; i < lim.MAX_PER_ADDRESS; i++) {
       const r = await checkCredentials(anfrage, `${NAME}_gibtsnicht_${i}`, 'falsch');
-      assert.equal(r.absage?.kind, 'not_signed_in', `Versuch ${i + 1}`);
+      assert.equal(r.refusal?.kind, 'not_signed_in', `Attempt ${i + 1}`);
     }
     const r = await checkCredentials(anfrage, NAME, 'richtig-geheim');
-    assert.equal(r.absage?.kind, 'zu_viele');
+    assert.equal(r.refusal?.kind, 'too_many');
   });
 
   await t.test('whoever has already logged in from here gets in despite the locked address', async () => {
     const anfrage = { ip: IP, socket: {}, headers: {} };
     await lim.loginSucceeded(IP, NAME);
     const r = await checkCredentials(anfrage, NAME, 'richtig-geheim');
-    assert.equal(r.ok, true, `bekannt: trotz gesperrter Adresse angemeldet (${JSON.stringify(r.absage)})`);
+    assert.equal(r.ok, true, `known: signed in despite a locked address (${JSON.stringify(r.refusal)})`);
     assert.equal(
-      (await checkCredentials(anfrage, `${NAME}_gibtsnicht_x`, 'falsch')).absage?.kind,
-      'zu_viele',
-      'ein anderer Name bleibt gesperrt',
+      (await checkCredentials(anfrage, `${NAME}_gibtsnicht_x`, 'falsch')).refusal?.kind,
+      'too_many',
+      'another name stays locked',
     );
     for (let i = 0; i < lim.MAX_ATTEMPTS; i++) await checkCredentials(anfrage, NAME, 'falsch');
     assert.equal(
-      (await checkCredentials(anfrage, NAME, 'richtig-geheim')).absage?.kind,
-      'zu_viele',
-      'die Sperre je Adresse und Konto bleibt',
+      (await checkCredentials(anfrage, NAME, 'richtig-geheim')).refusal?.kind,
+      'too_many',
+      'the lock per address and account stays',
     );
   });
 

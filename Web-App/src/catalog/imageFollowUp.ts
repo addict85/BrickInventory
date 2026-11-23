@@ -41,7 +41,7 @@ async function imageFollowUp(kx: CatalogContext, k: JobContext): Promise<void> {
       'bild-nachlauf:downloadImage',
       enrich.downloadImage(kx, p.image_url, p.part_number, p.color_id ?? NO_COLOR, 'part'),
     );
-    const local = r.ok ? r.wert : null;
+    const local = r.ok ? r.value : null;
     if (local) {
       // Once into the catalog for all accounts. A write error aborts the run as with
       // the figures; the next one finds the file and writes it afterwards.
@@ -57,7 +57,7 @@ async function imageFollowUp(kx: CatalogContext, k: JobContext): Promise<void> {
       'bild-nachlauf:downloadImage',
       enrich.downloadImage(kx, f.image_url, f.fig_number, 0, 'minifig'),
     );
-    const local = r.ok ? r.wert : null;
+    const local = r.ok ? r.value : null;
     if (local) {
       // One row: since migration 0034 the catalog lists the figure exactly once. A
       // write error aborts the run; the next one finds the file and writes it afterwards.

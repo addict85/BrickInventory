@@ -80,11 +80,11 @@ class CatalogDetailServerTest {
     @Test
     fun `the catalog graph hands the server address to the detail screen`() {
         val paths = app.world.paths.responses
-        paths["/api/v1/catalog/meta"] = """{"success":true,"themes":[],"year_counts":[]}"""
-        paths["/api/v1/catalog/year-verteilung"] = """{"success":true,"years":[]}"""
-        paths["/api/v1/catalog/sets"] = """{"success":true,"total":1,"page":1,"page_size":60,"pages":1,
+        paths["/api/v2/catalog/meta"] = """{"success":true,"themes":[],"year_counts":[]}"""
+        paths["/api/v2/catalog/year-distribution"] = """{"success":true,"years":[]}"""
+        paths["/api/v2/catalog/sets"] = """{"success":true,"total":1,"page":1,"page_size":60,"pages":1,
             "sets":[{"set_number":"10305-1","name":"Lion Knights' Castle","year":2022,"image_local":"/images/sets/10305-1_thumb.jpg"}]}"""
-        paths["/api/v1/catalog/sets/10305-1"] = """{"success":true,"set":{"set_number":"10305-1","name":"Lion Knights' Castle",
+        paths["/api/v2/catalog/sets/10305-1"] = """{"success":true,"set":{"set_number":"10305-1","name":"Lion Knights' Castle",
             "year":2022,"image_local":"/images/sets/10305-1_thumb.jpg"}}"""
         registerCatalog()
         app.show(compose)

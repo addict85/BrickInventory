@@ -79,7 +79,7 @@ test('sets with their own context', { concurrency: 1 }, async t => {
     assert.equal(await sets.setInfo(SN), null);
     assert.ok(
       sql.some(s => /LEFT JOIN rb_sets rs/.test(s)),
-      `gezählt: ${sql.join(' | ').slice(0, 300)}`,
+      `counted: ${sql.join(' | ').slice(0, 300)}`,
     );
   });
 

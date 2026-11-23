@@ -100,7 +100,7 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
       assert.equal(r.body.code, 'name_invalid');
     }
     const lang = await register(`lang_${P}`, `lang_${P}@example.org`, { first_name: 'x'.repeat(101) });
-    assert.equal(lang.status, 400, 'über 100 Zeichen weist der Eingabevertrag ab');
+    assert.equal(lang.status, 400, 'the input contract rejects more than 100 characters');
     const hash = await require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs')).hash(
       'Profil-Passwort-1',
       4,
@@ -133,11 +133,11 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
     const r = await register(`${BOESE.slice(0, 14)}_${P}`, an, { first_name: 'Anna', last_name: 'Beispiel' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const m = await waitOnMail(an);
-    assert.ok(m, 'keine Bestätigungsmail');
+    assert.ok(m, 'no confirmation mail');
     for (const teil of [m.text, m.html]) {
       assert.ok(!teil.includes('Anna') && !teil.includes(BOESE.slice(0, 14)), teil.slice(0, 300));
     }
-    assert.match(m.text, /https:\/\/lego\.example\.org\/verify#token=[0-9a-f]{64}/, 'der Token steht im Fragment');
+    assert.match(m.text, /https:\/\/lego\.example\.org\/verify#token=[0-9a-f]{64}/, 'the token is in the fragment');
   });
 
   await t.test('the mail about the taken username does not name it', async () => {
@@ -145,7 +145,7 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
     const r = await register(`${BOESE.slice(0, 14)}_${P}`, an);
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const m = await waitOnMail(an);
-    assert.ok(m, 'keine Mail an die zweite Adresse');
+    assert.ok(m, 'no mail to the second address');
     assert.ok(!m.text.includes(BOESE.slice(0, 14)) && !m.html.includes(BOESE.slice(0, 14)), m.text);
   });
 
@@ -156,15 +156,15 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
     for (let i = 0; i < 50 && gesendet.filter(m => m.to === an).length < 2; i++)
       await new Promise(r => setTimeout(r, 20));
     const [erste, zweite] = gesendet.filter(m => m.to === an);
-    assert.ok(zweite, 'keine zweite Mail');
+    assert.ok(zweite, 'no second mail');
     assert.doesNotMatch(erste.text, /Mehrere Registrierungen/);
     for (const teil of [zweite.text, zweite.html]) {
       assert.match(
         teil,
         /Mehrere Registrierungen nennen diese Adresse/,
-        'die zweite Mail verweist auf die Bestätigungsseite',
+        'the second mail points to the confirmation page',
       );
-      assert.ok(!teil.includes(BOESE.slice(0, 14)) && !teil.includes(`echt_${P}`), 'die Mail nennt keinen Namen');
+      assert.ok(!teil.includes(BOESE.slice(0, 14)) && !teil.includes(`echt_${P}`), 'the mail names no name');
     }
     await emptyCounter();
   });
@@ -179,7 +179,7 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
     assert.equal(
       (await register(`andere_${P}`, `andere_${P}@example.org`)).status,
       200,
-      'eine andere Adresse von derselben IP bleibt offen',
+      'another address from the same IP stays open',
     );
     await emptyCounter();
   });
@@ -201,7 +201,7 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
     }
     assert.deepEqual(gesetzt, [true, true, true, false]);
     const m = await waitOnMail(an);
-    assert.ok(m && !m.text.includes(`vergessen_${P}`), 'die Rücksetzmail grüsst ohne Benutzernamen');
+    assert.ok(m && !m.text.includes(`vergessen_${P}`), 'the reset mail greets without a user name');
   });
 
   await t.test('the console shows the real link', async () => {

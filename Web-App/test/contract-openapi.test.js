@@ -26,7 +26,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { DATEI, DATEI_V2, alsText } = require('../scripts/contract-openapi.js');
+const { OUT_FILE, OUT_FILE_V2, asText } = require('../scripts/contract-openapi.js');
 const { CONTRACT, AREAS } = _req('src/contract/index.js');
 const { openapi } = _req('src/contract/openapi.js');
 
@@ -51,7 +51,7 @@ const EXPRESS = [
 ];
 
 test('every route has a contract', () => {
-  assert.ok(EXPRESS.length > 150, `nur ${EXPRESS.length} Routen gefunden — greift die Suche noch?`);
+  assert.ok(EXPRESS.length > 150, `only ${EXPRESS.length} routes found — does the search still match?`);
   assert.deepEqual(
     EXPRESS.filter(k => !Object.hasOwn(CONTRACT, k)),
     [],
@@ -72,16 +72,16 @@ test('no key twice', () => {
 
 test('the checked-in openapi.json is generated', () => {
   assert.ok(
-    fs.readFileSync(DATEI, 'utf8') === alsText(openapi()),
-    'docs/openapi.json weicht vom Vertrag ab — `npm run contract:openapi` ausführen und einchecken',
+    fs.readFileSync(OUT_FILE, 'utf8') === asText(openapi()),
+    'docs/openapi.json differs from the contract — run `npm run contract:openapi` and check it in',
   );
 });
 
 test('the checked-in openapi-v2.json is generated from the same contract', () => {
   // Counter-check (22.11.2026): in docs/openapi-v2.json the first `"heartbeat"` renamed to `lebenszeichen` → red.
   assert.ok(
-    fs.readFileSync(DATEI_V2, 'utf8') === alsText(openapi(2)),
-    'docs/openapi-v2.json weicht vom Vertrag ab — `npm run contract:openapi` ausführen und einchecken',
+    fs.readFileSync(OUT_FILE_V2, 'utf8') === asText(openapi(2)),
+    'docs/openapi-v2.json differs from the contract — run `npm run contract:openapi` and check it in',
   );
 });
 
@@ -101,7 +101,7 @@ test('every long list takes pages', () => {
     if ((get.parameters ?? []).some(x => x.name === 'limit' && !x.deprecated)) limit.push(p);
   }
   assert.deepEqual(ohne, []);
-  assert.deepEqual(limit, [], 'Seitengrösse heisst page_size; limit nur noch veraltet');
+  assert.deepEqual(limit, [], 'The page size is called page_size; limit is only deprecated');
 });
 
 /** The contract file of each area key (the keys are tags in openapi.json and stay). */
@@ -205,8 +205,8 @@ test('response fields are required where the server always delivers them: option
   };
   const je = responseFields(openapi());
   const summe = Object.values(je).reduce((a, z) => a + z.felder, 0);
-  assert.ok(summe > 1400, `nur ${summe} Antwortfelder — greift die Suche noch?`);
-  assert.deepEqual(Object.keys(je).sort(), Object.keys(LIMIT).sort(), 'jede Vertragsdatei hat ihre Schranke');
+  assert.ok(summe > 1400, `only ${summe} response fields — does the search still match?`);
+  assert.deepEqual(Object.keys(je).sort(), Object.keys(LIMIT).sort(), 'every contract file has its limit');
   const toMuch = [],
     lessThan = [];
   for (const [datei, z] of Object.entries(je)) {
@@ -219,5 +219,5 @@ test('response fields are required where the server always delivers them: option
   assert.deepEqual(toMuch, []);
   const frei = Object.values(je).reduce((a, z) => a + z.frei, 0);
   assert.ok(frei / summe < 0.23, `${frei} von ${summe} Antwortfeldern freiwillig`);
-  if (lessThan.length) console.log(`  ℹ Antwortfelder ${lessThan.join(', ')} — Schranke nachziehen`);
+  if (lessThan.length) console.log(`  ℹ response fields ${lessThan.join(', ')} — tighten the limit`);
 });

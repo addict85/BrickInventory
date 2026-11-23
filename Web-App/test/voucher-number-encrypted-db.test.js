@@ -119,9 +119,9 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
   await t.test('after creation the number is in no column in plain text', async () => {
     const r = await callFn(haupt, 'POST', '/vouchers', { number: NR1, pin: '2468', amount: 50, currency: 'CHF' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(r.body.voucher.number, '…' + NR1.slice(-4), 'nach aussen nur das Ende');
+    assert.equal(r.body.voucher.number, '…' + NR1.slice(-4), 'only the end to the outside');
     id1 = r.body.voucher.id;
-    assert.deepEqual(await klartext(haupt, id1), [NR1, '2468'], 'der Eigentümer liest die Nummer bestätigt');
+    assert.deepEqual(await klartext(haupt, id1), [NR1, '2468'], 'the owner reads the number confirmed');
     const row = await rowAsText(id1);
     assert.ok(!row.includes(NR1) && !row.includes(NR1.slice(-6)), row);
     const roh = await db.get('SELECT number, number_search FROM vouchers WHERE id = $1', [id1]);
@@ -156,11 +156,15 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     const renamedOne = await callFn(haupt, 'PUT', `/vouchers/${zweiter.body.voucher.id}`, { number: NR2 });
     assert.deepEqual([renamedOne.status, renamedOne.body.code], [409, 'voucher_exists']);
     const otherAccount = await callFn(fremd, 'POST', '/vouchers', { number: NR2, amount: 10 });
-    assert.equal(otherAccount.status, 200, 'dieselbe Karte in einem anderen Konto ist erlaubt');
+    assert.equal(otherAccount.status, 200, 'the same card in another account is allowed');
     const searchValues = await db.all('SELECT DISTINCT number_search FROM vouchers WHERE id = ANY($1)', [
       [id1, otherAccount.body.voucher.id],
     ]);
-    assert.equal(searchValues.length, 2, 'derselbe Suchwert in zwei Konten verriete, dass sie dieselbe Karte halten');
+    assert.equal(
+      searchValues.length,
+      2,
+      'the same search value in two accounts would reveal that they hold the same card',
+    );
   });
 
   await t.test('PDF, export and import carry the number', async () => {
@@ -179,7 +183,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     assert.equal(
       datei.headers.get('content-disposition'),
       `attachment; filename="gutschein-${b.voucher.id}.pdf"`,
-      'die Nummer steht nicht im Dateinamen',
+      'the number is not in the file name',
     );
 
     const ex = await fetch(
@@ -206,7 +210,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     assert.deepEqual(
       [zweit.multiple.added, zweit.multiple.updated],
       [0, 3],
-      'der zweite Import erkennt die Karten wieder',
+      'the second import recognises the cards again',
     );
   });
 
@@ -270,7 +274,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     assert.equal(
       (await callFn(haupt, 'POST', '/vouchers', { number: NR1, amount: 5 })).status,
       409,
-      'eine umgeschlüsselte Nummer zählt für die Doppelprüfung',
+      'a re-keyed number counts for the duplicate check',
     );
     const klar = await db
       .run(`INSERT INTO vouchers (user_id, number, amount, currency) VALUES ($1, '123456789', 1, 'CHF')`, [MAIN])
@@ -278,7 +282,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
         () => null,
         e => e.code,
       );
-    assert.equal(klar, '23514', 'die Datenbank nimmt keine Nummer im Klartext mehr an');
+    assert.equal(klar, '23514', 'the database no longer accepts a number in plain text');
 
     const kopie = (
       await db.get(`SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_[0-9]+$'
@@ -288,16 +292,16 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
       `SELECT id, user_id, number, pin FROM ${kopie}.vouchers WHERE id = ANY($1) ORDER BY id`,
       [ids],
     );
-    assert.equal(secured.length, 3, `die Kopie ${kopie} hat die Gutscheine nicht`);
+    assert.equal(secured.length, 3, `the copy ${kopie} does not have the vouchers`);
     for (const z of secured)
       assert.ok(z.number.startsWith('v2:') && (z.pin === null || z.pin.startsWith('v2:')), JSON.stringify(z));
     assert.deepEqual(
       secured.map(z => g.decrypt(z.number, gr.numberContext(z.user_id, z.id))),
       [NR1, NR1, NR3],
-      'mit dem Schlüssel bleibt die Kopie lesbar',
+      'with the key the copy stays readable',
     );
 
     const gs = require('./helpers/sources').testArea('vouchers').vouchers;
-    assert.equal((await gs.reencryptNumbers()) + (await gs.reencryptCopies()), 0, 'ein zweiter Start ändert nichts');
+    assert.equal((await gs.reencryptNumbers()) + (await gs.reencryptCopies()), 0, 'a second start changes nothing');
   });
 });

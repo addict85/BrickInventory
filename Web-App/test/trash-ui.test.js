@@ -67,7 +67,7 @@ test('account and quantity distinguish equal entries', async () => {
     assert.match(text(zeilen[1]), /Menge 2 · lena/);
     assert.match(text(zeilen[0].querySelector('.pk-deadline')), /^wird am .+ endgültig gelöscht$/);
     const namen = zeilen.map(z => z.querySelector('[data-click="restoreFromTrash"]').getAttribute('aria-label'));
-    assert.equal(new Set(namen).size, 2, `Knöpfe gleich benannt: ${namen.join(' | ')}`);
+    assert.equal(new Set(namen).size, 2, `buttons named alike: ${namen.join(' | ')}`);
     assert.match(namen[1], /^Wiederherstellen: 21318-1 · Tree House · Menge 2 · lena$/);
   } finally {
     w.close();
@@ -79,7 +79,7 @@ test('focus and toast after restoring in the trash', async () => {
   try {
     await warte(() => d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn'));
     d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn').click();
-    assert.ok(await warte(() => d.querySelector('#toasts [data-trash="7"] .toast-action')), 'Rückgängig');
+    assert.ok(await warte(() => d.querySelector('#toasts [data-trash="7"] .toast-action')), 'undo');
     await sicht(w, 'data');
     await warte(() => d.querySelectorAll('#trash-list .pk-row').length === 2);
     const knopf = d.querySelector('[data-click="restoreFromTrash"][data-arg="7"]');
@@ -89,9 +89,9 @@ test('focus and toast after restoring in the trash', async () => {
     await warte(() => d.querySelectorAll('#trash-list .pk-row').length === 1);
     assert.ok(
       await warte(() => d.activeElement?.getAttribute('data-arg') === '8'),
-      `Fokus auf ${d.activeElement?.outerHTML?.slice(0, 80) ?? d.activeElement?.tagName}`,
+      `focus on ${d.activeElement?.outerHTML?.slice(0, 80) ?? d.activeElement?.tagName}`,
     );
-    assert.equal(d.querySelector('#toasts [data-trash]'), null, 'Rückgängig steht noch');
+    assert.equal(d.querySelector('#toasts [data-trash]'), null, 'undo is still there');
   } finally {
     w.close();
   }

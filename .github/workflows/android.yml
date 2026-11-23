@@ -23,7 +23,7 @@ on:
       - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/contract-kotlin-dtos.js'
       - 'Web-App/scripts/contract-kotlin-mapping.js'
-      - 'Web-App/docs/openapi.json'
+      - 'Web-App/docs/openapi-v2.json'
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
   pull_request:
@@ -36,7 +36,7 @@ on:
       - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/contract-kotlin-dtos.js'
       - 'Web-App/scripts/contract-kotlin-mapping.js'
-      - 'Web-App/docs/openapi.json'
+      - 'Web-App/docs/openapi-v2.json'
       # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf.
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
@@ -467,13 +467,13 @@ jobs:
           cache-dependency-path: Web-App/package-lock.json
       - name: Abhängigkeiten installieren
         run: npm ci --ignore-scripts && npm rebuild esbuild
-      # Was die App vom Server braucht (shared/app-schnittstelle.json) und wie sie es liest,
-      # gegen docs/openapi.json; dazu die Release-Wege. Die Web-Suite liest keinen Kotlin-Quelltext.
+      # Was die App vom Server braucht (shared/app-interface.json) und wie sie es liest,
+      # gegen docs/openapi-v2.json; dazu die Release-Wege. Die Web-Suite liest keinen Kotlin-Quelltext.
       - name: Routen nehmen die erzeugten Typen, Schnittstelle und Release-Wege
         run: node --test ../Android-App/tools/contract/contract-kotlin.test.js ../Android-App/tools/release-paths.test.js
       - name: Erzeugte Design-Tokens aktuell
         run: node scripts/generate-design-tokens.js --pruefen
-      # Die erzeugten Antworttypen (core-contract, vertrag.erzeugt) passen zu docs/openapi.json.
+      # Die erzeugten Antworttypen (core-contract, Contract.kt) passen zu docs/openapi-v2.json.
       - name: Erzeugte Kotlin-Typen aktuell
         run: node --test test/contract-kotlin-dtos.test.js
 

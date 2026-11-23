@@ -32,9 +32,9 @@ test('an EMPTY file is rejected', async () => {
   assert.equal(
     await readableImage(p),
     false,
-    'Eine Datei mit null Bytes ging durch die Schranke. Dahinter scheitert der ' +
-      'Verkleinerer mit „unsupported image format" — und zwar bei jedem Takt neu, ' +
-      'solange die Datei liegenbleibt.',
+    'A file with zero bytes got through the barrier. Behind it the ' +
+      'downscaler fails with „unsupported image format“ — on every tick anew ' +
+      'as long as the file stays.',
   );
 });
 
@@ -42,11 +42,7 @@ test('a TRUNCATED file is rejected', async () => {
   // The first three bytes of a JPEG, then nothing more: exactly the picture of an
   // aborted download.
   const p = datei('halb.jpg', Buffer.from([0xff, 0xd8, 0xff]));
-  assert.equal(
-    await readableImage(p),
-    false,
-    'Ein angefangenes JPEG ging durch — der Dekodierer kann damit nichts anfangen',
-  );
+  assert.equal(await readableImage(p), false, 'A partial JPEG got through — the decoder cannot do anything with it');
 });
 
 test('a REAL small image still goes through', async () => {
@@ -56,13 +52,13 @@ test('a REAL small image still goes through', async () => {
   // A 1×1 GIF, 35 bytes: the smallest complete image that can be written
   // down, and at 35 bytes clearly above the barrier of 10.
   const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
-  assert.equal(gif.length, 42, `Die Probe ist ${gif.length} Byte gross — erwartet 42`);
+  assert.equal(gif.length, 42, `The sample is ${gif.length} bytes — expected 42`);
   const p = datei('eins.gif', gif);
   assert.equal(
     await readableImage(p),
     true,
-    'Ein gültiges 1×1-GIF wurde abgewiesen — dann entstehen gar keine ' +
-      'Vorschaubilder mehr, und die Schranke ist schlimmer als das Problem',
+    'A valid 1×1 GIF was rejected — then no ' +
+      'thumbnails are created at all anymore, and the barrier is worse than the problem',
   );
 });
 

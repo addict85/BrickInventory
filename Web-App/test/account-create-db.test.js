@@ -94,11 +94,11 @@ test('create account', { concurrency: 1 }, async t => {
     );
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const k = await konto(NEU[2]);
-    assert.equal(Number(k.is_admin), 1, 'die Checkbox „Admin“ wirkt nicht');
+    assert.equal(Number(k.is_admin), 1, 'the checkbox „Admin“ has no effect');
     const p = (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [k.id])).map(
       z => z.action,
     );
-    assert.deepEqual(p, ['account_created', 'admin_appointed'], 'das Protokoll hält die Anlage nicht fest');
+    assert.deepEqual(p, ['account_created', 'admin_appointed'], 'the log does not record the creation');
   });
 
   await t.test('a name in a different spelling is taken', async () => {

@@ -15,13 +15,13 @@ export function isAppToken(req: Request): boolean {
 }
 
 export function requireRelease(
-  konto: AccountServices,
+  account: AccountServices,
   req: Request,
   res: Response,
   next: NextFunction,
   action: StepAction,
 ): void {
-  void released(konto, req, res, action).then(ok => {
+  void released(account, req, res, action).then(ok => {
     if (ok) next();
   });
 }
@@ -29,7 +29,7 @@ export function requireRelease(
 /** Like requireRelease, as a value: for routes that only do more for administrators.
  * With `false` the rejection has already been sent. */
 export async function released(
-  konto: AccountServices,
+  account: AccountServices,
   req: Request,
   res: Response,
   action: StepAction,
@@ -38,33 +38,33 @@ export async function released(
   const f = familyFrom(req.apiUser);
   try {
     // Without a family (no created_at) there is no key: closed, not open.
-    const p = f ? await konto.checkApproval(f, action) : 'kein_schluessel';
+    const p = f ? await account.checkApproval(f, action) : 'kein_schluessel';
     if (p === 'frei') return true;
-    sendError(req, res, 'verboten', p === 'kein_schluessel' ? 'device_key_missing' : 'step_approval_required');
+    sendError(req, res, 'forbidden', p === 'kein_schluessel' ? 'device_key_missing' : 'step_approval_required');
   } catch (e) {
     reportError('schrittschutz', e);
-    sendError(req, res, 'nicht_verfuegbar', 'server_busy');
+    sendError(req, res, 'unavailable', 'server_busy');
   }
   return false;
 }
 
 /** For read paths that show administrators more: an app token without release
  * sees there what every account sees instead of getting a rejection. */
-export async function asAdmin(konto: AccountServices, req: Request): Promise<boolean> {
+export async function asAdmin(account: AccountServices, req: Request): Promise<boolean> {
   if (!isAdmin(req)) return false;
   if (!isAppToken(req)) return true;
   const f = familyFrom(req.apiUser);
-  return !!f && (await konto.checkApproval(f, 'admin')) === 'frei';
+  return !!f && (await account.checkApproval(f, 'admin')) === 'frei';
 }
 
 /** Behind loginAtInbox, before reading the body. Which steps are protected is said by
  * the marker `schritt` on the contract; res.locals.step records what was released here,
  * so vertragsRouter checks at the route itself (a second line, in case the mapping here goes wrong). */
-export function stepProtectionAtInbox(konto: AccountServices) {
+export function stepProtectionAtInbox(account: AccountServices) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const action = routeForRequest(req.method, req.baseUrl + req.path)?.step;
     res.locals.step = action ?? null;
-    if (action) requireRelease(konto, req, res, next, action);
+    if (action) requireRelease(account, req, res, next, action);
     else next();
   };
 }

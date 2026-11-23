@@ -51,7 +51,7 @@ internal class HouseholdRepositoryImpl @Inject constructor(
     override suspend fun redeemHouseholdInvite(code: String, password: String, factorCode: String?): Outcome<Unit> =
         safeCall {
             api.redeemHouseholdInvite(mapOf("code" to code, "password" to password) +
-                listOfNotNull(factorCode?.trim()?.takeIf { it.isNotEmpty() }?.let { "faktor_code" to it }))
+                listOfNotNull(factorCode?.trim()?.takeIf { it.isNotEmpty() }?.let { "factor_code" to it }))
         }.done()
 
     /**

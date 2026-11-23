@@ -31,7 +31,7 @@ import java.net.URLEncoder
  *   D  in withInventory() always null sent instead of "own" → red “the stock asks
  *      only one's own account without sub-accounts …”
  *   E  in withInventory() loose and total swapped → red, the same case
- *   F  BestandTeil built with blPartNumber → red, the same case (body)
+ *   F  HoldingPart built with blPartNumber → red, the same case (body)
  *   G  on a failed answer computed onward with an empty stock → red “an
  *      error on the stock gives null …”
  *   H  in resolveSetOn() a failed parts fetch taken as an empty list → red “a failed parts
@@ -48,19 +48,19 @@ class PartListTest {
     @Before
     fun setUp() {
         paths = PathServer(
-            "/api/v1/sets/info/75192-1" to """{"success":true,"name":"Millennium Falcon"}""",
-            "/api/v1/sets/75192-1/parts-list" to """{"success":true,"parts":[
+            "/api/v2/sets/info/75192-1" to """{"success":true,"name":"Millennium Falcon"}""",
+            "/api/v2/sets/75192-1/parts-list" to """{"success":true,"parts":[
                 {"part_number":"3001","bl_part_number":"3001","color_id":1,"total_quantity":2,"image_local":"/images/parts/3001.jpg","image_url":"$cdn"},
                 {"part_number":"3001","bl_part_number":"3001","color_id":1,"total_quantity":3},
                 {"part_number":"970c00","bl_part_number":"970c00","color_id":0,"total_quantity":1,"image_url":"$cdn"},
                 {"part_number":"970c11","bl_part_number":"970c00","color_id":0,"total_quantity":1,"image_url":"/images/parts/970c11.jpg"}
             ]}""",
-            "/api/v1/sets/75192-1/minifigs-list" to """{"success":true,"figs":[
+            "/api/v2/sets/75192-1/minifigs-list" to """{"success":true,"figs":[
                 {"fig_number":"sw0001","fig_name":"Han","quantity":1,"total_quantity":2}
             ]}""",
-            "/api/v1/parts/owned" to """{"success":true,"bestand":{
-                "3001|1":{"gesamt":7,"lose":2},
-                "970c11|0":{"gesamt":1,"lose":0}
+            "/api/v2/parts/owned" to """{"success":true,"holding":{
+                "3001|1":{"total":7,"loose":2},
+                "970c11|0":{"total":1,"loose":0}
             }}""",
         )
         t = TestServices(paths.server)
@@ -98,26 +98,26 @@ class PartListTest {
     fun `the stock asks only the own account without sub-accounts and optionally counts only loose parts`() = runBlocking {
         val rows = list.resolveSetOn("75192-1", "http://srv").data().second.filter { !it.isFig }
 
-        val lose = list.withInventory(rows, onlyLose = true, withSubAccounts = false)!!
-        assertEquals(listOf(2, 0, 0), lose.map { it.present })
-        assertTrue(paths.requestsTo("POST /api/v1/parts/owned").single().endsWith("?accounts=own"))
+        val loose = list.withInventory(rows, onlyLose = true, withSubAccounts = false)!!
+        assertEquals(listOf(2, 0, 0), loose.map { it.present })
+        assertTrue(paths.requestsTo("POST /api/v2/parts/owned").single().endsWith("?accounts=own"))
         val body = paths.bodyBytes[paths.requests.indexOfFirst { "parts/owned" in it }]
         assertTrue(body, "\"970c11\"" in body)
 
         val all = list.withInventory(rows, onlyLose = false, withSubAccounts = true)!!
         assertEquals(listOf(7, 0, 1), all.map { it.present })
-        assertFalse(paths.requestsTo("POST /api/v1/parts/owned").last().contains("accounts"))
+        assertFalse(paths.requestsTo("POST /api/v2/parts/owned").last().contains("accounts"))
     }
 
     @Test
     fun `a failed parts fetch is an error, not an empty list`() = runBlocking {
-        paths.codes["/api/v1/sets/75192-1/parts-list"] = 500
+        paths.codes["/api/v2/sets/75192-1/parts-list"] = 500
         assertTrue(list.resolveSetOn("75192-1", "http://srv") is Outcome.Failure)
     }
 
     @Test
     fun `an error in the stock gives null instead of a list full of zeros`() = runBlocking {
-        paths.codes["/api/v1/parts/owned"] = 500
+        paths.codes["/api/v2/parts/owned"] = 500
         val rows = list.resolveSetOn("75192-1", "http://srv").data().second
         assertNull(list.withInventory(rows, onlyLose = false, withSubAccounts = false))
     }

@@ -109,7 +109,7 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
                                 WHERE table_schema = 'public' AND column_name = ANY($1)`,
       [ACCOUNT_COLUMNS],
     );
-    assert.ok(alle.n >= 20, `Nur ${alle.n} Kontospalten gefunden — greift die Suche noch?`);
+    assert.ok(alle.n >= 20, `Only ${alle.n} account columns found — does the search still work?`);
   });
 
   await t.test('an account disappears completely', async () => {
@@ -137,7 +137,7 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
       assert.equal(
         (await db.get(`SELECT COUNT(*)::int AS n FROM ${tab} WHERE user_id = $1`, [uid])).n,
         0,
-        `${tab} behält Zeilen eines gelöschten Kontos`,
+        `${tab} keeps rows of a deleted account`,
       );
   });
 
@@ -150,17 +150,17 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.deepEqual(
       ohne.map(r => r.t),
       [],
-      'Ohne Index durchsucht jedes Löschen eines Kontos die ganze Tabelle',
+      'Without an index every account deletion scans the whole table',
     );
   });
 
   await t.test('db/schema-snapshot.sql shows the schema that results', async () => {
-    const { schemaText, DATEI } = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
+    const { schemaText, OUT_FILE: DATEI } = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
     const eingecheckt = require('node:fs').readFileSync(DATEI, 'utf8');
     assert.equal(
       await schemaText(db),
       eingecheckt,
-      'db/schema-snapshot.sql ist veraltet — neu erzeugen: npm run build && npm run schema:snapshot',
+      'db/schema-snapshot.sql is outdated — regenerate: npm run build && npm run schema:snapshot',
     );
   });
 
@@ -178,10 +178,6 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
     } finally {
       delete process.env.FORCE_SCHEMA_INIT;
     }
-    assert.deepEqual(
-      await schemaImage(db),
-      vorher,
-      'FORCE_SCHEMA_INIT legt Spalten wieder an, die Migrationen gelöscht haben',
-    );
+    assert.deepEqual(await schemaImage(db), vorher, 'FORCE_SCHEMA_INIT creates columns again that migrations deleted');
   });
 });

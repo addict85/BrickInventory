@@ -18,36 +18,36 @@ export class BcryptOverload extends Error {
 export interface Gate {
   /** vorrang: to the front of the queue and never rejected because of its length. */
   run<T>(work: () => Promise<T>, priority?: boolean): Promise<T>;
-  state(): { laufend: number; wartend: number };
+  state(): { running: number; waiting: number };
 }
 
 export function newLimit(concurrent: number, waitingAtMost: number, waitTimeMs: number): Gate {
-  let laufend = 0;
+  let running = 0;
   const queue: (() => void)[] = [];
   const slot = (priority: boolean): Promise<void> => {
-    if (laufend < concurrent) {
-      laufend++;
+    if (running < concurrent) {
+      running++;
       return Promise.resolve();
     }
     if (!priority && queue.length >= waitingAtMost) return Promise.reject(new BcryptOverload());
     return new Promise((next, cancel) => {
-      const los = () => {
-        clearTimeout(frist);
+      const go = () => {
+        clearTimeout(deadline);
         next();
       };
-      const frist = setTimeout(() => {
-        queue.splice(queue.indexOf(los), 1);
+      const deadline = setTimeout(() => {
+        queue.splice(queue.indexOf(go), 1);
         cancel(new BcryptOverload());
       }, waitTimeMs);
-      if (priority) queue.unshift(los);
-      else queue.push(los);
+      if (priority) queue.unshift(go);
+      else queue.push(go);
     });
   };
-  // The free slot goes directly to the next waiting one, `laufend` then stays the same.
+  // The free slot goes directly to the next waiting one, `running` then stays the same.
   const free = () => {
     const next = queue.shift();
     if (next) next();
-    else laufend--;
+    else running--;
   };
   return {
     async run(work, priority = false) {
@@ -58,23 +58,23 @@ export function newLimit(concurrent: number, waitingAtMost: number, waitTimeMs: 
         free();
       }
     },
-    state: () => ({ laufend, wartend: queue.length }),
+    state: () => ({ running, waiting: queue.length }),
   };
 }
 
 /** Cores according to the cgroup quota (v2 cpu.max, v1 cfs_quota), null without a quota. */
-export function quotaCores(wurzel = '/sys/fs/cgroup'): number | null {
-  const lies = (f: string) => {
+export function quotaCores(root = '/sys/fs/cgroup'): number | null {
+  const read = (f: string) => {
     try {
-      return fs.readFileSync(path.join(wurzel, f), 'utf8').trim();
+      return fs.readFileSync(path.join(root, f), 'utf8').trim();
     } catch {
       return '';
     }
   };
-  const [v2q, v2p] = lies('cpu.max').split(/\s+/);
+  const [v2q, v2p] = read('cpu.max').split(/\s+/);
   const [quote, period] = v2q
     ? [Number(v2q), Number(v2p)]
-    : [Number(lies('cpu/cpu.cfs_quota_us')), Number(lies('cpu/cpu.cfs_period_us'))];
+    : [Number(read('cpu/cpu.cfs_quota_us')), Number(read('cpu/cpu.cfs_period_us'))];
   return quote > 0 && period > 0 ? Math.max(1, Math.ceil(quote / period)) : null;
 }
 
@@ -82,12 +82,12 @@ export function quotaCores(wurzel = '/sys/fs/cgroup'): number | null {
  * container's memory limit. BCRYPT_WORKERS raises the default of 4. */
 export function bcryptWorkers(
   assigned = config().bcryptWorker,
-  kerne = os.availableParallelism(),
+  cores = os.availableParallelism(),
   quota = quotaCores(),
 ): number {
-  return assigned ?? Math.max(2, Math.min(kerne, quota ?? kerne, 4));
+  return assigned ?? Math.max(2, Math.min(cores, quota ?? cores, 4));
 }
 
-const KERNE = bcryptWorkers();
-export const bcryptGate = newLimit(KERNE, KERNE * 8, 5000);
-export const bcryptPool = newPool(KERNE);
+const CORES = bcryptWorkers();
+export const bcryptGate = newLimit(CORES, CORES * 8, 5000);
+export const bcryptPool = newPool(CORES);

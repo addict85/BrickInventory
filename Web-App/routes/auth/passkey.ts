@@ -22,25 +22,25 @@ export function buildPasskeyRouter(d: Pick<Services, 'account' | 'factors'>) {
   // A new login method requires password and browser session: a captured
   // session or a token alone must not mint a permanent access.
   router.endpoint('POST /api/v2/auth/passkey/register/options', requireLoginOrToken, async (req, res) => {
-    if (!perSession(req)) failDomain('verboten', 'session_only');
+    if (!perSession(req)) failDomain('forbidden', 'session_only');
     const uid = signedInUserId(req);
     if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
-    const konto = await d.account.accountShortOf(uid);
-    const options = await d.factors.registrationOptions(uid, konto?.username ?? String(uid));
-    if (!options) failDomain('nicht_verfuegbar', 'passkey_without_domain');
+    const account = await d.account.accountShortOf(uid);
+    const options = await d.factors.registrationOptions(uid, account?.username ?? String(uid));
+    if (!options) failDomain('unavailable', 'passkey_without_domain');
     return { options };
   });
 
   router.endpoint('POST /api/v2/auth/passkey/register', requireLoginOrToken, async req => {
-    if (!perSession(req)) failDomain('verboten', 'session_only');
-    if (!devicesNameValid(req.input.name)) failDomain('ungueltig', 'device_name_invalid');
+    if (!perSession(req)) failDomain('forbidden', 'session_only');
+    if (!devicesNameValid(req.input.name)) failDomain('invalid', 'device_name_invalid');
     const fresh = await d.factors.verifyRegistration(
       signedInUserId(req),
       req.input.response,
       passkeyName(req.input.name),
     );
-    if (!fresh) failDomain('ungueltig', 'passkey_invalid');
-    d.account.hintInBackground(signedInUserId(req), 'passkey_neu', fresh.name);
+    if (!fresh) failDomain('invalid', 'passkey_invalid');
+    d.account.hintInBackground(signedInUserId(req), 'passkey_added', fresh.name);
     return { passkey: fresh };
   });
 

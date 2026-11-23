@@ -58,17 +58,14 @@ test('the follow-up run creates missing previews — also for set images', { con
     const { redownloadMissingImages } = _req('src/catalog/partsEnrichment.js');
     const r = await redownloadMissingImages();
 
-    assert.ok(r && typeof r.thumbs === 'number', 'der Lauf muss melden, wie viele Vorschauen er erzeugt hat');
+    assert.ok(r && typeof r.thumbs === 'number', 'the run must report how many previews it created');
     assert.ok(
       r.thumbs >= 1,
-      'die fehlende Vorschau des SET-Bildes wurde nicht erzeugt — vermutlich lässt ' +
-        '_fsPathFromLocal() wieder alles ausser /images/parts/ fallen',
+      'the missing preview of the SET image was not created — probably ' +
+        '_fsPathFromLocal() again drops everything except /images/parts/',
     );
-    assert.ok(fs.existsSync(preview), 'die Vorschau-Datei fehlt');
-    assert.ok(
-      fs.statSync(preview).size < fs.statSync(original).size,
-      'die Vorschau muss kleiner sein als das Original',
-    );
+    assert.ok(fs.existsSync(preview), 'the preview file is missing');
+    assert.ok(fs.statSync(preview).size < fs.statSync(original).size, 'the preview must be smaller than the original');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [name]).catch(() => {});

@@ -42,7 +42,7 @@ function kopfleiste() {
     .slice(html.indexOf('<header'), html.indexOf('</header>') + 9)
     .replace(/data-style="/g, 'style="')
     .replace('<span class="ubadge-name" id="ubadge">—</span>', '<span class="ubadge-name" id="ubadge">anna</span>');
-  assert.match(kopf, /id="umenu-pop"/, 'Die Menüklappe steht nicht mehr in der Kopfleiste');
+  assert.match(kopf, /id="umenu-pop"/, 'The menu toggle is no longer in the header bar');
   return kopf;
 }
 
@@ -107,13 +107,13 @@ test('every text in the header bar is readable in every theme', t => {
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const values = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
   // Per design: brand, name, seven views and log out — at least ten texts.
-  assert.ok(values.length >= 11 * 10, `${values.length} Messungen — greift die Auswahl noch?`);
+  assert.ok(values.length >= 11 * 10, `${values.length} measurements — does the selection still match?`);
   assert.ok(
     values.some(w => /brick hell: Abmelden/.test(w.name)),
-    'Abmelden wird nicht gemessen',
+    'Sign-out is not measured',
   );
   // 4.5:1 — the WCAG threshold for normal text; the header only has small text.
   assert.deepEqual(

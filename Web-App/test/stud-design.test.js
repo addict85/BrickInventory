@@ -23,8 +23,8 @@ test('the lid colors come from the SAME source', () => {
   const steine = source.listen.steine.werte;
   assert.ok(
     steine.length === 6,
-    `Die Steinliste hat ${steine.length} Eintraege statt sechs — sechs, damit die ` +
-      'Wiederholung als Rhythmus lesbar bleibt statt als Zufall.',
+    `The brick list has ${steine.length} entries instead of six — six, so that the ` +
+      'repetition reads as a rhythm rather than as chance.',
   );
 
   // None of the six colors may stand as a hex value in the stylesheet.
@@ -33,10 +33,10 @@ test('the lid colors come from the SAME source', () => {
   for (const hex of steine) {
     assert.ok(
       !css.toLowerCase().includes(hex.toLowerCase()),
-      `themes/noppe.css schreibt ${hex} aus, statt var(--brick-N) zu benutzen`,
+      `themes/noppe.css spells out ${hex} instead of using var(--brick-N)`,
     );
   }
-  assert.match(css, /var\(--brick-0\)/, 'themes/noppe.css benutzt die Steinliste nicht');
+  assert.match(css, /var\(--brick-0\)/, 'themes/noppe.css does not use the brick list');
 });
 
 test('the brick color runs in step with the brick list', () => {
@@ -48,8 +48,8 @@ test('the brick color runs in step with the brick list', () => {
   assert.equal(
     webTick,
     5,
-    `themes/noppe.css zaehlt an ${webTick} verschiedenen Positionen durch, erwartet fuenf ` +
-      '(--brick-0 steht als Vorgabe schon in der Grundregel)',
+    `themes/noppe.css cycles through ${webTick} different positions, expected five ` +
+      '(--brick-0 is already the default in the base rule)',
   );
 });
 
@@ -58,15 +58,14 @@ test('frame and offset shadow are on the same tone', () => {
   // as the border, only offset. If they were two tones, the edge would look
   // like a misprint.
   const schatten = [...css.matchAll(/--sh\d:([^;]+);/g)].map(m => m[1].trim());
-  assert.ok(schatten.length >= 3, `Nur ${schatten.length} Schattenstufen — greift die Suche noch?`);
+  assert.ok(schatten.length >= 3, `Only ${schatten.length} shadow levels — does the search still work?`);
   for (const s of schatten) {
     assert.match(
       s,
       /var\(--ink\)/,
-      `Die Schattenstufe "${s}" benutzt nicht die Tinte. Zwei Toene fuer ` +
-        'Rahmen und Schatten sehen aus wie ein Druckfehler.',
+      `The shadow level "${s}" does not use the ink. Two tones for ` + 'border and shadow look like a printing error.',
     );
-    assert.ok(!/blur|rgba/.test(s), `Die Schattenstufe "${s}" ist weich. Dieses Design kennt nur harte Kanten.`);
+    assert.ok(!/blur|rgba/.test(s), `The shadow level "${s}" is soft. This design only knows hard edges.`);
   }
 });
 
@@ -76,10 +75,10 @@ test('the table stays quiet', () => {
   // The loud parts belong at the edges — header bar, buttons, badges —, not
   // between the numbers. An inventory is not something one looks at once.
   const tabelle = css.slice(css.indexOf('table td'));
-  assert.ok(tabelle.length > 0, 'Die Tabellenregel ist nicht mehr zu finden');
+  assert.ok(tabelle.length > 0, 'The table rule can no longer be found');
   assert.ok(
     !/border-bottom:2\.5px solid var\(--ink\)/.test(tabelle),
-    'Die Tabellenzeilen haben die Tintenkante bekommen. Das ist dann ein ' + 'Gitter und kein Text.',
+    'The table rows got the ink edge. That is then a ' + 'grid and not text.',
   );
 });
 
@@ -87,15 +86,15 @@ test('the design leads its font', () => {
   assert.match(
     css,
     /--font:'Nunito'/,
-    'themes/noppe.css stellt die Schrift nicht um — dann ist das Design im Web ' + 'nur eine Farbvariante',
+    'themes/noppe.css does not switch the font — then the design on the web is ' + 'just a colour variant',
   );
   const fonts = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'vendor', 'fonts', 'fonts.css'), 'utf8');
   assert.match(
     fonts,
     /font-family: 'Nunito'/,
-    'Die Schrift ist nicht selbst gehostet. Von einem Fremdhost bekaeme eine ' +
-      'Installation im Offline-Betrieb sie gar nicht — genau der Grund, aus dem ' +
-      'die anderen beiden Familien hier liegen.',
+    'The font is not self-hosted. From a foreign host an ' +
+      'installation running offline would not get it at all — exactly the reason why ' +
+      'the other two families live here.',
   );
 });
 
@@ -103,8 +102,7 @@ test('hochglanz inherits the palette instead of copying it', () => {
   assert.equal(
     source.designs.hochglanz.erbt,
     'noppe',
-    'hochglanz fuehrt eine eigene Palette. Es ist dieselbe wie die von noppe — ' +
-      'eine Abschrift zieht beim naechsten Mal nicht mit.',
+    'hochglanz keeps its own palette. It is the same as that of noppe — ' + 'a copy will not follow along next time.',
   );
   // And the generator must really make values of it, otherwise the
   // theme falls back to the base theme and is blue instead of red.
@@ -113,8 +111,8 @@ test('hochglanz inherits the palette instead of copying it', () => {
   assert.match(
     block.slice(0, 400),
     /--b600: #d91f26;/,
-    'tokens.css traegt fuer hochglanz keine aufgeloeste Palette — dann greift :root, und ' +
-      'das Design waere blau statt rot',
+    'tokens.css carries no resolved palette for hochglanz — then :root applies, and ' +
+      'the design would be blue instead of red',
   );
 });
 
@@ -122,17 +120,17 @@ test('hochglanz carries only the layers, not the anatomy', () => {
   // Every rule in noppe.css applies to BOTH themes — that is the shared
   // basis. hochglanz.css must not set them up a second time.
   const studRules = [...css.matchAll(/\[data-theme="noppe"\][^{]*\{/g)].length;
-  assert.ok(studRules >= 10, `Nur ${studRules} Regeln in noppe.css — greift die Suche noch?`);
+  assert.ok(studRules >= 10, `Only ${studRules} rules in noppe.css — does the search still work?`);
   assert.ok(
     !/\[data-theme="noppe"\]/.test(glanz),
-    'hochglanz.css nennt noppe — die gemeinsamen Regeln gehoeren in noppe.css, einmal',
+    'hochglanz.css names noppe — the shared rules belong in noppe.css, once',
   );
 
   // The anatomy must not stand here once more. These four properties
   // determine it; if one of them shows up here, the file is no longer an overlay
   // but a second theme.
   for (const property of ['--rad:', '--font:', 'border-radius:14px', 'padding-top:26px']) {
-    assert.ok(!glanz.includes(property), `hochglanz.css setzt ${property} — das ist Anatomie und steht in noppe.css`);
+    assert.ok(!glanz.includes(property), `hochglanz.css sets ${property} — that is anatomy and lives in noppe.css`);
   }
 });
 
@@ -143,15 +141,15 @@ test('the hard offset shadow survives the lacquer', () => {
   assert.match(
     karte,
     /0 4px 0 var\(--ink\)/,
-    'Der harte Versatzschatten ist im Lack verschwunden. Dann glaenzt etwas ' +
-      'anderes als noppe, und es ist nicht mehr dasselbe Design.',
+    'The hard offset shadow disappeared in the lacquer. Then something other than ' +
+      'noppe shines, and it is no longer the same design.',
   );
 });
 
 test('the light stripe does not lie over the whole tile', () => {
   // A white veil over white text is no shine but gray.
   const strip = '118deg';
-  assert.ok(glanz.includes(strip), 'Der Lichtstreifen fehlt ganz');
+  assert.ok(glanz.includes(strip), 'The light streak is missing entirely');
   // It may lie on the image field (.sci), not on the tile (.sc) itself.
   for (const regel of glanz.split('}')) {
     if (!regel.includes(strip)) continue;
@@ -170,7 +168,7 @@ test('the gloss sits on fixed stops', () => {
   // if they drift apart, the same theme looks different on phone and computer,
   // and nobody looks for the reason in a number.
   const fromCss = [...glanz.matchAll(/rgba\((?:255,255,255|0,0,0),\.(\d+)\) (\d+)%/g)].map(m => `${m[2]}/${m[1]}`);
-  assert.ok(fromCss.length >= 4, `Nur ${fromCss.length} Haltepunkte im CSS — greift die Suche noch?`);
+  assert.ok(fromCss.length >= 4, `Only ${fromCss.length} breakpoints in the CSS — does the search still work?`);
 });
 
 test('the lid is ONE building block, not two', () => {});
@@ -181,20 +179,20 @@ const studsRows = () => css.split('}').filter(r => /header::before|\.sc::after/.
 test('the studs have a round top edge, not a gradient edge', () => {
   const reihen = studsRows();
   // Self-proof: MEASURED there are two — the header bar and the tile lid.
-  assert.equal(reihen.length, 2, `${reihen.length} Noppenreihen gefunden statt zwei — greift die Suche noch?`);
+  assert.equal(reihen.length, 2, `${reihen.length} stud rows found instead of two — does the search still work?`);
 
   for (const rowList of reihen) {
     const kopf = rowList.slice(0, rowList.indexOf('{')).trim();
-    assert.ok(rowList.includes('var(--studs-form)'), `"${kopf}" benutzt die Noppenform nicht`);
+    assert.ok(rowList.includes('var(--studs-form)'), `"${kopf}" does not use the stud shape`);
     assert.ok(
       !/repeating-linear-gradient/.test(rowList),
-      `"${kopf}" zeichnet die Noppen wieder als Verlauf. Ein Verlauf kann keine ` +
-        'runden Ecken — genau daran sahen sie aus wie Striche.',
+      `"${kopf}" draws the studs as a gradient again. A gradient cannot do ` +
+        'rounded corners — that is exactly why they looked like dashes.',
     );
     assert.ok(
       !/border-radius/.test(rowList),
-      `"${kopf}" rundet mit border-radius. Das rundet den BALKEN, nicht die ` +
-        'einzelne Noppe — der Unterschied war in der laufenden App zu sehen.',
+      `"${kopf}" rounds with border-radius. That rounds the BAR, not the ` +
+        'single stud — the difference was visible in the running app.',
     );
   }
 });
@@ -208,8 +206,8 @@ test('bar and lid share ONE stud shape', () => {
   assert.equal(
     explanations,
     1,
-    `Die Noppenform steht ${explanations}-mal im Baum. Einmal reicht; jede ` +
-      'weitere Reihe nimmt dieselbe Form in einem anderen Takt (mask-size).',
+    `The stud shape appears ${explanations} times in the tree. Once is enough; every ` +
+      'further row takes the same shape at a different beat (mask-size).',
   );
   assert.match(reason, /--studs-form:url\("data:image\/svg\+xml,/, 'Die Noppenform ist keine Maske mehr');
 });
@@ -223,14 +221,14 @@ test('the gloss is in step with the mask', () => {
   assert.deepEqual(
     [...new Set(masksTicks)].sort(),
     ['22', '24'],
-    `Die Masken-Takte sind ${masksTicks.join(', ')} — greift die Suche noch?`,
+    `The mask beats are ${masksTicks.join(', ')} — does the search still work?`,
   );
   assert.deepEqual(
     [...new Set(glossTicks)].sort(),
     ['22', '24'],
-    `Der Glanz wiederholt sich im Takt ${glossTicks.join(', ')}, die Maske aber ` +
-      `im Takt ${[...new Set(masksTicks)].join(', ')}. Dann sitzt der Lichtpunkt ` +
-      'nicht mehr auf der Noppe.',
+    `The gloss repeats at the beat ${glossTicks.join(', ')}, but the mask ` +
+      `at the beat ${[...new Set(masksTicks)].join(', ')}. Then the highlight ` +
+      'no longer sits on the stud.',
   );
 });
 
@@ -244,7 +242,7 @@ test('the lid color does not erase the lacquer', () => {
   assert.equal(
     colorRules.length,
     6,
-    `${colorRules.length} Regeln mit einer Deckelfarbe statt sechs — greift die Suche noch?`,
+    `${colorRules.length} rules with a cap colour instead of six — does the search still work?`,
   );
 
   const shortForm = colorRules
@@ -253,10 +251,10 @@ test('the lid color does not erase the lacquer', () => {
   assert.deepEqual(
     shortForm,
     [],
-    'Diese Regeln setzen die Deckelfarbe mit der Kurzform `background:`. Sie ' +
-      'loescht damit den `background-image` des Lacks — und weil :nth-child wie ' +
-      'eine Klasse zaehlt, gewinnt sie gegen hochglanz.css. `background-color:` ' +
-      'setzt nur die Farbe und laesst den Lack stehen.',
+    'These rules set the cap colour with the shorthand `background:`. It ' +
+      'thereby clears the `background-image` of the lacquer — and because :nth-child counts ' +
+      'like a class, it wins against hochglanz.css. `background-color:` ' +
+      'only sets the colour and leaves the lacquer in place.',
   );
 });
 
@@ -274,10 +272,10 @@ test('the stud shape belongs to all designs, not to one', () => {
   );
   assert.ok(
     !/--studs-form:/.test(css),
-    'themes/noppe.css fuehrt wieder eine eigene Noppenform — dann hat das ' +
-      'Stein-Design seine eigene, und genau so ist der Unterschied entstanden.',
+    'themes/noppe.css keeps its own stud shape again — then the ' +
+      'brick design has its own, and that is exactly how the difference came about.',
   );
-  assert.match(stein, /var\(--studs-form\)/, 'Das Stein-Design benutzt die gemeinsame Noppenform nicht');
+  assert.match(stein, /var\(--studs-form\)/, 'The brick design does not use the shared stud shape');
   // Only the ROW, not every circle: the handles of the year sliders are
   // round buttons with a highlight (`circle at 35% 32%`) and should stay
   // that. A stud row is recognized by its anchoring in pixels —
@@ -287,8 +285,8 @@ test('the stud shape belongs to all designs, not to one', () => {
   assert.deepEqual(
     reihen.map(m => m[0]),
     [],
-    'Das Stein-Design zeichnet eine Noppenreihe wieder als Kreise. Von vorn ist ' +
-      'eine Noppe ein Rechteck mit runder Oberkante — das war der Grund, aus dem ' +
-      'die Kante wie „ein Balken mit Punkten" aussah.',
+    'The brick design draws a stud row as circles again. From the front ' +
+      'a stud is a rectangle with a rounded top edge — that was the reason why ' +
+      'the edge looked like „ein Balken mit Punkten“.',
   );
 });

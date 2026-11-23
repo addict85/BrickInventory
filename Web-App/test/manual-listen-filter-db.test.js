@@ -103,7 +103,7 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       await nummern({}),
       ['3001', '3002', '3003'],
-      'Die Liste ohne Filter ist der Vergleichspunkt für alles Folgende',
+      'The list without a filter is the reference point for everything that follows',
     );
     assert.deepEqual(await figNumbers({}), ['fig-000123', 'fig-000456']);
   });
@@ -113,8 +113,8 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       g,
       ['3001'],
-      `Die Suche nach 3001 liefert ${g.join(',')} — erwartet nur 3001. ` +
-        'Genau das ist Marcos Befund: „passiert nichts".',
+      `The search for 3001 returns ${g.join(',')} — expected only 3001. ` +
+        'That is exactly what Marco reported: „passiert nichts".',
     );
   });
 
@@ -122,8 +122,8 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       await nummern({ search: '2 x 3' }),
       ['3003'],
-      'Der Teilename steht seit Migration 0034 in part_catalog — die ' +
-        'Bedingung muss über den JOIN gehen, nicht über parts',
+      'The part name lives in part_catalog since migration 0034 — the ' +
+        'condition must go through the JOIN, not through parts',
     );
   });
 
@@ -132,9 +132,9 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       g,
       ['3002'],
-      `Die Suche nach 9999 liefert ${g.join(',') || '(nichts)'} — erwartet 3002. ` +
-        'Auf der Kachel steht 9999 (bl_part_number); eine Suche, die nur die ' +
-        'Rebrickable-Nummer kennt, findet nicht, was dasteht.',
+      `The search for 9999 returns ${g.join(',') || '(nothing)'} — expected 3002. ` +
+        'The tile shows 9999 (bl_part_number); a search that only knows the ' +
+        'Rebrickable number does not find what is shown.',
     );
   });
 
@@ -142,8 +142,8 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       await nummern({ search: '4711' }),
       [],
-      'Ein Suchtext ohne Treffer muss eine leere Liste ergeben. Käme die ' +
-        'ganze Liste zurück, sähe es wieder aus wie „passiert nichts".',
+      'A search text without hits must yield an empty list. If the whole ' +
+        'list came back, it would look like „passiert nichts" again.',
     );
   });
 
@@ -151,23 +151,23 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       await nummern({ storage: 'Kiste 3' }),
       ['3001'],
-      'Der Lagerortfilter steht in derselben Leiste und gehört zum gleichen ' + 'Versprechen',
+      'The location filter sits in the same bar and belongs to the same ' + 'promise',
     );
-    assert.deepEqual(await nummern({ storage: 'Regal B' }), [], 'Ein Ort ohne Teile ergibt eine leere Liste');
+    assert.deepEqual(await nummern({ storage: 'Regal B' }), [], 'A location without parts yields an empty list');
   });
 
   await t.test('search text and storage location together', async () => {
     assert.deepEqual(
       await nummern({ search: '3001', storage: 'Kiste 3' }),
       ['3001'],
-      'Beide Platzhalter stehen in EINER Abfrage; vertauschen sich ihre ' +
-        'Nummern, bekommt jede Bedingung den Wert der anderen und die Liste ' +
-        'ist leer',
+      'Both placeholders are in ONE query; if their numbers are swapped, ' +
+        'each condition gets the value of the other and the list ' +
+        'is empty',
     );
     assert.deepEqual(
       await nummern({ search: '3002', storage: 'Kiste 3' }),
       [],
-      'Beide Bedingungen gelten zusammen, nicht wahlweise',
+      'Both conditions apply together, not alternatively',
     );
   });
 
@@ -176,8 +176,8 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       alle.map(p => p.color_id),
       [4],
-      'Diese Liste zeigt nur source=manual. Das Set-Teil 3001 in Farbe 7 ' +
-        'gehört in die Wand darunter — der Suchtext darf es nicht hereinholen.',
+      'This list shows only source=manual. The set part 3001 in colour 7 ' +
+        'belongs in the wall below — the search text must not pull it in.',
     );
   });
 
@@ -185,9 +185,13 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       await figNumbers({ search: 'chewb' }),
       ['fig-000123'],
-      'Der Figurenname steht in minifigs_catalog',
+      'The figure name lives in minifigs_catalog',
     );
-    assert.deepEqual(await figNumbers({ search: '000456' }), ['fig-000456'], 'Die Figurennummer muss genauso treffen');
+    assert.deepEqual(
+      await figNumbers({ search: '000456' }),
+      ['fig-000456'],
+      'The figure number must match just the same',
+    );
   });
 
   await t.test('the wall of set parts searches via the same phrasing', async () => {
@@ -199,7 +203,7 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       d.parts.map(p => String(p.part_number)),
       ['9999'],
-      'Die Set-Teile-Wand findet die BrickLink-Nummer nicht — sie zeigt sie ' + 'aber an (blNumberSql als part_number)',
+      'The set parts wall does not find the BrickLink number — but it shows ' + 'it (blNumberSql as part_number)',
     );
   });
 });

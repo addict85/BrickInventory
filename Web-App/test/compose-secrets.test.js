@@ -40,7 +40,7 @@ function config() {
 test('secrets only as files under /run/secrets', t => {
   const { j, error } = config();
   if (!j) {
-    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${error}`);
+    if (process.env.CI) assert.fail(`docker compose config in the CI run: ${error}`);
     t.skip(`no docker compose: ${error}`);
     return;
   }
@@ -60,15 +60,15 @@ test('secrets only as files under /run/secrets', t => {
   for (const [name, d] of Object.entries(j.services)) {
     const env = d.environment || {};
     const suspicious = Object.keys(env).filter(k => /(PASSWORD|SECRET|_PASS|DATABASE_URL|DATA_KEY)$/.test(k));
-    assert.deepEqual(suspicious, [], `${name}: Geheimnis als Umgebungsvariable (${suspicious})`);
+    assert.deepEqual(suspicious, [], `${name}: secret as an environment variable (${suspicious})`);
     const mounted = (d.secrets || []).map(s => s.target || `/run/secrets/${s.source}`);
     for (const [k, v] of Object.entries(env).filter(
       ([k]) => k.endsWith('_FILE') && !['DATA_KEY_FILE', 'DATA_KEY_ALT_FILE'].includes(k),
     )) {
       dateien++;
-      assert.ok(mounted.includes(v), `${name}: ${k} zeigt auf ein nicht eingehängtes Secret (${v})`);
+      assert.ok(mounted.includes(v), `${name}: ${k} points to a secret that is not mounted (${v})`);
     }
   }
-  assert.ok(dateien >= 8, `nur ${dateien} *_FILE-Angaben — liest der Test noch die richtige Datei?`);
+  assert.ok(dateien >= 8, `only ${dateien} *_FILE entries — does the test still read the right file?`);
   for (const s of Object.values(j.secrets)) assert.match(s.file, /[\\/]geheimnisse[\\/][a-z_]+$/);
 });

@@ -73,17 +73,17 @@ test('parts summary: when the list reads it and when it goes live', { concurrenc
     // A manual part of A goes to B.
     await holdsPart(db, a, OTHER, { quantity: 1, colorId: 2 });
     const [va2, vb2] = [await version(a), await version(b)];
-    assert.ok(va2 > va && vb2 === vb, 'Vorbedingung: nur A ist berührt');
+    assert.ok(va2 > va && vb2 === vb, 'precondition: only A is touched');
     await db.run(`UPDATE parts SET user_id = $2 WHERE user_id = $1 AND part_number = $3`, [a, b, OTHER]);
-    assert.ok((await version(a)) > va2, 'der Absender ist veraltet');
-    assert.ok((await version(b)) > vb2, 'das Ziel ist veraltet');
+    assert.ok((await version(a)) > va2, 'the sender is stale');
+    assert.ok((await version(b)) > vb2, 'the target is stale');
     await db.run(`DELETE FROM parts WHERE part_number = $1`, [OTHER]);
   });
 
   for (const u of ids) await PS.rebuildNow(u);
 
   await t.test('set and storage filters go live, the plain list reads the summary', async () => {
-    assert.equal((await H.partsQuery(a, { exclude_manual: '1' })).source, 'summary', 'Vorbedingung: frisch');
+    assert.equal((await H.partsQuery(a, { exclude_manual: '1' })).source, 'summary', 'precondition: fresh');
     const bySet = await H.partsQuery(a, { exclude_manual: '1', set_number: SN });
     assert.equal(bySet.source, 'db');
     const byBox = await H.partsQuery(a, { exclude_manual: '1', storage: 'Kiste' });
@@ -97,8 +97,8 @@ test('parts summary: when the list reads it and when it goes live', { concurrenc
   await t.test('metrics read no stale summary, the list may', async () => {
     await db.run('UPDATE set_acquisitions SET quantity = 2 WHERE user_id = $1 AND set_number = $2', [a, SN]);
     const list = await H.partsQuery(a, { exclude_manual: '1' });
-    assert.deepEqual([list.source, list.parts[0]?.total_quantity], ['summary', 3], 'die Liste nimmt den alten Stand');
-    assert.equal((await H.partStatsQuery(a)).total_parts, 6, 'die Kennzahlen zählen live');
+    assert.deepEqual([list.source, list.parts[0]?.total_quantity], ['summary', 3], 'the list takes the old state');
+    assert.equal((await H.partStatsQuery(a)).total_parts, 6, 'the metrics count live');
     await db.run('UPDATE set_acquisitions SET quantity = 1 WHERE user_id = $1 AND set_number = $2', [a, SN]);
     for (const u of ids) await PS.rebuildNow(u);
   });
@@ -106,7 +106,7 @@ test('parts summary: when the list reads it and when it goes live', { concurrenc
   await t.test('the household is fresh only if every account is', async () => {
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [a, b]);
     for (const u of ids) await PS.rebuildNow(u);
-    assert.equal(await PS.summaryFresh([a, b], { strict: true }), true, 'Vorbedingung: beide frisch');
+    assert.equal(await PS.summaryFresh([a, b], { strict: true }), true, 'precondition: both fresh');
     await db.run('UPDATE set_acquisitions SET quantity = 2 WHERE user_id = $1 AND set_number = $2', [b, SN]);
     assert.equal(await PS.summaryFresh([a, b], { strict: true }), false);
     await db.run('UPDATE set_acquisitions SET quantity = 1 WHERE user_id = $1 AND set_number = $2', [b, SN]);

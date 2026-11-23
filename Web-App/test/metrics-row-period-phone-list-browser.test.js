@@ -92,11 +92,11 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
       };
     })()`);
     assert.deepEqual(m.text, ['1 Set', '0 Teile', '0 Minifiguren']);
-    assert.equal(m.punkte, 2, 'Trenner zwischen drei Kennzahlen');
-    assert.equal(m.oben.length, 1, `Kennzahlen auf mehreren Zeilen: ${m.oben}`);
+    assert.equal(m.punkte, 2, 'separator between three metrics');
+    assert.equal(m.oben.length, 1, `metrics on several lines: ${m.oben}`);
     assert.equal(m.visibleBelowRows, 0);
     assert.equal(m.hint, 'Teileliste für das Set fehlt noch');
-    assert.ok(m.hintTop >= m.unten, 'Erklärsatz unter der ganzen Leiste');
+    assert.ok(m.hintTop >= m.unten, 'explanatory sentence below the whole bar');
   });
 
   await t.test('N4 period as a segment: one background, the chosen button framed, aria-pressed', async () => {
@@ -116,14 +116,14 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
         flaeche: k.map(e => getComputedStyle(e).backgroundColor),
       };
     })()`);
-    assert.notEqual(m.grund, 'rgba(0, 0, 0, 0)', 'Segment ohne Grund');
+    assert.notEqual(m.grund, 'rgba(0, 0, 0, 0)', 'segment without background');
     assert.equal(m.rand, '1px');
     assert.equal(m.oben, 1, 'Zeitraum bricht um');
-    assert.ok(Math.max(...m.runde) <= 8, `Knöpfe wie Pillen gerundet: ${m.runde}`);
+    assert.ok(Math.max(...m.runde) <= 8, `buttons rounded like pills: ${m.runde}`);
     assert.deepEqual(m.gedrueckt, ['false', 'false', 'false', 'true']);
-    assert.deepEqual(m.rahmen.slice(0, 3), Array(3).fill('rgba(0, 0, 0, 0)'), 'ungewählte Knöpfe gerahmt');
-    assert.notEqual(m.rahmen[3], 'rgba(0, 0, 0, 0)', 'gewählter Knopf ohne Rahmen');
-    assert.deepEqual(m.flaeche.slice(0, 3), Array(3).fill('rgba(0, 0, 0, 0)'), 'ungewählte Knöpfe mit Fläche');
+    assert.deepEqual(m.rahmen.slice(0, 3), Array(3).fill('rgba(0, 0, 0, 0)'), 'unselected buttons framed');
+    assert.notEqual(m.rahmen[3], 'rgba(0, 0, 0, 0)', 'selected button without border');
+    assert.deepEqual(m.flaeche.slice(0, 3), Array(3).fill('rgba(0, 0, 0, 0)'), 'unselected buttons with a fill');
   });
 
   await t.test('N8 390 px: parts selectable as a compact list', async () => {
@@ -134,7 +134,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
       b.auswerten(`Math.round(document.querySelector('#parts-main .part-card').getBoundingClientRect().height)`);
     const karte = await hoehe();
     const knopf = `document.querySelector('#tab-parts [data-click="chooseView"][data-arg2="table"]')`;
-    assert.equal(await b.auswerten(`!!${knopf}?.checkVisibility()`), true, 'Umschalter Karten/Liste fehlt');
+    assert.equal(await b.auswerten(`!!${knopf}?.checkVisibility()`), true, 'cards/list toggle is missing');
     await b.auswerten(`${knopf}.click(); true`);
     await ruhig();
     await bis(`!!document.querySelector('#parts-main .part-card')`, 'Teile als Liste');
@@ -143,10 +143,10 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
       await b.auswerten(`(() => { const r = document.querySelector('#parts-main .part-card').getBoundingClientRect();
       return { breite: Math.round(r.width), seite: document.documentElement.scrollWidth > innerWidth,
         gedrueckt: ${knopf}.getAttribute('aria-pressed') }; })()`);
-    assert.ok(karte > 120, `Karte nur ${karte} px hoch`);
-    assert.ok(row <= 72, `Listenzeile ${row} px hoch`);
-    assert.ok(breit.breite > 300, `Zeile nicht über die Breite: ${breit.breite} px`);
-    assert.equal(breit.seite, false, 'Seite breiter als das Fenster');
+    assert.ok(karte > 120, `card only ${karte} px high`);
+    assert.ok(row <= 72, `list row ${row} px high`);
+    assert.ok(breit.breite > 300, `row does not span the width: ${breit.breite} px`);
+    assert.equal(breit.seite, false, 'page wider than the window');
     assert.equal(breit.gedrueckt, 'true');
     await b.auswerten(`document.querySelector('#tab-parts [data-click="chooseView"][data-arg2="grid"]').click(); true`);
     await ruhig();
@@ -165,13 +165,13 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
           .filter(r => r.left < k.right && r.right > k.left && r.top < k.bottom && r.bottom > k.top).length;
         return { ueber, oben: Math.round(k.top), unten: Math.round(k.bottom) };
       })()`);
-      assert.equal(m.ueber, 0, `bei ${y} px gerollt liegt der Knopf über einer Karte (${m.oben}–${m.unten})`);
+      assert.equal(m.ueber, 0, `scrolled to ${y} px the button covers a card (${m.oben}–${m.unten})`);
     }
     await b.auswerten(`scrollTo(0, 0); true`);
     assert.equal(
       await b.auswerten(`document.querySelector('#tab-gallery .button-floating').checkVisibility()`),
       true,
-      'Knopf oben nicht sichtbar',
+      'button not visible at the top',
     );
   });
 
@@ -195,7 +195,7 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
       const folgt = e => { while (e && !e.checkVisibility()) e = e.nextElementSibling; return e?.getBoundingClientRect() ?? { top: NaN }; };
       return { lu: folgt(naechstes('lu-error')).top - r('lu-error').bottom, lp: folgt(naechstes('lp-error')).top - r('lp-error').bottom };
     })()`);
-    assert.ok(Math.abs(m.lu - m.lp) <= 1, `Abstand unter den Meldungen ${m.lu} px gegen ${m.lp} px`);
+    assert.ok(Math.abs(m.lu - m.lp) <= 1, `gap below the messages ${m.lu} px versus ${m.lp} px`);
   });
 
   for (const dunkel of [false, true])
@@ -208,15 +208,15 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
       const m = await b.auswerten(`(() => { const k = document.getElementById('start-offline'); k.hidden = false;
         const s = getComputedStyle(k); const r = { grund: s.backgroundColor, schrift: s.color,
         dunkel: document.documentElement.hasAttribute('data-dark') }; k.hidden = true; return r; })()`);
-      assert.equal(m.dunkel, dunkel, 'data-dark folgt dem System');
+      assert.equal(m.dunkel, dunkel, 'data-dark follows the system');
       const hell = c =>
         c
           .match(/\d+/g)
           .slice(0, 3)
           .reduce((a, x) => a + Number(x), 0) / 3;
       if (dunkel) {
-        assert.ok(hell(m.grund) < 60, `Kasten im Dunkelmodus hell: ${m.grund}`);
-        assert.ok(hell(m.schrift) > 180, `Schrift dunkel auf dunkel: ${m.schrift}`);
+        assert.ok(hell(m.grund) < 60, `box light in dark mode: ${m.grund}`);
+        assert.ok(hell(m.schrift) > 180, `text dark on dark: ${m.schrift}`);
       } else assert.equal(m.grund, 'rgb(255, 255, 255)');
     });
 });

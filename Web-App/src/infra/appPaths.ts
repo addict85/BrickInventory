@@ -5,8 +5,8 @@ import fs from 'node:fs';
 import { config } from './config';
 
 function findRoot(): string {
-  const wurzel = config().appRoot;
-  if (wurzel) return path.resolve(wurzel);
+  const root = config().appRoot;
+  if (root) return path.resolve(root);
   let dir = __dirname;
   for (let i = 0; i < 6; i++) {
     if (fs.existsSync(path.join(dir, 'package.json'))) return dir;

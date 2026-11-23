@@ -116,30 +116,30 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
 
   await t.test('1. the export delivers ONE PDF with all own vouchers', async () => {
     const r = await exportIt();
-    assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
+    assert.equal(r.status, 200, `The export answered with ${r.status}`);
     assert.equal(r.headers.get('content-type'), 'application/pdf');
     pdf = Buffer.from(await r.arrayBuffer());
-    assert.equal(pdf.slice(0, 5).toString(), '%PDF-', 'Das ist kein PDF');
+    assert.equal(pdf.slice(0, 5).toString(), '%PDF-', 'That is not a PDF');
     assert.equal(
       (await PL.PDFDocument.load(pdf)).getPageCount(),
       3,
-      'Erwartet drei Seiten — zwei mit Original, eine erzeugt',
+      'Expected three pages — two with an original, one generated',
     );
 
     const kopf = r.headers.get('x-gutschein-befunde');
     assert.ok(
       kopf,
-      'Die Befunde fehlen im Kopf. Der Rumpf IST das PDF, also ist der ' +
-        'Kopf der einzige Platz, an dem stehen kann, was aus jedem Gutschein wurde.',
+      'The findings are missing in the header. The body IS the PDF, so the ' +
+        'header is the only place that can say what became of each voucher.',
     );
     befunde = JSON.parse(Buffer.from(kopf, 'base64').toString('utf-8'));
-    assert.equal(befunde.length, 3, `${befunde.length} Befunde statt 3`);
+    assert.equal(befunde.length, 3, `${befunde.length} findings instead of 3`);
     assert.deepEqual(
       befunde.map(b => b.kind),
       ['ersetzt', 'stimmte_schon', 'erzeugt'],
-      `Die Befunde lauten ${JSON.stringify(befunde.map(b => b.kind))} — erwartet: der ` +
-        'erste wird ersetzt (400→250), der zweite stimmt schon (150), der dritte hat ' +
-        'kein Original',
+      `The findings read ${JSON.stringify(befunde.map(b => b.kind))} — expected: the ` +
+        'first is replaced (400→250), the second is already right (150), the third has ' +
+        'no original',
     );
     // „stimmte_schon" is a kind of its own and NOT an open point. Until
     // 15.10. this case carried `unveraendert` including a reason, and the UI
@@ -149,7 +149,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     assert.equal(
       befunde.filter(b => b.kind === 'unveraendert' && b.reason).length,
       0,
-      'Ein „stimmt schon" darf nicht als offener Punkt zählen',
+      'An „already right" must not count as an open item',
     );
   });
 
@@ -160,9 +160,9 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     const drin = (await readPageByPage(pdf)).map(w => w.number);
     assert.ok(
       !drin.includes('9999999999999999999'),
-      `Im eigenen Export steht die Karte eines fremden Kontos: ${drin.join(', ')}`,
+      `The own export contains the card of a foreign account: ${drin.join(', ')}`,
     );
-    assert.equal(drin.length, 3, `${drin.length} Karten im PDF statt 3`);
+    assert.equal(drin.length, 3, `${drin.length} cards in the PDF instead of 3`);
   });
 
   await t.test('3. the exported PDF carries the APP amount, not the printed one', async () => {
@@ -170,12 +170,12 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     const parsed = await readPageByPage(pdf);
     for (const k of CARDS) {
       const w = parsed.find(x => x.number === k.nr);
-      assert.ok(w, `${k.nr} fehlt im Export`);
+      assert.ok(w, `${k.nr} is missing in the export`);
       assert.equal(
         w.amount,
         k.app,
-        `${k.nr}: ${w.amount} statt ${k.app}. Auf der Karte steht ${k.printedOut} — ` +
-          'der Export soll den Stand der App zeigen, das war Marcos Vorgabe.',
+        `${k.nr}: ${w.amount} instead of ${k.app}. The card shows ${k.printedOut} — ` +
+          'the export should show the state of the app, that is what Marco asked for.',
       );
     }
   });
@@ -189,28 +189,32 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     // answers with `mehrere` instead of `voucher`.
     const r = await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
-    assert.equal(r.status, 200, `Der Import antwortete mit ${r.status}: ${JSON.stringify(b)}`);
-    assert.ok(b.multiple, `Erwartet den Stapelfall, bekam ${JSON.stringify(b)}`);
+    assert.equal(r.status, 200, `The import answered with ${r.status}: ${JSON.stringify(b)}`);
+    assert.ok(b.multiple, `Expected the batch case, got ${JSON.stringify(b)}`);
     assert.equal(
       b.voucher,
       undefined,
-      'Bei mehreren Gutscheinen darf kein einzelner „voucher" danebenstehen — ' +
-        'eine Oberfläche müsste sonst raten, welcher der drei gemeint ist',
+      'With several vouchers no single „voucher" may appear next to them — ' +
+        'otherwise an interface would have to guess which of the three is meant',
     );
-    assert.equal(b.multiple.added, 3, `${b.multiple.added} angelegt statt 3: ${JSON.stringify(b.multiple.results)}`);
-    assert.equal(b.multiple.errors, 0, `${b.multiple.errors} Fehler: ${JSON.stringify(b.multiple.results)}`);
+    assert.equal(
+      b.multiple.added,
+      3,
+      `${b.multiple.added} created instead of 3: ${JSON.stringify(b.multiple.results)}`,
+    );
+    assert.equal(b.multiple.errors, 0, `${b.multiple.errors} errors: ${JSON.stringify(b.multiple.results)}`);
 
     for (const k of CARDS) {
       const z = await db.get('SELECT id, amount, pin, currency FROM vouchers WHERE user_id=$1 AND number_search=$2', [
         MAIN,
         suche(MAIN, k.nr),
       ]);
-      assert.ok(z, `${k.nr} kam nicht zurück`);
-      assert.equal(Number(z.amount), k.app, `${k.nr}: ${z.amount} statt ${k.app}`);
+      assert.ok(z, `${k.nr} did not come back`);
+      assert.equal(Number(z.amount), k.app, `${k.nr}: ${z.amount} instead of ${k.app}`);
       assert.equal(
         _req('src/infra/secret.js').decrypt(z.pin, _req('src/vouchers/repository/vouchers.js').pinContext(MAIN, z.id)),
         k.pin,
-        `${k.nr}: PIN ${z.pin} statt ${k.pin}`,
+        `${k.nr}: PIN ${z.pin} instead of ${k.pin}`,
       );
     }
     // And the one captured by hand, which never had a PDF.
@@ -218,9 +222,9 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
       MAIN,
       suche(MAIN, '5045076374450033388'),
     ]);
-    assert.ok(ohne, 'Der von Hand erfasste Gutschein kam nicht zurück');
+    assert.ok(ohne, 'The manually recorded voucher did not come back');
     assert.equal(Number(ohne.amount), 42.5);
-    assert.equal(ohne.pin, null, 'Aus „keine PIN" wurde etwas anderes');
+    assert.equal(ohne.pin, null, '„keine PIN“ became something else');
   });
 
   await t.test('5. a second import refreshes the amount instead of doing nothing', async () => {
@@ -231,8 +235,8 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutscheine.pdf');
     const b = (await (await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd })).json()).multiple;
-    assert.equal(b.added, 0, `${b.added} neu angelegt — die Karten gab es schon`);
-    assert.equal(b.updated, 3, `${b.updated} aufgefrischt statt 3`);
+    assert.equal(b.added, 0, `${b.added} newly created — the cards already existed`);
+    assert.equal(b.updated, 3, `${b.updated} refreshed instead of 3`);
     assert.equal(
       Number(
         (
@@ -243,24 +247,24 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
         ).amount,
       ),
       CARDS[0].app,
-      'Der Betrag wurde nicht aufgefrischt',
+      'The amount was not refreshed',
     );
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM vouchers WHERE user_id=$1', [MAIN])).c,
       3,
-      'Der zweite Import hat die Tabelle verdoppelt',
+      'The second import doubled the table',
     );
   });
 
   await t.test('6. without a voucher an information comes, not an empty PDF', async () => {
     await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
     const r = await freigabe();
-    assert.equal(r.status, 404, `Erwartet 404, bekam ${r.status}`);
+    assert.equal(r.status, 404, `expected 404, got ${r.status}`);
     const b = await r.json().catch(() => ({}));
     assert.match(
       String(b.error || ''),
       /keine Gutscheine/i,
-      `Abgelehnt mit „${b.error}" — der Text soll sagen, dass keine erfasst sind`,
+      `Rejected with „${b.error}" — the text should say that none are recorded`,
     );
   });
 
@@ -271,19 +275,19 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     assert.equal(
       r.status,
       422,
-      `Erwartet 422, bekam ${r.status}. Eine kaputte Datei ist eine Aussage über die ` + 'Datei, kein Serverfehler.',
+      `Expected 422, got ${r.status}. A broken file is a statement about the ` + 'file, not a server error.',
     );
     assert.equal(
       (await r.json()).code,
       'pdf_unreadable',
-      'Seit beide Wege auf einer Adresse liegen, kommt die kaputte Datei beim ' +
-        'EINZELweg an. Ohne eigenen Code stünde dort „amount_invalid" — eine ' +
-        'Auskunft über ein Feld, das es in dieser Datei gar nicht gibt.',
+      'Since both paths share one address, the broken file arrives at the ' +
+        'SINGLE path. Without a code of its own it would say „amount_invalid" — ' +
+        'information about a field that does not even exist in this file.',
     );
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM vouchers WHERE user_id=$1', [MAIN])).c,
       0,
-      'Es wurde trotzdem etwas angelegt',
+      'Something was created anyway',
     );
   });
 
@@ -299,11 +303,11 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     fd.append('file', new Blob([eine], { type: 'application/pdf' }), 'einer.pdf');
     const r = await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
-    assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(b)}`);
-    assert.equal(b.multiple, undefined, `Ein einzelner Gutschein darf nicht als Stapel gelten: ${JSON.stringify(b)}`);
-    assert.ok(b.voucher, 'Der Einzelfall antwortet mit `voucher`');
+    assert.equal(r.status, 200, `response ${r.status}: ${JSON.stringify(b)}`);
+    assert.equal(b.multiple, undefined, `A single voucher must not count as a batch: ${JSON.stringify(b)}`);
+    assert.ok(b.voucher, 'The single case answers with `voucher`');
     assert.equal(b.parsed.number, CARDS[0].nr);
-    assert.equal(b.voucher.number, '…' + CARDS[0].nr.slice(-4), 'nach aussen nur das Ende');
-    assert.equal(b.voucher.has_pdf, true, 'Beim Einzelgutschein wird die Datei als sein Original gespeichert');
+    assert.equal(b.voucher.number, '…' + CARDS[0].nr.slice(-4), 'only the end to the outside');
+    assert.equal(b.voucher.has_pdf, true, 'For a single voucher the file is stored as its original');
   });
 });

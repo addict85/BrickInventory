@@ -78,7 +78,7 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(response("""{"success":false,"error":"Serverfehler"}""", 500))
         vm.loadJobs()
         assert(!vm.state.value.accessRevoked) { "a 500 is no withdrawal of rights" }
-        server.enqueue(response("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
+        server.enqueue(response("""{"success":false,"code":"admins_only","error":"Nur für Admins"}""", 403))
         vm.loadJobs()
         assert(vm.state.value.accessRevoked) { "after nur_admins the loop should end" }
         server.enqueue(response("""{"success":true,"jobs":{}}"""))
@@ -90,8 +90,8 @@ class MonitoringViewModelBehaviorTest {
     fun `the tick polls jobs and background until access is revoked`() = runTest {
         server.enqueue(response("""{"success":true,"jobs":{}}"""))
         server.enqueue(response("""{"success":false,"error":"weg"}""", 404))
-        server.enqueue(response("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
-        server.enqueue(response("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
+        server.enqueue(response("""{"success":false,"code":"admins_only","error":"Nur für Admins"}""", 403))
+        server.enqueue(response("""{"success":false,"code":"admins_only","error":"Nur für Admins"}""", 403))
         vm.holdCurrent()
         assert(vm.state.value.accessRevoked) { "the loop only ends with the withdrawal" }
         assert(server.requestCount == 4) { "two ticks of two fetches each expected, were ${server.requestCount}" }
@@ -172,15 +172,15 @@ class MonitoringViewModelBehaviorTest {
 
     @Test
     fun `the selection shows the default, not the own design`() = runTest {
-        server.enqueue(response("""{"success":true,"theme":"werkbank","vorgabe":"noppe","eigenes":"werkbank"}"""))
+        server.enqueue(response("""{"success":true,"theme":"werkbank","preset":"noppe","own":"werkbank"}"""))
         vm.loadDesignDefault()
         assert(vm.state.value.defaultDesign == Design.STUD) { "shows: ${vm.state.value.defaultDesign}" }
-        assert(server.takeRequest().path == "/api/v1/settings/theme")
+        assert(server.takeRequest().path == "/api/v2/settings/theme")
     }
 
     @Test
     fun `a set design is immediately the default, a rejected one is not`() = runTest {
-        server.enqueue(response("""{"success":true,"theme":"noppe","vorgabe":"noppe"}"""))
+        server.enqueue(response("""{"success":true,"theme":"noppe","preset":"noppe"}"""))
         vm.loadDesignDefault()
         server.enqueue(response("""{"success":true}"""))
         assert(vm.setDesign(Design.BRICK) is Outcome.Success)

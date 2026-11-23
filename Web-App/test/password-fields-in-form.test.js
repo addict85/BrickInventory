@@ -26,10 +26,10 @@ const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 function listenerCode() {
   const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const von = roh.indexOf("  document.addEventListener('submit'");
-  assert.ok(von > 0, 'Der submit-Lauscher steht nicht mehr in js/actions.js');
+  assert.ok(von > 0, 'The submit listener is no longer in js/actions.js');
   const bis = roh.indexOf('});', roh.indexOf('button.click()', von)) + 3;
   const stueck = roh.slice(von, bis);
-  assert.match(stueck, /preventDefault/, 'Der herausgeschnittene Block ist nicht der richtige');
+  assert.match(stueck, /preventDefault/, 'The cut-out block is not the right one');
   return stueck;
 }
 
@@ -43,7 +43,7 @@ function stage() {
 test('every password field of a HUMAN lies in a form', () => {
   const d = new JSDOM(HTML).window.document;
   const felder = [...d.querySelectorAll('input[type=password]')];
-  assert.ok(felder.length >= 13, `Nur ${felder.length} Passwortfelder gefunden — stimmt der Pfad?`);
+  assert.ok(felder.length >= 13, `Only ${felder.length} password fields found — is the path right?`);
 
   const ohne = felder
     .filter(i => !i.closest('form'))
@@ -52,11 +52,11 @@ test('every password field of a HUMAN lies in a form', () => {
   assert.deepEqual(
     ohne,
     ['bl-cs', 'bl-ts', 'bs-key', 'rb-key', 'smtp-pass'],
-    'Diese Passwortfelder liegen in keinem Formular: ' +
+    'These password fields are in no form: ' +
       ohne.join(', ') +
-      '\nErlaubt sind genau die fünf Schnittstellen-Geheimnisse (BrickLink, Rebrickable, Brickset, SMTP) — ' +
-      'siehe den Kopf dieser Datei. Steht hier ein Feld eines MENSCHEN, bietet der ' +
-      'Passwortmanager dort kein Speichern mehr an.',
+      '\nAllowed are exactly the five interface secrets (BrickLink, Rebrickable, Brickset, SMTP) — ' +
+      'see the head of this file. If a field of a HUMAN is listed here, the ' +
+      'password manager no longer offers to save there.',
   );
 
   // And the opposite direction: the five must not have an `autocomplete` either
@@ -66,8 +66,8 @@ test('every password field of a HUMAN lies in a form', () => {
     assert.equal(
       ac,
       'off',
-      `${id} traegt autocomplete="${ac}" statt "off" — dann ist das Formular nicht ` +
-        'der Grund, warum der Passwortmanager schweigt, und die Entscheidung oben wackelt',
+      `${id} carries autocomplete="${ac}" instead of "off" — then the form is not ` +
+        'the reason why the password manager stays silent, and the decision above is shaky',
     );
   }
 });
@@ -76,13 +76,13 @@ test('submitting does NOT reload the page but presses the button', () => {
   const dom = stage();
   const d = dom.window.document;
   const forms = [...d.querySelectorAll('form[data-submit]')];
-  assert.ok(forms.length >= 6, `Nur ${forms.length} Formulare mit data-submit — erwartet mindestens sechs`);
+  assert.ok(forms.length >= 6, `Only ${forms.length} forms with data-submit — expected at least six`);
 
   for (const f of forms) {
     const id = f.getAttribute('data-submit');
     const knopf = d.getElementById(id);
-    assert.ok(knopf, `data-submit="${id}" zeigt auf keinen Knopf`);
-    assert.ok(f.contains(knopf), `Der Knopf ${id} liegt gar nicht in seinem Formular`);
+    assert.ok(knopf, `data-submit="${id}" points to no button`);
+    assert.ok(f.contains(knopf), `The button ${id} is not inside its form at all`);
 
     let gedrueckt = 0;
     knopf.addEventListener('click', () => {
@@ -94,14 +94,14 @@ test('submitting does NOT reload the page but presses the button', () => {
     assert.equal(
       ev.defaultPrevented,
       true,
-      `Das Absenden von ${id} wurde NICHT abgebrochen — der Browser lüde die Seite neu ` +
-        'und der angemeldete Zustand wäre weg',
+      `Submitting ${id} was NOT cancelled — the browser would reload the page ` +
+        'and the logged-in state would be gone',
     );
     assert.equal(
       gedrueckt,
       1,
-      `Der Knopf ${id} wurde ${gedrueckt}-mal gedrückt statt genau einmal. Null heisst: ` +
-        'die Eingabetaste tut nichts. Mehr als einmal heisst: es dreht sich im Kreis.',
+      `The button ${id} was pressed ${gedrueckt} times instead of exactly once. Zero means: ` +
+        'the Enter key does nothing. More than once means: it goes round in circles.',
     );
   }
 });
@@ -121,8 +121,8 @@ test('the submit buttons carry type="button"', () => {
   assert.deepEqual(
     falsch,
     [],
-    'Diese Knöpfe in einem Formular sind Absendeknöpfe: ' +
+    'These buttons in a form are submit buttons: ' +
       falsch.join(', ') +
-      '\nOhne type="button" löst ihr Klick wieder ein submit aus.',
+      '\nWithout type="button" their click triggers a submit again.',
   );
 });

@@ -59,10 +59,10 @@ class PartColorFlowTest {
     /** A manual brick of account 7 without a color name, opened on its page. */
     private fun openBrick(colors: String) {
         val r = app.world.paths.responses
-        r["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":1,"part_number":"3001","part_name":"Brick 2 x 4",""" +
+        r["/api/v2/parts/manual"] = """{"success":true,"parts":[{"id":1,"part_number":"3001","part_name":"Brick 2 x 4",""" +
             """"color_id":5,"quantity":2,"user_id":7}]}"""
-        r["/api/v1/parts/brick-colors"] = """{"success":true,"colors":$colors}"""
-        r["/api/v1/parts/3001/5/color"] = """{"success":true}"""
+        r["/api/v2/parts/brick-colors"] = """{"success":true,"colors":$colors}"""
+        r["/api/v2/parts/3001/5/color"] = """{"success":true}"""
         app.show(compose)
         idle()
         tap(ctx.getString(R.string.nav_parts))
@@ -83,7 +83,7 @@ class PartColorFlowTest {
         openBrick(colors)
         tap("Red")
         tap("Black")
-        assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), app.world.paths.requestsTo("PUT "))
+        assertEquals(listOf("PUT /api/v2/parts/3001/5/color?owner=7"), app.world.paths.requestsTo("PUT "))
         val body = app.world.paths.bodyBytes[app.world.paths.requests.indexOfFirst { it.startsWith("PUT ") }]
         assertTrue(body, "\"color_id\":11" in body)
         driveUntil("reopened") { shown("Black") && !shown("Red") }

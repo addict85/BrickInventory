@@ -87,9 +87,9 @@ function readRoutes() {
   const found = [...source.matchAll(/router\.endpoint\(\s*'GET \/api\/v2\/settings([^']*)'/g)].map(m => m[1] || '/');
   // Self-proof: if the pattern did not apply, the list would be empty and the test
   // green without having looked at a single route.
-  assert.ok(found.length >= 4, `Nur ${found.length} GET-Routen in routes/api/settings.ts gefunden — Muster veraltet?`);
+  assert.ok(found.length >= 4, `Only ${found.length} GET routes found in routes/api/settings.ts — pattern outdated?`);
   const veraltet = [...EXEMPT.keys()].filter(p => !found.includes(p));
-  assert.deepEqual(veraltet, [], 'Diese Ausnahmen beschreiben keine Route mehr — streichen: ' + veraltet.join(', '));
+  assert.deepEqual(veraltet, [], 'These exceptions no longer describe a route — remove them: ' + veraltet.join(', '));
   return found.filter(p => !EXEMPT.has(p)).map(p => '/api/v2/settings' + (p === '/' ? '' : p));
 }
 
@@ -148,31 +148,31 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
       // 1. An account WITHOUT admin rights must not see the keys at all.
       const asUser = await fetchIt(baseUser, path);
       for (const [k, v] of Object.entries(GEHEIM)) {
-        assert.ok(!asUser.includes(v), `${path}: ein Konto ohne Adminrechte bekommt ${k} im Klartext`);
+        assert.ok(!asUser.includes(v), `${path}: an account without admin rights gets ${k} in plain text`);
       }
 
       for (const [k, v] of Object.entries(MANAGEMENT)) {
-        assert.ok(!asUser.includes(v), `${path}: ein Konto ohne Adminrechte bekommt ${k}`);
+        assert.ok(!asUser.includes(v), `${path}: an account without admin rights gets ${k}`);
       }
 
       // 2. Even an admin only gets the mask — otherwise the values end up in the
       //    browser storage, where every XSS gap takes them along.
       const alsAdmin = await fetchIt(baseAdmin, path);
       for (const [k, v] of Object.entries(GEHEIM)) {
-        assert.ok(!alsAdmin.includes(v), `${path}: auch ein Admin darf ${k} nur maskiert bekommen`);
+        assert.ok(!alsAdmin.includes(v), `${path}: even an admin may only get ${k} masked`);
       }
       // Opposite direction: the mask must arrive at all, otherwise the
       // form cannot tell „set" from „not set" — a test
       // that only checks the absence would also be green with an empty response.
       assert.ok(
         alsAdmin.some(s => s.includes('\u2022'.repeat(12))),
-        `${path}: der Admin muss die maskierte Fassung sehen`,
+        `${path}: the admin must see the masked version`,
       );
       // Not even the end of the value: it shortens the guessing.
       for (const [k, v] of Object.entries(GEHEIM))
-        assert.ok(!alsAdmin.some(s => s.includes(v.slice(-4))), `${path}: die Maske von ${k} verrät „${v.slice(-4)}"`);
+        assert.ok(!alsAdmin.some(s => s.includes(v.slice(-4))), `${path}: the mask of ${k} reveals „${v.slice(-4)}"`);
       for (const [k, v] of Object.entries(MANAGEMENT)) {
-        assert.ok(alsAdmin.includes(v), `${path}: der Verwalter braucht ${k} für sein Formular`);
+        assert.ok(alsAdmin.includes(v), `${path}: the admin needs ${k} for the form`);
       }
     }
   } finally {

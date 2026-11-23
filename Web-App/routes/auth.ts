@@ -34,7 +34,7 @@ import {
   type TokenWish,
 } from '../src/account';
 import type { Services } from '../src/services';
-type Refusal = Extract<Awaited<ReturnType<typeof login>>, { ok: false }>['absage'];
+type Refusal = Extract<Awaited<ReturnType<typeof login>>, { ok: false }>['refusal'];
 /** The same path after password and passkey. Token OR session: the session would carry the rights past the
  * token's scope. keks_fehlt always, also as false: then the UI does not guess "without HTTPS" on a 401. */
 async function signedInResponses(
@@ -46,13 +46,13 @@ async function signedInResponses(
   withToken: boolean,
   withPassword = false,
 ) {
-  await d.account.verwalter.cancelTakeovers(Number(user.id));
+  await d.account.admin.cancelTakeovers(Number(user.id));
   if (!withToken)
     await establishSession(d.account, req, {
       userId: Number(user.id),
       username: user.username,
       isAdmin: user.is_admin,
-      mussPasswortAendern: user.must_change_password === true,
+      mustChangePassword: user.must_change_password === true,
       // Only after a password, not after a passkey alone: the basis of the grace period.
       ...(withPassword ? { passwordConfirmedAt: Date.now() } : {}),
     });
@@ -65,8 +65,8 @@ async function signedInResponses(
 
 /** `zweiter_faktor` shows the code field (or `passkey`), `unverified` shows "Resend email?". */
 function loginRejections(refusal: Refusal): never {
-  const { kind, code, vars, unverified, zweiterFaktor, passkey } = refusal;
-  const extra = zweiterFaktor
+  const { kind, code, vars, unverified, secondFactor, passkey } = refusal;
+  const extra = secondFactor
     ? { second_factor: true, ...(passkey ? { passkey: true } : {}) }
     : unverified
       ? { unverified: true }
@@ -74,7 +74,7 @@ function loginRejections(refusal: Refusal): never {
   throw new DomainError(kind, code, vars, extra);
 }
 
-type CheckedToken = NonNullable<Awaited<ReturnType<Services['account']['checkToken']>>['nutzer']>;
+type CheckedToken = NonNullable<Awaited<ReturnType<Services['account']['checkToken']>>['user']>;
 
 /** is_admin is the right of THIS token: with scope `app` always false. */
 async function tokenUser(d: Pick<Services, 'account'>, res: Response, u: CheckedToken) {
@@ -87,7 +87,7 @@ async function tokenUser(d: Pick<Services, 'account'>, res: Response, u: Checked
       id: u.user_id,
       username: u.username,
       is_admin: u.is_admin === true,
-      mustChangePassword: u.muss_passwort_aendern === true,
+      mustChangePassword: u.must_change_password === true,
       secondFactorRequired: await d.account.openFactorRequired(u.user_id, u.is_admin === true),
     },
     token_expires: u.expires_at,
@@ -119,6 +119,36 @@ async function sessionUser(d: Pick<Services, 'account'>, req: Request, uid: numb
   } as const;
 }
 
+/** Session first, then the token; a refused token says why (429 when throttled). */
+async function answerMe(d: Pick<Services, 'account'>, req: Request, res: Response, token: string | null) {
+  const session = req.session?.userId ? await sessionUser(d, req, req.session.userId) : null;
+  if (session) return res.json(session);
+  const p = token ? await d.account.checkToken(token, { ip: req.ip }) : { user: null };
+  if (p.user) return res.json(await tokenUser(d, res, p.user));
+  if (!token) return res.json({ success: true, loggedIn: false, user: null });
+  const code = 'reason' in p && p.reason ? p.reason : 'token_invalid';
+  const throttled = code === 'too_many_requests';
+  return res.status(throttled ? 429 : 401).json({
+    success: false,
+    loggedIn: false,
+    user: null,
+    code,
+    error: errorText(code, responseLanguage(req), throttled ? { minutes: 1 } : undefined),
+  });
+}
+
+/** The same regex as login/register: otherwise a foreign email could be entered as
+ * username, and the login searches "username OR email". */
+function checkProfileInput(
+  user: Parameters<typeof emailBecomesChanged>[0],
+  e: { username?: unknown; email?: string | null | undefined; first_name?: unknown; last_name?: unknown },
+): void {
+  if (e.username !== undefined && !USERNAME_RE.test(String(e.username || '')))
+    failDomain('invalid', 'username_invalid');
+  if (!nameValid(e.first_name) || !nameValid(e.last_name)) failDomain('invalid', 'name_invalid');
+  if (emailBecomesChanged(user, e.email) && !emailValid(e.email)) failDomain('invalid', 'email_invalid');
+}
+
 export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account' | 'factors' | 'profile'>) {
   const { requireLoginOrToken } = guardFor(d.account);
   const router = contractRouter('/api/v2/auth');
@@ -129,9 +159,9 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
   /** The ONE login for webapp and app, so both meet the same rules. */
   router.endpoint('POST /api/v2/auth/login', async (req, res) => {
     const { username, password, code: secondCode, without_token, passkey } = req.input;
-    if (!devicesNameContentValid(req.input.label)) failDomain('ungueltig', 'device_name_invalid');
+    if (!devicesNameContentValid(req.input.label)) failDomain('invalid', 'device_name_invalid');
     const check = await login(d.account, req, username, password, secondCode, passkey);
-    if (!check.ok) loginRejections(check.absage);
+    if (!check.ok) loginRejections(check.refusal);
     await signedInResponses(d, req, res, check.user as SignedIn, req.input, without_token !== true, true);
   });
 
@@ -156,25 +186,11 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
   router.endpoint('GET /api/v2/auth/me', async (req, res) => {
     const auth = String(req.headers.authorization || '');
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    const respond = async () => {
-      const session = req.session?.userId ? await sessionUser(d, req, req.session.userId) : null;
-      if (session) return res.json(session);
-      const p = token ? await d.account.checkToken(token, { ip: req.ip }) : { nutzer: null };
-      if (p.nutzer) return res.json(await tokenUser(d, res, p.nutzer));
-      if (!token) return res.json({ success: true, loggedIn: false, user: null });
-      const code = 'reason' in p && p.reason ? p.reason : 'token_invalid';
-      res.status(code === 'too_many_requests' ? 429 : 401).json({
-        success: false,
-        loggedIn: false,
-        user: null,
-        code,
-        error: errorText(code, responseLanguage(req), code === 'too_many_requests' ? { minutes: 1 } : undefined),
-      });
-    };
+    const respond = () => answerMe(d, req, res, token);
     await respond().catch((e: unknown) => {
       // A read error is not a logout: with 401 the app would discard its token.
       reportError('auth:me', e);
-      failDomain('nicht_verfuegbar', 'server_busy');
+      failDomain('unavailable', 'server_busy');
     });
   });
 
@@ -185,7 +201,7 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     async req => {
       const auth = String(req.headers.authorization || '');
       const alt = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-      if (!alt || !(await d.account.checkToken(alt, { ip: req.ip, purpose: 'rotation' })).nutzer)
+      if (!alt || !(await d.account.checkToken(alt, { ip: req.ip, purpose: 'rotation' })).user)
         failDomain('not_signed_in', 'token_invalid');
       const t = await d.account.rotateToken(alt, req.ip);
       if (!t) failDomain('not_signed_in', 'token_invalid');
@@ -208,8 +224,8 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
   /** Only from a session, with password and second factor: otherwise a
    * captured access would mint a permanent one. The mail reports it to the owner. */
   router.endpoint('POST /api/v2/auth/token-create', requireLogin, async (req, res) => {
-    if (!req.session?.userId) failDomain('verboten', 'session_only');
-    if (!devicesNameContentValid(req.input.label)) failDomain('ungueltig', 'device_name_invalid');
+    if (!req.session?.userId) failDomain('forbidden', 'session_only');
+    if (!devicesNameContentValid(req.input.label)) failDomain('invalid', 'device_name_invalid');
     const userId = signedInUserId(req);
     if (!(await confirmWithFactor(d.account, req, res, userId, req.input.password))) return;
     const t = await d.account.devicesTokenIssue(userId, req.input.label, req.input.scope, req.ip);
@@ -228,18 +244,12 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     if (!user) notFound('user_not_found');
 
     // The password only via /change-password: only there do all other accesses end afterwards.
-    if (password) failDomain('ungueltig', 'password_via_change_password');
+    if (password) failDomain('invalid', 'password_via_change_password');
 
-    // The same regex as login/register: otherwise a foreign email could be entered as
-    // username, and the login searches "username OR email".
-    if (username !== undefined && !USERNAME_RE.test(String(username || '')))
-      failDomain('ungueltig', 'username_invalid');
-    if (!nameValid(first_name) || !nameValid(last_name)) failDomain('ungueltig', 'name_invalid');
-
-    if (emailBecomesChanged(user, email) && !emailValid(email)) failDomain('ungueltig', 'email_invalid');
+    checkProfileInput(user, { username, email, first_name, last_name });
     // With password (and second factor): a new address could be used to reset the
     // password; only after that does the availability check reveal whether a name or address exists.
-    if (!password_current) failDomain('ungueltig', 'current_password_required');
+    if (!password_current) failDomain('invalid', 'current_password_required');
     if (!(await confirmWithFactor(d.account, req, res, user.id, String(password_current)))) return;
     const r = await d.account.changeProfile(user, { username, email, first_name, last_name });
     if (r.emailChanged) return { emailChanged: true, emailSent: r.emailSent ?? false };
@@ -257,19 +267,19 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
 
   router.endpoint('POST /api/v2/auth/change-password', requireLogin, async (req, res) => {
     const { current, newPassword } = req.input;
-    if (!current || !newPassword) failDomain('ungueltig', 'all_fields_required');
+    if (!current || !newPassword) failDomain('invalid', 'all_fields_required');
     const uid = userId(req);
     if (uid == null) failDomain('not_signed_in', 'not_signed_in');
     if (!(await confirmWithFactor(d.account, req, res, uid, String(current)))) return;
     // AFTER checking the old password: a stranger learns nothing through the new one.
     // Ends all accesses, including the own; the session is rebuilt afterwards.
-    const konto = await d.account.changeOwnPassword(uid, newPassword, req.input.passkeys_revoked === true);
-    if (req.session?.userId && konto) {
+    const account = await d.account.changeOwnPassword(uid, newPassword, req.input.passkeys_revoked === true);
+    if (req.session?.userId && account) {
       await establishSession(d.account, req, {
         userId: uid,
-        username: konto.username,
+        username: account.username,
         isAdmin: req.session.isAdmin === true,
-        mussPasswortAendern: false,
+        mustChangePassword: false,
         passwordConfirmedAt: Date.now(),
       });
     }
@@ -283,7 +293,7 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     async req => {
       const purpose = req.input.purpose === 'second_factor' ? 'second_factor' : 'login';
       const options = await d.factors.authenticationOptions(purpose);
-      if (!options) failDomain('nicht_verfuegbar', 'passkey_without_domain');
+      if (!options) failDomain('unavailable', 'passkey_without_domain');
       return { options };
     },
   );
@@ -293,14 +303,14 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     'POST /api/v2/auth/passkey/login',
     ipThrottle(d.account, 'passkey-anmelden', 30, 60 * 60 * 1000),
     async (req, res) => {
-      if (!devicesNameContentValid(req.input.label)) failDomain('ungueltig', 'device_name_invalid');
+      if (!devicesNameContentValid(req.input.label)) failDomain('invalid', 'device_name_invalid');
       const uid = await d.factors.verifyAuthentication(req.input.response, 'login');
       if (!uid) failDomain('not_signed_in', 'passkey_invalid');
       const user = await d.account.accountFullOf(uid);
       if (!user) failDomain('not_signed_in', 'passkey_invalid');
       const locked = assertLoginAllowed(user);
       if (locked) failDomain(locked.kind, locked.code);
-      reportLogin({ ip: req.ip, konto: user.id, zugang: 'passkey' });
+      reportLogin({ ip: req.ip, account: user.id, method: 'passkey' });
       await signedInResponses(d, req, res, user, req.input, req.input.with_token === true);
     },
   );

@@ -85,7 +85,7 @@ test('focus below fixed bars', { concurrency: 1, timeout: 400_000 }, async t => 
       await t.test(`${breite} px${gross ? ', 200 %' : ''}: ${ansicht}`, () => {
         // Since round 24 the empty build list only has the field and “add” (“recompute” only with a set).
         const mindestens = ansicht === 'bauliste' ? 2 : 3;
-        assert.ok(gesehen >= mindestens, `nur ${gesehen} Elemente erreicht — greift der Tab-Gang?`);
+        assert.ok(gesehen >= mindestens, `only ${gesehen} elements reached — does the tab walk still work?`);
         assert.deepEqual(funde, []);
       });
     }

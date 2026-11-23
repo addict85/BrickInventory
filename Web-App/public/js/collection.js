@@ -263,6 +263,21 @@ export async function loadGallery(opts = {}) {
   if (scrollY != null) requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
   enrichGalleryWithPrices();
 }
+
+const galleryNoHits = (/** @type {string} */ q) =>
+  q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter');
+
+/** @param {boolean} filtered @param {string} q */
+function galleryEmpty(filtered, q) {
+  if (filtered) return emptyState({ ico: 'search', title: galleryNoHits(q), button: resetButton('gallery') });
+  return emptyState({
+    ico: 'set',
+    title: tRaw('gallery.empty'),
+    text: tRaw(phoneWidth() ? 'gallery.empty_hint_phone' : 'gallery.empty_hint'),
+    button: { text: tRaw('gallery.add.title'), click: 'openCapture', arg: 'set' },
+  });
+}
+
 export function renderGallery() {
   // Filtering and sorting is done by the server (src/sets/read.ts) — this only draws what
   // is already loaded. Otherwise a filter would merely search the currently loaded page.
@@ -274,30 +289,9 @@ export function renderGallery() {
   const filtered = !!(q || G('gtheme')?.value || locationMode('gallery'));
   // Without a single set, the fields filter and sort nothing (N5).
   G('tab-gallery')?.classList.toggle('collection-empty', !list.length && !filtered);
-  if (filtered)
-    reportHits(
-      list.length
-        ? tRaw('match.sets', { n: _galTotal || list.length })
-        : q
-          ? tRaw('common.no_hits', { query: q })
-          : tRaw('gallery.no_results_filter'),
-    );
+  if (filtered) reportHits(list.length ? tRaw('match.sets', { n: _galTotal || list.length }) : galleryNoHits(q));
   if (!list.length) {
-    setHtml(
-      c,
-      filtered
-        ? emptyState({
-            ico: 'search',
-            title: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
-            button: resetButton('gallery'),
-          })
-        : emptyState({
-            ico: 'set',
-            title: tRaw('gallery.empty'),
-            text: tRaw(phoneWidth() ? 'gallery.empty_hint_phone' : 'gallery.empty_hint'),
-            button: { text: tRaw('gallery.add.title'), click: 'openCapture', arg: 'set' },
-          }),
-    );
+    setHtml(c, galleryEmpty(filtered, q));
     return;
   }
   if (asTiles()) {
@@ -355,28 +349,48 @@ function priceLine(s) {
   return html`${kind}<span class="price">${rawHtml(amount)}</span>${pct ? html`<span class="price-pnl">${pct}</span>` : ''}`;
 }
 
+/** thumbUrl() only applies to locally stored images (the _thumb variant). Sets with no local copy go
+ * through the proxy — there imgUrl(…, true) produces the scaled-down version, otherwise full resolution
+ * would load for a tile. No alt text: the tile is a button, its text already names the set. @param {Tile} s */
+function gridImage(s) {
+  const src = s.image_local || s.image_url || '';
+  if (!src) return html`<span class="image-ph" aria-hidden="true">${placeholderContent('set')}</span>`;
+  const thumb = imgUrl(thumbUrl(src) || src, true);
+  return imageTag({ src: thumb || src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' });
+}
+
+/** The date of the last purchase: when importing, the date added to the account was the same day for every
+ * set and said nothing. With several purchases (often within a household), the tile shows it is the most
+ * recent one. @param {Tile} s @param {string} buyFmt */
+function gridBuyText(s, buyFmt) {
+  const buys = Number(s.acq_count) || 0;
+  return buys > 1
+    ? html`<span>${tRaw('gallery.card.purchases', { n: buys })}</span> ${buyFmt}`
+    : html`<span>${tRaw('detail.added')}</span> ${buyFmt}`;
+}
+
+/** @param {Tile} s @param {unknown} condBadge @param {boolean} unknown */
+function gridBadges(s, condBadge, unknown) {
+  return html`
+          ${s.instructions?.length ? html`<span class="ibadge">${ico('list')}${s.instructions.length}</span>` : ''}
+          ${s.quantity > 1 ? html`<span class="qbadge">×${s.quantity}</span>` : ''}
+          ${condBadge}
+          ${isGift(s.avg_purchase_price ?? s.max_purchase_price) ? html`<span class="gift-badge">${tRaw('finance.gift')}</span>` : ''}
+          ${unknown ? html`<span class="unknown-badge" title="${tRaw('gallery.card.unknown_hint')}">${tRaw('gallery.card.unknown')}</span>` : ''}
+          ${ownerBadges(s)}
+        `;
+}
+
 /** @param {Tile} s */
 function gridCard(s) {
-  const src = s.image_local || s.image_url || '';
-  // thumbUrl() only applies to locally stored images (the _thumb variant). Sets with no local copy go
-  // through the proxy — there imgUrl(…, true) produces the scaled-down version, otherwise full
-  // resolution would load for a tile.
-  const thumb = src ? imgUrl(thumbUrl(src) || src, true) : null;
-  // No alt text: the tile is a button, its text already names the set.
-  const img = src
-    ? imageTag({ src: thumb || src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' })
-    : html`<span class="image-ph" aria-hidden="true">${placeholderContent('set')}</span>`;
+  const img = gridImage(s);
   // Without a loaded market price, the quantity-weighted purchase price, not the highest one.
   const price = priceLine(s);
   // The date of the last purchase: when importing, the date added to the account was the same day for
   // every set and said nothing. With several purchases (often within a household), the tile shows it is
   // the most recent one.
   const buyFmt = s.last_purchase ? fmtDate(s.last_purchase) : '';
-  const buys = Number(s.acq_count) || 0;
-  const buyText =
-    buys > 1
-      ? html`<span>${tRaw('gallery.card.purchases', { n: buys })}</span> ${buyFmt}`
-      : html`<span>${tRaw('detail.added')}</span> ${buyFmt}`;
+  const buyText = gridBuyText(s, buyFmt);
   // Condition: the server delivers the conditions present as an aggregate — one badge per condition, see
   // condBadges().
   const condBadge = condBadges(s);
@@ -391,14 +405,7 @@ function gridCard(s) {
       <div class="sname">${s.name || tRaw('common.unknown')}</div>
       <div class="smeta"${k.teil(0)}>
         <span class="smeta-text"${s.theme ? html` title="${s.theme}"` : ''}>${s.year || '—'}${s.theme ? html`${' · '}${s.theme}` : ''}</span>
-        <div class="sbadges">
-          ${s.instructions?.length ? html`<span class="ibadge">${ico('list')}${s.instructions.length}</span>` : ''}
-          ${s.quantity > 1 ? html`<span class="qbadge">×${s.quantity}</span>` : ''}
-          ${condBadge}
-          ${isGift(s.avg_purchase_price ?? s.max_purchase_price) ? html`<span class="gift-badge">${tRaw('finance.gift')}</span>` : ''}
-          ${unknown ? html`<span class="unknown-badge" title="${tRaw('gallery.card.unknown_hint')}">${tRaw('gallery.card.unknown')}</span>` : ''}
-          ${ownerBadges(s)}
-        </div>
+        <div class="sbadges">${gridBadges(s, condBadge, unknown)}</div>
       </div>
       <div class="price-badge"${k.teil(1)} data-price-for="${s.set_number}"${price ? '' : ' hidden'}>${price}</div>
       ${buyFmt ? html`<div class="tile-date"${k.teil(2)} title="${t('gallery.card.bought')}">${ico('calendar')} ${buyText}</div>` : html`<div class="tile-date" ${k.teil(2)}></div>`}

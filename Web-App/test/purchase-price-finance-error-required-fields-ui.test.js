@@ -67,13 +67,13 @@ test('N1 purchase price tile: neutral while loading, the addition only with data
   try {
     const titel = () => text(d.getElementById('fin-cost-basis-title'));
     const zusatz = () => text(d.getElementById('fin-cost-basis-sub'));
-    assert.equal(titel(), 'Kaufpreis', 'vor dem ersten Laden');
+    assert.equal(titel(), 'Kaufpreis', 'before the first load');
     assert.equal(zusatz(), '');
     anhalten = true;
     await reiter(w, 'finance');
     await warte(() => freigeben);
-    assert.equal(titel(), 'Kaufpreis', 'während des Ladens');
-    assert.equal(zusatz(), '', 'während des Ladens kein Zusatz');
+    assert.equal(titel(), 'Kaufpreis', 'while loading');
+    assert.equal(zusatz(), '', 'no addition while loading');
     freigeben?.(null);
     await ruhig();
     assert.equal(titel(), 'Kaufpreis (bewertete Positionen)');
@@ -136,11 +136,11 @@ test('N3 manually entered parts and minifigures: unit price with “je”', asyn
     await reiter(w, 'parts');
     await warte(() => d.querySelector('#manual-parts-list .man-price'));
     await ruhig();
-    assert.equal(text(d.querySelector('#manual-parts-list .man-price')), 'je 0,12 €', 'Teil');
+    assert.equal(text(d.querySelector('#manual-parts-list .man-price')), 'je 0,12 €', 'part');
     await reiter(w, 'minifigs');
     await warte(() => d.querySelector('#figs-list .man-price, #manual-figs-list .man-price'));
     await ruhig();
-    assert.equal(text(d.querySelector('.man-tile[data-arg="fig"] .man-price')), 'je 4,50 €', 'Figur');
+    assert.equal(text(d.querySelector('.man-tile[data-arg="fig"] .man-price')), 'je 4,50 €', 'figure');
   } finally {
     w.close();
   }
@@ -164,8 +164,8 @@ test('N4 login: empty required fields report at the field', async t => {
     await t.test('both empty', async () => {
       d.getElementById('btn-login').click();
       await takt(30);
-      assert.equal(logins(), 0, 'Server gefragt');
-      assert.equal(text(d.getElementById('lerr')), '', 'Sammelmeldung oben');
+      assert.equal(logins(), 0, 'server asked');
+      assert.equal(text(d.getElementById('lerr')), '', 'combined message at the top');
       for (const [id, meldung] of [
         ['lu', 'Bitte Benutzername oder E-Mail eingeben.'],
         ['lp', 'Bitte Passwort eingeben.'],
@@ -176,7 +176,7 @@ test('N4 login: empty required fields report at the field', async t => {
         assert.ok(ids.includes(`${id}-error`), `${id}: aria-describedby`);
         assert.equal(text(d.getElementById(`${id}-error`)), meldung);
       }
-      assert.equal(d.activeElement.id, 'lu', 'Fokus ins erste fehlerhafte Feld');
+      assert.equal(d.activeElement.id, 'lu', 'focus in the first faulty field');
       // The message stands below the password field, not between field and eye button.
       assert.equal(d.getElementById('lp-error').parentElement.classList.contains('secret-field'), false);
     });
@@ -207,7 +207,7 @@ test('N5 account: jump bar to all sections', async () => {
   try {
     await sicht(w, 'profile');
     const nav = d.querySelector('#tab-profile [role="navigation"].account-nav');
-    assert.ok(nav, 'keine Leiste');
+    assert.ok(nav, 'no bar');
     assert.equal(nav.getAttribute('aria-label'), 'Abschnitte');
     const links = [...nav.querySelectorAll('a')];
     assert.deepEqual(links.map(text), [
@@ -228,9 +228,9 @@ test('N5 account: jump bar to all sections', async () => {
       a.click();
       await takt(10);
       const ziel = d.getElementById(a.dataset.arg);
-      assert.equal(d.activeElement, ziel, `${text(a)}: Fokus auf der Überschrift`);
-      assert.ok(gerollt[0]?.contains(ziel), `${text(a)}: nicht hingerollt`);
-      assert.equal(w.location.hash, vorher, `${text(a)}: der Hash gehört dem Router`);
+      assert.equal(d.activeElement, ziel, `${text(a)}: focus on the heading`);
+      assert.ok(gerollt[0]?.contains(ziel), `${text(a)}: not scrolled there`);
+      assert.equal(w.location.hash, vorher, `${text(a)}: the hash belongs to the router`);
     }
   } finally {
     w.close();

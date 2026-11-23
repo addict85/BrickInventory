@@ -87,8 +87,8 @@ test('?thumb=1: original at once, the preview once in the background', { concurr
   const queue = () =>
     require('./helpers/sources')
       .testContext('images')
-      .faecher.slot('vorschauen', () => null);
-  const drained = () => bis(() => !queue() || (queue().laufend === 0 && queue()._thumbQueue.length === 0), 10000);
+      .compartments.slot('vorschauen', () => null);
+  const drained = () => bis(() => !queue() || (queue().running === 0 && queue()._thumbQueue.length === 0), 10000);
   // The first request fills the disk cache (and queues its own preview, which is removed again).
   assert.ok((await get()).equals(IMAGE));
   assert.ok(await bis(() => fs.existsSync(cacheFile)), 'not cached');
@@ -106,8 +106,8 @@ test('?thumb=1: original at once, the preview once in the background', { concurr
     // Until the background queue is empty: only then would a second preview have been written.
     const queue = require('./helpers/sources')
       .testContext('images')
-      .faecher.slot('vorschauen', () => null);
-    assert.ok(await bis(() => queue.laufend === 0 && queue._thumbQueue.length === 0, 5000), 'the queue does not drain');
+      .compartments.slot('vorschauen', () => null);
+    assert.ok(await bis(() => queue.running === 0 && queue._thumbQueue.length === 0, 5000), 'the queue does not drain');
     assert.equal(renames.filter(r => r === thumbFile).length, 1, renames.join('\n'));
   });
 });
@@ -174,14 +174,14 @@ test('one preview at a time, at most 40 waiting, gen=0 creates nothing', { concu
   const queue = () =>
     require('./helpers/sources')
       .testContext('images')
-      .faecher.slot('vorschauen', () => null);
+      .compartments.slot('vorschauen', () => null);
   const { queueThumb } = _req('src/images/proxyThumbs.js');
   let most = 0,
     waiting = 0;
   for (let i = 0; i < 60; i++) queueThumb(src, path.join(dir, `t${i}_thumb.jpg`));
   waiting = queue()._thumbQueue.length;
-  while (queue().laufend > 0 || queue()._thumbQueue.length > 0) {
-    most = Math.max(most, queue().laufend);
+  while (queue().running > 0 || queue()._thumbQueue.length > 0) {
+    most = Math.max(most, queue().running);
     await new Promise(r => setImmediate(r));
   }
   assert.equal(most, 1, 'more than one preview at a time');
@@ -201,7 +201,7 @@ test('one preview at a time, at most 40 waiting, gen=0 creates nothing', { concu
   await fetch(gen0).then(r => r.arrayBuffer());
   assert.ok(await bis(() => fs.existsSync(cacheFile)), 'not cached');
   await fetch(gen0).then(r => r.arrayBuffer());
-  await bis(() => queue().laufend === 0 && queue()._thumbQueue.length === 0);
+  await bis(() => queue().running === 0 && queue()._thumbQueue.length === 0);
   await t.test('gen=0 creates nothing', () => assert.equal(fs.existsSync(`${cacheFile}_thumb.jpg`), false));
 });
 

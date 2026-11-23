@@ -14,7 +14,7 @@ const EXTENSIONS = 'ts|js|sql|html|css|json|md|sh|ya?ml|kt|kts|xml|txt';
 const EARLIER = ['utils', 'handlers'];
 
 /** @param {string} web */
-function pruefe(web) {
+function check(web) {
   const repo = path.dirname(web);
   const folder = [web, repo]
     .flatMap(w =>
@@ -25,12 +25,12 @@ function pruefe(web) {
     )
     .filter(n => !['node_modules', 'dist', 'coverage', 'data', '.git'].includes(n))
     .concat(EARLIER);
-  const muster = new RegExp(
+  const pattern = new RegExp(
     `(?<![\\w./-])((?:${folder.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})/[\\w./-]*\\w\\.(?:${EXTENSIONS}))\\b`,
     'g',
   );
   /** @param {string} p @param {string} fileName */
-  const gibt = (p, fileName) =>
+  const exists = (p, fileName) =>
     [web, repo, path.dirname(fileName)].some(
       w => fs.existsSync(path.join(w, p)) || (p.endsWith('.js') && fs.existsSync(path.join(w, `${p.slice(0, -3)}.ts`))),
     );
@@ -39,11 +39,11 @@ function pruefe(web) {
   const sources = [];
   /** @type {string[]} */
   const docs = [path.join(web, 'README.md')];
-  (function lauf(/** @type {string} */ d) {
+  (function run(/** @type {string} */ d) {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) {
-        if (!OUTER_BEFORE.has(e.name)) lauf(p);
+        if (!OUTER_BEFORE.has(e.name)) run(p);
       } else if (/\.(ts|js|sh)$/.test(e.name) && !e.name.startsWith('app.bundle.js')) sources.push(p);
       else if (e.name.endsWith('.md') && path.relative(web, p).startsWith(`docs${path.sep}`)) docs.push(p);
     }
@@ -51,22 +51,22 @@ function pruefe(web) {
 
   /** @type {string[]} */
   const tot = [];
-  let gesehen = 0;
-  /** @param {string} fileName @param {(z: string) => string} teil the part of a line to check */
-  const lies = (fileName, teil) =>
+  let seen = 0;
+  /** @param {string} fileName @param {(z: string) => string} part the part of a line to check */
+  const read = (fileName, part) =>
     fs
       .readFileSync(fileName, 'utf8')
       .split('\n')
       .forEach((z, i) => {
-        for (const m of teil(z).matchAll(muster)) {
+        for (const m of part(z).matchAll(pattern)) {
           const filePath = m[1] ?? '';
-          gesehen++;
-          if (!gibt(filePath, fileName)) tot.push(`${path.relative(web, fileName)}:${i + 1} ${filePath}`);
+          seen++;
+          if (!exists(filePath, fileName)) tot.push(`${path.relative(web, fileName)}:${i + 1} ${filePath}`);
         }
       });
-  for (const f of sources) lies(f, f.endsWith('.sh') ? commentSh : commentJs);
-  for (const f of docs) if (fs.existsSync(f)) lies(f, z => z);
-  return { tot, gesehen, dateien: sources.length + docs.length };
+  for (const f of sources) read(f, f.endsWith('.sh') ? commentSh : commentJs);
+  for (const f of docs) if (fs.existsSync(f)) read(f, z => z);
+  return { tot, seen, files: sources.length + docs.length };
 }
 
 /** Only the comment part: a comment line entirely, otherwise what stands behind ` // `
@@ -82,12 +82,12 @@ function commentSh(/** @type {string} */ z) {
   return i === -1 ? '' : z.slice(i);
 }
 
-module.exports = { pruefe };
+module.exports = { check };
 
 if (require.main === module) {
   const web = path.resolve(process.argv[2] || path.join(__dirname, '..'));
-  const { tot, gesehen, dateien } = pruefe(web);
+  const { tot, seen, files } = check(web);
   for (const z of tot) console.log(z);
-  console.error(`[verweise] ${gesehen} Pfadverweise in ${dateien} Dateien, ${tot.length} tot`);
+  console.error(`[verweise] ${seen} Pfadverweise in ${files} Dateien, ${tot.length} tot`);
   process.exitCode = tot.length ? 1 : 0;
 }

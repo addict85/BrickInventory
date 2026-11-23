@@ -49,14 +49,14 @@ test('login and body limit in the real chain', { concurrency: 1 }, async t => {
     assert.notEqual(
       (await post(ohne.base, '/api/v2/auth/login', json(1024))).status,
       413,
-      'ein kleiner Rumpf muss durchkommen, sonst bewiese die 413 oben nichts',
+      'a small body must get through, otherwise the 413 above would prove nothing',
     );
   });
 
   await t.test('authenticated: 20 KB go through, 300 KB do not', async () => {
     const klein = await post(mit.base, '/api/v2/sets', json(20 * 1024));
     assert.notEqual(klein.status, 413);
-    assert.notEqual(klein.status, 401, 'die gestellte Sitzung kam nicht an');
+    assert.notEqual(klein.status, 401, 'the provided session did not arrive');
     assert.equal((await post(mit.base, '/api/v2/sets', json(300 * 1024))).status, 413);
   });
 });

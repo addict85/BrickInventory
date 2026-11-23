@@ -2,7 +2,7 @@ import { savePrice, cacheUsable, priceFromCache, parallelLimit } from './finance
 import { reportError, errorMessage, logAndContinue } from '../infra/error';
 import { JobMove, type JobContext } from '../jobQueue';
 import { withoutBricklinkPrice } from '../infra/setNumber';
-import { hatPrice } from '../catalog';
+import { hasPrice } from '../catalog';
 import { BricklinkNotReachable } from '../externalSources';
 import { receiptsSessionLock } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
@@ -74,7 +74,7 @@ async function fetchAndCachePrice(
   // the same set would cost two fetches every time.
   const p = await savePrice(k, setNumber, condition, currency, g);
 
-  if (!hatPrice({ avg_price: p.avg, qty_avg_price: p.qavg })) {
+  if (!hasPrice({ avg_price: p.avg, qty_avg_price: p.qavg })) {
     const rl2 = await k.externalSources.quotaFree('bricklink');
     if (rl2.allowed) {
       try {
@@ -102,17 +102,29 @@ interface RunState {
 }
 
 /** Wishlist items too: /price-history only reads the cache; without this run their history would stay empty. */
-async function pricePlacesJeAccount(k: FinancesContext): Promise<Map<number, string[]>> {
+async function pricePlacesPerAccount(k: FinancesContext): Promise<Map<number, string[]>> {
   const own = await k.priceRun.inventoryPlaces();
   const wanted = await attempts('preis-job:gewuenschte', k.priceRun.wantedListsPlaces());
   if (!wanted.ok) log('Merkliste nicht lesbar — nur eigene Sets');
-  const jeAccount = new Map<number, string[]>();
-  for (const r of [...own, ...(wanted.ok ? wanted.wert : [])].sort((a, b) => a.user_id - b.user_id)) {
-    const list = jeAccount.get(r.user_id) ?? [];
+  const perAccount = new Map<number, string[]>();
+  for (const r of [...own, ...(wanted.ok ? wanted.value : [])].sort((a, b) => a.user_id - b.user_id)) {
+    const list = perAccount.get(r.user_id) ?? [];
     if (!list.includes(r.set_number)) list.push(r.set_number);
-    jeAccount.set(r.user_id, list);
+    perAccount.set(r.user_id, list);
   }
-  return jeAccount;
+  return perAccount;
+}
+
+/** BrickLink at its daily limit or unreachable: said once per run, the rest follows next run. */
+function noteUnavailable(st: RunState, r: 'rate_limited' | 'nicht_erreichbar'): void {
+  const limit = r === 'rate_limited';
+  if (limit ? !st.limitReached : !st.notReachable)
+    log(
+      `${limit ? 'BrickLink-Tageslimit erreicht' : 'BrickLink nicht erreichbar (Wartung)'} — die übrigen Sets folgen im nächsten Lauf`,
+    );
+  if (limit) st.limitReached = true;
+  else st.notReachable = true;
+  st.omitted++;
 }
 
 /** A set in all conditions it needs; the result counts in `st`. */
@@ -128,19 +140,13 @@ async function refreshSet(
   for (const c of states) {
     try {
       const r = await fetchAndCachePrice(k, sn, c, 'sold', currency, ttl);
+      if (r === 'rate_limited' || r === 'nicht_erreichbar') {
+        noteUnavailable(st, r);
+        return 'rate_limited';
+      }
       if (r === 'updated') {
         st.updated++;
         last = 'updated';
-      } else if (r === 'rate_limited' || r === 'nicht_erreichbar') {
-        const limit = r === 'rate_limited';
-        if (limit ? !st.limitReached : !st.notReachable)
-          log(
-            `${limit ? 'BrickLink-Tageslimit erreicht' : 'BrickLink nicht erreichbar (Wartung)'} — die übrigen Sets folgen im nächsten Lauf`,
-          );
-        if (limit) st.limitReached = true;
-        else st.notReachable = true;
-        st.omitted++;
-        return 'rate_limited';
       } else if (last !== 'updated') st.skipped++;
     } catch (e) {
       st.errors++;
@@ -157,7 +163,7 @@ async function refreshAccount(kx: FinancesContext, userId: number, setNumbers: s
   const ttlHours = (await kx.settings.globalValue('price_cache_ttl', '24')) || '24';
   const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
   // Three queries per account instead of per set.
-  const states = await statesJeSet(kx, userId, valid);
+  const states = await statesPerSet(kx, userId, valid);
   const tasks = valid.map(sn => async () => {
     st.current++;
     k?.signal.throwIfAborted();
@@ -176,15 +182,15 @@ async function refreshAccount(kx: FinancesContext, userId: number, setNumbers: s
 async function afterTheRun(k: FinancesContext, job?: JobContext) {
   log('Writing daily price_history snapshot from price_cache...');
   const state = await attempts('preis-job:tagesstand', k.priceRun.writeDailyStatus());
-  if (state.ok) log(`Daily snapshot: ${state.wert} price history entries inserted`);
+  if (state.ok) log(`Daily snapshot: ${state.value} price history entries inserted`);
   const alerts = await attempts('preis-job:preisalarme', async () => {
     const waiting = await k.priceRun.setsWithAlarm();
     let reported = 0;
     for (const sn of waiting) reported += await checkSet(k, sn, k.mail);
     if (waiting?.length) log(`Preisalarm: ${waiting.length} Sets geprueft, ${reported} gemeldet`);
   });
-  const ohne = [state.ok ? null : 'tagesstand', alerts.ok ? null : 'preisalarme'].filter(x => x !== null);
-  if (ohne.length) await job?.progress({ text: `ohne ${ohne.join(', ')}`, ohne });
+  const without = [state.ok ? null : 'tagesstand', alerts.ok ? null : 'preisalarme'].filter(x => x !== null);
+  if (without.length) await job?.progress({ text: `ohne ${without.join(', ')}`, without });
 }
 
 async function reportResult(kx: FinancesContext, st: RunState, duration: number, k?: JobContext) {
@@ -193,7 +199,7 @@ async function reportResult(kx: FinancesContext, st: RunState, duration: number,
     `Done: ${st.updated} updated, ${st.skipped} skipped, ${st.errors} errors${st.omitted ? `, ${st.omitted} wegen ${reason} ausgelassen` : ''} — ${(duration / 1000).toFixed(1)}s`,
   );
   await rememberStatus(kx, {
-    lastRun: kx.clock.datum().toISOString(),
+    lastRun: kx.clock.date().toISOString(),
     lastDuration: duration,
     lastUpdated: st.updated,
     lastErrors: st.errors,
@@ -218,16 +224,16 @@ async function runPriceRefresh(kx: FinancesContext, k?: JobContext) {
   const st: RunState = { updated: 0, skipped: 0, errors: 0, omitted: 0, current: 0, total: 0 };
   await k?.progress({ done: 0, total: 0, text: 'Starte…' });
   try {
-    const jeAccount = await pricePlacesJeAccount(kx);
-    st.total = [...jeAccount.values()].reduce((n, l) => n + l.length, 0);
+    const perAccount = await pricePlacesPerAccount(kx);
+    st.total = [...perAccount.values()].reduce((n, l) => n + l.length, 0);
     if (!st.total) {
       log('No sets, nothing to do');
-      await rememberStatus(kx, { lastRun: kx.clock.datum().toISOString() });
+      await rememberStatus(kx, { lastRun: kx.clock.date().toISOString() });
       return;
     }
     log(`Starting: ${st.total} set-slots`);
     await k?.progress({ done: 0, total: st.total, text: `0/${st.total} Sets` });
-    for (const [userId, setNumbers] of jeAccount) await refreshAccount(kx, userId, setNumbers, st, k);
+    for (const [userId, setNumbers] of perAccount) await refreshAccount(kx, userId, setNumbers, st, k);
     await reportResult(kx, st, kx.clock.now() - t0, k);
     await afterTheRun(kx, k);
   } catch (e) {
@@ -241,7 +247,7 @@ async function runPriceRefresh(kx: FinancesContext, k?: JobContext) {
 
 /** Mixed sets need both prices, pure ones one; one version for nightly run and capture.
  * @param hintCondition condition of an acquisition that does not exist yet */
-async function statesJeSet(
+async function statesPerSet(
   k: FinancesContext,
   userId: number,
   setNumbers: string[],
@@ -285,7 +291,7 @@ async function conditionsNeededFor(
   userId: number,
   hintCondition: string | null = null,
 ): Promise<string[]> {
-  return (await statesJeSet(k, userId, [setNumber], hintCondition)).get(setNumber) ?? ['N'];
+  return (await statesPerSet(k, userId, [setNumber], hintCondition)).get(setNumber) ?? ['N'];
 }
 
 async function fetchPriceForSet(
@@ -336,4 +342,4 @@ async function rememberStatus(k: FinancesContext, fresh: Record<string, unknown>
     .catch(logAndContinue('preis-job:stand'));
 }
 
-export { runPriceRefresh, fetchPriceForSet, fetchAndCachePrice, statesJeSet, conditionsNeededFor };
+export { runPriceRefresh, fetchPriceForSet, fetchAndCachePrice, statesPerSet, conditionsNeededFor };

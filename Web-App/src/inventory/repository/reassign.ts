@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 
-export type Art = 'part' | 'fig';
+export type Kind = 'part' | 'fig';
 const TAB = { part: 'parts', fig: 'minifigs' } as const;
 const ERF = { part: 'part_acquisitions', fig: 'minifig_acquisitions' } as const;
 const KEYS = { part: 'part_number = $2 AND color_id = $3', fig: 'fig_number = $2' } as const;
@@ -17,7 +17,7 @@ export type ManualEntry = {
 
 /** Under the request's key: otherwise moving would book the quantity of a foreign
  * position at the target under the request's key. */
-export function manualEntry(tx: DbInterface, kind: Art, id: number, uid: number, key: (string | number)[]) {
+export function manualEntry(tx: DbInterface, kind: Kind, id: number, uid: number, key: (string | number)[]) {
   const condition = kind === 'part' ? 'part_number = $3 AND color_id = $4' : 'fig_number = $3';
   return tx.get<ManualEntry>(
     `SELECT id, quantity, unit_price, COALESCE(condition,'N') AS condition, created_at, price_estimated, currency
@@ -26,7 +26,7 @@ export function manualEntry(tx: DbInterface, kind: Art, id: number, uid: number,
   );
 }
 
-export function manualRow(tx: DbInterface, kind: Art, uid: number, key: (string | number)[]) {
+export function manualRow(tx: DbInterface, kind: Kind, uid: number, key: (string | number)[]) {
   return tx.get<{ id: number; part_number?: string; color_id?: number; fig_number?: string }>(
     `SELECT * FROM ${TAB[kind]} WHERE user_id = $1 AND ${KEYS[kind]} AND COALESCE(source,'set') = 'manual'`,
     [uid, ...key],
@@ -35,7 +35,7 @@ export function manualRow(tx: DbInterface, kind: Art, uid: number, key: (string 
 
 export async function removeManual(
   tx: DbInterface,
-  kind: Art,
+  kind: Kind,
   uid: number,
   key: (string | number)[],
   row: number,

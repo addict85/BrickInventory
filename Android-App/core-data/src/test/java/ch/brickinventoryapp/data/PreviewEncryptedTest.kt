@@ -29,7 +29,7 @@ import java.security.MessageDigest
 class PreviewEncryptedTest {
 
     private val root = File(System.getProperty("java.io.tmpdir"), "bim-vorschau-${System.nanoTime()}")
-    private val address = "https://brick.example/api/v1/images/set/75192-1?thumb=1"
+    private val address = "https://brick.example/api/v2/images/set/75192-1?thumb=1"
     private val image = "JPEG-75192-Millennium-Falcon".toByteArray()
 
     private fun memory() = PreviewMemory({ root }, StoreCipher { ByteArray(32) { 3 } }) { ByteArray(32) { 13 } }
@@ -80,7 +80,7 @@ class PreviewEncryptedTest {
     fun `a file under a foreign name does not count and is discarded`() {
         val s = memory()
         s.write(address, image)
-        val other = "https://brick.example/api/v1/images/set/10179-1?thumb=1"
+        val other = "https://brick.example/api/v2/images/set/10179-1?thumb=1"
         val real = root.walkTopDown().single { it.isFile }
         s.write(other, "x".toByteArray())
         val target = root.walkTopDown().single { it.isFile && it != real }

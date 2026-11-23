@@ -47,38 +47,38 @@ test('services resolve the view', { concurrency: 1 }, async t => {
   const nummern = async sicht => (await readSets(sicht, {})).sets.map(s => s.set_number).sort();
 
   await t.test('a view selects the accounts in the service', async () => {
-    assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1', '75192-1']);
-    assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
-    assert.deepEqual(await nummern({ nutzer: haupt, konten: 'subs' }), ['75192-1']);
+    assert.deepEqual(await nummern({ user: haupt }), ['10179-1', '75192-1']);
+    assert.deepEqual(await nummern({ user: haupt, accounts: 'own' }), ['10179-1']);
+    assert.deepEqual(await nummern({ user: haupt, accounts: 'subs' }), ['75192-1']);
     assert.deepEqual(
-      await nummern({ nutzer: sub, konten: String(haupt) }),
+      await nummern({ user: sub, accounts: String(haupt) }),
       ['75192-1'],
-      'ein Unterkonto sieht über eine fremde ID nicht ins Hauptkonto',
+      'a sub-account does not see into the main account via a foreign ID',
     );
   });
 
   await t.test('deleting follows the account selection, in the write scope', async () => {
     assert.equal(
-      await deleteSetFor({ nutzer: sub, konten: String(haupt) }, '10179-1'),
+      await deleteSetFor({ user: sub, accounts: String(haupt) }, '10179-1'),
       null,
-      'das Unterkonto löschte ein Set des Hauptkontos',
+      'the sub-account deleted a set of the main account',
     );
     assert.equal(
-      await deleteSetFor({ nutzer: haupt, konten: 'subs' }, '10179-1'),
+      await deleteSetFor({ user: haupt, accounts: 'subs' }, '10179-1'),
       null,
-      'mit „Unterkonten“ gewählt traf das Löschen das eigene Set',
+      'with „Unterkonten“ selected the deletion hit the own set',
     );
-    assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
-    assert.ok(await deleteSetFor({ nutzer: haupt, konten: 'subs' }, '75192-1'));
-    assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1']);
+    assert.deepEqual(await nummern({ user: haupt, accounts: 'own' }), ['10179-1']);
+    assert.ok(await deleteSetFor({ user: haupt, accounts: 'subs' }, '75192-1'));
+    assert.deepEqual(await nummern({ user: haupt }), ['10179-1']);
   });
 
   await t.test('a sub-account does not write for its main account', async () => {
     assert.equal(await H.writeTarget(haupt, sub), sub);
-    assert.equal(await H.writeTarget(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
+    assert.equal(await H.writeTarget(sub, undefined), sub, 'without a request the own account');
     await assert.rejects(
       H.writeTarget(sub, haupt),
-      (/** @type {any} */ e) => e.code === 'no_write_access' && e.kind === 'verboten',
+      (/** @type {any} */ e) => e.code === 'no_write_access' && e.kind === 'forbidden',
     );
   });
 });

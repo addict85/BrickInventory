@@ -4,27 +4,27 @@ import type { JobKind, PayloadInput } from './jobs';
 import { wakeWorker, pullBefore } from './service';
 import type { JobsContext } from './context';
 
-/** @returns vorgemerkt false if the key was already queued `hoechstens` times */
+/** @returns queued false if the key was already queued `atMost` times */
 export async function rememberBefore<A extends JobKind>(
   k: JobsContext,
   kind: A,
   key: string,
-  payload: (versuch: number) => PayloadInput<A>,
-  o: { dueAb: Date; error: string; hoechstens: number },
-): Promise<{ versuch: number; vorgemerkt: boolean }> {
-  const versuch = (await k.jobs.highestCounter(key, 'versuch')) + 1;
-  if (versuch > o.hoechstens) {
+  payload: (attempt: number) => PayloadInput<A>,
+  o: { dueFrom: Date; error: string; atMost: number },
+): Promise<{ attempt: number; queued: boolean }> {
+  const attempt = (await k.jobs.highestCounter(key, 'versuch')) + 1;
+  if (attempt > o.atMost) {
     await k.jobs.openDelete(key);
-    return { versuch, vorgemerkt: false };
+    return { attempt, queued: false };
   }
-  const n = k.arten.check(kind, payload(versuch));
+  const n = k.kinds.check(kind, payload(attempt));
   await k.jobs.writeResubmission(kind, key, n as object, {
-    dueAb: o.dueAb,
+    dueFrom: o.dueFrom,
     error: o.error,
     maxAttempts: 3,
   });
   await wakeWorker(k, kind);
-  return { versuch, vorgemerkt: true };
+  return { attempt, queued: true };
 }
 
 export async function forget(k: JobsContext, key: string): Promise<void> {
@@ -44,7 +44,7 @@ export function waiting(k: JobsContext, kind: JobKind) {
   return k.jobs.waitingTheKind(kind);
 }
 
-export async function numbers(k: JobsContext, kind: JobKind): Promise<{ wartend: number; faellig: number }> {
+export async function numbers(k: JobsContext, kind: JobKind): Promise<{ waiting: number; due: number }> {
   const z = await k.jobs.numbersTheKind(kind);
-  return { wartend: z?.wartend ?? 0, faellig: z?.faellig ?? 0 };
+  return { waiting: z?.waiting ?? 0, due: z?.due ?? 0 };
 }

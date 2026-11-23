@@ -106,7 +106,7 @@ async function withFactor(uid) {
     uid,
     zf.hotp(zf.fromBase32(decrypt(z.secret, zf.secondFactorContext(uid))), zf.timeStep()),
   );
-  assert.ok(Array.isArray(codes), 'Vorbedingung: Faktor active');
+  assert.ok(Array.isArray(codes), 'Precondition: factor active');
   return codes;
 }
 
@@ -180,17 +180,17 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
       assert.deepEqual(
         [withoutCode.status, withoutCode.body.code],
         [400, 'second_factor_required'],
-        `${schluessel} ohne Code`,
+        `${schluessel} without a code`,
       );
       const falsch = await callFn(basis, schluessel, { ...rumpf, [code]: '000000' });
       assert.deepEqual(
         [falsch.status, falsch.body.code],
         [400, 'second_factor_wrong'],
-        `${schluessel} mit falschem Code`,
+        `${schluessel} with a wrong code`,
       );
     });
   }
-  assert.ok(markiert.length >= PFLICHT.length, `nur ${markiert.length} markierte Routen`);
+  assert.ok(markiert.length >= PFLICHT.length, `only ${markiert.length} marked routes`);
 
   await t.test('with code it works, without a factor as before', async () => {
     const r = await callFn(basis, 'DELETE /api/v2/auth/users/:id/second-factor', {
@@ -198,7 +198,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
       code: codes[0],
     });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.ok(r.body.effective_at, 'angekündigt, nicht sofort');
+    assert.ok(r.body.effective_at, 'announced, not immediate');
     assert.equal(await require('./helpers/admin').takeoverNow(_req, db, ziel), 1);
     assert.equal(await zf.isActive(ziel), false);
     const withoutFactor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
@@ -221,13 +221,13 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     assert.deepEqual(
       treffer,
       ['src/account/bcryptPool.ts'],
-      'nur der Rückfall des Pools; alle anderen über passwordFits()',
+      'only the fallback of the pool; all others via passwordFits()',
     );
     // argon2 verify() would likewise bypass login and confirmation.
     const argon2 = dateien
       .filter(f => /['"]@node-rs\/argon2['"]/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
       .map(f => path.relative(ROOT, f).replace(/\\/g, '/'));
-    assert.deepEqual(argon2, ['src/account/passwordHash.ts'], 'argon2 nur über passwordFits()/hashPassword()');
+    assert.deepEqual(argon2, ['src/account/passwordHash.ts'], 'argon2 only via passwordFits()/hashPassword()');
   });
 
   await t.test('no confirmation without the brand', async () => {
@@ -236,7 +236,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     delete route.confirmation;
     try {
       const r = await callFn(basis, 'DELETE /api/v2/inventory', { password: PASS, code: codes[1] });
-      assert.equal(r.status, 500, `ohne Marke keine Bestätigung: ${JSON.stringify(r.body)}`);
+      assert.equal(r.status, 500, `no confirmation without a marker: ${JSON.stringify(r.body)}`);
     } finally {
       route.confirmation = marke;
     }

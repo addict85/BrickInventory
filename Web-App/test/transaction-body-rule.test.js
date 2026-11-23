@@ -74,7 +74,7 @@ test('the rule finds every outer access in the body, allows the parameter and do
   assert.deepEqual(
     f.filter(x => !x.datei.endsWith('verboten.ts')),
     [],
-    'erlaubt den Parameter, gleichnamige Felder und Rümpfe ohne Pfeil',
+    'allows the parameter, fields of the same name and bodies without an arrow',
   );
 });
 

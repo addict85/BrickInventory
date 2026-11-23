@@ -46,7 +46,7 @@ test('user menu: keyboard following the menu pattern', { timeout: 120_000 }, asy
     && document.getElementById('btn-umenu').getAttribute('aria-expanded') === 'true'`);
   const entries = await b.auswerten(`[...document.querySelectorAll('#umenu-pop [role=menuitem]')]
     .filter(e => e.style.display !== 'none').map(e => e.id || e.getAttribute('data-arg'))`);
-  assert.ok(entries.length >= 8, `zu wenige Einträge: ${entries}`);
+  assert.ok(entries.length >= 8, `too few entries: ${entries}`);
 
   await b.auswerten(`document.getElementById('btn-umenu').focus(); true`);
   await taste('Enter');
@@ -85,7 +85,7 @@ test('user menu: keyboard following the menu pattern', { timeout: 120_000 }, asy
       await b.auswerten(`document.activeElement.classList.contains('ptitle')
       && !!document.activeElement.closest('#tab-${entries[1]}')`),
       true,
-      `Fokus auf ${await fokus()}`,
+      `focus on ${await fokus()}`,
     );
   });
 });

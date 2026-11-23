@@ -40,13 +40,13 @@ test('template, button and info box draw in the passed theme', () => {
     ['infoBox', th => infoBox('Hinweis', th)],
   ])) {
     const withBrick = bau(brick);
-    assert.ok(withBrick.includes(brick.primary) || withBrick.includes(brick.bg), `${name}: das Design kommt nicht an`);
+    assert.ok(withBrick.includes(brick.primary) || withBrick.includes(brick.bg), `${name}: the design does not arrive`);
     assert.ok(
       !withBrick.includes(classic.primary) && !withBrick.includes(classic.bg),
-      `${name}: feste Farbe von classic`,
+      `${name}: fixed colour of classic`,
     );
     // Without a setting classic applies: a mail should never fail because of the theme.
-    assert.equal(bau(undefined), bau(classic), `${name}: Vorgabe ist nicht classic`);
+    assert.equal(bau(undefined), bau(classic), `${name}: the default is not classic`);
   }
 });
 

@@ -26,7 +26,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Create a set — with progress, like the web app via /api/v1/sets/add-stream
+ * Create a set — with progress, like the web app via /api/v2/sets/add-stream
  * (fetch master data, load image, done), so that with a large set one sees
  * what happens. Via [sseStream] like CSV import and PDF job: one reader for all streams.
  */
@@ -48,7 +48,7 @@ internal class SetCreateSseClient @Inject constructor(
     ): Flow<SetCreateStep> {
         // Address and token are set by the client's guard, as for every fetch.
         val request = Request.Builder()
-            .url("${PLACEHOLDER_BASE}api/v1/sets/add-stream")
+            .url("${PLACEHOLDER_BASE}api/v2/sets/add-stream")
             .header("Accept", "text/event-stream")
             .post(createBody(setNumber, quantity, purchasePrice, condition, ownerUserId, storage))
             .build()
@@ -141,6 +141,6 @@ internal fun AddSetResponse.asRecorded() = SetRecorded(
     name = name,
     created = action == "added",
     present = action == "exists",
-    catalogOpen = katalogOffen,
-    supplementPending = ergaenzung == "ausstehend",
+    catalogOpen = catalogPending,
+    supplementPending = supplement == "pending",
 )

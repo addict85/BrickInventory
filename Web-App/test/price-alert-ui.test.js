@@ -56,7 +56,7 @@ async function detail(antworten = {}) {
   Object.assign(knopf.dataset, { click: 'openModal', arg: SN });
   o.d.body.append(knopf);
   knopf.click();
-  assert.ok(await warte(() => o.d.getElementById('m-alert-val'), 4000), 'kein Alarmfeld im Set-Detail');
+  assert.ok(await warte(() => o.d.getElementById('m-alert-val'), 4000), 'no alert field in the set detail');
   await o.ruhig();
   return o;
 }
@@ -68,7 +68,7 @@ const tap = (o, wert) => {
 };
 
 test("web app: saved while typing, debounced with the app's idle time", async () => {
-  assert.ok(REST >= 300, `RUHE_MS der App nicht gefunden (${REST})`);
+  assert.ok(REST >= 300, `RUHE_MS of the app not found (${REST})`);
   const o = await detail();
   try {
     for (const w of ['2', '24', '249']) {
@@ -76,16 +76,16 @@ test("web app: saved while typing, debounced with the app's idle time", async ()
       await takt(REST / 4);
     }
     await takt((REST * 3) / 4 - 120);
-    assert.deepEqual(writing(o), [], 'gespeichert, bevor die Ruhezeit um war');
-    assert.ok(await warte(() => writing(o).length > 0, 400), 'nicht in der Ruhezeit der App gespeichert');
+    assert.deepEqual(writing(o), [], 'saved before the quiet period was over');
+    assert.ok(await warte(() => writing(o).length > 0, 400), "not saved within the app's quiet period");
     await takt(REST);
     const [put, ...mehr] = writing(o);
-    assert.equal(mehr.length, 0, `${mehr.length + 1} Schreibaufrufe statt einem`);
+    assert.equal(mehr.length, 0, `${mehr.length + 1} write calls instead of one`);
     assert.equal(put.method, 'PUT');
     assert.deepEqual(JSON.parse(put.body), { direction: 'below', threshold: 249, condition: 'N' });
     assert.ok(
       await warte(() => o.d.getElementById('m-alert-state').textContent === de['detail.alert_fired']),
-      `der Merker zeigt „${o.d.getElementById('m-alert-state').textContent}“`,
+      `the marker shows „${o.d.getElementById('m-alert-state').textContent}“`,
     );
   } finally {
     o.w.close();
@@ -117,12 +117,12 @@ test('web app: an empty field deletes, a condition change only loads', async () 
     condition.value = 'U';
     condition.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await o.ruhig();
-    assert.deepEqual(writing(o), [], 'ein Zustandswechsel schreibt');
+    assert.deepEqual(writing(o), [], 'a state change writes');
     condition.value = 'N';
     condition.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await o.ruhig();
     tap(o, '');
-    assert.ok(await warte(() => writing(o).length === 1, REST + 1000), 'nichts gelöscht');
+    assert.ok(await warte(() => writing(o).length === 1, REST + 1000), 'nothing deleted');
     assert.equal(writing(o)[0].method, 'DELETE');
     assert.match(writing(o)[0].url, /condition=N$/);
   } finally {
@@ -142,17 +142,17 @@ test('web app: open alerts — the first visit only remembers, afterwards the no
   try {
     await erst.ruhig();
     const abruf = erst.aufrufe.filter(a => a.url.includes('/v2/alerts/pending'));
-    assert.equal(abruf.length, 1, 'beim Öffnen nicht nachgefragt');
+    assert.equal(abruf.length, 1, 'not asked on opening');
     assert.doesNotMatch(abruf[0].url, /since=/);
     assert.deepEqual(
       meldungen(erst).filter(m => m.includes(SN)),
       [],
-      'beim ersten Besuch gemeldet',
+      'reported on the first visit',
     );
     assert.equal(
       erst.w.localStorage.getItem(`bim_alert_seen_${ANMELDUNG['/v2/auth/me'].user.id}`),
       JETZT,
-      'nicht die Marke des Servers',
+      "not the server's marker",
     );
   } finally {
     erst.w.close();
@@ -166,7 +166,7 @@ test('web app: open alerts — the first visit only remembers, afterwards the no
   try {
     await dann.ruhig();
     assert.ok(dann.aufrufe.some(a => a.url.includes('/v2/alerts/pending?since=2026-11-09T08%3A00%3A00Z')));
-    assert.ok(await warte(() => meldungen(dann).some(m => m.includes(SN))), 'keine Meldung');
+    assert.ok(await warte(() => meldungen(dann).some(m => m.includes(SN))), 'no message');
     // Currency of the alert, two decimals, amount as a currency amount of the language („199,50 CHF“),
     // like Alarmabholung.text() of the app.
     const geld = v => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'CHF' }).format(v);

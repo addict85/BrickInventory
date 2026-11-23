@@ -12,8 +12,8 @@ import { processWide } from './processWide';
 const V1 = 'v1:',
   V2 = 'v2:';
 /** The keys, read and derived once. */
-const S = processWide('datenSchluessel', () => ({
-  geladen: null as Buffer | null,
+const S = processWide('dataKey', () => ({
+  loaded: null as Buffer | null,
   alt: undefined as Buffer | null | undefined,
   altV2: null as Buffer | null,
   v2: null as Buffer | null,
@@ -53,12 +53,12 @@ function warnAlterLocation(alt: string, fresh: string): void {
 /** Order: DATA_KEY, the own file, the old file in the data folder
  * (with a warning); if everything is missing, the own file is created. */
 export function dataKey(): Buffer {
-  if (S.geladen) return S.geladen;
-  const env = config().datenSchluessel;
+  if (S.loaded) return S.loaded;
+  const env = config().dataKey;
   if (env) {
     const k = Buffer.from(env, 'base64');
     if (k.length !== 32) throw new Error('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');
-    S.geladen = k;
+    S.loaded = k;
     return k;
   }
   const file = keyFile(),
@@ -74,12 +74,12 @@ export function dataKey(): Buffer {
       console.warn(
         `⚠️  [geheimnis] ${alt} ist eine Kopie von ${file} und liegt in jeder Sicherung von data/ — bitte löschen.`,
       );
-    S.geladen = k;
+    S.loaded = k;
     return k;
   }
   if (altK) {
     warnAlterLocation(alt, file);
-    S.geladen = altK;
+    S.loaded = altK;
     return altK;
   }
   const fresh = crypto.randomBytes(32);
@@ -96,7 +96,7 @@ export function dataKey(): Buffer {
   } finally {
     fs.rmSync(tmp, { force: true });
   }
-  S.geladen = result;
+  S.loaded = result;
   return result;
 }
 
@@ -171,8 +171,8 @@ function warn(was: string): void {
   );
 }
 
-export function isEncrypted(wert: unknown): boolean {
-  return typeof wert === 'string' && wert.startsWith(V2);
+export function isEncrypted(value: unknown): boolean {
+  return typeof value === 'string' && value.startsWith(V2);
 }
 
 export function encrypt(plaintext: string | null | undefined, k: Context): string | null {
@@ -181,14 +181,14 @@ export function encrypt(plaintext: string | null | undefined, k: Context): strin
 }
 
 /** Only v2: plaintext and v1 are read only by the re-encryption at startup (readOldValue). */
-export function decrypt(wert: string | null | undefined, k: Context): string | null {
-  if (wert === null || wert === undefined) return null;
-  if (wert === '') return '';
-  if (!isEncrypted(wert)) {
+export function decrypt(value: string | null | undefined, k: Context): string | null {
+  if (value === null || value === undefined) return null;
+  if (value === '') return '';
+  if (!isEncrypted(value)) {
     warn('Ein gespeicherter Wert ohne v2-Verschlüsselung');
     return null;
   }
-  const raw = Buffer.from(wert.slice(V2.length), 'base64');
+  const raw = Buffer.from(value.slice(V2.length), 'base64');
   const plain = open(v2Key(), raw, k) ?? withAltKey(raw, k);
   if (plain === null) warn('Ein gespeichertes Geheimnis');
   return plain === null ? null : plain.toString('utf8');
@@ -200,43 +200,43 @@ function withAltKey(raw: Buffer, k: Context): Buffer | null {
 }
 
 /** For re-encryption: v2, v1 (without context) and plaintext from before the encryption. */
-export function readOldValue(wert: string | null | undefined, k: Context): string | null {
-  if (wert === null || wert === undefined) return null;
-  if (isEncrypted(wert)) return decrypt(wert, k);
-  if (!wert.startsWith(V1)) return wert;
-  const plain = open(dataKey(), Buffer.from(wert.slice(V1.length), 'base64'), null);
+export function readOldValue(value: string | null | undefined, k: Context): string | null {
+  if (value === null || value === undefined) return null;
+  if (isEncrypted(value)) return decrypt(value, k);
+  if (!value.startsWith(V1)) return value;
+  const plain = open(dataKey(), Buffer.from(value.slice(V1.length), 'base64'), null);
   if (plain === null) warn('Ein gespeichertes Geheimnis (v1)');
   return plain === null ? null : plain.toString('utf8');
 }
 
 /** The new value; undefined if there is nothing to do or it is unreadable (row stays). */
-export function rekey(wert: string | null | undefined, k: Context): string | null | undefined {
-  if (!wert) return undefined;
-  if (isEncrypted(wert)) {
-    const raw = Buffer.from(wert.slice(V2.length), 'base64');
+export function rekey(value: string | null | undefined, k: Context): string | null | undefined {
+  if (!value) return undefined;
+  if (isEncrypted(value)) {
+    const raw = Buffer.from(value.slice(V2.length), 'base64');
     if (!altV2Key() || open(v2Key(), raw, k) !== null) return undefined;
     const plain = withAltKey(raw, k);
     return plain === null ? undefined : encrypt(plain.toString('utf8'), k);
   }
-  const plain = readOldValue(wert, k);
+  const plain = readOldValue(value, k);
   return plain === null ? undefined : encrypt(plain, k);
 }
 
 /** HMAC instead of a hash: small value ranges (card numbers with a fixed prefix)
  * could otherwise be brute-forced. One key per purpose. */
-export function searchValue(purpose: string, wert: string): string {
-  return searchValueWith(dataKey(), purpose, wert);
+export function searchValue(purpose: string, value: string): string {
+  return searchValueWith(dataKey(), purpose, value);
 }
 
 /** The same search value under the previous key while a rotation is running. */
-export function searchValueAlt(purpose: string, wert: string): string | null {
+export function searchValueAlt(purpose: string, value: string): string | null {
   const a = altKey();
-  return a ? searchValueWith(a, purpose, wert) : null;
+  return a ? searchValueWith(a, purpose, value) : null;
 }
 
-function searchValueWith(key: Buffer, purpose: string, wert: string): string {
+function searchValueWith(key: Buffer, purpose: string, value: string): string {
   const k = Buffer.from(crypto.hkdfSync('sha256', key, Buffer.alloc(0), `brickinventory/suche/${purpose}`, 32));
-  return crypto.createHmac('sha256', k).update(wert, 'utf8').digest('hex');
+  return crypto.createHmac('sha256', k).update(value, 'utf8').digest('hex');
 }
 
 /** A PDF never starts like this. */
@@ -279,7 +279,7 @@ export function readOldBuffer(data: Buffer, k: Context): Buffer | null {
 }
 
 export function _forgetKey() {
-  S.geladen = null;
+  S.loaded = null;
   S.v2 = null;
   S.alt = undefined;
   S.altV2 = null;

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.login
 
+import android.graphics.drawable.ColorDrawable
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
@@ -11,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -67,6 +69,8 @@ import kotlin.math.roundToInt
  *   adresse-langes-etikett        setup_url_label back to „Serveradresse der BrickInventory Manager Web-App“
  *                                 → red “the address field carries a short label …” (two lines)
  *   anmelden-gesperrt-ohne-felder button active again only with a name and password → red “Anmelden stays tappable …”
+ *   `.background(…)` removed from TwoPartLayout → red “… the window shows through” in both
+ *                                 tests below (transparent instead of the dark background)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -126,6 +130,34 @@ class LoginEdgeTest {
         val brand = compose.onNode(hasText(text(R.string.app_name))).fetchSemanticsNode().boundsInRoot
         assertTrue("$was: brand too close to the status bar (${brand.top / density} dp)", brand.top >= px(24 + 16) - 1f)
     }
+
+    /**
+     * Before sign-in no Scaffold paints: with „Dunkel“ chosen and a light system theme the
+     * light window background shone between the dark cards. Without a Surface around it, as in the app.
+     */
+    private fun checkOwnBackground(content: @Composable () -> Unit) {
+        compose.runOnUiThread { compose.activity.window.setBackgroundDrawable(ColorDrawable(0xFFF1F5F9.toInt())) }
+        var background = Color.Unspecified
+        compose.setContent {
+            BrickInventoryManagerTheme(theme = checkNotNull(Design.from("classic")), dark = true) {
+                background = MaterialTheme.colorScheme.background
+                content()
+            }
+        }
+        compose.waitForIdle()
+        val image = compose.onRoot().captureToImage().toPixelMap()
+        // The left edge beside the centered column: no card lies there.
+        for (y in listOf(image.height / 4, image.height / 2, image.height * 3 / 4))
+            assertEquals("at y=$y the window shows through", background.toArgb(), image[1, y].toArgb())
+    }
+
+    @Test
+    fun `setup paints the dark background itself, the window shows through nowhere`() =
+        checkOwnBackground { SetupScreen(currentUrl = "", onSave = {}, development = false) }
+
+    @Test
+    fun `sign-in paints the dark background itself, the window shows through nowhere`() =
+        checkOwnBackground { Login(LoginForm.LOGIN) }
 
     @Test
     fun `sign-in starts below the status bar and ends above the gesture bar`() {

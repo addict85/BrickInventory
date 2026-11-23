@@ -18,7 +18,7 @@ test('the build stage installs no compiler tools', () => {
   for (const tool of ['python3', 'make', 'g++']) {
     assert.ok(
       !cmds.some(l => l.includes('apk add') && l.includes(tool)),
-      `${tool} wird installiert, obwohl nichts kompiliert`,
+      `${tool} is installed although nothing compiles`,
     );
   }
 });
@@ -41,8 +41,8 @@ test('and no dependency needs them', () => {
   assert.deepEqual(
     unknown,
     [],
-    `Neue Pakete mit Install-Skript: ${unknown.join(', ')} — prüfen, ob sie kompilieren. ` +
-      'Falls ja, gehört `RUN apk add --no-cache python3 make g++` zurück ins Build-Stage.',
+    `New packages with an install script: ${unknown.join(', ')} — check whether they compile. ` +
+      'If so, `RUN apk add --no-cache python3 make g++` belongs back in the build stage.',
   );
 });
 
@@ -59,7 +59,7 @@ test('the image carries no database password', () => {
   assert.match(
     compose,
     /PGPASSWORD_FILE: \/run\/secrets\/db_app_password/,
-    'compose.yaml muss das Passwort als Datei hereinreichen',
+    'compose.yaml must pass the password in as a file',
   );
 });
 
@@ -74,7 +74,7 @@ test('base images are fixed by digest', () => {
   for (const [name, text] of Object.entries(sources))
     for (const m of text.matchAll(/^\s*(?:FROM|image:)\s+(node|postgres)(:[^\s]+)/gm))
       if (!/@sha256:[0-9a-f]{64}/.test(m[2])) loose.push(`${name}: ${m[1]}${m[2]}`);
-  assert.ok([...sources.Dockerfile.matchAll(/^FROM /gm)].length >= 2, 'FROM-Zeilen nicht gefunden');
+  assert.ok([...sources.Dockerfile.matchAll(/^FROM /gm)].length >= 2, 'FROM lines not found');
   assert.deepEqual(loose, []);
 });
 
@@ -88,7 +88,7 @@ test('the runtime image carries no npm, corepack or yarn', () => {
     .filter(l => !l.trim().startsWith('#'))
     .join('\n');
   for (const path of ['/usr/local/lib/node_modules', '/usr/local/bin/npm', '/usr/local/bin/corepack', '/opt/yarn-'])
-    assert.ok(laufzeit.includes(path), `${path} bleibt im Laufzeit-Image`);
+    assert.ok(laufzeit.includes(path), `${path} stays in the runtime image`);
 });
 
 test('secrets and backups stay out of image and repository', t => {
@@ -101,7 +101,7 @@ test('secrets and backups stay out of image and repository', t => {
     .map(l => l.trim());
   // (03.11.2026) `geheimnisse` deleted from .gitignore → red.
   for (const m of ['.env', '.env.*', 'backups', 'schluessel', 'data', 'geheimnisse'])
-    assert.ok(muster.includes(m), `.dockerignore schliesst ${m} nicht aus`);
+    assert.ok(muster.includes(m), `.dockerignore does not exclude ${m}`);
   // The second part asks git; without a working tree (copy without .git, image) only
   // skipped with a message, in CI (REQUIRE_DB=1) an error.
   // Counter-check (04.11.2026): copy of the tree without .git → skipped with
@@ -135,7 +135,7 @@ test('install scripts only run selectively, for exactly the packages that have o
     .filter(([n, p]) => p.hasInstallScript && !/(^|\/)fsevents$/.test(n))
     .map(([n]) => n.replace(/^.*node_modules\//, ''))
     .sort();
-  assert.ok(withScriptTag.includes('esbuild'), `Vorbedingung: esbuild hat ein Install-Skript (${withScriptTag})`);
+  assert.ok(withScriptTag.includes('esbuild'), `Precondition: esbuild has an install script (${withScriptTag})`);
   const sources = {
     Dockerfile: fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'),
     'web-ci.yml': fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8'),
@@ -147,10 +147,10 @@ test('install scripts only run selectively, for exactly the packages that have o
       .filter(l => !/^\s*#/.test(l))
       .join('\n');
     const aufrufe = [...code.matchAll(/npm ci\b[^\n&]*/g)].map(m => m[0]);
-    assert.ok(aufrufe.length > 0, `${name}: kein npm ci gefunden`);
-    for (const a of aufrufe) assert.match(a, /--ignore-scripts/, `${name}: npm ci ohne --ignore-scripts`);
+    assert.ok(aufrufe.length > 0, `${name}: no npm ci found`);
+    for (const a of aufrufe) assert.match(a, /--ignore-scripts/, `${name}: npm ci without --ignore-scripts`);
     const gebaut = [...code.matchAll(/npm rebuild ([^\n&]+)/g)].flatMap(m => m[1].trim().split(/\s+/)).sort();
-    assert.deepEqual(gebaut, withScriptTag, `${name} baut nicht genau die Pakete mit Install-Skript`);
+    assert.deepEqual(gebaut, withScriptTag, `${name} does not build exactly the packages with an install script`);
   }
 });
 
@@ -165,8 +165,8 @@ test('the image starts as brickinv, the entrypoint runs that way and as root', (
       .split(/^FROM /m)
       .pop() ?? '';
   const nutzer = [...laufzeit.matchAll(/^USER\s+(\S+)/gm)].map(m => m[1]);
-  assert.equal(nutzer.at(-1), 'brickinv', 'das Image startet ohne --user als root');
-  assert.match(laufzeit, /adduser -S brickinv/, 'der Nutzer entsteht im Laufzeit-Stage');
+  assert.equal(nutzer.at(-1), 'brickinv', 'without --user the image starts as root');
+  assert.match(laufzeit, /adduser -S brickinv/, 'the user is created in the runtime stage');
   const location = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'entrypoint-'));
   try {
     const app = path.join(location, 'app'),
@@ -193,7 +193,7 @@ test('the image starts as brickinv, the entrypoint runs that way and as root', (
       assert.equal(r.status, 0, r.stderr);
       return fs.readFileSync(spur, 'utf8').trim().split('\n');
     };
-    assert.deepEqual(lauf('1000'), ['node dist/server.js'], 'ohne root startet node direkt, ohne su-exec');
+    assert.deepEqual(lauf('1000'), ['node dist/server.js'], 'without root node starts directly, without su-exec');
     assert.deepEqual(lauf('0'), ['daten-rechte', 'su-exec brickinv', 'node dist/server.js']);
   } finally {
     fs.rmSync(location, { recursive: true, force: true });

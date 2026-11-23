@@ -5,7 +5,7 @@ import { DAILY_JOBS } from './timesOfDay';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { errorMessage, reportError, withoutMissingFile } from '../infra/error';
 import { Degradations, attempts } from '../infra/result';
-import { requestsJeMinute } from '../images';
+import { requestsPerMinute } from '../images';
 import { asFetchError } from '../externalSources';
 import { failDomain, type ErrorCode } from '../infra/errorTexts';
 import type { ManagementContext } from './context';
@@ -43,7 +43,7 @@ export async function checkSource(
   source: string,
 ): Promise<{ code: ErrorCode; source: string; reason: string } | null> {
   const check = Object.hasOwn(SOURCES, source) ? SOURCES[source] : undefined;
-  if (!check) failDomain('ungueltig', 'source_unknown');
+  if (!check) failDomain('invalid', 'source_unknown');
   try {
     await check(k.externalSources.sources);
     return null;
@@ -53,18 +53,18 @@ export async function checkSource(
 }
 
 export async function cacheStats(k: ManagementContext) {
-  const leer = { count: 0, limit: 0, remaining: 0 };
+  const noQuota = { count: 0, limit: 0, remaining: 0 };
   const ab = new Degradations();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
     ab.orElse(
       'cache',
-      Promise.all([k.catalog.cacheStand(), k.management.pricesInCache()]).then(([c, prices]) => ({ ...c, prices })),
+      Promise.all([k.catalog.cacheState(), k.management.pricesInCache()]).then(([c, prices]) => ({ ...c, prices })),
       { prices: 0, subsets: 0, catalog: 0 },
     ),
     ab.orElse('veraltete_preise', k.management.stalePrices(), 0),
-    ab.orElse('kontingent_bricklink', k.externalSources.quotaStatus('bricklink'), leer),
-    ab.orElse('kontingent_rebrickable', k.externalSources.quotaStatus('rebrickable'), leer),
-    ab.orElse('kontingent_brickset', k.externalSources.quotaStatus('brickset'), leer),
+    ab.orElse('kontingent_bricklink', k.externalSources.quotaStatus('bricklink'), noQuota),
+    ab.orElse('kontingent_rebrickable', k.externalSources.quotaStatus('rebrickable'), noQuota),
+    ab.orElse('kontingent_brickset', k.externalSources.quotaStatus('brickset'), noQuota),
   ]);
   return {
     ...stats,
@@ -89,7 +89,7 @@ export async function bricksetLimitSet(k: ManagementContext, alt: number, fresh:
   // The new limit is saved; without a counter state the queue waits for the next run.
   const rl = await attempts('management:kontingentUebersicht', k.externalSources.quotaStatus('brickset'));
   if (!rl.ok) return;
-  const rest = Math.max(0, fresh - (rl.wert.count || 0));
+  const rest = Math.max(0, fresh - (rl.value.count || 0));
   if (rest <= 0) return;
   console.log(`[brickset] Limit erhöht ${alt}→${fresh}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
   await k.externalSources.brickset.now();
@@ -144,7 +144,7 @@ export async function priceJobStatus(k: ManagementContext) {
 export const runPriceJobNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('prices');
 /** Only queues the job; if that fails, the admin learns about it instead of the log. */
 export async function reloadMissingImages(k: ManagementContext): Promise<void> {
-  await k.jobQueue.placeJobOne('images_reload', {}, { schluessel: 'images_reload', maxAttempts: 2 });
+  await k.jobQueue.placeJobOne('images_reload', {}, { key: 'images_reload', maxAttempts: 2 });
 }
 
 export const runCatalogSyncNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('csv_sync');
@@ -157,7 +157,7 @@ export async function retryBrickset(k: ManagementContext, sn: string) {
 
 export async function removeBrickset(k: ManagementContext, sn: string) {
   await k.externalSources.sources.fromRetryQueue(sn);
-  await k.catalog.enqueueInstruction(sn, { nurAusweichquelle: true });
+  await k.catalog.enqueueInstruction(sn, { fallbackOnly: true });
 }
 
 /** The open scheduled job gets the new appointment immediately. */
@@ -170,7 +170,7 @@ export async function setJobSchedule(
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
-    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) failDomain('ungueltig', 'time_invalid');
+    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) failDomain('invalid', 'time_invalid');
     await k.settings.setGlobalValue(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
@@ -181,7 +181,7 @@ export async function setJobSchedule(
       String(Math.max(5, parseInt(String(minutes), 10) || 60)),
     );
   } else {
-    failDomain('ungueltig', 'unknown_job');
+    failDomain('invalid', 'unknown_job');
   }
   await rescheduleJobs(k);
 }
@@ -232,14 +232,14 @@ export async function queueCatalogImages(kx: ManagementContext, allAgain: boolea
   }
   const open = await kx.management.openImageJobs();
   // "Hours or days?" is the first question; the rate comes from the job itself.
-  const proMinute = requestsJeMinute();
+  const perMinute = requestsPerMinute();
   return {
     queued: newEnqueued,
     pending: open?.n ?? 0,
     skipped: candidates.length - openUrls.length,
     // Without the number it would stay unclear why images considered missing are pending again.
     discarded,
-    duration_minutes: Math.ceil((open?.n ?? 0) / proMinute),
+    duration_minutes: Math.ceil((open?.n ?? 0) / perMinute),
   };
 }
 /** Without a set list not the whole table: the preview notes have a

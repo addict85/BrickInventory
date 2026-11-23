@@ -97,7 +97,7 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
     // Only 404/410 means "does not exist"; throttling ends the run, everything else is tried by the next one.
     const info: { status?: number } = {};
     const r = await attempts('followup:setBildHerunterladen', k.images.loadSetImage(image_url, set_number, info));
-    const local = r.ok ? r.wert : null;
+    const local = r.ok ? r.value : null;
     if (!local && (info.status === 404 || info.status === 410))
       k.images.rememberMissing('set:' + set_number, `HTTP ${info.status} vom CDN`);
     if (!local && (info.status === 403 || info.status === 429)) {
@@ -134,10 +134,10 @@ export async function backfillThumbnails(k: CatalogContext): Promise<void> {
         : null;
   const local = paths.flatMap(web => {
     const d = file(web);
-    return d ? [{ web, datei: d }] : [];
+    return d ? [{ web, file: d }] : [];
   });
   await attempts('followup:vorschauen einpassen', k.images.fitTailoredPreviews(local));
-  for (const { web: localPath, datei: fsPath } of local) {
+  for (const { web: localPath, file: fsPath } of local) {
     const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
     if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
     if ((await attempts('followup:vorschauErzeugenAus', k.images.createPreview(localPath))).ok) generated++;

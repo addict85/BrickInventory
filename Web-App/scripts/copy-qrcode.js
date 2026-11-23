@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const DATEIEN = ['qrcode.min.js', 'LICENSE'];
+const FILES = ['qrcode.min.js', 'LICENSE'];
 
 /** @returns the copied version, or null without an installed qrcodejs */
 function copyQrcode(target = ROOT, source = ROOT) {
@@ -19,11 +19,11 @@ function copyQrcode(target = ROOT, source = ROOT) {
   const version = JSON.parse(fs.readFileSync(path.join(pkg, 'package.json'), 'utf8')).version;
   const folder = path.join(target, 'public', 'vendor', 'qrcode');
   fs.mkdirSync(folder, { recursive: true });
-  for (const d of DATEIEN) fs.copyFileSync(path.join(pkg, d), path.join(folder, d));
+  for (const d of FILES) fs.copyFileSync(path.join(pkg, d), path.join(folder, d));
   return version;
 }
 
-module.exports = { copyQrcode, DATEIEN };
+module.exports = { copyQrcode, FILES };
 
 if (require.main === module) {
   const version = copyQrcode(process.argv[2] ? path.resolve(process.argv[2]) : ROOT);

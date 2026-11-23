@@ -18,9 +18,9 @@ export type TokenRow = {
   ip_range: string | null;
   created_at: string | Date;
   username: string;
-  konto_is_admin: boolean;
+  account_is_admin: boolean;
   is_admin?: boolean;
-  muss_passwort_aendern: boolean;
+  must_change_password: boolean;
 };
 
 /** Deadlines and account state in the query: an expired token or one
@@ -30,7 +30,7 @@ export function validToken(db: DbInterface, hash: string) {
     `
     SELECT t.user_id, t.expires_at, t.hard_expires_at, t.last_used, t.sliding, t.never_expires,
            t.scope, t.rotated_at, t.previous_token, t.label, t.ip_range, t.created_at,
-           u.username, u.is_admin AS konto_is_admin, u.must_change_password AS muss_passwort_aendern
+           u.username, u.is_admin AS account_is_admin, u.must_change_password AS must_change_password
     FROM api_tokens t JOIN users u ON u.id = t.user_id
     WHERE t.token = $1 AND u.is_active
       AND (t.expires_at      IS NULL OR t.expires_at      > NOW())
@@ -73,7 +73,7 @@ export type NewToken = {
   userId: number;
   label: string;
   scope: TokenScope;
-  bereich: string | null;
+  area: string | null;
   /** 'kurz' = seven fixed days (or fewer, if fixedDays is smaller) */
   kind: 'gleitend' | 'kurz';
   idleDays: number;
@@ -87,14 +87,14 @@ export async function insertToken(db: DbInterface, t: NewToken): Promise<void> {
       `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_range)
        VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE, NOW() + make_interval(days => $5), $6, $7)
        ON CONFLICT DO NOTHING`,
-      [t.hash, t.userId, t.label, t.idleDays, t.fixedDays, t.scope, t.bereich],
+      [t.hash, t.userId, t.label, t.idleDays, t.fixedDays, t.scope, t.area],
     );
   } else {
     await db.run(
       `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_range)
        VALUES ($1,$2,$3, NOW() + make_interval(days => LEAST(7, $4)), FALSE, NOW() + make_interval(days => LEAST(7, $4)),
                $5, $6) ON CONFLICT DO NOTHING`,
-      [t.hash, t.userId, t.label, t.fixedDays, t.scope, t.bereich],
+      [t.hash, t.userId, t.label, t.fixedDays, t.scope, t.area],
     );
   }
 }

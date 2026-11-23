@@ -8,7 +8,7 @@ export class RateLimiter {
   lastCall: number;
   queue: Array<() => void>;
   _scheduled: boolean;
-  takt: Tick | null;
+  tick: Tick | null;
   clock: Clock;
 
   /** @param tick Cross-process tick (table api_takt); without it
@@ -19,7 +19,7 @@ export class RateLimiter {
     this.lastCall = 0; // timestamp of last allowed call
     this.queue = []; // pending {resolve} entries
     this._scheduled = false;
-    this.takt = tick;
+    this.tick = tick;
     this.clock = clock;
   }
 
@@ -28,7 +28,7 @@ export class RateLimiter {
       this.queue.push(resolve);
       this._schedule();
     });
-    if (this.takt) await waitOnTick(this.takt);
+    if (this.tick) await waitOnTick(this.tick);
   }
 
   _schedule() {
@@ -50,7 +50,7 @@ export class RateLimiter {
 
   throttle(waitMs: number) {
     this.lastCall = this.clock.now() + waitMs - this.windowMs;
-    if (this.takt) suspendTick(this.takt, waitMs);
+    if (this.tick) suspendTick(this.tick, waitMs);
     if (!this._scheduled && this.queue.length) this._schedule();
   }
 
@@ -67,11 +67,11 @@ import type { ForeignSourcesContext } from './context';
 /** A single UPDATE moves the point in time forward — two processes never get
  * the same slot, without one holding a lock while it waits. */
 export async function waitOnTick(tick: Tick): Promise<void> {
-  const { api, gapMs, apiTakt, clock = systemClock } = tick;
+  const { api, gapMs, apiTick, clock = systemClock } = tick;
   if (clock.now() < tick.disruptedUntil) return;
   try {
-    const r = await apiTakt.receiptsTick(api, gapMs);
-    const wait = Math.ceil(Number(r?.warte_ms) || 0);
+    const r = await apiTick.receiptsTick(api, gapMs);
+    const wait = Math.ceil(Number(r?.wait_ms) || 0);
     if (wait > 0) await new Promise(res => setTimeout(res, wait));
   } catch (e) {
     tick.disruptedUntil = clock.now() + 60_000;
@@ -80,9 +80,9 @@ export async function waitOnTick(tick: Tick): Promise<void> {
 }
 
 /** A 429 applies to all processes. */
-function suspendTick({ api, apiTakt, disruptedUntil, clock = systemClock }: Tick, waitMs: number) {
+function suspendTick({ api, apiTick, disruptedUntil, clock = systemClock }: Tick, waitMs: number) {
   if (clock.now() < disruptedUntil) return;
-  apiTakt.pushTick(api, waitMs).catch(e => reportError('drossel:takt-aussetzen', e));
+  apiTick.pushTick(api, waitMs).catch(e => reportError('drossel:takt-aussetzen', e));
 }
 
 /** One call per second for all processes together: the throttles only order within the process, the spacing
@@ -90,7 +90,7 @@ function suspendTick({ api, apiTakt, disruptedUntil, clock = systemClock }: Tick
 export interface Tick {
   api: string;
   gapMs: number;
-  apiTakt: ForeignSourcesContext['apiTick'];
+  apiTick: ForeignSourcesContext['apiTick'];
   /** After a database error one minute without a shared tick: otherwise every call would
    * first run into the connection timeout. The own throttle stays. */
   disruptedUntil: number;
@@ -98,9 +98,9 @@ export interface Tick {
 }
 
 /** Once per set of services (createForeignSources): foreground and background share the tick. */
-export function throttleRebrickable(apiTakt: Tick['apiTakt'], clock: Clock) {
-  const tick: Tick = { api: 'rebrickable', gapMs: 1000, apiTakt, disruptedUntil: 0, clock };
-  return { foreground: new RateLimiter(1, 1500, tick, clock), hintergrund: new RateLimiter(1, 1500, tick, clock) };
+export function throttleRebrickable(apiTick: Tick['apiTick'], clock: Clock) {
+  const tick: Tick = { api: 'rebrickable', gapMs: 1000, apiTick, disruptedUntil: 0, clock };
+  return { foreground: new RateLimiter(1, 1500, tick, clock), background: new RateLimiter(1, 1500, tick, clock) };
 }
 
 // Counted in the database: counted per process, the limit would multiply.
@@ -108,7 +108,7 @@ export async function consumeRebrickableDaily(k: ForeignSourcesContext): Promise
   const rl = await attempts('takt:kontingentPruefenUndZaehlen', checkAndCountQuota(k, 'rebrickable'));
   // When in doubt let it through: an exceeded daily quota merely costs
   // calls — the opposite of the login counter, where the fallback locks.
-  return rl.ok ? rl.wert.allowed : true;
+  return rl.ok ? rl.value.allowed : true;
 }
 
 /** Two concurrent downloads, but at most one new one per second: the CDN

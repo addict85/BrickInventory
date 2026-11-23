@@ -49,11 +49,11 @@ test('server texts in the language of the request', { concurrency: 1 }, async t 
 
   await t.test('price errors in English', async () => {
     const en = (await hole('finance/valuation', 'en')).sets.find(s => s.set_number === '10294-1');
-    assert.ok(en.error_code, `ohne Code: ${JSON.stringify(en.error)}`);
+    assert.ok(en.error_code, `without a code: ${JSON.stringify(en.error)}`);
     assert.doesNotMatch(en.error, /kein |Keine |Zugangsdaten|nicht /, en.error);
     const de = (await hole('finance/valuation', 'de')).sets.find(s => s.set_number === '10294-1');
     assert.equal(de.error_code, en.error_code);
-    assert.notEqual(de.error, en.error, 'der deutsche Text ist ein anderer');
+    assert.notEqual(de.error, en.error, 'the German text is a different one');
   });
 
   await t.test('tiles with codes', async () => {

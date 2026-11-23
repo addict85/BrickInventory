@@ -59,18 +59,21 @@ interface Thrown {
 }
 
 // Internals go to the log, not to the client.
+/** A 4xx is an answer, not a server error: with a stack every wrong input would fill the log
+ * and hide the real errors. Only the path says which route it was: one place often serves several. */
+function logRouteError(code: number, e: Thrown | null | undefined, error: unknown, req?: ErrorSource): void {
+  const where = req?.originalUrl || req?.url;
+  // Without line breaks: a path or text with a line break would otherwise fake a second log line.
+  const request = where ? `${req?.method || '?'} ${String(where).split('?')[0]} `.replace(/\n|\r/g, '') : '';
+  if (code >= 500) console.error('[route-error] %s%d:', request, code, e?.stack || e?.message || e);
+  else console.warn('[route-warnung] %s%d: %s', request, code, errorMessage(error).replace(/\n|\r/g, ''));
+}
+
 export function handleRouteError(res: ErrorTarget, error: unknown, status?: number, req?: ErrorSource): void {
   const e = asUploadError(error) as Thrown | null | undefined;
   const code = status || statusOf(e);
-  // Only the path says which route it was: one place often serves several.
-  const wo = req?.originalUrl || req?.url;
-  // Without line breaks: a path or text with a line break would otherwise fake a second log line.
-  const request = wo ? `${req?.method || '?'} ${String(wo).split('?')[0]} `.replace(/\n|\r/g, '') : '';
   const isServerError = code >= 500;
-  // A 4xx is an answer, not a server error: with a stack every wrong
-  // input would fill the log and hide the real errors.
-  if (isServerError) console.error('[route-error] %s%d:', request, code, e?.stack || e?.message || e);
-  else console.warn('[route-warnung] %s%d: %s', request, code, errorMessage(error).replace(/\n|\r/g, ''));
+  logRouteError(code, e, error, req);
   if (res.headersSent) return;
   // Helpers throw the REASON (code); only here does it become a sentence in the
   // requester's language.
@@ -87,28 +90,26 @@ export function handleRouteError(res: ErrorTarget, error: unknown, status?: numb
   }
   // A library's text names parsers, paths or bytes; it stays in the log.
   if (!isServerError) {
-    const ersatz: ErrorCode = code === 404 ? 'not_found' : code === 413 ? 'request_too_large' : 'request_invalid';
+    const spare: ErrorCode = code === 404 ? 'not_found' : code === 413 ? 'request_too_large' : 'request_invalid';
     res
       .status(code)
-      .json(withRequestId({ success: false, code: ersatz, error: errorText(ersatz, responseLanguage(req)) }));
+      .json(withRequestId({ success: false, code: spare, error: errorText(spare, responseLanguage(req)) }));
     return;
   }
   // Every error response carries a code so that the apps do not guess from the sentence.
   // Only development sees the exception's text; in production it names internals.
-  const key: ErrorCode = isServerError ? 'internal_error' : 'request_invalid';
-  const message =
-    isServerError && config().operation ? errorText('internal_error', responseLanguage(req)) : errorMessage(e);
-  res.status(code).json(withRequestId({ success: false, code: key, error: message }));
+  const message = config().operation ? errorText('internal_error', responseLanguage(req)) : errorMessage(e);
+  res.status(code).json(withRequestId({ success: false, code: 'internal_error', error: message }));
 }
 
 /** SQLSTATE of the integrity rules → response. The log still names the violated rule. */
 const DB_RULES: Record<string, [ErrorCode, ErrorKind]> = {
-  '22003': ['value_invalid', 'ungueltig'], // numeric_value_out_of_range
-  '22P02': ['value_invalid', 'ungueltig'], // invalid_text_representation
-  '23502': ['value_invalid', 'ungueltig'], // not_null_violation
-  '23514': ['value_invalid', 'ungueltig'], // check_violation
-  '23505': ['already_exists', 'konflikt'], // unique_violation
-  '23503': ['reference_missing', 'konflikt'], // foreign_key_violation
+  '22003': ['value_invalid', 'invalid'], // numeric_value_out_of_range
+  '22P02': ['value_invalid', 'invalid'], // invalid_text_representation
+  '23502': ['value_invalid', 'invalid'], // not_null_violation
+  '23514': ['value_invalid', 'invalid'], // check_violation
+  '23505': ['already_exists', 'conflict'], // unique_violation
+  '23503': ['reference_missing', 'conflict'], // foreign_key_violation
 };
 
 /** Without a status a file that is too large would look like a server error; here it
@@ -116,34 +117,34 @@ const DB_RULES: Record<string, [ErrorCode, ErrorKind]> = {
 function asUploadError<T>(e: T): T | Error {
   const m = e as { name?: unknown; code?: unknown; type?: unknown } | null;
   // Errors of the body parser: its text names parser and character position.
-  if (m?.type === 'entity.parse.failed') return fileError('ungueltig', 'request_json_invalid');
+  if (m?.type === 'entity.parse.failed') return fileError('invalid', 'request_json_invalid');
   // Second line behind the contract: what only fails at a database rule
   // is a wrong input or a race, not a server error.
   if (typeof m?.code === 'string' && m.code in DB_RULES) {
     const [code, kind] = DB_RULES[m.code]!;
     return fileError(kind, code);
   }
-  if (m?.type === 'entity.too.large') return fileError('zu_gross', 'request_too_large');
+  if (m?.type === 'entity.too.large') return fileError('too_large', 'request_too_large');
   if (
     typeof m?.type === 'string' &&
     /^(charset|encoding)\.unsupported$|^request\.aborted$|^entity\.verify\.failed$/.test(m.type)
   )
-    return fileError('ungueltig', 'request_unreadable');
+    return fileError('invalid', 'request_unreadable');
   if (m?.name !== 'MulterError') return e;
-  const zuGross = m.code === 'LIMIT_FILE_SIZE';
-  return fileError(zuGross ? 'zu_gross' : 'ungueltig', zuGross ? 'file_too_large' : 'upload_invalid');
+  const tooLarge = m.code === 'LIMIT_FILE_SIZE';
+  return fileError(tooLarge ? 'too_large' : 'invalid', tooLarge ? 'file_too_large' : 'upload_invalid');
 }
 
 // Express 5 also delivers placeholders as an array; joined with / instead of a comma.
 export function pathParam(req: { params: Record<string, string | string[] | undefined> }, name: string): string {
-  const wert = req.params[name];
-  return Array.isArray(wert) ? wert.join('/') : (wert ?? '');
+  const value = req.params[name];
+  return Array.isArray(value) ? value.join('/') : (value ?? '');
 }
 
 /** The segments of a placeholder `*name` without empty ones. */
 export function pathSegments(req: { params: Record<string, string | string[] | undefined> }, name: string): string[] {
-  const wert = req.params[name];
-  return (Array.isArray(wert) ? wert : wert ? [wert] : []).filter(Boolean);
+  const value = req.params[name];
+  return (Array.isArray(value) ? value : value ? [value] : []).filter(Boolean);
 }
 
 /** Express 5 also passes rejected promises here; a try/catch per route

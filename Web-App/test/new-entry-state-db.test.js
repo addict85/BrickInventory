@@ -76,15 +76,18 @@ test('a new copy follows the acquisitions, not the stored value', { concurrency:
         WHERE user_id=$1 AND set_number=$2 ORDER BY created_at ASC, id ASC`,
       [uid, SET],
     );
-    assert.equal(erf.length, 2, 'Die Mengenerhoehung hat keine neue Erfassung angelegt');
+    assert.equal(erf.length, 2, 'Increasing the quantity created no new acquisition');
     // Counter-check: in priceForNewEntry pin the condition to
     // DEFAULT_PRICE_CONDITION -> here stands 'N' and 100.
-    assert.equal(erf[1].condition, 'U', 'Das neue Exemplar traegt die Vorgabe statt den Zustand der Erfassungen');
+    assert.equal(
+      erf[1].condition,
+      'U',
+      'The new copy carries the default instead of the condition of the acquisitions',
+    );
     assert.equal(
       erf[1].p,
       20,
-      'Das neue Exemplar hat den Neupreis bekommen, obwohl das Set gebraucht ist — ' +
-        'das geht in Bestandswert und G&V ein',
+      'The new copy got the new price although the set is used — ' + 'that goes into the stock value and the P&L',
     );
   } finally {
     await aufraeumen();
@@ -107,12 +110,12 @@ test('no source reads purchase price or condition from sets', () => {
     }
   };
   go(ROOT);
-  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 40, `Only ${dateien.length} source files found — the search no longer works`);
 
   // What is searched for are the forms in which the two columns actually
   // occurred in this tree — FOUND, not invented (git log of migration
   // 0032 names every place):
-  const verboten = [
+  const forbidden = [
     /\bs\.purchase_price\b/i,
     /\bs\.condition\b/i,
     /UPDATE sets SET (purchase_price|condition)\b/i,
@@ -129,7 +132,7 @@ test('no source reads purchase price or condition from sets', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
     geprueft++;
-    for (const r of verboten) {
+    for (const r of forbidden) {
       const m = code.match(r);
       if (m) treffer.push(`${path.relative(ROOT, f)}: ${m[0].replace(/\s+/g, ' ')}`);
     }
@@ -138,19 +141,19 @@ test('no source reads purchase price or condition from sets', () => {
   // contains them — otherwise the rule would be vacuously true.
   const probe = `SELECT s.condition, s.purchase_price FROM sets s
     INSERT INTO sets (user_id,purchase_price) VALUES ($1,$2)`;
-  const damaged = verboten.filter(r => r.test(probe)).length;
+  const damaged = forbidden.filter(r => r.test(probe)).length;
   assert.equal(
     damaged,
     3,
-    `Von den Mustern schlugen ${damaged} auf der Probe an, erwartet 3 ` +
-      '(s.condition, s.purchase_price, INSERT INTO sets mit purchase_price)',
+    `${damaged} of the patterns fired on the probe, expected 3 ` +
+      '(s.condition, s.purchase_price, INSERT INTO sets with purchase_price)',
   );
-  assert.ok(geprueft >= 40, `Nur ${geprueft} Dateien geprueft — die Suche greift nicht mehr`);
+  assert.ok(geprueft >= 40, `Only ${geprueft} files checked — the search no longer works`);
   assert.deepEqual(
     treffer,
     [],
-    'Diese Stellen lesen oder schreiben Kaufpreis/Zustand auf der sets-Zeile. ' +
-      'Beides steht seit Migration 0032 nur in set_acquisitions; genau aus dem ' +
-      'Nebeneinander sind in diesem Baum achtmal dieselben Fehler entstanden.',
+    'These places read or write purchase price/condition on the sets row. ' +
+      'Since migration 0032 both live only in set_acquisitions; exactly this ' +
+      'coexistence produced the same bugs eight times in this tree.',
   );
 });

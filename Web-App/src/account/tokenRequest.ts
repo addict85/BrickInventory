@@ -16,7 +16,7 @@ export function tokenScope(raw: unknown): TokenScope {
 
 /** `expires_at` is the earlier of the two deadlines, `null` only for "unlimited". */
 export async function tokenDetails(k: AccountContext, plaintext: string) {
-  const z = await k.konten.tokenStand(tokenDigest(plaintext));
+  const z = await k.accounts.tokenState(tokenDigest(plaintext));
   return z
     ? {
         scope: z.scope,

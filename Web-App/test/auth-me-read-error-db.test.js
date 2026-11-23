@@ -54,7 +54,7 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
     const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
     const echt = pools.map(p => ({ query: p.query, connect: p.connect }));
     const error = async () => {
-      throw new Error('Verbindung zur Datenbank verloren');
+      throw new Error('Lost the connection to the database');
     };
     for (const p of pools) Object.assign(p, { query: error, connect: error });
     try {
@@ -66,7 +66,7 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
 
   await t.test('with session: 503 instead of "not logged in"', async () => {
     Object.assign(sitzung, { userId: uid, username: NAME });
-    assert.equal((await me()).body.loggedIn, true, 'Vorbedingung: ohne Fehler angemeldet');
+    assert.equal((await me()).body.loggedIn, true, 'Precondition: signed in without an error');
     const r = await withError(() => me());
     assert.deepEqual([r.status, r.body.code, r.body.loggedIn], [503, 'server_busy', undefined]);
     for (const k of Object.keys(sitzung)) delete sitzung[k];
@@ -74,7 +74,7 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
 
   await t.test('with token: 503 instead of 401', async () => {
     const kopf = { authorization: `Bearer ${token}` };
-    assert.equal((await me(kopf)).body.loggedIn, true, 'Vorbedingung: ohne Fehler angemeldet');
+    assert.equal((await me(kopf)).body.loggedIn, true, 'Precondition: signed in without an error');
     tokenCache.emptyTokenCache();
     const r = await withError(() => me(kopf));
     assert.deepEqual([r.status, r.body.code], [503, 'server_busy']);

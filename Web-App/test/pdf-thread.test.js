@@ -43,7 +43,7 @@ test('the event loop stays free while the PDF is being created', async () => {
   }
   try {
     assert.equal(fs.readFileSync(ziel).subarray(0, 5).toString(), '%PDF-');
-    assert.ok(longest < 150, `längste Pause der Ereignisschleife: ${longest} ms`);
+    assert.ok(longest < 150, `longest pause of the event loop: ${longest} ms`);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

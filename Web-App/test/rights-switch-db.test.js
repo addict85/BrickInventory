@@ -79,8 +79,8 @@ test("a change of rights and a deletion end the target's session", { concurrency
       method: 'POST',
       body: { username: name, password: PASS, without_token: true },
     });
-    assert.equal(a.status, 200, `Anmeldung von ${name} scheiterte: ${JSON.stringify(a.body)}`);
-    assert.ok(a.cookie, 'Ohne Set-Cookie gibt es keine Sitzung');
+    assert.equal(a.status, 200, `login of ${name} failed: ${JSON.stringify(a.body)}`);
+    assert.ok(a.cookie, 'Without Set-Cookie there is no session');
     return a.cookie.split(';')[0];
   };
   // Counted via the content, not via the total number of rows: the
@@ -103,28 +103,28 @@ test("a change of rights and a deletion end the target's session", { concurrency
 
     // ── 1. Rechteentzug ─────────────────────────────────────────────────────
     await anmelden(ZIEL);
-    assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung: Das Ziel hat genau eine offene Sitzung');
+    assert.equal(await sitzungen(idTarget), 1, 'precondition: the target has exactly one open session');
 
     const ohne = await callFn(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: false },
     });
-    assert.equal(ohne.status, 400, 'Rechte entziehen ohne Verwalterpasswort');
+    assert.equal(ohne.status, 400, 'revoking rights without the admin password');
     const revocation = await callFn(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: false, admin_password: PASS },
     });
     assert.equal(revocation.status, 200, `Entzug scheiterte: ${JSON.stringify(revocation.body)}`);
-    assert.ok(revocation.body.effective_at, 'Bei einem Verwalter wird der Entzug angekündigt');
-    assert.equal(await sitzungen(idTarget), 1, 'Vor der Frist bleibt die Sitzung');
+    assert.ok(revocation.body.effective_at, 'For an admin the revocation is announced');
+    assert.equal(await sitzungen(idTarget), 1, 'Before the deadline the session stays');
     assert.equal(await faellig(), 1);
     assert.equal(
       await sitzungen(idTarget),
       0,
-      'Die Sitzung des Ziels lebt weiter — dann bleibt es in seinem offenen Fenster Verwalter, ' +
-        'denn session.isAdmin wird nie nachgefuehrt',
+      "The target's session lives on — then it stays admin in its open window, " +
+        'because session.isAdmin is never updated',
     );
 
     // ── 2. No kick-out without a real change ───────────────────────────────
@@ -133,7 +133,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
     // end a foreign session without reason — and lock himself out
     // if he does it on his own account.
     await anmelden(ZIEL);
-    assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung fuer den Nicht-Wechsel');
+    assert.equal(await sitzungen(idTarget), 1, 'precondition for the non-change');
     const nochmal = await callFn(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
@@ -142,10 +142,10 @@ test("a change of rights and a deletion end the target's session", { concurrency
     assert.equal(
       nochmal.status,
       200,
-      'Denselben Wert nochmal zu setzen muss gelingen — die Existenzpruefung haengt ' +
-        'nicht mehr an r.changes, das bei einem wertgleichen UPDATE 0 sein kann',
+      'Setting the same value again must succeed — the existence check no longer ' +
+        'depends on r.changes, which can be 0 for an UPDATE with the same value',
     );
-    assert.equal(await sitzungen(idTarget), 1, 'Ohne echte Aenderung darf keine Sitzung enden');
+    assert.equal(await sitzungen(idTarget), 1, 'Without a real change no session may end');
 
     // ── 2b. An unknown account ───────────────────────────────────────────
     //
@@ -158,7 +158,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
       headers: { cookie: chefCookie },
       body: { is_admin: true, admin_password: PASS },
     });
-    assert.equal(unbekannt.status, 404, 'Ein nicht vorhandenes Konto muss 404 ergeben, nicht 200');
+    assert.equal(unbekannt.status, 404, 'A non-existing account must yield 404, not 200');
 
     // ── 3. And the opposite direction: GRANTING rights ───────────────────────────
     const assignment = await callFn(AUTH + `/users/${idTarget}/admin`, {
@@ -170,34 +170,34 @@ test("a change of rights and a deletion end the target's session", { concurrency
     assert.equal(
       await sitzungen(idTarget),
       0,
-      'Auch bei der Vergabe muss die Sitzung enden — eine fremde Sitzung laesst sich ' +
-        'nicht umschreiben, und sonst saehe das Ziel seine neuen Rechte nie',
+      'On granting, too, the session must end — a foreign session cannot ' +
+        'be rewritten, and otherwise the target would never see its new rights',
     );
 
     // ── 4. Kontoloeschung ───────────────────────────────────────────────────
     await anmelden(ZIEL);
-    assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung fuer die Loeschung');
+    assert.equal(await sitzungen(idTarget), 1, 'precondition for the deletion');
     const withoutPw = await callFn(AUTH + `/users/${idTarget}`, { method: 'DELETE', headers: { cookie: chefCookie } });
-    assert.equal(withoutPw.status, 400, 'Ein Konto zu löschen verlangt das Verwalterpasswort');
-    assert.ok(await db.get('SELECT id FROM users WHERE id=$1', [idTarget]), 'ohne Passwort wurde trotzdem gelöscht');
+    assert.equal(withoutPw.status, 400, 'Deleting an account requires the admin password');
+    assert.ok(await db.get('SELECT id FROM users WHERE id=$1', [idTarget]), 'deleted anyway without a password');
     const weg = await callFn(AUTH + `/users/${idTarget}`, {
       method: 'DELETE',
       headers: { cookie: chefCookie },
       body: { admin_password: PASS },
     });
-    assert.equal(weg.status, 200, `Loeschen scheiterte: ${JSON.stringify(weg.body)}`);
-    assert.ok(weg.body.effective_at, 'Bei einem Verwalter wird die Löschung angekündigt');
+    assert.equal(weg.status, 200, `deleting failed: ${JSON.stringify(weg.body)}`);
+    assert.ok(weg.body.effective_at, 'For an admin the deletion is announced');
     assert.equal(await faellig(), 1);
     assert.equal(
       await sitzungen(idTarget),
       0,
-      'Das geloeschte Konto ist noch angemeldet — user_sessions haengt an keinem ' +
-        'Fremdschluessel, die Zeile muss ausdruecklich weg',
+      'The deleted account is still logged in — user_sessions hangs on no ' +
+        'foreign key, the row must be removed explicitly',
     );
     assert.equal(
       await db.get('SELECT id FROM users WHERE id=$1', [idTarget]),
       undefined,
-      'Vorbedingung: Das Konto ist wirklich geloescht',
+      'precondition: the account is really deleted',
     );
 
     // ── 5. Every admin action stands in the log — also the deletion ──────
@@ -208,7 +208,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
     );
     assert.ok(
       prot.every(p => p.target_name === ZIEL),
-      'Der Name muss auch nach dem Löschen lesbar bleiben',
+      'The name must stay readable even after deleting',
     );
   } finally {
     await new Promise(r => srv.close(r));

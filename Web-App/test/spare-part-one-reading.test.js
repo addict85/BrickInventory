@@ -39,7 +39,7 @@ function serverFiles() {
 
 test('the spellings are enumerated in only one place', () => {
   const dateien = serverFiles();
-  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Server-Dateien gefunden — Pfad veraltet?`);
+  assert.ok(dateien.length >= 40, `Only ${dateien.length} server files found — path outdated?`);
 
   // Two forms, both WITHOUT a window — a window of 200 characters caught, on the
   // first attempt, the FILTER parameter across the line break
@@ -55,21 +55,21 @@ test('the spellings are enumerated in only one place', () => {
   assert.deepEqual(
     found,
     [],
-    'Hier wird wieder selbst entschieden, was ein Ersatzteil ist:\n  ' +
+    'Here code decides on its own again what a spare part is:\n  ' +
       found.join('\n  ') +
-      '\nDie Lesart steht in src/infra/validate.ts, isSparePart(). Sechs Fassungen ' +
-      'mit vier verschiedenen Bedeutungen waren der Grund, warum die ' +
-      'Ersatzteil-Plakette jahrelang nicht gezeichnet wurde.',
+      '\nThe reading lives in src/infra/validate.ts, isSparePart(). Six versions ' +
+      'with four different meanings were the reason why the ' +
+      'spare-part badge was not drawn for years.',
   );
 
   // Self-proof: the helper must really know the notations — otherwise
   // the check above would be green because there is nothing left to find anywhere.
   const helper = fs.readFileSync(path.join(ROOT, 'src/infra/validate.ts'), 'utf8');
-  // isSparePart() reads with isJa(), the reading of all yes/no values from outside.
-  const i = helper.indexOf('export function isJa(');
-  assert.ok(i > 0, 'isJa() fehlt');
+  // isSparePart() reads with isYes(), the reading of all yes/no values from outside.
+  const i = helper.indexOf('export function isYes(');
+  assert.ok(i > 0, 'isYes() is missing');
   const rumpf = helper.slice(i, helper.indexOf('\n}', i));
-  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `isJa() kennt ${form} nicht`);
+  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `isYes() does not know ${form}`);
 });
 
 test('the response carries a real boolean', async t => {
@@ -104,14 +104,14 @@ test('the response carries a real boolean', async t => {
 
   const { partsQuery } = _req('src/parts/queries.js');
   const parts = (await partsQuery([uid], { page_size: 60 })).parts || [];
-  assert.equal(parts.length, 2, 'Vorlage');
+  assert.equal(parts.length, 2, 'precondition');
   for (const p of parts) {
     assert.equal(
       typeof p.is_spare,
       'boolean',
-      `${p.part_number}: is_spare ist ${JSON.stringify(p.is_spare)} (${typeof p.is_spare}). ` +
-        'Als Zeichenkette "0" wäre der Wert in JavaScript WAHR — genau die Falle, ' +
-        'wegen der die Plakette nie gezeichnet wurde.',
+      `${p.part_number}: is_spare is ${JSON.stringify(p.is_spare)} (${typeof p.is_spare}). ` +
+        'As the string "0" the value would be TRUTHY in JavaScript — exactly the trap ' +
+        'because of which the badge was never drawn.',
     );
   }
   assert.equal(parts.find(p => p.part_number === '3001').is_spare, true);

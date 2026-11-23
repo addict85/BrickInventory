@@ -61,7 +61,7 @@ class LogoutAtServerTest {
         assertTrue(runBlocking { account.logoutAtServer() })
         val request = server.takeRequest(1, TimeUnit.SECONDS)!!
         assertEquals("POST", request.method)
-        assertEquals("/api/v1/auth/logout", request.path)
+        assertEquals("/api/v2/auth/logout", request.path)
         assertEquals("Bearer geheim", request.getHeader("Authorization"))
     }
 

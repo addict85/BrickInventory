@@ -42,8 +42,8 @@ test('import without a price leaves the same as capturing without a price', { co
     fd.append('file', new Blob([csv], { type: 'text/csv' }), 'teile.csv');
     const response = await fetch(`${base}/api/v2/parts/import/csv`, { method: 'POST', body: fd });
     const ergebnis = await response.json();
-    assert.equal(ergebnis.success, true, `Import fehlgeschlagen: ${JSON.stringify(ergebnis)}`);
-    assert.equal(ergebnis.added, 1, `Es wurde nichts angelegt: ${JSON.stringify(ergebnis)}`);
+    assert.equal(ergebnis.success, true, `import failed: ${JSON.stringify(ergebnis)}`);
+    assert.equal(ergebnis.added, 1, `nothing was created: ${JSON.stringify(ergebnis)}`);
 
     // The same case by hand, via the same route as the web app.
     const { addManualPart } = _req('src/parts/manualParts.js');
@@ -61,26 +61,26 @@ test('import without a price leaves the same as capturing without a price', { co
       uid,
       OF_HAND,
     ]);
-    assert.ok(imp, 'Zum importierten Teil wurde keine Erfassung angelegt');
-    assert.ok(hand, 'Zum von Hand erfassten Teil wurde keine Erfassung angelegt');
+    assert.ok(imp, 'No acquisition was created for the imported part');
+    assert.ok(hand, 'No acquisition was created for the manually recorded part');
 
     // The actual error: without a value in the file nothing may stand in the
     // field „Preis/Stk".
     assert.equal(
       imp.unit_price,
       null,
-      `Der Import hat ${imp.unit_price} als Preis/Stk eingetragen, obwohl in der ` +
-        'Datei keiner stand. Das Feld bedeutet „was der Mensch bezahlt hat" — ' +
-        'src/inventory/purchasePriceBackfill.ts liest es genau so.',
+      `The import entered ${imp.unit_price} as price/piece although the ` +
+        'file had none. The field means „what the human paid" — ' +
+        'src/inventory/purchasePriceBackfill.ts reads it exactly that way.',
     );
 
     // And the rule behind it: BOTH paths leave behind the same.
     assert.deepEqual(
       { unit_price: imp.unit_price, condition: imp.condition, quantity: imp.quantity },
       { unit_price: hand.unit_price, condition: hand.condition, quantity: hand.quantity },
-      'CSV-Import und Erfassen von Hand hinterlassen verschiedene Erfassungen für ' +
-        'denselben Fall. Beide rechnen über manualPartPurchase — weichen ' +
-        'sie ab, rechnet einer der beiden wieder selbst.',
+      'CSV import and manual entry leave different acquisitions for ' +
+        'the same case. Both compute via manualPartPurchase — if they ' +
+        'differ, one of the two computes on its own again.',
     );
   } finally {
     await schliessen();

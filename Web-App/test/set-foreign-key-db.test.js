@@ -64,8 +64,8 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
     for (const tab of ['parts', 'minifigs', 'instructions']) {
       const n = async k =>
         Number((await db.get(`SELECT COUNT(*) AS n FROM ${tab} WHERE user_id = $1 AND set_number = $2`, [k, SN])).n);
-      assert.equal(await n(uid), 0, `${tab} des gelöschten Sets blieb stehen`);
-      assert.equal(await n(andere), 1, `${tab} des anderen Kontos wurde mitgelöscht`);
+      assert.equal(await n(uid), 0, `${tab} of the deleted set stayed`);
+      assert.equal(await n(andere), 1, `${tab} of the other account was deleted along with it`);
     }
   });
 
@@ -122,9 +122,9 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
         SCHLUESSEL.map(s => s[1]),
       ]);
       const state = Object.fromEntries(r.rows.map(z => [z.conname, z.convalidated]));
-      assert.equal(Object.keys(state).length, SCHLUESSEL.length, 'nicht jeder Schlüssel wurde angelegt');
-      assert.equal(state.parts_set_fk, false, 'der verletzte Schlüssel gilt als geprüft');
-      assert.equal(state.minifigs_set_fk, true, 'ein sauberer Schlüssel blieb ungeprüft');
+      assert.equal(Object.keys(state).length, SCHLUESSEL.length, 'not every key was created');
+      assert.equal(state.parts_set_fk, false, 'the violated key counts as validated');
+      assert.equal(state.minifigs_set_fk, true, 'a clean key stayed unvalidated');
     } finally {
       await c.query('ROLLBACK');
       c.release();

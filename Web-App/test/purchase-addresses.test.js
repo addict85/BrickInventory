@@ -13,8 +13,8 @@ const P = require('./helpers/sources').buildAndRequire()('src/catalog/priceCompa
 test('the search address masks what goes in', () => {
   const u = P.suchUrl('LEGO 75192 Millennium Falcon');
   assert.match(u, /^https:\/\/www\.toppreise\.ch\/produktsuche\?q=/);
-  assert.ok(!u.includes(' '), 'Leerzeichen sind nicht maskiert — die Adresse bricht');
-  assert.ok(u.includes('Millennium'), 'Der Suchbegriff ist unterwegs verlorengegangen');
+  assert.ok(!u.includes(' '), 'spaces are not escaped — the address breaks');
+  assert.ok(u.includes('Millennium'), 'The search term got lost on the way');
 });
 
 test('empty stays empty — and is therefore NOT a button', () => {
@@ -22,8 +22,8 @@ test('empty stays empty — and is therefore NOT a button', () => {
   // The UIs then hide the button instead of leading to a search for
   // nothing.
   for (const roh of ['', '   ', null, undefined]) {
-    assert.equal(P.suchUrl(roh), '', `${JSON.stringify(roh)} ergab eine Adresse`);
-    assert.equal(P.forSet(roh), '', `${JSON.stringify(roh)} ergab eine Set-Adresse`);
+    assert.equal(P.suchUrl(roh), '', `${JSON.stringify(roh)} yielded an address`);
+    assert.equal(P.forSet(roh), '', `${JSON.stringify(roh)} yielded a set address`);
   }
 });
 
@@ -32,10 +32,10 @@ test('the variant is dropped, the name is added', () => {
   // price comparison site finds nothing with it. The name, on the other hand, is exactly what
   // is searched for there.
   const mit = decodeURIComponent(P.forSet('75192-1', 'Millennium Falcon'));
-  assert.ok(mit.includes('75192 '), `Die Nummer fehlt oder traegt noch die Variante: ${mit}`);
-  assert.ok(!mit.includes('75192-1'), 'Die Variante „-1" steht noch drin');
-  assert.ok(mit.includes('Millennium Falcon'), 'Der Name fehlt');
-  assert.ok(mit.includes('LEGO'), 'Ohne „LEGO" findet der Vergleicher zu viel Fremdes');
+  assert.ok(mit.includes('75192 '), `The number is missing or still carries the variant: ${mit}`);
+  assert.ok(!mit.includes('75192-1'), 'The variant „-1" is still in it');
+  assert.ok(mit.includes('Millennium Falcon'), 'The name is missing');
+  assert.ok(mit.includes('LEGO'), 'Without „LEGO" the comparison site finds too much unrelated stuff');
 
   // Without a name the number remains — better than nothing.
   const ohne = decodeURIComponent(P.forSet('10276-1', null));
@@ -73,8 +73,8 @@ test('the price comparison address exists in exactly ONE place', () => {
       path.join('Web-App', 'test', 'purchase-addresses.test.js'),
       path.join('Web-App', 'src/catalog/priceComparison.ts'),
     ].sort(),
-    'Die Adresse des Preisvergleichs steht an einer weiteren Stelle. Entweder ' +
-      'kommt sie dort vom Server (Set-Detail: preisvergleich_url), oder der ' +
-      'neue Ort gehoert hier eingetragen — sonst laufen zwei Fassungen auseinander.',
+    'The address of the price comparison appears in another place. Either ' +
+      'it comes from the server there (set detail: preisvergleich_url), or the ' +
+      'new place should be listed here — otherwise two versions drift apart.',
   );
 });

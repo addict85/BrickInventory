@@ -86,28 +86,32 @@ test('delete everything does not touch the linked accounts', async t => {
   // Without a password everything stays: a captured app token alone should not delete everything.
   const ohne = await hole('/api/v2/inventory', 'DELETE');
   assert.equal(ohne.code, 'current_password_wrong', JSON.stringify(ohne));
-  assert.equal((await db.all('SELECT 1 FROM sets WHERE user_id = $1', [haupt])).length, 1, 'ohne Passwort gelöscht');
+  assert.equal(
+    (await db.all('SELECT 1 FROM sets WHERE user_id = $1', [haupt])).length,
+    1,
+    'deleted without a password',
+  );
 
   // Exactly the call from public/js/settings.js (btn-dall).
   const r = await hole('/api/v2/inventory', 'DELETE', { password: PASS });
   assert.equal(r.success, true, JSON.stringify(r));
-  assert.deepEqual([r.sets, r.parts, r.minifigs], [1, 1, 0], 'Gezählt wird nur das eigene Konto');
+  assert.deepEqual([r.sets, r.parts, r.minifigs], [1, 1, 0], 'Only the own account is counted');
 
   const mine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1`, [haupt]);
-  assert.deepEqual(mine, [], 'Die eigenen Sets müssen weg sein');
+  assert.deepEqual(mine, [], 'The own sets must be gone');
 
   const seine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1 ORDER BY set_number`, [kind]);
   assert.deepEqual(
     seine.map(r => r.set_number),
     ['21318-1', '75192-1'],
-    'Das verknüpfte Konto behält ALLE seine Sets — auch die gemeinsame Nummer',
+    'The linked account keeps ALL its sets — including the shared number',
   );
   const parts = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [kind]);
   const minifigs = await db.get(`SELECT COUNT(*)::int c FROM minifigs WHERE user_id=$1`, [kind]);
-  assert.equal(parts.c, 2, 'Teile des verknüpften Kontos bleiben (aus dem Set und manuell)');
-  assert.equal(minifigs.c, 2, 'Minifiguren des verknüpften Kontos bleiben (aus dem Set und manuell)');
+  assert.equal(parts.c, 2, 'Parts of the linked account stay (from the set and manual)');
+  assert.equal(minifigs.c, 2, 'Minifigs of the linked account stay (from the set and manual)');
   const myParts = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [haupt]);
-  assert.equal(myParts.c, 0, 'Das eigene manuelle Teil muss weg sein');
+  assert.equal(myParts.c, 0, 'The own manual part must be gone');
 });
 
 test('accounts can only narrow the delete scope, never widen it', async t => {

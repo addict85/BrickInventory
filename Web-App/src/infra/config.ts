@@ -42,7 +42,7 @@ export interface AppConfig {
   production: boolean;
   nodeEnv: string;
   /** Only explicitly development or test: without NODE_ENV the production rules apply. */
-  entwicklung: boolean;
+  development: boolean;
   /** Everything except development/test: even without NODE_ENV the production prohibitions apply. */
   operation: boolean;
   /** Way out for starting as a database superuser in production (UPGRADE.md). */
@@ -59,17 +59,17 @@ export interface AppConfig {
   sessionSecret: string | undefined;
   /** null: according to NODE_ENV (secure only in production). */
   cookieSecure: boolean | null;
-  sitzungLeerlaufMin: number;
-  sitzungHoechstStd: number;
+  sessionIdleMin: number;
+  sessionMaxHours: number;
   /** An open admin session is worth more: shorter, at most the general deadlines. */
-  sitzungVerwalterLeerlaufMin: number;
-  sitzungVerwalterHoechstStd: number;
+  sessionAdminIdleMin: number;
+  sessionAdminMaxHours: number;
   tokenIdleDays: number;
   /** Upper bound of a device access from login on; the swap inherits it, then the app signs in again. */
   tokenMaxDays: number;
-  rolle: Role;
+  role: Role;
   /** For a hint at startup. */
-  veraltet: string[];
+  deprecated: string[];
   /** Old variable names still in use (`ALT → NEU`), for a warning at startup. */
   renamed: string[];
   pgPoolMax: number | null;
@@ -79,12 +79,12 @@ export interface AppConfig {
   pgStmtMs: number;
   /** A hanging transaction would otherwise hold advisory and row locks indefinitely. */
   pgIdleTxMs: number;
-  pgSperreMs: number;
+  pgLockMs: number;
   adminPassword: string;
   appBaseUrl: string | null;
   appRoot: string | null;
   appVersion: string | null;
-  datenSchluessel: string;
+  dataKey: string;
   /** Path of the key file; null: <APP_ROOT>/schluessel/datenschluessel. */
   dataKeyFile: string | null;
   /** The previous key during a rotation (DATA_KEY_ALT or the file). */
@@ -95,9 +95,9 @@ export interface AppConfig {
   uploadQuotaMb: number;
   uploadTotalMb: number;
   mailConsoleWithToken: boolean;
-  bildUserAgent: string | null;
+  imageUserAgent: string | null;
   imageCacheMaxMb: number;
-  imageFetchesJeMinute: number;
+  imageFetchesPerMinute: number;
   csvRowDeadlineMs: number;
   jobParallel: number;
   /** null: according to cores and cgroup quota (src/account/bcryptLimit.ts). */
@@ -105,16 +105,16 @@ export interface AppConfig {
   jobDeadlineSec: number;
   /** PEM; null: no own CA. */
   caCertificate: string | null;
-  hinterTls: boolean;
+  behindTls: boolean;
   /** Only in tests: check responses against the API contract (src/http/contractRouter.ts). */
   checkContract: boolean;
   /** SHA-256 of the app's signing certificates, 64 hex characters in upper case. */
-  androidZertifikate: string[];
-  androidPaket: string;
+  androidCertificates: string[];
+  androidPackage: string;
   /** PEM instead of the Google roots; only in development and test (src/devices/attestation). */
-  attestationWurzeln: string | null;
+  attestationRoots: string | null;
   /** Until then, device keys registered before the attestation apply (UPGRADE.md). */
-  geraeteschluesselAltBis: Date;
+  deviceKeyLegacyUntil: Date;
   /** Google's revocation list may be at most this old; if older, the server accepts no key. */
   attestationRevocationDays: number;
   attestationPatchAtLeast: number | null;
@@ -125,10 +125,10 @@ const ROLES: readonly Role[] = ['web', 'jobs', 'both'];
 
 /** Other modules name it too; maximum duration one week like the browser token. */
 export const DEFAULT = {
-  sitzungLeerlaufMin: 240,
-  sitzungHoechstStd: 168,
-  sitzungVerwalterLeerlaufMin: 30,
-  sitzungVerwalterHoechstStd: 12,
+  sessionIdleMin: 240,
+  sessionMaxHours: 168,
+  sessionAdminIdleMin: 30,
+  sessionAdminMaxHours: 12,
   jobParallel: 4,
   jobDeadlineSec: 300,
 } as const;
@@ -239,8 +239,8 @@ export const RENAMED_VARIABLES: Readonly<Record<string, string>> = {
 /** The environment with every old name copied to its new one, unless the new one is set. */
 export function withRenamedVariables(env: Environment): Environment {
   const out: Environment = { ...env };
-  for (const [neu, alt] of Object.entries(RENAMED_VARIABLES))
-    if (out[neu] === undefined && env[alt] !== undefined) out[neu] = env[alt];
+  for (const [renamed, alt] of Object.entries(RENAMED_VARIABLES))
+    if (out[renamed] === undefined && env[alt] !== undefined) out[renamed] = env[alt];
   return out;
 }
 
@@ -248,7 +248,7 @@ export function withRenamedVariables(env: Environment): Environment {
 export function renamedInUse(env: Environment): string[] {
   return Object.entries(RENAMED_VARIABLES)
     .filter(([, alt]) => env[alt] !== undefined)
-    .map(([neu, alt]) => `${alt} → ${neu}`);
+    .map(([renamed, alt]) => `${alt} → ${renamed}`);
 }
 
 /** If it is still in an old compose.yaml, startup says so. */
@@ -385,24 +385,10 @@ function developmentEnvironment(env: Environment): boolean {
 /** Deadlines of the browser session; for admins separate, shorter ones (src/account/sessionDeadline.ts). */
 function sessionConfig(env: Environment, f: string[]) {
   return {
-    sitzungLeerlaufMin: integer(env, 'SESSION_IDLE_MINUTES', DEFAULT.sitzungLeerlaufMin, 1, 525_600, f),
-    sitzungHoechstStd: integer(env, 'SESSION_MAX_HOURS', DEFAULT.sitzungHoechstStd, 1, 87_600, f),
-    sitzungVerwalterLeerlaufMin: integer(
-      env,
-      'SESSION_ADMIN_IDLE_MINUTES',
-      DEFAULT.sitzungVerwalterLeerlaufMin,
-      1,
-      525_600,
-      f,
-    ),
-    sitzungVerwalterHoechstStd: integer(
-      env,
-      'SESSION_ADMIN_MAX_HOURS',
-      DEFAULT.sitzungVerwalterHoechstStd,
-      1,
-      87_600,
-      f,
-    ),
+    sessionIdleMin: integer(env, 'SESSION_IDLE_MINUTES', DEFAULT.sessionIdleMin, 1, 525_600, f),
+    sessionMaxHours: integer(env, 'SESSION_MAX_HOURS', DEFAULT.sessionMaxHours, 1, 87_600, f),
+    sessionAdminIdleMin: integer(env, 'SESSION_ADMIN_IDLE_MINUTES', DEFAULT.sessionAdminIdleMin, 1, 525_600, f),
+    sessionAdminMaxHours: integer(env, 'SESSION_ADMIN_MAX_HOURS', DEFAULT.sessionAdminMaxHours, 1, 87_600, f),
   };
 }
 
@@ -424,7 +410,7 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
   if (basis && !/^https?:\/\/[^/\s]+/i.test(basis))
     f.push(`APP_BASE_URL="${env.APP_BASE_URL}" ist keine http(s)-Adresse`);
 
-  const datenSchluessel = checkedDataKey(env, 'DATA_KEY', 'openssl rand -base64 32', f);
+  const dataKey = checkedDataKey(env, 'DATA_KEY', 'openssl rand -base64 32', f);
   const dataKeyAlt = checkedDataKey(env, 'DATA_KEY_ALT', 'der vorige DATA_KEY', f);
 
   const zone = zoneFrom(env, f);
@@ -433,7 +419,7 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
   const k: AppConfig = {
     production: nodeEnv === 'production',
     nodeEnv,
-    entwicklung: developmentEnvironment(env),
+    development: developmentEnvironment(env),
     operation: !developmentEnvironment(env),
     dbSuperuserAllowed: flag(env, 'DB_SUPERUSER_ALLOWED', f) === true,
     port: integer(env, 'PORT', 3000, 1, 65535, f),
@@ -447,8 +433,8 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
     ...sessionConfig(env, f),
     tokenIdleDays: integer(env, 'TOKEN_IDLE_DAYS', 90, 1, 36_500, f),
     tokenMaxDays: integer(env, 'TOKEN_MAX_DAYS', 90, 1, 365, f),
-    rolle: roleFrom(env, f),
-    veraltet: STALE.filter(n => env[n]?.trim()),
+    role: roleFrom(env, f),
+    deprecated: STALE.filter(n => env[n]?.trim()),
     renamed: renamedInUse(raw),
     pgPoolMax,
     pgPoolMin: integer(env, 'PG_POOL_MIN', 2, 0, 1000, f),
@@ -456,12 +442,12 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
     pgConnMs: integer(env, 'PG_CONN_MS', 30_000, 0, 600_000, f),
     pgStmtMs: integer(env, 'PG_STMT_MS', 30_000, 0, 86_400_000, f),
     pgIdleTxMs: integer(env, 'PG_IDLE_TX_MS', 60_000, 0, 86_400_000, f),
-    pgSperreMs: integer(env, 'PG_LOCK_MS', 10_000, 0, 86_400_000, f),
+    pgLockMs: integer(env, 'PG_LOCK_MS', 10_000, 0, 86_400_000, f),
     adminPassword: env.ADMIN_PASSWORD || '',
     appBaseUrl: basis,
     appRoot: env.APP_ROOT?.trim() || null,
     appVersion: env.APP_VERSION?.trim() || null,
-    datenSchluessel,
+    dataKey,
     dataKeyFile: env.DATA_KEY_FILE?.trim() || null,
     dataKeyAlt,
     dataKeyAltFile: env.DATA_KEY_ALT_FILE?.trim() || null,
@@ -471,20 +457,20 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
     uploadQuotaMb: number(env, 'UPLOAD_QUOTA_MB', 2048, f),
     uploadTotalMb: number(env, 'UPLOAD_TOTAL_MB', 20_480, f),
     mailConsoleWithToken: env.MAIL_CONSOLE_WITH_TOKEN?.trim() === '1',
-    bildUserAgent: env.IMG_USER_AGENT?.trim() || null,
+    imageUserAgent: env.IMG_USER_AGENT?.trim() || null,
     imageCacheMaxMb: number(env, 'IMAGE_CACHE_MAX_MB', 2048, f),
-    imageFetchesJeMinute: integer(env, 'IMAGE_FETCHES_PER_MINUTE', 240, 1, 100_000, f),
+    imageFetchesPerMinute: integer(env, 'IMAGE_FETCHES_PER_MINUTE', 240, 1, 100_000, f),
     csvRowDeadlineMs: integer(env, 'CSV_ROW_DEADLINE_MS', 120_000, 1, 86_400_000, f),
     jobParallel: integer(env, 'JOB_PARALLEL', DEFAULT.jobParallel, 1, 64, f),
     bcryptWorker: env.BCRYPT_WORKERS?.trim() ? integer(env, 'BCRYPT_WORKERS', 4, 1, 64, f) : null,
     jobDeadlineSec: integer(env, 'JOB_DEADLINE_SEC', DEFAULT.jobDeadlineSec, 1, 86_400, f),
     caCertificate: env.CA_CERTIFICATE?.trim() || null,
-    hinterTls: !!basis && /^https:\/\//i.test(basis),
+    behindTls: !!basis && /^https:\/\//i.test(basis),
     checkContract: env.CHECK_CONTRACT?.trim() === '1',
-    androidZertifikate: androidCertificates(env, f),
-    androidPaket: androidPackage(env, f),
-    attestationWurzeln: attestationRoots(env, f),
-    geraeteschluesselAltBis: legacyKeyUntil(env, f),
+    androidCertificates: androidCertificates(env, f),
+    androidPackage: androidPackage(env, f),
+    attestationRoots: attestationRoots(env, f),
+    deviceKeyLegacyUntil: legacyKeyUntil(env, f),
     attestationRevocationDays: integer(env, 'ATTESTATION_REVOCATION_DAYS', 7, 1, 90, f),
     attestationPatchAtLeast: patchAtLeast(env, f),
   };
@@ -495,7 +481,7 @@ export function loadConfig(raw: Environment = process.env): AppConfig {
 /** In production and behind Caddy (APP_BASE_URL https://). COOKIE_SECURE=0 is the deliberate
  * exception for an operation without TLS. */
 export function cookieSafe(k: AppConfig): boolean {
-  return k.cookieSecure ?? (k.operation || k.hinterTls);
+  return k.cookieSecure ?? (k.operation || k.behindTls);
 }
 
 const K = processWide('config', () => ({ v: null as Readonly<AppConfig> | null }));
@@ -509,8 +495,8 @@ export function config(): Readonly<AppConfig> {
 }
 
 /** For tests: lay individual values over the read configuration; null lifts that. */
-export function setConfig(teil: Partial<AppConfig> | null): Readonly<AppConfig> {
-  K.v = teil ? Object.freeze({ ...loadConfig(process.env), ...teil }) : null;
+export function setConfig(part: Partial<AppConfig> | null): Readonly<AppConfig> {
+  K.v = part ? Object.freeze({ ...loadConfig(process.env), ...part }) : null;
   return config();
 }
 
@@ -638,16 +624,16 @@ export function startWarnings(raw: NodeJS.ProcessEnv = process.env): string[] {
  * `db-brickinventory`); a machine on the LAN usually has a name with a domain. */
 function dbWithoutTls(env: NodeJS.ProcessEnv): boolean {
   let host = env.PGHOST?.trim() || 'postgres',
-    modus = env.PGSSLMODE?.trim() || '';
+    mode = env.PGSSLMODE?.trim() || '';
   if (env.DATABASE_URL) {
     try {
       const u = new URL(env.DATABASE_URL);
       host = u.hostname.replace(/^\[|\]$/g, '') || 'localhost';
-      modus = u.searchParams.get('sslmode') || modus;
+      mode = u.searchParams.get('sslmode') || mode;
     } catch {
       return false;
     }
   }
-  const nah = ['127.0.0.1', '::1'].includes(host) || host.startsWith('/') || /^[a-z0-9_-]+$/i.test(host);
-  return !nah && !/^verify-(ca|full)$/.test(modus);
+  const local = ['127.0.0.1', '::1'].includes(host) || host.startsWith('/') || /^[a-z0-9_-]+$/i.test(host);
+  return !local && !/^verify-(ca|full)$/.test(mode);
 }

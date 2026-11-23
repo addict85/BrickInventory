@@ -45,14 +45,14 @@ replace('src/wanted/repository/wanted.js', {
 // The process's sets services with two replaced; the routes get the same ones (routerFrom).
 Object.assign(require('./helpers/sources').testArea('sets'), {
   acquireSet: async e => {
-    if (e.setNumber === 'FACH-1') throw fileError('ungueltig', 'set_number_invalid');
+    if (e.setNumber === 'FACH-1') throw fileError('invalid', 'set_number_invalid');
     return {
       action: 'added',
       set_number: e.setNumber,
       name: e.setNumber,
       catalog_pending: true,
       supplement: 'pending',
-      besitzer: e.requester,
+      owner: e.requester,
     };
   },
   setSupplement: async () => {

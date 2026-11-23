@@ -90,7 +90,7 @@ test('wishlist writes all or nothing', { concurrency: 1 }, async t => {
   });
 
   await t.test('move: the wishlist item stays with the old account', async () => {
-    assert.equal(await merk(U.von), 1, 'Merkposten ist trotz Fehler gewandert');
+    assert.equal(await merk(U.von), 1, 'wanted item moved despite an error');
     assert.equal(await merk(U.zu), 0);
     assert.equal(await alarme(U.von), 1);
   });
@@ -122,7 +122,7 @@ test('wishlist writes all or nothing', { concurrency: 1 }, async t => {
     assert.equal(
       (await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.zu])).length,
       0,
-      'Das Set ist erfasst, obwohl das Streichen scheiterte',
+      'The set is recorded although removing failed',
     );
     assert.equal(await merk(U.zu), 1);
   });

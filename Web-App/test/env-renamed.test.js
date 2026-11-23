@@ -29,10 +29,10 @@ test('the new name wins over the old one', () => {
 });
 
 test('ROLLE=beides still means both, the new value is both', () => {
-  assert.equal(loadConfig({ ROLLE: 'beides' }).rolle, 'both');
-  assert.equal(loadConfig({ ROLE: 'both' }).rolle, 'both');
-  assert.equal(loadConfig({ ROLLE: 'jobs' }).rolle, 'jobs');
-  assert.equal(loadConfig({}).rolle, 'both');
+  assert.equal(loadConfig({ ROLLE: 'beides' }).role, 'both');
+  assert.equal(loadConfig({ ROLE: 'both' }).role, 'both');
+  assert.equal(loadConfig({ ROLLE: 'jobs' }).role, 'jobs');
+  assert.equal(loadConfig({}).role, 'both');
 });
 
 test('startBans reads the old names too', () => {

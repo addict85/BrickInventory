@@ -142,12 +142,12 @@ export function setsWithPurchaseTotal(db: DbInterface, l: FinancesReadContract, 
     `SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             SUM(COALESCE(a.total_price, 0))
               / NULLIF(SUM(a.total_qty), 0) AS purchase_price
-     FROM ${l.setBestand('= ANY($1)')} s
+     FROM ${l.setHoldings('= ANY($1)')} s
      LEFT JOIN (
        SELECT user_id, set_number,
               SUM(COALESCE(purchase_price, 0) * quantity) AS total_price,
               SUM(quantity) AS total_qty
-       FROM ${l.setErfassungen('= ANY($1)')} e GROUP BY user_id, set_number
+       FROM ${l.setAcquisitions('= ANY($1)')} e GROUP BY user_id, set_number
      ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
      WHERE s.user_id = ANY($1)
      GROUP BY s.set_number`,

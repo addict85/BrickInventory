@@ -61,9 +61,12 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
   });
   t.after(() => w.close());
   await reiter(w, 'parts');
-  assert.ok(await warte(() => d.querySelector('#manual-parts-list .man-tile')), 'Die Kachel des manuellen Teils fehlt');
+  assert.ok(
+    await warte(() => d.querySelector('#manual-parts-list .man-tile')),
+    'The tile of the manual part is missing',
+  );
   d.querySelector('#manual-parts-list .man-tile').click();
-  assert.ok(await warte(() => d.getElementById('man-det-qty')), 'Das Mengenfeld im Detail fehlt');
+  assert.ok(await warte(() => d.getElementById('man-det-qty')), 'The quantity field in the detail is missing');
   const vorher = d.getElementById('man-acq-summary')?.textContent;
 
   acqList = [row(1, 1, '2026-10-01')];
@@ -71,16 +74,16 @@ test('the acquisition list is reloaded in BOTH directions', async t => {
   const field = /** @type {HTMLInputElement} */ (d.getElementById('man-det-qty'));
   field.value = '1';
   field.dispatchEvent(new w.Event('change', { bubbles: true }));
-  assert.ok(await warte(() => aufrufe.slice(ab).some(a => a.method === 'PUT')), 'Die Menge wird nicht gespeichert');
+  assert.ok(await warte(() => aufrufe.slice(ab).some(a => a.method === 'PUT')), 'The quantity is not saved');
   assert.ok(
     await warte(() =>
       aufrufe.slice(ab).some(a => a.method === 'GET' && a.url.includes('/v2/parts/3002/5/acquisitions')),
     ),
-    'Nach dem Verringern wird die Erfassungsliste nicht neu geholt',
+    'After decreasing, the acquisition list is not fetched again',
   );
   assert.ok(
     await warte(() => d.getElementById('man-acq-summary')?.textContent !== vorher),
-    'Die Zusammenfassung im Detail zeigt noch die gelöschte Erfassung',
+    'The summary in the detail still shows the deleted acquisition',
   );
 });
 
@@ -124,14 +127,14 @@ test('quantities and acquisitions of manual entries against the database', { con
     assert.deepEqual(
       (await partRows('ma-leer')).map(r => r.quantity),
       [3],
-      'Die Menge stieg, die Erfassungsliste blieb leer',
+      'The quantity rose, the acquisition list stayed empty',
     );
     const fig = await db.get(
       `SELECT COALESCE(SUM(quantity),0)::int AS q FROM minifig_acquisitions
                                WHERE user_id = $1 AND fig_number = 'ma-fig-leer'`,
       [uid],
     );
-    assert.equal(fig.q, 2, 'Bei der Minifigur stieg die Menge ohne Erfassung');
+    assert.equal(fig.q, 2, 'For the minifigure the quantity rose without an acquisition');
   });
 
   await t.test('the LIFO reduction removes the newest acquisition first', async () => {
@@ -149,7 +152,7 @@ test('quantities and acquisitions of manual entries against the database', { con
     assert.deepEqual(
       await partRows('ma-lifo'),
       [{ id: alt.id, quantity: 2 }],
-      'Beim Verringern muss die heutige Erfassung zuerst weichen, nicht die älteste',
+      "When decreasing, today's acquisition must go first, not the oldest",
     );
     await changeManualPart(uid, 'ma-lifo', 5, { quantity: 1 });
     assert.deepEqual(await partRows('ma-lifo'), [{ id: alt.id, quantity: 1 }]);
@@ -163,18 +166,18 @@ test('quantities and acquisitions of manual entries against the database', { con
       ['part', ['ma-tag', 5]],
       ['fig', ['ma-fig-tag']],
     ]) {
-      assert.deepEqual(await record(kind, keys), { merged: false }, `${kind}: die erste Erfassung des Tages`);
+      assert.deepEqual(await record(kind, keys), { merged: false }, `${kind}: the first acquisition of the day`);
       assert.deepEqual(
         await record(kind, keys),
         { merged: true },
-        `${kind}: der zweite Kauf desselben Tages stockt nicht auf`,
+        `${kind}: the second purchase on the same day does not top up`,
       );
     }
     // Another color is another part, not a second purchase.
     assert.deepEqual(
       await record('part', ['ma-tag', 7]),
       { merged: false },
-      'Eine andere Farbe wurde mit der ersten zusammengelegt',
+      'A different colour was merged with the first one',
     );
     assert.deepEqual(
       (await partRows('ma-tag', 5)).map(r => r.quantity),
@@ -212,12 +215,12 @@ test('quantities and acquisitions of manual entries against the database', { con
         body: JSON.stringify(body),
       });
     const r = await changeOne(frueher.id, { date: await tag(todayDate.id) });
-    assert.equal(r.status, 409, 'Ein Datum, an dem derselbe Kauf schon steht, muss abgelehnt werden');
+    assert.equal(r.status, 409, 'A date on which the same purchase already exists must be rejected');
     assert.equal((await r.json()).code, 'date_taken');
     assert.equal(
       (await changeOne(frueher.id, { date: await tag(todayDate.id), condition: 'U' })).status,
       200,
-      'Ein anderer Zustand am selben Tag ist eine eigene Erfassung und erlaubt',
+      'A different condition on the same day is a separate acquisition and allowed',
     );
   });
 
@@ -232,7 +235,7 @@ test('quantities and acquisitions of manual entries against the database', { con
     );
     const r = await fetch(`${base}/api/v2/parts/ma-weg/5`, { method: 'DELETE' });
     assert.equal(r.status, 200, await r.text());
-    assert.deepEqual(await partRows('ma-weg'), [], 'Verwaiste Erfassungen zählen in den Finanzsummen weiter');
+    assert.deepEqual(await partRows('ma-weg'), [], 'Orphaned acquisitions still count in the finance totals');
   });
 
   await t.test('the valuation delivers one row per purchase price, legacy data without', async () => {
@@ -261,13 +264,13 @@ test('quantities and acquisitions of manual entries against the database', { con
     const parts = (await valueParts(uid, [uid])).parts;
     const minifigs = (await valueMinifigs(uid, [uid])).figs;
     const preise = e => (e?.acquisitions ?? []).map(a => a.purchase_price).sort();
-    assert.deepEqual(preise(parts.find(p => p.part_number === 'ma-preis')), [2, 4], 'Teil: eine Zeile je Kaufpreis');
+    assert.deepEqual(preise(parts.find(p => p.part_number === 'ma-preis')), [2, 4], 'part: one row per purchase price');
     assert.deepEqual(
       preise(minifigs.find(f => f.fig_number === 'ma-fig-preis')),
       [2, 4],
-      'Figur: eine Zeile je Kaufpreis',
+      'figure: one row per purchase price',
     );
-    assert.deepEqual(parts.find(p => p.part_number === 'ma-alt')?.acquisitions, [], 'Altbestand ohne Erfassung');
+    assert.deepEqual(parts.find(p => p.part_number === 'ma-alt')?.acquisitions, [], 'legacy stock without acquisition');
   });
 });
 
@@ -310,7 +313,7 @@ test('the finances show one row per purchase price, the legacy data in one', asy
   });
   t.after(() => w.close());
   await reiter(w, 'finance');
-  assert.ok(await warte(() => d.querySelector('[data-fin-kind] tbody tr')), 'Kein Abschnitt der manuellen Teile');
+  assert.ok(await warte(() => d.querySelector('[data-fin-kind] tbody tr')), 'No section for manual parts');
   const zeilen = [...d.querySelectorAll('[data-fin-kind] tbody tr')].map(z => z.textContent);
   assert.equal(zeilen.filter(z => z.includes('Teil ma-zwei')).length, 2, zeilen.join('\n'));
   assert.equal(zeilen.filter(z => z.includes('Teil ma-alt')).length, 1, zeilen.join('\n'));
@@ -331,7 +334,7 @@ test('no create path writes directly into an acquisition table', () => {
     assert.doesNotMatch(
       src,
       /INSERT INTO (part|minifig|set)_acquisitions/,
-      `${f}: Erfassungen gehören über addPurchaseAtTag geschrieben`,
+      `${f}: acquisitions must be written via addPurchaseAtTag`,
     );
   }
   for (const f of [
@@ -345,7 +348,7 @@ test('no create path writes directly into an acquisition table', () => {
     assert.doesNotMatch(
       strip(read(f)),
       /SELECT id FROM \w+_acquisitions WHERE[\s\S]{0,160}created_at[^\n]*::date/,
-      `${f}: keine eigene Kopie der Tagesprüfung`,
+      `${f}: no own copy of the per-day check`,
     );
   }
 });
@@ -362,11 +365,11 @@ test('the quantity increase averages the purchase price instead of leaving it', 
   assert.doesNotMatch(
     fn,
     /UPDATE set_acquisitions SET quantity = quantity \+ \$1/,
-    'Kein direktes Aufstocken mehr — das entscheidet addPurchaseAtTag',
+    'No direct topping up any more — addPurchaseAtTag decides that',
   );
   assert.match(
     fn,
-    /await bookEntry\(sk, \{\s*konto: userId,\s*setNumber,\s*quantity: delta,\s*kaufpreis: plan\.price,\s*condition: plan\.condition,/,
+    /await bookEntry\(sk, \{\s*account: userId,\s*setNumber,\s*quantity: delta,\s*purchasePrice: plan\.price,\s*condition: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
   // The price comes from priceForNewEntry() — extracted, because the
@@ -398,8 +401,8 @@ test('a quantity change runs under the inventory lock', () => {
   // Target is the account `ziel` — the rule stays: ONE locked transaction for quantity and acquisitions.
   assert.match(
     fn,
-    /sperren: \[\{ konto: target, schluessel: sn \}\]/,
-    'Menge und Erfassungen gehören in EINE gesperrte Transaktion',
+    /locks: \[\{ account: target, key: sn \}\]/,
+    'Quantity and acquisitions belong in ONE locked transaction',
   );
   assert.doesNotMatch(
     fn,
@@ -417,7 +420,7 @@ test('a quantity change runs under the inventory lock', () => {
   // Since migration 0036 the query stands in db/stockQuantity.ts; here …
   assert.match(
     fn,
-    /repo\.setMenge\(s\.db, 'blickfeld', readField/,
+    /repo\.setQuantity\(s\.db, 'blickfeld', readField/,
     'Die Ausgangsmenge muss über das Blickfeld summiert werden',
   );
 });

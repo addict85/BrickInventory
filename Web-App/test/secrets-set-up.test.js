@@ -52,8 +52,8 @@ test('a new installation gets random secrets, only reachable by the owner', t =>
   assert.equal(r.status, 0, r.stderr);
   const ordner = path.join(s.location, 'geheimnisse');
   assert.deepEqual(fs.readdirSync(ordner).sort(), NAMEN);
-  assert.equal(fs.statSync(ordner).mode & 0o777, 0o700, 'der Ordner ist für andere offen');
-  for (const n of NAMEN) assert.equal(fs.statSync(path.join(ordner, n)).mode & 0o777, 0o444, `${n}: Modus`);
+  assert.equal(fs.statSync(ordner).mode & 0o777, 0o700, 'the folder is open to others');
+  for (const n of NAMEN) assert.equal(fs.statSync(path.join(ordner, n)).mode & 0o777, 0o444, `${n}: mode`);
   assert.match(s.lies('session_secret'), /^[0-9a-f]{96}$/);
   assert.match(s.lies('db_password'), /^[0-9a-f]{48}$/);
   assert.match(s.lies('db_app_password'), /^[0-9a-f]{48}$/);
@@ -94,7 +94,7 @@ test('an existing database without DB_PASSWORD does not get a new one', t => {
   const s = sandbox(t);
   fs.mkdirSync(path.join(s.location, 'pgdata18'));
   const r = s.lauf();
-  assert.notEqual(r.status, 0, 'ein neues Superuser-Passwort passte nicht zur Datenbank');
+  assert.notEqual(r.status, 0, 'a new superuser password did not match the database');
   assert.match(r.stderr, /DB_PASSWORD/);
   assert.equal(fs.existsSync(path.join(s.location, 'geheimnisse', 'db_password')), false);
 });
@@ -106,13 +106,10 @@ test('a second run changes nothing, PGWEB=ja only fills the empty ones', t => {
   fs.chmodSync(path.join(s.location, 'geheimnisse'), 0o755);
   const r = s.lauf({ PGWEB: 'ja' });
   assert.equal(r.status, 0, r.stderr);
-  for (const n of NAMEN.filter(n => n !== 'pgweb_db_password')) assert.equal(s.lies(n), vorher[n], `${n} neu erzeugt`);
+  for (const n of NAMEN.filter(n => n !== 'pgweb_db_password'))
+    assert.equal(s.lies(n), vorher[n], `${n} newly generated`);
   assert.match(s.lies('pgweb_db_password'), /^[0-9a-f]{48}$/);
-  assert.equal(
-    fs.statSync(path.join(s.location, 'geheimnisse')).mode & 0o777,
-    0o700,
-    'ein offener Ordner bleibt offen',
-  );
+  assert.equal(fs.statSync(path.join(s.location, 'geheimnisse')).mode & 0o777, 0o700, 'an open folder stays open');
   const pw = s.lies('pgweb_db_password');
   assert.equal(s.lauf({ PGWEB: 'ja' }).status, 0);
   assert.equal(s.lies('pgweb_db_password'), pw);

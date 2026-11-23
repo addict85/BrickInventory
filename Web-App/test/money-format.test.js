@@ -12,10 +12,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 const { buildTestBundle } = require('./helpers/bundle');
-process.env.TEST_BUENDEL = buildTestBundle(
-  'geldformat',
-  "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n",
-);
+process.env.TEST_BUNDLE = buildTestBundle('geldformat', "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n");
 const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
 
 /**
@@ -49,7 +46,7 @@ test('every fmtN call names the currency', () => {
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, ''),
     ]);
-  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skriptdateien gefunden`);
+  assert.ok(dateien.length >= 10, `Only ${dateien.length} script files found`);
 
   let found = 0;
   const ohne = [];
@@ -65,16 +62,16 @@ test('every fmtN call names the currency', () => {
     }
   // Self-proof: if the pattern finds nothing, the list would be empty and the test
   // green without having checked anything. MEASURED there are 30 calls.
-  assert.ok(found >= 20, `Nur ${found} fmtN-Aufrufe gefunden — Muster veraltet?`);
+  assert.ok(found >= 20, `Only ${found} fmtN calls found — pattern outdated?`);
 
   assert.deepEqual(
     ohne.sort(),
     [],
-    'Diese fmtN-Aufrufe nennen keine Währung:\n  ' +
+    'These fmtN calls name no currency:\n  ' +
       ohne.join('\n  ') +
-      '\nEntweder fehlt sie (dann steht dort die Währung eines anderen Nutzers), ' +
-      'oder es ist gar kein Geldbetrag — dann gehört dorthin ' +
-      '`(n||0).toLocaleString(locale())`, wie auf der Teilekachel.',
+      '\nEither it is missing (then the currency of another user shows there), ' +
+      'or it is not an amount of money at all — then it should be ' +
+      '`(n||0).toLocaleString(locale())`, as on the part tile.',
   );
 });
 
@@ -88,8 +85,8 @@ test('the fallback of fmtN is the configured currency', async () => {
     '/v2/settings/raw': { success: true, settings: { ...ANMELDUNG['/v2/settings/raw'].settings, currency: 'CHF' } },
   });
   try {
-    assert.ok(await warte(() => /CHF/.test(w.__fmtN(12.5))), `ohne Währung: ${w.__fmtN(12.5)}`);
-    assert.match(w.__fmtN(12.5, 'USD'), /\$|USD/, 'Die genannte Währung gewinnt');
+    assert.ok(await warte(() => /CHF/.test(w.__fmtN(12.5))), `without currency: ${w.__fmtN(12.5)}`);
+    assert.match(w.__fmtN(12.5, 'USD'), /\$|USD/, 'The named currency wins');
   } finally {
     w.close();
   }

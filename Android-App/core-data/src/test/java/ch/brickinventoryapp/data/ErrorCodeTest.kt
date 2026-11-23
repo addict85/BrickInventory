@@ -66,7 +66,7 @@ class ErrorCodeTest {
     @Test
     fun `the server's code arrives in the error`() = runTest {
         server.enqueue(TestApi.response(
-            """{"success":false,"error":"Aktuelles Passwort falsch","code":"aktuelles_passwort_falsch"}""", 400))
+            """{"success":false,"error":"Aktuelles Passwort falsch","code":"current_password_wrong"}""", 400))
         val e = error(admin().getMe())
         assertEquals(ErrorCode.CURRENT_PASSWORD_WRONG, e.code)
         assertEquals("Aktuelles Passwort falsch", e.message)
@@ -88,7 +88,7 @@ class ErrorCodeTest {
     @Test
     fun `a deferred balance query is a response with a wait time`() = runTest {
         server.enqueue(TestApi.response(
-            """{"success":false,"code":"guthaben_abstand","error":"Bitte warten","grund":"abstand","wartenSek":30}""", 429))
+            """{"success":false,"code":"balance_interval","error":"Bitte warten","reason":"abstand","waitSeconds":30}""", 429))
         when (val r = vouchers().balance(1)) {
             is Outcome.Success -> {
                 assertEquals("abstand", r.data.reason)
@@ -101,7 +101,7 @@ class ErrorCodeTest {
     @Test
     fun `another 429 stays an error with sentence and code`() = runTest {
         server.enqueue(TestApi.response(
-            """{"success":false,"code":"zu_viele_anfragen","error":"Zu viele Anfragen"}""", 429))
+            """{"success":false,"code":"too_many_requests","error":"Zu viele Anfragen"}""", 429))
         val e = error(vouchers().balance(1))
         assertEquals(ErrorCode.TOO_MANY_REQUESTS, e.code)
         assertEquals("Zu viele Anfragen", e.message)
@@ -119,7 +119,7 @@ class ErrorCodeTest {
     @Test
     fun `a PDF above the page limit is an error with sentence and code, not a half-read one`() = runTest {
         server.enqueue(TestApi.response(
-            """{"success":false,"code":"pdf_zu_viele_seiten","error":"Das PDF hat 40 Seiten, höchstens 20 sind möglich."}""", 422))
+            """{"success":false,"code":"pdf_too_many_pages","error":"Das PDF hat 40 Seiten, höchstens 20 sind möglich."}""", 422))
         val e = error(vouchers().fromPdf("karten.pdf", "application/pdf", byteArrayOf(37, 80, 68, 70)))
         assertEquals(ErrorCode.PDF_TOO_MANY_PAGES, e.code)
         assertEquals("Das PDF hat 40 Seiten, höchstens 20 sind möglich.", e.message)

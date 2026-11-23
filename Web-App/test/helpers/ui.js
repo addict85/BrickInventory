@@ -9,10 +9,10 @@ const { complete } = require('./contract-fill');
 
 const ROOT = path.join(__dirname, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-// TEST_BUENDEL: the bundle with source map from test-run.js --coverage.
+// TEST_BUNDLE: the bundle with source map from test-run.js --coverage.
 const { BUNDLE_FILE, placeBundleSafe } = require('./bundle');
 placeBundleSafe();
-const BUNDLE_PATH = process.env.TEST_BUENDEL || BUNDLE_FILE;
+const BUNDLE_PATH = process.env.TEST_BUNDLE || BUNDLE_FILE;
 const BUNDLE = fs.readFileSync(BUNDLE_PATH, 'utf8');
 
 const ANMELDUNG = {
@@ -189,7 +189,7 @@ function checkResponse(methode, url, daten) {
   const r = schema.safeParse(wert);
   if (!r.success) {
     throw new Error(
-      `Testantwort verletzt den Vertrag: ${methode} ${path} (${status}): ` +
+      `Test response violates the contract: ${methode} ${path} (${status}): ` +
         r.error.issues
           .slice(0, 6)
           .map(i => `${i.path.join('.') || '$'}: ${i.message}`)

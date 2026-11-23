@@ -105,7 +105,7 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
       { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
     );
     const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-    assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+    assert.ok(m, 'The test page wrote no result');
     _result = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
     return _result;
   } finally {
@@ -136,18 +136,18 @@ test('every control ID exists exactly once', t => {
       .filter(([, n]) => n !== 1)
       .map(([id, n]) => `${id}: ${n}×`),
     [],
-    'Die IDs sind der Vertrag mit dem JS',
+    'The IDs are the contract with the JS',
   );
 });
 
 test('the filter bars keep distance to the list', t => {
   const e = gemessen(t);
   if (!e) return;
-  assert.equal(e.leisten.length, 5, 'Galerie, Teile, Minifiguren, Katalog, Merkliste');
+  assert.equal(e.leisten.length, 5, 'gallery, parts, minifigures, catalogue, wanted list');
   assert.deepEqual(
     e.leisten.filter(rem => rem < 1.5),
     [],
-    'Abstand unter 1.5rem',
+    'gap below 1.5rem',
   );
 });
 
@@ -155,8 +155,8 @@ test('the own stock is on its own line in the parts list', t => {
   const e = gemessen(t);
   if (!e) return;
   const { setnr, knopf, lose } = e.holding;
-  assert.ok(setnr && knopf && lose, 'Set-Nummer, Bestand-Knopf oder „nur lose“ fehlt');
+  assert.ok(setnr && knopf && lose, 'set number, stock button or „nur lose“ is missing');
   // The tool row carries flex-wrap:nowrap: one more button would push the rest out of view there.
-  assert.ok(knopf[0] >= setnr[1], `der Bestand-Knopf (${knopf[0]}) steht in der Werkzeugzeile (bis ${setnr[1]})`);
-  assert.ok(lose[0] >= setnr[1], '„nur lose Teile“ steht in der Werkzeugzeile');
+  assert.ok(knopf[0] >= setnr[1], `the stock button (${knopf[0]}) is in the toolbar row (up to ${setnr[1]})`);
+  assert.ok(lose[0] >= setnr[1], '„nur lose Teile“ is in the toolbar row');
 });

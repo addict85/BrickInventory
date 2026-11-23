@@ -11,18 +11,18 @@ type Row = { id: number; storage_id: number | null };
 export async function recolorPartRow(
   k: InventoryContext,
   uid: number,
-  teil: string,
-  source: Row & { farbe: number },
+  part: string,
+  source: Row & { color: number },
   target: Row | null,
   newColor: number,
 ) {
-  const merged = await purchases.stallSameEntriesOn(k.db, uid, teil, source.farbe, newColor);
-  await purchases.deleteToppedUpEntries(k.db, uid, teil, source.farbe, newColor);
-  const moved = await purchases.recolorEntries(k.db, uid, teil, source.farbe, newColor);
+  const merged = await purchases.stallSameEntriesOn(k.db, uid, part, source.color, newColor);
+  await purchases.deleteToppedUpEntries(k.db, uid, part, source.color, newColor);
+  const moved = await purchases.recolorEntries(k.db, uid, part, source.color, newColor);
   if (!target) await sharedRepo.updatePartRowColor(k.db, newColor, source.id);
   else {
     if (source.storage_id && !target.storage_id) await sharedRepo.setPartLocation(k.db, source.storage_id, target.id);
-    await sharedRepo.loescheTeilzeile(k.db, source.id);
+    await sharedRepo.deletePartRowById(k.db, source.id);
   }
   return { united: merged.changes ?? 0, moved: moved.changes ?? 0 };
 }

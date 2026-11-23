@@ -9,9 +9,9 @@ import { access, type PartsDependencies, type PartsContext } from './context';
 
 export type { PartsDependencies, PartsContext } from './context';
 
-export function createParts(a: Omit<PartsDependencies, 'faecher'>, inspect?: Inspect<PartsContext>) {
+export function createParts(a: Omit<PartsDependencies, 'compartments'>, inspect?: Inspect<PartsContext>) {
   return buildArea(
-    { ...a, faecher: new Compartments() },
+    { ...a, compartments: new Compartments() },
     access,
     (k: PartsContext) => ({
       partColors: bound(k)(queries.partColorsQuery),

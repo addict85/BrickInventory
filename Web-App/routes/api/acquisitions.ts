@@ -2,7 +2,7 @@
 import { acquisitionTotals } from '../../src/inventory';
 import { Degradations } from '../../src/infra/result';
 import { viewOf, guardFor } from './middleware';
-import type { ErfassungsArt } from '../../src/collection';
+import type { AcquisitionKind } from '../../src/collection';
 import { contractRouter, type Request0 } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
 
@@ -22,20 +22,20 @@ async function inAccountCurrency<
 
 type Key = (path: Record<string, string | number>) => Array<string | number>;
 /** What the three routes share: the id in the path and a contract schema (Erfassungsaenderung). */
-type Erfassungsanfrage<E = unknown> = AuthedRequest & {
+type AcquisitionRequest<E = unknown> = AuthedRequest & {
   pathArgs: Record<string, string | number> & { acqId: number };
   input: E;
 };
-type Change = Erfassungsanfrage<Request0<'PUT /api/v2/sets/:setNumber/acquisitions/:acqId'>['input']>;
+type Change = AcquisitionRequest<Request0<'PUT /api/v2/sets/:setNumber/acquisitions/:acqId'>['input']>;
 
 const change =
-  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, kind: ErfassungsArt, key: Key) =>
+  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, kind: AcquisitionKind, key: Key) =>
   (req: Change) =>
     d.collection.changeAcquisition(kind, req.apiUser.user_id, req.pathArgs.acqId, key(req.pathArgs), req.input);
 
 const remove =
-  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, kind: ErfassungsArt, key: Key) =>
-  (req: Erfassungsanfrage) =>
+  (d: Pick<Services, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>, kind: AcquisitionKind, key: Key) =>
+  (req: AcquisitionRequest) =>
     d.collection.deleteAcquisition(kind, req.apiUser.user_id, req.pathArgs.acqId, key(req.pathArgs));
 const setKey: Key = p => [String(p.setNumber)];
 const partKey: Key = p => [String(p.partNumber), Number(p.colorId)];

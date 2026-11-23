@@ -87,8 +87,8 @@ async function financesOffline(_t, a) {
       const s = getComputedStyle(k); return { aus: k.disabled, coverage: +s.opacity, zeiger: s.cursor }; })`);
     assert.equal(k.length, 4);
     for (const z of k) {
-      assert.equal(z.aus, true, 'Zeitraumknopf bedienbar');
-      assert.ok(z.coverage < 1 && z.zeiger === 'not-allowed', `gesperrt sieht aus wie bedienbar: ${JSON.stringify(z)}`);
+      assert.equal(z.aus, true, 'period button operable');
+      assert.ok(z.coverage < 1 && z.zeiger === 'not-allowed', `disabled looks like operable: ${JSON.stringify(z)}`);
     }
   } finally {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
@@ -107,8 +107,8 @@ async function rechenbasis(_t, a) {
   const z = await b.auswerten(`({ basis: ${text('#fin-basis')},
     zeilen: [...document.querySelectorAll('#fin-tbl [data-fin-kind] tbody tr')].length })`);
   const von = Number(/von (\d+) Positionen/.exec(z.basis)?.[1]);
-  assert.ok(von > 0, `keine Zahl in „${z.basis}“`);
-  assert.ok(z.zeilen > von, `Testaufbau: ${z.zeilen} Zeilen, ${von} Positionen`);
+  assert.ok(von > 0, `no number in „${z.basis}“`);
+  assert.ok(z.zeilen > von, `test setup: ${z.zeilen} rows, ${von} items`);
   assert.match(
     z.basis,
     /Jede Position zählt einmal, auch wenn die Tabelle sie in mehreren Zeilen zeigt \(je Kauf und Konto\)\./,
@@ -131,9 +131,9 @@ async function referenceLineNarrow(_t, a) {
       return { inImage: [...s.querySelectorAll('.cost-basis-line text')].map(t => t.textContent),
         legende: leg?.textContent.replace(/\\s+/g, ' ') ?? '', legTop: leg?.getBoundingClientRect().top ?? 0,
         surfaceBottom: flaeche.bottom }; })()`);
-    assert.deepEqual(d.inImage, [], 'mehrzeilige Beschriftung über der Kurve');
+    assert.deepEqual(d.inImage, [], 'multi-line label above the curve');
     assert.match(d.legende, /^Kaufpreis/);
-    assert.ok(d.legTop > d.surfaceBottom, `Legende ${d.legTop} px, Kurve endet ${d.surfaceBottom} px`);
+    assert.ok(d.legTop > d.surfaceBottom, `legend ${d.legTop} px, curve ends ${d.surfaceBottom} px`);
   } finally {
     await b.auswerten(`document.documentElement.style.removeProperty('font-size'); true`);
     await groesse(b, 1280);
@@ -150,7 +150,7 @@ async function schrift200(_t, a) {
   await b.auswerten(
     `dispatchEvent(new ErrorEvent('error', { message: 'ResizeObserver loop completed with undelivered notifications.' })); true`,
   );
-  assert.equal(await b.auswerten(errorToasts), 0, 'roter Toast für die ResizeObserver-Meldung');
+  assert.equal(await b.auswerten(errorToasts), 0, 'red toast for the ResizeObserver message');
   await b.auswerten(`window.__ro = 0; true`);
   await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
   try {
@@ -184,7 +184,7 @@ async function clearWithoutNumber(_t, a) {
     await b.auswerten(`document.getElementById('btn-clr-prices').click(); true`);
     await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Rückfrage');
     const msg = await b.auswerten(text('#cd-msg'));
-    assert.doesNotMatch(msg, /\b0 gespeicherte/, 'unbekannte Zahl als 0');
+    assert.doesNotMatch(msg, /\b0 gespeicherte/, 'unknown number as 0');
     assert.match(msg, /^Löscht alle gespeicherten Marktpreise\./);
   } finally {
     await b.auswerten(`document.getElementById('cd-cancel').click(); true`);
@@ -234,11 +234,11 @@ async function wantedItemDetail(_t, a) {
     const loeschen = document.getElementById('mk-m-del');
     return { erste: sichtbar[0]?.className, deleteVisible: loeschen.checkVisibility(),
       inMenu: !!loeschen.closest('details.more-menu'), titel: ${text('#mk-m-tit')}, unter: ${text('#mk-m-sub')} }; })()`);
-  assert.doesNotMatch(d.erste || '', /\bbd\b/, 'roter Knopf als erste Aktion');
-  assert.equal(d.deleteVisible, false, 'Löschen ohne „Weitere Aktionen“ sichtbar');
-  assert.equal(d.inMenu, true, 'Löschen nicht unter „Weitere Aktionen“');
-  assert.equal(d.titel, '10276-1', 'Testaufbau: Merkposten ohne Katalognamen');
-  assert.equal(d.unter, 'Neuware', 'Nummer doppelt im Kopf');
+  assert.doesNotMatch(d.erste || '', /\bbd\b/, 'red button as the first action');
+  assert.equal(d.deleteVisible, false, '„Löschen“ visible without „Weitere Aktionen“');
+  assert.equal(d.inMenu, true, '„Löschen“ not under „Weitere Aktionen“');
+  assert.equal(d.titel, '10276-1', 'test setup: wanted items without catalogue names');
+  assert.equal(d.unter, 'Neuware', 'number twice in the header');
   await b.auswerten(`document.querySelector('#mk-detail-modal .more-menu summary').click(); true`);
   await bis(`document.getElementById('mk-m-del').checkVisibility()`, 'Löschen im Menü');
   await b.auswerten(CLOSE);
@@ -267,9 +267,9 @@ async function createUser(_t, a) {
   await bis(`!!document.getElementById('nu-p-error')?.checkVisibility()`, 'Meldungen');
   let s = await b.auswerten(state);
   assert.equal(s.nameError, 'Bitte einen Benutzernamen eintragen.');
-  assert.equal(s.pwError, 'Bitte ein Passwort eintragen.', 'nur eine Meldung auf einmal');
-  assert.deepEqual([s.nameRule, s.pwRule], [false, false], 'Regel und Meldung zugleich');
-  assert.equal(await b.auswerten('document.activeElement.id'), 'nu-n', 'Fokus beim ersten Fehler');
+  assert.equal(s.pwError, 'Bitte ein Passwort eintragen.', 'only one message at a time');
+  assert.deepEqual([s.nameRule, s.pwRule], [false, false], 'rule and message at the same time');
+  assert.equal(await b.auswerten('document.activeElement.id'), 'nu-n', 'focus on the first error');
   // Only the name wrong: next to the message stands the password rule, the fields stay at one height.
   await put('nu-p', 'Ziegel-Turm-Fenster-42');
   await put('nu-n', 'a b');
@@ -277,9 +277,9 @@ async function createUser(_t, a) {
   await bis(`!!document.getElementById('nu-n-error')?.checkVisibility()`, 'Meldung am Namen');
   s = await b.auswerten(state);
   assert.equal(s.pwError, '');
-  assert.equal(s.pwRule, true, 'Passwortregel fehlt');
+  assert.equal(s.pwRule, true, 'password rule is missing');
   assert.equal(s.oben[0], s.oben[1], `Eingabefelder versetzt: ${s.oben}`);
-  assert.ok(s.hook > s.field[0] && s.hook < s.field[1], `Häkchen ${s.hook} neben Feld ${s.field}`);
+  assert.ok(s.hook > s.field[0] && s.hook < s.field[1], `tick ${s.hook} next to field ${s.field}`);
   try {
     await groesse(b, 390, 844);
     await bis(`innerWidth === 390`, 'Telefonbreite');
@@ -330,7 +330,7 @@ async function hintergrundarbeiten(_t, a) {
     await b.auswerten(`document.querySelector('.mon-single')?.setAttribute('open', ''); true`);
     const zeilen = await b.auswerten(`[...document.querySelectorAll('#tab-monitor .mon-single tbody tr')]
       .filter(r => r.textContent.includes('Wechselkurse')).map(r => r.querySelector('.mon-role')?.textContent || '')`);
-    assert.deepEqual(zeilen.sort(), ['Wiederholung nach Fehler', 'regulärer Lauf'], 'Rollen der beiden Läufe');
+    assert.deepEqual(zeilen.sort(), ['Wiederholung nach Fehler', 'regulärer Lauf'], 'roles of the two runs');
     await ruhig();
     // Hidden: no query, even beyond the 15 s of the calm beat.
     await b.auswerten(`Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
@@ -340,14 +340,14 @@ async function hintergrundarbeiten(_t, a) {
     assert.deepEqual(
       fetches.filter(z => z > ab),
       [],
-      'Abfrage im verborgenen Tab',
+      'polling in the hidden tab',
     );
     await b.auswerten(`delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); true`);
     await bis(`true`, 'visible');
     for (const ende = Date.now() + 3000; !fetches.some(z => z > ab) && Date.now() < ende; ) await warte(100);
     assert.ok(
       fetches.some(z => z > ab),
-      'sichtbar wieder: keine Abfrage',
+      'visible again: no polling',
     );
   } finally {
     b.listener.splice(b.listener.indexOf(zaehler), 1);
@@ -390,12 +390,12 @@ async function sessionUnresolved(_t, a) {
     const z = await b.auswerten(`({ mask: getComputedStyle(document.getElementById('login-screen')).display,
       app: getComputedStyle(document.getElementById('app')).display, titel: ${text('#start-offline-title')},
       text: ${text('#start-offline-text')}, knopf: document.getElementById('start-again').checkVisibility() })`);
-    assert.equal(z.mask, 'none', 'Anmeldemaske trotz gültiger Sitzung');
+    assert.equal(z.mask, 'none', 'login form despite a valid session');
     assert.equal(z.app, 'none');
     // Throttled: an own title and only one time statement (UI check 22, N4).
     assert.equal(z.titel, 'Zu viele Anfragen');
     assert.match(z.text, /^Der Server nimmt gerade keine weiteren Anfragen an\. Neuer Versuch in (40|39|38) s\.$/);
-    assert.equal(z.knopf, true, '„Erneut versuchen“ fehlt');
+    assert.equal(z.knopf, true, '„Erneut versuchen“ is missing');
     type = 'network';
     await b.auswerten(`document.getElementById('start-again').click(); true`);
     await bis(`/Keine Verbindung zum Server/.test(${text('#start-offline-text')})`, 'Grund: kein Netz');

@@ -35,7 +35,7 @@ test('no silent catch on a write operation with user data', () => {
     }
   };
   collect(ROOT);
-  assert.ok(dateien.length >= 60, `nur ${dateien.length} Dateien gefunden — der Pfad stimmt nicht`);
+  assert.ok(dateien.length >= 60, `only ${dateien.length} files found — the path is wrong`);
 
   // Why parentheses are matched here instead of just reading a window
   const call = /\b(?:db|tx|dbh|client)\.(?:run|query)\(|\bpool\.query\(/g;
@@ -77,14 +77,14 @@ test('no silent catch on a write operation with user data', () => {
 
   // Self-proof: if the pattern finds no writing calls on these
   // tables, an empty result says nothing.
-  assert.ok(geprueft >= 30, `nur ${geprueft} schreibende Aufrufe auf Nutzerdaten gefunden — Muster veraltet`);
+  assert.ok(geprueft >= 30, `only ${geprueft} writing calls on user data found — pattern outdated`);
 
   assert.deepEqual(
     violations,
     [],
-    'Diese Schreibvorgaenge auf Nutzerdaten scheitern spurlos:\n  ' +
+    'These writes to user data fail without a trace:\n  ' +
       violations.join('\n  ') +
-      '\nEntweder den Fehler weiterreichen (gar kein catch) oder ihn mit ' +
-      'logAndContinue(kontext) protokollieren.',
+      '\nEither pass the error on (no catch at all) or log it with ' +
+      'logAndContinue(kontext).',
   );
 });

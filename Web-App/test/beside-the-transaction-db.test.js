@@ -31,7 +31,7 @@ const PID = 'SELECT pg_backend_pid() AS p';
 
 test('queries next to a transaction', { concurrency: 1 }, async t => {
   const k = modul.dbConfigFromEnvironment();
-  const db = modul.createDb({ ...k, system: { ...k.verbindung } });
+  const db = modul.createDb({ ...k, system: { ...k.connection } });
   try {
     await db.get(PID);
   } catch (e) {
@@ -40,7 +40,7 @@ test('queries next to a transaction', { concurrency: 1 }, async t => {
     return;
   }
   t.after(() => db.pool.end());
-  assert.notEqual(db.systemPool, db.pool, 'ohne eigenen Systempool prüfte der Test nichts');
+  assert.notEqual(db.systemPool, db.pool, 'without its own system pool the test checked nothing');
   const konto = f => asRequest({ tokenUserId: 1 }, f);
 
   await t.test('system frame within an account transaction is rejected', async () => {
@@ -55,7 +55,7 @@ test('queries next to a transaction', { concurrency: 1 }, async t => {
           inSystemContext('probe', () => db.transaction(inner => inner.get(PID))),
           modul.BesideTheTransaction,
         );
-        assert.equal((await tx.get(PID)).p, eigene, 'die Transaktion bleibt benutzbar');
+        assert.equal((await tx.get(PID)).p, eigene, 'the transaction stays usable');
       }),
     );
   });

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.collection
 
 import ch.brickinventoryapp.contract.GenericResponse
-import ch.brickinventoryapp.contract.Merkposten
-import ch.brickinventoryapp.contract.MerkpostenAntwort
-import ch.brickinventoryapp.contract.MerkpostenInhaberRequest
-import ch.brickinventoryapp.contract.MerkpostenUebernahmeRequest
+import ch.brickinventoryapp.contract.WantedItem
+import ch.brickinventoryapp.contract.WantedItemOwnerRequest
+import ch.brickinventoryapp.contract.WantedItemReply
+import ch.brickinventoryapp.contract.WantedItemTakeoverRequest
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.api.SetsApi
@@ -51,7 +51,7 @@ internal class WantedListRepositoryImpl @Inject constructor(
 
     /** The wishlist comes whole, without pages: the total is the length of the response. */
     override suspend fun refreshWanted(): Outcome<Unit> =
-        store.refreshPaged(Slots.WANTED_LIST, { r -> r.merkposten.map { it.asView() } }, { it.merkposten.size }, retry) { _ ->
+        store.refreshPaged(Slots.WANTED_LIST, { r -> r.item.map { it.asView() } }, { it.item.size }, retry) { _ ->
             safeCall { api.getWantedList(null, null, null, null) }
         }
 
@@ -60,16 +60,16 @@ internal class WantedListRepositoryImpl @Inject constructor(
         val wish = WantedRequest(setNumber, condition, ownerUserId)
         val request = wish.asRequest()
         return store.write(Editing.CreateWantedItem(wish), {
-            MerkpostenAntwort(success = true, warNeu = true,
-                merkposten = Merkposten(setNumber = setNumber, condition = condition, userId = ownerUserId ?: 0))
-        }) { key -> safeCall { api.createWantedItem(request, key) } }.mapData { it.warNeu }
+            WantedItemReply(success = true, wasNew = true,
+                item = WantedItem(setNumber = setNumber, condition = condition, userId = ownerUserId ?: 0))
+        }) { key -> safeCall { api.createWantedItem(request, key) } }.mapData { it.wasNew }
     }
 
     override suspend fun moveWantedItem(setNumber: String, condition: Condition,
                                               ofId: Int, toId: Int): Outcome<Boolean> =
         store.caughtUp({ r -> FollowUp.WantedItemMoved(setNumber, condition, ofId, toId).takeIf { r.success } }) {
-            safeCall { api.moveWantedItem(setNumber, condition.identifier, MerkpostenInhaberRequest(ownerUserId = ofId, neuerInhaber = toId)) }
-        }.promised({ it.success }) { it.zusammengefuehrt }
+            safeCall { api.moveWantedItem(setNumber, condition.identifier, WantedItemOwnerRequest(ownerUserId = ofId, newOwner = toId)) }
+        }.promised({ it.success }) { it.merged }
 
     override suspend fun deleteWantedItem(setNumber: String, condition: Condition,
                                            ownerUserId: Int?): Outcome<Unit> =
@@ -88,7 +88,7 @@ internal class WantedListRepositoryImpl @Inject constructor(
             owner = ownerUserId, storageLocation = storage)
         return store.caughtUp({ r -> FollowUp.WantedItemAdopted(setNumber, condition, ownerUserId, wish).takeIf { r.success } }) {
             safeCall { api.adoptWantedItem(setNumber, condition.identifier,
-                MerkpostenUebernahmeRequest(quantity = quantity, purchasePrice = purchasePrice?.asDouble(), condition = recordedAs, ownerUserId = ownerUserId, storage = storage)) }
+                WantedItemTakeoverRequest(quantity = quantity, purchasePrice = purchasePrice?.asDouble(), condition = recordedAs, ownerUserId = ownerUserId, storage = storage)) }
         }.mapData { it.action == "exists" }
     }
 }

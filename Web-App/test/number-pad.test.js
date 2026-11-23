@@ -39,15 +39,15 @@ test('1. every type="number" carries an inputmode', () => {
   const felder = numberFields();
   // Self-proof: does the search find anything at all? Without that an
   // empty list would be green forever without ever having looked at a field.
-  assert.ok(felder.length >= 20, `Nur ${felder.length} Zahlenfelder gefunden — Muster veraltet?`);
+  assert.ok(felder.length >= 20, `Only ${felder.length} number fields found — pattern outdated?`);
 
   const ohne = felder.filter(f => !/inputmode=/i.test(f.tag)).map(f => `${f.datei}:${f.row}`);
   assert.deepEqual(
     ohne,
     [],
-    'Diese Zahlenfelder sagen dem Handy nicht, welche Tastatur es zeigen soll:\n  ' +
+    'These number fields do not tell the phone which keyboard to show:\n  ' +
       ohne.join('\n  ') +
-      '\n`numeric` für ganze Zahlen, `decimal` für alles mit Komma.',
+      '\n`numeric` for whole numbers, `decimal` for anything with a decimal comma.',
   );
 });
 
@@ -64,9 +64,7 @@ test('2. prices and thresholds get `decimal`, not `numeric`', () => {
   assert.deepEqual(
     falsch,
     [],
-    'Diese Felder erlauben Kommastellen (step=0.01), zeigen aber einen reinen ' +
-      'Ziffernblock:\n  ' +
-      falsch.join('\n  '),
+    'These fields allow decimals (step=0.01) but show a pure ' + 'digit pad:\n  ' + falsch.join('\n  '),
   );
 });
 

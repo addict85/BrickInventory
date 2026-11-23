@@ -53,8 +53,8 @@ test('services take the access from their context, not from the process', async 
   const { zaehler, zugang } = counting(db);
   const d = buildServices(zugang);
   const stats = await asRequest({ session: { userId: uid } }, () => d.parts.partStats(uid));
-  assert.equal(Number(stats.unique_parts), 1, 'das angelegte Teil kommt an');
-  assert.ok(zaehler.n > 0, 'partStatsQuery fragt über den übergebenen Zugang');
+  assert.equal(Number(stats.unique_parts), 1, 'the created part arrives');
+  assert.ok(zaehler.n > 0, 'partStatsQuery queries via the passed access');
 });
 
 test('k.transact: what is written via t applies together or not at all', async t => {
@@ -65,16 +65,16 @@ test('k.transact: what is written via t applies together or not at all', async t
   const e = contexts.settings;
   // Only the system role writes global values (0117): the transaction in its context.
   const { inSystemContext } = _req('src/infra/accountContext.js');
-  const imSystem = f => inSystemContext('test', f);
+  const asSystem = f => inSystemContext('test', f);
   const A = `kontext_a_${process.pid}`;
   const B = `kontext_b_${process.pid}`;
-  t.after(() => imSystem(() => e.repository.deleteGlobalValues([A, B])));
+  t.after(() => asSystem(() => e.repository.deleteGlobalValues([A, B])));
 
   await assert.rejects(
-    imSystem(() =>
+    asSystem(() =>
       e.transact(async tx => {
         await tx.repository.writeGlobalValue(A, 'eins');
-        assert.equal(await tx.repository.globalValue(A), 'eins', 'innen sichtbar');
+        assert.equal(await tx.repository.globalValue(A), 'eins', 'visible inside');
         await tx.repository.writeGlobalValue(B, 'zwei');
         throw new Error('Abbruch');
       }),
@@ -84,10 +84,10 @@ test('k.transact: what is written via t applies together or not at all', async t
   assert.deepEqual(
     [await e.repository.globalValue(A), await e.repository.globalValue(B)],
     [null, null],
-    'ein Fehler nimmt alles zurück',
+    'an error rolls everything back',
   );
 
-  await imSystem(() =>
+  await asSystem(() =>
     e.transact(async tx => {
       await tx.repository.writeGlobalValue(A, 'eins');
       await tx.repository.writeGlobalValue(B, 'zwei');

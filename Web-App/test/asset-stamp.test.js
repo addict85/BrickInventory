@@ -27,7 +27,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { stempleAssets, fileStamp } = _req('src/infra/assetStamp.js');
+const { stampAssets, fileStamp } = _req('src/infra/assetStamp.js');
 
 /** A throwaway directory with a file in it. */
 function build(inhalt) {
@@ -41,16 +41,16 @@ const stampFrom = s => (s.match(/\?v=([^"]*)/) || [])[1];
 test('a changed file gets a new address', () => {
   const dir = build('.a{color:red}');
   try {
-    const vorher = stampFrom(stempleAssets(HTML, dir));
-    assert.ok(vorher && vorher !== 'alt', `Kein Stempel gesetzt: ${vorher}`);
+    const vorher = stampFrom(stampAssets(HTML, dir));
+    assert.ok(vorher && vorher !== 'alt', `No stamp set: ${vorher}`);
 
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}');
-    const nachher = stampFrom(stempleAssets(HTML, dir));
+    const nachher = stampFrom(stampAssets(HTML, dir));
     assert.notEqual(
       nachher,
       vorher,
-      'Nach dem Ändern steht dieselbe Adresse da — dann behält jeder Browser ' +
-        'seine alte Kopie, bis zu sieben Tage lang. Genau das war Marcos Befund.',
+      'After the change the same address is there — then every browser keeps ' +
+        'its old copy for up to seven days. That was exactly Marco’s finding.',
     );
 
     // And the case that justifies the SIZE in the stamp: same mtime,
@@ -59,10 +59,10 @@ test('a changed file gets a new address', () => {
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}/*x*/');
     fs.utimesSync(path.join(dir, 'a.css'), st.atime, st.mtime);
     assert.notEqual(
-      stampFrom(stempleAssets(HTML, dir)),
+      stampFrom(stampAssets(HTML, dir)),
       nachher,
-      'Bei gleicher Änderungszeit, aber anderer Grösse bleibt die Adresse ' +
-        'gleich — dann fehlt die Grösse im Stempel.',
+      'With the same modification time but a different size the address stays ' +
+        'the same — then the size is missing in the stamp.',
     );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -77,14 +77,14 @@ test('an unchanged file keeps its address', async () => {
   // counter-check C, not reflection.
   const dir = build('.a{color:red}');
   try {
-    const a = stampFrom(stempleAssets(HTML, dir));
+    const a = stampFrom(stampAssets(HTML, dir));
     await new Promise(r => setTimeout(r, 20));
-    const b = stampFrom(stempleAssets(HTML, dir));
+    const b = stampFrom(stampAssets(HTML, dir));
     assert.equal(
       a,
       b,
-      'Zwei Aufrufe liefern verschiedene Adressen, obwohl sich nichts geändert ' +
-        'hat — dann lädt der Browser bei jedem Aufruf alles neu.',
+      'Two calls deliver different addresses although nothing has changed ' +
+        '— then the browser reloads everything on every call.',
     );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -95,11 +95,11 @@ test('a missing file leaves the existing value in place', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stempel-leer-'));
   try {
     assert.equal(
-      stempleAssets(HTML, dir),
+      stampAssets(HTML, dir),
       HTML,
-      'Für eine Datei, die es nicht gibt, wurde etwas gestempelt — eine ' +
-        'fehlende Datei ist ein anderes Problem und darf die Adressen der ' +
-        'übrigen nicht verwackeln.',
+      'Something was stamped for a file that does not exist — a ' +
+        'missing file is a different problem and must not shake the addresses of the ' +
+        'others.',
     );
     assert.equal(fileStamp(path.join(dir, 'gibtsnicht.css')), null);
   } finally {
@@ -111,7 +111,7 @@ test('a reference without ?v= stays untouched', () => {
   const dir = build('.a{}');
   try {
     const roh = '<link href="/a.css"><script src="/b.js"></script>';
-    assert.equal(stempleAssets(roh, dir), roh, 'Ein bewusst unversionierter Verweis wurde angefasst.');
+    assert.equal(stampAssets(roh, dir), roh, 'A deliberately unversioned reference was touched.');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

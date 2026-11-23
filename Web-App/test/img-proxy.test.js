@@ -31,19 +31,19 @@ test('the connection pool is wide enough', async () => {
   // 1195 ms; with 32 it is 282 ms, without limit 153 ms.
   // The pool stands in the client (clients/imageCdn.ts), the proxy takes it with `pool: true`.
   // Counter-check (05.11.2026): maxSockets 8 in clients/imageCdn.ts → red.
-  const { oeffneBild } = require('./helpers/sources').buildAndRequire()('clients/imageCdn.js');
+  const { openImage } = require('./helpers/sources').buildAndRequire()('clients/imageCdn.js');
   const { recording } = require('./helpers/https-recording');
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
   const [withPool, withoutPool] = await recording(async () => {
-    await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
-    await oeffneBild(url, { maxBytes: 1000 }).catch(() => {});
+    await openImage(url, { maxBytes: 1000, pool: true }).catch(() => {});
+    await openImage(url, { maxBytes: 1000 }).catch(() => {});
   });
   const agent = withPool?.options.agent;
-  assert.ok(agent, 'der Proxy-Abruf nimmt den Pool nicht');
-  assert.ok(agent.maxSockets >= 32, `maxSockets ${agent.maxSockets} ist zu eng — Einzelabrufe warten spürbar`);
-  assert.equal(agent.keepAlive, true, 'Wiederverwendung spart den TLS-Handshake');
-  assert.equal(withoutPool?.options.agent, undefined, 'ein Einzelabruf hält keine Verbindung offen');
-  assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
+  assert.ok(agent, 'the proxy fetch does not take the pool');
+  assert.ok(agent.maxSockets >= 32, `maxSockets ${agent.maxSockets} is too tight — single fetches wait noticeably`);
+  assert.equal(agent.keepAlive, true, 'Reuse saves the TLS handshake');
+  assert.equal(withoutPool?.options.agent, undefined, 'a single fetch keeps no connection open');
+  assert.match(SERVER, /pool: true/, 'the proxy does not take the pool');
 });
 
 test('the cache cleanup run is a scheduled job', () => {
@@ -53,7 +53,7 @@ test('the cache cleanup run is a scheduled job', () => {
   assert.match(
     SERVER,
     /export async function cleanImageCacheOn/,
-    'Der Lauf muss von aussen startbar sein, statt beim Registrieren loszulaufen',
+    'The run must be startable from outside instead of starting on registration',
   );
   const reg = abschnitt(
     SERVER,
@@ -61,7 +61,7 @@ test('the cache cleanup run is a scheduled job', () => {
     'export async function cleanImageCacheOn',
     'Registrierung ohne tagesweites Intervall',
   );
-  assert.doesNotMatch(reg, /setInterval/, 'Kein eigenes Intervall im Teil, den der Web-Prozess ausführt');
+  assert.doesNotMatch(reg, /setInterval/, 'No own interval in the part the web process runs');
   const plan = require('./helpers/sources').ohneKommentare(
     fs.readFileSync(path.join(ROOT, 'src/management/cleanup.ts'), 'utf8'),
   );

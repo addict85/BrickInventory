@@ -59,7 +59,10 @@ test('QR code: the second code stays after the first expires', { timeout: 180_00
   await bis(`/4:5[0-5]/.test(document.getElementById('qr-hint').textContent)`, 'neuer Zähler bei 4:55', 150);
 
   const nachher = await b.auswerten(`({ image: ${image}, hint: document.getElementById('qr-hint').textContent })`);
-  assert.ok(nachher.image.startsWith('data:image/png'), 'der zweite Code steht nach Ablauf des ersten nicht mehr da');
+  assert.ok(
+    nachher.image.startsWith('data:image/png'),
+    'the second code is no longer shown after the first one expires',
+  );
   assert.notEqual(nachher.image, erstes);
   assert.match(nachher.hint, /4:5\d/);
 });

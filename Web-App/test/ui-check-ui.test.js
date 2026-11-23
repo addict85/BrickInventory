@@ -211,12 +211,12 @@ test('offline: the key figure cards of the finances drop, the period buttons are
     try {
       await reiter(w, 'finance');
       await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
-      assert.equal(d.getElementById('fin-sum').hidden, true, 'Karten ohne Zahl sichtbar');
+      assert.equal(d.getElementById('fin-sum').hidden, true, 'cards without a number visible');
       assert.equal(text(d.getElementById('portfolio-current')), '—');
       assert.deepEqual(
         [...d.querySelectorAll('.period-choice .period-btn')].map(k => k.disabled),
         [true, true, true, true],
-        'Zeitraum bedienbar',
+        'period operable',
       );
     } finally {
       w.close();
@@ -320,11 +320,11 @@ test('background jobs: a postponed job waits, an aborted one has not failed', as
     await reiter(w, 'monitor');
     await warte(() => d.querySelectorAll('#jobs-card .mon-single tbody tr').length === 3, 3000);
     const [wartend, wieder, ab] = [...d.querySelectorAll('#jobs-card .mon-single tbody tr')];
-    assert.equal(wartend.querySelector('.error-box'), null, `als Fehler gezeigt: ${text(wartend)}`);
+    assert.equal(wartend.querySelector('.error-box'), null, `shown as an error: ${text(wartend)}`);
     assert.match(text(wartend), /wartet bis .*\d{1,2}:\d{2}.*BrickLink-Tageskontingent erschöpft/);
     assert.doesNotMatch(text(wartend), /Versuch/);
-    assert.ok(wieder.querySelector('.error-box'), 'ein Fehler vor dem nächsten Versuch bleibt sichtbar');
-    assert.equal(ab.querySelector('.error-box'), null, `abgebrochen als Fehler gezeigt: ${text(ab)}`);
+    assert.ok(wieder.querySelector('.error-box'), 'an error before the next attempt stays visible');
+    assert.equal(ab.querySelector('.error-box'), null, `aborted shown as an error: ${text(ab)}`);
     assert.equal(d.querySelector('[data-click="retryJob"]'), null);
   } finally {
     w.close();

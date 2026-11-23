@@ -123,7 +123,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
           { set_number: `${T1}-1`, storage_id: lager },
           { set_number: `${T2}-1`, storage_id: null },
         ],
-        'eine Zeile je Set, der Lagerort der alten bleibt',
+        'one row per set, the location of the old one stays',
       );
       assert.deepEqual(
         await q(
@@ -136,7 +136,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
           { set_number: `${T1}-1`, preis: 20, quantity: 1 },
           { set_number: `${T2}-1`, preis: 5, quantity: 1 },
         ],
-        'gleiche Kaufpreise werden addiert',
+        'identical purchase prices are added up',
       );
       assert.deepEqual(
         await q('SELECT set_number, part_number FROM parts WHERE user_id=$1 ORDER BY 2', [A]),
@@ -145,7 +145,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
           { set_number: `${T1}-1`, part_number: 'P2' },
           { set_number: `${T2}-1`, part_number: 'P3' },
         ],
-        'Teile des alten Sets bleiben',
+        'parts of the old set stay',
       );
       assert.deepEqual(await q('SELECT set_number, url FROM instructions WHERE user_id=$1 ORDER BY 2', [A]), [
         { set_number: `${T1}-1`, url: 'u1' },
@@ -154,7 +154,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
       assert.deepEqual(
         await q('SELECT set_number, name, image_local FROM set_catalog WHERE set_number LIKE $1', [`${T3}%`]),
         [{ set_number: `${T3}-1`, name: 'Alt', image_local: 'x.jpg' }],
-        'der Katalog füllt Lücken',
+        'the catalogue fills gaps',
       );
       assert.deepEqual(await q('SELECT set_number FROM wanted WHERE user_id=$1', [A]), [{ set_number: `${T3}-1` }]);
       assert.deepEqual(await q('SELECT set_num FROM rb_inventories WHERE id=$1', [880000 + (PID % 10000)]), [
@@ -224,16 +224,16 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
       const { setInfo } = require('./helpers/sources').areaPage('sets');
       const stamm = async n => {
         const r = await setInfo(n);
-        return r && { name: r.name, year: r.year, platzhalter: r.platzhalter };
+        return r && { name: r.name, year: r.year, platzhalter: r.placeholder };
       };
       assert.deepEqual(await stamm(`${S}a-1`), { name: 'Aus Rebrickable', year: 2020, platzhalter: false });
       assert.deepEqual(await stamm(`${S}b-1`), { name: `Set ${S}b-1`, year: null, platzhalter: true });
       assert.deepEqual(
         await stamm(`${S}c`),
         { name: 'Aus dem Abruf', year: null, platzhalter: false },
-        'setInfo ergänzt den Versionsanhang',
+        'setInfo adds the version suffix',
       );
-      assert.equal(await setInfo(`${S}d-1`), null, 'ein blosser Abrufstand ist kein Set-Stamm');
+      assert.equal(await setInfo(`${S}d-1`), null, 'a mere fetch state is no set master record');
     } finally {
       await weg();
     }
@@ -273,7 +273,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
           ['E3', 0],
           ['E4', 1],
         ],
-        'Ersatzteil wird 0/1',
+        'spare part becomes 0/1',
       );
       await c.query('SAVEPOINT s');
       await assert.rejects(

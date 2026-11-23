@@ -73,7 +73,8 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
           assert.equal(
             etikett(v, total, anteil),
             echt,
-            `bei ${Math.round(anteil * 100)} % steht ${echt}, das Etikett sagt ` + `${etikett(v, total, anteil)}`,
+            `at ${Math.round(anteil * 100)} % the real value is ${echt}, the label says ` +
+              `${etikett(v, total, anteil)}`,
           );
         }
       });
@@ -87,13 +88,14 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
         x => x.year,
       );
       const total = v.reduce((s, e) => s + e.n, 0);
-      assert.equal(total, 1000, `Filter nicht berücksichtigt: ${total}`);
+      assert.equal(total, 1000, `Filter not taken into account: ${total}`);
       for (const anteil of [0, 0.5, 1]) {
         const echt = await thereStands(total, anteil, '&sort=year_desc&theme_id=2');
         assert.equal(
           etikett(v, total, anteil),
           echt,
-          `bei ${Math.round(anteil * 100)} % steht ${echt}, das Etikett sagt ` + `${etikett(v, total, anteil)}`,
+          `at ${Math.round(anteil * 100)} % the real value is ${echt}, the label says ` +
+            `${etikett(v, total, anteil)}`,
         );
       }
     });
@@ -108,7 +110,11 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
         max = Math.max(...v.map(x => x.year));
       const linear = a => Math.round(max - a * (max - min));
       const echt = await thereStands(total, 0.9, '&sort=year_desc');
-      assert.notEqual(linear(0.9), echt, 'Die Bühne ist gleichverteilt — dann prüft dieser Test die Verteilung nicht');
+      assert.notEqual(
+        linear(0.9),
+        echt,
+        'The stage is uniformly distributed — then this test does not check the distribution',
+      );
     });
   } finally {
     await db.run(`DELETE FROM rb_sets WHERE set_num LIKE 'JV%'`).catch(() => {});

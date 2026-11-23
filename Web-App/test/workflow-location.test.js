@@ -39,19 +39,18 @@ test('every workflow is where GitHub reads it', () => {
   // place. Without that a broken pattern could wave everything through.
   assert.ok(
     ordner.includes(REAL_LOCATION),
-    `Der Durchlauf hat ${REAL_LOCATION} nicht gefunden — dann prüft er nichts. ` +
-      `Gefunden: ${JSON.stringify(ordner)}`,
+    `The pass did not find ${REAL_LOCATION} — then it checks nothing. ` + `Found: ${JSON.stringify(ordner)}`,
   );
 
   const daneben = ordner.filter(o => o !== REAL_LOCATION);
   assert.deepEqual(
     daneben,
     [],
-    'Diese Workflow-Ordner liegen NICHT im Wurzelverzeichnis und werden von ' +
-      'GitHub nie gelesen:\n  ' +
+    'These workflow folders are NOT in the root directory and are never read by ' +
+      'GitHub:\n  ' +
       daneben.join('\n  ') +
-      '\nGenau so lag ci.yml monatelang in Web-App/.github/workflows und ist ' +
-      'kein einziges Mal gelaufen.',
+      '\nThat is exactly how ci.yml sat in Web-App/.github/workflows for months and ' +
+      'never ran a single time.',
   );
 });
 
@@ -64,11 +63,11 @@ test('the root directory contains the workflows that should exist', () => {
   // Self-proof 2: a minimum count instead of an enumeration. If the folder
   // vanished or the pattern did not match, the list would be empty — and the
   // check below would have nothing to say.
-  assert.ok(dateien.length >= 3, `Nur ${dateien.length} Workflows im Wurzelverzeichnis: ${dateien.join(', ')}`);
+  assert.ok(dateien.length >= 3, `Only ${dateien.length} workflows in the root directory: ${dateien.join(', ')}`);
 
   // The web run must be included. It is the only one that runs the test
   // suite — without it NO run checks the web app.
-  assert.ok(dateien.includes('web-ci.yml'), `Der Web-CI-Lauf fehlt. Vorhanden: ${dateien.join(', ')}`);
+  assert.ok(dateien.includes('web-ci.yml'), `The web CI run is missing. Present: ${dateien.join(', ')}`);
 });
 
 test('a workflow uses every action in the same version everywhere', () => {
@@ -90,7 +89,7 @@ test('a workflow uses every action in the same version everywhere', () => {
   }
 
   // Self-proof 3: without found actions the loop below is empty.
-  assert.ok(versions.size >= 8, `Nur ${versions.size} Actions gefunden — Muster veraltet?`);
+  assert.ok(versions.size >= 8, `Only ${versions.size} actions found — pattern outdated?`);
   const multiple = [...versions].filter(([, je]) => [...je.values()].reduce((n, d) => n + d.length, 0) > 1);
   // Lowered from 3 to 2 when android-playstore.yml was removed: with one
   // workflow fewer there is less overlap. MEASURED, there are now
@@ -99,13 +98,13 @@ test('a workflow uses every action in the same version everywhere', () => {
   // exactly the cases that matter.
   assert.ok(
     multiple.length >= 2,
-    `Nur ${multiple.length} Actions stehen an mehr als einer Stelle — dann ` + 'kann diese Prüfung nichts finden.',
+    `Only ${multiple.length} actions appear in more than one place — then ` + 'this check cannot find anything.',
   );
 
   const disagreeing = [...versions]
     .filter(([, je]) => je.size > 1)
     .map(([action, je]) => `${action}: ` + [...je].map(([v, d]) => `${v} (${d.join(', ')})`).join(' vs. '));
-  assert.deepEqual(disagreeing, [], 'Dieselbe Action steht in zwei Fassungen:\n  ' + disagreeing.join('\n  '));
+  assert.deepEqual(disagreeing, [], 'The same action appears in two versions:\n  ' + disagreeing.join('\n  '));
 });
 
 test('a run that executes tests runs on EVERY branch', () => {
@@ -129,8 +128,8 @@ test('a run that executes tests runs on EVERY branch', () => {
   // found none, the loop below would be empty and the check silently green.
   assert.ok(
     checking.length >= 2,
-    `Nur ${checking.length} testausführende Workflows gefunden — Muster veraltet? ` +
-      'Ohne Fund prüft der Rest dieses Tests nichts.',
+    `Only ${checking.length} test-running workflows found — pattern outdated? ` +
+      'Without a hit the rest of this test checks nothing.',
   );
 
   const eng = [];
@@ -148,10 +147,10 @@ test('a run that executes tests runs on EVERY branch', () => {
   assert.deepEqual(
     eng,
     [],
-    'Diese Workflows führen Tests aus, laufen aber nicht auf jedem Zweig-Push:\n  ' +
+    'These workflows run tests but do not run on every branch push:\n  ' +
       eng.join('\n  ') +
-      '\nDamit kommt ihr Befund erst nach dem Zusammenführen — genau so blieben ' +
-      'drei rote Android-Läufe unbemerkt im Zweig stehen.',
+      '\nSo their finding only comes after merging — that is exactly how ' +
+      'three red Android runs stayed unnoticed on the branch.',
   );
 });
 
@@ -161,13 +160,13 @@ test('a run that executes tests runs on EVERY branch', () => {
 test('the Docker image only results from a push to main of this repository', () => {
   const yml = fs.readFileSync(path.join(REAL_LOCATION, 'docker-publish.yml'), 'utf8');
   const job = yml.split(/\n {2}pruefen:\n/)[1]?.split(/\n {4}steps:\n/)[0] ?? '';
-  assert.match(job, /\n {4}if: /, 'der Prüfjob hat kein if:');
-  assert.match(job, /workflow_run\.event == 'push'/, 'ein PR-Lauf der CI darf kein Image auslösen');
+  assert.match(job, /\n {4}if: /, 'the check job has no if:');
+  assert.match(job, /workflow_run\.event == 'push'/, 'a PR run of the CI must not trigger an image');
   assert.match(job, /workflow_run\.head_branch == 'main'/);
   assert.match(
     job,
     /workflow_run\.head_repository\.full_name == github\.repository/,
-    'ein fremdes Repository (Fork) darf kein Image auslösen',
+    'a foreign repository (fork) must not trigger an image',
   );
 });
 
@@ -177,8 +176,8 @@ test('the release APK is built without a build cache', () => {
   const yml = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
   const schritt = yml.split(/\n {6}- name: Release bauen\n/)[1]?.split(/\n {6}- name: /)[0] ?? '';
   const aufrufe = schritt.split('\n').filter(z => !z.trimStart().startsWith('#') && /gradlew/.test(z));
-  assert.ok(aufrufe.length > 0, 'Schritt „Release bauen“ mit gradlew nicht gefunden');
-  for (const z of aufrufe) assert.match(z, /--no-build-cache/, `Release ohne Build-Cache bauen: ${z.trim()}`);
+  assert.ok(aufrufe.length > 0, 'step „Release bauen“ with gradlew not found');
+  for (const z of aufrufe) assert.match(z, /--no-build-cache/, `build the release without build cache: ${z.trim()}`);
 });
 
 test('every action is pinned by commit SHA', () => {
@@ -192,7 +191,7 @@ test('every action is pinned by commit SHA', () => {
         loose.push(`${f}:${i + 1} ${m[1]}`);
     });
   }
-  assert.deepEqual(loose, [], 'Ein Tag lässt sich umhängen; nur ein SHA ist fest. Nicht per Commit-SHA festgelegt:');
+  assert.deepEqual(loose, [], 'A tag can be moved; only a SHA is fixed. Not pinned by commit SHA:');
 });
 
 // Counter-checks (measured 30.10.2026): `security-events: write` moved to the
@@ -206,21 +205,21 @@ test('the security run checks code, dependencies, image and the running server',
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');
   const oben = yml.slice(0, yml.indexOf('\njobs:'));
-  assert.match(oben, /\npermissions:\n {2}contents: read\n/, 'oben nur contents: read');
+  assert.match(oben, /\npermissions:\n {2}contents: read\n/, 'only contents: read at the top');
   const writing = [...yml.matchAll(/security-events:\s*write/g)].length;
-  assert.equal(writing, 1, 'security-events: write darf nur der CodeQL-Job haben');
+  assert.equal(writing, 1, 'only the CodeQL job may have security-events: write');
   const codeql = yml.slice(yml.indexOf('\n  codeql:'), yml.indexOf('\n  trivy:'));
-  assert.match(codeql, /security-events:\s*write/, 'nur der CodeQL-Job darf Befunde hochladen');
+  assert.match(codeql, /security-events:\s*write/, 'only the CodeQL job may upload findings');
   for (const language of ['javascript-typescript', 'java-kotlin'])
-    assert.match(codeql, new RegExp(`sprache: ${language}\\b`), `CodeQL prüft ${language} nicht`);
+    assert.match(codeql, new RegExp(`sprache: ${language}\\b`), `CodeQL does not check ${language}`);
   const trivy = yml.slice(yml.indexOf('\n  trivy:'), yml.indexOf('\n  zap:'));
   assert.match(trivy, /scan-type: fs/);
   assert.match(trivy, /scan-type: image/);
   const zap = yml.slice(yml.indexOf('\n  zap:'));
   assert.match(zap, /action-baseline@[0-9a-f]{40}/);
-  assert.match(zap, /NODE_ENV: production/, 'ZAP prüft nicht den Server, wie er im Betrieb läuft');
-  assert.match(zap, /docker_name: \S+@sha256:[0-9a-f]{64}/, 'das ZAP-Image ist nicht per Digest festgelegt');
-  assert.ok(fs.existsSync(path.join(WURZEL, '.github', 'zap-regeln.tsv')), 'die ZAP-Regeln fehlen');
+  assert.match(zap, /NODE_ENV: production/, 'ZAP does not check the server as it runs in production');
+  assert.match(zap, /docker_name: \S+@sha256:[0-9a-f]{64}/, 'the ZAP image is not pinned by digest');
+  assert.ok(fs.existsSync(path.join(WURZEL, '.github', 'zap-regeln.tsv')), 'the ZAP rules are missing');
 });
 
 /** The entries of .github/dependabot.yml, one block per `- package-ecosystem:`. */
@@ -254,20 +253,20 @@ test('Dependabot maintains npm, Gradle, images and actions from the root configu
     ['github-actions', '/'],
   ]) {
     const e = findIt(oe, ordner);
-    assert.ok(e, `${oe} in ${ordner}: hält niemand aktuell`);
-    assert.match(e.text, /interval: weekly/, `${oe}: wöchentlich`);
-    assert.match(e.text, /open-pull-requests-limit: [1-5]\b/, `${oe}: offene PRs begrenzt`);
+    assert.ok(e, `${oe} in ${ordner}: nobody keeps it up to date`);
+    assert.match(e.text, /interval: weekly/, `${oe}: weekly`);
+    assert.match(e.text, /open-pull-requests-limit: [1-5]\b/, `${oe}: open PRs limited`);
   }
   for (const oe of ['npm', 'gradle'])
     assert.match(
       entries.find(e => e.ecosystem === oe).text,
       /\n {4}cooldown:\s*\n\s*default-days: [1-9]/,
-      `${oe}: neue Fassungen ohne Wartezeit`,
+      `${oe}: new versions without a waiting period`,
     );
   assert.match(
     findIt('docker-compose', '/Web-App').text,
     /dependency-name: postgres\s*\n\s*update-types: \[version-update:semver-major\]/,
-    'eine PostgreSQL-Hauptversion braucht einen Umzug der Daten, kein stilles Update',
+    'a PostgreSQL major version needs a data migration, not a silent update',
   );
   const renovate = [];
   (function lauf(dir) {
@@ -278,7 +277,7 @@ test('Dependabot maintains npm, Gradle, images and actions from the root configu
       else if (/^renovate\.json5?$|^\.renovaterc/.test(e.name)) renovate.push(path.relative(WURZEL, voll));
     }
   })(WURZEL);
-  assert.deepEqual(renovate, [], 'nur ein Werkzeug: Renovate neben Dependabot öffnete jede Aktualisierung doppelt');
+  assert.deepEqual(renovate, [], 'only one tool: Renovate next to Dependabot opened every update twice');
 });
 
 /** The `run:` block of the step with `id: <id>`, without indentation. */
@@ -326,12 +325,12 @@ test('the images from compose.yaml have an update path and go through Trivy', ()
   for (const oe of ['docker-compose', 'docker', 'github-actions'])
     assert.ok(
       dependabot().some(e => e.ecosystem === oe),
-      `${oe}: Digests und Action-SHAs stehen ohne Update-Pfad fest`,
+      `${oe}: digests and action SHAs are fixed without an update path`,
     );
   // Counter-check (measured 03.11.2026): exit-code '0' again → red „nicht scharf".
-  assert.match(trivy, /exit-code: '1'/, 'Trivy für die Betriebs-Images ist nicht scharf');
+  assert.match(trivy, /exit-code: '1'/, 'Trivy for the production images is not enforcing');
   const liste = trivy.match(/trivyignores: (\S+)/)?.[1];
-  assert.ok(liste && fs.existsSync(path.join(WURZEL, liste)), `Ausnahmeliste fehlt: ${liste}`);
+  assert.ok(liste && fs.existsSync(path.join(WURZEL, liste)), `exception list is missing: ${liste}`);
 });
 
 // Counter-check (measured 03.11.2026): persist-credentials deleted in the checkout of
@@ -361,20 +360,20 @@ test('the image carries provenance and bill of materials, attested on the signed
     .filter(l => !/^\s*#/.test(l))
     .join('\n');
   const bau = yml.split(/\n {2}build:\n/)[1].split(/\n {2}merge:\n/)[0];
-  assert.match(bau, /^\s+provenance: mode=max\s*$/m, 'keine Herkunft beim Bau');
+  assert.match(bau, /^\s+provenance: mode=max\s*$/m, 'no provenance during the build');
   assert.match(
     bau,
     /^\s+sbom: generator=docker\/buildkit-syft-scanner:[\d.]+@sha256:[0-9a-f]{64}\s*$/m,
-    'keine Stückliste beim Bau oder ihr Scanner nicht per Digest',
+    'no bill of materials during the build, or its scanner not pinned by digest',
   );
   const merge = yml.split(/\n {2}merge:\n/)[1];
   assert.match(
     merge,
     /permissions:\s*\n\s+contents: read\s*\n\s+id-token: write\s*\n\s+attestations: write/,
-    'der Merge-Job darf Nachweise ablegen',
+    'the merge job may store attestations',
   );
-  assert.match(merge, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'attest-build-provenance fehlt');
-  assert.match(merge, /uses: actions\/attest-sbom@[0-9a-f]{40}/, 'attest-sbom fehlt');
+  assert.match(merge, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'attest-build-provenance is missing');
+  assert.match(merge, /uses: actions\/attest-sbom@[0-9a-f]{40}/, 'attest-sbom is missing');
   assert.match(merge, /npm sbom --omit=dev --package-lock-only --sbom-format=cyclonedx/);
   // Exactly the digest that cosign signed is attested.
   assert.equal([...merge.matchAll(/subject-digest: \$\{\{ steps\.signatur\.outputs\.digest \}\}/g)].length, 2);
@@ -394,13 +393,13 @@ test('the signed build without cache, Trivy before the signature, package signat
       .filter(l => !/^\s*#/.test(l))
       .join('\n');
   const pub = withoutComment(fs.readFileSync(path.join(REAL_LOCATION, 'docker-publish.yml'), 'utf8'));
-  assert.doesNotMatch(pub, /cache-(from|to)|type=gha/, 'der signierte Bau liest keinen Cache');
+  assert.doesNotMatch(pub, /cache-(from|to)|type=gha/, 'the signed build reads no cache');
   const bau = pub.split(/\n {2}build:\n/)[1].split(/\n {2}merge:\n/)[0];
-  assert.match(bau, /^\s+no-cache: true\s*$/m, 'der signierte Bau liest keinen Cache');
+  assert.match(bau, /^\s+no-cache: true\s*$/m, 'the signed build reads no cache');
   const merge = pub.split(/\n {2}merge:\n/)[1];
   const trivy = merge.indexOf('uses: aquasecurity/trivy-action@'),
     signieren = merge.indexOf('cosign sign ');
-  assert.ok(trivy > 0 && signieren > trivy, 'Trivy prüft den Digest, bevor er signiert wird');
+  assert.ok(trivy > 0 && signieren > trivy, 'Trivy checks the digest before it is signed');
   const schritt = merge.slice(trivy, merge.indexOf('\n      - ', trivy));
   assert.match(schritt, /image-ref: \$\{\{ env\.IMAGE \}\}@\$\{\{ steps\.manifest\.outputs\.digest \}\}/);
   assert.match(schritt, /exit-code: '1'/);
@@ -409,20 +408,20 @@ test('the signed build without cache, Trivy before the signature, package signat
   const ci = withoutComment(fs.readFileSync(path.join(REAL_LOCATION, 'web-ci.yml'), 'utf8'));
   const ci0 = ci.indexOf('npm ci --ignore-scripts'),
     sig = ci.indexOf('run: npm audit signatures');
-  assert.ok(ci0 > 0 && sig > ci0, 'npm audit signatures läuft nach npm ci');
+  assert.ok(ci0 > 0 && sig > ci0, 'npm audit signatures runs after npm ci');
 
   const sich = withoutComment(fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8'));
   const eigen = sich.slice(sich.indexOf('\n  trivy-eigenbau:'), sich.indexOf('\n  zap:'));
   assert.match(eigen, /docker build -f Web-App\/Dockerfile\.caddy /);
   assert.match(eigen, /exit-code: '1'/);
-  assert.doesNotMatch(eigen, /trivyignores/, 'Caddy wird ohne Ausnahmen geprüft');
+  assert.doesNotMatch(eigen, /trivyignores/, 'Caddy is checked without exceptions');
   const exceptions = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
-  assert.doesNotMatch(exceptions, /^\s*# (caddy|pgweb)/m, 'Caddy oder pgweb mit hingenommenen Lücken');
+  assert.doesNotMatch(exceptions, /^\s*# (caddy|pgweb)/m, 'Caddy or pgweb with accepted vulnerabilities');
 });
 
 /** The entries of .github/trivy-betrieb.yaml (only the form the file uses). */
 function trivyExceptions(roh) {
-  assert.match(roh, /^vulnerabilities:\s*$/m, 'kein Abschnitt vulnerabilities');
+  assert.match(roh, /^vulnerabilities:\s*$/m, 'no vulnerabilities section');
   return roh
     .split(/\n {2}- id: /)
     .slice(1)
@@ -452,7 +451,7 @@ function trivyExceptions(roh) {
 test('Trivy exceptions of the operations images: bound to file or package, with deadline and reason', () => {
   const roh = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
   const liste = trivyExceptions(roh);
-  assert.ok(liste.length >= 40, `nur ${liste.length} Ausnahmen gelesen — greift der Leser noch?`);
+  assert.ok(liste.length >= 40, `only ${liste.length} exceptions read — does the reader still work?`);
   const ids = liste.map(e => e.id);
   assert.deepEqual(
     ids.filter((x, i) => ids.indexOf(x) !== i),
@@ -461,17 +460,17 @@ test('Trivy exceptions of the operations images: bound to file or package, with 
   );
   for (const e of liste) {
     assert.match(e.id, /^CVE-\d{4}-\d+$/);
-    assert.match(e.expired_at ?? '', /^\d{4}-\d{2}-\d{2}$/, `${e.id} ohne Ablaufdatum`);
-    assert.ok((e.statement ?? '').length > 20, `${e.id} ohne Grund`);
-    assert.ok(e.paths.length + e.purls.length > 0, `${e.id} ist an keine Datei und kein Paket gebunden`);
+    assert.match(e.expired_at ?? '', /^\d{4}-\d{2}-\d{2}$/, `${e.id} without an expiry date`);
+    assert.ok((e.statement ?? '').length > 20, `${e.id} without a reason`);
+    assert.ok(e.paths.length + e.purls.length > 0, `${e.id} is bound to no file and no package`);
     for (const p of e.purls)
-      assert.match(p, /^pkg:apk\/alpine\/[a-z0-9.+-]+$/, `${e.id}: ${p} ist kein Alpine-Paket ohne Fassung`);
-    for (const p of e.paths) assert.doesNotMatch(p, /^\/|\*/, `${e.id}: ${p} ist kein fester Pfad im Image`);
+      assert.match(p, /^pkg:apk\/alpine\/[a-z0-9.+-]+$/, `${e.id}: ${p} is not an Alpine package without a version`);
+    for (const p of e.paths) assert.doesNotMatch(p, /^\/|\*/, `${e.id}: ${p} is not a fixed path in the image`);
   }
   // gosu is the only Go program in the Postgres image; its exceptions apply only there.
   assert.ok(
     liste.some(e => e.paths.includes('usr/local/bin/gosu')),
-    'keine Ausnahme für gosu',
+    'no exception for gosu',
   );
 
   // trivy-action passes exactly ONE .yaml file through as TRIVY_IGNOREFILE; several or mixed abort.
@@ -479,11 +478,11 @@ test('Trivy exceptions of the operations images: bound to file or package, with 
   assert.match(
     jobOf(sich, 'trivy-compose'),
     /^\s+trivyignores: \.github\/trivy-betrieb\.yaml\s*$/m,
-    'trivy-compose liest die YAML-Ausnahmen',
+    'trivy-compose reads the YAML exceptions',
   );
   assert.ok(
     !fs.existsSync(path.join(WURZEL, '.github', 'trivy-betrieb.ignore')),
-    'die alte Liste ohne Paketbindung liegt noch da',
+    'the old list without package binding is still there',
   );
 });
 
@@ -493,7 +492,7 @@ test('Trivy exceptions of the operations images: bound to file or package, with 
 function stepAfter(yml, name) {
   const z = yml.split('\n');
   const i = z.findIndex(l => l.trim() === `- name: ${name}`);
-  assert.ok(i >= 0, `Schritt „${name}“ nicht gefunden`);
+  assert.ok(i >= 0, `step „${name}“ not found`);
   const r = z.findIndex((l, j) => j > i && /^\s+run: \|\s*$/.test(l));
   const tief = z[r + 1]?.match(/^\s*/)?.[0].length ?? 0;
   const ende = z.findIndex((l, j) => j > r && l.trim() && (l.match(/^\s*/)?.[0].length ?? 0) < tief);
@@ -510,7 +509,7 @@ function jobOf(yml, name) {
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');
   const teil = ohne.split(new RegExp(`\\n  ${name}:\\n`))[1];
-  assert.ok(teil, `Job ${name} fehlt`);
+  assert.ok(teil, `job ${name} is missing`);
   return teil.split(/\n {2}[\w-]+:\n/)[0];
 }
 
@@ -548,12 +547,12 @@ test('tags build without Gradle cache, and only the build job writes it (sec17 M
   assert.match(
     bau,
     /setup-gradle@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+cache-disabled: \$\{\{ startsWith\(github\.ref, 'refs\/tags\/android-v'\) \}\}/,
-    'Etiketten bauen ohne Cache',
+    'build tags without cache',
   );
   assert.match(
     bau,
     /if: startsWith\(github\.ref, 'refs\/tags\/android-v'\)\n\s+run: echo "GRADLE_USER_HOME=\$RUNNER_TEMP\/[\w-]+" >> "\$GITHUB_ENV"/,
-    'Etiketten bauen mit leerem Gradle-Benutzerverzeichnis',
+    'build tags with an empty Gradle user directory',
   );
   for (const datei of ['android.yml', 'sicherheit.yml']) {
     const yml = fs.readFileSync(path.join(REAL_LOCATION, datei), 'utf8');
@@ -562,7 +561,7 @@ test('tags build without Gradle cache, and only the build job writes it (sec17 M
       assert.match(
         jobOf(yml, job),
         /setup-gradle@[0-9a-f]{40}[^\n]*\n(?:\s+if: [^\n]+\n)?\s+with:\n\s+cache-read-only: true/,
-        `${datei}:${job} schreibt den Gradle-Cache`,
+        `${datei}:${job} writes the Gradle cache`,
       );
   }
 });
@@ -573,26 +572,30 @@ test('tags build without Gradle cache, and only the build job writes it (sec17 M
 test("the app's vulnerability check blocks, and without it no tag is signed (sec17 M2)", t => {
   const confidence = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   const job = jobOf(confidence, 'android-abhaengigkeiten');
-  assert.doesNotMatch(job.split('\n    steps:')[0], /continue-on-error/, 'der ganze Job darf nicht rot werden dürfen');
+  assert.doesNotMatch(job.split('\n    steps:')[0], /continue-on-error/, 'the whole job must not be allowed to go red');
   const check = job.split('- name: Bekannte Lücken')[1].split('- name: ')[0];
-  assert.match(check, /exit-code: '1'/, 'die Lückenprüfung der App sperrt nicht');
+  assert.match(check, /exit-code: '1'/, "the app's vulnerability check does not block");
   assert.match(check, /severity: HIGH,CRITICAL/);
   assert.match(check, /ignore-unfixed: true/);
-  assert.match(job, /log4j-core:2\.14\.1/, 'die Gegenprobe mit einer bekannt verwundbaren Fassung fehlt');
+  assert.match(job, /log4j-core:2\.14\.1/, 'the counter-check with a known vulnerable version is missing');
   assert.match(job, /steps\.gegenprobe\.outcome/);
   const liste = check.match(/trivyignores: (\S+)/)?.[1];
-  assert.ok(liste && fs.existsSync(path.join(WURZEL, liste)), `Ausnahmeliste fehlt: ${liste}`);
+  assert.ok(liste && fs.existsSync(path.join(WURZEL, liste)), `exception list is missing: ${liste}`);
   const zeilen = fs.readFileSync(path.join(WURZEL, liste), 'utf8').split('\n');
   zeilen.forEach((z, i) => {
     if (!z.trim() || z.startsWith('#')) return;
-    assert.match(z, /^CVE-\d{4}-\d+ exp:\d{4}-\d{2}-\d{2}$/, `Ausnahme ohne Ablaufdatum: ${z}`);
-    assert.match(zeilen[i - 1] ?? '', /^# \S.{10,}/, `Ausnahme ohne Grund darüber: ${z}`);
+    assert.match(z, /^CVE-\d{4}-\d+ exp:\d{4}-\d{2}-\d{2}$/, `exception without an expiry date: ${z}`);
+    assert.match(zeilen[i - 1] ?? '', /^# \S.{10,}/, `exception without a reason above it: ${z}`);
   });
   const name = confidence.match(/\n {2}android-abhaengigkeiten:\n {4}name: ([^\n]+)/)[1];
   const release = fs.readFileSync(path.join(REAL_LOCATION, 'android-release.yml'), 'utf8');
   const script = stepAfter(release, 'Abhängigkeiten ohne bekannte Lücke');
-  assert.match(script, /workflows\/sicherheit\.yml\/runs\?head_sha=\$COMMIT/, 'Etikett ohne grüne Lückenprüfung');
-  assert.ok(name.startsWith('Trivy (Android-Abhängigkeiten'), `Jobname „${name}“ passt nicht zur Abfrage`);
+  assert.match(
+    script,
+    /workflows\/sicherheit\.yml\/runs\?head_sha=\$COMMIT/,
+    'tag without a green vulnerability check',
+  );
+  assert.ok(name.startsWith('Trivy (Android-Abhängigkeiten'), `job name „${name}“ does not match the query`);
   const lauf = conclusion =>
     withGh(
       t,
@@ -603,9 +606,9 @@ test("the app's vulnerability check blocks, and without it no tag is signed (sec
       },
       { COMMIT: 'a'.repeat(40) },
     );
-  assert.equal(lauf('success').status, 0, 'ein grüner Lauf gibt frei');
-  assert.notEqual(lauf('failure').status, 0, 'ein roter Lauf sperrt');
-  assert.notEqual(lauf('fehlt').status, 0, 'ohne den Job sperrt es');
+  assert.equal(lauf('success').status, 0, 'a green run releases');
+  assert.notEqual(lauf('failure').status, 0, 'a red run blocks');
+  assert.notEqual(lauf('fehlt').status, 0, 'without the job it blocks');
 });
 
 // Counter-checks (measured 11.11.2026, each individually): in the step „main ist geschützt“ the loop
@@ -621,8 +624,8 @@ test('signing happens only with protected main, from main, for a real tag and wi
   const main = stepAfter(release, 'main ist geschützt');
   const regeln = arten => withGh(t, main, { 'rules/branches/main': arten }).status;
   assert.equal(regeln('non_fast_forward,pull_request,required_status_checks'), 0);
-  assert.notEqual(regeln('non_fast_forward,required_status_checks'), 0, 'ohne PR-Pflicht wird nicht signiert');
-  assert.notEqual(regeln('pull_request'), 0, 'ohne Pflicht-Checks wird nicht signiert');
+  assert.notEqual(regeln('non_fast_forward,required_status_checks'), 0, 'without mandatory PRs nothing is signed');
+  assert.notEqual(regeln('pull_request'), 0, 'without mandatory checks nothing is signed');
   const signieren = fs.readFileSync(path.join(REAL_LOCATION, 'android-signieren.yml'), 'utf8');
   const environment = stepAfter(signieren, 'Environment ist geschützt');
   const env = (bypass, regel = 'branch:main', selfReview = true) =>
@@ -640,14 +643,14 @@ test('signing happens only with protected main, from main, for a real tag and wi
       { UMGEBUNG: 'release' },
     ).status;
   assert.equal(env(false), 0);
-  assert.notEqual(env(true), 0, 'Administratoren dürfen die Freigabe nicht umgehen');
-  assert.notEqual(env(false, 'branch:main', false), 0, 'ohne prevent_self_review gibt es kein Vier-Augen-Prinzip');
+  assert.notEqual(env(true), 0, 'administrators must not bypass the approval');
+  assert.notEqual(env(false, 'branch:main', false), 0, 'without prevent_self_review there is no four-eyes principle');
   assert.notEqual(
     env(false, 'tag:android-v*'),
     0,
-    'ein Etikett mit eigenem Workflow käme an die Schlüssel: nur der Zweig main',
+    'a tag with its own workflow would get at the keys: only the main branch',
   );
-  assert.notEqual(env(false, 'branch:main,tag:android-v*'), 0, 'nur der Zweig main');
+  assert.notEqual(env(false, 'branch:main,tag:android-v*'), 0, 'only the main branch');
 
   const etikett = stepAfter(release, 'Etikett zeigt auf den gebauten Commit');
   const c = 'c'.repeat(40);
@@ -668,15 +671,11 @@ test('signing happens only with protected main, from main, for a real tag and wi
     return { status: r.status, aus: fs.readFileSync(o, 'utf8') };
   };
   const gut = pruefe('android-v2026.11.12', c);
-  assert.equal(gut.status, 0, 'ein Etikett auf dem gebauten Commit gilt');
+  assert.equal(gut.status, 0, 'a tag on the built commit counts');
   assert.match(gut.aus, new RegExp(`^commit=${c}$`, 'm'));
   assert.match(gut.aus, /^lauf=99$/m);
-  assert.notEqual(
-    pruefe('android-v2026.11.12', 'd'.repeat(40)).status,
-    0,
-    'ein Etikett auf einem anderen Commit gilt nicht',
-  );
-  assert.notEqual(pruefe('android-v1;x', c).status, 0, 'ein Name mit Sonderzeichen gilt nicht');
+  assert.notEqual(pruefe('android-v2026.11.12', 'd'.repeat(40)).status, 0, 'a tag on another commit does not count');
+  assert.notEqual(pruefe('android-v1;x', c).status, 0, 'a name with special characters does not count');
   assert.notEqual(
     withGh(
       t,
@@ -685,20 +684,20 @@ test('signing happens only with protected main, from main, for a real tag and wi
       { GITHUB_OUTPUT: output(t), EINGABE: '', AUS_LAUF: 'android-v9', LAUF_COMMIT: c, LAUF_ID: '99' },
     ).status,
     0,
-    'ohne Etikett (etwa nur ein Zweig des Namens) gilt nichts',
+    'without a tag (e.g. only a branch of that name) nothing counts',
   );
 
   const sums = stepAfter(release, 'Prüfsummen aus der Übergabe');
   assert.match(
     sums,
     /select\(\.name == "Übergabe an das Signieren" and \.conclusion == "success"\)/,
-    'die Anmerkung eines anderen Jobs zählt nicht',
+    "another job's annotation does not count",
   );
   const android = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
   assert.match(
     jobOf(android, 'uebergabe'),
     /^ {4}name: Übergabe an das Signieren$/m,
-    'der Name des Übergabejobs passt nicht zur Abfrage',
+    'the name of the handover job does not match the query',
   );
   assert.match(
     stepAfter(android, 'Prüfsummen des Baujobs bezeugen'),
@@ -719,9 +718,9 @@ test('signing happens only with protected main, from main, for a real tag and wi
   const ok = lies('55', `apk=${a} aab=${b}`);
   assert.equal(ok.status, 0);
   assert.match(ok.aus, new RegExp(`^sha256_apk=${a}\\nsha256_aab=${b}$`, 'm'));
-  assert.notEqual(lies('55 56', `apk=${a} aab=${b}`).status, 0, 'zwei Übergaben gelten nicht');
-  assert.notEqual(lies('55', '').status, 0, 'ohne Anmerkung gilt nichts');
-  assert.notEqual(lies('55', `apk=${a} aab=${b}; rm`).status, 0, 'eine verunstaltete Anmerkung gilt nicht');
+  assert.notEqual(lies('55 56', `apk=${a} aab=${b}`).status, 0, 'two handovers do not count');
+  assert.notEqual(lies('55', '').status, 0, 'without an annotation nothing counts');
+  assert.notEqual(lies('55', `apk=${a} aab=${b}; rm`).status, 0, 'a mangled annotation does not count');
 });
 
 // Counter-checks (measured 05.11.2026): the checksum step deleted in the release job → red
@@ -734,22 +733,18 @@ test('only what the signing job output is published and attested (sec17 B-N1, B-
   assert.match(
     release,
     /- name: Artefakt gegen die Prüfsummen des Signierjobs/,
-    'vor dem Veröffentlichen fehlt der Vergleich',
+    'the comparison before publishing is missing',
   );
-  assert.doesNotMatch(release, /attest-build-provenance|id-token: write/, 'der Release-Job bescheinigt nicht selbst');
+  assert.doesNotMatch(release, /attest-build-provenance|id-token: write/, 'the release job does not attest itself');
   assert.match(release, /needs: \[etikett, signieren, bescheinigen\]/);
   assert.match(jobOf(android, 'bescheinigen'), /uses: \.\/\.github\/workflows\/android-bescheinigung\.yml/);
   assert.match(bescheinigung, /\non:\n {2}workflow_call:\n/);
-  assert.doesNotMatch(
-    bescheinigung,
-    /\n {2}(push|pull_request|workflow_dispatch):/,
-    'nur als wiederverwendbarer Workflow',
-  );
+  assert.doesNotMatch(bescheinigung, /\n {2}(push|pull_request|workflow_dispatch):/, 'only as a reusable workflow');
   for (const datei of ['apk/release/BrickInventory.apk', 'version-signiert.json', 'bundle/release/app-release.aab'])
     assert.match(
       bescheinigung.split('subject-path:')[1],
       new RegExp(datei.replace(/[./]/g, '\\$&')),
-      `${datei} wird nicht bescheinigt`,
+      `${datei} is not attested`,
     );
 
   const location = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'signiert-'));
@@ -770,5 +765,5 @@ test('only what the signing job output is published and attested (sec17 B-N1, B-
     spawnSync('bash', ['-e', '-c', script], { cwd: location, encoding: 'utf8', env: { ...process.env, ...env } });
   assert.equal(lauf().status, 0, lauf().stdout + lauf().stderr);
   fs.writeFileSync(path.join(location, 'signiert', 'version-signiert.json'), '{ }');
-  assert.notEqual(lauf().status, 0, 'ein verändertes Byte wird bescheinigt');
+  assert.notEqual(lauf().status, 0, 'a changed byte is attested');
 });

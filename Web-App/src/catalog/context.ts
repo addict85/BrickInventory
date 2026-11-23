@@ -9,7 +9,7 @@ import type { JobsServices } from '../jobQueue';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { ImagesServices } from '../images';
-import * as anleitungen from './repository/instructions';
+import * as instructions from './repository/instructions';
 import * as imageState from './repository/imageState';
 import * as blMapping from './repository/blMapping';
 import * as csvCatalog from './repository/csvCatalog';
@@ -24,11 +24,11 @@ import type { Clock } from '../infra/clock';
 export interface CatalogDependencies {
   clock: Clock;
   db: Db;
-  faecher: Compartments;
+  compartments: Compartments;
   /** Clients, quota and throttles of this set of services (src/externalSources). */
   externalSources: ForeignSourcesServices;
   /** At most two image fetches from the CDN at a time, one per set of services. */
-  cdnDrossel: ConcurrentRateLimiter;
+  cdnThrottle: ConcurrentRateLimiter;
   images: ImagesServices;
   settings: SettingsServices;
   jobQueue: JobsServices;
@@ -39,13 +39,13 @@ export interface CatalogDependencies {
 
 /** Instructions, BrickLink mapping and CSV catalog. */
 const instructionAccess = (db: Db, l: CatalogReadContract) => ({
-  anleitungen: {
-    countInstructions: bound(db)(anleitungen.countInstructions),
-    instructionsOfSets: bound(db)(anleitungen.instructionsOfSets),
-    deleteInstructionsOfSets: bound(db)(anleitungen.deleteInstructionsOfSets),
-    hatBrickinstructions: bound(db)(anleitungen.hatBrickinstructions),
-    rememberInstruction: bound(db)(anleitungen.storeInstruction),
-    setInstructionFile: bound(db)(anleitungen.setInstructionFile),
+  instructions: {
+    countInstructions: bound(db)(instructions.countInstructions),
+    instructionsOfSets: bound(db)(instructions.instructionsOfSets),
+    deleteInstructionsOfSets: bound(db)(instructions.deleteInstructionsOfSets),
+    hasBrickinstructions: bound(db)(instructions.hasBrickinstructions),
+    rememberInstruction: bound(db)(instructions.storeInstruction),
+    setInstructionFile: bound(db)(instructions.setInstructionFile),
   },
   blMapping: {
     writeBlNumber: bound(db)(blMapping.writeBlNumber),
@@ -86,10 +86,10 @@ const masterAccess = (db: Db, l: CatalogReadContract) => ({
   },
   catalogSearch: {
     themes: bound(db)(catalogSearch.themes),
-    setsJeThema: bound(db)(catalogSearch.setsJeThema),
+    setsPerTheme: bound(db)(catalogSearch.setsPerTheme),
     yearRange: bound(db)(catalogSearch.yearRange),
-    setsJeYear: bound(db)(catalogSearch.setsJeYear),
-    setsJeYearFiltered: bound(db)(catalogSearch.setsJeYearFiltered),
+    setsPerYear: bound(db)(catalogSearch.setsPerYear),
+    setsPerYearFiltered: bound(db)(catalogSearch.setsPerYearFiltered),
     catalogCount: bound(db)(catalogSearch.catalogCount),
     catalogRows: withContract(db, l)(catalogSearch.catalogRows),
     catalogRow: withContract(db, l)(catalogSearch.catalogRow),

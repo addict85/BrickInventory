@@ -23,7 +23,7 @@ const variant = paket.devDependencies['pdfjs-dist'];
 const installiert = path.join(ROOT, 'node_modules', 'pdfjs-dist');
 
 test('exact version in package.json and lockfile', () => {
-  assert.match(String(variant), /^\d+\.\d+\.\d+$/, `pdfjs-dist „${variant}“ ist keine exakte Fassung`);
+  assert.match(String(variant), /^\d+\.\d+\.\d+$/, `pdfjs-dist „${variant}“ is not an exact version`);
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
   assert.equal(lock.packages['node_modules/pdfjs-dist']?.version, variant);
 });
@@ -54,7 +54,7 @@ test('the delivered PDF.js files contain neither eval nor new Function', () => {
     path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.worker.min.mjs'),
   ]) {
     const text = fs.readFileSync(d, 'utf8');
-    assert.ok(text.length > 100_000, `${d} ist leer`);
+    assert.ok(text.length > 100_000, `${d} is empty`);
     assert.doesNotMatch(text, /\beval\s*\(|\bnew\s+Function\s*\(/, d);
   }
 });

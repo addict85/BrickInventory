@@ -22,9 +22,9 @@ const _req = q.buildAndRequire();
 function holding() {
   const api = _req('routes/api/index.js').buildApiRouter(q.testServices());
   /** @param {any} r */
-  const collect = (r, aus = { routen: [], prefilters: [] }) => {
+  const collect = (r, aus = { routes: [], prefilters: [] }) => {
     for (const l of r.stack) {
-      if (l.route) for (const m of Object.keys(l.route.methods)) aus.routen.push({ m, path: l.route.path, l });
+      if (l.route) for (const m of Object.keys(l.route.methods)) aus.routes.push({ m, path: l.route.path, l });
       else if (!l.slash) aus.prefilters.push(l);
       else if (l.handle?.stack) collect(l.handle, aus);
     }
@@ -38,22 +38,22 @@ const beispiel = p => p.replace(/:\w+/g, 'x1');
 
 test('the routers under /api/v1 do not hit each other', () => {
   const router = holding();
-  assert.ok(router.length >= 15, `nur ${router.length} Router — greift die Suche noch?`);
-  assert.ok(router.flatMap(r => r.prefilters).length >= 1, 'keine Middleware mit Pfad gefunden');
+  assert.ok(router.length >= 15, `only ${router.length} routers — does the search still match?`);
+  assert.ok(router.flatMap(r => r.prefilters).length >= 1, 'no middleware with a path found');
   const muster = [];
   const middleware = [];
   router.forEach((r, i) => {
     for (const fremd of router.filter((_, j) => j !== i))
-      for (const ziel of fremd.routen) {
-        for (const eigen of r.routen)
+      for (const ziel of fremd.routes) {
+        for (const eigen of r.routes)
           if (eigen.m === ziel.m && eigen.l.match(beispiel(ziel.path)))
             muster.push(`${eigen.m} ${eigen.path} trifft ${ziel.path}`);
         for (const v of r.prefilters)
           if (v.match(beispiel(ziel.path))) middleware.push(`${v.name} vor ${ziel.m} ${ziel.path}`);
       }
   });
-  assert.deepEqual(muster, [], 'kein Muster trifft eine Route eines anderen Routers');
-  assert.deepEqual(middleware, [], 'keine Middleware mit Pfad trifft eine Route eines anderen Routers');
+  assert.deepEqual(muster, [], 'no pattern matches a route of another router');
+  assert.deepEqual(middleware, [], 'no middleware with a path matches a route of another router');
 });
 
 test('the app attaches the error path, once behind all routers', () => {
@@ -61,8 +61,8 @@ test('the app attaches the error path, once behind all routers', () => {
   const app = _req('startup/app.js').buildApp({
     pool: q.testAccess().systemPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
-    dienste: q.testServices(),
+    sessionSecret: 'test-sitzungsgeheimnis-lang-genug',
+    services: q.testServices(),
     sessionStorage: (/** @type {any} */ _q, /** @type {any} */ _r, /** @type {Function} */ n) => n(),
   });
   /** @type {string[]} */
@@ -78,9 +78,9 @@ test('the app attaches the error path, once behind all routers', () => {
   };
   const oben = app.router.stack;
   durch(app.router, '');
-  assert.ok(oben.length > 30, `nur ${oben.length} Schichten — greift die Suche noch?`);
-  assert.deepEqual(inRouters, [], 'den Fehlerweg hängt die App an, kein Router');
+  assert.ok(oben.length > 30, `only ${oben.length} layers — does the search still match?`);
+  assert.deepEqual(inRouters, [], 'the app attaches the error path, not a router');
   const errorPaths = oben.filter((/** @type {any} */ l) => l.handle === errorResponse);
   assert.equal(errorPaths.length, 1);
-  assert.equal(oben.at(-1)?.handle, errorResponse, 'der Fehlerweg steht hinter allen Routern');
+  assert.equal(oben.at(-1)?.handle, errorResponse, 'the error path comes after all routers');
 });

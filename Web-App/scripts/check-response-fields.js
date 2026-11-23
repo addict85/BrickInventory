@@ -39,12 +39,12 @@ const ALLOWED = new Map([
 /** Technical envelopes that stand in almost every response. */
 const FRAME = new Set(['success', 'error', 'message', 'ok', 'status', 'data', 'code', 'detail']);
 
-/** @param {string} wurzel @param {string[]} extensions @param {string[]} from */
-function files(wurzel, extensions, from) {
+/** @param {string} root @param {string[]} extensions @param {string[]} from */
+function files(root, extensions, from) {
   /** @type {string[]} */
   const out = [];
   /** @param {string} d */
-  const lauf = d => {
+  const run = d => {
     let e;
     try {
       e = fs.readdirSync(d, { withFileTypes: true });
@@ -54,12 +54,39 @@ function files(wurzel, extensions, from) {
     for (const x of e) {
       const p = path.join(d, x.name);
       if (from.some(a => p.includes(a))) continue;
-      if (x.isDirectory()) lauf(p);
+      if (x.isDirectory()) run(p);
       else if (extensions.some(s => x.name.endsWith(s))) out.push(p);
     }
   };
-  lauf(wurzel);
+  run(root);
   return out;
+}
+
+const OPENS = new Set(['(', '{', '[']);
+const CLOSES = new Set([')', '}', ']']);
+
+/** Index behind the bracket that closes the one opened just before `start`. @param {string} s @param {number} start */
+function closingIndex(s, start) {
+  let depth = 1,
+    i = start;
+  while (i < s.length && depth > 0) {
+    if (OPENS.has(s[i] ?? '')) depth++;
+    else if (CLOSES.has(s[i] ?? '')) depth--;
+    i++;
+  }
+  return i;
+}
+
+/** The text with everything nested blanked out: foreign object shapes stand there. @param {string} text */
+function topLevel(text) {
+  let layer = 0;
+  let top = '';
+  for (const c of text) {
+    if (OPENS.has(c)) layer++;
+    else if (CLOSES.has(c)) layer--;
+    top += layer === 0 ? c : ' ';
+  }
+  return top;
 }
 
 /**
@@ -71,22 +98,8 @@ function files(wurzel, extensions, from) {
 function responseKey(s, re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)/g) {
   const found = new Set();
   while (re.exec(s) !== null) {
-    let depth = 1,
-      i = re.lastIndex;
-    while (i < s.length && depth > 0) {
-      const c = s[i];
-      if (c === '(' || c === '{' || c === '[') depth++;
-      else if (c === ')' || c === '}' || c === ']') depth--;
-      i++;
-    }
-    // Hide nested ones — foreign object shapes stand there.
-    let layer = 0;
-    let top = '';
-    for (const c of s.slice(re.lastIndex, i - 1)) {
-      if (c === '(' || c === '{' || c === '[') layer++;
-      else if (c === ')' || c === '}' || c === ']') layer--;
-      top += layer === 0 ? c : ' ';
-    }
+    const i = closingIndex(s, re.lastIndex);
+    const top = topLevel(s.slice(re.lastIndex, i - 1));
     for (const k of top.matchAll(/(?:^|,)\s*([A-Za-z_]\w*)\s*:/g)) found.add(k[1]);
   }
   return found;
@@ -146,20 +159,15 @@ if (consumer.length < 40) {
   );
   process.exit(1);
 }
-// What the app reads is in shared/app-schnittstelle.json (generated from its models).
+// What the app reads is in shared/app-interface.json (generated from its models).
 const appFields = JSON.parse(
-  fs.readFileSync(path.join(ROOT, '..', 'shared', 'app-schnittstelle.json'), 'utf8'),
-).antwortfelder;
+  fs.readFileSync(path.join(ROOT, '..', 'shared', 'app-interface.json'), 'utf8'),
+).response_fields;
 if (!Array.isArray(appFields) || appFields.length < 100) {
-  console.error('❌ shared/app-schnittstelle.json nennt kaum Antwortfelder der App — erzeugt?');
+  console.error('❌ shared/app-interface.json nennt kaum Antwortfelder der App — erzeugt?');
   process.exit(1);
 }
-// The app reads API v1: its German names stand for the v2 fields they are mapped from.
-const { V1_FIELDS } = require(path.join(ROOT, 'dist', 'src', 'contract', 'v1Names.js'));
-/** @type {Map<string, string>} */
-const fromV1 = new Map(Object.entries(/** @type {Record<string, string>} */ (V1_FIELDS)).map(([v2, v1]) => [v1, v2]));
-const appV2 = appFields.map((/** @type {string} */ f) => fromV1.get(f) ?? f);
-const customer = [...consumer.map(p => fs.readFileSync(p, 'utf8')), ...appFields, ...appV2].join('\n');
+const customer = [...consumer.map(p => fs.readFileSync(p, 'utf8')), ...appFields].join('\n');
 
 const error = [];
 for (const [k, filesList] of [...whence].sort()) {

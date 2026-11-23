@@ -86,20 +86,20 @@ test('wishlist item prices call BrickLink only for sets in the catalog', { concu
     aufrufe.length = 0;
     const r = await pricesForBothConditions(uid, INVENTED);
     assert.deepEqual(r.current, {});
-    assert.equal(aufrufe.length, 0, `unnötig abgerufen: ${aufrufe.join(' | ')}`);
+    assert.equal(aufrufe.length, 0, `fetched needlessly: ${aufrufe.join(' | ')}`);
   });
 
   await t.test('a no-price marker is not a catalog entry', async () => {
     aufrufe.length = 0;
     const r = await pricesForBothConditions(uid, MARKED);
     assert.deepEqual(r.current, {});
-    assert.equal(aufrufe.length, 0, `unnötig abgerufen: ${aufrufe.join(' | ')}`);
+    assert.equal(aufrufe.length, 0, `fetched needlessly: ${aufrufe.join(' | ')}`);
   });
 
   await t.test('known set is fetched', async () => {
     aufrufe.length = 0;
     const r = await pricesForBothConditions(uid, KNOWN);
-    assert.ok(aufrufe.length > 0, 'die Attrappe sah keinen Aufruf — die Gegenprobe oben bewiese nichts');
+    assert.ok(aufrufe.length > 0, 'the dummy saw no call — the counter-check above would prove nothing');
     assert.equal(parseFloat(String(r.current.N.avg_price)), 12.5);
   });
 });

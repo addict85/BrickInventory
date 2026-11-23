@@ -18,7 +18,7 @@ const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
 const U = 990701;
 const FIG = 'mp-fig-1',
-  TEIL = 'mp-teil-1',
+  PART = 'mp-teil-1',
   FARBE = 4;
 
 test('manual lists carry the market price from the cache', async t => {
@@ -31,7 +31,7 @@ test('manual lists carry the market price from the cache', async t => {
   const aufraeumen = async () => {
     for (const tab of ['parts', 'minifigs']) await db.run(`DELETE FROM ${tab} WHERE user_id=$1`, [U]).catch(() => {});
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIG]).catch(() => {});
-    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TEIL]).catch(() => {});
+    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [PART]).catch(() => {});
   };
 
   try {
@@ -50,7 +50,7 @@ test('manual lists carry the market price from the cache', async t => {
     // 'N' that conditionFromAcquisitions() delivers without acquisitions.
     // bl_fig_number is gone with migration 0037; the same number in both …
     await holdsMinifig(db, U, FIG, { quantity: 1 });
-    await holdsPart(db, U, TEIL, { quantity: 1, colorId: FARBE });
+    await holdsPart(db, U, PART, { quantity: 1, colorId: FARBE });
 
     // ── 2 first: WITHOUT a cache entry ───────────────────────────────────────
     // This order is intended. If it stood at the end, an error in
@@ -58,10 +58,10 @@ test('manual lists carry the market price from the cache', async t => {
     // the list failing instead of staying empty when a price is missing.
     const figsWithout = await MF.readManualMinifigs([U], U);
     const partsWithout = await H.manualPartsList([U], U);
-    assert.equal(figsWithout.length, 1, 'die Figur muss auch ohne Preis in der Liste stehen');
-    assert.equal(partsWithout.length, 1, 'das Teil muss auch ohne Preis in der Liste stehen');
-    assert.equal(figsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
-    assert.equal(partsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
+    assert.equal(figsWithout.length, 1, 'the figure must be in the list even without a price');
+    assert.equal(partsWithout.length, 1, 'the part must be in the list even without a price');
+    assert.equal(figsWithout[0].avg_price, null, 'without a cache entry the market price stays empty');
+    assert.equal(partsWithout[0].avg_price, null, 'without a cache entry the market price stays empty');
 
     // ── 1. WITH a cache entry ───────────────────────────────────────────────
     await db.run(
@@ -72,7 +72,7 @@ test('manual lists carry the market price from the cache', async t => {
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
                   VALUES ($1,$2,'N','EUR',0.75,0.7,NOW())`,
-      [TEIL, FARBE],
+      [PART, FARBE],
     );
 
     const figs = await MF.readManualMinifigs([U], U);
@@ -80,12 +80,12 @@ test('manual lists carry the market price from the cache', async t => {
     assert.equal(
       Number(figs[0].avg_price),
       12.5,
-      `der Marktpreis der Figur fehlt (avg_price=${JSON.stringify(figs[0].avg_price)}) — genau das war Marcos Befund`,
+      `the figure's market price is missing (avg_price=${JSON.stringify(figs[0].avg_price)}) — exactly what Marco reported`,
     );
     assert.equal(
       Number(parts[0].avg_price),
       0.75,
-      `der Marktpreis des Teils fehlt (avg_price=${JSON.stringify(parts[0].avg_price)})`,
+      `the part's market price is missing (avg_price=${JSON.stringify(parts[0].avg_price)})`,
     );
   } finally {
     await aufraeumen();

@@ -26,7 +26,7 @@ export function idempotency(d: IdempotencyServices) {
     if (key === undefined || !WRITE_METHODS.has(req.method)) return next();
     const route = routeForRequest(req.method, req.baseUrl + req.path);
     if (!route) return next();
-    if (!service.KEY_PATTERN.test(key)) return sendError(req, res, 'ungueltig', 'idempotency_key_invalid');
+    if (!service.KEY_PATTERN.test(key)) return sendError(req, res, 'invalid', 'idempotency_key_invalid');
     const uid = userId(req);
     if (uid === null) return next();
 
@@ -35,12 +35,12 @@ export function idempotency(d: IdempotencyServices) {
       key,
       service.fingerprint(req.method, req.originalUrl, req.body, req.apiUser?.is_admin === true),
     );
-    if (outcome.kind === 'different') return sendError(req, res, 'nicht_verarbeitbar', 'idempotency_key_mismatch');
+    if (outcome.kind === 'different') return sendError(req, res, 'unprocessable', 'idempotency_key_mismatch');
     if (outcome.kind === 'running') {
       res.set('Retry-After', '1');
-      return sendError(req, res, 'konflikt', 'idempotency_running');
+      return sendError(req, res, 'conflict', 'idempotency_running');
     }
-    if (outcome.kind === 'not_replayable') return sendError(req, res, 'konflikt', 'idempotency_not_repeatable');
+    if (outcome.kind === 'not_replayable') return sendError(req, res, 'conflict', 'idempotency_not_repeatable');
     if (outcome.kind === 'replay') {
       res.set('Idempotent-Replay', 'true');
       return res.status(outcome.status).type('application/json').send(outcome.response);

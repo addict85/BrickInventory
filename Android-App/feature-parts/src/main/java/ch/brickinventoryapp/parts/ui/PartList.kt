@@ -130,7 +130,7 @@ internal class PartList @Inject constructor(
         }
         return parts.map { p ->
             val entry = stock[PartialKey(p.partNumber, p.colorId)]
-            p.copy(present = if (entry == null) 0 else if (onlyLose) entry.lose else entry.total)
+            p.copy(present = if (entry == null) 0 else if (onlyLose) entry.loose else entry.total)
         }
     }
 

@@ -65,8 +65,8 @@ test('no unjustified route on either API surface', () => {
   // Self-proof: if the pattern no longer matches (renamed `router`, different
   // spelling of the mount point), both sets would be empty and the test
   // green without having checked anything.
-  assert.ok(web.size >= 30, `Nur ${web.size} Webapp-Routen gefunden — Muster veraltet?`);
-  assert.ok(v1.size >= 80, `Nur ${v1.size} v1-Routen gefunden — Muster veraltet?`);
+  assert.ok(web.size >= 30, `Only ${web.size} web app routes found — pattern outdated?`);
+  assert.ok(v1.size >= 80, `Only ${v1.size} v1 routes found — pattern outdated?`);
 
   // Compare both sides without prefix: since the move the
   // web app routers themselves hang under /api/v2/<bereich>, and a comparison of the raw
@@ -79,13 +79,7 @@ test('no unjustified route on either API surface', () => {
   assert.deepEqual(
     unjustified,
     [],
-    'Diese Adressen stehen auf BEIDEN Oberflaechen, ohne dass ein Grund ' +
-      'eingetragen waere:\n  ' +
-      unjustified.join('\n  ') +
-      '\nZwei Umsetzungen derselben Antwort driften — gemessen bei ' +
-      'GET /settings: Webapp 48, App 24. Entweder die Logik in einem Dienst ' +
-      'zusammenlegen und beide Routen daraus bedienen, oder in ALLOWED ' +
-      'eintragen, WARUM es zwei sein muessen.',
+    `These addresses exist on BOTH surfaces without a recorded reason:\n  ${unjustified.join('\n  ')}\nTwo implementations of the same response drift apart — measured at GET /settings: web app 48, app 24. Either merge the logic into one service and serve both routes from it, or add the address to ALLOWED with WHY there must be two.`,
   );
 
   // A line that nobody needs anymore is a permission that nobody
@@ -94,7 +88,7 @@ test('no unjustified route on either API surface', () => {
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ALLOWED beschreiben keine Ueberschneidung mehr — ' + 'streichen:\n  ' + veraltet.join('\n  '),
+    `These entries in ALLOWED no longer describe an overlap — remove them:\n  ${veraltet.join('\n  ')}`,
   );
 });
 
@@ -107,7 +101,7 @@ test('every router hangs under /api/v1', () => {
   // One: auth. Settings, sets, parts and minifigures were absorbed into the v1 router.
   assert.ok(
     mountings.length >= 1,
-    `Nur ${mountings.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`,
+    `Only ${mountings.length} router mount points found in server.ts — pattern outdated?`,
   );
 
   const daneben = mountings
@@ -117,10 +111,7 @@ test('every router hangs under /api/v1', () => {
   assert.deepEqual(
     daneben,
     [],
-    'Diese Router haengen NICHT unter /api/v1 und stehen auch nicht als ' +
-      'begruendete Ausnahme da:\n  ' +
-      daneben.join('\n  ') +
-      '\nEntweder umhaengen oder in STILL_NOT eintragen, WARUM noch nicht.',
+    `These routers are NOT mounted under /api/v1 and are not listed as a justified exception either:\n  ${daneben.join('\n  ')}\nEither remount them or add them to STILL_NOT with WHY not yet.`,
   );
 
   // And the exception must not be left lying around: if it is there although the router
@@ -129,7 +120,7 @@ test('every router hangs under /api/v1', () => {
   assert.deepEqual(
     done,
     [],
-    'Diese Ausnahmen beschreiben keinen Einhaengepunkt mehr — streichen:\n  ' + done.join('\n  '),
+    'These exceptions no longer describe a mount point — remove them:\n  ' + done.join('\n  '),
   );
 });
 
@@ -170,7 +161,7 @@ test('the directly registered routes are under /api/v1 too', () => {
     }
   };
   for (const ordner of ['routes', 'src', 'jobs']) lauf(path.join(ROOT, ordner));
-  assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
+  assert.ok(dateien.length >= 30, `Only ${dateien.length} server files found`);
 
   // Also registrations via a CONSTANT
   const sources = dateien.map(d => ohneKommentare(fs.readFileSync(d, 'utf8')));
@@ -187,9 +178,9 @@ test('the directly registered routes are under /api/v1 too', () => {
       const path = constants.get(m[2]);
       assert.ok(
         path,
-        `app.${m[1]}(${m[2]}, …) meldet eine Route unter einem Bezeichner an, ` +
-          'dessen Wert hier nicht auffindbar ist. Ohne ihn kann diese Pruefung ' +
-          'nicht sagen, ob die Adresse unter /api/v1 liegt.',
+        `app.${m[1]}(${m[2]}, …) registers a route under an identifier ` +
+          'whose value cannot be found here. Without it this check ' +
+          'cannot tell whether the address is under /api/v1.',
       );
       found.push(`${m[1].toUpperCase()} ${path}`);
     }
@@ -197,17 +188,13 @@ test('the directly registered routes are under /api/v1 too', () => {
   // Self-proof: if the pattern finds nothing, everything below checks nothing.
   // TWO is the MEASURED state (the two addresses of the image proxy); health
   // and startup-status hang in the router routes/health.ts.
-  assert.ok(found.length >= 2, `Nur ${found.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
+  assert.ok(found.length >= 2, `Only ${found.length} directly registered API routes found — pattern outdated?`);
 
   const daneben = found.filter(r => !r.split(' ')[1].startsWith('/api/v2') && !WITHOUT_VERSION.has(r)).sort();
   assert.deepEqual(
     daneben,
     [],
-    'Diese Adressen sind direkt an der App angemeldet, stehen nicht unter ' +
-      '/api/v1 und haben keinen eingetragenen Grund:\n  ' +
-      daneben.join('\n  ') +
-      '\nEntweder umziehen oder in WITHOUT_VERSION eintragen, WARUM sie ' +
-      'versionslos bleiben muss.',
+    `These addresses are registered directly on the app, are not under /api/v1 and have no recorded reason:\n  ${daneben.join('\n  ')}\nEither move them or add them to WITHOUT_VERSION with WHY they must stay unversioned.`,
   );
 
   // The same opposite direction as above: an exception for a route that
@@ -216,7 +203,7 @@ test('the directly registered routes are under /api/v1 too', () => {
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Ausnahmen beschreiben keine Route mehr — streichen:\n  ' + veraltet.join('\n  '),
+    `These exceptions no longer describe a route — remove them:\n  ${veraltet.join('\n  ')}`,
   );
 });
 
@@ -226,7 +213,7 @@ test('the directly registered routes are under /api/v1 too', () => {
 test('the health check from compose.yaml points to a real address', () => {
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
   const treffer = compose.match(/http:\/\/localhost:\d+(\/api\/[^'"\s)]*)/);
-  assert.ok(treffer, 'compose.yaml enthaelt keinen Gesundheitscheck auf eine /api-Adresse');
+  assert.ok(treffer, 'compose.yaml contains no health check on an /api address');
   const address = treffer[1];
 
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
@@ -238,11 +225,11 @@ test('the health check from compose.yaml points to a real address', () => {
       r.mount,
     ))
       if (m[1] === 'get') direct.push(r.mount + m[2]);
-  assert.ok(direct.length >= 2, `Nur ${direct.length} direkte GET-Routen gefunden — Muster veraltet?`);
+  assert.ok(direct.length >= 2, `Only ${direct.length} direct GET routes found — pattern outdated?`);
   assert.ok(
     direct.includes(address),
-    `compose.yaml prueft ${address}; server.ts kennt nur ${direct.join(', ')}. ` +
-      'Der Container gaelte damit dauerhaft als „unhealthy", ohne dass die ' +
-      'Anwendung selbst etwas davon merkt.',
+    `compose.yaml checks ${address}; server.ts only knows ${direct.join(', ')}. ` +
+      'The container would then permanently count as „unhealthy“ without the ' +
+      'application itself noticing anything.',
   );
 });

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.WantedItem
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
@@ -73,7 +73,7 @@ class OfflineStoreTest {
 
     @Test
     fun `wishlist items and manual parts are created and changed locally`() = runBlocking {
-        store.adopt(Slots.WANTED_LIST, listOf(Merkposten(setNumber = "20001-1", condition = Condition.NEW, userId = 7)).map { it.asView() })
+        store.adopt(Slots.WANTED_LIST, listOf(WantedItem(setNumber = "20001-1", condition = Condition.NEW, userId = 7)).map { it.asView() })
         store.buffer(Editing.CreateWantedItem(WantedRequest("20002-1", Condition.USED, 7)))
         store.buffer(Editing.DeleteWantedItem("20001-1", Condition.NEW, 7))
         assertEquals(listOf("20002-1|U|7"),

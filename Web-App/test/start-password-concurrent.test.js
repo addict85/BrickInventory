@@ -44,7 +44,7 @@ test('all processes write the file', async () => {
   const datei = _req('src/infra/startPassword.js').startPasswordFile();
   assert.match(fs.readFileSync(datei, 'utf8'), /^admin\np\d-\d+\n$/);
   const remainders = fs.readdirSync(path.dirname(datei)).filter(n => n.startsWith('admin-startpasswort.txt.'));
-  assert.deepEqual(remainders, [], 'keine halben Dateien bleiben liegen');
+  assert.deepEqual(remainders, [], 'no half-written files stay behind');
 });
 
 test('the symlink redirects nothing', () => {

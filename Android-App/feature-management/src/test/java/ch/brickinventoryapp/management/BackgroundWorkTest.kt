@@ -47,19 +47,19 @@ import java.io.File
 class BackgroundWorkTest {
 
     private val list = """{"success":true,
-        "auftraege":[
-          {"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
+        "jobs":[
+          {"id":"17","type":"images","status":"running","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
            "deadline_at":null,"started_at":"2026-10-30T10:00:05Z","created_at":"2026-10-30T09:59:00Z","updated_at":null,
-           "progress":{"erledigt":3,"gesamt":12,"text":"Bilder"},"error_message":null,"user_id":4,"geplant":false,"set_number":"75192-1"},
-          {"id":"18","type":"preise","status":"fehler","attempts":3,"max_attempts":3,"due_at":"2026-10-30T11:00:00Z",
+           "progress":{"done":3,"total":12,"text":"Bilder"},"error_message":null,"user_id":4,"scheduled":false,"set_number":"75192-1"},
+          {"id":"18","type":"prices","status":"error","attempts":3,"max_attempts":3,"due_at":"2026-10-30T11:00:00Z",
            "deadline_at":null,"started_at":null,"created_at":"2026-10-30T09:00:00Z","updated_at":null,
-           "progress":null,"error_message":"BrickLink antwortet nicht","user_id":null,"geplant":true,"set_number":null}],
-        "zusammenfassung":[{"type":"bilder","status":"laeuft","anzahl":1}],
-        "pausen":[{"type":"preise","until_at":"2026-10-30T12:00:00Z","reason":"Kontingent"}],
-        "bildbedarf":7,
-        "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":false}}"""
+           "progress":null,"error_message":"BrickLink antwortet nicht","user_id":null,"scheduled":true,"set_number":null}],
+        "summary":[{"type":"images","status":"running","count":1}],
+        "pauses":[{"type":"prices","until_at":"2026-10-30T12:00:00Z","reason":"Kontingent"}],
+        "image_demand":7,
+        "job_process":{"heartbeat":null,"age_seconds":null,"running":false}}"""
 
-    private val paths = PathServer("/api/v1/admin/auftraege" to list)
+    private val paths = PathServer("/api/v2/admin/job-queue" to list)
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-hg-${System.nanoTime()}")
     private val channel = MessageChannel()
     private val vm = TestApi.forTarget(paths.server).let { api ->
@@ -96,7 +96,7 @@ class BackgroundWorkTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `an action runs in the ViewModel and reports via the state`() = runBlocking {
-        paths.responses["/api/v1/admin/auftraege/17/abbrechen"] = """{"success":true,"id":"17","status":"abgebrochen"}"""
+        paths.responses["/api/v2/admin/job-queue/17/cancel"] = """{"success":true,"id":"17","status":"cancelled"}"""
         Dispatchers.setMain(UnconfinedTestDispatcher())
         try {
             vm.cancelJob("17")
@@ -110,31 +110,31 @@ class BackgroundWorkTest {
 
     @Test
     fun `cancelling reports success and reloads`() = runBlocking {
-        paths.responses["/api/v1/admin/auftraege/17/abbrechen"] = """{"success":true,"id":"17","status":"abgebrochen"}"""
+        paths.responses["/api/v2/admin/job-queue/17/cancel"] = """{"success":true,"id":"17","status":"cancelled"}"""
         vm.loadBackground()
         val sentence = vm.requestJobCancel("17")
         assertEquals(Message.Resource(R.string.background_cancelled_ok), sentence)
-        assertEquals(listOf("POST /api/v1/admin/auftraege/17/abbrechen"), paths.requestsTo("/abbrechen"))
-        assertEquals(2, paths.requestsTo("GET /api/v1/admin/auftraege").size)
+        assertEquals(listOf("POST /api/v2/admin/job-queue/17/cancel"), paths.requestsTo("/cancel"))
+        assertEquals(2, paths.requestsTo("GET /api/v2/admin/job-queue").size)
     }
 
     @Test
     fun `a 409 shows the server's sentence`() = runBlocking {
-        paths.responses["/api/v1/admin/auftraege/17/wiederholen"] =
-            """{"success":false,"code":"auftrag_nicht_aenderbar","error":"Der Auftrag lässt sich nicht mehr ändern."}"""
-        paths.codes["/api/v1/admin/auftraege/17/wiederholen"] = 409
+        paths.responses["/api/v2/admin/job-queue/17/retry"] =
+            """{"success":false,"code":"job_not_changeable","error":"Der Auftrag lässt sich nicht mehr ändern."}"""
+        paths.codes["/api/v2/admin/job-queue/17/retry"] = 409
         val sentence = vm.repeatJob("17")
         assertEquals(Message.Text("Der Auftrag lässt sich nicht mehr ändern."), sentence)
         assertEquals("even after the failure the server's status counts", 1,
-            paths.requestsTo("GET /api/v1/admin/auftraege").size)
+            paths.requestsTo("GET /api/v2/admin/job-queue").size)
     }
 
     @Test
     fun `clearing reports the number, starting the name`() = runBlocking {
-        paths.responses["/api/v1/admin/auftraege/art/bilder"] = """{"success":true,"art":"bilder","entfernt":4}"""
-        paths.responses["/api/v1/admin/auftraege/art/preise/jetzt"] = """{"success":true,"art":"preise","gestartet":false}"""
-        assertEquals(Message.Quantity(R.plurals.background_emptied, 4), vm.emptyJobKind("bilder"))
-        assertEquals(Message.Resource(R.string.background_nothing_started, listOf("Preise")), vm.startJobKind("preise", "Preise"))
-        assertEquals(listOf("DELETE /api/v1/admin/auftraege/art/bilder"), paths.requestsTo("DELETE"))
+        paths.responses["/api/v2/admin/job-queue/kind/images"] = """{"success":true,"kind":"images","removed":4}"""
+        paths.responses["/api/v2/admin/job-queue/kind/prices/now"] = """{"success":true,"kind":"prices","started":false}"""
+        assertEquals(Message.Quantity(R.plurals.background_emptied, 4), vm.emptyJobKind("images"))
+        assertEquals(Message.Resource(R.string.background_nothing_started, listOf("Preise")), vm.startJobKind("prices", "Preise"))
+        assertEquals(listOf("DELETE /api/v2/admin/job-queue/kind/images"), paths.requestsTo("DELETE"))
     }
 }

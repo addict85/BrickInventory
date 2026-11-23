@@ -210,9 +210,9 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
     assert.deepEqual([fremd.status, fremd.bytes], [200, image.length]);
     const r = await proxy(FRESH);
     assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', image.length]);
-    assert.ok(await bis(() => liegt(`${FRESH}.jpg`), 5_000), `${FRESH}.jpg fehlt\n${web.log.slice(-1500)}`);
+    assert.ok(await bis(() => liegt(`${FRESH}.jpg`), 5_000), `${FRESH}.jpg is missing\n${web.log.slice(-1500)}`);
     // The buffer goes into the database every 10 s.
-    assert.ok(await bis(() => noted(FRESH), 15_000), `keine Notiz für ${FRESH}\n${web.log.slice(-1500)}`);
+    assert.ok(await bis(() => noted(FRESH), 15_000), `no note for ${FRESH}\n${web.log.slice(-1500)}`);
     assert.deepEqual([liegt(`${FREMD}.jpg`), await noted(FREMD)], [false, false]);
   });
 
@@ -221,12 +221,12 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
     assert.equal(r.status, 200);
     assert.ok(
       await bis(() => liegt(`${ONLY_PREVIEW}.jpg`), 5_000),
-      `${ONLY_PREVIEW}.jpg fehlt\n${web.log.slice(-1500)}`,
+      `${ONLY_PREVIEW}.jpg is missing\n${web.log.slice(-1500)}`,
     );
-    assert.ok(await bis(() => noted(ONLY_PREVIEW), 15_000), `keine Notiz für ${ONLY_PREVIEW}\n${web.log.slice(-1500)}`);
+    assert.ok(await bis(() => noted(ONLY_PREVIEW), 15_000), `no note for ${ONLY_PREVIEW}\n${web.log.slice(-1500)}`);
     assert.ok(
       ids.every(k => k.startsWith('Mozilla/')),
-      'Der Web-Prozess fragt das CDN mit Browser-Kennung',
+      'The web process asks the CDN with a browser identifier',
     );
   });
 
@@ -251,7 +251,7 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
     };
     assert.ok(
       await bis(fertig, 60_000),
-      `Dateien: ${fs.existsSync(sets) ? fs.readdirSync(sets).join(', ') : '(kein Ordner)'}\n${jobs.log.slice(-2000)}`,
+      `files: ${fs.existsSync(sets) ? fs.readdirSync(sets).join(', ') : '(no folder)'}\n${jobs.log.slice(-2000)}`,
     );
     const preview = await sharp(path.join(sets, `${ONLY_PREVIEW}_thumb.jpg`)).metadata();
     // 400 × 300 fitted, not cropped (UX check 25, B1).

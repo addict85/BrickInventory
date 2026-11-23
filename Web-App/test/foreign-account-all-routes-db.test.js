@@ -46,7 +46,7 @@ const VICTIM = `opfer_${MARKE}`,
 const SET = '99181-1',
   SET2 = '99182-1',
   SET3 = '99183-1',
-  TEIL = '3001fk',
+  PART = '3001fk',
   FARBE = 5,
   FIGURE = 'fk0001';
 const VOUCHER = '5045076374450019876';
@@ -92,8 +92,8 @@ test('a foreign account sees and changes no data of another via any route', {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[opfer, fremd]]).catch(() => {});
     for (const tab of ['set_catalog', 'set_parts_catalog', 'set_minifigs_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET2, SET3]]).catch(() => {});
-    await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
-    await db.run('DELETE FROM part_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
+    await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [PART]).catch(() => {});
+    await db.run('DELETE FROM part_catalog WHERE part_number = $1', [PART]).catch(() => {});
     await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGURE]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -103,12 +103,12 @@ test('a foreign account sees and changes no data of another via any route', {
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`,
-    [TEIL],
+    [PART],
   );
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1, $2, 'Rot', 'C91A09')
                 ON CONFLICT DO NOTHING`,
-    [TEIL, FARBE],
+    [PART, FARBE],
   );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Probefigur') ON CONFLICT DO NOTHING`, [
     FIGURE,
@@ -187,14 +187,14 @@ test('a foreign account sees and changes no data of another via any route', {
   const anleitung = (await db.get('SELECT id FROM instructions WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [opfer]))
     .id;
   await ok('POST', '/api/v2/parts', {
-    part_number: TEIL,
+    part_number: PART,
     color_id: FARBE,
     color_name: 'Rot',
     quantity: 3,
     unit_price: 0.2,
     condition: 'N',
   });
-  await ok('PUT', `/api/v2/parts/${TEIL}/${FARBE}/storage`, { storage: `Kiste ${MARKE}` });
+  await ok('PUT', `/api/v2/parts/${PART}/${FARBE}/storage`, { storage: `Kiste ${MARKE}` });
   const teilAcq = (await db.get('SELECT id FROM part_acquisitions WHERE user_id = $1', [opfer])).id;
   await ok('POST', '/api/v2/minifigs', { fig_number: FIGURE, quantity: 1, unit_price: 4, condition: 'N' });
   const figAcq = (await db.get('SELECT id FROM minifig_acquisitions WHERE user_id = $1', [opfer])).id;
@@ -228,7 +228,7 @@ test('a foreign account sees and changes no data of another via any route', {
   };
   const vorher = await holding();
   const rowsOfVictim = Object.values(vorher).reduce((n, z) => n + z.length, 0);
-  assert.ok(rowsOfVictim >= 15, `nur ${rowsOfVictim} Zeilen des Opfers angelegt`);
+  assert.ok(rowsOfVictim >= 15, `only ${rowsOfVictim} rows of the victim created`);
 
   // ── Values of the victim for path, query and body ───────────────────────
   const idFor = p =>
@@ -250,7 +250,7 @@ test('a foreign account sees and changes no data of another via any route', {
     ({
       setNumber: p.includes('/wanted/') ? SET2 : SET,
       sn: SET,
-      partNumber: TEIL,
+      partNumber: PART,
       colorId: FARBE,
       figNumber: FIGURE,
       id: idFor(p),
@@ -279,10 +279,10 @@ test('a foreign account sees and changes no data of another via any route', {
       set_number: SET,
       sets: [SET],
       set_numbers: [SET],
-      part_number: TEIL,
+      part_number: PART,
       color_id: FARBE,
       fig_number: FIGURE,
-      parts: [{ part_number: TEIL, color_id: FARBE }],
+      parts: [{ part_number: PART, color_id: FARBE }],
       condition: 'N',
       storage: 'Lager des Fremden',
       name: 'Name des Fremden',
@@ -334,13 +334,10 @@ test('a foreign account sees and changes no data of another via any route', {
 
   await t.test('every route was called', () => {
     const routen = new Set(gerufen.map(g => g.split(' ').slice(0, 2).join(' ')));
-    assert.ok(routen.size >= 180, `nur ${routen.size} Routen gerufen`);
+    assert.ok(routen.size >= 180, `only ${routen.size} routes called`);
     // Without a reached check the whole thing proves nothing: a good share must get through the input check.
     const durch = gerufen.filter(g => !/ (400|0)$/.test(g)).length;
-    assert.ok(
-      durch >= gerufen.length / 2,
-      `nur ${durch} von ${gerufen.length} Aufrufen kamen an der Eingabeprüfung vorbei`,
-    );
+    assert.ok(durch >= gerufen.length / 2, `only ${durch} of ${gerufen.length} calls got past the input validation`);
   });
 
   await t.test("no response contains the victim's data", () => assert.deepEqual(leaks, []));

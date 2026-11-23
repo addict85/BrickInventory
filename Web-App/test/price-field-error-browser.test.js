@@ -51,12 +51,12 @@ test('price field: error message below the whole row', { concurrency: 1, timeout
       await bis(`!document.getElementById('add-price-error')?.hidden`, 'Meldung am Preisfeld');
       const m = await b.auswerten(MEASURE);
       await b.auswerten(`document.querySelector('#add-set-modal [data-click="closeCapture"]').click(); true`);
-      assert.equal(m.sichtbar, true, 'Meldung nicht sichtbar');
+      assert.equal(m.sichtbar, true, 'message not visible');
       assert.match(m.text, /12,x/);
-      assert.equal(m.nebeneinander, true, 'Währung steht nicht mehr neben dem Preis');
+      assert.equal(m.nebeneinander, true, 'currency is no longer next to the price');
       assert.ok(m.priceWidth >= 80, `Preisfeld nur ${m.priceWidth} px breit`);
-      assert.equal(m.bottomUnderneath, true, 'Meldung steht nicht unter Preis und Währung');
-      assert.ok(m.messageWidth >= m.rowWidth - 2, `Meldung ${m.messageWidth} px, Zeile ${m.rowWidth} px`);
+      assert.equal(m.bottomUnderneath, true, 'message is not below price and currency');
+      assert.ok(m.messageWidth >= m.rowWidth - 2, `message ${m.messageWidth} px, row ${m.rowWidth} px`);
     });
   }
 });

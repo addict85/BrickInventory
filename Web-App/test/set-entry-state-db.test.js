@@ -48,21 +48,21 @@ test("topping up without a condition follows the user's default", { concurrency:
     assert.equal(
       zeilen.length,
       2,
-      `${zeilen.length} Erfassung(en): ${JSON.stringify(zeilen)}. Erwartet sind ` +
-        'ZWEI — die Vorbedingung mit "N" und die des Aufstock-Wegs mit dem ' +
-        'Standard "U". Eine einzige hiesse, dass die beiden Zustände wieder ' +
-        'verschmolzen werden.',
+      `${zeilen.length} acquisition(s): ${JSON.stringify(zeilen)}. Expected are ` +
+        'TWO — the precondition with "N" and the one of the top-up path with the ' +
+        'default "U". A single one would mean that the two conditions are ' +
+        'merged again.',
     );
-    assert.equal(zeilen[0].condition, 'N', 'Vorbedingung: die Zeile des Helfers');
+    assert.equal(zeilen[0].condition, 'N', "precondition: the helper's row");
 
     const neue = zeilen[1];
     assert.equal(
       neue.condition,
       'U',
-      `Die Erfassung des Aufstock-Wegs steht als "${neue.condition}" in der ` +
-        'Datenbank, obwohl der Standard des Nutzers "U" ist und der Preis genau ' +
-        'dafür geholt wurde. Preis und Vermerk müssen denselben Zustand meinen — ' +
-        'sonst zählt der Eintrag in der Finanzansicht in der falschen Gruppe.',
+      `The acquisition of the top-up path is stored as "${neue.condition}" in the ` +
+        'database, although the user\'s default is "U" and the price was fetched exactly ' +
+        'for that. Price and note must mean the same condition — ' +
+        'otherwise the entry counts in the wrong group in the finance view.',
     );
   } finally {
     await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});

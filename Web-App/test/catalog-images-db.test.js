@@ -79,7 +79,7 @@ test('catalog images from set_catalog', { concurrency: 1 }, async t => {
 
   await t.test('the list names the image from set_catalog — and the preview takes precedence', async () => {
     const image = await bilder(uid);
-    assert.equal(image[MIT], '/images/sets/KB_1-1_thumb.jpg', 'die Liste nennt das Bild; die Vorschau hat Vorrang');
+    assert.equal(image[MIT], '/images/sets/KB_1-1_thumb.jpg', 'the list names the image; the preview has priority');
     assert.equal(image[OHNE], null);
   });
 
@@ -96,7 +96,7 @@ test('catalog images from set_catalog', { concurrency: 1 }, async t => {
     const set = await catalogSet(uid, MIT);
     assert.equal(set.image_local, '/images/sets/KB_1-1_thumb.jpg');
     const ohne = await catalogSet(uid, OHNE);
-    assert.equal(ohne.image_local, null, 'ohne Adresse kein Abruf');
+    assert.equal(ohne.image_local, null, 'no fetch without an address');
     assert.deepEqual(vorgemerkt, []);
   });
 });

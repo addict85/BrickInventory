@@ -74,6 +74,34 @@ export function captureForSet(nr) {
   jumpTo('setDetail', nr);
 }
 
+/** The form empties, the gallery reloads; background jobs are still running, so every tab refreshes
+ * periodically. If the stream couldn't fill in name and image, a job catches up after a minute.
+ * @param {import('./progress.js').SseEvent} ev the final event of the stream */
+function afterSetAdded(ev) {
+  hideProgress();
+  emit('collectionLoad');
+  G('add-num').value = '';
+  if (G('add-price')) G('add-price').value = '';
+  if (G('add-date')) G('add-date').value = '';
+  emptyLocationField('add-storage');
+  if (ev.catalog_pending) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
+  else
+    toast(
+      tRaw(ev.action === 'added' ? 'gallery.set_added' : 'gallery.set_updated', {
+        num: ev.set_number,
+      }),
+      'success',
+    );
+  // Background jobs are still running: refresh every tab periodically
+  setLastImportAt(Date.now());
+  // If the stream couldn't fill in name and image, a job catches up after a minute.
+  for (const delay of [3000, 8000, 15000, 25000, ...(ev.supplement === 'pending' ? [70000, 120000] : [])])
+    setTimeout(() => {
+      const tab = activeTab();
+      emit(tab === 'parts' || tab === 'minifigs' ? 'stockChanged' : 'collectionLoad');
+    }, delay);
+}
+
 async function addSet() {
   const num = G('add-num').value.trim();
   const price = amountFromField('add-price');
@@ -126,30 +154,7 @@ async function addSet() {
         if (ev.step === 'done') {
           streamDone();
           closeCapture();
-          setTimeout(() => {
-            hideProgress();
-            emit('collectionLoad');
-            G('add-num').value = '';
-            if (G('add-price')) G('add-price').value = '';
-            if (G('add-date')) G('add-date').value = '';
-            emptyLocationField('add-storage');
-            if (ev.catalog_pending) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
-            else
-              toast(
-                tRaw(ev.action === 'added' ? 'gallery.set_added' : 'gallery.set_updated', {
-                  num: ev.set_number,
-                }),
-                'success',
-              );
-            // Background jobs are still running: refresh every tab periodically
-            setLastImportAt(Date.now());
-            // If the stream couldn't fill in name and image, a job catches up after a minute.
-            for (const delay of [3000, 8000, 15000, 25000, ...(ev.supplement === 'pending' ? [70000, 120000] : [])])
-              setTimeout(() => {
-                const tab = activeTab();
-                emit(tab === 'parts' || tab === 'minifigs' ? 'stockChanged' : 'collectionLoad');
-              }, delay);
-          }, 800);
+          setTimeout(() => afterSetAdded(ev), 800);
         } else if (ev.step === 'error') {
           streamDone();
           setTimeout(() => {

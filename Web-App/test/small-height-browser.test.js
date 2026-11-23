@@ -55,9 +55,9 @@ test('low height: header, bar and banner', { concurrency: 1, timeout: 300_000 },
     await rolle(300);
     await rolle(600);
     const unten = await b.auswerten(kopf);
-    assert.ok(unten[1] <= 0, `Kopf noch sichtbar: ${unten}`);
+    assert.ok(unten[1] <= 0, `header still visible: ${unten}`);
     await rolle(450);
-    assert.equal((await b.auswerten(kopf))[0], 0, 'Kopf kommt beim Rollen nach oben nicht zurück');
+    assert.equal((await b.auswerten(kopf))[0], 0, 'header does not come back when scrolling up');
   });
 
   await t.test('bottom bar narrow, names stay', async () => {
@@ -65,9 +65,9 @@ test('low height: header, bar and banner', { concurrency: 1, timeout: 300_000 },
       await b.auswerten(`(() => { const n = document.querySelector('nav'); const tabs = [...n.querySelectorAll('.ntab')].filter(x => x.getClientRects().length);
       return { hoehe: Math.round(n.getBoundingClientRect().height), namen: tabs.map(x => x.textContent.trim()).filter(Boolean).length, tabs: tabs.length,
                ziel: Math.min(...tabs.map(x => Math.round(x.getBoundingClientRect().height))) }; })()`);
-    assert.ok(m.hoehe <= 46, `Leiste ${m.hoehe} px hoch`);
+    assert.ok(m.hoehe <= 46, `bar ${m.hoehe} px high`);
     assert.ok(m.ziel >= 44, `Tippziel ${m.ziel} px`);
-    assert.equal(m.namen, m.tabs, 'ein Reiter ohne Namen');
+    assert.equal(m.namen, m.tabs, 'a tab without a name');
   });
 
   await t.test('banner stays away, even after a new session', async () => {

@@ -108,7 +108,7 @@ async function setup() {
 async function limitFree() {
   await S.forgetThrottle();
   testContext('vouchers')
-    .faecher.slot('voucherBalanceSessions', () => new Map())
+    .compartments.slot('voucherBalanceSessions', () => new Map())
     .clear();
 }
 
@@ -147,34 +147,33 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     nextResponse = guthaben(25000, 'CHF', 'CHF 250.00');
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
-    assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(d)}`);
+    assert.equal(r.status, 200, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(
       d.voucher.amount,
       250,
-      'Marcos Vorgabe: „Der Zurückgemeldete Betrag soll im Feld Betrag ' +
-        'gespeichert werden." 25000 Rappen sind 250.',
+      'What Marco asked for: „Der Zurückgemeldete Betrag soll im Feld Betrag ' +
+        'gespeichert werden." 25000 Rappen are 250.',
     );
     assert.equal(
       d.displayed,
       'CHF 250.00',
-      'Der formatierte Text der Gegenseite geht MIT heraus — er ist die Form, ' +
-        'in der es auf der LEGO-Seite stünde.',
+      "The other side's formatted text goes out TOO — it is the form " + 'in which it would appear on the LEGO page.',
     );
     assert.equal(d.currency_changed, false);
 
     const z = await db.get('SELECT amount, currency, balance_checked_at, updated_at FROM vouchers WHERE id=$1', [
       WITH_PIN,
     ]);
-    assert.equal(Number(z.amount), 250, 'In der Tabelle steht der neue Betrag');
+    assert.equal(Number(z.amount), 250, 'The table holds the new amount');
     assert.equal(z.currency, 'CHF');
     assert.ok(
       z.balance_checked_at,
-      'guthaben_geprueft_am ist leer. Ohne den Zeitpunkt ist „250 CHF" keine ' +
-        'Auskunft — niemand weiss, von wann der Stand ist.',
+      'guthaben_geprueft_am is empty. Without the timestamp „250 CHF" is no ' +
+        'information — nobody knows how old the state is.',
     );
     assert.ok(
       d.voucher.balance_checked_at,
-      'Der Zeitpunkt muss auch HERAUS gehen, sonst kann die Oberfläche den ' + 'Stand nicht zeigen.',
+      'The timestamp must also go OUT, otherwise the interface cannot show the ' + 'state.',
     );
   });
 
@@ -182,18 +181,18 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     const vorher = queryList();
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
-    assert.equal(r.status, 429, `Antwort ${r.status} statt 429: ${JSON.stringify(d)}`);
+    assert.equal(r.status, 429, `response ${r.status} instead of 429: ${JSON.stringify(d)}`);
     assert.equal(d.reason, 'abstand');
     assert.ok(
       d.waitSeconds > 0 && d.waitSeconds <= S.GAP_SEC,
-      `wartenSek = ${d.waitSeconds} — erwartet 1…${S.GAP_SEC}`,
+      `wartenSek = ${d.waitSeconds} — expected 1…${S.GAP_SEC}`,
     );
-    assert.ok(/30/.test(d.error), `Der Satz nennt die Grenze nicht: ${d.error}`);
+    assert.ok(/30/.test(d.error), `The sentence does not name the limit: ${d.error}`);
     assert.equal(
       queryList(),
       vorher,
-      'Es ging ein Aufruf hinaus, obwohl die Schranke zu war. Genau das ist ' +
-        'Marcos Vorgabe: „maximal 1 Request pro 30sek".',
+      'A call went out although the gate was closed. That is exactly ' +
+        'what Marco asked for: „maximal 1 Request pro 30sek".',
     );
   });
 
@@ -206,22 +205,22 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(
       r.status,
       429,
-      `Das FREMDE Konto bekam ${r.status}. Die Schranke zählt dann je Konto — ` +
-        'bei zwei Konten wären es zwei Aufrufe in 30 Sekunden, bei zehn zehn.',
+      `The FOREIGN account got ${r.status}. Then the gate counts per account — ` +
+        'with two accounts that would be two calls in 30 seconds, with ten ten.',
     );
     assert.equal(d.reason, 'abstand');
-    assert.equal(queryList(), vorher, 'Und es ging dabei nichts hinaus');
+    assert.equal(queryList(), vorher, 'And nothing went out in the process');
   });
 
   await t.test('4. after 31 seconds the slot is free again', async () => {
     await lastFetchBefore(31);
     nextResponse = guthaben(12345);
     const r = await abfrage(srv.base, WITH_PIN);
-    assert.equal(r.status, 200, `Antwort ${r.status} — der Platz müsste frei sein`);
+    assert.equal(r.status, 200, `response ${r.status} — the slot should be free`);
     assert.equal(
       Number((await db.get('SELECT amount FROM vouchers WHERE id=$1', [WITH_PIN])).amount),
       123.45,
-      'Und der neue Betrag steht in der Tabelle',
+      'And the new amount is in the table',
     );
   });
 
@@ -230,9 +229,9 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     const vorher = queryList();
     const r = await abfrage(srv.base, WITHOUT_PIN);
     const d = await r.json();
-    assert.equal(r.status, 400, `Antwort ${r.status}: ${JSON.stringify(d)}`);
+    assert.equal(r.status, 400, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'balance_pin_missing');
-    assert.equal(queryList(), vorher, 'Ohne PIN hat LEGO nichts zu antworten');
+    assert.equal(queryList(), vorher, 'Without a PIN LEGO has nothing to answer');
     // And now the actual point: the refusal must NOT have used up the one slot per
     // 30 seconds.
     nextResponse = guthaben(777);
@@ -240,8 +239,8 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(
       r2.status,
       200,
-      `Antwort ${r2.status} — eine Abfrage, die nie stattfand, hat den Platz ` +
-        'belegt. Dann kostet jeder Gutschein ohne PIN eine halbe Minute.',
+      `response ${r2.status} — a query that never took place took the ` +
+        'slot. Then every voucher without a PIN costs half a minute.',
     );
   });
 
@@ -252,8 +251,8 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(
       r.status,
       404,
-      `Antwort ${r.status}. Ein Gutschein trägt Nummer und PIN — ein Fremdzugriff ` +
-        'wäre die Weitergabe eines Zahlungsmittels.',
+      `response ${r.status}. A voucher carries number and PIN — foreign access ` +
+        'would be handing over a means of payment.',
     );
     assert.equal(queryList(), vorher);
   });
@@ -267,13 +266,13 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     const vorher = queryList();
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
-    assert.equal(r.status, 400, `Antwort ${r.status}: ${JSON.stringify(d)}`);
+    assert.equal(r.status, 400, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'balance_country_invalid');
     assert.equal(
       queryList(),
       vorher,
-      'Es wurde mit einem Land gefragt, das es nicht gibt — die Adresse dafür ' +
-        'existiert bei LEGO nicht, und die Absage gehört VOR den Aufruf.',
+      'A query was made with a country that does not exist — the address for it ' +
+        'does not exist at LEGO, and the refusal belongs BEFORE the call.',
     );
     await db.run(`DELETE FROM global_settings WHERE key='voucher_country'`);
   });
@@ -288,19 +287,15 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     nextResponse = guthaben(5000, 'EUR');
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
-    assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(d)}`);
+    assert.equal(r.status, 200, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.ok(
       protokoll.some(u => u.includes('/de-de/gift-cards/balance')),
-      `Die Guthabenseite wurde nicht für de-DE geladen: ${JSON.stringify(protokoll)}. ` +
-        'Eine Karte gilt nur im Shop ihres Ausgabelandes — das Land ist keine Zierde.',
+      `The balance page was not loaded for de-DE: ${JSON.stringify(protokoll)}. ` +
+        'A card is only valid in the shop of its issuing country — the country is not decoration.',
     );
     // And the currency of the other side wins, but not silently.
     assert.equal(d.voucher.currency, 'EUR');
-    assert.equal(
-      d.currency_changed,
-      true,
-      'Eine geänderte Währung ist eine geänderte Summe — sie muss gemeldet werden.',
-    );
+    assert.equal(d.currency_changed, true, 'A changed currency is a changed amount — it must be reported.');
     await db.run(`DELETE FROM global_settings WHERE key='voucher_country'`);
     await db.run(`UPDATE vouchers SET currency='CHF' WHERE id=$1`, [WITH_PIN]);
   });
@@ -310,10 +305,10 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     nextResponse = response({ status: 403, text: 'Attention Required! Cloudflare' });
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
-    assert.equal(r.status, 429, `Antwort ${r.status}: ${JSON.stringify(d)}`);
+    assert.equal(r.status, 429, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.reason, 'botschutz');
-    assert.ok(d.waitSeconds > 60, `wartenSek = ${d.waitSeconds} — eine Bot-Sperre ist keine Sache von Sekunden`);
-    assert.ok(/Bot|bot/.test(d.error), `Der Satz sagt nicht, worum es geht: ${d.error}`);
+    assert.ok(d.waitSeconds > 60, `wartenSek = ${d.waitSeconds} — a bot block is not a matter of seconds`);
+    assert.ok(/Bot|bot/.test(d.error), `The sentence does not say what it is about: ${d.error}`);
 
     // The slot is still closed after 31 seconds: the LOCK applies, not the
     // distance. Exactly that is Marco's „dass nicht mehr Aufrufe generiert werden".
@@ -322,9 +317,9 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     nextResponse = guthaben(25000);
     const r2 = await abfrage(srv.base, WITH_PIN);
     const d2 = await r2.json();
-    assert.equal(r2.status, 429, `Antwort ${r2.status}: ${JSON.stringify(d2)}`);
-    assert.equal(d2.reason, 'botschutz', 'Nach einem Bot-Schutz-Treffer gilt die Pause');
-    assert.equal(queryList(), vorher, 'Und es geht dabei nichts hinaus');
+    assert.equal(r2.status, 429, `response ${r2.status}: ${JSON.stringify(d2)}`);
+    assert.equal(d2.reason, 'botschutz', 'After a bot protection hit the pause applies');
+    assert.equal(queryList(), vorher, 'And nothing goes out in the process');
 
     // The same for the foreign account — the lock is installation-wide.
     const r3 = await abfrage(fremdSrv.base, FOREIGN);
@@ -338,11 +333,11 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     nextResponse = guthaben(0);
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
-    assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(d)}`);
+    assert.equal(r.status, 200, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(
       d.voucher.amount,
       0,
-      'Eine Karte ohne Guthaben ist eine AUSKUNFT — „0" ist das Ergebnis, nicht ' + 'ein Fehler der Abfrage.',
+      'A card without a balance is INFORMATION — „0" is the result, not ' + 'an error of the query.',
     );
 
     // And the postscript that would have slipped through without re-measuring: checkValues
@@ -357,10 +352,10 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(
       p.status,
       200,
-      `Ändern antwortete ${p.status}: ${JSON.stringify(pd)} — eine leergekaufte ` +
-        'Karte liesse sich dann nicht mehr bearbeiten.',
+      `Changing answered ${p.status}: ${JSON.stringify(pd)} — a card spent ` +
+        'down to zero could then no longer be edited.',
     );
-    assert.equal(pd.voucher.pin, '•••', 'nach aussen nur die Maske');
+    assert.equal(pd.voucher.pin, '•••', 'only the mask to the outside');
     const gespeichert = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [WITH_PIN]);
     assert.equal(
       _req('src/infra/secret.js').decrypt(
@@ -369,7 +364,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       ),
       '9999',
     );
-    assert.equal(pd.voucher.amount, 0, 'Und der Betrag bleibt, was er war');
+    assert.equal(pd.voucher.amount, 0, 'And the amount stays what it was');
     // A zero amount typed in by hand stays forbidden.
     const n = await fetch(`${srv.base}/api/v2/vouchers/${WITH_PIN}`, {
       method: 'PUT',
@@ -379,8 +374,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(
       n.status,
       400,
-      'Eine selbst eingetragene 0 muss weiter durchfallen — sonst legt ein ' +
-        'vergessenes Feld stillschweigend einen Gutschein über nichts an.',
+      'A self-entered 0 must still fail — otherwise a ' + 'forgotten field silently creates a voucher over nothing.',
     );
   });
 
@@ -399,11 +393,11 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     nextResponse = response({ status: 500, text: `kaputt für ${NUMBER} mit ${pinNow}` });
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
-    assert.equal(r.status, 502, `Antwort ${r.status}: ${JSON.stringify(d)}`);
+    assert.equal(r.status, 502, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'balance_failed');
-    assert.ok(!d.error.includes(pinNow), `Die PIN steht in der Antwort an den Browser: ${d.error}`);
-    assert.ok(!d.error.includes(NUMBER), `Die ganze Kartennummer steht in der Antwort: ${d.error}`);
-    assert.ok(d.error.includes('1166'), 'Die letzten vier Ziffern dürfen stehen — sonst weiss niemand, welche Karte');
+    assert.ok(!d.error.includes(pinNow), `The PIN is in the response to the browser: ${d.error}`);
+    assert.ok(!d.error.includes(NUMBER), `The whole card number is in the response: ${d.error}`);
+    assert.ok(d.error.includes('1166'), 'The last four digits may stay — otherwise nobody knows which card');
 
     // The slot IS used up: the request was sent.
     const vorher = queryList();
@@ -411,8 +405,8 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(
       r2.status,
       429,
-      'Ein gescheiterter Aufruf muss den Platz verbrauchen — sonst liesse sich ' +
-        'die Grenze durch wiederholtes Scheitern beliebig oft umgehen.',
+      'A failed call must use up the slot — otherwise ' +
+        'the limit could be bypassed any number of times by failing repeatedly.',
     );
     assert.equal(queryList(), vorher);
   });
@@ -428,7 +422,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     await limitFree();
     nextResponse = guthaben(1000);
     assert.equal((await abfrage(srv.base, WITH_PIN)).status, 200);
-    assert.equal(await zaehler(MAIN), 1, 'eine Abfrage zählt für ihr Konto');
+    assert.equal(await zaehler(MAIN), 1, 'a query counts for its account');
 
     await db.run('UPDATE rate_limit_attempts SET count = $2 WHERE key = $1', [
       `guthaben-konto|${MAIN}`,
@@ -443,7 +437,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(d.reason, 'konto');
     assert.equal(d.code, 'too_many_requests');
     assert.ok(d.waitSeconds > 0 && d.waitSeconds <= 3600, String(d.waitSeconds));
-    assert.equal(queryList(), vorher, 'trotz Grenze ging eine Abfrage hinaus');
+    assert.equal(queryList(), vorher, 'despite the limit a query went out');
 
     await limitFree();
     nextResponse = response({ status: 403, text: 'Bot' });
@@ -452,11 +446,11 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.deepEqual(
       s,
       { last_checked_at: null, locked_until: null },
-      'das gesperrte Konto belegt den Platz oder löst die Pause aus',
+      'the locked account takes the slot or triggers the pause',
     );
     nextResponse = guthaben(9900);
     const fremd = await abfrage(fremdSrv.base, FOREIGN);
-    assert.equal(fremd.status, 200, 'ein anderes Konto wird von der Grenze des ersten aufgehalten');
+    assert.equal(fremd.status, 200, 'another account is held up by the limit of the first');
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'guthaben-konto|%'");
   });
 });

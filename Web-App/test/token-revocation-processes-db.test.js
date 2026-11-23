@@ -58,20 +58,20 @@ test('token revocation across all processes', { concurrency: 1 }, async t => {
   pgNotify.listen('token_widerrufen', fertig);
   for (let i = 0; i < 200 && !bereit; i++) await new Promise(r => setTimeout(r, 25));
   pgNotify.unlisten('token_widerrufen', fertig);
-  assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
+  assert.ok(bereit, 'the listen connection did not come about');
 
   await t.test('a revocation from another process applies immediately', async () => {
     const token = await auth.createToken(uid, 'Probe', true);
-    assert.ok((await auth.checkToken(token)).nutzer, 'Vorbedingung: Token gilt');
+    assert.ok((await auth.checkToken(token)).user, 'precondition: the token is valid');
     await anderer.query('DELETE FROM api_tokens WHERE token = $1', [auth.tokenDigest(token)]);
-    assert.ok((await auth.checkToken(token)).nutzer, 'Vorbedingung: der Zwischenspeicher trägt ihn noch');
+    assert.ok((await auth.checkToken(token)).user, 'precondition: the cache still holds it');
     let gilt = true;
     for (let i = 0; i < 40 && gilt; i++) {
       await anderer.query("SELECT pg_notify('token_widerrufen', '')");
       await new Promise(r => setTimeout(r, 50));
-      gilt = !!(await auth.checkToken(token)).nutzer;
+      gilt = !!(await auth.checkToken(token)).user;
     }
-    assert.equal(gilt, false, 'der widerrufene Token gilt im Zwischenspeicher weiter');
+    assert.equal(gilt, false, 'the revoked token stays valid in the cache');
   });
 
   await t.test('a revocation here notifies the others', async () => {

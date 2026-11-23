@@ -16,8 +16,9 @@ import org.junit.Test
  * Robolectric).
  *
  * Counter-checks:
- *   A  showsVouchers() checks "/vouchers/export" instead of "/api/v1/vouchers/" → red
+ *   A  showsVouchers() checks "/vouchers/export" instead of "/api/v2/vouchers/" → red
  *      “a single voucher and the export need a privacy screen”
+ *   B  "v1" removed from API_VERSIONS → red “an address of the v1 alias …”
  */
 class VoucherPrivacyScreenTest {
 
@@ -28,7 +29,12 @@ class VoucherPrivacyScreenTest {
     }
 
     @Test
+    fun `an address of the v1 alias still needs a privacy screen`() {
+        assertTrue(showsVouchers("https://brick.example/api/v1/vouchers/7/pdf"))
+    }
+
+    @Test
     fun `a building instruction needs none`() {
-        assertFalse(showsVouchers("https://brick.example/api/v1/instructions/42/file"))
+        assertFalse(showsVouchers("https://brick.example/api/v2/instructions/42/file"))
     }
 }

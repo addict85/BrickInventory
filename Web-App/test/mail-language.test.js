@@ -32,7 +32,7 @@ test('1. every mail function accepts the language', () => {
   const namen = [...MAILER.matchAll(/async function (send\w*Mail|build\w*Mail)\s*\(/g)]
     .map(m => m[1])
     .filter(n => n !== 'sendMail'); // the sending itself phrases nothing
-  assert.ok(namen.length >= 3, `Nur ${namen.length} Mail-Funktionen gefunden (gemessen waren es 3) — umbenannt?`);
+  assert.ok(namen.length >= 3, `Only ${namen.length} mail functions found (there were 3 when measured) — renamed?`);
 
   for (const n of namen) {
     const kopf = MAILER.slice(MAILER.indexOf(`async function ${n}(`));
@@ -52,7 +52,7 @@ test('1. every mail function accepts the language', () => {
             MAILER.slice(MAILER.indexOf(`interface ${typ} {`)).indexOf('}'),
           ),
         ));
-    assert.ok(carriesLang, `${n}() kennt die Sprache des Empfängers nicht — sie ginge immer in der Vorgabe hinaus.`);
+    assert.ok(carriesLang, `${n}() does not know the recipient's language — it would always go out in the default.`);
   }
 });
 
@@ -109,7 +109,7 @@ test("3. and every caller passes it along — the mail is in the account's langu
       body: JSON.stringify({ email }),
     });
   const mailTo = async address => {
-    assert.ok(await bis(() => gesendet.some(m => m.to === address), 15_000), `keine Mail an ${address}`);
+    assert.ok(await bis(() => gesendet.some(m => m.to === address), 15_000), `no mail to ${address}`);
     return gesendet.find(m => m.to === address);
   };
   // The request comes in German; what counts is the language of the recipient.
@@ -151,7 +151,7 @@ test('4. the alert mail carries the same envelope as the others', async t => {
   assert.match(mail.subject, /^Price alert: 10294-1 is below EUR 650\.00/);
   assert.notEqual(mail.html, mail.text);
   const huelle = emailTemplate('x', 'y', 'z').slice(0, 60);
-  assert.ok(mail.html.startsWith(huelle), 'Die Alarmmail läuft nicht durch emailTemplate()');
+  assert.ok(mail.html.startsWith(huelle), 'The alert mail does not go through emailTemplate()');
 });
 
 test.after(() =>

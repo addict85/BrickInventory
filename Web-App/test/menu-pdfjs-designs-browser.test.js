@@ -31,7 +31,7 @@ const { AXE } = require('./helpers/layout-measurement');
 const PDF =
   '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +
   '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
-const LEER = { success: true, currency: 'EUR', total_value: '0', sets: [], parts: [], figs: [], total: 0 };
+const EMPTY = { success: true, currency: 'EUR', total_value: '0', sets: [], parts: [], figs: [], total: 0 };
 const geladen =
   teil => `performance.getEntriesByType('resource').map(e => e.name).filter(n => n.includes(${JSON.stringify(teil)}))
   .map(n => new URL(n).pathname)`;
@@ -41,9 +41,9 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
     name: `uxr_${process.pid}`,
     holding: patternCollection,
     intercept: [
-      { muster: '*finance/*valuation*', contains: '/finance/valuation', response: { ...LEER, totals: {} } },
-      { muster: '*finance/*valuation*', contains: '/finance/parts-valuation', response: LEER },
-      { muster: '*finance/*valuation*', contains: '/finance/minifigs-valuation', response: LEER },
+      { muster: '*finance/*valuation*', contains: '/finance/valuation', response: { ...EMPTY, totals: {} } },
+      { muster: '*finance/*valuation*', contains: '/finance/parts-valuation', response: EMPTY },
+      { muster: '*finance/*valuation*', contains: '/finance/minifigs-valuation', response: EMPTY },
     ],
   });
   if (a.reason) {
@@ -73,7 +73,7 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
   });
 
   await t.test('PDF.js only with the first PDF', async () => {
-    assert.deepEqual(await b.auswerten(geladen('/vendor/pdfjs/')), [], 'beim Start geladen');
+    assert.deepEqual(await b.auswerten(geladen('/vendor/pdfjs/')), [], 'loaded at start');
     await b.auswerten(
       `document.querySelector('.ntab[data-tab="gallery"]').click(); document.querySelector('#gallery [data-click="openModal"]').click(); true`,
     );
@@ -103,7 +103,7 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
     await bis(`document.getElementById('tab-wanted').classList.contains('active')`, 'Merkliste');
     const m = await b.auswerten(`(() => { const k = document.getElementById('mk-box'), s = k.querySelector('summary');
       return { kasten: k.getBoundingClientRect().height, titel: s.getBoundingClientRect().height }; })()`);
-    assert.ok(m.kasten <= m.titel + 20, `zugeklappt ${m.kasten} px bei ${m.titel} px Titel`);
+    assert.ok(m.kasten <= m.titel + 20, `collapsed ${m.kasten} px with ${m.titel} px title`);
     await b.tab('Emulation.clearDeviceMetricsOverride');
   });
 
@@ -124,8 +124,8 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
         mo.disconnect(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
       const s = document.getElementById('design-choice'); s.value = 'hochglanz'; s.dispatchEvent(new Event('change', { bubbles: true })); true`);
     await bis(`document.documentElement.dataset.theme === 'hochglanz'`, 'umgeschaltet');
-    assert.equal(await b.auswerten(`window.__keinNeuladen`), 1, 'neu geladen');
-    assert.equal(await b.auswerten(`window.__beimUmschalten`), 2, 'umgeschaltet, bevor die Stylesheets da waren');
+    assert.equal(await b.auswerten(`window.__keinNeuladen`), 1, 'reloaded');
+    assert.equal(await b.auswerten(`window.__beimUmschalten`), 2, 'switched before the stylesheets were there');
 
     await b.tab('Page.reload');
     await bis(`document.getElementById('app')?.style.display === 'block'`, 'neu geladen', 300);
@@ -135,9 +135,9 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
     const html = await b.auswerten(`fetch('/', { credentials: 'same-origin' }).then(r => r.text())`);
     const vorlage = html.indexOf('<template id="theme-styles">');
     const place = d => html.indexOf(`href="/themes/${d}.css`);
-    assert.ok(vorlage > 0, 'keine Vorlage');
-    for (const d of ['noppe', 'hochglanz']) assert.ok(place(d) > 0 && place(d) < vorlage, `${d} nicht frei`);
-    for (const d of ['brick', 'werkbank', 'farbfaecher']) assert.ok(place(d) > vorlage, `${d} frei`);
+    assert.ok(vorlage > 0, 'no template');
+    for (const d of ['noppe', 'hochglanz']) assert.ok(place(d) > 0 && place(d) < vorlage, `${d} not free`);
+    for (const d of ['brick', 'werkbank', 'farbfaecher']) assert.ok(place(d) > vorlage, `${d} free`);
   });
 
   await t.test('login: one h1, not the logo', async () => {

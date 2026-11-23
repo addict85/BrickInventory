@@ -24,7 +24,7 @@ test('the skipped SMTP fields stand in one message', async () => {
     Object.defineProperty(field, 'files', { value: [new w.File(['{}'], 'konfig.json')] });
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
     const found = await warte(() => d.body.textContent.includes('Nicht übernommen: smtp_host, smtp_insecure_tls'));
-    assert.ok(found, 'keine Meldung mit den übergangenen Feldern');
+    assert.ok(found, 'no message with the skipped fields');
   } finally {
     w.close();
   }

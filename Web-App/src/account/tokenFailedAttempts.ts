@@ -14,7 +14,7 @@ export const FAILED_ATTEMPT_MAX = 60;
 const BUCKET = 'token-fehlversuch';
 
 /** Address → end of the lock, only as a shortcut: the count is in the database. */
-const locked = () => processWide('tokenSperre', () => new Map<string, number>());
+const locked = () => processWide('tokenLock', () => new Map<string, number>());
 
 export async function countFailedAttempt(
   kx: AccountContext,

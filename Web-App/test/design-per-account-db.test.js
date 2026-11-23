@@ -77,7 +77,7 @@ test('theme per account', { concurrency: 1 }, async t => {
     assert.equal(
       (await hole('/raw')).settings.app_theme,
       'werkbank',
-      '/settings/raw nennt nicht das Design des Kontos',
+      '/settings/raw does not name the design of the account',
     );
     als(ids[1]);
     assert.equal((await hole('/theme')).theme, 'noppe');
@@ -89,7 +89,7 @@ test('theme per account', { concurrency: 1 }, async t => {
     const token = await _req('src/account/deviceToken.js').createToken(ids[0], 'Prüfung', true);
     const withToken = { headers: { Authorization: `Bearer ${token}` } };
     assert.equal((await hole('/theme', withToken)).theme, 'werkbank');
-    assert.equal((await hole('', withToken)).settings?.app_theme, 'werkbank', 'GET /api/v2/settings nennt die Vorgabe');
+    assert.equal((await hole('', withToken)).settings?.app_theme, 'werkbank', 'GET /api/v2/settings names the default');
   });
 
   await t.test('unknown theme rejected', async () => {

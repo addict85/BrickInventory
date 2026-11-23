@@ -105,7 +105,7 @@ class VoucherViewModelTest {
     @Test
     fun `what was read from the PDF lands in the form`() {
         server.enqueue(response("""{"success":false,"error":"Betrag fehlt",
-            "gelesen":{"number":"6000999988887777","pin":"4321","currency":"EUR"}}""", 422))
+            "parsed":{"number":"6000999988887777","pin":"4321","currency":"EUR"}}""", 422))
         vm.persist { "application/pdf" to byteArrayOf(37, 80, 68, 70) }
         until("form") { !vm.state.value.save.running && server.requestCount == 1 && channel.text != null }
 
@@ -115,7 +115,7 @@ class VoucherViewModelTest {
         assertEquals("EUR", s.currency)
         assertEquals("", s.amount)
         assertEquals("t${R.string.vouchers_pdf_incomplete}", channel.text)
-        assertTrue(server.takeRequest().path.endsWith("/api/v1/vouchers/pdf"))
+        assertTrue(server.takeRequest().path.endsWith("/api/v2/vouchers/pdf"))
     }
 
     @Test
@@ -133,7 +133,7 @@ class VoucherViewModelTest {
         until("list") { vm.state.value.vouchers.size == 2 }
 
         // The limit reports `abstand`: the ViewModel visibly waits.
-        server.enqueue(response("""{"success":false,"code":"guthaben_abstand","grund":"abstand","wartenSek":30}""", 429))
+        server.enqueue(response("""{"success":false,"code":"balance_interval","reason":"abstand","waitSeconds":30}""", 429))
         server.enqueue(response(twoCards))
         vm.queryAllBalances()
         until("waiting time") { (vm.state.value.balanceRun?.waitSec ?: 0) > 0 }
@@ -154,13 +154,13 @@ class VoucherViewModelTest {
         vm.loadVouchers()
         until("list") { vm.state.value.vouchers.size == 2 }
 
-        server.enqueue(response("""{"success":false,"code":"zu_viele_anfragen","error":"Zu viele Abfragen","grund":"konto","wartenSek":1800}""", 429))
+        server.enqueue(response("""{"success":false,"code":"too_many_requests","error":"Zu viele Abfragen","reason":"konto","waitSeconds":1800}""", 429))
         server.enqueue(response(twoCards))
         vm.queryAllBalances()
         // List, one query, then the reload in the finally — no second card.
         clock.advanceUntilIdle()
         until("neu geladen") { server.requestCount >= 3 }
         val paths = List(server.requestCount) { server.takeRequest().path.orEmpty() }
-        assertEquals("no second card after the account limit: $paths", 1, paths.count { "guthaben" in it })
+        assertEquals("no second card after the account limit: $paths", 1, paths.count { "/balance" in it })
     }
 }

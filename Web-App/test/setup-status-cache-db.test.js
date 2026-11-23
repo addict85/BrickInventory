@@ -76,9 +76,9 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
     parsed.length = 0;
     await state.setupStatus();
     const erster = parsed.length;
-    assert.ok(erster >= 5, `der Zähler sieht nichts (${erster}) — die Gegenprobe bewiese nichts`);
+    assert.ok(erster >= 5, `the counter sees nothing (${erster}) — the counter-check would prove nothing`);
     await Promise.all([state.setupStatus(), state.setupStatus()]);
-    assert.equal(parsed.length, erster, 'weitere Aufrufe im Fenster dürfen nichts lesen');
+    assert.equal(parsed.length, erster, 'further calls within the window must not read anything');
   });
 
   await t.test('a written value applies immediately', async () => {
@@ -95,7 +95,7 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
       weg();
       await zugang.notification.close();
     });
-    assert.ok(await bis(() => zugang.notification.listensTo('globale_einstellung')), 'kein LISTEN');
+    assert.ok(await bis(() => zugang.notification.listensTo('globale_einstellung')), 'no LISTEN');
     state.forgetSetupStatus();
     assert.equal((await state.setupStatus()).configured, false);
     // A second set of services with its own compartments writes like another process.
@@ -103,7 +103,7 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
     await anderer.settings.setGlobalValue('rebrickable_api_key', 'probe2');
     assert.ok(
       await bis(async () => (await state.setupStatus()).configured, 3000),
-      'der Stand hier blieb beim alten Wert, bis seine Frist ablief',
+      'the state here kept the old value until its period expired',
     );
   });
 
@@ -111,7 +111,7 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
     state.forgetSetupStatus();
     const verwalter = await state.setupStatus({ isAdmin: true });
     const open = await state.setupStatus({ isAdmin: false });
-    assert.equal(open.base_url, null, 'die öffentliche Antwort darf die Basis-URL nicht tragen');
+    assert.equal(open.base_url, null, 'the public response must not carry the base URL');
     assert.notEqual(verwalter, open);
     const k = _req('src/infra/config.js').config();
     assert.equal(verwalter.base_url, k.appBaseUrl);
@@ -127,7 +127,7 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
     assert.deepEqual(
       parsed.filter(k => k !== 'einrichtung_erledigt'),
       [],
-      'es wurde mehr gelesen als der Abschluss',
+      'more was read than the completion',
     );
     await db.run("DELETE FROM global_settings WHERE key = 'einrichtung_erledigt'");
     state.forgetSetupStatus();
@@ -139,6 +139,6 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
     for (let i = 0; i < 125 && letzter !== 429; i++) {
       letzter = (await fetch(srv.base + '/api/v2/setup/state')).status;
     }
-    assert.equal(letzter, 429, 'auch nach 125 Aufrufen antwortet die offene Seite noch');
+    assert.equal(letzter, 429, 'even after 125 calls the open page still answers');
   });
 });

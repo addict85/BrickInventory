@@ -78,20 +78,20 @@ test('the figure price history finds the prices under the BrickLink number', { c
 
     const v = await priceHistoryMinifig(uid, EIGENE, CURRENCY);
 
-    assert.ok(v.by_condition?.N, 'Für den Zustand „N" kam gar keine Zeile zurück, obwohl eine Erfassung existiert');
+    assert.ok(v.by_condition?.N, 'No row at all came back for the condition „N", although an acquisition exists');
     assert.equal(
       Number(v.by_condition.N.market_price),
       9,
-      `Der Marktpreis kam als ${v.by_condition.N.market_price} statt 9 zurück. Er steht ` +
-        'unter der BrickLink-Nummer; wird nur die Nummer des Benutzers abgefragt, ' +
-        'bleibt im Detailfenster ein „—" stehen, während die Finanzliste einen Wert zeigt.',
+      `The market price came back as ${v.by_condition.N.market_price} instead of 9. It is stored ` +
+        "under the BrickLink number; if only the user's number is queried, " +
+        'a „—" remains in the detail window while the finance list shows a value.',
     );
     assert.equal(
       Number(v.by_condition.N.purchase_price),
       4,
-      'Der Kaufpreis steht unter der Nummer des Benutzers und muss weiter gefunden werden',
+      "The purchase price is stored under the user's number and must still be found",
     );
-    assert.ok(v.history_new.length >= 1, 'Der Verlauf ist leer — dann bleibt das Diagramm leer, obwohl Punkte da sind');
+    assert.ok(v.history_new.length >= 1, 'The history is empty — then the chart stays empty although points exist');
 
     // And the other half: the OWN number must not drop away
     await holdsMinifig(db, uid, WITHOUT_BL, { quantity: 0 }); // quantity 0: the acquisition behind it carries it
@@ -114,15 +114,15 @@ test('the figure price history finds the prices under the BrickLink number', { c
     );
 
     const w = await priceHistoryMinifig(uid, WITHOUT_BL, CURRENCY);
-    assert.ok(w.by_condition?.N, 'Ohne BrickLink-Nummer kam gar keine Zeile zurück');
+    assert.ok(w.by_condition?.N, 'Without a BrickLink number no row at all came back');
     assert.equal(
       Number(w.by_condition.N.market_price),
       7,
-      `Der Marktpreis kam als ${w.by_condition.N.market_price} statt 7 zurück. Bei einer ` +
-        'Figur ohne eigene BrickLink-Nummer stehen die Preise unter ihrer eigenen — ' +
-        'so schreibt sie der Schätzpfad über die Einzelteile.',
+      `The market price came back as ${w.by_condition.N.market_price} instead of 7. For a ` +
+        'figure without its own BrickLink number the prices are stored under its own — ' +
+        'that is how the estimate path via the individual parts writes them.',
     );
-    assert.ok(w.history_new.length >= 1, 'Ohne BrickLink-Nummer bleibt der Verlauf leer');
+    assert.ok(w.history_new.length >= 1, 'Without a BrickLink number the history stays empty');
   } finally {
     await db
       .run(`DELETE FROM minifig_price_history WHERE fig_number IN ($1,$2,$3)`, [EIGENE, BL, WITHOUT_BL])

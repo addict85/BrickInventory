@@ -39,7 +39,7 @@ test('no fixed text in textContent, placeholder, title, toast, confirm or alert'
     }
   };
   lauf(path.join(ROOT, 'public'));
-  assert.ok(dateien.length >= 15, `Nur ${dateien.length} Quelldateien gefunden`);
+  assert.ok(dateien.length >= 15, `Only ${dateien.length} source files found`);
 
   let geprueft = 0;
   const fest = [];
@@ -59,16 +59,16 @@ test('no fixed text in textContent, placeholder, title, toast, confirm or alert'
   // a probe — each must trigger there exactly once.
   const probe = `a.textContent = 'Hallo'; b.title = "Welt"; toast('Text'); toast("Text"); confirm('Ja?'); alert('Nein');`;
   for (const muster of LOWER)
-    assert.equal([...probe.matchAll(muster)].length, 1, `Das Muster ${muster} greift nicht mehr`);
+    assert.equal([...probe.matchAll(muster)].length, 1, `The pattern ${muster} no longer matches`);
   void geprueft;
 
   assert.deepEqual(
     fest.sort(),
     [],
-    'Diese Texte stehen fest im Quelltext statt im Wörterbuch:\n  ' +
+    'These texts are hard-coded in the source instead of in the dictionary:\n  ' +
       fest.join('\n  ') +
-      '\nIn einer englischen Oberfläche steht dann ein deutsches Wort da. Bei einer ' +
-      'Knopfbeschriftung, die nach dem Klick zurückkommt, hilft buttonBusy() ' +
-      '(dom.js): Es MERKT sich den Text, statt einen zweiten zu erfinden.',
+      '\nIn an English interface a German word then shows up. For a ' +
+      'button label that comes back after the click, buttonBusy() helps ' +
+      '(dom.js): it REMEMBERS the text instead of inventing a second one.',
   );
 });

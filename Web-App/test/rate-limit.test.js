@@ -28,9 +28,9 @@ test('default daily limit is 25000 — in ONE place', () => {
   assert.match(
     fc,
     /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
-    'Der Rückfallwert muss die gemeinsame Konstante sein, nicht eine eigene Zahl danebenstehen',
+    'The fallback value must be the shared constant, not a separate number next to it',
   );
-  assert.doesNotMatch(fc, /rebrickable: \d+/, 'Keine zweite Zahl für dasselbe Limit');
+  assert.doesNotMatch(fc, /rebrickable: \d+/, 'No second number for the same limit');
 });
 
 test('no more hard-coded limit numbers in messages and labels', () => {
@@ -50,12 +50,12 @@ test('no more hard-coded limit numbers in messages and labels', () => {
     const vals = [
       ...i18n.matchAll(new RegExp(`'${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}':\\s*'([^']*)'`, 'g')),
     ].map(m => m[1]);
-    assert.ok(vals.length > 0, `${key} fehlt in i18n.js`);
+    assert.ok(vals.length > 0, `${key} is missing in i18n.js`);
     for (const v of vals) {
       assert.doesNotMatch(
         v,
         /\d+\s*\/\s*(Tag|day)/,
-        `${key} = "${v}" — die Zahl steht schon im Wert darüber und wird hier bei jeder Änderung falsch`,
+        `${key} = "${v}" — the number is already in the value above and becomes wrong here on every change`,
       );
     }
   }
@@ -107,13 +107,13 @@ test('the call sites wait for the result', () => {
   }
   // Self-proof: if the pattern finds nothing, the list would be empty and the test
   // green without having checked anything.
-  assert.ok(found >= 3, `nur ${found} Aufrufe des Anmelde-Zählers gefunden — Muster veraltet?`);
+  assert.ok(found >= 3, `only ${found} calls of the login counter found — pattern outdated?`);
   assert.deepEqual(
     withoutAwait,
     [],
-    'Diese Aufrufe warten nicht auf den Anmelde-Zähler:\n  ' +
+    'These calls do not await the login counter:\n  ' +
       withoutAwait.join('\n  ') +
-      '\nEin Promise ist immer truthy — ohne await sperrt loginAllowed JEDEN Login.',
+      '\nA promise is always truthy — without await loginAllowed blocks EVERY login.',
   );
 });
 
@@ -126,21 +126,13 @@ test('jobs with an external quota have a cross-process lock', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/[^\n]*/g, '');
 
-  assert.match(
-    job,
-    /pg_try_advisory_lock/,
-    'Ohne prozessübergreifende Sperre schützt state.running nur den eigenen Worker',
-  );
+  assert.match(job, /pg_try_advisory_lock/, 'Without a cross-process lock state.running only protects its own worker');
   // Own connection, not transaction-bound: the run takes minutes.
-  assert.match(
-    job,
-    /(?:db|access)\.pool\.connect\(\)/,
-    'Die Sperre muss über die ganze Laufzeit gehalten werden — eigene Verbindung',
-  );
+  assert.match(job, /(?:db|access)\.pool\.connect\(\)/, 'The lock must be held for the whole run — own connection');
   assert.doesNotMatch(
     job,
     /pg_try_advisory_xact_lock/,
-    'Eine Transaktion minutenlang offen zu halten wäre der falsche Weg',
+    'Keeping a transaction open for minutes would be the wrong way',
   );
   // Release in finally — otherwise a crashed run blocks all following ones.
   const fn = job.slice(job.indexOf('async function runPriceRefresh'), job.indexOf('async function rememberStatus'));
@@ -162,9 +154,9 @@ test('jobs with an external quota have a cross-process lock', () => {
   assert.match(
     route,
     /await d\.management\.runPriceJobNow\(\)/,
-    'routes/api/admin.ts: ohne await meldet die Route ein Promise als „gestartet"',
+    'routes/api/admin.ts: without await the route reports a promise as „gestartet“',
   );
 
   // The namespace comes from the shared list.
-  assert.match(job, /LOCKS\.PRICE_JOB/, 'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
+  assert.match(job, /LOCKS\.PRICE_JOB/, 'The namespace belongs in src/infra/lockNamespaces.ts, not typed in');
 });

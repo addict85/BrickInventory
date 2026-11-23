@@ -57,11 +57,11 @@ test('sets export: one row per acquisition, without an acquisition the set row',
       [uid],
     );
 
-    const csv = await require('./helpers/sources').areaPage('sets').setsAlsCsv(uid);
+    const csv = await require('./helpers/sources').areaPage('sets').setsAsCsv(uid);
     const r = zeilen(csv);
     const je = sn => r.filter(x => x.set_number === sn);
 
-    assert.equal(r.length, 5, `5 Zeilen erwartet (1+2+1+1), bekommen ${r.length}:\n${csv}`);
+    assert.equal(r.length, 5, `5 rows expected (1+2+1+1), got ${r.length}:\n${csv}`);
 
     // Without an entry: one line with quantity 0, without price, without date, condition 'N';
     // quantity and price only come from entries.
@@ -71,20 +71,20 @@ test('sets export: one row per acquisition, without an acquisition the set row',
 
     // Two entries, oldest first — the order carries the meaning.
     const zwei = je('0002-1');
-    assert.equal(zwei.length, 2, 'zwei Erfassungen ergeben zwei Zeilen');
-    assert.equal(zwei[0].quantity, '1', 'die aeltere Erfassung steht oben');
+    assert.equal(zwei.length, 2, 'two acquisitions result in two rows');
+    assert.equal(zwei[0].quantity, '1', 'the older acquisition comes first');
     assert.equal(zwei[1].quantity, '4');
     assert.equal(zwei[0].condition, 'N');
     assert.equal(zwei[1].condition, 'U');
-    assert.match(zwei[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'Erfassungen tragen ihr Datum');
+    assert.match(zwei[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'acquisitions carry their date');
 
     // Entry present but without price → empty field. The confusion with
     // the set price, against which this check was written, can no longer exist since
     // migration 0032; the statement about the output stays.
     const withoutPrice = je('0003-1');
     assert.equal(withoutPrice.length, 1);
-    assert.equal(withoutPrice[0].purchase_price, '', 'eine Erfassung ohne Preis muss ein leeres Feld ergeben');
-    assert.equal(withoutPrice[0].condition, 'N', 'fehlender Zustand wird zu N');
+    assert.equal(withoutPrice[0].purchase_price, '', 'an acquisition without a price must result in an empty field');
+    assert.equal(withoutPrice[0].condition, 'N', 'a missing condition becomes N');
 
     // Set without an entry: quantity 0, condition 'N', price empty.
     assert.deepEqual(je('0004-1'), [
@@ -128,19 +128,19 @@ test('sets export needs ONE query, independent of the number of sets', { concurr
       queryList++;
       return realQuery(...args);
     };
-    const csv = await require('./helpers/sources').areaPage('sets').setsAlsCsv(uid);
+    const csv = await require('./helpers/sources').areaPage('sets').setsAsCsv(uid);
     db.pool.query = realQuery;
 
-    assert.equal(zeilen(csv).length, 25, 'alle 25 Sets stehen im Export');
+    assert.equal(zeilen(csv).length, 25, 'all 25 sets are in the export');
     // Lower bound: if the patch counted nothing at all, the upper bound below would be
     // trivially fulfilled — exactly the state this test was in at first.
-    assert.ok(queryList >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
+    assert.ok(queryList >= 1, 'the counter recorded nothing — the patch no longer works');
     assert.ok(
       queryList <= 2,
-      `${queryList} Abfragen fuer 25 Sets. Der Export holte die Erfassungen frueher ` +
-        `je Set einzeln — bei 700 Sets waren das 701 Hin- und Rueckwege. Der LEFT JOIN ` +
-        `in SETS_CSV_SQL macht daraus einen; erlaubt sind 2, weil der Rueckfallweg ` +
-        `(fehlende Migration) eine zweite Abfrage kostet.`,
+      `${queryList} queries for 25 sets. The export used to fetch the acquisitions ` +
+        `per set individually — for 700 sets that was 701 round trips. The LEFT JOIN ` +
+        `in SETS_CSV_SQL turns that into one; 2 are allowed because the fallback path ` +
+        `(missing migration) costs a second query.`,
     );
   } finally {
     db.pool.query = realQuery;
@@ -193,24 +193,25 @@ test('minifigures export: the same rule, the same single query', { concurrency: 
     db.pool.query = realQuery;
 
     const r = zeilen(csv);
-    assert.equal(r.length, 2, `2 Zeilen erwartet, bekommen ${r.length}:\n${csv}`);
+    assert.equal(r.length, 2, `2 rows expected, got ${r.length}:\n${csv}`);
 
     const a = r.find(x => x.fig_number === 'fig-a');
     // For a MANUAL item the item count is the sum of the entries,
     // so 0 without an entry. The line still stays in the export (it is in the
     // stock) — exactly this distinction is what the case records, as in the set export.
-    assert.equal(a.quantity, '0', 'ohne Erfassung ist die Stueckzahl 0 — die Zeile bleibt aber');
-    assert.equal(a.acquired_at, '', 'ohne Erfassung kein Datum');
+    assert.equal(a.quantity, '0', 'without an acquisition the piece count is 0 — but the row stays');
+    assert.equal(a.acquired_at, '', 'no date without an acquisition');
 
     const b = r.find(x => x.fig_number === 'fig-b');
-    assert.equal(b.unit_price, '', 'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
+    assert.equal(b.unit_price, '', 'an acquisition without a price must export empty — not as 0');
     // Since migration 0047 the condition is mandatory; what is checked is that it gets through.
     assert.equal(b.condition, 'U');
 
-    assert.ok(queryList >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
+    assert.ok(queryList >= 1, 'the counter recorded nothing — the patch no longer works');
     assert.ok(
       queryList <= 2,
-      `${queryList} Abfragen fuer 2 Figuren. Frueher lief eine Abfrage JE FIGUR; ` + `FIGS_CSV_SQL macht daraus eine.`,
+      `${queryList} queries for 2 minifigs. Previously one query ran PER MINIFIG; ` +
+        `FIGS_CSV_SQL turns that into one.`,
     );
   } finally {
     db.pool.query = realQuery;
@@ -272,32 +273,32 @@ test('parts export: the same rule, the same single query', { concurrency: 1 }, a
     db.pool.query = realQuery;
 
     const r = zeilen(csv);
-    assert.equal(r.length, 4, `4 Zeilen erwartet (2+1+1), bekommen ${r.length}:\n${csv}`);
+    assert.equal(r.length, 4, `4 rows expected (2+1+1), got ${r.length}:\n${csv}`);
 
     // The case only parts have: same number, different color.
     const rot = r.filter(x => x.part_number === '3001' && x.color_id === '4');
     const blau = r.filter(x => x.part_number === '3001' && x.color_id === '1');
-    assert.equal(rot.length, 2, 'die rote Zeile hat zwei Erfassungen');
-    assert.equal(blau.length, 1, 'die blaue Zeile hat KEINE Erfassung — sie darf die der roten nicht erben');
+    assert.equal(rot.length, 2, 'the red row has two acquisitions');
+    assert.equal(blau.length, 1, 'the blue row has NO acquisition — it must not inherit those of the red one');
     // As with fig-a above: without an entry the item count is 0, but the line
     // stays in the export.
-    assert.equal(blau[0].quantity, '0', 'ohne Erfassung ist die Stueckzahl 0');
-    assert.equal(blau[0].acquired_at, '', 'ohne Erfassung kein Datum');
+    assert.equal(blau[0].quantity, '0', 'without an acquisition the piece count is 0');
+    assert.equal(blau[0].acquired_at, '', 'no date without an acquisition');
 
-    assert.equal(rot[0].quantity, '2', 'die aeltere Erfassung steht oben');
+    assert.equal(rot[0].quantity, '2', 'the older acquisition comes first');
     assert.equal(rot[1].quantity, '3');
     assert.equal(rot[0].condition, 'N');
     assert.equal(rot[1].condition, 'U');
-    assert.match(rot[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'Erfassungen tragen ihr Datum');
+    assert.match(rot[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'acquisitions carry their date');
 
     const withoutPrice = r.find(x => x.part_number === '3002');
-    assert.equal(withoutPrice.unit_price, '', 'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
+    assert.equal(withoutPrice.unit_price, '', 'an acquisition without a price must export empty — not as 0');
     assert.equal(withoutPrice.condition, 'U');
 
-    assert.ok(queryList >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
+    assert.ok(queryList >= 1, 'the counter recorded nothing — the patch no longer works');
     assert.ok(
       queryList <= 2,
-      `${queryList} Abfragen fuer 3 Teile. Frueher lief eine Abfrage JE TEIL; ` + `PARTS_CSV_SQL macht daraus eine.`,
+      `${queryList} queries for 3 parts. Previously one query ran PER PART; ` + `PARTS_CSV_SQL turns that into one.`,
     );
   } finally {
     db.pool.query = realQuery;

@@ -101,8 +101,8 @@ class ListFilterInStateTest {
     fun `first page, loading more and manual parts carry view and search text`() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val paths = PathServer(
-            "/api/v1/parts" to """{"success":true,"total":900,"parts":[{"part_number":"3001"}]}""",
-            "/api/v1/parts/manual" to """{"success":true,"parts":[{"part_number":"3002"}]}""")
+            "/api/v2/parts" to """{"success":true,"total":900,"parts":[{"part_number":"3001"}]}""",
+            "/api/v2/parts/manual" to """{"success":true,"parts":[{"part_number":"3002"}]}""")
         val t = TestServices(paths.onTick(), io = Dispatchers.Main)
         try {
             val vm = t.track(PartsViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, testPartsRepository(t.api), t.accountView,
@@ -113,8 +113,8 @@ class ListFilterInStateTest {
             assertTrue("manual parts", vm.partsState.value.manualParts != null)
             vm.loadParts(page = 2)
             assertTrue("second page", paths.requestsTo("page=2").isNotEmpty())
-            val fetches = paths.requestsTo("GET /api/v1/parts?") + paths.requestsTo("GET /api/v1/parts/manual")
-            assertTrue("Not two pages: $fetches", fetches.count { it.startsWith("GET /api/v1/parts?") } >= 2)
+            val fetches = paths.requestsTo("GET /api/v2/parts?") + paths.requestsTo("GET /api/v2/parts/manual")
+            assertTrue("Not two pages: $fetches", fetches.count { it.startsWith("GET /api/v2/parts?") } >= 2)
             for (a in fetches) for (part in listOf("accounts=own", "search=Stein")) assertTrue("$a without $part", part in a)
         } finally {
             t.cleanUp()

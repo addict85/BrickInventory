@@ -5,7 +5,7 @@
  * Counter-checks (measured 14.11.2026, each on its own, reverted):
  *   A  in sendOrAbort (src/account/http/stream.ts) again `throw new Error('CANCELLED')`
  *      → red: “after closing sendOrAbort aborts with StreamClosed”
- *   B  the check `if (zu)` deleted there → red: the same assertion (nothing thrown)
+ *   B  the check `if (closed)` deleted there → red: the same assertion (nothing thrown)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,12 +34,12 @@ test('after closing sendOrAbort aborts with StreamClosed', () => {
   const { req, res } = fake();
   const stream = openStream({}, req, res, { heartbeat: false });
   stream.sendOrAbort({ step: 'a' });
-  assert.equal(res.geschrieben.length, 1, 'offen geht das Ereignis hinaus');
+  assert.equal(res.geschrieben.length, 1, 'while open the event goes out');
   req.emit('close');
-  assert.equal(stream.zu, true);
+  assert.equal(stream.closed, true);
   assert.throws(
     () => stream.sendOrAbort({ step: 'b' }),
     e => e instanceof StreamClosed,
   );
-  assert.equal(res.geschrieben.length, 1, 'nach dem Schliessen geht nichts mehr hinaus');
+  assert.equal(res.geschrieben.length, 1, 'after closing nothing goes out any more');
 });

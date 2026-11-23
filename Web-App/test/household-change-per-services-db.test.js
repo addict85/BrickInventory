@@ -57,6 +57,6 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [ids[0], ids[1]]);
     a.household.reportHouseholdChange();
     const neu = async () => (await view()).length === 2;
-    assert.ok(await bis(neu, 3000), 'altes Blickfeld: die Änderung kam nicht an');
+    assert.ok(await bis(neu, 3000), 'old view: the change did not arrive');
   });
 });

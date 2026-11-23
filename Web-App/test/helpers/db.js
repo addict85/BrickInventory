@@ -43,7 +43,7 @@ async function accessOrSkip(t, _req, o) {
 /** For tests that check reachability themselves. @param {any} t @param {unknown} [e] */
 function noDb(t, e) {
   const reason = e === undefined ? '' : `: ${e instanceof Error ? e.message : e}`;
-  missingPrecondition(t, 'Test-DB nicht erreichbar', `die Test-DB ist nicht erreichbar${reason}`);
+  missingPrecondition(t, 'test DB not reachable', `the test DB is not reachable${reason}`);
 }
 
 /**

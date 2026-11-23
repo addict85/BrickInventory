@@ -121,13 +121,13 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
   await t.test('the 50th failed attempt reaches the limit, the owner gets a mail', async () => {
     await setCounter(OHNE, 48, true);
     assert.equal((await anmelden(OHNE, 'falsch-geraten-1')).status, 401);
-    assert.equal(await dailyCounter(OHNE, true), 49, 'ein Fehlversuch von einer bekannten Adresse zählt');
-    assert.equal(await dailyCounter(OHNE), 0, '… bei dieser Adresse, nicht im gemeinsamen Zähler');
+    assert.equal(await dailyCounter(OHNE, true), 49, 'a failed attempt from a known address counts');
+    assert.equal(await dailyCounter(OHNE), 0, '… at this address, not in the shared counter');
     assert.equal((await anmelden(OHNE, 'falsch-geraten-2')).status, 401);
     assert.equal(await dailyCounter(OHNE, true), 50);
     assert.ok(
       await bis(() => gesendet.some(m => m.to === `${OHNE}@example.org` && /50 fehlgeschlagene/.test(m.text)), 10_000),
-      'keine Mail an den Inhaber',
+      'no mail to the owner',
     );
   });
 
@@ -135,7 +135,7 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
     const r = await anmelden(OHNE, PASS);
     assert.equal(r.status, 429, JSON.stringify(r.body));
     assert.equal(r.body.code, 'account_daily_limit');
-    assert.equal(r.body.second_factor, true, 'die Oberfläche bietet das Codefeld an');
+    assert.equal(r.body.second_factor, true, 'the UI offers the code field');
     // Without a factor even a code does not help; the response does not reveal the password.
     assert.equal((await anmelden(OHNE, PASS, '123456')).body.code, 'account_daily_limit');
     assert.equal((await anmelden(OHNE, 'falsch', '123456')).body.code, 'account_daily_limit');
@@ -183,9 +183,9 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
         .filter(m => m.to === `${OHNE}@example.org`)
         .map(m => /\/anmeldung-freigeben#token=(\S+)/.exec(m.text)?.[1])
         .filter(Boolean);
-    assert.ok(await bis(() => links().length > 0, 10_000), 'kein Freigabelink an den Inhaber');
+    assert.ok(await bis(() => links().length > 0, 10_000), 'no approval link to the owner');
     assert.equal((await anmelden(OHNE, 'falsch-noch-einmal')).body?.code, 'account_daily_limit');
-    assert.equal(await bis(() => links().length > 1, 300), false, 'je Adresse und Stunde nur eine Mail');
+    assert.equal(await bis(() => links().length > 1, 300), false, 'only one mail per address and hour');
     const freigeben = token =>
       fetch(`${base}${AUTH}/approve-login`, {
         method: 'POST',
@@ -195,13 +195,13 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
     const [token] = links();
     const [uid, ...rest] = token.split('.');
     const forged = [String(id[MIT]), ...rest].join('.');
-    assert.equal((await freigeben(forged)).body.code, 'approval_link_invalid', 'Signatur');
+    assert.equal((await freigeben(forged)).body.code, 'approval_link_invalid', 'Signature');
     assert.equal(Number(uid), id[OHNE]);
     const r = await freigeben(token);
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal((await freigeben(token)).body.code, 'approval_link_invalid', 'nur einmal');
+    assert.equal((await freigeben(token)).body.code, 'approval_link_invalid', 'only once');
     const a = await anmelden(OHNE, neu);
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.equal(await dailyCounter(OHNE), 50, 'der gemeinsame Zähler bleibt für andere Adressen');
+    assert.equal(await dailyCounter(OHNE), 50, 'the shared counter stays for other addresses');
   });
 });

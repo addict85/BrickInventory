@@ -23,7 +23,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
+const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').accounts };
 const { tokenDigest } = _req('src/account/deviceToken.js');
 
 test('reset links fall with password and address change', { concurrency: 1 }, async t => {
@@ -112,7 +112,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
     const { password_hash } = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
     assert.ok(
       await _req('src/account/passwordHash.js').passwordFits(sieger, password_hash),
-      'es gilt das Passwort der Anfrage, die 200 bekam',
+      'the password of the request that got 200 applies',
     );
   });
 });

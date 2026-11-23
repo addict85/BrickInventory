@@ -6,7 +6,7 @@ import { errorText, responseLanguage, type ErrorCode, type Language } from '../i
 import type { JobsContext } from './context';
 import { signal } from '../infra/event';
 /** An account's state has been rewritten, in this or another process; the payload names the account. */
-const IMPORT_STAND = signal('csv_import_progress');
+const IMPORT_STATE = signal('csv_import_progress');
 
 /** `isWarning` separates "did not work" from "is a note"; otherwise
  * every note would appear as an error. */
@@ -64,43 +64,43 @@ export function buildJobStatus(
 
 /** The streams re-read the state themselves; if the signal gets lost, their catch-up tick fetches it. */
 export async function emitJobStatus(k: JobsContext, userId: number) {
-  await IMPORT_STAND.report(k.db.notification, String(userId)).catch(logAndContinue('import-auftrag:notify'));
+  await IMPORT_STATE.report(k.db.notification, String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
 export const ORPHANED_MIN = 10;
 
 export async function jobGet(k: JobsContext, userId: number) {
-  await k.importStand.markOrphaned(userId, errorText('import_interrupted', 'de'), ORPHANED_MIN);
-  const row = await k.importStand.importStand(userId);
+  await k.importState.markOrphaned(userId, errorText('import_interrupted', 'de'), ORPHANED_MIN);
+  const row = await k.importState.importState(userId);
   if (!row) return null;
   return { ...row, results: row.results || [] };
 }
 
 export async function jobSet(k: JobsContext, userId: number, fields: Record<string, unknown>) {
-  await k.importStand.writeImportStatus(userId, fields);
+  await k.importState.writeImportStatus(userId, fields);
 }
 
-/** With `lauf` only the import whose identifier is still registered writes;
+/** With `run` only the import whose identifier is still registered writes;
  * a superseded run stops at the return. */
 export async function jobUpdate(
   k: JobsContext,
   userId: number,
   fields: Record<string, unknown>,
-  lauf?: string,
+  run?: string,
 ): Promise<boolean> {
   if (!fields || !Object.keys(fields).length) return true;
-  const n = await k.importStand.changeImportStatus(userId, fields, lauf);
-  return !lauf || n > 0;
+  const n = await k.importState.changeImportStatus(userId, fields, run);
+  return !run || n > 0;
 }
 
 /** After a restart even if the row was marked as orphaned;
  * aborted or superseded it stays (then: null). */
-export async function setImportFort(
+export async function setImportProgress(
   k: JobsContext,
   userId: number,
-  lauf: string,
+  run: string,
 ): Promise<{ results: ImportResult[]; current: string | null } | null> {
-  const z = await k.importStand.setRunFort(userId, lauf);
+  const z = await k.importState.setRunProgress(userId, run);
   return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;
 }
 
@@ -129,13 +129,13 @@ export async function startJob(
     current: details.current ?? null,
     results: JSON.stringify([]),
     error: null,
-    started_at: k.clock.datum().toISOString(),
+    started_at: k.clock.date().toISOString(),
   });
   await emitJobStatus(k, userId);
   return true;
 }
 
-const reported = (k: JobsContext) => k.faecher.slot('importGemeldet', () => new Map<number, number>());
+const reported = (k: JobsContext) => k.compartments.slot('importGemeldet', () => new Map<number, number>());
 
 /** Throttled, so that a fast import does not write every row to the database. */
 export async function reportJob(
@@ -188,6 +188,6 @@ export async function isAborted(k: JobsContext, userId: number): Promise<boolean
 }
 
 /** Wakes when a process wrote an account's state; returns the unsubscribe. */
-export function atImportStatus(k: JobsContext, f: (konto?: string) => void): () => void {
-  return IMPORT_STAND.listen(k.db.notification, f);
+export function atImportStatus(k: JobsContext, f: (account?: string) => void): () => void {
+  return IMPORT_STATE.listen(k.db.notification, f);
 }

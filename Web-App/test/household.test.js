@@ -52,13 +52,13 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
     // As with API tokens: whoever reads the database should not be able to redeem an invitation.
     // Like a request of the account: invitations stand under its row security.
     const { code } = await require('./helpers/sources').asAccount(ids[0], () => hh.createInvitation(ids[0]));
-    assert.ok(code, 'kein Code erzeugt');
+    assert.ok(code, 'no code created');
     const zeilen = await db.all('SELECT token_hash FROM account_link_invites WHERE main_user_id = $1', [ids[0]]);
     assert.equal(zeilen.length, 1);
-    assert.notEqual(zeilen[0].token_hash, code, 'Der Code steht im Klartext in der Datenbank');
+    assert.notEqual(zeilen[0].token_hash, code, 'The code is stored in plain text in the database');
     const roh = code.replace(/[\s-]/g, '').toUpperCase();
-    assert.ok(!zeilen[0].token_hash.toUpperCase().includes(roh), 'Der Code steht (umformatiert) in der Datenbank');
-    assert.match(zeilen[0].token_hash, /^[0-9a-f]{64}$/, 'Gespeichert wird ein SHA-256-Hash');
+    assert.ok(!zeilen[0].token_hash.toUpperCase().includes(roh), 'The code is stored (reformatted) in the database');
+    assert.match(zeilen[0].token_hash, /^[0-9a-f]{64}$/, 'A SHA-256 hash is stored');
   });
 
   await t.test('write rights never come from memory', async () => {
@@ -71,7 +71,7 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
     assert.deepEqual(
       (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
       ids,
-      'Vorbedingung: das Unterkonto ist gemerkt',
+      'Precondition: the sub-account is remembered',
     );
     assert.equal(await als(ids[0], () => hh.mayWriteFor(ids[0], ids[1])), true);
     // Unlinked from outside without this process hearing of it.
@@ -79,19 +79,19 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
     assert.deepEqual(
       (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
       ids,
-      'Vorbedingung: das Gedächtnis ist noch alt',
+      'Precondition: the memory is still old',
     );
     assert.equal(
       await als(ids[0], () => hh.mayWriteFor(ids[0], ids[1])),
       false,
-      'mayWriteFor entscheidet nach dem gemerkten Blickfeld',
+      'mayWriteFor decides by the remembered view',
     );
     assert.deepEqual(
       await als(ids[0], () => hh.writeScope(ids[0])),
       [ids[0]],
-      'schreibbereich entscheidet nach dem gemerkten Blickfeld',
+      '„schreibbereich“ decides by the remembered view',
     );
-    assert.equal(await als(ids[1], () => hh.mayWriteFor(ids[1], ids[1])), true, 'Eigene Daten immer');
+    assert.equal(await als(ids[1], () => hh.mayWriteFor(ids[1], ids[1])), true, 'Own data always');
   });
 });
 
@@ -102,7 +102,7 @@ test('web app and app get the same endpoints', () => {
   // that both offer everything — the weaker version of the same statement.
   const src = read('routes/api/settings.ts');
   for (const fn of ['householdStatus', 'createInvitation', 'joinHousehold', 'unlinkAccounts']) {
-    assert.ok(src.includes(fn), `routes/api/settings.ts: ${fn} fehlt`);
+    assert.ok(src.includes(fn), `routes/api/settings.ts: ${fn} is missing`);
   }
   // And the second version must not come back: every household route exactly once.
   for (const path of [
@@ -111,9 +111,9 @@ test('web app and app get the same endpoints', () => {
     "/api/v2/settings/household/redeem'",
     "/api/v2/settings/household/unlink'",
   ])
-    assert.equal(src.split(path).length - 1, 1, `${path} steht nicht genau einmal in routes/api/settings.ts`);
+    assert.equal(src.split(path).length - 1, 1, `${path} is not in routes/api/settings.ts exactly once`);
   // No own rule in the route — they are in src/household/household.ts.
-  assert.doesNotMatch(src, /account_links/, 'Routen dürfen nicht selbst gegen account_links abfragen');
+  assert.doesNotMatch(src, /account_links/, 'Routes must not query account_links themselves');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -129,11 +129,10 @@ test("the household's portfolio curve is retroactive", () => {
   assert.doesNotMatch(
     p,
     /__portfolio__/,
-    'Der Schnappschuss-Weg ist zurück — er kann weder rückwirkend rechnen ' +
-      'noch den heutigen Bestand über die Zeit zeigen',
+    'The snapshot path is back — it can neither compute retroactively ' + 'nor show today’s stock over time',
   );
-  assert.match(p, /GROUP BY s\.set_number/, 'Dasselbe Set in zwei Konten darf nicht doppelt in die Summe');
-  assert.match(p, /FROM price_history ph/, 'Die Kurve muss aus dem Preisverlauf je Set entstehen');
+  assert.match(p, /GROUP BY s\.set_number/, 'The same set in two accounts must not count twice in the total');
+  assert.match(p, /FROM price_history ph/, 'The curve must come from the price history per set');
 });
 
 test('moving ONLY goes via the purchase price', async () => {
@@ -144,8 +143,8 @@ test('moving ONLY goes via the purchase price', async () => {
   const { moveSet } = require('./helpers/sources').areaPage('sets');
   await assert.rejects(
     moveSet(1, '10294-1', 1, 2, []),
-    (/** @type {any} */ e) => e.kind === 'ungueltig' && e.code === 'purchase_prices_required',
-    'move ohne acquisition_ids muss abgelehnt werden',
+    (/** @type {any} */ e) => e.kind === 'invalid' && e.code === 'purchase_prices_required',
+    'move without acquisition_ids must be rejected',
   );
 
   // And the UI does not even offer it.

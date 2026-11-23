@@ -38,17 +38,13 @@ test('an inventory is found under both spellings', { concurrency: 1 }, async t =
     assert.equal(
       (await db.get('SELECT set_num FROM rb_inventories WHERE id = $1', [idBlank])).set_num,
       `${NR}-1`,
-      'Eine blank geschriebene Nummer wird mit Versionsanhang abgelegt',
+      'A number written bare is stored with a version suffix',
     );
-    assert.equal(
-      await newestInventory(NR),
-      idBlank,
-      'Eine unter der blanken Nummer abgelegte Zeile wird nicht gefunden',
-    );
+    assert.equal(await newestInventory(NR), idBlank, 'A row stored under the bare number is not found');
     assert.equal(
       await newestInventory(`${NR}-1`),
       idBlank,
-      'Auch mit Versionsanhang in der Eingabe muss die blanke Zeile gefunden werden',
+      'Even with a version suffix in the input the bare row must be found',
     );
 
     // 2. If both are present, the highest version wins — not the blank one.
@@ -80,7 +76,7 @@ test('the inventory lookup lives in only one place', () => {
   };
   go(ROOT);
   // Self-proof: if the search found nothing, the rule would be vacuously true.
-  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 40, `Only ${dateien.length} source files found — the search no longer matches`);
 
   const placeList = [];
   for (const f of dateien) {
@@ -99,7 +95,7 @@ test('the inventory lookup lives in only one place', () => {
   assert.deepEqual(
     placeList,
     ['src/catalog/repository/catalogMaster.ts'],
-    'Der Inventar-Nachschlag steht an mehr als einer Stelle — genau daran sind ' +
-      'vier verschiedene Kandidatenregeln entstanden',
+    'The inventory lookup is in more than one place — that is exactly how ' +
+      'four different candidate rules came about',
   );
 });

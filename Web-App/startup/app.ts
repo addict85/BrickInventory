@@ -42,7 +42,7 @@ import { buildAuthRouter } from '../routes/auth';
 import { buildCertificateRouter } from '../routes/certificate';
 import { buildCspReportRouter } from '../src/http/cspReport';
 import { buildWellKnownRouter } from '../routes/wellKnown';
-import { buildGesundheitRouter } from '../routes/health';
+import { buildHealthRouter } from '../routes/health';
 import { buildPagesRouter } from '../routes/pages';
 import { checkContract } from '../src/http/contractRouter';
 import type { Services } from './wiring';
@@ -52,32 +52,26 @@ export interface AppIngredients {
   pool: Pool;
   config: AppConfig;
   /** Checked in server.ts: a placeholder ends the startup there. */
-  sitzungsGeheimnis: string;
+  sessionSecret: string;
   /** The routes get their services from here (startup/wiring.ts, buildServices). */
-  dienste: Services;
+  services: Services;
   /** Sets req.session; without a value express-session via user_sessions. A test provides
    * its session here; the checks after it (version, maximum duration) stay the real ones. */
   sessionStorage?: RequestHandler;
 }
 
 /** The sections are in the order of the middleware. */
-export function buildApp({
-  pool,
-  config,
-  sitzungsGeheimnis,
-  dienste,
-  sessionStorage,
-}: AppIngredients): express.Express {
+export function buildApp({ pool, config, sessionSecret, services, sessionStorage }: AppIngredients): express.Express {
   const app = express();
   // Only reveals what the server is built with — whoever searches should not get it for free.
   app.disable('x-powered-by');
   // Before the first app.use: an /API/… would otherwise hit the same route, but no contract entry.
   app.set('case sensitive routing', true);
   baselineProtection(app, config);
-  sessionRow(app, sessionStorage ?? sessionInPostgres(pool, sitzungsGeheimnis, config), dienste.account, config);
-  filesAndImages(app, dienste, config);
-  apiRoutes(app, dienste);
-  fallbacks(app, dienste.profile);
+  sessionRow(app, sessionStorage ?? sessionInPostgres(pool, sessionSecret, config), services.account, config);
+  filesAndImages(app, services, config);
+  apiRoutes(app, services);
+  fallbacks(app, services.profile);
   return app;
 }
 
@@ -125,8 +119,8 @@ function baselineProtection(app: express.Express, k: AppConfig): void {
   // `//api/…` would otherwise fall through to the SPA catch-all and get index.html with 200.
   app.use((req, _res, next) => {
     if (req.url.startsWith('//') || req.url.includes('//', 1)) {
-      const [pathTeil, ...rest] = req.url.split('?');
-      const pathPart = pathTeil ?? '';
+      const [pathSegment, ...rest] = req.url.split('?');
+      const pathPart = pathSegment ?? '';
       const cleaned = pathPart.replace(/\/{2,}/g, '/');
       if (cleaned !== pathPart) req.url = cleaned + (rest.length ? '?' + rest.join('?') : '');
     }
@@ -235,9 +229,9 @@ function sessionInPostgres(pool: Pool, secret: string, k: AppConfig): RequestHan
   });
 }
 
-function sessionRow(app: express.Express, speicher: RequestHandler, konto: AccountServices, k: AppConfig): void {
-  app.use(speicher);
-  app.use(checkSessionVersion(konto));
+function sessionRow(app: express.Express, store: RequestHandler, account: AccountServices, k: AppConfig): void {
+  app.use(store);
+  app.use(checkSessionVersion(account));
   app.use(sessionMaxDuration(sessionDeadlines(k)));
 }
 
@@ -272,7 +266,7 @@ function apiRoutes(app: express.Express, d: Services): void {
     req.path !== '/v2/' && req.path.length > 1 && req.path.endsWith('/') ? unknownApiPath(req, res) : next(),
   );
   // Before the entrance: asked before schema, migrations and /api/v2 routers are in place.
-  app.use('/api/v2', buildGesundheitRouter(d));
+  app.use('/api/v2', buildHealthRouter(d));
   apiInbox(app, d);
   app.use('/api/v2', buildApiRouter(d));
   app.use('/api/v2/auth', buildAuthRouter(d));

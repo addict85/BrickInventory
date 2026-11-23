@@ -185,30 +185,30 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
 
   await t.test('1. preisalarme.csv is in the ZIP, next to the four others', async () => {
     const r = await fetch(`${srv.base}/api/v2/settings/export/data`);
-    assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
+    assert.equal(r.status, 200, `The export answered with ${r.status}`);
     const buf = Buffer.from(await r.arrayBuffer());
     csvText = fromZip(buf, 'preisalarme.csv');
     assert.ok(
       csvText !== null,
-      'preisalarme.csv liegt NICHT im Archiv. Marcos Vorgabe war „in allen bestehenden ' +
-        'Exporten" — und das ZIP ist der Export der Bestandsdaten.',
+      'preisalarme.csv is NOT in the archive. Marco asked for „in allen bestehenden ' +
+        'Exporten" — and the ZIP is the export of the stock data.',
     );
     for (const n of ['sets.csv', 'teile.csv', 'minifiguren.csv', 'merkliste.csv']) {
-      assert.ok(fromZip(buf, n) !== null, `${n} ist aus dem Archiv verschwunden`);
+      assert.ok(fromZip(buf, n) !== null, `${n} has disappeared from the archive`);
     }
   });
 
   await t.test('2. the alert on a set NOT owned is in there too', () => {
     const zeilen = csvRows(csvText);
-    assert.equal(zeilen.length, ALERTS.length, `${zeilen.length} Zeilen statt ${ALERTS.length}`);
+    assert.equal(zeilen.length, ALERTS.length, `${zeilen.length} rows instead of ${ALERTS.length}`);
     for (const a of ALERTS) {
       const z = zeilen.find(x => x.set_number === a.sn && x.condition === a.c);
-      assert.ok(z, `(${a.sn}, ${a.c}) fehlt im Export`);
-      assert.equal(z.direction, a.r, `Richtung von (${a.sn}, ${a.c}) ist „${z.direction}"`);
+      assert.ok(z, `(${a.sn}, ${a.c}) is missing in the export`);
+      assert.equal(z.direction, a.r, `direction of (${a.sn}, ${a.c}) is „${z.direction}"`);
       assert.equal(
         Number(z.threshold),
         a.s,
-        `Schwelle von (${a.sn}, ${a.c}) kam als „${z.threshold}" heraus, erwartet ${a.s}`,
+        `threshold of (${a.sn}, ${a.c}) came out as „${z.threshold}", expected ${a.s}`,
       );
       assert.equal(z.currency_code, a.w);
     }
@@ -219,18 +219,18 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     // `WHERE user_id` would not be noticeable.
     assert.ok(
       !zeilen.some(x => x.set_number === FOREIGN_ALARM.sn),
-      `Der Alarm des fremden Kontos (${FOREIGN_ALARM.sn}) steht im eigenen Export. ` +
-        'Ein Alarm gehoert genau EINEM Konto, weil er eine Mail an dessen Adresse ' +
-        'ausloest — beim Wiedereinlesen landete er im eigenen Konto.',
+      `The foreign account's alert (${FOREIGN_ALARM.sn}) is in the own export. ` +
+        'An alert belongs to exactly ONE account because it triggers a mail to that address ' +
+        '— on re-import it would land in the own account.',
     );
 
     const withoutInventory = ALERTS.filter(a => !a.owns);
-    assert.equal(withoutInventory.length, 2, 'Vorbedingung: zwei Alarme ohne Bestandszeile');
+    assert.equal(withoutInventory.length, 2, 'precondition: two alerts without a stock row');
     for (const a of withoutInventory) {
       assert.ok(
         zeilen.some(x => x.set_number === a.sn),
-        `Der Alarm auf ${a.sn} fehlt — das Konto besitzt das Set nicht, und genau ` +
-          'deshalb steht er in einer EIGENEN Datei und nicht als Spalte an sets.csv',
+        `The alert on ${a.sn} is missing — the account does not own the set, and exactly ` +
+          'that is why it lives in a SEPARATE file and not as a column of sets.csv',
       );
     }
   });
@@ -240,10 +240,10 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     for (const spalte of ['triggered', 'last_triggered_at', 'last_price']) {
       assert.ok(
         !kopf.includes(spalte),
-        `„${spalte}" steht im Export. Das ist Laufzeitzustand des Jobs, keine Angabe ` +
-          'des Nutzers: Ein triggered=true aus der Datei unterdrückte die erste Meldung ' +
-          'nach dem Wiederherstellen, und ein alter last_price stünde in der ' +
-          'Übersicht als aktueller Stand.',
+        `„${spalte}" is in the export. That is runtime state of the job, not an entry ` +
+          'of the user: a triggered=true from the file would suppress the first message ' +
+          'after restoring, and an old last_price would show in the ' +
+          'overview as the current state.',
       );
     }
   });
@@ -253,14 +253,14 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [MAIN])).c,
       0,
-      'Vorbedingung: keine eigenen Alarme',
+      'precondition: no own alerts',
     );
 
     const { status, body } = await uploadIt(srv.base, csvText);
-    assert.equal(status, 200, `Der Import antwortete mit ${status}: ${JSON.stringify(body)}`);
-    assert.equal(body.added, ALERTS.length, `${body.added} angelegt statt ${ALERTS.length}`);
-    assert.equal(body.errors, 0, `${body.errors} Fehler: ${JSON.stringify(body.results)}`);
-    assert.equal(body.currency_note, undefined, 'Es kam ein Währungshinweis, obwohl Datei und Konto beide CHF tragen');
+    assert.equal(status, 200, `The import answered with ${status}: ${JSON.stringify(body)}`);
+    assert.equal(body.added, ALERTS.length, `${body.added} created instead of ${ALERTS.length}`);
+    assert.equal(body.errors, 0, `${body.errors} errors: ${JSON.stringify(body.results)}`);
+    assert.equal(body.currency_note, undefined, 'A currency hint came although file and account both carry CHF');
 
     for (const a of ALERTS) {
       const z = await db.get(
@@ -268,15 +268,11 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
           WHERE user_id=$1 AND set_number=$2 AND condition=$3`,
         [MAIN, a.sn, a.c],
       );
-      assert.ok(z, `(${a.sn}, ${a.c}) kam nicht zurück`);
+      assert.ok(z, `(${a.sn}, ${a.c}) did not come back`);
       assert.equal(z.direction, a.r);
-      assert.equal(Number(z.threshold), a.s, `Schwelle von (${a.sn}, ${a.c}) ist ${z.threshold}, erwartet ${a.s}`);
+      assert.equal(Number(z.threshold), a.s, `threshold of (${a.sn}, ${a.c}) is ${z.threshold}, expected ${a.s}`);
       assert.equal(z.currency_code, 'CHF');
-      assert.equal(
-        z.triggered,
-        false,
-        'Der Merker steht auf true — ein frisch gesetzter Alarm hat noch nichts gemeldet',
-      );
+      assert.equal(z.triggered, false, 'The marker is set to true — a freshly set alert has not reported anything yet');
     }
   });
 
@@ -286,7 +282,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
     const { body } = await uploadIt(srv.base, csvFromAlerts('EUR'));
 
-    assert.equal(body.added, ALERTS.length, `${body.added} angelegt statt ${ALERTS.length}`);
+    assert.equal(body.added, ALERTS.length, `${body.added} created instead of ${ALERTS.length}`);
     const z = await db.get(
       `SELECT currency_code, threshold FROM price_alerts
         WHERE user_id=$1 AND set_number=$2 AND condition='N'`,
@@ -295,30 +291,30 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     assert.equal(
       z.currency_code,
       'CHF',
-      `Die Währung wurde „${z.currency_code}" — aus der DATEI übernommen. Damit gibt es ` +
-        'zwei Quellen für dieselbe Angabe, und beim nächsten Wechsel laufen sie ' +
-        'auseinander (die Regel steht an PUT /sets/:setNumber/alert).',
+      `The currency became „${z.currency_code}" — taken from the FILE. That makes ` +
+        'two sources for the same value, and on the next change they drift ' +
+        'apart (the rule is at PUT /sets/:setNumber/alert).',
     );
     assert.equal(
       Number(z.threshold),
       600,
-      'Die Schwelle wurde verändert — umgerechnet wird NICHT, dafür bräuchte es einen Kurs',
+      'The threshold was changed — there is NO conversion, that would need a rate',
     );
 
     // And the decisive point: it is NOT concealed.
     assert.ok(
       body.currency_note,
-      'Kein Hinweis in der Antwort. Die Zahlen bedeuten jetzt etwas anderes als in der ' +
-        'Datei („unter 600" in CHF statt in EUR) — stillschweigend die Zahl übernehmen UND ' +
-        'die Währung wechseln ist die eine Sache, die hier niemand merken würde.',
+      'No hint in the response. The numbers now mean something different from the ' +
+        'file („unter 600“ in CHF instead of EUR) — silently taking the number AND ' +
+        'changing the currency is the one thing nobody would notice here.',
     );
-    assert.match(String(body.currency_note), /CHF/, `Der Hinweis nennt die Zielwährung nicht: „${body.currency_note}"`);
+    assert.match(
+      String(body.currency_note),
+      /CHF/,
+      `The hint does not name the target currency: „${body.currency_note}"`,
+    );
     const markiert = (body.results || []).filter(x => x.currency_adjusted);
-    assert.equal(
-      markiert.length,
-      ALERTS.length,
-      `${markiert.length} von ${ALERTS.length} Zeilen sind als angepasst markiert`,
-    );
+    assert.equal(markiert.length, ALERTS.length, `${markiert.length} of ${ALERTS.length} rows are marked as adjusted`);
   });
 
   await t.test('6. an unusable row is counted, not swallowed', async () => {
@@ -331,35 +327,35 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
       '31203-1,X,unter,50,CHF\n' + // condition does not exist — only the check catches that
       '21309-1,U,ueber,24.9,CHF\n'; // the good row
     const { body } = await uploadIt(srv.base, kaputt);
-    assert.equal(body.errors, 3, `${body.errors} Fehler gemeldet statt 3: ${JSON.stringify(body.results)}`);
-    assert.equal(body.added, 1, `${body.added} angelegt statt 1`);
+    assert.equal(body.errors, 3, `${body.errors} errors reported instead of 3: ${JSON.stringify(body.results)}`);
+    assert.equal(body.added, 1, `${body.added} created instead of 1`);
     // The condition „X" must NOT stand in the table. The database would have
     // taken it; only checkInput() in src/finances/priceAlert.ts rejects it.
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1 AND condition NOT IN ('N','U')`, [MAIN]))
         .c,
       0,
-      'Ein Alarm mit einem anderen Zustand als N oder U ist in der Tabelle gelandet. ' +
-        'Die Tabelle hat darauf KEINE CHECK — das fängt allein die Prüfung in ' +
-        'src/finances/priceAlert.ts, und die bekommt man nur über setAlert().',
+      'An alert with a condition other than N or U landed in the table. ' +
+        'The table has NO CHECK for it — only the check in ' +
+        'src/finances/priceAlert.ts catches that, and you only get it via setAlert().',
     );
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [MAIN])).c,
       1,
-      'Eine unbrauchbare Zeile ist trotzdem in der Tabelle gelandet',
+      'An unusable row landed in the table anyway',
     );
     // And the foreign alert stands there untouched — an import writes only in the
     // own account.
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [FREMD])).c,
       1,
-      'Der Import hat das fremde Konto angefasst',
+      'The import touched the foreign account',
     );
     // Opposite direction: the good row MUST go through. Without it the rule would
     // also be fulfilled if the import rejected everything in principle.
     assert.ok(
       await db.get(`SELECT 1 FROM price_alerts WHERE set_number='21309-1' AND condition='U'`),
-      'Auch die gültige Zeile wurde abgewiesen',
+      'The valid row was rejected as well',
     );
   });
 
@@ -377,7 +373,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     assert.equal(
       (await db.get(`SELECT triggered FROM price_alerts WHERE user_id=$1 AND set_number='75192-1'`, [MAIN])).triggered,
       true,
-      'Vorbedingung: der Merker steht',
+      'precondition: the marker is set',
     );
 
     await uploadIt(srv.base, csvFromAlerts());
@@ -390,8 +386,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
         )
       ).triggered,
       false,
-      'Der Merker steht noch auf true. Dann meldet der wiederhergestellte Alarm nie ' +
-        'wieder — er gilt als schon beantwortet.',
+      'The marker is still true. Then the restored alert never reports ' + 'again — it counts as already answered.',
     );
   });
 
@@ -400,7 +395,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
     // this file goes to the importer of a FOREIGN company and
     // carries exactly two columns. A third one makes it unusable there.
     const r = await fetch(`${srv.base}/api/v2/sets/export/rebrickable`);
-    assert.equal(r.status, 200, `Der Rebrickable-Export antwortete mit ${r.status}`);
+    assert.equal(r.status, 200, `The Rebrickable export answered with ${r.status}`);
     const kopf = (await r.text()).replace(/^﻿/, '').split(/\r?\n/)[0];
     assert.equal(
       kopf.replace(/"/g, ''),

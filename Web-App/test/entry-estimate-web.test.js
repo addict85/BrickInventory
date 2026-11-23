@@ -73,8 +73,8 @@ test('every acquisition in its currency', async () => {
     // jsdom formats as “CHF 3.50” without full ICU data, a browser as
     // “3,50 CHF” — what is checked is the currency at the amount, not the notation.
     const flat = text.replace(/\s+/g, ' ');
-    assert.match(flat, /CHF ?3[.,]50|3[.,]50 ?CHF/, `CHF fehlt: ${flat.slice(0, 600)}`);
-    assert.match(flat, /(EUR|€) ?1[.,]25|1[.,]25 ?(EUR|€)/, 'die EUR-Erfassung bleibt in EUR');
+    assert.match(flat, /CHF ?3[.,]50|3[.,]50 ?CHF/, `CHF is missing: ${flat.slice(0, 600)}`);
+    assert.match(flat, /(EUR|€) ?1[.,]25|1[.,]25 ?(EUR|€)/, 'the EUR acquisition stays in EUR');
   } finally {
     w.close();
   }
@@ -84,7 +84,7 @@ test('an estimated price carries ≈', async () => {
   const { w, d } = await detail();
   try {
     const zeichen = [...d.querySelectorAll('#man-detail-body [role="img"]')].filter(e => e.textContent === '≈');
-    assert.equal(zeichen.length, 1, 'genau die geschätzte Erfassung trägt ≈');
+    assert.equal(zeichen.length, 1, 'exactly the estimated acquisition carries ≈');
     assert.match(zeichen[0].getAttribute('aria-label'), /geschätzt/i);
   } finally {
     w.close();

@@ -41,7 +41,7 @@ test('a service only asks as the account of the row security', { concurrency: 1 
   require('./helpers/sources').testServices().household.reportHouseholdChange();
   await holdsSet(db, haupt, '10179-1');
   await holdsSet(db, sub, '75192-1');
-  const nummern = async nutzer => (await readSets({ nutzer }, {})).sets.map(s => s.set_number).sort();
+  const nummern = async nutzer => (await readSets({ user: nutzer }, {})).sets.map(s => s.set_number).sort();
 
   await t.test('the own account sees its household', async () => {
     assert.deepEqual(await asAccount(haupt, () => nummern(haupt)), ['10179-1', '75192-1']);

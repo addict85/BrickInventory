@@ -13,23 +13,23 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte, takt } = require('./helpers/ui');
 
-const LEER = { '/v2/sets': { success: true, sets: [], total: 0, themes: ['Icons'] } };
+const EMPTY = { '/v2/sets': { success: true, sets: [], total: 0, themes: ['Icons'] } };
 
 test('collection: search without hits', async () => {
-  const { w, d, aufrufe } = await openUi(LEER);
+  const { w, d, aufrufe } = await openUi(EMPTY);
   try {
     d.getElementById('gs').value = 'xyz';
     d.getElementById('gs').dispatchEvent(new w.Event('input'));
     await warte(() => d.querySelector('#gallery [data-click="resetFilter"]'));
     const knopf = d.querySelector('#gallery [data-click="resetFilter"]');
-    assert.ok(knopf, 'Kein Knopf „Filter zurücksetzen“');
+    assert.ok(knopf, 'No button „Filter zurücksetzen“');
     assert.equal(knopf.textContent.trim(), 'Filter zurücksetzen');
     const vorher = aufrufe.length;
     knopf.click();
     await takt(30);
     assert.equal(d.getElementById('gs').value, '');
     const neu = aufrufe.slice(vorher).find(a => a.url.includes('/v2/sets?'));
-    assert.ok(neu, 'Die Sammlung wurde nicht neu geladen');
+    assert.ok(neu, 'The collection was not reloaded');
     assert.doesNotMatch(neu.url, /search=/);
   } finally {
     w.close();
@@ -37,7 +37,7 @@ test('collection: search without hits', async () => {
 });
 
 test('collection: theme filter without hits', async () => {
-  const { w, d } = await openUi(LEER);
+  const { w, d } = await openUi(EMPTY);
   try {
     await warte(() => d.querySelector('#gtheme option[value="Icons"]'));
     d.getElementById('gtheme').value = 'Icons';
@@ -64,7 +64,7 @@ test('wishlist: search without hits', async () => {
     assert.equal(
       d.querySelector('#mk-list [data-click="resetFilter"]'),
       null,
-      'Nach dem Zurücksetzen steht weiter „nichts gefunden“',
+      'After resetting it still says „nichts gefunden“',
     );
   } finally {
     w.close();

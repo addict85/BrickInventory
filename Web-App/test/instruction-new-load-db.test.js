@@ -93,13 +93,13 @@ test('reload instructions', { concurrency: 1 }, async t => {
   await t.test('a foreign account', async () => {
     await anleitung();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: false }), 404);
-    assert.ok(await existing(), 'Die geteilte Anleitung ist weg, obwohl das Konto das Set nicht hat');
+    assert.ok(await existing(), 'The shared instruction is gone although the account does not have the set');
   });
 
   await t.test('whoever has the set does not replace a shared instruction', async () => {
     await anleitung();
     assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 403);
-    assert.ok(await existing(), 'die geteilte Anleitung ist für alle weg');
+    assert.ok(await existing(), 'the shared instruction is gone for everyone');
   });
 
   await t.test('whoever has the set fetches a missing one once a day', async () => {
@@ -109,19 +109,19 @@ test('reload instructions', { concurrency: 1 }, async t => {
     await db.run(`UPDATE rate_limit_attempts SET first_at = NOW() - INTERVAL '25 hours' WHERE key = $1`, [
       `anleitung-neu|${SET}`,
     ]);
-    assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 202, 'nach einem Tag geht es wieder');
+    assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 202, 'after one day it works again');
   });
 
   await t.test('the admin replaces', async () => {
     await anleitung();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202);
-    assert.ok(!(await existing()), 'der Verwalter hat die alte Zeile nicht ersetzt');
+    assert.ok(!(await existing()), 'the admin did not replace the old row');
     const auftrag = await db.get(`SELECT status FROM jobs WHERE type = 'instructions' AND dedupe_key = $1`, [
       `instructions:${SET}`,
     ]);
-    assert.equal(auftrag?.status, 'pending', 'das Neuladen steht als Auftrag an');
+    assert.equal(auftrag?.status, 'pending', 'the reload is pending as a job');
     await anleitung();
-    assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202, 'den Verwalter hält die Drossel nicht');
+    assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202, 'the throttle does not hold the admin');
   });
 
   await t.test('a number with path parts', async () => {

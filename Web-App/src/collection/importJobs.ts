@@ -68,7 +68,7 @@ export function runImport<T = Record<string, unknown>, Q extends ImportSource = 
   uid: number,
   source: Q,
   eingabe: ImportInput<Q>,
-  o: { progress?: (f: Progress) => void; wartenMs?: number } = {},
+  o: { progress?: (f: Progress) => void; waitMs?: number } = {},
 ): Promise<T> {
   // tsc doesn't link Q to the union's branch; it's checked when enqueuing.
   const payload = { user_id: uid, source, eingabe } as z.input<typeof ImportPayloadSchema>;
@@ -87,7 +87,7 @@ async function resultFrom(kx: CollectionContext, n: ImportPayload, k: JobContext
     case 'merkliste_csv':
       return csvImportReport(await kx.wanted.importWantedListCsv(n.eingabe.owner, n.eingabe.text));
     case 'alarme_csv':
-      return kx.finances.preisalarm.alertsFromCsv(uid, n.eingabe.currency, n.eingabe.text);
+      return kx.finances.priceAlert.alertsFromCsv(uid, n.eingabe.currency, n.eingabe.text);
     case 'wanted_xml':
       return importWantedXml(kx, uid, n.eingabe, k);
   }

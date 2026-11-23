@@ -35,7 +35,7 @@ class InstructionStoreTest {
 
     private val cache = File(System.getProperty("java.io.tmpdir"), "bim-anleitung-${System.nanoTime()}").apply { mkdirs() }
     private val store = InstructionStore(StoreCipher { ByteArray(32) { 5 } })
-    private val address = "https://brick.example/api/v1/instructions/42/file"
+    private val address = "https://brick.example/api/v2/instructions/42/file"
     private val pdf = ("%PDF-1.7 Anleitung 75192-1 Millennium Falcon " + "x".repeat(150_000)).toByteArray()
 
     @After

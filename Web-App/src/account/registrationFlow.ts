@@ -19,8 +19,8 @@ const RESET_VALID_MIN = 60,
 /** Exception: the mail goes out even without a readable setting, then in German.
  * The owner's account is not the request's (row-level security). */
 async function mailLanguage(k: AccountContext, uid: number): Promise<string> {
-  const wert = inSystemContext('registrierung', () => k.settings.userValue(uid, 'language', 'de'));
-  return String(await wert.catch(reportAndDeliver('registrierung:sprache', 'de')));
+  const value = inSystemContext('registrierung', () => k.settings.userValue(uid, 'language', 'de'));
+  return String(await value.catch(reportAndDeliver('registrierung:sprache', 'de')));
 }
 
 /** Without a base address no link, so no mail. */
@@ -41,21 +41,21 @@ export interface Registration {
   email: string;
   first_name?: string | null | undefined;
   last_name?: string | null | undefined;
-  passwort: string;
+  password: string;
   lang: 'de' | 'en';
 }
 
 /** A taken address or a taken name computes as long as a new account.
  * @returns whether the mail went out */
 export async function tryRegistration(k: AccountContext, r: Registration): Promise<boolean> {
-  const holder = await k.konten.accountWithEmail(r.email);
+  const holder = await k.accounts.accountWithEmail(r.email);
   if (holder) {
-    await computeHowRegistration(r.passwort);
+    await computeHowRegistration(r.password);
     const language = await mailLanguage(k, holder.id);
     return sendOut(() => k.mail.mailRegistrationAttempt(holder.email, language));
   }
-  if (await k.konten.nameTaken(r.username, 0)) {
-    await computeHowRegistration(r.passwort);
+  if (await k.accounts.nameTaken(r.username, 0)) {
+    await computeHowRegistration(r.password);
     return sendOut(basis => k.mail.mailUsernameTaken(r.email, r.lang, basis));
   }
   return newAccount(k, r);
@@ -69,7 +69,7 @@ async function newAccount(k: AccountContext, r: Registration): Promise<boolean> 
     email: r.email,
     first_name: r.first_name,
     last_name: r.last_name,
-    passwort: r.passwort,
+    password: r.password,
     tokenHash: tokenDigest(token),
     bis: new Date(k.clock.now() + 24 * HOUR_MS),
   }).catch(asDuplicate('username_or_email_taken'));
@@ -77,7 +77,7 @@ async function newAccount(k: AccountContext, r: Registration): Promise<boolean> 
     await inSystemContext('registrierung', () => k.settings.setUserSetting(newId, 'language', r.lang)).catch(
       logAndContinue(`registrierung:sprache ${newId}`),
     );
-  const several = (await k.konten.openRegistrations(r.email)) > 1;
+  const several = (await k.accounts.openRegistrations(r.email)) > 1;
   return sendOut(basis => k.mail.mailVerification(r.email, token, basis, r.lang, 'registrierung', several));
 }
 
@@ -86,13 +86,13 @@ export function confirmationAgainRequest(k: AccountContext, email: string): Prom
   return withMinDuration(async () => {
     const throttled = await targetThrottled(k, 'bestaetigung-ziel', email, 3, HOUR_MS);
     const token = crypto.randomBytes(32).toString('hex');
-    const konto = throttled
+    const account = throttled
       ? null
-      : await k.konten.renewEmailTokenIfFree(email, tokenDigest(token), 24, RESET_PAUSE_MIN);
+      : await k.accounts.renewEmailTokenIfFree(email, tokenDigest(token), 24, RESET_PAUSE_MIN);
     // Do not await, otherwise the duration of the SMTP send would reveal the address.
-    if (konto)
-      mailLanguage(k, konto.id)
-        .then(lang => k.mail.mailVerification(konto.email, token, mailBasisUrl()!, lang))
+    if (account)
+      mailLanguage(k, account.id)
+        .then(lang => k.mail.mailVerification(account.email, token, mailBasisUrl()!, lang))
         .catch(logAndContinue('bestaetigung-erneut:mailversand'));
   });
 }
@@ -101,9 +101,9 @@ export function confirmationAgainRequest(k: AccountContext, email: string): Prom
 export function resetLinkRequest(kx: AccountContext, email: string): Promise<void> {
   return withMinDuration(async () => {
     const throttled = await targetThrottled(kx, 'forgot-ziel', email, 3, HOUR_MS);
-    const user = throttled ? null : await kx.konten.activeAccountAfterEmail(email);
+    const user = throttled ? null : await kx.accounts.activeAccountAfterEmail(email);
     const token = crypto.randomBytes(32).toString('hex');
-    const k = kx.konten;
+    const k = kx.accounts;
     if (!user || !(await k.setResetTokenIfFree(user.id, tokenDigest(token), RESET_VALID_MIN, RESET_PAUSE_MIN))) return;
     mailLanguage(kx, user.id)
       // To the STORED address: the entered one also matches via LOWER() as a Unicode variant.
@@ -113,9 +113,9 @@ export function resetLinkRequest(kx: AccountContext, email: string): Promise<voi
 }
 
 export function nameToConfirmation(k: AccountContext, token: string): Promise<string | null> {
-  return k.konten.nameForEmailToken(tokenDigest(token));
+  return k.accounts.nameForEmailToken(tokenDigest(token));
 }
 
 export function accountToResetLink(k: AccountContext, token: string) {
-  return k.konten.accountAfterResetToken(tokenDigest(token));
+  return k.accounts.accountAfterResetToken(tokenDigest(token));
 }

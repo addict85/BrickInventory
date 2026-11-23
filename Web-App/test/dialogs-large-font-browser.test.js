@@ -105,9 +105,9 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
       await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
       await bis(`!!document.querySelector('#set-modal.open [data-click="openAcqModal"]')`, 'Set-Detail');
       await b.auswerten(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
-      await bis(`!!document.querySelector('#acq-modal [data-click="acqDelete"]')`, 'Kaufpreise');
+      await bis(`!!document.querySelector('#acq-modal [data-click="acqDelete"]')`, 'Purchase prices');
       await b.auswerten(`document.querySelector('#acq-modal [data-click="acqDelete"]').click(); true`);
-      await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Bestätigungsdialog');
+      await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Confirmation dialog');
       await ruhig();
       assert.deepEqual(await b.auswerten(MEASURE('#confirm-modal .modal')), []);
       await b.auswerten(`document.getElementById('cd-cancel').click(); true`);
@@ -146,7 +146,7 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
     );
     await b.tab('Input.insertText', { text: '149,95' });
     await b.auswerten(`document.querySelector('#acq-modal .acq-price').blur(); true`);
-    await bis(`!document.getElementById('acq-ok-${id}')?.hidden`, 'Marke „Gespeichert“');
+    await bis(`!document.getElementById('acq-ok-${id}')?.hidden`, 'Marker „Gespeichert“');
     const row = await app.db.get('SELECT set_number, purchase_price FROM set_acquisitions WHERE id = $1', [id]);
     assert.equal(row.set_number, sn);
     assert.equal(Number(row.purchase_price), 149.95);

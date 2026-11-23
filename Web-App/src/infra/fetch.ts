@@ -59,33 +59,33 @@ export interface FetchOptions {
   hosts: readonly string[];
   maxBytes: number;
   /** Total deadline from the first hop to the last byte. */
-  zeitlimitMs: number;
-  kopfzeilen?: Record<string, string>;
+  timeoutMs: number;
+  headers?: Record<string, string>;
   redirects?: number;
   /** Brings its own name resolution; without it publicLookup checks the target. */
   agent?: https.Agent;
   /** POST follows no redirect: a 303 would mean GET, a 307 would pass the body on. */
-  methode?: 'GET' | 'POST';
-  rumpf?: string;
+  method?: 'GET' | 'POST';
+  bodyText?: string;
   /** A job that gets aborted also ends its fetch including the body. */
   signal?: AbortSignal;
 }
 
 export interface FetchHeader {
   status: number;
-  kopf: IncomingHttpHeaders;
+  head: IncomingHttpHeaders;
   /** The address after all redirects. */
   url: string;
 }
 
 export interface FetchResponse extends FetchHeader {
-  koerper: Buffer;
+  body: Buffer;
 }
 
 export interface FetchStream extends FetchHeader {
   /** The body, limited to maxBytes; beyond that it ends with AbrufFehler. */
   stream(): Readable;
-  verwerfen(): void;
+  discard(): void;
 }
 
 const REDIRECT = new Set([301, 302, 303, 307, 308]);
@@ -109,20 +109,42 @@ export function excerpt(text: unknown, n = 120): string {
   );
 }
 
-interface Lauf {
+interface Run {
   response: IncomingMessage;
   url: string;
-  frist: NodeJS.Timeout;
-  abbrechen: (f: FetchError) => void;
+  deadline: NodeJS.Timeout;
+  abort: (f: FetchError) => void;
 }
 
-function run(start: string, o: FetchOptions): Promise<Lauf> {
+/** A redirect to follow (or the reason it cannot be followed); null: the response itself counts. */
+function redirectHop(
+  r: IncomingMessage,
+  u: string,
+  header: Record<string, string>,
+  o: FetchOptions,
+  rest: number,
+  start: string,
+): { next: { url: string; headers: Record<string, string> } } | { error: FetchError } | null {
+  const status = r.statusCode ?? 0;
+  if (!REDIRECT.has(status) || (o.redirects ?? REDIRECT_LIMIT) <= 0 || (o.method ?? 'GET') !== 'GET') return null;
+  if (rest <= 0) return { error: new FetchError('umleitung', `Zu viele Umleitungen: ${addressShort(start)}`) };
+  const next = nextRedirect(u, r.headers?.location, header, o.hosts);
+  if (next) return { next };
+  return {
+    error: new FetchError(
+      'umleitung',
+      `Umleitung ${status} nicht befolgbar (fehlend, kein https oder fremder Host): ${addressShort(u)}`,
+    ),
+  };
+}
+
+function run(start: string, o: FetchOptions): Promise<Run> {
   return new Promise((finished, fail) => {
     let req: ClientRequest | null = null;
     let reply: IncomingMessage | null = null;
     let done = false;
-    const abbrechen = (f: FetchError) => {
-      clearTimeout(frist);
+    const abort = (f: FetchError) => {
+      clearTimeout(deadline);
       if (!done) {
         done = true;
         fail(f);
@@ -130,57 +152,46 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
       reply?.destroy?.(f);
       req?.destroy?.();
     };
-    const frist = setTimeout(
-      () => abbrechen(new FetchError('time_limit', `Zeitlimit ${o.zeitlimitMs} ms: ${addressShort(start)}`)),
-      o.zeitlimitMs,
+    const deadline = setTimeout(
+      () => abort(new FetchError('time_limit', `Zeitlimit ${o.timeoutMs} ms: ${addressShort(start)}`)),
+      o.timeoutMs,
     );
-    frist.unref?.();
-    const atAbort = () =>
-      abbrechen(new FetchError('abgebrochen', `Abgebrochen: ${addressShort(start)}`, o.signal?.reason));
+    deadline.unref?.();
+    const atAbort = () => abort(new FetchError('abgebrochen', `Abgebrochen: ${addressShort(start)}`, o.signal?.reason));
     if (o.signal?.aborted) return atAbort();
     o.signal?.addEventListener('abort', atAbort, { once: true });
 
-    const sprung = (u: string, header: Record<string, string>, rest: number) => {
+    const follow = (u: string, header: Record<string, string>, rest: number) => {
       if (!u.startsWith('https://') || !hostAllowed(u, o.hosts))
-        return abbrechen(new FetchError('adresse', `Adresse nicht erlaubt: ${addressShort(u)}`));
+        return abort(new FetchError('adresse', `Adresse nicht erlaubt: ${addressShort(u)}`));
       try {
         const atResponse = (r: IncomingMessage) => {
           if (done) {
             r.resume?.();
             return;
           }
-          const status = r.statusCode ?? 0;
-          if (REDIRECT.has(status) && (o.redirects ?? REDIRECT_LIMIT) > 0 && (o.methode ?? 'GET') === 'GET') {
+          const hop = redirectHop(r, u, header, o, rest, start);
+          if (hop) {
             r.resume?.();
-            if (rest <= 0)
-              return abbrechen(new FetchError('umleitung', `Zu viele Umleitungen: ${addressShort(start)}`));
-            const next = nextRedirect(u, r.headers?.location, header, o.hosts);
-            if (!next)
-              return abbrechen(
-                new FetchError(
-                  'umleitung',
-                  `Umleitung ${status} nicht befolgbar (fehlend, kein https oder fremder Host): ${addressShort(u)}`,
-                ),
-              );
-            return sprung(next.url, next.kopfzeilen, rest - 1);
+            return 'error' in hop ? abort(hop.error) : follow(hop.next.url, hop.next.headers, rest - 1);
           }
           const length = Number(r.headers?.['content-length']);
           if (length > o.maxBytes) {
             r.resume?.();
-            return abbrechen(new FetchError('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(u)}`));
+            return abort(new FetchError('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(u)}`));
           }
           reply = r;
           done = true;
-          finished({ response: r, url: u, frist, abbrechen });
+          finished({ response: r, url: u, deadline, abort });
         };
         const connection = o.agent ? { agent: o.agent } : { lookup: publicLookup };
         req =
-          o.methode === 'POST'
+          o.method === 'POST'
             ? https.request(u, { method: 'POST', family: 4, headers: header, ...connection }, atResponse)
             : https.get(u, { family: 4, headers: header, ...connection }, atResponse);
         req.on('error', (e: Error) => {
           const code = (e as NodeJS.ErrnoException).code;
-          abbrechen(
+          abort(
             e instanceof FetchError
               ? e
               : new FetchError(
@@ -190,12 +201,12 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
                 ),
           );
         });
-        if (o.methode === 'POST') req.end(o.rumpf);
+        if (o.method === 'POST') req.end(o.bodyText);
       } catch (e) {
-        abbrechen(new FetchError('adresse', `Abruf nicht möglich: ${addressShort(u)}`, e));
+        abort(new FetchError('adresse', `Abruf nicht möglich: ${addressShort(u)}`, e));
       }
     };
-    sprung(start, o.kopfzeilen ?? {}, o.redirects ?? REDIRECT_LIMIT);
+    follow(start, o.headers ?? {}, o.redirects ?? REDIRECT_LIMIT);
   });
 }
 
@@ -205,7 +216,7 @@ export function holeHttps(url: string, o: FetchOptions): Promise<FetchResponse> 
 }
 
 async function fetchWhole(url: string, o: FetchOptions): Promise<FetchResponse> {
-  const { response: r, url: end, frist, abbrechen } = await run(url, o);
+  const { response: r, url: end, deadline, abort } = await run(url, o);
   return new Promise((finished, fail) => {
     const parts: Buffer[] = [];
     let n = 0,
@@ -215,7 +226,7 @@ async function fetchWhole(url: string, o: FetchOptions): Promise<FetchResponse> 
         from = true;
         fail(f);
       }
-      abbrechen(f);
+      abort(f);
     };
     r.on('data', (d: Buffer | string) => {
       const b = typeof d === 'string' ? Buffer.from(d) : d;
@@ -225,10 +236,10 @@ async function fetchWhole(url: string, o: FetchOptions): Promise<FetchResponse> 
       parts.push(b);
     });
     r.on('end', () => {
-      clearTimeout(frist);
+      clearTimeout(deadline);
       if (!from) {
         from = true;
-        finished({ status: r.statusCode ?? 0, kopf: r.headers ?? {}, url: end, koerper: Buffer.concat(parts) });
+        finished({ status: r.statusCode ?? 0, head: r.headers ?? {}, url: end, body: Buffer.concat(parts) });
       }
     });
     r.on('error', (e: Error) =>
@@ -243,13 +254,13 @@ export function openHttps(url: string, o: FetchOptions): Promise<FetchStream> {
 }
 
 async function openLimited(url: string, o: FetchOptions): Promise<FetchStream> {
-  const { response: r, url: end, frist, abbrechen } = await run(url, o);
+  const { response: r, url: end, deadline, abort } = await run(url, o);
   return {
     status: r.statusCode ?? 0,
-    kopf: r.headers ?? {},
+    head: r.headers ?? {},
     url: end,
-    verwerfen: () => {
-      clearTimeout(frist);
+    discard: () => {
+      clearTimeout(deadline);
       r.resume?.();
     },
     stream: () => {
@@ -260,16 +271,16 @@ async function openLimited(url: string, o: FetchOptions): Promise<FetchStream> {
         if (n > o.maxBytes) {
           const f = new FetchError('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(end)}`);
           from.destroy(f);
-          abbrechen(f);
+          abort(f);
         }
       });
-      r.on('end', () => clearTimeout(frist));
+      r.on('end', () => clearTimeout(deadline));
       r.on('error', (e: Error) => {
-        clearTimeout(frist);
+        clearTimeout(deadline);
         from.destroy(e);
       });
       from.on('close', () => {
-        if (!r.complete) abbrechen(new FetchError('netz', `Abgebrochen: ${addressShort(end)}`));
+        if (!r.complete) abort(new FetchError('netz', `Abgebrochen: ${addressShort(end)}`));
       });
       r.pipe(from);
       return from;

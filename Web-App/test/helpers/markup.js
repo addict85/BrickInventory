@@ -11,7 +11,7 @@ const JS = path.join(__dirname, '..', '..', 'public', 'js');
 /** Source text of an exported function, without `export`. */
 function funktion(src, name) {
   const a = src.indexOf(`export function ${name}(`);
-  if (a < 0) throw new Error(`${name}() nicht gefunden`);
+  if (a < 0) throw new Error(`${name}() not found`);
   const e = src.indexOf('\n}\n', a);
   return src.slice(a, e + 2).replace(/^export /, '');
 }

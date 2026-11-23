@@ -17,9 +17,9 @@ export const RbSet = z.looseObject({
   external_ids: foreignNumbers,
 });
 
-export const RbThema = z.looseObject({ id: z.number(), name: text, parent_id: number });
+export const RbTheme = z.looseObject({ id: z.number(), name: text, parent_id: number });
 
-export const RbTeil = z.looseObject({
+export const RbPart = z.looseObject({
   part_num: z.string(),
   name: text,
   part_img_url: text,
@@ -27,8 +27,8 @@ export const RbTeil = z.looseObject({
   external_ids: foreignNumbers,
 });
 
-export const RbSetTeil = z.looseObject({
-  part: RbTeil,
+export const RbSetPart = z.looseObject({
+  part: RbPart,
   color: z.looseObject({ id: z.number(), name: text, rgb: text }),
   quantity: z.number(),
   is_spare: z.boolean().optional(),

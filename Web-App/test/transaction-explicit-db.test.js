@@ -63,7 +63,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
         k.db.transaction(async () => {}),
         dbModule.UnboundQuery,
       );
-      assert.equal((await tt.db.get(PID)).p, eigene, 'die Transaktion bleibt benutzbar');
+      assert.equal((await tt.db.get(PID)).p, eigene, 'the transaction stays usable');
     });
     // Afterwards k is free again.
     assert.ok((await k.db.get(PID)).p > 0);
@@ -132,17 +132,17 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
         drin();
         await raus;
       },
-      { sperren },
+      { locks: sperren },
     );
     await innen;
     return { frei, fertig };
   };
 
   await t.test('a stock lock holds up the second transaction until the first ends', async () => {
-    const sperren = [{ konto: uid, schluessel: 'probe' }];
+    const sperren = [{ account: uid, key: 'probe' }];
     const expiry = [];
     const erste = await hold(sperren);
-    const zweite = k.transact(async () => expiry.push('zweite an'), { sperren });
+    const zweite = k.transact(async () => expiry.push('zweite an'), { locks: sperren });
     await bis(() => waitsOn(`${uid}|probe`));
     expiry.push('erste aus');
     erste.frei();
@@ -154,14 +154,14 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
     // If the first holds both locks, the second waits for its FIRST. Ascending, that is the one
     // of the smaller account, no matter in which order they are named.
     const zwei = uid + 1_000_000;
-    const auf = konto => ({ konto, schluessel: 'x' });
+    const auf = konto => ({ account: konto, key: 'x' });
     const erste = await hold([auf(uid), auf(zwei)]);
-    const zweite = k.transact(async () => {}, { sperren: [auf(zwei), auf(uid)] });
+    const zweite = k.transact(async () => {}, { locks: [auf(zwei), auf(uid)] });
     await bis(async () => (await waitsOn(`${uid}|x`)) || (await waitsOn(`${zwei}|x`)));
     const onSmaller = await waitsOn(`${uid}|x`);
     erste.frei();
     await Promise.all([erste.fertig, zweite]);
-    assert.equal(onSmaller, true, 'die zweite wartet auf die Sperre des kleineren Kontos');
+    assert.equal(onSmaller, true, 'the second waits for the lock of the smaller account');
   });
 
   await t.test('a service in the system context inside a transaction without it throws', async () => {

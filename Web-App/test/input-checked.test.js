@@ -64,7 +64,7 @@ test('checked input and query', { concurrency: 1 }, async t => {
     const r = await sende('/sets', { set_number: '10179-1', purchasePrice: 12 });
     assert.deepEqual([r.status, r.body.code], [400, 'field_unknown']);
     assert.match(r.body.error, /purchasePrice/);
-    assert.equal(aufrufe, vorher, 'die Route lief trotzdem');
+    assert.equal(aufrufe, vorher, 'the route ran anyway');
   });
 
   await t.test('the route sees the converted query', async () => {
@@ -95,7 +95,7 @@ test('every input and query is closed', () => {
     }
   }
   assert.deepEqual(open, []);
-  assert.ok(Object.values(CONTRACT).filter(r => r.query).length >= 40, 'zu wenige Routen mit Abfrage');
+  assert.ok(Object.values(CONTRACT).filter(r => r.query).length >= 40, 'too few routes with a query');
 });
 
 test('the query is in the OpenAPI description', () => {
@@ -115,5 +115,5 @@ test('the query is in the OpenAPI description', () => {
     .flatMap(o => Object.values(o))
     .flatMap(op => op.parameters ?? [])
     .filter(p => p.in === 'query');
-  assert.ok(alle.length >= 80, `nur ${alle.length} Abfrageparameter in der OpenAPI-Beschreibung`);
+  assert.ok(alle.length >= 80, `only ${alle.length} query parameters in the OpenAPI description`);
 });

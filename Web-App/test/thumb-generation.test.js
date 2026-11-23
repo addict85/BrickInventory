@@ -35,17 +35,17 @@ test('previewFrom() actually creates a smaller file', async () => {
 
     assert.ok(
       web,
-      'previewFrom lieferte null — der Fehler wird im catch verschluckt, ' +
-        'typischerweise weil der temporäre Dateiname keine Bildendung trägt',
+      'previewFrom returned null — the error is swallowed in the catch, ' +
+        'typically because the temporary file name carries no image extension',
     );
-    assert.ok(fs.existsSync(preview), 'die Vorschau-Datei fehlt trotz Erfolgsmeldung');
+    assert.ok(fs.existsSync(preview), 'the preview file is missing despite a success message');
     assert.ok(
       fs.statSync(preview).size < fs.statSync(original).size,
-      'die Vorschau muss KLEINER sein als das Original — sonst wäre sie nutzlos',
+      'the preview must be SMALLER than the original — otherwise it would be useless',
     );
     assert.ok(
       fs.readdirSync(ordner).filter(f => f.startsWith(name) && f.includes('.tmp')).length === 0,
-      'es darf keine temporäre Datei zurückbleiben',
+      'no temporary file may be left behind',
     );
   } finally {
     fs.rmSync(original, { force: true });

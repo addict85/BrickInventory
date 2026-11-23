@@ -27,7 +27,7 @@ function streamStatus(job: {
 
 /** The only way of the three fetch routes to a job: only the own one; a read error goes on. */
 function pdfJobReadFor(d: Pick<Services, 'jobQueue' | 'catalog' | 'account'>, id: string, userId: number) {
-  return d.catalog.pdf.lies(id, userId);
+  return d.catalog.pdf.read(id, userId);
 }
 /** The inflection is a placeholder in the table, not here. */
 function runningInflection(count: number, language: string) {
@@ -35,8 +35,8 @@ function runningInflection(count: number, language: string) {
     one = count === 1;
   return {
     count,
-    laufenVerb: one ? (en ? 'is' : 'läuft') : en ? 'are' : 'laufen',
-    auftragWort: one ? (en ? 'job' : 'Auftrag') : en ? 'jobs' : 'Aufträge',
+    runVerb: one ? (en ? 'is' : 'läuft') : en ? 'are' : 'laufen',
+    jobWord: one ? (en ? 'job' : 'Auftrag') : en ? 'jobs' : 'Aufträge',
   };
 }
 
@@ -53,9 +53,9 @@ function sequenceJob(
 ) {
   const check = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
-    if (stream.zu) return;
-    if (job) stream.sende(streamStatus(job));
-    if (!job || finished(job.status)) stream.ende();
+    if (stream.closed) return;
+    if (job) stream.send(streamStatus(job));
+    if (!job || finished(job.status)) stream.end();
   };
   stream.atEnd(d.jobQueue.atJobStatus(payload => (!payload || payload === pdfKey(jobId) ? check() : undefined)));
   const fallback = setInterval(check, 15000);
@@ -89,11 +89,11 @@ export function buildPdfRouter(d: Pick<Services, 'jobQueue' | 'catalog' | 'accou
   router.endpoint('POST /api/v2/sets/partslist-pdf', requireToken, async req => {
     const uid = req.apiUser.user_id;
     const { sets = [], parts = [] } = req.input;
-    if (!parts.length) failDomain('ungueltig', 'no_parts');
+    if (!parts.length) failDomain('invalid', 'no_parts');
 
     const r = await d.catalog.pdf.start(uid, sets, parts);
-    if ('laufend' in r) {
-      failDomain('zu_viele', 'pdf_job_running', runningInflection(r.laufend, responseLanguage(req)));
+    if ('running' in r) {
+      failDomain('too_many', 'pdf_job_running', runningInflection(r.running, responseLanguage(req)));
     }
 
     return { jobId: r.jobId };
@@ -120,8 +120,8 @@ export function buildPdfRouter(d: Pick<Services, 'jobQueue' | 'catalog' | 'accou
       const initial = await pdfJobReadFor(d, jobId, req.apiUser.user_id);
       if (!initial) notFound('job_not_found');
       const stream = openStream(d.account, req, res, { onlyChanges: true });
-      stream.sende(streamStatus(initial));
-      if (finished(initial.status)) stream.ende();
+      stream.send(streamStatus(initial));
+      if (finished(initial.status)) stream.end();
       else sequenceJob(d, stream, jobId, req.apiUser.user_id);
     },
   );

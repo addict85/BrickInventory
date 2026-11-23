@@ -61,12 +61,12 @@ document.getElementById('e').textContent='ERGEBNIS'+JSON.stringify(aus)+'ENDE';}
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const ergebnis = JSON.parse(m[1].replace(/&quot;/g, '"'));
   assert.equal(ergebnis.length, DESIGNS.length);
   for (const e of ergebnis) {
-    assert.equal(e.bg, 'rgba(0, 0, 0, 0)', `${e.d}: Kennzahl hat Hintergrund ${e.bg}`);
-    assert.equal(e.rand, '0px 0px 0px 0px', `${e.d}: Kennzahl hat Rand ${e.rand}`);
-    assert.equal(e.schatten, 'none', `${e.d}: Kennzahl hat Schatten`);
+    assert.equal(e.bg, 'rgba(0, 0, 0, 0)', `${e.d}: metric has background ${e.bg}`);
+    assert.equal(e.rand, '0px 0px 0px 0px', `${e.d}: metric has border ${e.rand}`);
+    assert.equal(e.schatten, 'none', `${e.d}: metric has a shadow`);
   }
 });

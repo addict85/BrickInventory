@@ -57,12 +57,12 @@ class FinancePurchasePriceRowsTest {
     private val purchasePrice by lazy { ctx.getString(R.string.finance_purchase_short, "").trim() }
 
     private fun show() {
-        world.paths.responses["/api/v1/finance/parts-valuation"] = """{"success":true,"currency":"CHF","parts":[
+        world.paths.responses["/api/v2/finance/parts-valuation"] = """{"success":true,"currency":"CHF","parts":[
             {"id":9,"part_number":"3001","part_name":"Brick 2 x 4","color_id":5,"quantity":1,"purchase_price":0.96,
-             "avg_price":1.25,"wert_gesamt":1.25}],"total_value":"1.25"}"""
-        world.paths.responses["/api/v1/finance/minifigs-valuation"] = """{"success":true,"currency":"CHF","figs":[
+             "avg_price":1.25,"value_total":1.25}],"total_value":"1.25"}"""
+        world.paths.responses["/api/v2/finance/minifigs-valuation"] = """{"success":true,"currency":"CHF","figs":[
             {"id":3,"fig_number":"sw0001","fig_name":"Luke Skywalker","quantity":1,"purchase_price":4.35,
-             "avg_price":6.5,"wert_gesamt":6.5}],"total_value":"6.50"}"""
+             "avg_price":6.5,"value_total":6.5}],"total_value":"6.50"}"""
         val vm = world.finances().also { it.loadValuation() }
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {

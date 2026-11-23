@@ -4,21 +4,21 @@ import type { z } from 'zod';
 import type { JobKind, JobContext, JobRow, Payload, PayloadSchema } from './jobs';
 
 export type Schedule =
-  | { taeglich: { setting: string; preset: string } }
-  | { minutes: { setting?: string; preset: number; mindestens?: number } };
+  | { daily: { setting: string; preset: string } }
+  | { minutes: { setting?: string; preset: number; atLeast?: number } };
 
 export interface Handler<A extends JobKind = JobKind> {
-  ausfuehren(payload: Payload<A>, k: JobContext, a: JobRow): Promise<void>;
+  run(payload: Payload<A>, k: JobContext, a: JobRow): Promise<void>;
   givenUp?(payload: Payload<A>, error: string, a: JobRow): Promise<void>;
-  exklusiv?: boolean;
+  exclusive?: boolean;
 }
 
 export interface Login<A extends JobKind = JobKind> extends Handler<A> {
   kind: A;
   payload: PayloadSchema<A>;
   /** Without an account in the system frame, bypassing row security; the reason is here. */
-  kontouebergreifend?: string;
-  zeitplan?: Schedule;
+  crossAccount?: string;
+  schedule?: Schedule;
   /** If it carries an account's data (file content, parts lists), nothing of it stays after success. */
   discardPayload?: boolean;
 }
@@ -31,23 +31,23 @@ export function jobKind<A extends JobKind>(a: Login<A>): Login {
 export class PayloadInvalid extends Error {}
 
 export class Kinds {
-  private readonly je = new Map<string, Login>();
+  private readonly byKind = new Map<string, Login>();
 
   report(a: Login): void {
-    if (this.je.has(a.kind)) throw new Error(`Auftragsart ${a.kind} ist schon angemeldet`);
-    this.je.set(a.kind, a);
+    if (this.byKind.has(a.kind)) throw new Error(`Auftragsart ${a.kind} ist schon angemeldet`);
+    this.byKind.set(a.kind, a);
   }
 
   fromValue(kind: string): Login | undefined {
-    return this.je.get(kind);
+    return this.byKind.get(kind);
   }
 
   all(): Login[] {
-    return [...this.je.values()];
+    return [...this.byKind.values()];
   }
 
   check<A extends JobKind>(kind: A, raw: unknown): Payload<A> {
-    const schema: z.ZodType | undefined = this.je.get(kind)?.payload;
+    const schema: z.ZodType | undefined = this.byKind.get(kind)?.payload;
     if (!schema) throw new PayloadInvalid(`unbekannte Auftragsart ${kind}`);
     const r = schema.safeParse(raw);
     if (r.success) return r.data as Payload<A>;

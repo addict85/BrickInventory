@@ -94,10 +94,10 @@ test('QR nonce only via POST', async t => {
   await t.test('via POST a nonce is created', async () => {
     const vorher = await nonces();
     const r = await callFn('POST');
-    assert.equal(r.status, 200, `Erwartet 200, bekam ${r.status}`);
+    assert.equal(r.status, 200, `expected 200, got ${r.status}`);
     assert.equal(r.body?.success, true);
-    assert.match(String(r.body?.token), /^bim:/, 'Der Token trägt das erwartete Präfix nicht');
-    assert.equal(await nonces(), vorher + 1, 'Es wurde keine Nonce angelegt');
+    assert.match(String(r.body?.token), /^bim:/, 'The token does not carry the expected prefix');
+    assert.equal(await nonces(), vorher + 1, 'No nonce was created');
   });
 
   await t.test('via GET the route no longer exists', async () => {
@@ -108,11 +108,11 @@ test('QR nonce only via POST', async t => {
       200,
       'GET ' +
         AUTH +
-        '/qr-token antwortet wieder mit 200 — damit ist die ' +
-        'SameSite=lax-Lücke aus einer früheren Runde zurück: eine Navigation von einer ' +
-        'fremden Seite legt dann wieder eine Anmelde-Nonce an.',
+        '/qr-token answers with 200 again — that brings back the ' +
+        'SameSite=lax gap from an earlier round: a navigation from a ' +
+        'foreign page then creates a login nonce again.',
     );
-    assert.equal(await nonces(), vorher, 'Ein GET hat trotzdem etwas angelegt');
+    assert.equal(await nonces(), vorher, 'A GET created something anyway');
   });
 
   _srv?.close();

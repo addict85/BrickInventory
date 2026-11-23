@@ -77,15 +77,15 @@ test('address and history', { timeout: 180_000 }, async t => {
     await ruhig();
     await bis(
       `getComputedStyle(document.getElementById('app')).display !== 'none' && !!document.querySelector('.tab.active')`,
-      'App nach Neuladen',
+      'App after reload',
       300,
     );
-    await bis(`document.querySelector('.tab.active')?.id === 'tab-finance'`, 'Finanzen nach Neuladen');
+    await bis(`document.querySelector('.tab.active')?.id === 'tab-finance'`, 'Finances after reload');
     await b.auswerten(`location.hash = '#/sammlung?suche=Tree'; location.reload(); true`);
     await ruhig();
     await bis(
       `document.querySelector('.tab.active')?.id === 'tab-gallery' && document.getElementById('gs').value === 'Tree'`,
-      'Suche nach Neuladen',
+      'Search after reload',
     );
   });
 });

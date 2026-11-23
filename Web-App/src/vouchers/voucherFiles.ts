@@ -49,7 +49,7 @@ export async function readVoucherPdfOrNothing(file: string | null): Promise<Buff
 
 /** Unencrypted and BIENC1 files to BIENC2, on every start; BIENC2 stays, unless
  * `all` (key rotation): then anything only the previous key opens is renewed. */
-export async function encryptLegacyVoucherFiles(o: { alle?: boolean } = {}): Promise<number> {
+export async function encryptLegacyVoucherFiles(o: { all?: boolean } = {}): Promise<number> {
   if (!fs.existsSync(VOUCHER_DIR)) return 0;
   let n = 0;
   for (const account of fs.readdirSync(VOUCHER_DIR).filter(k => /^\d+$/.test(k))) {
@@ -59,7 +59,7 @@ export async function encryptLegacyVoucherFiles(o: { alle?: boolean } = {}): Pro
       const file = path.join(dir, name);
       const raw = await fs.promises.readFile(file);
       if (isEncryptedBuffer(raw)) {
-        const fresh = o.alle ? rekeyBuffer(raw, fileContext(file)) : undefined;
+        const fresh = o.all ? rekeyBuffer(raw, fileContext(file)) : undefined;
         if (fresh) {
           await replaceFile(file, fresh);
           n++;

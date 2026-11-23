@@ -54,7 +54,7 @@ test('all list images load lazily', () => {
       bad.push(`${f}:${src.slice(0, m.index).split('\n').length}`);
     }
   }
-  assert.deepEqual(bad, [], `Listenbilder ohne loading="lazy": ${bad.join(', ')}`);
+  assert.deepEqual(bad, [], `List images without loading="lazy": ${bad.join(', ')}`);
 });
 
 test('parts list against the database: pages, color filter and upper bound on both paths', {
@@ -111,9 +111,9 @@ test('parts list against the database: pages, color filter and upper bound on bo
     assert.deepEqual(
       [rot.source, ...rot.parts.map(p => p.part_number).sort()],
       [weg, 'pp1', 'pp3'],
-      `${weg}: Farbe Rot`,
+      `${weg}: colour red`,
     );
-    assert.equal((await H.partsQuery(U, { ...abfrage, page_size: 100000 })).page_size, 500, `${weg}: Obergrenze`);
+    assert.equal((await H.partsQuery(U, { ...abfrage, page_size: 100000 })).page_size, 500, `${weg}: upper limit`);
   };
   await pruefe('db');
   // The set path may do more at once (a whole parts list), but not arbitrarily much.
@@ -159,19 +159,19 @@ test('loading more only happens in the visible parts tab', async () => {
   try {
     const seiten = () => aufrufe.filter(a => /\/api\/v2\/parts\?/.test(a.url) && /exclude_manual/.test(a.url)).length;
     await reiter(w, 'parts');
-    assert.ok(await warte(() => seiten() >= 2), 'Die erste Seite füllt den Schirm nicht, die zweite kommt nicht');
+    assert.ok(await warte(() => seiten() >= 2), 'The first page does not fill the screen, the second does not come');
     await ruhig();
     const sichtbar = () => {
       for (const cb of observer) cb([{ isIntersecting: true }]);
     };
     const vorher = seiten();
     sichtbar();
-    assert.ok(await warte(() => seiten() === vorher + 1), 'Im sichtbaren Reiter lädt der Sentinel nicht nach');
+    assert.ok(await warte(() => seiten() === vorher + 1), 'In the visible tab the sentinel does not load more');
     await ruhig();
     await reiter(w, 'gallery');
     sichtbar();
     await ruhig();
-    assert.equal(seiten(), vorher + 1, 'Der Sentinel lädt im Hintergrund weiter');
+    assert.equal(seiten(), vorher + 1, 'The sentinel keeps loading in the background');
     assert.ok(d.querySelectorAll('#parts-main .part-card').length >= 300);
   } finally {
     w.close();
@@ -194,7 +194,7 @@ test('arguments from data-arg are treated as strings', async () => {
     await reiter(w, 'minifigs');
     assert.ok(await warte(() => d.querySelector('#manual-figs-list [data-click="openManDetail"]')));
     d.querySelector('#manual-figs-list [data-click="openManDetail"]').click();
-    assert.ok(await warte(() => d.querySelector('[data-click="manQtyChange"][data-arg="1"]')), 'Kein Mengenknopf');
+    assert.ok(await warte(() => d.querySelector('[data-click="manQtyChange"][data-arg="1"]')), 'no quantity button');
     assert.equal(d.getElementById('man-det-qty').value, '2');
     d.querySelector('[data-click="manQtyChange"][data-arg="1"]').click();
     assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/minifigs/fig-000001'))));
@@ -204,7 +204,7 @@ test('arguments from data-arg are treated as strings', async () => {
     await reiter(w, 'settings');
     assert.ok(await warte(() => d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]')));
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]').click();
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
+    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
     assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/4/admin'))));

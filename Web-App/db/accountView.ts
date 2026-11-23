@@ -2,4 +2,4 @@
  * travel downwards; password and keys stay with the owner. */
 
 /** Subquery with the columns id, username, is_admin. */
-export const KONTEN = '(SELECT id, username, is_admin FROM users)';
+export const ACCOUNTS = '(SELECT id, username, is_admin FROM users)';

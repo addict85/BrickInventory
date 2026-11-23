@@ -36,7 +36,7 @@ test('default responses fulfill the contract without additions', () => {
     if (!r.success)
       deviations.push(`${path}: ${r.error.issues.map(i => i.path.join('.') + ' ' + i.message).join(', ')}`);
   }
-  assert.ok(geprueft >= 22, `nur ${geprueft} Standardantworten geprüft`);
+  assert.ok(geprueft >= 22, `only ${geprueft} standard responses checked`);
   assert.deepEqual(deviations, []);
 });
 
@@ -47,7 +47,7 @@ test('checkResponse adds required fields and throws on the wrong type', () => {
   assert.deepEqual(supplemented.sets[0].conditions, []);
   assert.throws(
     () => checkResponse('GET', '/api/v2/sets', { success: true, sets: [], count: '3' }),
-    /verletzt den Vertrag: GET \/api\/v2\/sets \(200\): count/,
+    /violates the contract: GET \/api\/v2\/sets \(200\): count/,
   );
   // Deliberately broken, with a reason: goes out unchanged.
   const kaputt = { success: true, count: 'x', $contractViolating: 'Fehlerpfad der Oberfläche' };
@@ -100,5 +100,5 @@ test('a wrong test response makes the test red', () => {
   });
   fs.rmSync(path.dirname(datei), { recursive: true, force: true });
   assert.notEqual(r.status, 0, r.stdout);
-  assert.match(r.stdout, /Testantwort verletzt den Vertrag: GET \/api\/v2\/sets \(200\): count/);
+  assert.match(r.stdout, /Test response violates the contract: GET \/api\/v2\/sets \(200\): count/);
 });

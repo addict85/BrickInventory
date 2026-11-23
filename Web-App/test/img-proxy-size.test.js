@@ -120,7 +120,7 @@ test.after(async () => {
 
 test('an image exactly at the limit goes out and into the cache', async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
-  assert.ok(SET_IMG_MAX_BYTES >= 10 * 1024 * 1024, 'hochauflösende Katalogbilder (5 MB und mehr) fielen heraus');
+  assert.ok(SET_IMG_MAX_BYTES >= 10 * 1024 * 1024, 'high-resolution catalog images (5 MB and more) dropped out');
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES, 3);
   const r = await hole(address('grenze'));
   assert.deepEqual([r.status, r.n], [200, SET_IMG_MAX_BYTES]);
@@ -128,7 +128,7 @@ test('an image exactly at the limit goes out and into the cache', async t => {
     await bis(() =>
       imCache().some(f => /^[0-9a-f]{40}$/.test(f) && fs.statSync(path.join(cacheDir, f)).size === SET_IMG_MAX_BYTES),
     ),
-    'nicht im Cache',
+    'not in the cache',
   );
 });
 
@@ -149,14 +149,14 @@ test('an image above the limit is discarded, counted and reported', async t => {
       await hole(address(`zugross-${laenge}`));
       await bis(() => imgProxyFailures[zaehler] > vorher);
     });
-    assert.equal(imgProxyFailures[zaehler] - vorher, 1, `Content-Length ${laenge}: nicht in der Fehlerzählung`);
+    assert.equal(imgProxyFailures[zaehler] - vorher, 1, `Content-Length ${laenge}: not in the error count`);
     assert.ok(
       zeilen.some(z => meldung.test(z)),
       `Content-Length ${laenge}:\n${zeilen.join('\n')}`,
     );
   }
   withLength = true;
-  assert.equal(imCache().length, beforeCache, 'etwas liegt im Cache');
+  assert.equal(imCache().length, beforeCache, 'something is in the cache');
 });
 
 test('the local download discards the same image and reports it', async () => {
@@ -174,7 +174,7 @@ test('the local download discards the same image and reports it', async () => {
   assert.equal(
     await downloadSetImage(address('lokal2'), '99998-1'),
     '/images/sets/99998-1.jpg',
-    'an der Grenze nicht gespeichert',
+    'not stored at the limit',
   );
 });
 
@@ -184,8 +184,8 @@ test('the preview arises from the completely written cache', async t => {
     .jpeg()
     .toBuffer();
   const r = await hole(address('vorschau'), true);
-  assert.deepEqual([r.status, r.n], [200, cdnBody.length], 'zuerst geht das Original hinaus');
-  assert.ok(await bis(() => imCache().some(f => f.endsWith('_thumb.jpg')), 10_000), 'keine Vorschau entstanden');
+  assert.deepEqual([r.status, r.n], [200, cdnBody.length], 'first the original goes out');
+  assert.ok(await bis(() => imCache().some(f => f.endsWith('_thumb.jpg')), 10_000), 'no preview created');
   const preview = imCache().find(f => f.endsWith('_thumb.jpg'));
   assert.equal((await sharp(path.join(cacheDir, preview)).metadata()).width, 200);
 });

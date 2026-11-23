@@ -67,7 +67,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
       body: JSON.stringify({ username: user, password: passwort, without_token: true }),
     });
     const body = await r.json();
-    assert.equal(body.success, true, `Anmeldung ${user} fehlgeschlagen: ${JSON.stringify(body)}`);
+    assert.equal(body.success, true, `Sign-in ${user} failed: ${JSON.stringify(body)}`);
     return { cookie: (r.headers.get('set-cookie') || '').split(';')[0], body };
   };
   const angemeldet = async cookie =>
@@ -79,8 +79,8 @@ test('a password change ends sessions AND tokens — against a real store', { co
     await t.test('the admin reset throws out the taken-over window', async () => {
       const angreifer = await anmelden('pw_opfer', 'altesPasswort1');
       const chef = await anmelden('pw_chef', 'altesPasswort1');
-      assert.equal(await angemeldet(angreifer.cookie), true, 'Vorbedingung: Sitzung steht');
-      assert.ok((await sitzungen(victimId)) >= 1, 'Vorbedingung: Sitzung liegt in user_sessions');
+      assert.equal(await angemeldet(angreifer.cookie), true, 'Precondition: session exists');
+      assert.ok((await sitzungen(victimId)) >= 1, 'Precondition: session is in user_sessions');
 
       const r = await fetch(`${basis}${AUTH}/users/${victimId}/password`, {
         method: 'PUT',
@@ -93,12 +93,8 @@ test('a password change ends sessions AND tokens — against a real store', { co
 
       // THE point of the file: the session is really gone, not just “the DELETE
       // is in the code".
-      assert.equal(await sitzungen(victimId), 0, 'Sitzungen des Kontos müssen enden');
-      assert.equal(
-        await angemeldet(angreifer.cookie),
-        false,
-        'Das alte Fenster darf nach dem Reset nicht weiter angemeldet sein',
-      );
+      assert.equal(await sitzungen(victimId), 0, 'Sessions of the account must end');
+      assert.equal(await angemeldet(angreifer.cookie), false, 'The old window must not stay signed in after the reset');
     });
 
     await t.test('the own password change throws out the other windows — not the own one', async () => {
@@ -107,7 +103,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
       // session ID via establishSession) — otherwise one would throw oneself out.
       const windowA = await anmelden('pw_chef', 'altesPasswort1');
       const windowB = await anmelden('pw_chef', 'altesPasswort1');
-      assert.equal(await angemeldet(windowB.cookie), true, 'Vorbedingung: zweites Fenster offen');
+      assert.equal(await angemeldet(windowB.cookie), true, 'Precondition: second window open');
 
       const r = await fetch(`${basis}${AUTH}/change-password`, {
         method: 'POST',
@@ -119,12 +115,12 @@ test('a password change ends sessions AND tokens — against a real store', { co
       assert.equal(
         await angemeldet(windowB.cookie),
         false,
-        'Das andere Fenster muss nach dem Passwortwechsel abgemeldet sein',
+        'The other window must be signed out after the password change',
       );
       // The own window: the session ID was renewed, the old cookie is
       // thereby invalidated too — desired (session fixation) and the reason
       // why the response sends a new cookie along.
-      assert.ok(r.headers.get('set-cookie'), 'Nach der Rotation muss ein neues Sitzungs-Cookie zurückkommen');
+      assert.ok(r.headers.get('set-cookie'), 'After the rotation a new session cookie must come back');
     });
 
     await t.test('bearer tokens of the account expire along with it', async () => {
@@ -135,7 +131,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
         tokenDigest(tok),
         victimId,
       ]);
-      assert.ok(await userForToken(tok), 'Vorbedingung: Token gilt');
+      assert.ok(await userForToken(tok), 'precondition: the token is valid');
 
       // 'nochNeuer1234' — the subtest before changed it.
       const chef = await anmelden('pw_chef', 'nochNeuer1234');
@@ -148,11 +144,7 @@ test('a password change ends sessions AND tokens — against a real store', { co
       });
       assert.equal(r.status, 200, await r.text());
       assert.equal(await takeoverNow(_req, db, victimId), 1);
-      assert.equal(
-        await userForToken(tok),
-        null,
-        'Ein Token auf einem fremden Gerät darf den Passwortwechsel nicht überleben',
-      );
+      assert.equal(await userForToken(tok), null, 'A token on another device must not survive the password change');
     });
 
     // Counter-check (measured 11.11.2026): in setPasswordBack (src/account/accounts.ts)
@@ -173,9 +165,9 @@ test('a password change ends sessions AND tokens — against a real store', { co
         body: JSON.stringify({ token: roh, password: 'perLinkGesetzt12' }),
       });
       assert.equal(r.status, 200, await r.text());
-      assert.equal(await sitzungen(victimId), 0, 'Sitzungen des Kontos müssen enden');
+      assert.equal(await sitzungen(victimId), 0, 'Sessions of the account must end');
       assert.equal(await angemeldet(fenster.cookie), false);
-      assert.equal(await userForToken(tok), null, 'Der Token darf das Zurücksetzen nicht überleben');
+      assert.equal(await userForToken(tok), null, 'The token must not survive the reset');
     });
 
     // Counter-check (measured 11.11.2026): in PUT /users/:id/password the check
@@ -191,14 +183,14 @@ test('a password change ends sessions AND tokens — against a real store', { co
         });
         return `${r.status} ${(await r.json()).code ?? ''}`;
       };
-      assert.equal(await put(chef.cookie, chefId), '400 own_account_password', 'nicht für das eigene Konto');
+      assert.equal(await put(chef.cookie, chefId), '400 own_account_password', 'not for the own account');
       assert.equal(
         await put(chef.cookie, 2_000_000_000),
         '404 user_not_found',
-        'ein Unbekannter ist kein stiller Erfolg',
+        'an unknown one is not a silent success',
       );
       const opfer = await anmelden('pw_opfer', 'perLinkGesetzt12');
-      assert.match(await put(opfer.cookie, chefId), /^403 /, 'nur für Verwalter');
+      assert.match(await put(opfer.cookie, chefId), /^403 /, 'only for admins');
       assert.ok(
         await _req('src/account/passwordHash.js').passwordFits(
           'nochNeuer1234',

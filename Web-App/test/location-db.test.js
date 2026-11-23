@@ -93,7 +93,7 @@ test('storage location against a real database', async t => {
     // hit only one of them, one would have to maintain the same place per set — and
     // the overview showed the part in two boxes, one of which is empty.
     const n = await L.setLocation('part', writable, ['3001', '4'], 'Kiste 3');
-    assert.equal(n, 2, `${n} Zeilen getroffen, erwartet 2 (beide Sets)`);
+    assert.equal(n, 2, `${n} rows hit, expected 2 (both sets)`);
     const rows = await db.all(
       `SELECT t.color_id, l.name AS storage
          FROM parts t LEFT JOIN storage_locations l ON l.id = t.storage_id
@@ -107,7 +107,7 @@ test('storage location against a real database', async t => {
         [4, 'Kiste 3'],
         [5, null],
       ],
-      'Beide Zeilen der Farbe 4 müssen den Ort haben — und die Farbe 5 keinen',
+      'Both rows of color 4 must have the location — and color 5 none',
     );
   });
 
@@ -133,7 +133,7 @@ test('storage location against a real database', async t => {
           [U.fremd],
         )
       )?.storage ?? null;
-    assert.equal(nachher, vorher, 'Eine fremde Zeile wurde verändert');
+    assert.equal(nachher, vorher, 'A foreign row was changed');
 
     // Reset: the overview further down counts the same rows. Without
     // that it said „Kiste 9" instead of „Kiste 3" — the first draft of this
@@ -146,9 +146,9 @@ test('storage location against a real database', async t => {
   await t.test('empty means NULL, not a place called "nothing"', async () => {
     // An empty text would stand as its own entry in every selection list.
     for (const eingabe of ['', '   ', null, undefined]) {
-      assert.equal(L.normalizeLocation(eingabe), null, `„${eingabe}" wurde nicht zu null`);
+      assert.equal(L.normalizeLocation(eingabe), null, `„${eingabe}“ did not become null`);
     }
-    assert.equal(L.normalizeLocation('  Kiste 3  '), 'Kiste 3', 'Nicht getrimmt');
+    assert.equal(L.normalizeLocation('  Kiste 3  '), 'Kiste 3', 'Not trimmed');
 
     await L.setLocation('part', writable, ['3002', '4'], 'Regal B');
     await L.setLocation('part', writable, ['3002', '4'], null);
@@ -158,7 +158,7 @@ test('storage location against a real database', async t => {
         WHERE t.user_id=$1 AND t.part_number=$2`,
       [U.ich, '3002'],
     );
-    assert.equal(r.storage, null, 'Das Leeren hat den Ort nicht entfernt');
+    assert.equal(r.storage, null, 'Clearing did not remove the location');
   });
 
   await t.test('names that are too long are rejected, not truncated', async () => {
@@ -168,7 +168,7 @@ test('storage location against a real database', async t => {
     assert.equal(
       L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS)).length,
       L.LOCATION_MAX_CHARS,
-      'Die Grenze selbst muss noch durchgehen',
+      'The limit itself must still go through',
     );
   });
 
@@ -176,7 +176,7 @@ test('storage location against a real database', async t => {
     await L.setLocation('set', writable, ['10179-1'], 'Kiste 3');
     await L.setLocation('set', writable, ['75192-1'], 'Regal B');
 
-    const locations = await L.lagerorte(await household.scopeIds(U.ich, 'all'));
+    const locations = await L.storages(await household.scopeIds(U.ich, 'all'));
     const karte = Object.fromEntries(locations.map(o => [o.location, o]));
     // „Kiste 3" has a set AND two part rows — one place, not two
     // entries. Delivering two separate lists would mean that every UI
@@ -190,17 +190,17 @@ test('storage location against a real database', async t => {
       [...locations.map(o => o.location)].sort(),
     );
     // And nothing foreign.
-    assert.ok(!locations.some(o => o.location === 'Kiste 9'), 'Ein fremder Ort ist aufgetaucht');
+    assert.ok(!locations.some(o => o.location === 'Kiste 9'), 'A foreign location appeared');
   });
 
   await t.test('the overview follows the scope', async () => {
     await L.setLocation('set', await household.writeScope(U.kind), ['21318-1'], 'Kinderzimmer');
-    const oben = (await L.lagerorte(await household.scopeIds(U.ich, 'all'))).map(o => o.location);
-    const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.location);
-    assert.ok(oben.includes('Kinderzimmer'), 'Das Hauptkonto sieht den Ort des Kindes nicht');
+    const oben = (await L.storages(await household.scopeIds(U.ich, 'all'))).map(o => o.location);
+    const unten = (await L.storages(await household.scopeIds(U.kind, 'all'))).map(o => o.location);
+    assert.ok(oben.includes('Kinderzimmer'), 'The main account does not see the location of the child');
     assert.ok(
       !unten.includes('Kiste 3'),
-      'Das Unterkonto sieht einen Ort des Hauptkontos — das Blickfeld geht nur nach unten',
+      'The sub-account sees a location of the main account — the view only goes downwards',
     );
   });
 

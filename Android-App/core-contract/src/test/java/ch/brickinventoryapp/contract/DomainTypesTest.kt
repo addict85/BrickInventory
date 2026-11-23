@@ -33,9 +33,9 @@ class DomainTypesTest {
     @Test
     fun `an empty or unknown design of the server means no information`() {
         for (raw in listOf("\"\"", "\"neonlila\"", "null")) {
-            val a = json.decodeFromString(AppThemeResponse.serializer(), """{"success":true,"theme":$raw,"vorgabe":"noppe"}""")
+            val a = json.decodeFromString(AppThemeResponse.serializer(), """{"success":true,"theme":$raw,"preset":"noppe"}""")
             assertNull(raw, a.theme)
-            assertEquals(Design.STUD, a.vorgabe)
+            assertEquals(Design.STUD, a.preset)
         }
         assertNull(json.decodeFromString(UserSettings.serializer(), """{"app_theme":"neonlila"}""").appTheme)
     }

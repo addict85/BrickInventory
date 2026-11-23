@@ -28,7 +28,7 @@ async function knopf() {
     await sicht(o.w, 'app');
     const a = o.d.querySelector('a.apk-btn');
     const qr = o.d.getElementById('qr-container');
-    assert.ok(a && qr, 'Download-Knopf oder QR-Code fehlt in der Sicht „App“');
+    assert.ok(a && qr, 'Download button or QR code missing in the „App“ view');
     const sichtbar = el => {
       for (let e = el; e; e = e.parentElement) if (e.style?.display === 'none' || e.hidden) return false;
       return true;
@@ -48,11 +48,11 @@ async function knopf() {
 test('1. the button is in the "app" view, before the QR code, without a foreign brand mark', async () => {
   const k = await knopf();
   assert.match(k.href, /^https:\/\/github\.com\//, 'Der Knopf zeigt nicht auf GitHub — dort liegt das APK.');
-  assert.ok(k.sichtbar, 'Der Knopf ist in der geöffneten Sicht nicht zu sehen');
+  assert.ok(k.sichtbar, 'The button is not visible in the opened view');
   // First get the app, then link the device; the other way round there is nothing to scan yet.
-  assert.ok(k.vorQr, 'Der Knopf steht hinter dem QR-Code');
+  assert.ok(k.vorQr, 'The button is behind the QR code');
   // Google's Android robot is bound by trademark law; the icon is deliberately our own.
-  assert.ok(k.svg, 'Das Symbol kommt nicht als eigenes SVG mit.');
+  assert.ok(k.svg, 'The icon does not come along as its own SVG.');
   assert.doesNotMatch(k.markup, /androidicons|google.*android.*logo|gstatic|play\.google\.com\/intl/i);
 });
 
@@ -61,19 +61,19 @@ test('2. the same address as in the workflow', async () => {
   // ── From the workflow: fixed link and the name under which the APK is created ──
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-release.yml'), 'utf8');
   const link = yml.match(/^\s*LINK="https:\/\/github\.com\/\$GITHUB_REPOSITORY\/(\S+)"/m)?.[1];
-  assert.ok(link, 'Im Workflow ist kein LINK mehr zu finden — Muster veraltet?');
+  assert.ok(link, 'No LINK found in the workflow anymore — pattern outdated?');
   const apkName = yml.match(/^\s*APK=.*\/([^/\s]+\.apk)/m)?.[1];
-  assert.ok(apkName, 'Im Workflow ist kein APK-Dateiname mehr zu finden — Muster veraltet?');
-  assert.match(yml, /gh release create "\$QUELLE" [^\n]*"\$APK"/, 'Die Release wird ohne $APK angelegt.');
+  assert.ok(apkName, 'No APK file name found in the workflow anymore — pattern outdated?');
+  assert.match(yml, /gh release create "\$QUELLE" [^\n]*"\$APK"/, 'The release is created without $APK.');
 
   assert.equal(
     address,
     `https://github.com/addict85/BrickInventory/${link}`,
-    'Knopf und fester Link des Workflows zeigen auf verschiedene Orte.',
+    'The button and the fixed link of the workflow point to different places.',
   );
   assert.ok(
     address.endsWith(`/releases/latest/download/${apkName}`),
-    `Der Knopf zeigt auf "${address}", die Release trägt das APK aber als "${apkName}". ` +
-      'Ein Klick endete auf der 404-Seite von GitHub.',
+    `The button points to "${address}", but the release carries the APK as "${apkName}". ` +
+      'A click would end on the GitHub 404 page.',
   );
 });

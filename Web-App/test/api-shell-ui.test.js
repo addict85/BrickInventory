@@ -36,19 +36,12 @@ test('upload carries the language and goes as FormData without a JSON header', a
   );
   try {
     chooseAlarmCsv(w);
-    assert.ok(
-      await warte(() => aufrufe.some(a => a.url.endsWith('/alerts/import/csv'))),
-      'Upload wurde nicht abgeschickt',
-    );
+    assert.ok(await warte(() => aufrufe.some(a => a.url.endsWith('/alerts/import/csv'))), 'Upload was not sent');
     const upload = aufrufe.find(a => a.url.endsWith('/alerts/import/csv'));
     assert.equal(upload.method, 'POST');
-    assert.ok(upload.body instanceof w.FormData, 'Körper ist kein FormData');
-    assert.equal(upload.headers['Accept-Language'], 'en', 'Accept-Language fehlt am Upload');
-    assert.equal(
-      upload.headers['Content-Type'],
-      undefined,
-      'Ein gesetzter Content-Type zerbricht die multipart-Grenze',
-    );
+    assert.ok(upload.body instanceof w.FormData, 'Body is not FormData');
+    assert.equal(upload.headers['Accept-Language'], 'en', 'Accept-Language is missing on the upload');
+    assert.equal(upload.headers['Content-Type'], undefined, 'A set Content-Type breaks the multipart boundary');
   } finally {
     w.close();
   }
@@ -59,11 +52,11 @@ test('401 on upload ends the session as with every other call', async () => {
     '/v2/alerts/import/csv': { $status: 401, success: false, error: 'Nicht angemeldet', code: 'not_signed_in' },
   });
   try {
-    assert.equal(d.getElementById('login-screen').style.display, 'none', 'Vorbedingung: angemeldet');
+    assert.equal(d.getElementById('login-screen').style.display, 'none', 'Precondition: signed in');
     chooseAlarmCsv(w);
     assert.ok(
       await warte(() => d.getElementById('login-screen').style.display === 'flex'),
-      'Nach 401 steht die Anmeldemaske nicht da',
+      'After 401 the sign-in form is not shown',
     );
     assert.equal(d.getElementById('app').style.display, 'none');
   } finally {
@@ -87,11 +80,11 @@ test('the CSV import reports skipped rows and additional hints in one message', 
     chooseAlarmCsv(w);
     assert.ok(
       await warte(() => /zwei Zeilen übersprungen/.test(d.getElementById('toasts')?.textContent || '')),
-      'Der Hinweis auf übersprungene Zeilen fehlt in der Meldung',
+      'The hint about skipped rows is missing in the message',
     );
     const text = d.getElementById('toasts').textContent;
-    assert.match(text, /Währung CHF/, 'Der Zusatzhinweis des Alarm-Imports fehlt');
-    assert.equal(w.document.getElementById('alerts-csv-file').value, '', 'Das Dateifeld wird nicht geleert');
+    assert.match(text, /Währung CHF/, 'The extra hint of the alert import is missing');
+    assert.equal(w.document.getElementById('alerts-csv-file').value, '', 'The file field is not cleared');
   } finally {
     w.close();
   }

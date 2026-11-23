@@ -26,9 +26,9 @@ declare module '../jobQueue/jobs' {
 /** Missing prices of an account in one currency: at most one waiting job that picks up every new report. */
 export function rememberPricesBefore(k: FinancesContext, n: PayloadInput<'price_refresh'>): Promise<string> {
   return k.jobQueue.supplementListenJob('price_refresh', n, {
-    schluessel: `price_refresh:${n.user_id}:${n.currency}`,
-    liste: 'items',
-    hoechstens: PRICE_ITEM_AT_MOST,
+    key: `price_refresh:${n.user_id}:${n.currency}`,
+    list: 'items',
+    atMost: PRICE_ITEM_AT_MOST,
     userId: n.user_id,
   });
 }

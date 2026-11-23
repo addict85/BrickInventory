@@ -31,7 +31,7 @@ test('purchase price dialog: a read error is a message, not an empty list', asyn
     knopf.click();
     await warte(() => o.d.querySelector('#set-modal [data-click="openAcqModal"]'), 4000);
     o.d.querySelector('#set-modal [data-click="openAcqModal"]').click();
-    assert.ok(await warte(() => meldungen(o.d).some(m => /Datenbank gestört/.test(m)), 2000), 'keine Meldung');
+    assert.ok(await warte(() => meldungen(o.d).some(m => /Datenbank gestört/.test(m)), 2000), 'no message');
     assert.doesNotMatch(o.d.getElementById('acq-modal-body')?.textContent ?? '', /^—$/);
   } finally {
     o.w.close();
@@ -50,7 +50,7 @@ async function rememberFromCatalog(antworten, schwelle) {
 test('remember from the catalog: a rejected remember is reported', async () => {
   const o = await rememberFromCatalog({ '/v2/wanted': FEHLER });
   try {
-    assert.ok(await warte(() => meldungen(o.d).some(m => /Datenbank gestört/.test(m)), 2000), 'keine Meldung');
+    assert.ok(await warte(() => meldungen(o.d).some(m => /Datenbank gestört/.test(m)), 2000), 'no message');
   } finally {
     o.w.close();
   }
@@ -66,7 +66,7 @@ test('remember from the catalog: … the alert too', async () => {
     '12',
   );
   try {
-    assert.ok(await warte(() => meldungen(o.d).some(m => /Alarm abgelehnt/.test(m)), 2000), 'keine Meldung');
+    assert.ok(await warte(() => meldungen(o.d).some(m => /Alarm abgelehnt/.test(m)), 2000), 'no message');
   } finally {
     o.w.close();
   }

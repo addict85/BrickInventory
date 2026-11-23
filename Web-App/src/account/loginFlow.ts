@@ -7,7 +7,7 @@ import { tokenDetails, tokenLabel, tokenScope } from './tokenRequest';
 import { hintInBackground } from './accountNotice';
 import * as QR from './qrPairing';
 import { baseUrl, hintWithoutBaseUrl, viaTls } from '../infra/baseUrl';
-import { tlsStand } from '../infra/tlsRoot';
+import { tlsState } from '../infra/tlsRoot';
 import { failDomain } from '../infra/errorTexts';
 import { passwordLack } from '../infra/passwordRule';
 import { attempts, valueOr } from '../infra/result';
@@ -39,8 +39,8 @@ export async function loginResponse(
       }),
     );
     token = valueOr(fresh, null);
-    if (!token) failDomain('intern', 'token_not_issued');
-    hintInBackground(k, uid, 'token_neu', tokenLabel(wish.label, 'webapp-session'));
+    if (!token) failDomain('internal', 'token_not_issued');
+    hintInBackground(k, uid, 'token_added', tokenLabel(wish.label, 'webapp-session'));
   }
   // Administrator rights are carried by the session and a token with scope `voll`, not `app`.
   const admin = user.is_admin && (!withToken || tokenScope(wish.scope) === 'voll');
@@ -68,7 +68,7 @@ export async function devicesTokenIssue(
 ) {
   const name = tokenLabel(label, 'Android App');
   const token = await createToken(k, uid, name, true, null, { scope: tokenScope(scope), ip });
-  hintInBackground(k, uid, 'token_neu', name);
+  hintInBackground(k, uid, 'token_added', name);
   return { token, label: name, token_info: await tokenDetails(k, token) };
 }
 
@@ -78,14 +78,14 @@ export async function createQrAccess(k: AccountContext, uid: number, validity: u
   const basis = baseUrl();
   if (!basis) {
     hintWithoutBaseUrl('auth:qr', 'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
-    failDomain('nicht_verfuegbar', 'qr_without_base_url');
+    failDomain('unavailable', 'qr_without_base_url');
   }
   // The QR code says how long the access will run: the bound applies here already.
   const days = tokenDays(k, runtimeDays(validity));
   const { token, pairing } = await QR.create(k, uid, days);
-  hintInBackground(k, uid, 'qr_zugang_neu');
+  hintInBackground(k, uid, 'qr_access_added');
   // `fp` only with TLS: the app pins the root of the internal CA with it.
-  const ca = viaTls(basis) ? await tlsStand() : null;
+  const ca = viaTls(basis) ? await tlsState() : null;
   return {
     token,
     pairing,
@@ -97,16 +97,11 @@ export async function createQrAccess(k: AccountContext, uid: number, validity: u
 }
 
 /** The name from the table: with an app token there is no session that carries it. */
-export async function changeOwnPasswordChecked(
-  k: AccountContext,
-  uid: number,
-  fresh: string,
-  passkeysWiderrufen: boolean,
-) {
-  const konto = await k.konten.accountShort(uid);
-  const mangel = passwordLack(fresh, konto?.username);
-  if (mangel) failDomain('ungueltig', mangel);
-  await K.changeOwnPassword(k, uid, fresh, { passkeysWiderrufen });
-  hintInBackground(k, uid, 'passwort_geaendert');
-  return konto;
+export async function changeOwnPasswordChecked(k: AccountContext, uid: number, fresh: string, revokePasskeys: boolean) {
+  const account = await k.accounts.accountShort(uid);
+  const lack = passwordLack(fresh, account?.username);
+  if (lack) failDomain('invalid', lack);
+  await K.changeOwnPassword(k, uid, fresh, { revokePasskeys });
+  hintInBackground(k, uid, 'password_changed');
+  return account;
 }

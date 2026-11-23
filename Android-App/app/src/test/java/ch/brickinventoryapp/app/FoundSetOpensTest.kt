@@ -51,7 +51,7 @@ class FoundSetOpensTest {
 
     @Test
     fun `a set already there opens its page, and opens a second time`() {
-        app.world.paths.responses["/api/v1/sets/exists/75192-1"] = """{"success":true,"exists":true,"set_number":"75192-1"}"""
+        app.world.paths.responses["/api/v2/sets/exists/75192-1"] = """{"success":true,"exists":true,"set_number":"75192-1"}"""
         app.show(compose)
         idle()
         val entry = app.viewModels.created.filterIsInstance<EntryViewModel>().first()

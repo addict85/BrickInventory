@@ -61,23 +61,23 @@ test('setup state without login', { concurrency: 1 }, async t => {
   const d = await r.json();
   assert.equal(d.success, true);
   assert.equal(d.done, false);
-  assert.equal(d.configured, false, 'ohne Quelle ist nichts konfiguriert');
+  assert.equal(d.configured, false, 'without a source nothing is configured');
   assert.equal(d.ca.download, '/ca.crt');
-  assert.ok(Array.isArray(d.steps) && d.steps.length >= 5, 'die Prüfungen fehlen');
+  assert.ok(Array.isArray(d.steps) && d.steps.length >= 5, 'the checks are missing');
   for (const s of d.steps) {
     assert.equal(typeof s.ok, 'boolean');
     assert.equal(typeof s.required, 'boolean');
   }
   // An initial password is still set; without an admin „konto“ only means „there is one“.
   const konto = d.steps.find(s => s.id === 'account');
-  assert.equal(konto.ok, true, 'ohne Verwalter verrät der Stand kein Startpasswort');
-  assert.equal(d.base_url, null, 'ohne Verwalter keine Basis-URL');
+  assert.equal(konto.ok, true, 'without an admin the state reveals no start password');
+  assert.equal(d.base_url, null, 'without an admin no base URL');
   const verwalter = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const dv = await (await fetch(verwalter.base + '/api/v2/setup/state')).json();
   assert.equal(
     dv.steps.find(s => s.id === 'account').ok,
     false,
-    'für den Verwalter steht das Konto erst auf bereit, wenn das Startpasswort ersetzt ist',
+    'for the admin the account only becomes ready once the start password is replaced',
   );
   // No addresses, no names, no key names.
   const text = JSON.stringify(d);
@@ -89,7 +89,7 @@ test('setup state without login', { concurrency: 1 }, async t => {
   // Via the real write path, because keys lie encrypted (SECRET_KEYS).
   await _req('src/settings/settings.js').setGlobalSetting('rebrickable_api_key', 'probe');
   const d2 = await (await fetch(srv.base + '/api/v2/setup/state')).json();
-  assert.equal(d2.configured, true, 'mit hinterlegter Quelle gilt die Einrichtung als begonnen');
+  assert.equal(d2.configured, true, 'with a stored source the setup counts as started');
 });
 
 test('the entry lets only the state through without a session', async t => {
@@ -105,7 +105,7 @@ test('the entry lets only the state through without a session', async t => {
   const base = `http://localhost:${typeof address === 'object' && address ? address.port : 0}/api/v2`;
 
   const open = await fetch(base + '/setup/state');
-  assert.equal(open.status, 200, 'der Stand muss vor der Anmeldung erreichbar sein');
+  assert.equal(open.status, 200, 'the state must be reachable before the login');
   const zu = await fetch(base + '/sets');
-  assert.equal(zu.status, 401, 'alles andere bleibt zu');
+  assert.equal(zu.status, 401, 'everything else stays closed');
 });

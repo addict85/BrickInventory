@@ -43,8 +43,8 @@ class AlarmThresholdDebouncedTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher(clock))
         paths = PathServer(
-            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","threshold":500.0}]}""",
-            "/api/v1/sets/75192-1/alert" to """{"success":true}""",
+            "/api/v2/alerts" to """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","threshold":500.0}]}""",
+            "/api/v2/sets/75192-1/alert" to """{"success":true}""",
         )
         t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
@@ -64,11 +64,11 @@ class AlarmThresholdDebouncedTest {
         vm.setAlarmThreshold("75192-1", Condition.NEW, AlarmDirection.BELOW, "4")
         vm.setAlarmThreshold("75192-1", Condition.NEW, AlarmDirection.BELOW, "449,90")
         clock.advanceTimeBy(500)
-        assertTrue("nothing sent before the quiet period", paths.requestsTo("PUT /api/v1/sets/75192-1/alert").isEmpty())
+        assertTrue("nothing sent before the quiet period", paths.requestsTo("PUT /api/v2/sets/75192-1/alert").isEmpty())
         clock.advanceTimeBy(500)
-        assertTrue("saved", paths.requestsTo("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
+        assertTrue("saved", paths.requestsTo("PUT /api/v2/sets/75192-1/alert").isNotEmpty())
         val puts = synchronized(paths.requests) {
-            paths.requests.indices.filter { paths.requests[it] == "PUT /api/v1/sets/75192-1/alert" }.map { paths.bodyBytes[it] }
+            paths.requests.indices.filter { paths.requests[it] == "PUT /api/v2/sets/75192-1/alert" }.map { paths.bodyBytes[it] }
         }
         assertEquals("exactly one request: $puts", 1, puts.size)
         assertTrue("with the last value: ${puts.single()}", "449.9" in puts.single())

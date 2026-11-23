@@ -51,8 +51,8 @@ test('streams end with their access', { concurrency: 1 }, async t => {
   const app = _req('startup/app.js').buildApp({
     pool: db.systemPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: 's'.repeat(48),
-    dienste: require('./helpers/sources').testServices(),
+    sessionSecret: 's'.repeat(48),
+    services: require('./helpers/sources').testServices(),
   });
   const srv = app.listen(0);
   t.after(() => {
@@ -83,7 +83,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     const abbruch = new AbortController();
     t.after(() => abbruch.abort());
     const r = await fetch(`${basis}/api/v2/sets/import/csv/stream`, { headers: kopf, signal: abbruch.signal });
-    if (r.status !== 200) assert.fail(`Strom: ${r.status} ${await r.text()}`);
+    if (r.status !== 200) assert.fail(`stream: ${r.status} ${await r.text()}`);
     const s = { text: '', zu: false };
     (async () => {
       const reader = r.body.getReader();
@@ -99,7 +99,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
   };
   const ending = async (s, wie) => {
     await bis(() => s.zu, 3000).catch(() => {});
-    assert.ok(s.zu, `${wie}: der Strom endet`);
+    assert.ok(s.zu, `${wie}: the stream ends`);
     assert.match(s.text, /event: access_ended/, wie);
   };
 
@@ -109,7 +109,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     const andere = await openIt(await token());
     assert.equal((await post('/api/v2/auth/logout', kopf)).status, 200);
     await ending(s, 'Token abgemeldet');
-    assert.equal(await bis(() => andere.zu, 300), false, 'der Strom eines anderen, gültigen Tokens bleibt offen');
+    assert.equal(await bis(() => andere.zu, 300), false, 'the stream of another, valid token stays open');
   });
 
   await t.test('session logged out: the stream ends', async () => {
@@ -132,10 +132,10 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     let beendet = 0;
     const signOut = watchViaAccess({ session: {}, headers: kopf }, () => beendet++, 50);
     t.after(signOut);
-    assert.equal(await bis(() => beendet > 0, 200), false, 'ein gültiger Token beendet nichts');
+    assert.equal(await bis(() => beendet > 0, 200), false, 'a valid token ends nothing');
     // Revocation as from another process: only the row, no event here.
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
     await bis(() => beendet > 0, 2000).catch(() => {});
-    assert.equal(beendet, 1, 'ohne Ereignis endet der Strom im Takt');
+    assert.equal(beendet, 1, 'without an event the stream ends on the beat');
   });
 });

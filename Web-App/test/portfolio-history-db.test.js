@@ -172,7 +172,11 @@ test('the portfolio curve computes the same as the reference version', { concurr
       const alt = await comparisonVersion(setNumbers, setQty, 'CHF', 'N', filter[period]);
       const neu = await portfolioHistory(u1, [u1, u2], period, db, getSetting);
 
-      assert.equal(neu.points.length, alt.length, `andere Anzahl Punkte: ${neu.points.length} statt ${alt.length}`);
+      assert.equal(
+        neu.points.length,
+        alt.length,
+        `different number of points: ${neu.points.length} instead of ${alt.length}`,
+      );
 
       // The route delivers {x_label, value, y_frac} — compared are the
       // VALUES in their order.
@@ -181,7 +185,7 @@ test('the portfolio curve computes the same as the reference version', { concurr
           n = neu.points[i];
         // Rounding: the old version computed in JS floating point, the new one in
         // NUMERIC. One cent of difference is allowed, no more.
-        assert.ok(Math.abs(n.value - a.total) <= 0.01, `Punkt ${i} (${a.day}): ${n.value} statt ${a.total}`);
+        assert.ok(Math.abs(n.value - a.total) <= 0.01, `point ${i} (${a.day}): ${n.value} instead of ${a.total}`);
       }
     });
   }
@@ -214,14 +218,14 @@ test('one price entry per set, condition, currency and day', { concurrency: 1 },
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price)
                    VALUES ('99999-1','N','CHF',99,99) ON CONFLICT DO NOTHING`);
     const n = await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='99999-1'`);
-    assert.equal(n.c, 1, 'zweite Zeile desselben Tages angelegt — ON CONFLICT greift nicht');
+    assert.equal(n.c, 1, 'second row for the same day created — ON CONFLICT does not apply');
   });
 
   await t.test('a different condition on the same day is allowed', async () => {
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price)
                    VALUES ('99999-1','U','CHF',8,8) ON CONFLICT DO NOTHING`);
     const n = await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='99999-1'`);
-    assert.equal(n.c, 2, 'Neu und Gebraucht müssen nebeneinander stehen dürfen');
+    assert.equal(n.c, 2, 'New and used must be allowed side by side');
   });
 
   await t.test('cleanup removes old rows — including the old snapshots', async () => {
@@ -235,12 +239,12 @@ test('one price entry per set, condition, currency and day', { concurrency: 1 },
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
     environment({ PRICE_HISTORY_KEEP_DAYS: '1095' });
     const weg = await deleteOldPrices();
-    assert.ok(weg >= 2, `nicht alles entfernt: ${weg}`);
+    assert.ok(weg >= 2, `not everything removed: ${weg}`);
     for (const sn of ['88888-1', '__portfolio__1'])
       assert.equal(
         (await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number=$1`, [sn])).c,
         0,
-        `alte Zeile ${sn} blieb liegen`,
+        `old row ${sn} was left behind`,
       );
   });
 
@@ -266,6 +270,6 @@ test('mail sending never switches off certificate verification', () => {
   assert.doesNotMatch(
     src,
     /rejectUnauthorized:\s*(false|!)/,
-    'Zertifikatsprüfung abschaltbar — SMTP-Zugangsdaten und Rücksetz-Links gingen über eine ungeprüfte Verbindung',
+    'Certificate check can be switched off — SMTP credentials and reset links would go over an unverified connection',
   );
 });

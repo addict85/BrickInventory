@@ -47,7 +47,7 @@ test('errors at the field, toasts at the view', { concurrency: 1, timeout: 300_0
     await b.auswerten(`document.querySelector('[data-click="saveVoucher"]').click(); true`);
     await bis(
       `document.getElementById('v-number')?.getAttribute('aria-invalid') === 'true' || document.querySelector('#toasts .toast.error')`,
-      'Rückmeldung',
+      'Feedback',
     );
     const z = await b.auswerten(FIELD('v-number'));
     assert.deepEqual(
@@ -73,7 +73,7 @@ test('errors at the field, toasts at the view', { concurrency: 1, timeout: 300_0
     await b.auswerten(`location.hash = '#/lagerorte'; true`);
     await bis(
       `!!document.querySelector('[data-click="createLocation"]')?.getClientRects().length && document.querySelectorAll('.location-input').length === 2`,
-      'Lagerorte',
+      'Storage locations',
     );
     await toastsRoute();
     await b.auswerten(`document.querySelector('[data-click="createLocation"]').click(); true`);

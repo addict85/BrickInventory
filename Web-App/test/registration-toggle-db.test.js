@@ -112,15 +112,15 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     };
     await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user')");
     environment({ APP_BASE_URL: undefined });
-    assert.deepEqual(await pathList(), [false, false], 'ohne Adresse');
+    assert.deepEqual(await pathList(), [false, false], 'without an address');
     environment({ APP_BASE_URL: 'http://192.168.1.20:3000' });
-    assert.deepEqual(await pathList(), [false, false], 'IP-Adresse, ohne Mail');
+    assert.deepEqual(await pathList(), [false, false], 'IP address, without mail');
     environment({ APP_BASE_URL: 'https://inventar.example.org' });
-    assert.deepEqual(await pathList(), [true, false], 'Domäne, ohne Mail');
+    assert.deepEqual(await pathList(), [true, false], 'domain, without mail');
     await db.run(
       "INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.example.org'), ('smtp_user', 'inventar')",
     );
-    assert.deepEqual(await pathList(), [true, true], 'Domäne und Mail');
+    assert.deepEqual(await pathList(), [true, true], 'domain and mail');
   });
 
   await t.test('"1" opens it', async () => {
@@ -135,7 +135,7 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     environment({ APP_BASE_URL: 'https://inventar.example.org' });
     await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user')");
     const s = (await callIt('GET', '/auth/registration-status')).body;
-    assert.deepEqual([s.enabled, s.mail_delivery], [false, false], 'trotz "1"');
+    assert.deepEqual([s.enabled, s.mail_delivery], [false, false], 'despite "1"');
     const r = await callIt('POST', '/auth/register', {
       username: `${NEU}_x`,
       email: `${NEU}_x@example.org`,
@@ -163,7 +163,7 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     const inList = async () => (await callIt('GET', '/auth/users')).body.users.find(u => u.id === neu);
     assert.equal((await inList()).awaiting_confirmation, true);
     assert.equal(assertLoginAllowed(await row())?.code, 'email_not_confirmed');
-    assert.equal((await callIt('PUT', `/auth/users/${neu}/approve`, {})).status, 400, 'ohne Passwort');
+    assert.equal((await callIt('PUT', `/auth/users/${neu}/approve`, {})).status, 400, 'without a password');
     const r = await callIt('PUT', `/auth/users/${neu}/approve`, { admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const z = await row();
@@ -207,7 +207,7 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
       body: await x.json(),
     }));
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(await gespeichert('registration_enabled'), '0', 'der Import öffnete die Registrierung');
+    assert.equal(await gespeichert('registration_enabled'), '0', 'the import opened the registration');
     assert.deepEqual(r.body.smtp_skipped, ['registration_enabled']);
   });
 });

@@ -32,8 +32,8 @@ export async function setDetails(k: CatalogContext, setNumber: string) {
     return null;
   }
   // The theme is secondary: without it the set is still remembered, the row names none.
-  const thema = await attempts('rebrickable:thema', k.externalSources.sources.getThemeName(data.theme_id ?? 0));
-  const theme = thema.ok ? thema.wert : null;
+  const themeName = await attempts('rebrickable:thema', k.externalSources.sources.getThemeName(data.theme_id ?? 0));
+  const theme = themeName.ok ? themeName.value : null;
   const row = {
     set_number: n,
     name: data.name || null,
@@ -68,8 +68,9 @@ async function setPartsFromCsv(k: CatalogContext, setNumber: string) {
 
 /** Briefly remember an empty answer (404, abort): otherwise every
  * repeated import of an unknown number costs quota again. */
-const LEER_MS = 10 * 60 * 1000;
-const leer = (k: CatalogContext) => k.faecher.slot('rebrickable:leer', () => new Cache<string, true>(5000, LEER_MS));
+const IDLE_MS = 10 * 60 * 1000;
+const emptyLists = (k: CatalogContext) =>
+  k.compartments.slot('rebrickable:leer', () => new Cache<string, true>(5000, IDLE_MS));
 
 export async function allPartsOfSet(k: CatalogContext, setNumber: string) {
   const csvParts = await setPartsFromCsv(k, setNumber);
@@ -79,11 +80,11 @@ export async function allPartsOfSet(k: CatalogContext, setNumber: string) {
     await k.rebrickableCache.partListFromCache(n),
   );
   if (remembered) return remembered;
-  if (leer(k).hole(n)) return [];
-  const { parts, verweigert } = await k.externalSources.sources.fetchSetParts(n);
+  if (emptyLists(k).hole(n)) return [];
+  const { parts, refused } = await k.externalSources.sources.fetchSetParts(n);
   // A refusal (403) is remembered as an empty list so that not every import asks again.
-  if (parts.length > 0 || verweigert) await k.rebrickableCache.rememberPartList(n, JSON.stringify(parts));
-  else leer(k).set(n, true);
+  if (parts.length > 0 || refused) await k.rebrickableCache.rememberPartList(n, JSON.stringify(parts));
+  else emptyLists(k).set(n, true);
   return parts;
 }
 

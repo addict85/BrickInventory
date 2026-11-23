@@ -9,13 +9,13 @@
  *      “250 pages: 422 with an understandable message” (the stack is read)
  *   B  readInBackground() calls readUploadedPdf() directly → red: “reading happens
  *      in a worker thread”
- *   C  kontoSchranke('voucherPdf') deleted on POST /vouchers/pdf → red:
+ *   C  accountLimit('voucherPdf') deleted on POST /vouchers/pdf → red:
  *      “a second voucher PDF of the same account does not wait”
- *   D  the release on 'close' deleted in kontoSchranke() → red: “… after
+ *   D  the release on 'close' deleted in accountLimit() → red: “… after
  *      the end it works again”
- *   E  kontoSchranke('strom') deleted on the CSV stream → red: “at most six
+ *   E  accountLimit('strom') deleted on the CSV stream → red: “at most six
  *      event streams per account”
- *   F  the release on 'finish' deleted in kontoSchranke() → red: “the
+ *   F  the release on 'finish' deleted in accountLimit() → red: “the
  *      slot is free as soon as the response is handed over”
  *
  * REQUIRE_DB=1.
@@ -128,7 +128,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
     try {
       const r = await readInBackground(await pdfWith(3));
       assert.equal(r.kind, 'gelesen');
-      assert.equal(r.seiten, 3);
+      assert.equal(r.pages, 3);
     } finally {
       wt.Worker = Echt;
     }
@@ -143,7 +143,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
       assert.equal(zweiter.status, 429, JSON.stringify(zweiter.body));
       assert.equal(zweiter.body.code, 'upload_running');
       const fremd = await uploadIt(b.base, await pdfWith(1));
-      assert.notEqual(fremd.status, 429, 'ein anderes Konto ist nicht betroffen');
+      assert.notEqual(fremd.status, 429, 'another account is not affected');
     } finally {
       erster.ende(); // otherwise closing the server waits for it
       await erster.response;
@@ -171,7 +171,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
       for (let i = 0; i < 7; i++) statuses.push(await stream());
       assert.deepEqual(statuses, [200, 200, 200, 200, 200, 200, 429]);
       for (const r of open) r.destroy();
-      assert.ok(await bis(async () => (await stream()) === 200, 3000), 'geschlossene Ströme geben ihren Platz frei');
+      assert.ok(await bis(async () => (await stream()) === 200, 3000), 'closed streams free their slot');
     } finally {
       for (const r of open) r.destroy();
     }
@@ -182,8 +182,8 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
 // full run before 'close' and got 429. Here without network so that it does not depend on the timing.
 test('the slot is free as soon as the response is handed over', () => {
   const { EventEmitter } = require('node:events');
-  const { accountGate: kontoSchranke } = _req('routes/api/middleware.js');
-  const limit = kontoSchranke('voucherPdf');
+  const { accountGate: accountLimit } = _req('routes/api/middleware.js');
+  const limit = accountLimit('voucherPdf');
   const anfrage = () => {
     const res = Object.assign(new EventEmitter(), {
       statusCode: 200,
@@ -208,6 +208,6 @@ test('the slot is free as soon as the response is handed over', () => {
   assert.equal(erste.weiter, true);
   erste.res.emit('finish');
   const zweite = anfrage();
-  assert.equal(zweite.weiter, true, `zweite Datei abgewiesen (${zweite.res.statusCode})`);
+  assert.equal(zweite.weiter, true, `second file rejected (${zweite.res.statusCode})`);
   zweite.res.emit('finish');
 });

@@ -46,9 +46,9 @@ test('computes in the worker and correctly', async t => {
   const hash = await pool.hash('Geheim-2026', 4);
   assert.equal(await pool.compare('Geheim-2026', hash), true);
   assert.equal(await pool.compare('falsch', hash), false);
-  assert.equal(await pool.compare('egal', 'x'), false, 'ein kaputter Hash ist kein Treffer');
-  assert.equal(bcrypt.compareSync('Geheim-2026', hash), true, 'der Hash ist ein gewöhnlicher bcrypt-Hash');
-  assert.deepEqual(pool.state(), { worker: 1, frei: 1, wartend: 0, hauptthread: false }, 'rechnet im Worker …');
+  assert.equal(await pool.compare('egal', 'x'), false, 'a broken hash is not a match');
+  assert.equal(bcrypt.compareSync('Geheim-2026', hash), true, 'the hash is an ordinary bcrypt hash');
+  assert.deepEqual(pool.state(), { worker: 1, free: 1, waiting: 0, mainThread: false }, 'computes in the worker …');
 });
 
 test('the main thread stays responsive', async t => {
@@ -59,24 +59,22 @@ test('the main thread stays responsive', async t => {
   const vier = f => Promise.all([1, 2, 3, 4].map(() => f('Geheim-2026', hash)));
   const inMainThread = await longestDelay(() => vier(bcrypt.compare));
   const imPool = await longestDelay(() => vier(pool.compare));
-  console.log(
-    `  ℹ längste Verzögerung der Ereignisschleife: Hauptthread ${inMainThread.toFixed(0)} ms, Pool ${imPool.toFixed(0)} ms`,
-  );
-  assert.ok(inMainThread >= 50, `Vorbedingung: bcryptjs hält den Hauptthread an (${inMainThread} ms)`);
-  assert.ok(imPool < inMainThread / 2, `der Hauptthread bleibt ansprechbar: ${imPool} ms gegen ${inMainThread} ms`);
+  console.log(`  ℹ longest event loop delay: main thread ${inMainThread.toFixed(0)} ms, pool ${imPool.toFixed(0)} ms`);
+  assert.ok(inMainThread >= 50, `Precondition: bcryptjs blocks the main thread (${inMainThread} ms)`);
+  assert.ok(imPool < inMainThread / 2, `the main thread stays responsive: ${imPool} ms versus ${inMainThread} ms`);
 });
 
 test('without a worker file the main thread computes', async () => {
   const pool = newPool(2, path.join(os.tmpdir(), `bcrypt-arbeiter-${process.pid}-fehlt.js`));
   assert.equal(await pool.compare('a', bcrypt.hashSync('a', 4)), true);
-  assert.equal(pool.state().hauptthread, true);
+  assert.equal(pool.state().mainThread, true);
 });
 
 test('an idle worker does not keep the process alive', () => {
   const code = `const { newPool } = require(${JSON.stringify(path.join(S.DIST, 'src/account/bcryptPool.js'))});
     newPool(1).hash('x', 4).then((h) => console.log(h.length));`;
   const r = spawnSync(process.execPath, ['-e', code], { encoding: 'utf8', timeout: 15_000 });
-  assert.equal(r.signal, null, 'ein untätiger Arbeiter …: der Prozess endete nicht von selbst');
+  assert.equal(r.signal, null, 'an idle worker …: the process did not end by itself');
   assert.equal(r.stdout.trim(), '60', r.stderr);
 });
 
@@ -84,7 +82,7 @@ test('login checks old bcrypt hashes via the pool', async () => {
   const { bcryptPool } = _req('src/account/bcryptLimit.js');
   const { passwordFits } = _req('src/account/passwordHash.js');
   assert.equal(await passwordFits('Geheim-2026', bcrypt.hashSync('Geheim-2026', 4)), true);
-  assert.ok(bcryptPool.state().worker >= 1 && !bcryptPool.state().hauptthread, JSON.stringify(bcryptPool.state()));
+  assert.ok(bcryptPool.state().worker >= 1 && !bcryptPool.state().mainThread, JSON.stringify(bcryptPool.state()));
   await bcryptPool.finish();
 });
 
@@ -92,26 +90,22 @@ test('an idle worker ends after the idle time', async t => {
   const pool = newPool(2, undefined, 200);
   t.after(() => pool.finish());
   await pool.hash('x', 4);
-  assert.equal(pool.state().worker, 1, 'Vorbedingung: ein Arbeiter rechnete');
+  assert.equal(pool.state().worker, 1, 'Precondition: a worker was computing');
   for (let i = 0; i < 100 && pool.state().worker > 0; i++) await new Promise(r => setTimeout(r, 50));
-  assert.equal(pool.state().worker, 0, 'ein untätiger Arbeiter endet nach der Leerlaufzeit');
-  assert.equal(await pool.compare('x', await pool.hash('x', 4)), true, 'danach entsteht wieder einer');
-  assert.deepEqual(pool.state(), { worker: 1, frei: 1, wartend: 0, hauptthread: false });
+  assert.equal(pool.state().worker, 0, 'an idle worker ends after the idle time');
+  assert.equal(await pool.compare('x', await pool.hash('x', 4)), true, 'afterwards a new one is created');
+  assert.deepEqual(pool.state(), { worker: 1, free: 1, waiting: 0, mainThread: false });
 });
 
 test('the number of workers is capped', () => {
   const { bcryptWorkers: bcryptWorker, quotaCores } = _req('src/account/bcryptLimit.js');
   const { loadConfig } = _req('src/infra/config.js');
-  assert.equal(bcryptWorker(null, 64, null), 4, '64 Kerne ohne Kontingent');
-  assert.equal(bcryptWorker(null, 64, 1), 2, '64 Kerne, Kontingent 1');
+  assert.equal(bcryptWorker(null, 64, null), 4, '64 cores without a quota');
+  assert.equal(bcryptWorker(null, 64, 1), 2, '64 cores, quota 1');
   assert.equal(bcryptWorker(null, 3, null), 3);
-  assert.equal(bcryptWorker(loadConfig({ BCRYPT_WORKERS: '8' }).bcryptWorker, 64, 2), 8, 'die Variable gilt');
+  assert.equal(bcryptWorker(loadConfig({ BCRYPT_WORKERS: '8' }).bcryptWorker, 64, 2), 8, 'the variable applies');
   assert.equal(loadConfig({}).bcryptWorker, null);
-  assert.throws(
-    () => loadConfig({ BCRYPT_WORKERS: '0' }),
-    /BCRYPT_WORKERS="0"/,
-    'ein ungültiger Wert hält den Start an',
-  );
+  assert.throws(() => loadConfig({ BCRYPT_WORKERS: '0' }), /BCRYPT_WORKERS="0"/, 'an invalid value stops the startup');
 
   const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'cgroup-'));
   const t = (f, inhalt) => {
@@ -119,16 +113,16 @@ test('the number of workers is capped', () => {
     fs.writeFileSync(path.join(wurzel, f), inhalt);
   };
   try {
-    assert.equal(quotaCores(wurzel), null, 'ohne Dateien kein Kontingent');
+    assert.equal(quotaCores(wurzel), null, 'no quota without files');
     t('cpu/cpu.cfs_quota_us', '50000\n');
     t('cpu/cpu.cfs_period_us', '100000\n');
     assert.equal(quotaCores(wurzel), 1, 'cgroup v1: halber Kern');
     t('cpu/cpu.cfs_quota_us', '-1\n');
-    assert.equal(quotaCores(wurzel), null, 'cgroup v1 ohne Kontingent');
+    assert.equal(quotaCores(wurzel), null, 'cgroup v1 without a quota');
     t('cpu.max', '150000 100000\n');
-    assert.equal(quotaCores(wurzel), 2, 'cgroup v2: 1,5 Kerne');
+    assert.equal(quotaCores(wurzel), 2, 'cgroup v2: 1.5 cores');
     t('cpu.max', 'max 100000\n');
-    assert.equal(quotaCores(wurzel), null, 'cgroup v2 ohne Kontingent');
+    assert.equal(quotaCores(wurzel), null, 'cgroup v2 without a quota');
   } finally {
     fs.rmSync(wurzel, { recursive: true, force: true });
   }

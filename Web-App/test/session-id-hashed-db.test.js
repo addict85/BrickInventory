@@ -56,8 +56,8 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
   const app = _req('startup/app.js').buildApp({
     pool: db.systemPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: GEHEIM,
-    dienste,
+    sessionSecret: GEHEIM,
+    services: dienste,
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
@@ -87,8 +87,8 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
     assert.ok(sid, cookie);
     assert.ok(await angemeldet(cookie));
     const da = await zeilen();
-    assert.ok(da.includes(sessionDigest(sid)), 'die Zeile trägt den Hash');
-    assert.ok(!da.includes(sid), 'die Zeile trägt nicht die ID aus dem Keks');
+    assert.ok(da.includes(sessionDigest(sid)), 'the row carries the hash');
+    assert.ok(!da.includes(sid), 'the row does not carry the ID from the cookie');
   });
 
   await t.test('a stolen row is no cookie', async () => {
@@ -163,6 +163,6 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
       neu[0],
       JSON.stringify(sess),
     ]);
-    assert.equal(await angemeldet(cookie), true, 'der alte Keks gilt nach dem Update weiter');
+    assert.equal(await angemeldet(cookie), true, 'the old cookie stays valid after the update');
   });
 });

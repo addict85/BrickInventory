@@ -180,7 +180,7 @@ export const routes = {
     response: WantedItemTakeoverResponse,
     input: z.strictObject({
       quantity: input.pieceCount(),
-      purchase_price: input.geld('Kaufpreis'),
+      purchase_price: input.money('Kaufpreis'),
       condition: CONDITION.nullable().optional(),
       owner_user_id: IDENTIFIER.nullable().optional(),
       storage: TEXT().nullable().optional(),

@@ -5,14 +5,14 @@ import type { ClientsAccess, KeyName } from './access';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
-async function getCredentials(kl: Pick<ClientsAccess, 'schluessel'>) {
+async function getCredentials(kl: Pick<ClientsAccess, 'key'>) {
   const key: KeyName[] = [
     'bricklink_consumer_key',
     'bricklink_consumer_secret',
     'bricklink_token',
     'bricklink_token_secret',
   ];
-  const rows = await Promise.all(key.map(async key => ({ key, value: await kl.schluessel(key) })));
+  const rows = await Promise.all(key.map(async key => ({ key, value: await kl.key(key) })));
   const c: Record<string, string> = {};
   rows.forEach(r => {
     c[r.key] = r.value;
@@ -72,20 +72,20 @@ class BricklinkNotReachable extends Error {
   code = 'bricklink_nicht_erreichbar';
 }
 
-async function httpsGet(url: string, authHeader: string): Promise<{ status: number; body: string; ziel: string }> {
+async function httpsGet(url: string, authHeader: string): Promise<{ status: number; body: string; target: string }> {
   const r = await holeHttps(url, {
     hosts: ['api.bricklink.com'],
     maxBytes: 8 * 1024 * 1024,
-    zeitlimitMs: 20_000,
+    timeoutMs: 20_000,
     redirects: 0,
-    kopfzeilen: { Authorization: authHeader, Accept: 'application/json', 'User-Agent': 'BrickManager/3.0' },
+    headers: { Authorization: authHeader, Accept: 'application/json', 'User-Agent': 'BrickManager/3.0' },
   });
-  return { status: r.status, body: r.koerper.toString('utf8'), ziel: String(r.kopf.location ?? '') };
+  return { status: r.status, body: r.body.toString('utf8'), target: String(r.head.location ?? '') };
 }
 
-function targetHost(ziel: string): string {
+function targetHost(target: string): string {
   try {
-    return new URL(ziel).hostname;
+    return new URL(target).hostname;
   } catch {
     return 'unbekannt';
   }
@@ -101,7 +101,7 @@ function readJson(body: string, status: number) {
 }
 
 async function bricklinkRequest(
-  kl: Pick<ClientsAccess, 'schluessel' | 'zaehle'>,
+  kl: Pick<ClientsAccess, 'key' | 'count'>,
   method: string,
   path: string,
   queryParams: Record<string, string | number> = {},
@@ -137,12 +137,12 @@ async function bricklinkRequest(
     : '';
   // Counted here, at the only exit to BrickLink: fallbacks (sold →
   // stock, set → gear → book) are calls of their own and cost their own quota.
-  const rl = await kl.zaehle('bricklink');
+  const rl = await kl.count('bricklink');
   if (!rl.allowed) throw new Error(`BrickLink Tageslimit erreicht (${rl.limit} Aufrufe/Tag)`);
-  const { status, body, ziel } = await httpsGet(baseUrl + qs, buildAuthHeader(method, baseUrl, queryParams, creds));
+  const { status, body, target } = await httpsGet(baseUrl + qs, buildAuthHeader(method, baseUrl, queryParams, creds));
   if (status >= 300 && status < 400)
     throw new BricklinkNotReachable(
-      `BrickLink nicht erreichbar (Umleitung ${status} nach ${targetHost(ziel)}, vermutlich Wartung)`,
+      `BrickLink nicht erreichbar (Umleitung ${status} nach ${targetHost(target)}, vermutlich Wartung)`,
     );
   const data = readJson(body, status);
   if (data?.meta && data.meta.code !== 200) {
@@ -154,7 +154,7 @@ async function bricklinkRequest(
 
 /** A small signed request — for the test button of the setup. */
 /** One client per access: key and quota come from there. */
-export function createBricklink(kl: Pick<ClientsAccess, 'schluessel' | 'zaehle'>) {
+export function createBricklink(kl: Pick<ClientsAccess, 'key' | 'count'>) {
   return {
     bricklinkRequest: (method: string, path: string, queryParams: Record<string, string | number> = {}) =>
       bricklinkRequest(kl, method, path, queryParams),

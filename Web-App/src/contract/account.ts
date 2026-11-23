@@ -257,7 +257,7 @@ export const ProfileSaved = GenericResponse.extend({
  * are still checked by the route. Free text is limited, the columns are `text`;
  * `label` is missing because tokenLabel() shortens or replaces every value. */
 const txt = (n: number) => z.string().max(n).optional();
-const txtLeer = (n: number) => z.string().max(n).nullable().optional();
+const optionalText = (n: number) => z.string().max(n).nullable().optional();
 /** For an admin account: from when the change applies (src/account/adminActions.ts). */
 export const AdminRoute = Success.extend({ effective_at: z.string().optional() });
 const PASSWORD = 1024;
@@ -278,21 +278,21 @@ const Credentials = z.strictObject({
 const Registration = z.strictObject({
   username: txt(64),
   email: txt(254),
-  first_name: txtLeer(100),
-  last_name: txtLeer(100),
+  first_name: optionalText(100),
+  last_name: optionalText(100),
   password: txt(PASSWORD),
   language: txt(10),
 });
 /** `password` only so that the route can point to /change-password. */
 const ProfileChange = {
   username: txt(64),
-  email: txtLeer(254),
-  first_name: txtLeer(100),
-  last_name: txtLeer(100),
+  email: optionalText(254),
+  first_name: optionalText(100),
+  last_name: optionalText(100),
   password: txt(PASSWORD),
 };
 /** The app sends `password: null` along (ZweiterFaktorAnfrage); the route accepts no value. */
-const NurCode = z.strictObject({ code, password: z.null().optional() });
+const CodeOnly = z.strictObject({ code, password: z.null().optional() });
 const adminConfirmed = <F extends z.ZodRawShape = Record<never, z.ZodType>>(fields: F = {} as F) =>
   confirmed(fields, 'admin_password');
 
@@ -355,11 +355,11 @@ export const routes = {
     secret: true,
     step: 'second_factor',
   },
-  'POST /api/v2/auth/second-factor/confirm': { response: SecondFactorCodes, input: NurCode, secret: true },
+  'POST /api/v2/auth/second-factor/confirm': { response: SecondFactorCodes, input: CodeOnly, secret: true },
   'POST /api/v2/auth/second-factor/disable': { response: GenericResponse, ...confirmed() },
   'POST /api/v2/auth/second-factor/codes': {
     response: SecondFactorCodes,
-    input: NurCode,
+    input: CodeOnly,
     secret: true,
     step: 'second_factor',
   },
@@ -420,7 +420,10 @@ export const routes = {
   'POST /api/v2/auth/passkey/register/options': { response: PasskeyOptions, ...confirmed() },
   'POST /api/v2/auth/passkey/register': {
     response: PasskeyCreated,
-    input: z.strictObject({ name: txtLeer(100), response: z.record(z.string(), z.unknown()).nullable().optional() }),
+    input: z.strictObject({
+      name: optionalText(100),
+      response: z.record(z.string(), z.unknown()).nullable().optional(),
+    }),
   },
   'POST /api/v2/auth/passkey/login/options': {
     input: z.strictObject({ purpose: v1Values(TEXT(40), V1_PASSKEY_PURPOSES).optional() }),

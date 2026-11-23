@@ -18,7 +18,7 @@ import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.contract.Gutschein
+import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
@@ -246,8 +246,8 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
 @Composable
 internal fun Vouchers() {
     val vouchers = VoucherUiState(vouchers = listOf(
-        Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView(),
-        Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = CurrencyCode("CHF")).asView()))
+        Voucher(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView(),
+        Voucher(id = 2, number = "6061 9876 5432", amount = 20.0, currency = CurrencyCode("CHF")).asView()))
     VouchersPage(vouchers, remember { SnackbarHostState() }, onBack = {}, onBalanceAll = {}, exportOn = {}) { newValue, onNew ->
         VouchersCard(
             condition = vouchers, actions = object : VoucherCardActions {}, newValue = newValue, onNew = onNew,

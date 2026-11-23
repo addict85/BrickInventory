@@ -37,8 +37,8 @@ class PriceHistorySerializationTest {
         "currency": "CHF",
         "condition": "N",
         "by_condition": {
-            "N": {"market_price": 812.5, "purchase_price": 700.0, "pnl_pct": "16.1", "pnl_prozent": 16.1},
-            "U": {"market_price": 640.0, "purchase_price": 600.0, "pnl_pct": "6.7", "pnl_prozent": 6.7}
+            "N": {"market_price": 812.5, "purchase_price": 700.0, "pnl_pct": "16.1", "pnl_percent": 16.1},
+            "U": {"market_price": 640.0, "purchase_price": 600.0, "pnl_pct": "6.7", "pnl_percent": 6.7}
         },
         "history_new": [
             {"recorded_at": "2026-01-01", "avg_price": "700.00", "qty_avg_price": "690.00",
@@ -101,7 +101,7 @@ class PriceHistorySerializationTest {
         // percentage next to it would be computed against nothing.
         val r = json.decodeFromString<PriceHistoryResponse>("""{
             "success": true, "set_number": "10290-1", "currency": "CHF", "condition": "N",
-            "by_condition": {"N": {"market_price": 148.72, "purchase_price": 120.0, "pnl_pct": "23.9", "pnl_prozent": 23.9}},
+            "by_condition": {"N": {"market_price": 148.72, "purchase_price": 120.0, "pnl_pct": "23.9", "pnl_percent": 23.9}},
             "history_new": [], "history_used": [],
             "current": {"N": {"condition": "N", "avg_price": "148.72"}, "U": null},
             "chart": {"x": [], "values": []}
@@ -236,13 +236,13 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `the history of a part fits into the same model as that of a set`() {
-        // The new routes /api/v1/parts/…/price-history and
-        // /api/v1/minifigs/…/price-history deliver the same envelope without the
+        // The new routes /api/v2/parts/…/price-history and
+        // /api/v2/minifigs/…/price-history deliver the same envelope without the
         // set fields. Those must land on their defaults instead of throwing —
         // otherwise the dialog would stay empty, with nobody seeing why.
         val r = json.decodeFromString<PriceHistoryResponse>("""{
             "success": true, "currency": "CHF",
-            "by_condition": {"N": {"market_price": 0.6, "purchase_price": 0.5, "pnl_pct": "20.0", "pnl_prozent": 20.0}},
+            "by_condition": {"N": {"market_price": 0.6, "purchase_price": 0.5, "pnl_pct": "20.0", "pnl_percent": 20.0}},
             "history_new": [
                 {"recorded_at": "2026-08-01", "avg_price": "0.55"},
                 {"recorded_at": "2026-08-09", "avg_price": "0.60"}

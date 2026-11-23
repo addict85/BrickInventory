@@ -84,10 +84,10 @@ test('deleting an acquisition redetermines price and condition of the parent row
     assert.equal(
       Number(vorher.purchase_price),
       8.445,
-      'Der gezeigte Preis ist nicht der Mittelwert über die Erfassungen — ' +
-        'bei 9.48 steht dort weiterhin der Wert der NEUESTEN Erfassung',
+      'The shown price is not the mean over the acquisitions — ' +
+        'at 9.48 it still shows the value of the NEWEST acquisition',
     );
-    assert.equal(vorher.condition, 'U', 'Eine gebrauchte Erfassung macht das Set gebraucht');
+    assert.equal(vorher.condition, 'U', 'A used acquisition makes the set used');
 
     // 1. Marco's case: delete the newest entry.
     await setUp();
@@ -97,12 +97,12 @@ test('deleting an acquisition redetermines price and condition of the parent row
     assert.equal(
       Number(e.purchase_price),
       7.41,
-      'Die Kachel zeigt den Preis der GELÖSCHTEN Zeile — sie muss der verbliebenen folgen',
+      'The tile shows the price of the DELETED row — it must follow the remaining one',
     );
     // 7.41 is also the mean here, because only one entry is
     // left. Substep 2 below separates the two readings.
-    assert.equal(e.condition, 'U', 'Auch der Zustand muss der verbliebenen Erfassung folgen, nicht der gelöschten');
-    assert.equal(Number(e.quantity), 1, 'Die Menge muss weiterhin stimmen');
+    assert.equal(e.condition, 'U', 'The condition must also follow the remaining acquisition, not the deleted one');
+    assert.equal(Number(e.quantity), 1, 'The quantity must still be correct');
 
     // 2. Opposite direction: deleting an OLDER entry must not change
     //    anything in the price — the newest one stays after all.
@@ -117,11 +117,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
     r = await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${alte}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     e = await eltern();
-    assert.equal(
-      Number(e.purchase_price),
-      9.48,
-      'Beim Löschen einer älteren Erfassung darf der Preis der neuesten stehen bleiben',
-    );
+    assert.equal(Number(e.purchase_price), 9.48, 'Deleting an older acquisition may keep the price of the newest');
 
     // 3. Delete the last entry: none is left — and since then
     //  no parent row either.
@@ -129,7 +125,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
     for (const row of await db.all(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])) {
       await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${row.id}`, { method: 'DELETE' });
     }
-    assert.equal(await eltern(), undefined, 'Ohne Erfassungen darf keine Set-Zeile mit Menge 0 zurückbleiben');
+    assert.equal(await eltern(), undefined, 'Without acquisitions no set row with quantity 0 may remain');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]).catch(() => {});

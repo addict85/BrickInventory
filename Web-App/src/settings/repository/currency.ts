@@ -22,7 +22,7 @@ export async function sharedWithForeignMain(
   currency: string,
 ): Promise<number[]> {
   const rows = await tx.all<{ id: number }>(
-    `SELECT DISTINCT g.id FROM (${l.auchFremdGeteilt('$1')}) g WHERE account_currency(g.haupt) <> $2`,
+    `SELECT DISTINCT g.id FROM (${l.alsoSharedByOthers('$1')}) g WHERE account_currency(g.haupt) <> $2`,
     [ids, currency],
   );
   return rows.map(r => r.id);

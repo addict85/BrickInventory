@@ -30,7 +30,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').mounting('auth');
 const { secureUserData, cleanOldBackupsOn } = _req('db/migrate.js');
-const { cleanLogOn } = require('./helpers/sources').testArea('account').protokoll;
+const { cleanLogOn } = require('./helpers/sources').testArea('account').log;
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('account deletion without traces', { concurrency: 1 }, async t => {
@@ -72,8 +72,8 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
   });
   const zaehle = async (tabelle, spalte) =>
     (await db.get(`SELECT count(*)::int n FROM ${schema}.${tabelle} WHERE ${spalte} = $1`, [uid])).n;
-  assert.equal(await zaehle('users', 'id'), 1, 'Vorbedingung: das Konto steht in der Kopie');
-  assert.equal(await zaehle('sets', 'user_id'), 1, 'Vorbedingung: sein Set steht in der Kopie');
+  assert.equal(await zaehle('users', 'id'), 1, 'Precondition: the account is in the copy');
+  assert.equal(await zaehle('sets', 'user_id'), 1, 'Precondition: its set is in the copy');
 
   const sitzung = { userId: uid, username: NAME, destroy: fertig => fertig() };
   const { base } = testServer(_req, { sitzung, t });
@@ -89,14 +89,14 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
     assert.equal(await zaehle('sets', 'user_id'), 0);
     assert.ok(
       (await db.get(`SELECT count(*)::int n FROM ${schema}.users WHERE id = $1`, [chef])).n === 1,
-      'andere Konten bleiben',
+      'other accounts stay',
     );
   });
 
   await t.test('after the cleanup run the admin log no longer names the name', async () => {
     await cleanLogOn();
     const z = await db.all('SELECT target_id, target_name FROM admin_log WHERE target_id = $1', [uid]);
-    assert.equal(z.length, 1, 'die Zeile selbst bleibt');
+    assert.equal(z.length, 1, 'the row itself stays');
     assert.equal(z[0].target_name, null);
   });
 
@@ -106,7 +106,7 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
     assert.ok((await cleanOldBackupsOn(db)) >= 1);
     const da = (await db.all(`SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_'`)).map(z => z.nspname);
     assert.ok(!da.includes('vor_migration_20200101000000000'), da.join(', '));
-    assert.ok(da.includes(schema), 'die frische Kopie bleibt');
+    assert.ok(da.includes(schema), 'the fresh copy stays');
   });
 
   await t.test('log rows older than one year disappear in the cleanup run', async () => {

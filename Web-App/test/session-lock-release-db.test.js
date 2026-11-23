@@ -85,7 +85,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
         throw new Error('belegt');
       },
     );
-    assert.equal(r, 'ergebnis', 'der Freigabefehler überdeckt das Ergebnis');
+    assert.equal(r, 'ergebnis', 'the release error masks the result');
     assert.equal(incident.released, true);
   });
 
@@ -99,8 +99,8 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
         throw new Error('belegt');
       },
     );
-    assert.ok(incident.releaseWithError instanceof Error, 'die Verbindung wurde ohne Fehler zurückgegeben');
-    assert.equal(await lockFree(), true, 'die Sperre hängt an einer Verbindung im Pool');
+    assert.ok(incident.releaseWithError instanceof Error, 'the connection was returned without an error');
+    assert.equal(await lockFree(), true, 'the lock hangs on a connection in the pool');
   });
 
   await t.test('withSessionLock: an error of the run stays the error', async () => {
@@ -124,9 +124,9 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
   await t.test('receiptsSessionLock: the lock is free after a release error', async () => {
     const incident = unlockFailsOnce();
     const frei = await receiptsSessionLock(testAccess(), SCHLUESSEL);
-    assert.ok(frei, 'die Sperre war schon belegt');
+    assert.ok(frei, 'the lock was already taken');
     await frei();
-    assert.ok(incident.releaseWithError instanceof Error, 'die Verbindung wurde ohne Fehler zurückgegeben');
-    assert.equal(await lockFree(), true, 'die Sperre hängt an einer Verbindung im Pool');
+    assert.ok(incident.releaseWithError instanceof Error, 'the connection was returned without an error');
+    assert.equal(await lockFree(), true, 'the lock hangs on a connection in the pool');
   });
 });

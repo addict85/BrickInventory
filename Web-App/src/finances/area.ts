@@ -17,15 +17,15 @@ import { access, type FinancesDependencies, type FinancesContext } from './conte
 
 export type { FinancesDependencies, FinancesContext } from './context';
 
-export function createFinances(a: Omit<FinancesDependencies, 'faecher'>, inspect?: Inspect<FinancesContext>) {
+export function createFinances(a: Omit<FinancesDependencies, 'compartments'>, inspect?: Inspect<FinancesContext>) {
   // The price cache applies per currency: a change requires a full price run.
   a.settings.onCurrencyChange(() => a.jobQueue.pullPlanBefore('prices'));
   return buildArea(
-    { ...a, faecher: new Compartments() },
+    { ...a, compartments: new Compartments() },
     (db: Db) => access(db, a.readContract),
     (k: FinancesContext) => ({
       // The price alerts are services; the price run calls them via the context.
-      preisalarm: {
+      priceAlert: {
         alarmTransfer: bound(k)(priceAlert.alarmTransfer),
         alertsFromCsv: bound(k)(priceAlert.alertsFromCsv),
         alertsFor: bound(k)(priceAlert.alertsFor),

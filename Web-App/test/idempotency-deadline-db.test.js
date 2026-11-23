@@ -26,7 +26,7 @@ test('idempotency: the deadline follows the longest request', { concurrency: 1 }
   const { HTTP_DEADLINES } = _req('src/infra/httpDeadlines.js');
   assert.ok(
     serviceFn.ORPHANED_AFTER_S * 1000 > HTTP_DEADLINES.requestTimeout,
-    'die Frist ist kürzer als die längste Anfrage',
+    'the deadline is shorter than the longest request',
   );
 
   const uid = (
@@ -40,16 +40,12 @@ test('idempotency: the deadline follows the longest request', { concurrency: 1 }
   assert.deepEqual(
     await serviceFn.begin(uid, 'k1', abdruck),
     { kind: 'running' },
-    'nach 130 s läuft die erste Anfrage noch',
+    'after 130 s the first request is still running',
   );
   // After the deadline it is orphaned and may be occupied anew.
   await db.run(`UPDATE idempotency SET created_at = NOW() - make_interval(secs => $2) WHERE user_id = $1`, [
     uid,
     serviceFn.ORPHANED_AFTER_S + 1,
   ]);
-  assert.deepEqual(
-    await serviceFn.begin(uid, 'k1', abdruck),
-    { kind: 'new' },
-    'eine verwaiste Anfrage wird neu belegt',
-  );
+  assert.deepEqual(await serviceFn.begin(uid, 'k1', abdruck), { kind: 'new' }, 'an orphaned request is claimed anew');
 });

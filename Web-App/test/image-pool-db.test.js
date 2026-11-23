@@ -48,9 +48,9 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
       assert.equal(
         queryList - vorher,
         0,
-        `${queryList - vorher} Abfragen für 60 Kacheln. Bildanfragen sind der ` +
-          'häufigste Vorgang der Anwendung — eine Abfrage je Bild leert den ' +
-          'Verbindungspool, und ANDERE Routen laufen in den Zeitfehler.',
+        `${queryList - vorher} queries for 60 tiles. Image requests are the ` +
+          'most frequent operation of the application — one query per image drains the ' +
+          'connection pool, and OTHER routes run into the timeout.',
       );
     });
 
@@ -60,30 +60,30 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
       // One statement for all notes; plus the processor job and its NOTIFY.
       assert.ok(
         queryList - vorher <= 3,
-        `${queryList - vorher} Abfragen zum Wegschreiben von 60 Notizen — das muss ` +
-          'ein Statement sein, sonst ist nur die Stelle verschoben',
+        `${queryList - vorher} queries to write away 60 notes — that must be ` +
+          'one statement, otherwise the spot is only moved',
       );
       const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%'])).c;
-      assert.equal(n, 60, `${n} Notizen statt 60 — gebündelt heisst nicht: weniger`);
+      assert.equal(n, 60, `${n} notes instead of 60 — batched does not mean: fewer`);
     });
 
     await t.test('negative results likewise', async () => {
       for (let i = 1; i <= 40; i++) IM.rememberMissing(`${PREFIX}_m${i}`);
       const vorher = queryList;
       await IM._writeBuffer();
-      assert.ok(queryList - vorher <= 2, `${queryList - vorher} Abfragen für 40 Fehlanzeigen`);
+      assert.ok(queryList - vorher <= 2, `${queryList - vorher} queries for 40 misses`);
     });
 
     await t.test('after a restart the knowledge is still there', async () => {
       // The reason why it belongs in the database at all:
       // the memory of one process does not help the others.
       IM._emptyForeground();
-      assert.equal(IM.isKnownMissing(`${PREFIX}_m7`), false, 'Vorbedingung: der Speicher ist leer');
+      assert.equal(IM.isKnownMissing(`${PREFIX}_m7`), false, 'Precondition: the memory is empty');
       await IM._refresh();
       assert.equal(
         IM.isKnownMissing(`${PREFIX}_m7`),
         true,
-        'Nach dem Nachladen aus der Tabelle muss die Fehlanzeige wieder bekannt sein',
+        'After reloading from the table the miss must be known again',
       );
     });
   } finally {
@@ -101,21 +101,21 @@ test('a failed resize is not repeated endlessly', () => {
   assert.match(
     q,
     /isKnownMissing\(k, 'thumb:' \+ thumbFile\)/,
-    'queueThumb() fragt nicht, ob die Verkleinerung schon einmal gescheitert ist',
+    'queueThumb() does not ask whether the downscaling has failed before',
   );
   // And the failure must be recorded — in BOTH places where
   // it can occur: when unpacking itself and in the pre-check.
   assert.equal(
     (px.match(/rememberMissing\(k, 'thumb:' \+ thumbFile\)/g) || []).length,
     2,
-    'Der Fehlschlag wird nicht an beiden Stellen gemerkt (Vorprüfung und catch)',
+    'The failure is not remembered in both places (pre-check and catch)',
   );
 });
 
 test('the browser may remember a 404', () => {
   const px = require('./helpers/sources').proxyThumbSource();
   // The path is now called sendPlaceholder
-  assert.match(px, /function sendPlaceholder\(res(: \w+)?\)/, 'Kein gemeinsamer Weg für ein fehlendes Bild');
+  assert.match(px, /function sendPlaceholder\(res(: \w+)?\)/, 'No shared path for a missing image');
   assert.match(
     px,
     /sendPlaceholder[\s\S]{0,600}Cache-Control', 'private, max-age=3600/,
@@ -127,10 +127,14 @@ test('the browser may remember a 404', () => {
     /isKnownMissing\(cacheKey\)\) return sendPlaceholder\(res\)/,
     'Der Merker-Treffer antwortet ohne Cache-Hinweis',
   );
-  assert.match(px, /r\.status === 404 \? sendPlaceholder\(res\)/, 'Die Absage vom CDN antwortet ohne Cache-Hinweis');
+  assert.match(
+    px,
+    /r\.status === 404 \? sendPlaceholder\(res\)/,
+    'The refusal from the CDN answers without a cache hint',
+  );
   // 403 (throttling) must NOT be cached — the same argument
   // as for the server-side marker.
-  assert.doesNotMatch(px, /403[\s\S]{0,80}sendPlaceholder/, 'Ein 403 ist eine Drosselung, kein fehlendes Bild');
+  assert.doesNotMatch(px, /403[\s\S]{0,80}sendPlaceholder/, 'A 403 is throttling, not a missing image');
 });
 
 test('the preview lock occupies NO pool connection', { concurrency: 1 }, async t => {
@@ -145,13 +149,13 @@ test('the preview lock occupies NO pool connection', { concurrency: 1 }, async t
   const c = await db.ownConnection();
   try {
     const r = await c.query('SELECT pg_try_advisory_lock(918273645) AS ok');
-    assert.equal(r.rows[0].ok, true, 'Die Sperre liess sich nicht nehmen');
+    assert.equal(r.rows[0].ok, true, 'The lock could not be taken');
     const during = db.getPoolStats();
     assert.equal(
       during.active,
       vorher.active,
-      `Der Pool hat ${during.active} statt ${vorher.active} aktive Verbindungen — ` +
-        'eine über Sekunden gehaltene Sperre darf keine davon belegen',
+      `The pool has ${during.active} instead of ${vorher.active} active connections — ` +
+        'a lock held for seconds must not occupy any of them',
     );
     await c.query('SELECT pg_advisory_unlock(918273645)');
   } finally {
@@ -169,7 +173,7 @@ test('the queue has an index on the age', () => {
   assert.match(
     mig,
     /CREATE INDEX IF NOT EXISTS idx_image_wanted_alter ON image_wanted \(requested_at\)/,
-    'Der Index auf requested_at fehlt',
+    'The index on requested_at is missing',
   );
 });
 
@@ -180,13 +184,13 @@ test('the session lock is released on the same connection', () => {
   //  happened to me.
   const px = require('./helpers/sources').proxyThumbSource();
   const i = px.indexOf('async function withPreviewLock');
-  assert.ok(i > 0, 'withPreviewLock fehlt');
+  assert.ok(i > 0, 'withPreviewLock is missing');
   // Since an earlier round the function stands at module level instead of in a closure —
   // one indentation level less, so it ends at '\n}\n'.
   const fn = px.slice(i, px.indexOf('\n}\n', i));
-  assert.match(fn, /db\.ownConnection\(\)/, 'Die Sperre nimmt wieder eine Pool-Verbindung');
-  assert.doesNotMatch(fn, /db\.pool\.connect\(\)/, 'Pool-Verbindung ist zurück');
+  assert.match(fn, /db\.ownConnection\(\)/, 'The lock takes a pool connection again');
+  assert.doesNotMatch(fn, /db\.pool\.connect\(\)/, 'Pool connection is back');
   // Taking and releasing stand in the repository and get THIS connection.
-  assert.match(fn, /sperre\.attemptsLock\(client,/, 'Nehmen nicht auf dem Client');
-  assert.match(fn, /sperre\.giveLockFree\(client,/, 'Freigeben nicht auf dem Client');
+  assert.match(fn, /lock\.attemptsLock\(client,/, 'Nehmen nicht auf dem Client');
+  assert.match(fn, /lock\.giveLockFree\(client,/, 'Freigeben nicht auf dem Client');
 });

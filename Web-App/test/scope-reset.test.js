@@ -50,15 +50,15 @@ test('login resets the account and location filters before the list loads', asyn
   );
   try {
     await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
-    assert.equal(setQueries(o).length, 0, 'vor der Anmeldung lädt nichts');
+    assert.equal(setQueries(o).length, 0, 'nothing loads before the login');
     o.d.getElementById('lu').value = 'anna';
     o.d.getElementById('lp').value = 'geheim-geheim';
     o.d.getElementById('btn-login').click();
-    assert.ok(await warte(() => setQueries(o).length > 0), 'nach der Anmeldung lädt keine Setliste');
+    assert.ok(await warte(() => setQueries(o).length > 0), 'after the login no set list loads');
     await o.ruhig();
     const erste = setQueries(o)[0].url;
-    assert.doesNotMatch(erste, /accounts=|storage=/, `die erste Setabfrage filtert noch: ${erste}`);
-    for (const k of Object.keys(REMEMBERED)) assert.equal(o.w.localStorage.getItem(k), null, `${k} blieb gespeichert`);
+    assert.doesNotMatch(erste, /accounts=|storage=/, `the first set query still filters: ${erste}`);
+    for (const k of Object.keys(REMEMBERED)) assert.equal(o.w.localStorage.getItem(k), null, `${k} stayed saved`);
     assert.equal(o.d.getElementById('scope-gallery').value, 'all');
   } finally {
     o.w.close();
@@ -87,7 +87,7 @@ test('the choice is remembered and goes to the server', async () => {
   try {
     await o.ruhig();
     const field = o.d.getElementById('scope-gallery');
-    assert.equal(field.style.display, '', 'der Kontofilter ist bei einem Haushalt verborgen');
+    assert.equal(field.style.display, '', 'the account filter is hidden for a household');
     field.value = 'own';
     field.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await takt(30);

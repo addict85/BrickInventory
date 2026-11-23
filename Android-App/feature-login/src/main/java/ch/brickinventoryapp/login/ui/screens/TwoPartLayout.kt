@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.login.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,7 +35,9 @@ internal fun TwoPartLayout(
     header: @Composable ColumnScope.() -> Unit,
     body: @Composable ColumnScope.(wide: Boolean) -> Unit,
 ) {
-    BoxWithConstraints(Modifier.fillMaxSize().outsideTheSystemBars()) {
+    // Before sign-in no Scaffold paints the theme: without its own background the window
+    // background of the system theme shows between the cards (light behind „Dunkel“).
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).outsideTheSystemBars()) {
         // In Row and Column lambdas, BoxWithConstraints's receiver is locked (DslMarker).
         val height = maxHeight
         if (maxWidth > height && maxWidth >= ACROSS_TWO_COLUMN) {

@@ -257,6 +257,87 @@ const VOUCHER_FIELDS = {
   currency_invalid: 'v-currency',
 };
 
+/** @typedef {{ number: string, pin: string, amount: number | string, currency: string }} VoucherInput */
+
+/** @param {VoucherInput} v */
+async function updateVoucher(v) {
+  const d = await api('PUT', `/v2/vouchers/${_edited}`, v);
+  if (!d?.success) {
+    responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
+    return;
+  }
+  _plaintext.delete(_edited);
+  toast(tRaw('vouchers.saved'), 'success');
+  clearForm();
+  const pdfRow = el('v-pdf').parentElement;
+  if (pdfRow) pdfRow.style.display = '';
+  await loadVouchers();
+}
+
+/** The PDF did not yield enough. What WAS read is filled in — the user adds the rest and presses once
+ * more, with the same file. That is the difference between "did not work" and "the amount is still
+ * missing here". @param {{ number?: string, pin?: string, amount?: number | string | null, currency?: string }} g what the server read @param {VoucherInput} v */
+function fillFromPdf(g, v) {
+  if (g.number && !v.number) el('v-number').value = g.number;
+  if (g.pin && !v.pin) el('v-pin').value = g.pin;
+  if (g.amount != null && v.amount === '') el('v-amount').value = amountForField(g.amount);
+  if (g.currency && el('v-currency')) el('v-currency').value = g.currency;
+}
+
+/** FormData instead of api(): the helper sends JSON. A file only goes as multipart, and the browser sets
+ * `Content-Type` itself in the process (including boundary) — setting it here breaks the request. Only
+ * filled-in fields are sent: an empty field would overwrite what was read from the PDF with nothing.
+ * @param {File} file @param {VoucherInput} v */
+async function uploadVoucherPdf(file, v) {
+  const form = new FormData();
+  form.append('file', file);
+  if (v.number) form.append('number', v.number);
+  if (v.pin) form.append('pin', v.pin);
+  if (v.amount !== '') form.append('amount', String(v.amount));
+  if (v.currency) form.append('currency', v.currency);
+  let r, d;
+  try {
+    r = await apiRaw('POST', '/v2/vouchers/pdf', { body: form });
+    d = await r.json();
+  } catch {
+    toast(tRaw('vouchers.save_error'), 'error');
+    return;
+  }
+  if (r.status === 422) {
+    fillFromPdf(d?.parsed || {}, v);
+    toast(tRaw('vouchers.pdf_incomplete'), 'error');
+    return;
+  }
+  if (!d?.success) {
+    responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
+    return;
+  }
+  // Whether a PDF yielded one or several vouchers is decided by the server; `multiple` says so. Then
+  // the same message as for CSV imports, so that nobody reads "saved" for three vouchers and guesses.
+  if (d.multiple) {
+    toast(
+      tRaw('import.summary', { added: d.multiple.added, updated: d.multiple.updated, errors: d.multiple.errors }),
+      d.multiple.errors ? 'info' : 'success',
+    );
+  } else {
+    toast(tRaw('vouchers.saved'), 'success');
+  }
+  clearForm();
+  await loadVouchers();
+}
+
+/** @param {VoucherInput} v */
+async function createVoucher(v) {
+  const d = await api('POST', '/v2/vouchers', v);
+  if (!d?.success) {
+    responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
+    return;
+  }
+  toast(tRaw('vouchers.saved'), 'success');
+  clearForm();
+  await loadVouchers();
+}
+
 /**
  * Save, one button for both paths: if a file is in the field, the server reads it, and filled-in fields
  * win. That way one can upload a PDF and add the amount oneself if it does not yield it.
@@ -274,84 +355,10 @@ export async function saveVoucher() {
     el(missing[0] ?? 'v-amount')?.focus();
     return;
   }
-  const amount = voucherAmount.value ?? '';
-  const currency = el('v-currency')?.value || 'CHF';
-
-  if (_edited) {
-    const d = await api('PUT', `/v2/vouchers/${_edited}`, { number, pin, amount, currency });
-    if (!d?.success) {
-      responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
-      return;
-    }
-    _plaintext.delete(_edited);
-    toast(tRaw('vouchers.saved'), 'success');
-    clearForm();
-    const pdfRow = el('v-pdf').parentElement;
-    if (pdfRow) pdfRow.style.display = '';
-    await loadVouchers();
-    return;
-  }
-
-  if (file) {
-    // FormData instead of api(): the helper sends JSON. A file only goes as multipart, and the browser sets `Content-Type`
-    // itself in the process (including boundary) — setting it here breaks the request.
-    const form = new FormData();
-    form.append('file', file);
-    // Only send filled-in fields: an empty field would overwrite what was read from the PDF — with
-    // nichts.
-    if (number) form.append('number', number);
-    if (pin) form.append('pin', pin);
-    if (amount !== '') form.append('amount', String(amount));
-    if (currency) form.append('currency', currency);
-    let r, d;
-    try {
-      r = await apiRaw('POST', '/v2/vouchers/pdf', { body: form });
-      d = await r.json();
-    } catch {
-      toast(tRaw('vouchers.save_error'), 'error');
-      return;
-    }
-
-    if (r.status === 422) {
-      // The PDF did not yield enough. What WAS read is filled in — the user adds the rest and
-      // presses once more, with the same file. That is the difference between "did not work" and
-      // "the amount is still missing here".
-      const g = d?.parsed || {};
-      if (g.number && !number) el('v-number').value = g.number;
-      if (g.pin && !pin) el('v-pin').value = g.pin;
-      if (g.amount != null && amount === '') el('v-amount').value = amountForField(g.amount);
-      if (g.currency && el('v-currency')) el('v-currency').value = g.currency;
-      toast(tRaw('vouchers.pdf_incomplete'), 'error');
-      return;
-    }
-    if (!d?.success) {
-      responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
-      return;
-    }
-
-    // Whether a PDF yielded one or several vouchers is decided by the server; `multiple` says so. Then
-    // the same message as for CSV imports, so that nobody reads "saved" for three vouchers and guesses.
-    if (d.multiple) {
-      toast(
-        tRaw('import.summary', { added: d.multiple.added, updated: d.multiple.updated, errors: d.multiple.errors }),
-        d.multiple.errors ? 'info' : 'success',
-      );
-    } else {
-      toast(tRaw('vouchers.saved'), 'success');
-    }
-    clearForm();
-    await loadVouchers();
-    return;
-  }
-
-  const d = await api('POST', '/v2/vouchers', { number, pin, amount, currency });
-  if (!d?.success) {
-    responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
-    return;
-  }
-  toast(tRaw('vouchers.saved'), 'success');
-  clearForm();
-  await loadVouchers();
+  const v = { number, pin, amount: voucherAmount.value ?? '', currency: el('v-currency')?.value || 'CHF' };
+  if (_edited) await updateVoucher(v);
+  else if (file) await uploadVoucherPdf(file, v);
+  else await createVoucher(v);
 }
 
 /** @param {string} id */

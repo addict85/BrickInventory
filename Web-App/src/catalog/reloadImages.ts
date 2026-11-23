@@ -39,9 +39,9 @@ async function _redownloadSetStatus(k: CatalogContext, obj: Record<string, unkno
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 
-async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
-  const lauf_ = k.faecher.slot('bilderNachladen', () => ({ running: false }));
-  if (lauf_.running) return { alreadyRunning: true };
+async function redownloadMissingImages(k: CatalogContext, run?: JobRun) {
+  const run_ = k.compartments.slot('bilderNachladen', () => ({ running: false }));
+  if (run_.running) return { alreadyRunning: true };
   // Lock on an OWN connection: advisory locks are bound to the session.
   let lockClient: PoolClient;
   try {
@@ -58,11 +58,11 @@ async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
     lockClient.release();
     return { error: errorMessage(e) || 'Sperre fehlgeschlagen' };
   }
-  lauf_.running = true;
+  run_.running = true;
   try {
-    return await _redownloadMissingImages(k, lauf);
+    return await _redownloadMissingImages(k, run);
   } finally {
-    lauf_.running = false;
+    run_.running = false;
     await repo.giveFollowUpLockFree(lockClient).catch(logAndContinue('teile-enrich:pg_advisory_unlock'));
     lockClient.release();
   }
@@ -70,7 +70,7 @@ async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
 
 type MissingImage = { image_local: string; image_url: string | null; fp: string };
 
-async function _redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
+async function _redownloadMissingImages(k: CatalogContext, run?: JobRun) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redownloadSetStatus(k, { running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
@@ -91,8 +91,8 @@ async function _redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
       return { total: 0, redownloaded: 0, cleared: 0, thumbs: thumbsCreated };
     }
 
-    const { done, redownloaded, cleared } = await reloadMissing(k, missing, lauf);
-    checkAbort(lauf);
+    const { done, redownloaded, cleared } = await reloadMissing(k, missing, run);
+    checkAbort(run);
 
     await _redownloadSetStatus(k, {
       running: false,
@@ -109,7 +109,7 @@ async function _redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
     return { total, redownloaded, cleared, thumbs: thumbsCreated };
   } catch (e) {
     await _redownloadSetStatus(k, { running: false, phase: 'error', error: errorMessage(e) });
-    if (lauf?.signal?.aborted) throw e;
+    if (run?.signal?.aborted) throw e;
     console.error('[img-redl] Fehler:', errorMessage(e));
     return { error: errorMessage(e) };
   }
@@ -153,7 +153,7 @@ async function catchUpPreviews(k: CatalogContext, withoutPreview: string[]): Pro
   });
   for (const web of withoutPreview) {
     const r = await attempts('teile-enrich:vorschau', () => k.images.createPreview(web));
-    if (r.ok && r.wert) thumbsCreated++;
+    if (r.ok && r.value) thumbsCreated++;
   }
   console.log(`[img-redl] ${thumbsCreated} fehlende Vorschauen erzeugt (von ${withoutPreview.length})`);
   return thumbsCreated;
@@ -161,7 +161,7 @@ async function catchUpPreviews(k: CatalogContext, withoutPreview: string[]): Pro
 
 /** Reload what has an address; otherwise clear the reference so that the tile does not
  * point to a file that does not exist. */
-async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: JobRun) {
+async function reloadMissing(k: CatalogContext, missing: MissingImage[], run?: JobRun) {
   const total = missing.length;
   let done = 0,
     redownloaded = 0,
@@ -176,7 +176,7 @@ async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: 
 
   let idx = 0;
   const worker = async () => {
-    while (idx < missing.length && !lauf?.signal?.aborted) {
+    while (idx < missing.length && !run?.signal?.aborted) {
       const m = missing[idx++];
       if (!m) break;
       if (await reloadImage(k, m)) redownloaded++;
@@ -199,13 +199,13 @@ async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: 
 async function reloadImage(k: CatalogContext, m: MissingImage): Promise<boolean> {
   let ok = false;
   if (m.image_url) {
-    await k.cdnDrossel.acquire();
+    await k.cdnThrottle.acquire();
     try {
       // An error counts like a fruitless fetch; the counter names both.
       const r = await attempts('teile-enrich:downloadFile', k.externalSources.sources.downloadFile(m.image_url, m.fp));
-      ok = r.ok && r.wert === true;
+      ok = r.ok && r.value === true;
     } finally {
-      k.cdnDrossel.release();
+      k.cdnThrottle.release();
     }
   }
   if (ok) await k.images.createPreview(m.image_local).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));

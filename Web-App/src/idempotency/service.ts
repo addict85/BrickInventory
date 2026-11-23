@@ -50,7 +50,7 @@ export async function begin(k: IdempotencyContext, uid: number, key: string, fp:
   if (!e) return (await k.repository.receipts(uid, key, fp, ORPHANED_AFTER_S)) ? { kind: 'new' } : { kind: 'running' };
   if (e.request !== fp) return { kind: 'different' };
   // Orphaned with an effect: the first run had an effect, its response got lost.
-  if (e.status === null) return e.has_effect && e.verwaist ? { kind: 'not_replayable' } : { kind: 'running' };
+  if (e.status === null) return e.has_effect && e.orphaned ? { kind: 'not_replayable' } : { kind: 'running' };
   const response = isEncrypted(e.response) ? decrypt(e.response, responseContext(uid, key)) : null;
   if (response === null) return { kind: 'not_replayable' };
   return { kind: 'replay', status: e.status, response };

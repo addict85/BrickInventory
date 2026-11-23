@@ -73,15 +73,14 @@ test('a drop of the LISTEN connection does NOT end the process and reconnects', 
       // Exit code != 0: evaluate the output anyway, it says what the cause was.
       const stdout = (e.stdout || '').toString();
       assert.fail(
-        `Der Kindprozess ist nicht sauber beendet worden (Exitcode ${e.status}). ` +
-          `Ausgabe: ${stdout.trim() || '(leer)'}`,
+        `The child process did not exit cleanly (exit code ${e.status}). ` + `Output: ${stdout.trim() || '(empty)'}`,
       );
     }
-    assert.ok(!out.includes('CRASH:'), `Der Abriss hat den Prozess abgeschossen: ${out.trim()}`);
+    assert.ok(!out.includes('CRASH:'), `The teardown killed the process: ${out.trim()}`);
     assert.match(
       out,
       /LISTEN_WIEDER_DA:[1-9]/,
-      `Nach dem Abriss steht kein LISTEN mehr — der Reconnect hat nicht gegriffen. Ausgabe: ${out.trim()}`,
+      `After the teardown there is no LISTEN any more — the reconnect did not work. Output: ${out.trim()}`,
     );
   } finally {
     fs.rmSync(file, { force: true });

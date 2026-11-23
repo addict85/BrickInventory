@@ -3,14 +3,14 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.PurchasePriceDisplayTest
 Rot: the display rule is in the model and prefers the average
 
-diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
-index 7bc71ec..6dd7713 100644
---- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
-+++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
-@@ -2215,6 +2215,7 @@ data class SetItem(
+
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+@@ -1926,6 +1926,7 @@
      @SerialName("instructions") val instructions: List<Instruction> = emptyList(),
      @SerialName("bricklink") val bricklink: BrickLinkRef? = null,
-     @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
+     @SerialName("price_comparison_url") val priceComparisonUrl: String? = null,
 +    @SerialName("purchase_price") val purchasePrice: Double? = null,
  )
  

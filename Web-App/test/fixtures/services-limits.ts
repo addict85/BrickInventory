@@ -65,6 +65,6 @@ export function probe(d: Services): unknown[] {
     // Die ausdrücklichen Services dagegen stehen da.
     d.inventory.locationService.storages,
     d.jobQueue.readState,
-    d.account.verwalter.rememberAdminAction,
+    d.account.admin.rememberAdminAction,
   ];
 }

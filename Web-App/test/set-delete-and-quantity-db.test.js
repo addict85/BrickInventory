@@ -89,15 +89,15 @@ test('the quantity multiplication is in all places', () => {
   const placeList = (h.match(/quantityFrom\('sm', ?1\)/g) || []).length;
   assert.ok(
     placeList >= 3,
-    `nur ${placeList} Stellen multiplizieren mit der Setanzahl — erwartet werden ` +
-      'mindestens Teileliste, Kennzahlen und Minifigurenliste',
+    `only ${placeList} places multiply by the set count — expected are ` +
+      'at least the parts list, the metrics and the minifigure list',
   );
   // And each of these places needs the JOIN source for it, otherwise the
   // alias `sm` does not exist at all. Without this second assertion the rule would also be
   // green with a multiplication that aborts at runtime.
   assert.ok(
-    (h.match(/mengeJoin\(/g) || []).length >= 3,
-    'Zu wenige JOIN-Quellen: quantityFrom() liest `sm.menge`, und den Alias hängt ' + 'erst mengeJoin() an',
+    (h.match(/setQuantityJoin\(/g) || []).length >= 3,
+    'Zu wenige JOIN-Quellen: quantityFrom() liest `sm.quantity`, und den Alias hängt ' + 'erst setQuantityJoin() an',
   );
 
   // That the summary follows a quantity change is checked by
@@ -156,24 +156,20 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
 
       await setzen(3);
       st = await H.getStats([uid]);
-      assert.equal(st.total_parts, 30, `Teile ${st.total_parts} statt 30`);
-      assert.equal(st.total_minifigs, 3, `Minifiguren ${st.total_minifigs} statt 3`);
+      assert.equal(st.total_parts, 30, `parts ${st.total_parts} instead of 30`);
+      assert.equal(st.total_minifigs, 3, `minifigures ${st.total_minifigs} instead of 3`);
 
       // The LISTS too, not only the metrics — they query differently.
       const p = await H.partsQuery([uid], {});
       const teil = (p.parts || []).find(x => x.part_number === '3001');
-      assert.equal(Number(teil?.quantity ?? teil?.total_quantity), 30, 'die Teileliste multipliziert nicht mit');
+      assert.equal(Number(teil?.quantity ?? teil?.total_quantity), 30, 'the parts list does not multiply');
       const m = await H.readMinifigs([uid], {});
       assert.equal(
         Number(m.figs[0]?.total_quantity ?? m.figs[0]?.quantity),
         3,
-        'die Minifigurenliste multipliziert nicht mit',
+        'the minifigure list does not multiply',
       );
-      assert.equal(
-        (await H.computeMinifigStats([uid])).total_quantity,
-        3,
-        'die Minifiguren-Kennzahl multipliziert nicht mit',
-      );
+      assert.equal((await H.computeMinifigStats([uid])).total_quantity, 3, 'the minifigure metric does not multiply');
     });
 
     await t.test('fewer sets = fewer parts and minifigures', async () => {
@@ -181,8 +177,8 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
       // only ever grew.
       await setzen(1);
       const st = await H.getStats([uid]);
-      assert.equal(st.total_parts, 10, `Teile ${st.total_parts} statt 10`);
-      assert.equal(st.total_minifigs, 1, `Minifiguren ${st.total_minifigs} statt 1`);
+      assert.equal(st.total_parts, 10, `parts ${st.total_parts} instead of 10`);
+      assert.equal(st.total_minifigs, 1, `minifigures ${st.total_minifigs} instead of 1`);
       // The piece count per copy stays at 10 — multiplying happens when
       // reading, not when writing. Since migration 0038 it no longer stands
       // in `parts` (the column does not exist), but ONCE in the catalog of the
@@ -190,7 +186,7 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
       const roh = await db.get(`SELECT quantity FROM set_parts_catalog WHERE set_number=$1 AND part_number='3001'`, [
         SN,
       ]);
-      assert.equal(Number(roh.quantity), 10, 'die Katalog-Stückzahl muss die JE EXEMPLAR sein');
+      assert.equal(Number(roh.quantity), 10, 'the catalogue piece count must be the one PER COPY');
       // And in `parts` itself there is no quantity any more into which something
       // COULD be calculated. Without this second assertion the
       // test would also be green if the column showed up again.
@@ -198,7 +194,7 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
         `SELECT 1 AS da FROM information_schema.columns
           WHERE table_name='parts' AND column_name='quantity'`,
       );
-      assert.equal(spalte, undefined, 'parts.quantity ist zurück — dann gibt es die Stückzahl wieder zweimal');
+      assert.equal(spalte, undefined, 'parts.quantity is back — then the piece count exists twice again');
     });
 
     await t.test('deleting takes parts, minifigures and purchase prices along', async () => {
@@ -206,12 +202,12 @@ test('deletion and quantity change against the database', { concurrency: 1 }, as
       assert.equal(r.status, 200);
       for (const tab of ['sets', 'parts', 'minifigs', 'set_acquisitions']) {
         const n = (await db.get(`SELECT COUNT(*)::int c FROM ${tab} WHERE set_number=$1`, [SN])).c;
-        assert.equal(n, 0, `${tab}: ${n} Zeile(n) übrig`);
+        assert.equal(n, 0, `${tab}: ${n} row(s) left`);
       }
       const st = await H.getStats([uid]);
       assert.equal(st.total_sets, 0);
-      assert.equal(st.total_parts, 0, 'die Teile des Sets zählen weiter mit');
-      assert.equal(st.total_minifigs, 0, 'die Minifiguren des Sets zählen weiter mit');
+      assert.equal(st.total_parts, 0, "the set's parts still count");
+      assert.equal(st.total_minifigs, 0, "the set's minifigures still count");
     });
   } finally {
     await aufraeumen();

@@ -76,14 +76,14 @@ export function buildSetsRouter(d: Pick<Services, 'household' | 'account' | 'set
       ownerWish: e.owner_user_id,
       setNumber: String(e.set_number ?? ''),
       quantity: e.quantity ?? 1,
-      kaufpreis: e.purchase_price ?? null,
+      purchasePrice: e.purchase_price ?? null,
       condition: e.condition?.toUpperCase() ?? null,
-      lagerort: e.storage ?? null,
+      storage: e.storage ?? null,
       recordedAt: e.date ?? null,
       currency: e.currency ?? null,
-      streng: true,
+      strict: true,
     });
-    const { besitzer: _owner, ...reply } = r.action === 'added' ? r : { ...r, besitzer: null };
+    const { owner: _owner, ...reply } = r.action === 'added' ? r : { ...r, owner: null };
     return { ...reply };
   });
 
@@ -95,7 +95,7 @@ export function buildSetsRouter(d: Pick<Services, 'household' | 'account' | 'set
       e.purchase_price === undefined &&
       e.condition === undefined
     ) {
-      failDomain('ungueltig', 'acquisition_fields');
+      failDomain('invalid', 'acquisition_fields');
     }
     // The response carries the total quantity AFTER the change: a decrease capped
     // at 0 yields a different number than the one sent.

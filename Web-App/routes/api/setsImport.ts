@@ -18,13 +18,13 @@ async function supplementInStream(
   services: Pick<Services, 'account' | 'sets'>,
   stream: Stream,
   req: express.Request,
-  r: { set_number: string; besitzer: number; name?: string | null },
+  r: { set_number: string; owner: number; name?: string | null },
 ) {
-  const send = (d: object) => stream.sende(d);
+  const send = (d: object) => stream.send(d);
   const result = { success: true, action: 'added', set_number: r.set_number };
   send({ step: 'meta', set: r.set_number });
   await services.sets
-    .setSupplement(r.set_number, r.besitzer, d => stream.sendOrAbort(d))
+    .setSupplement(r.set_number, r.owner, d => stream.sendOrAbort(d))
     .then(
       k => {
         send({ step: 'done_meta', set: r.set_number });
@@ -36,7 +36,7 @@ async function supplementInStream(
         send({ step: 'done', ...result, name: r.name, catalog_pending: true, supplement: 'pending' });
       },
     );
-  stream.ende();
+  stream.end();
 }
 
 export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
@@ -49,7 +49,7 @@ export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
   const stateGuard = loginOrTokenGuard(d.account, { timeoutMs: 3000 });
 
   router.endpoint('GET /api/v2/sets/import/csv/status', stateGuard, async (req, res) => {
-    res.json(await d.sets.csvImportStand(signedInUserId(req), req));
+    res.json(await d.sets.csvImportState(signedInUserId(req), req));
   });
 
   // Open streams per account are counted by kontoSchranke('stream') for all streams together.
@@ -59,7 +59,7 @@ export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
     // EventSource sets no headers, so the language comes as ?sprache=.
     const chosen = (req as express.Request & { queryArgs: { language?: string } }).queryArgs.language;
     const language = chosen === 'en' || chosen === 'de' ? chosen : responseLanguage(req);
-    const sendStatus = async () => stream.sende(await d.sets.csvImportStatusForStream(uid, req, language));
+    const sendStatus = async () => stream.send(await d.sets.csvImportStatusForStream(uid, req, language));
     // Subscribe first, then send the first state: otherwise an event between
     // read and subscribe is lost. Other workers report via LISTEN/NOTIFY; the tick catches anything missed.
     stream.atEnd(d.sets.subscribeCsvImportStatus(uid, sendStatus));
@@ -74,8 +74,8 @@ export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
     accountGate('upload'),
     csvReceive.single('file'),
     async req => {
-      if (!req.file) failDomain('ungueltig', 'no_file');
-      const { total, uebersprungen, existing, started } = await d.sets.startSetCsvImport(
+      if (!req.file) failDomain('invalid', 'no_file');
+      const { total, skipped, existing, started } = await d.sets.startSetCsvImport(
         signedInUserId(req),
         req.file.buffer.toString('utf-8'),
         req.queryArgs.check === true,
@@ -86,8 +86,8 @@ export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
         started,
         existing: existing.length,
         existing_numbers: existing.slice(0, 20),
-        skipped: uebersprungen.length || undefined,
-        skipped_hint: skippedHint(uebersprungen, responseLanguage(req)) || undefined,
+        skipped: skipped.length || undefined,
+        skipped_hint: skippedHint(skipped, responseLanguage(req)) || undefined,
       };
     },
   );
@@ -116,9 +116,9 @@ export function buildSetsImportRouter(d: Pick<Services, 'account' | 'sets'>) {
       ownerWish: e.owner_user_id,
       setNumber: String(e.set_number ?? ''),
       quantity: e.quantity ?? 1,
-      kaufpreis: e.purchase_price ?? null,
+      purchasePrice: e.purchase_price ?? null,
       condition: e.condition?.toUpperCase() ?? null,
-      lagerort: e.storage ?? null,
+      storage: e.storage ?? null,
       recordedAt: e.date ?? null,
       currency: e.currency ?? null,
       supplementAfterSeconds: 60,

@@ -63,7 +63,7 @@ test('an active, confirmed account may log in', () => {
 test('a deactivated account is rejected — whether 0 or false', () => {
   for (const v of [0, false]) {
     const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
-    assert.equal(r?.kind, 'verboten', `is_active=${v} muss verboten ergeben`);
+    assert.equal(r?.kind, 'forbidden', `is_active=${v} must result in forbidden`);
   }
 });
 
@@ -75,7 +75,7 @@ test('an open registration is rejected, admins excepted', () => {
     is_admin: 0,
     registration_pending: true,
   });
-  assert.equal(r?.kind, 'verboten');
+  assert.equal(r?.kind, 'forbidden');
   assert.equal(r?.unverified, true);
   assert.equal(
     assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registration_pending: true }),
@@ -84,7 +84,7 @@ test('an open registration is rejected, admins excepted', () => {
   assert.equal(
     assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registration_pending: false }),
     null,
-    'ein vom Verwalter angelegtes Konto ohne Adresse',
+    'an account created by an admin without an address',
   );
 });
 
@@ -92,14 +92,14 @@ test('every login with password goes through the same check', () => {
   const found = loginHandler();
   // Self-proof: if the pattern finds nothing, the error list would be empty and the
   // test green without having checked anything.
-  assert.ok(found.length >= 2, `Nur ${found.length} Anmelde-Routen gefunden — Muster veraltet?`);
+  assert.ok(found.length >= 2, `Only ${found.length} sign-in routes found — pattern outdated?`);
   const withPassword = found.filter(h => /password/.test(h.koerper));
   assert.equal(
     withPassword.length,
     1,
-    `${withPassword.length} passwortbasierte Anmeldungen: ` +
+    `${withPassword.length} password-based sign-ins: ` +
       withPassword.map(h => `${h.datei} ${h.path}`).join(', ') +
-      ' — es soll genau eine geben.',
+      ' — there should be exactly one.',
   );
 
   const outlier = withPassword
@@ -108,12 +108,12 @@ test('every login with password goes through the same check', () => {
   assert.deepEqual(
     outlier,
     [],
-    'Diese Anmeldungen prüfen die Zugangsdaten selbst statt über ' +
-      'checkCredentials() aus src/account/loginCheck.ts:\n  ' +
+    'These sign-ins check the credentials themselves instead of via ' +
+      'checkCredentials() from src/account/loginCheck.ts:\n  ' +
       outlier.join('\n  ') +
-      '\nEine zweite Fassung ist schon zweimal auseinandergelaufen: erst fehlten ' +
-      'die Konto-Vorbedingungen, dann der Vergleich gegen den Dummy-Hash ' +
-      '(415 ms Unterschied, siehe test/login-time-equal-db.test.js).',
+      '\nA second version has already drifted apart twice: first the account ' +
+      'preconditions were missing, then the comparison against the dummy hash ' +
+      '(415 ms difference, see test/login-time-equal-db.test.js).',
   );
 });
 
@@ -134,7 +134,7 @@ test('the brute-force counter is only served in one place', () => {
     ...collect(path.join(ROOT, 'src')),
     path.join(ROOT, 'server.ts'),
   ];
-  assert.ok(alle.length >= 30, `Nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
+  assert.ok(alle.length >= 30, `Only ${alle.length} files searched — paths outdated?`);
 
   const fremd = alle
     .map(d => path.relative(ROOT, d))
@@ -143,22 +143,22 @@ test('the brute-force counter is only served in one place', () => {
   assert.deepEqual(
     fremd,
     [],
-    'Diese Dateien bedienen den Anmelde-Zähler selbst: ' +
+    'These files operate the sign-in counter themselves: ' +
       fremd.join(', ') +
-      ' — die Anmeldung gehört ganz in checkCredentials() (src/account/loginCheck.ts).',
+      ' — the sign-in belongs entirely in checkCredentials() (src/account/loginCheck.ts).',
   );
 
   // Counter-check of the rule: the allowed place must really serve it too.
   const central = require('./helpers/sources').serviceSource('src/account/loginCheck.ts');
   for (const name of ['loginAllowed', 'loginFailed', 'loginSucceeded'])
-    assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/account/loginCheck.ts ruft ${name} nicht auf`);
+    assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/account/loginCheck.ts does not call ${name}`);
 });
 
 test('the username rule', () => {
   assert.ok(USERNAME_RE.test('marco_1'));
   assert.ok(!USERNAME_RE.test('ma'));
   assert.ok(!USERNAME_RE.test('a b'));
-  assert.ok(!USERNAME_RE.test('a@b.c'), 'E-Mail-Adresse darf kein Benutzername sein');
+  assert.ok(!USERNAME_RE.test('a@b.c'), 'An e-mail address must not be a user name');
 
   // That PUT /profile applies it (also upper/lower case) is checked by login-rules-db.test.js.
 });

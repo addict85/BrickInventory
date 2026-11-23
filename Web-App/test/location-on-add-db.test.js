@@ -97,18 +97,18 @@ test('storage location when capturing — against a real database', async t => {
       setNumber: '10179-1',
       quantity: 1,
       condition: 'N',
-      lagerort: 'Kiste 3',
+      storage: 'Kiste 3',
       ifPresent: 'aufstocken',
     });
     const location = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '10179-1']);
-    assert.equal(location, 'Kiste 3', 'Das Set wurde erfasst, aber ohne den mitgegebenen Lagerort.');
+    assert.equal(location, 'Kiste 3', 'The set was recorded, but without the given storage location.');
   });
 
   await t.test('2. the newly typed place lands in the stock', async () => {
     // Otherwise it would stand on the set but be missing in the selection list it
     // is supposed to be chosen from — Marco's „man kann auch gleich neue Auswahlwerte
     // erfassen".
-    assert.ok(await inStock(U.ich, 'Kiste 3'), 'Der Ort steht am Set, aber nicht im Vorrat.');
+    assert.ok(await inStock(U.ich, 'Kiste 3'), 'The location is at the set, but not in the stock.');
   });
 
   await t.test('3. a manually captured part gets its storage location', async () => {
@@ -120,7 +120,7 @@ test('storage location when capturing — against a real database', async t => {
       [U.ich, '3001'],
     );
     assert.equal(r?.storage, 'Regal B');
-    assert.ok(await inStock(U.ich, 'Regal B'), 'Nicht im Vorrat');
+    assert.ok(await inStock(U.ich, 'Regal B'), 'Not in the stock');
   });
 
   await t.test('4. a manually captured minifigure gets its storage location', async () => {
@@ -133,22 +133,22 @@ test('storage location when capturing — against a real database', async t => {
       [U.ich, 'sw0001'],
     );
     assert.equal(r?.storage, 'Vitrine');
-    assert.ok(await inStock(U.ich, 'Vitrine'), 'Nicht im Vorrat');
+    assert.ok(await inStock(U.ich, 'Vitrine'), 'Not in the stock');
   });
 
   await t.test('5. the adoption from the wishlist passes it through', async () => {
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,$2,'N')`, [U.ich, '75192-1']);
     await merkliste.fulfillWantedItem(U.ich, U.ich, '75192-1', 'N', { quantity: 1, storage: 'Dachboden' });
     const location = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '75192-1']);
-    assert.equal(location, 'Dachboden', 'Der Merkposten wurde übernommen, der Lagerort ging dabei verloren.');
+    assert.equal(location, 'Dachboden', 'The watch item was taken over, the storage location got lost on the way.');
   });
 
   await t.test('6. the overview counts figures SEPARATELY, not as part kinds', async () => {
     // „18 Teilesorten" would otherwise mean 18 part kinds at one time and 12 plus 6
     // figures at another, and nobody could tell from the number what is meant.
-    const liste = await L.lagerorte([U.ich]);
+    const liste = await L.storages([U.ich]);
     const vitrine = liste.find(o => o.location === 'Vitrine');
-    assert.ok(vitrine, 'Ein Ort, in dem NUR eine Figur liegt, fehlt in der Übersicht.');
+    assert.ok(vitrine, 'A location that holds ONLY a minifig is missing in the overview.');
     assert.deepEqual([vitrine.sets, vitrine.parts, vitrine.minifigs], [0, 0, 1]);
     const kiste = liste.find(o => o.location === 'Kiste 3');
     assert.deepEqual([kiste.sets, kiste.parts, kiste.minifigs], [1, 0, 0]);
@@ -164,7 +164,7 @@ test('storage location when capturing — against a real database', async t => {
     await assert.rejects(
       () => L.deleteStorage(U.ich, parseInt(location.id, 10)),
       (/** @type {any} */ e) => e?.code === 'storage_in_use',
-      'Der Ort liess sich löschen, obwohl eine Figur darin liegt.',
+      'The location could be deleted although a minifig is in it.',
     );
   });
 
@@ -172,11 +172,7 @@ test('storage location when capturing — against a real database', async t => {
     const location = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
     await L.renameStorage(U.ich, parseInt(location.id, 10), 'Vitrine Wohnzimmer');
     const minifigLocation = await locationOf(db, 'minifigs', 't.user_id=$1 AND t.fig_number=$2', [U.ich, 'sw0001']);
-    assert.equal(
-      minifigLocation,
-      'Vitrine Wohnzimmer',
-      'Der Vorrat wurde umbenannt, die Figur zeigt auf den alten Namen.',
-    );
+    assert.equal(minifigLocation, 'Vitrine Wohnzimmer', 'The stock was renamed, the minifig points to the old name.');
   });
 
   await db.pool.end().catch(() => {});

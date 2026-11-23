@@ -20,7 +20,7 @@ const { openUi, warte, takt, sicht } = require('./helpers/ui');
 /** Reads the open dialog, cancels it and waits until it is closed. */
 async function liesDialog(d) {
   const modal = d.getElementById('confirm-modal');
-  assert.ok(await warte(() => modal.style.display === 'flex'), 'der Bestätigungsdialog erscheint');
+  assert.ok(await warte(() => modal.style.display === 'flex'), 'the confirmation dialog appears');
   const knopf = d.getElementById('cd-confirm');
   const state = {
     text: knopf.textContent.trim(),
@@ -54,7 +54,7 @@ test('confirmation dialogs: button text and color per caller', async () => {
     d.getElementById('nu-p').value = 'Ein-langes-Passwort-42';
     d.getElementById('btn-cu').click();
     const konto = await liesDialog(d);
-    assert.deepEqual([konto.text, konto.rot, konto.haupt], ['Konto anlegen', false, true], 'Konto anlegen');
+    assert.deepEqual([konto.text, konto.rot, konto.haupt], ['Konto anlegen', false, true], 'Create account');
 
     await sicht(w, 'vouchers');
     assert.ok(await warte(() => d.querySelector('[data-click="toggleVoucherPin"]')), 'Gutscheinliste');
@@ -66,21 +66,21 @@ test('confirmation dialogs: button text and color per caller', async () => {
     assert.ok(await warte(() => d.querySelector('[data-click="unlinkHousehold"]')), 'Haushaltsliste');
     d.querySelector('[data-click="unlinkHousehold"]').click();
     const haushalt = await liesDialog(d);
-    assert.deepEqual([haushalt.text, haushalt.rot], ['Verknüpfung lösen', false], 'Haushalt');
+    assert.deepEqual([haushalt.text, haushalt.rot], ['Verknüpfung lösen', false], 'Household');
 
     d.getElementById('btn-clr-all-cache').click();
     const speicher = await liesDialog(d);
-    assert.deepEqual([speicher.text, speicher.rot], ['Leeren', true], 'Zwischenspeicher: Knopf');
+    assert.deepEqual([speicher.text, speicher.rot], ['Leeren', true], 'Cache: button');
     assert.match(
       speicher.meldung,
       /4 gespeicherte Preise, 2 Baulisten und 7 Katalog-Einträge/,
       'Zwischenspeicher: was verloren geht',
     );
-    assert.match(speicher.meldung, /kontingent/i, 'Zwischenspeicher: was der Neuabruf kostet');
+    assert.match(speicher.meldung, /kontingent/i, 'Cache: what refetching costs');
 
     d.getElementById('btn-dall').click();
     const alles = await liesDialog(d);
-    assert.deepEqual([alles.text, alles.rot], ['Alles löschen', true], 'Alles löschen bleibt rot');
+    assert.deepEqual([alles.text, alles.rot], ['Alles löschen', true], 'Delete everything stays red');
   } finally {
     w.close();
   }

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.contract.AccountName
 import ch.brickinventoryapp.contract.FigValuationItem
-import ch.brickinventoryapp.contract.KontoName
-import ch.brickinventoryapp.contract.Merkposten
 import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.WantedItem
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
@@ -47,15 +47,15 @@ class FollowUpTest {
     @Volatile private var area: String? = "a"
     private val store = OfflineStore(StorageInventory(), OutboxStorage(), { area })
     private val paths = PathServer(
-        "/api/v1/sets/10001-1" to """{"success":true,"quantity":3}""",
-        "/api/v1/sets/10001-1/storage" to """{"success":true,"storage":"Kiste 2"}""",
-        "/api/v1/sets/10001-1/move" to """{"success":true,"set_number":"10001-1"}""",
-        "/api/v1/wanted/20001-1/N/inhaber" to """{"success":true,"verschoben":true}""",
-        "/api/v1/wanted/20002-1/N/uebernehmen" to """{"success":true,"action":"added","set_number":"20002-1"}""",
-        "/api/v1/parts/3001/5/storage" to """{"success":true,"storage":"Regal"}""",
-        "/api/v1/parts/3001/5/color" to """{"success":true,"zusammengelegt":true}""",
-        "/api/v1/minifigs/sw0001/storage" to """{"success":true,"storage":"Regal"}""",
-        "/api/v1/storage/locations/3" to """{"success":true,"ort":{"id":3,"name":"Keller"}}""",
+        "/api/v2/sets/10001-1" to """{"success":true,"quantity":3}""",
+        "/api/v2/sets/10001-1/storage" to """{"success":true,"storage":"Kiste 2"}""",
+        "/api/v2/sets/10001-1/move" to """{"success":true,"set_number":"10001-1"}""",
+        "/api/v2/wanted/20001-1/N/owner" to """{"success":true,"moved":true}""",
+        "/api/v2/wanted/20002-1/N/take-over" to """{"success":true,"action":"added","set_number":"20002-1"}""",
+        "/api/v2/parts/3001/5/storage" to """{"success":true,"storage":"Regal"}""",
+        "/api/v2/parts/3001/5/color" to """{"success":true,"combined":true}""",
+        "/api/v2/minifigs/sw0001/storage" to """{"success":true,"storage":"Regal"}""",
+        "/api/v2/storage/locations/3" to """{"success":true,"location":{"id":3,"name":"Keller"}}""",
     )
     private val api = paths.onTick()
     private val sets = SetsRepositoryImpl(api, store, RetryPolicy.ONCE)
@@ -66,9 +66,9 @@ class FollowUpTest {
     @Before
     fun setUp() = runBlocking {
         store.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1, storage = "Kiste 1",
-            owners = listOf(KontoName(id = 1, username = "anna"), KontoName(id = 2, username = "ben")))).map { it.asView() })
-        store.adopt(Slots.WANTED_LIST, listOf(Merkposten(setNumber = "20001-1", condition = Condition.NEW, userId = 1),
-            Merkposten(setNumber = "20002-1", condition = Condition.NEW, userId = 1)).map { it.asView() })
+            owners = listOf(AccountName(id = 1, username = "anna"), AccountName(id = 2, username = "ben")))).map { it.asView() })
+        store.adopt(Slots.WANTED_LIST, listOf(WantedItem(setNumber = "20001-1", condition = Condition.NEW, userId = 1),
+            WantedItem(setNumber = "20002-1", condition = Condition.NEW, userId = 1)).map { it.asView() })
         store.adopt(Slots.MANUAL_PARTS, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 2, storage = "Kiste 1"),
             PartValuationItem(partNumber = "3001", colorId = 7, quantity = 4)).map { it.asView() })
         store.adopt(Slots.MANUAL_FIGURES, listOf(FigValuationItem(figNumber = "sw0001", storage = "Kiste 1")).map { it.asView() })
@@ -133,7 +133,7 @@ class FollowUpTest {
 
     @Test
     fun `a rejected change does not change the store`() = runBlocking {
-        paths.responses["/api/v1/sets/10001-1/storage"] = """{"success":false,"error":"Ort unbekannt"}"""
+        paths.responses["/api/v2/sets/10001-1/storage"] = """{"success":false,"error":"Ort unbekannt"}"""
         sets.setSetStorage("10001-1", "x")
         assertEquals("Kiste 1", set().storage)
     }

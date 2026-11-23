@@ -7,18 +7,19 @@
  * The names depend on the template so that parallel runs on one server do not meet.
  */
 
-/** @param {string} vorlage */
-function rollen(vorlage) {
+/** @param {string} template */
+function roles(template) {
+  // The kind is part of the role name in existing test databases ('eigen'), so it stays.
   /** @param {string} kind */
-  const r = kind => ({ name: `${vorlage}_rolle_${kind}`, passwort: `test-${vorlage}-${kind}` });
-  return { eigen: r('eigen'), app: r('app'), system: r('system'), systemweb: r('systemweb'), lesen: r('read') };
+  const r = kind => ({ name: `${template}_rolle_${kind}`, password: `test-${template}-${kind}` });
+  return { own: r('eigen'), app: r('app'), system: r('system'), systemweb: r('systemweb'), read: r('read') };
 }
 
-/** The same address with another role. @param {string} url @param {{ name: string, passwort: string }} rolle */
-function asRole(url, rolle) {
+/** The same address with another role. @param {string} url @param {{ name: string, password: string }} role */
+function asRole(url, role) {
   const u = new URL(url);
-  u.username = encodeURIComponent(rolle.name);
-  u.password = encodeURIComponent(rolle.passwort);
+  u.username = encodeURIComponent(role.name);
+  u.password = encodeURIComponent(role.password);
   return u.toString();
 }
 
@@ -28,4 +29,4 @@ const asSuperuser = source => /^\s*(\*|\/\/)\s*@superuser\b/m.test(source);
 /** Does the file call services in the system context (helpers/system-frame.js)? @param {string} source */
 const inSystemFrame = source => /^require\('\.\/helpers\/systemrahmen'\);/m.test(source);
 
-module.exports = { rollen, asRole, asSuperuser, inSystemFrame };
+module.exports = { roles, asRole, asSuperuser, inSystemFrame };

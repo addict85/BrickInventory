@@ -38,7 +38,7 @@ test('readSets delivers the last purchase', { concurrency: 1 }, async t => {
   const { readSets } = require('./helpers/sources').areaPage('sets');
   const { sets } = await readSets(uid, {});
   const s = sets.find(x => x.set_number === '10300-1');
-  assert.ok(s, 'Set fehlt');
+  assert.ok(s, 'set missing');
   assert.equal(new Date(s.last_purchase).toISOString().slice(0, 10), '2025-07-14');
 });
 
@@ -66,7 +66,7 @@ test('the tile shows the purchase date', async () => {
   try {
     await warte(() => d.querySelector('.sc .tile-date'));
     const datum = d.querySelector('.sc .tile-date');
-    assert.ok(datum, 'Kein Datum auf der Kachel');
+    assert.ok(datum, 'no date on the tile');
     // One notation for all dates (fmtDatum): two digits, since 29.10.
     assert.match(datum.textContent, /14\.07\.2025/);
     assert.match(datum.textContent, /Gekauft/); // visibly labeled (L3), „Gekauft am“ in the title

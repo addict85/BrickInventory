@@ -17,9 +17,9 @@ const { ohneKommentare } = require('./helpers/sources');
 function srcDirs() {
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
   const row = build.match(/const SRC_DIRS = \[([^\]]*)\]/);
-  assert.ok(row, 'SRC_DIRS im Bauskript nicht gefunden');
+  assert.ok(row, 'SRC_DIRS not found in the build script');
   const dirs = [...row[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-  assert.ok(dirs.length >= 5, `nur ${dirs.length} Quellordner — das Muster greift nicht mehr`);
+  assert.ok(dirs.length >= 5, `only ${dirs.length} source folders — the pattern no longer matches`);
   return dirs;
 }
 
@@ -67,9 +67,9 @@ test('the API quotas are named after the API, not after a path', () => {
   assert.deepEqual(
     treffer,
     [],
-    'Ein Kontingent-Schlüssel enthält einen Pfad. Das ist fast sicher eine ' +
-      'verunglückte Ersetzung — die Zählung liefe unter neuem Namen bei null ' +
-      'weiter, ohne dass irgendetwas abstürzt:\n  ' +
+    'A quota key contains a path. That is almost certainly a ' +
+      'botched replacement — the count would continue at zero under a new name ' +
+      'without anything crashing:\n  ' +
       treffer.join('\n  '),
   );
 });
@@ -101,8 +101,8 @@ test('no module is fetched under a bare name', () => {
   assert.deepEqual(
     treffer,
     [],
-    'Ein projekteigenes Modul wird ohne Pfad geholt — Node sucht es dann in ' +
-      'node_modules und wirft zur Laufzeit:\n  ' +
+    'A project module is required without a path — Node then looks for it in ' +
+      'node_modules and throws at runtime:\n  ' +
       treffer.join('\n  '),
   );
 });
@@ -125,8 +125,8 @@ test('clients/ contains no routes and is built anyway', () => {
   // on that the move almost failed.
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
   const row = build.match(/const SRC_DIRS = \[([^\]]*)\]/);
-  assert.ok(row, 'SRC_DIRS nicht gefunden');
-  assert.match(row[1], /'clients'/, 'Das Bauskript baut clients/ nicht mit');
+  assert.ok(row, 'SRC_DIRS not found');
+  assert.match(row[1], /'clients'/, 'The build script does not build clients/');
 });
 
 test('no cycles via real import statements', () => {
@@ -181,8 +181,8 @@ test('no cycles via real import statements', () => {
   assert.deepEqual(
     [...new Set(found)],
     [],
-    'Kreis über echte import-Anweisungen — zur Ladezeit ist eine Seite ' +
-      'undefined, und das fällt erst im Betrieb auf:\n  ' +
+    'Cycle over real import statements — at load time one side is ' +
+      'undefined, and that only shows in production:\n  ' +
       [...new Set(found)].join('\n  '),
   );
 });
@@ -202,19 +202,19 @@ test('every source folder also arrives in the container', () => {
   const bau = dockerfile.slice(0, dockerfile.lastIndexOf('\nFROM '));
   const kopie = bau.search(/^COPY \. \.\s*$/m),
     translate = bau.indexOf('scripts/build-ts.js');
-  assert.ok(kopie > 0 && kopie < translate, 'Das Bau-Stage kopiert den Kontext nicht ganz vor dem Übersetzen');
+  assert.ok(kopie > 0 && kopie < translate, 'The build stage does not copy the whole context before compiling');
   const excluded = fs
     .readFileSync(path.join(ROOT, '.dockerignore'), 'utf8')
     .split('\n')
     .map(z => z.trim())
     .filter(z => z && !z.startsWith('#'))
     .map(z => z.replace(/^\/|\/$/g, ''));
-  assert.ok(excluded.includes('node_modules') && excluded.length >= 5, '.dockerignore nicht gelesen');
+  assert.ok(excluded.includes('node_modules') && excluded.length >= 5, '.dockerignore not read');
   for (const ziel of [...dirs, 'server.ts', 'package.json', 'scripts', 'public']) {
     const treffer = excluded.filter(
       m => !m.startsWith('!') && (path.matchesGlob(ziel, m) || path.matchesGlob(`${ziel}/x.ts`, m)),
     );
-    assert.deepEqual(treffer, [], `${ziel} wird von .dockerignore ausgeschlossen — im Container fehlt es`);
+    assert.deepEqual(treffer, [], `${ziel} is excluded by .dockerignore — it is missing in the container`);
   }
 
   // All folders with .ts files on the top level must stand in SRC_DIRS.
@@ -228,8 +228,8 @@ test('every source folder also arrives in the container', () => {
     if (!hatTs) continue;
     assert.ok(
       dirs.includes(e.name),
-      `${e.name}/ enthält TypeScript, steht aber nicht in SRC_DIRS — es entsteht ` +
-        `kein dist/${e.name}/ und jeder Import darauf läuft beim Start ins Leere`,
+      `${e.name}/ contains TypeScript but is not in SRC_DIRS — no ` +
+        `dist/${e.name}/ is created and every import of it fails at start`,
     );
   }
 });
@@ -247,18 +247,22 @@ test('the base schema is looked for where it lies at runtime', () => {
   assert.match(
     laden,
     /path\.join\(__dirname, 'base\.sql'\)/,
-    'initSchema() sucht db/base.sql nicht über __dirname — im Container liegt die Datei in ' +
-      'dist/db/, und einen Quellbaum gibt es dort nicht',
+    'initSchema() does not look for db/base.sql via __dirname — in the container the file is in ' +
+      'dist/db/, and there is no source tree there',
   );
-  assert.doesNotMatch(laden, /APP_ROOT/, 'APP_ROOT zeigt auf den Quellbaum, den das Laufzeit-Image nicht enthält');
+  assert.doesNotMatch(
+    laden,
+    /APP_ROOT/,
+    'APP_ROOT points to the source tree, which the runtime image does not contain',
+  );
 
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
   assert.match(
     build,
     /ASSET_EXT\s*=\s*\[[^\]]*'\.sql'/,
-    'Das Bauskript kopiert keine .sql-Dateien mehr nach dist/ — dann fehlt das ' + 'Grundschema im Container',
+    'The build script no longer copies .sql files to dist/ — then the ' + 'base schema is missing in the container',
   );
-  assert.ok(fs.existsSync(path.join(ROOT, 'db/base.sql')), 'db/base.sql fehlt');
+  assert.ok(fs.existsSync(path.join(ROOT, 'db/base.sql')), 'db/base.sql is missing');
 });
 
 test('every late require() points to a file that exists', () => {
@@ -275,9 +279,9 @@ test('every late require() points to a file that exists', () => {
   assert.deepEqual(
     treffer,
     [],
-    'Ein spätes require() zeigt auf eine Datei, die es nicht gibt. Das fällt ' +
-      'erst zur Laufzeit auf — und wenn der Aufruf in einem setImmediate steckt, ' +
-      'sogar ausserhalb jedes catch:\n  ' +
+    'A late require() points to a file that does not exist. That only shows ' +
+      'at runtime — and if the call sits in a setImmediate, ' +
+      'even outside any catch:\n  ' +
       treffer.join('\n  '),
   );
 });

@@ -110,13 +110,13 @@ test('write errors: immediately, then collected per minute', async t => {
   m.clock += 10_000;
   await row(4);
   const meldungen = () => m.err.map(z => JSON.parse(z)).filter(z => z.message.startsWith('app_logs:'));
-  assert.equal(meldungen().length, 1, 'innerhalb der Minute nur die erste Meldung');
+  assert.equal(meldungen().length, 1, 'within the minute only the first message');
   assert.equal(meldungen()[0].message, 'app_logs: 3 Zeile(n) nicht geschrieben');
   assert.equal(meldungen()[0].kontext.last_error, 'Datenbank weg');
   m.clock += 60_000;
   P.reportWriteError();
   assert.equal(meldungen().length, 2);
-  assert.equal(meldungen()[1].message, 'app_logs: 6 Zeile(n) nicht geschrieben', 'der Rest der Minute in einer Zeile');
+  assert.equal(meldungen()[1].message, 'app_logs: 6 Zeile(n) nicht geschrieben', 'the rest of the minute in one line');
 });
 
 test('X-Request-Id: only harmless identifiers, otherwise an own one', () => {
@@ -125,7 +125,7 @@ test('X-Request-Id: only harmless identifiers, otherwise an own one', () => {
   for (const boese of ['a\nwarn gefälscht', 'x'.repeat(65), '', 'a b', '"};', ['liste'], undefined]) {
     const k = P.requestId(boese);
     assert.notEqual(k, boese);
-    assert.match(k, /^[0-9a-z]{4,}$/, `eigene Kennung statt ${JSON.stringify(boese)}`);
+    assert.match(k, /^[0-9a-z]{4,}$/, `own ID instead of ${JSON.stringify(boese)}`);
   }
-  assert.notEqual(P.requestId(''), P.requestId(''), 'eigene Kennungen zählen weiter');
+  assert.notEqual(P.requestId(''), P.requestId(''), 'own IDs keep counting');
 });

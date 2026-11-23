@@ -27,7 +27,7 @@ class PreviewStorageTest {
 
     private val root = File(System.getProperty("java.io.tmpdir"), "bim-vorschau-grenze-${System.nanoTime()}")
     private val memory = PreviewMemory({ root }, StoreCipher { ByteArray(32) { 5 } }) { ByteArray(32) { 15 } }
-    private val basis = "https://brick.example/api/v1/images"
+    private val basis = "https://brick.example/api/v2/images"
 
     @After
     fun tearDown() { root.deleteRecursively() }

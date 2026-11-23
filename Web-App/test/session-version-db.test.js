@@ -111,9 +111,9 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
     await t.test('revocation of rights: the written-back administrator session no longer applies', async () => {
       const chef = await anmelden('sv_chef');
       const zweiter = await anmelden('sv_second');
-      assert.equal((await callFn('/api/v2/auth/users', zweiter)).status, 200, 'Vorbedingung: Verwalter');
+      assert.equal((await callFn('/api/v2/auth/users', zweiter)).status, 200, 'precondition: admin');
       const alt = await row(zweiter);
-      assert.ok(alt, 'Vorbedingung: Sitzungszeile liegt');
+      assert.ok(alt, 'precondition: session row exists');
 
       const r = await callFn(`/api/v2/auth/users/${id.sv_second}/admin`, chef, {
         method: 'PUT',
@@ -125,14 +125,14 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
         id.sv_second,
       ]);
       assert.equal(await _req('src/account/adminActions.js').runDueTakeoversFrom(), 1);
-      assert.equal(await row(zweiter), undefined, 'Vorbedingung: Zeile gelöscht');
+      assert.equal(await row(zweiter), undefined, 'precondition: row deleted');
       await writeBack(alt);
 
       const danach = await callFn('/api/v2/auth/users', zweiter);
-      assert.equal(danach.status, 401, 'die zurückgeschriebene Verwaltersitzung gilt nicht mehr');
+      assert.equal(danach.status, 401, 'the written-back admin session is no longer valid');
       assert.equal(await angemeldet(zweiter), false);
-      assert.equal(await row(zweiter), undefined, 'die alte Zeile ist beim Abweisen wieder entfernt');
-      assert.equal(await angemeldet(await anmelden('sv_second')), true, 'neu anmelden geht');
+      assert.equal(await row(zweiter), undefined, 'the old row is removed again on rejection');
+      assert.equal(await angemeldet(await anmelden('sv_second')), true, 'logging in again works');
     });
 
     await t.test('end other windows: the own one stays, the other stays out', async () => {
@@ -145,9 +145,9 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
       });
       assert.equal(r.status, 200, await r.text());
       await writeBack(altB);
-      assert.equal(await angemeldet(b), false, 'das andere Fenster bleibt draussen');
-      assert.equal(await angemeldet(a), true, 'das eigene Fenster bleibt angemeldet');
-      assert.equal((await callFn('/api/v2/settings/tokens', a)).status, 200, 'das eigene Fenster arbeitet weiter');
+      assert.equal(await angemeldet(b), false, 'the other window stays out');
+      assert.equal(await angemeldet(a), true, 'the own window stays logged in');
+      assert.equal((await callFn('/api/v2/settings/tokens', a)).status, 200, 'the own window keeps working');
     });
   } finally {
     srv.close();

@@ -74,7 +74,7 @@ test('a quantity increase on the sub-account set lands in the own account', { co
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ quantity: 3 }),
     });
-    assert.equal(ohne.status, 401, 'der App-Weg darf ohne Token nicht durchkommen');
+    assert.equal(ohne.status, 401, 'the app path must not get through without a token');
     /** @type {[string, string, Record<string, string>][]} */
     const pathList = [
       ['Webapp', web.base, {}],
@@ -87,24 +87,20 @@ test('a quantity increase on the sub-account set lands in the own account', { co
         headers: { 'content-type': 'application/json', ...credential },
         body: JSON.stringify({ quantity: 3 }),
       });
-      assert.equal(r.status, 200, `${name}: die Mengenänderung darf nicht mehr in 404 enden`);
+      assert.equal(r.status, 200, `${name}: the quantity change must no longer end in 404`);
 
       // (The quantities now all come from the acquisitions — migration 0036.)
       // ── Marco's new rule ────────────────────────────────
       // „Die Anzahl soll immer von allen angezeigt werden. Wenn ich diese
       // erhöhe, soll es für meinen Account einen neuen Kaufpreis-Eintrag …
       const onOwner = await quantityOf(db, subId, SN);
-      assert.equal(
-        onOwner,
-        1,
-        `${name}: der Bestand des Unterkontos darf sich durch eine fremde Erhöhung nicht ändern`,
-      );
+      assert.equal(onOwner, 1, `${name}: the sub-account's stock must not change because of a foreign increase`);
 
       const onViewer = await quantityOf(db, mainId, SN);
-      assert.equal(onViewer, 2, `${name}: die Differenz (3 − 1) muss im eigenen Konto liegen`);
+      assert.equal(onViewer, 2, `${name}: the difference (3 − 1) must be in the own account`);
 
       const total = await quantityOf(db, [subId, mainId], SN);
-      assert.equal(total, 3, `${name}: die Gesamtmenge muss der Eingabe entsprechen`);
+      assert.equal(total, 3, `${name}: the total quantity must match the input`);
 
       // And the acquisitions follow — in the own account, with a price.
       const acq = await db.get(
@@ -113,10 +109,10 @@ test('a quantity increase on the sub-account set lands in the own account', { co
            FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
         [mainId, SN],
       );
-      assert.equal(acq.q, 2, `${name}: die Erfassungsmenge des eigenen Kontos muss folgen`);
+      assert.equal(acq.q, 2, `${name}: the acquisition quantity of the own account must follow`);
       assert.ok(
         acq.mit_preis > 0,
-        `${name}: die neue Erfassung braucht einen Kaufpreis — sonst fehlt sie in jeder Summe`,
+        `${name}: the new acquisition needs a purchase price — otherwise it is missing in every total`,
       );
       const preis = await db.get(
         `SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
@@ -126,7 +122,7 @@ test('a quantity increase on the sub-account set lands in the own account', { co
       assert.equal(
         Number(preis.purchase_price),
         77,
-        `${name}: es muss der MARKTPREIS sein (77), nicht der Kaufpreis des anderen Kontos (108)`,
+        `${name}: it must be the MARKET PRICE (77), not the purchase price of the other account (108)`,
       );
     }
   } finally {

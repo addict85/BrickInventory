@@ -8,10 +8,10 @@ export function ensureThrottleRow(tx: DbInterface) {
 export function throttleState(tx: DbInterface, GAP_SEC: number) {
   return tx.get(
     `SELECT CEIL(GREATEST(0, EXTRACT(EPOCH FROM (locked_until - NOW()))))::int
-                AS sperre_sek,
+                AS lock_sec,
               CEIL(GREATEST(0, EXTRACT(EPOCH FROM (
                 last_checked_at + make_interval(secs => $1) - NOW()))))::int
-                AS abstand_sek
+                AS gap_sec
          FROM voucher_balance_throttle
         WHERE id = 1
           FOR UPDATE`,

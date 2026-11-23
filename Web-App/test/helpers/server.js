@@ -36,8 +36,8 @@ function testServer(_req, { sitzung = {}, t } = {}) {
   const app = _req('startup/app.js').buildApp({
     pool: testAccess().systemWebPool,
     config: _req('src/infra/config.js').config(),
-    sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
-    dienste: testServices(),
+    sessionSecret: 'test-sitzungsgeheimnis-lang-genug',
+    services: testServices(),
     sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
       req.session = posed;
       next();
@@ -80,7 +80,7 @@ function routerServer(_req, { sitzung = {}, apiAccount, routen, t }) {
  * @param {{ address(): string | import('node:net').AddressInfo | null }} srv @returns {number} */
 function portOf(srv) {
   const a = srv.address();
-  if (!a || typeof a === 'string') throw new Error('Server lauscht nicht auf einem TCP-Port');
+  if (!a || typeof a === 'string') throw new Error('Server is not listening on a TCP port');
   return a.port;
 }
 

@@ -27,8 +27,8 @@ test('several owners: the tile price is weighted by quantity', () => {
     ],
     '75192-1',
   );
-  assert.equal(k.tile_pnl_pct, 142.9, '(600+100)/2 = 350 gegen 850 — nicht die zuletzt gelesene Zeile');
-  assert.equal(k.tile_price, 850, 'Der Marktpreis ist in beiden Zeilen derselbe');
+  assert.equal(k.tile_pnl_pct, 142.9, '(600+100)/2 = 350 versus 850 — not the last row read');
+  assert.equal(k.tile_price, 850, 'The market price is the same in both rows');
 });
 
 test('several owners with entered purchase prices: unchanged', () => {
@@ -51,7 +51,7 @@ test('different quantities weigh differently', () => {
     ],
     '6346-1',
   );
-  assert.equal(k.tile_pnl_pct, 100, 'Gewichtet 200 gegen 400; ein einfacher Mittelwert ergäbe 33,3 %');
+  assert.equal(k.tile_pnl_pct, 100, 'weighted 200 versus 400; a plain average would yield 33.3 %');
 });
 
 test('one row: the server value stays', () => {
@@ -68,7 +68,7 @@ test('one row: the server value stays', () => {
     ],
     '21318-1',
   );
-  assert.equal(k.tile_pnl_pct, 77.7, 'Bei einer Zeile wird nicht neu gerechnet — sonst stünde hier 5614,3 %');
+  assert.equal(k.tile_pnl_pct, 77.7, 'With one row nothing is recomputed — otherwise this would say 5614.3 %');
 });
 
 test('without purchase price and without market price there is no percentage and no amount', () => {
@@ -88,7 +88,7 @@ test('the web takes over the server values', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'collection.js'), 'utf8');
   const von = src.indexOf('  setPnlBySet({});');
   const bis = src.indexOf('  // Inject price data into cached sets');
-  assert.ok(von > 0 && bis > von, 'enrichGalleryWithPrices() nicht gefunden — umgebaut?');
+  assert.ok(von > 0 && bis > von, 'enrichGalleryWithPrices() not found — refactored?');
   const pnlBySet = {};
   // eslint-disable-next-line no-new-func
   new Function('pnl', 'pnlBySet', 'setPnlBySet', src.slice(von, bis))(

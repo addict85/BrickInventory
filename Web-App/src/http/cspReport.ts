@@ -8,29 +8,29 @@ import { processWide } from '../infra/processWide';
 import { throttleAddress } from '../infra/throttleAddress';
 
 const WINDOW_MS = 60_000;
-const JE_ADDRESS = 10;
+const PER_ADDRESS = 10;
 /** The minute does not remember more senders; whoever comes after that is discarded. */
 const AT_MOST_ADDRESSES = 1000;
-const F = processWide('cspBericht', () => ({ since: Date.now(), gedrosselt: 0, jeAddress: new Map<string, number>() }));
+const F = processWide('cspReport', () => ({ since: Date.now(), throttled: 0, perAddress: new Map<string, number>() }));
 
 export function cspMessageFree(address: string, now = Date.now()): boolean {
-  const _jeAddress = F.jeAddress;
+  const _perAddress = F.perAddress;
   if (now - F.since >= WINDOW_MS) {
-    if (F.gedrosselt) console.warn(`[csp] ${F.gedrosselt} gedrosselt`);
-    _jeAddress.clear();
-    F.gedrosselt = 0;
+    if (F.throttled) console.warn(`[csp] ${F.throttled} gedrosselt`);
+    _perAddress.clear();
+    F.throttled = 0;
     F.since = now;
   }
   // Per sender instead of shared, otherwise real reports would drown in a foreign flood; IPv6 per /64.
   const a = throttleAddress(address);
-  const n = (_jeAddress.get(a) ?? 0) + 1;
-  const free = n <= JE_ADDRESS && (_jeAddress.has(a) || _jeAddress.size < AT_MOST_ADDRESSES);
-  if (_jeAddress.has(a) || _jeAddress.size < AT_MOST_ADDRESSES) _jeAddress.set(a, n);
-  if (!free) F.gedrosselt++;
+  const n = (_perAddress.get(a) ?? 0) + 1;
+  const free = n <= PER_ADDRESS && (_perAddress.has(a) || _perAddress.size < AT_MOST_ADDRESSES);
+  if (_perAddress.has(a) || _perAddress.size < AT_MOST_ADDRESSES) _perAddress.set(a, n);
+  if (!free) F.throttled++;
   return free;
 }
 
-type Violation = { regel: unknown; blockiert: unknown; seite: unknown; probe: unknown };
+type Violation = { rule: unknown; blocked: unknown; page: unknown; probe: unknown };
 
 const field = (o: unknown, k: string): unknown =>
   o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined;
@@ -42,9 +42,9 @@ function violations(data: unknown): Violation[] {
     if (alt)
       return [
         {
-          regel: field(alt, 'effective-directive') ?? field(alt, 'violated-directive'),
-          blockiert: field(alt, 'blocked-uri'),
-          seite: field(alt, 'document-uri'),
+          rule: field(alt, 'effective-directive') ?? field(alt, 'violated-directive'),
+          blocked: field(alt, 'blocked-uri'),
+          page: field(alt, 'document-uri'),
           probe: field(alt, 'script-sample'),
         },
       ];
@@ -52,9 +52,9 @@ function violations(data: unknown): Violation[] {
     return b
       ? [
           {
-            regel: field(b, 'effectiveDirective'),
-            blockiert: field(b, 'blockedURL'),
-            seite: field(b, 'documentURL'),
+            rule: field(b, 'effectiveDirective'),
+            blocked: field(b, 'blockedURL'),
+            page: field(b, 'documentURL'),
             probe: field(b, 'sample'),
           },
         ]
@@ -68,11 +68,11 @@ const DIRECTIVE = /^[a-z][a-z-]{1,39}$/;
 const KEYWORD = /^(inline|eval|wasm-eval|self|data|blob|trusted-types-(sink|policy))$/;
 
 function directive(v: unknown): string | null {
-  const erstes =
+  const first =
     String(v ?? '')
       .trim()
       .split(/\s/)[0] ?? '';
-  return DIRECTIVE.test(erstes) ? erstes : null;
+  return DIRECTIVE.test(first) ? first : null;
 }
 
 /** Only http(s)/ws(s) and without the query part: an address can carry a reset or confirmation link. */
@@ -117,12 +117,12 @@ export function buildCspReportRouter() {
         return;
       }
       for (const v of violations(data)) {
-        const rule = directive(v.regel);
-        if (!rule || imageView(v.seite)) continue;
+        const rule = directive(v.rule);
+        if (!rule || imageView(v.page)) continue;
         const p = probe(rule, v.probe);
         // The parts are already filtered; the replacement is the form CodeQL recognizes as protection.
         console.warn(
-          `[csp] ${rule} blockierte ${reportAddress(v.blockiert, true)} auf ${reportAddress(v.seite)}${p ? ` (${p})` : ''}`.replace(
+          `[csp] ${rule} blockierte ${reportAddress(v.blocked, true)} auf ${reportAddress(v.page)}${p ? ` (${p})` : ''}`.replace(
             /\n|\r/g,
             '',
           ),

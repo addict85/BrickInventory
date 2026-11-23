@@ -16,20 +16,20 @@ test('a column __proto__ does not end up in the prototype chain', () => {
   const vorher = /** @type {any} */ (Object.prototype).polluted;
   const records = readIn('set_number,__proto__\n10497-1,{"polluted":true}\n');
   assert.equal(records.length, 1);
-  assert.equal(records[0].set_number, '10497-1', 'Die echte Spalte geht verloren — der Filter greift zu weit');
+  assert.equal(records[0].set_number, '10497-1', 'The real column gets lost — the filter reaches too far');
   assert.equal(
     /** @type {any} */ (Object.prototype).polluted,
     vorher,
-    'Object.prototype wurde veraendert — die Kopfzeile hat die Kette getroffen',
+    'Object.prototype was changed — the header row hit the chain',
   );
-  assert.ok(!Object.hasOwn(records[0], '__proto__'), 'Der Datensatz traegt einen __proto__-Schluessel');
+  assert.ok(!Object.hasOwn(records[0], '__proto__'), 'The record carries a __proto__ key');
 });
 
 test('constructor and prototype are discarded too', () => {
   for (const name of ['constructor', 'prototype']) {
     const r = readIn(`set_number,${name}\n10497-1,x\n`);
     assert.equal(r[0].set_number, '10497-1');
-    assert.ok(!Object.hasOwn(r[0], name), `Die Spalte "${name}" ist im Datensatz gelandet`);
+    assert.ok(!Object.hasOwn(r[0], name), `The column "${name}" ended up in the record`);
   }
 });
 

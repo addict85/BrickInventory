@@ -80,7 +80,7 @@ test('the trash hits the clicked card, not the own one', async t => {
   const minifigs = async () =>
     (await db.all(`SELECT user_id FROM minifigs WHERE fig_number='sw0001' ORDER BY user_id`)).map(r => r.user_id);
 
-  assert.deepEqual(await parts(), [`${haupt}:5`, `${kind}:9`], 'Vorlage');
+  assert.deepEqual(await parts(), [`${haupt}:5`, `${kind}:9`], 'precondition');
 
   // Delete the CHILD's card.
   const a = await callFn(`/api/v2/parts/3001/4?owner=${kind}`, 'DELETE');
@@ -88,19 +88,19 @@ test('the trash hits the clicked card, not the own one', async t => {
   assert.deepEqual(
     await parts(),
     [`${haupt}:5`],
-    'Geklickt war die Karte des Unterkontos — genau die muss weg sein, und die eigene bleiben',
+    "The sub-account's card was clicked — exactly that one must be gone, and the own one must stay",
   );
 
   // Then the own one, without parameter (behavior as before).
   const b = await callFn('/api/v2/parts/3001/4', 'DELETE');
   assert.equal(b.status, 200, JSON.stringify(b.body));
-  assert.deepEqual(await parts(), [], 'Ohne owner das eigene Konto');
+  assert.deepEqual(await parts(), [], 'Without owner the own account');
 
   // The same for minifigures.
-  assert.deepEqual(await minifigs(), [haupt, kind], 'Vorlage Minifiguren');
+  assert.deepEqual(await minifigs(), [haupt, kind], 'minifigures precondition');
   const c = await callFn(`/api/v2/minifigs/sw0001?owner=${kind}`, 'DELETE');
   assert.equal(c.status, 200, JSON.stringify(c.body));
-  assert.deepEqual(await minifigs(), [haupt], 'Die Figur des Unterkontos muss weg sein');
+  assert.deepEqual(await minifigs(), [haupt], "The sub-account's figure must be gone");
 
   // ── The same when CHANGING ────────────────────────────────────────────────
   // If the main account changes the quantity on the child's card, its OWN
@@ -130,20 +130,20 @@ test('the trash hits the clicked card, not the own one', async t => {
   assert.deepEqual(
     await quantities(),
     [`${haupt}:5`, `${kind}:99`],
-    'Geändert werden muss die Karte des Unterkontos — die eigene bleibt',
+    "The sub-account's card must be changed — the own one stays",
   );
   assert.equal(
     await put(`/api/v2/parts/3020/0?owner=${fremd}`, 42),
     403,
-    'Ein Konto ausserhalb des Haushalts wird abgelehnt',
+    'An account outside the household is rejected',
   );
-  assert.deepEqual(await quantities(), [`${haupt}:5`, `${kind}:99`], 'und nichts angefasst');
+  assert.deepEqual(await quantities(), [`${haupt}:5`, `${kind}:99`], 'and nothing touched');
 
   // An account outside the household does not work — the parameter is a
   // statement of the view, not an access path.
   const d = await callFn(`/api/v2/minifigs/sw0001?owner=${fremd}`, 'DELETE');
-  assert.equal(d.status, 403, 'Fremdes Konto muss abgelehnt werden, nicht stillschweigend ignoriert');
-  assert.deepEqual(await minifigs(), [haupt], 'und nichts anfassen');
+  assert.equal(d.status, 403, 'A foreign account must be rejected, not silently ignored');
+  assert.deepEqual(await minifigs(), [haupt], 'and touch nothing');
 });
 
 /**
@@ -193,11 +193,11 @@ test('both valuations carry the owner along', async t => {
     ['/api/v2/finance/minifigs-valuation', 'figs', 'Minifiguren'],
   ]) {
     const zeilen = (await hole(path))[field] || [];
-    assert.equal(zeilen.length, 2, `${kind}: Vorlage hat zwei Einträge`);
+    assert.equal(zeilen.length, 2, `${kind}: precondition has two entries`);
     for (const z of zeilen) {
-      assert.ok(z.user_id, `${kind}: user_id fehlt — ohne das hängt withOwnerNames() nichts an`);
-      assert.equal(z.owners?.length, 1, `${kind}: genau eine Besitzer-Plakette erwartet`);
-      assert.equal(z.owners[0].id, z.user_id, `${kind}: Plakette muss zum Besitzer passen`);
+      assert.ok(z.user_id, `${kind}: user_id missing — without it withOwnerNames() attaches nothing`);
+      assert.equal(z.owners?.length, 1, `${kind}: exactly one owner badge expected`);
+      assert.equal(z.owners[0].id, z.user_id, `${kind}: badge must match the owner`);
     }
   }
 });

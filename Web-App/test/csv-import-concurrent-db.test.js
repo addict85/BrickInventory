@@ -73,16 +73,16 @@ test('two concurrent imports of the same table do not collide', { concurrency: 1
     assert.equal(
       gescheitert.length,
       0,
-      `beide Läufe müssen durchlaufen — gescheitert: ${gescheitert.map(r => r.reason.message).join(' | ')}`,
+      `both runs must complete — failed: ${gescheitert.map(r => r.reason.message).join(' | ')}`,
     );
 
     for (const r of results) {
-      assert.equal(r.status === 'fulfilled' && r.value, ROWS, 'jeder Lauf muss alle Zeilen gelesen haben');
+      assert.equal(r.status === 'fulfilled' && r.value, ROWS, 'every run must have read all rows');
     }
 
     // The final stock corresponds to exactly ONE run — no mixture, nothing missing.
     const n = (await db.get('SELECT count(*)::int AS n FROM rb_colors')).n;
-    assert.equal(n, ROWS, `Endbestand unvollständig: ${n} statt ${ROWS} Zeilen`);
+    assert.equal(n, ROWS, `Final stock incomplete: ${n} instead of ${ROWS} rows`);
   } finally {
     await db.run(`DROP TABLE IF EXISTS rb_colors_import`).catch(() => {});
     await db.run(`DELETE FROM rb_colors`).catch(() => {});

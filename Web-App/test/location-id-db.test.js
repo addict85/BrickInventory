@@ -80,21 +80,21 @@ test('storage location as an ID against a real database', async t => {
     // „estrich" stood here, and with that the assignment was from then on a different
     // string than the entry it was chosen from.
     const n = await L.setLocation('set', writable, ['10179-1'], 'estrich');
-    assert.equal(n, 1, `${n} Zeilen getroffen, erwartet 1`);
+    assert.equal(n, 1, `${n} rows hit, expected 1`);
     assert.equal(
       await ortAmSet('10179-1'),
       'Estrich',
-      'Das Set trägt eine eigene Schreibweise — dann ist es nicht derselbe Ort',
+      'The set carries its own spelling — then it is not the same location',
     );
     const locations = (await L.locationsOf([UID])).map(o => o.name);
     assert.deepEqual(
       locations,
       ['Estrich'],
-      `Der Vorrat hat ${locations.length} Einträge: ${locations} — „estrich" hat einen zweiten angelegt`,
+      `The stock has ${locations.length} entries: ${locations} — „estrich“ created a second one`,
     );
     const id = (await db.get('SELECT storage_id FROM sets WHERE user_id=$1 AND set_number=$2', [UID, '10179-1']))
       .storage_id;
-    assert.equal(parseInt(String(id), 10), estrich.id, 'Die Zeile zeigt nicht auf den Eintrag im Vorrat');
+    assert.equal(parseInt(String(id), 10), estrich.id, 'The row does not point to the entry in the stock');
   });
 
   await t.test('renaming works without a single line of follow-up work', async () => {
@@ -102,11 +102,7 @@ test('storage location as an ID against a real database', async t => {
     // a loop over three tables in one transaction — and that
     // compared character by character, so it did not hit „estrich".
     await L.renameStorage(UID, estrich.id, 'Dachboden');
-    assert.equal(
-      await ortAmSet('10179-1'),
-      'Dachboden',
-      'Das Set steht im alten Ort — das Umbenennen war ein Verlieren',
-    );
+    assert.equal(await ortAmSet('10179-1'), 'Dachboden', 'The set is in the old location — the rename was a loss');
   });
 
   await t.test('an occupied place cannot be deleted', async () => {
@@ -116,19 +112,19 @@ test('storage location as an ID against a real database', async t => {
     await assert.rejects(
       () => L.deleteStorage(UID, estrich.id),
       (/** @type {any} */ e) => String(e.code) === 'storage_in_use',
-      'Ein belegter Ort liess sich loeschen',
+      'An occupied location could be deleted',
     );
     assert.deepEqual(
       (await L.locationsOf([UID])).map(o => o.name),
       ['Dachboden'],
-      'Die Auswahlliste ist leer, das Set zeigt aber weiter auf einen Ort',
+      'The selection list is empty, but the set still points to a location',
     );
   });
 
   await t.test('clearing sets the ID to NULL', async () => {
     // Empty and NULL are the same: „not captured" (reasoning in 0018).
     await L.setLocation('set', writable, ['10179-1'], null);
-    assert.equal(await ortAmSet('10179-1'), null, 'Das Leeren hat nichts entfernt');
+    assert.equal(await ortAmSet('10179-1'), null, 'Clearing removed nothing');
     // And now deleting works, because nothing lies in it any more.
     await L.deleteStorage(UID, estrich.id);
     assert.deepEqual(await L.locationsOf([UID]), []);
@@ -141,12 +137,8 @@ test('storage location as an ID against a real database', async t => {
     // rollback. Without it a place would stand in the list after every typo.
     const vorher = (await L.locationsOf([UID])).length;
     const n = await L.setLocation('set', writable, ['99999-1'], 'Geisterkiste');
-    assert.equal(n, 0, 'Ein Set, das es nicht gibt, wurde angeblich geaendert');
-    assert.equal(
-      (await L.locationsOf([UID])).length,
-      vorher,
-      'Der Fehlversuch hat „Geisterkiste" im Vorrat hinterlassen',
-    );
+    assert.equal(n, 0, 'A set that does not exist was supposedly changed');
+    assert.equal((await L.locationsOf([UID])).length, vorher, 'The failed attempt left „Geisterkiste“ in the stock');
   });
 
   await db.pool.end().catch(() => {});

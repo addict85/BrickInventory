@@ -54,6 +54,6 @@ test('a compartment stays, own compartments per factory', () => {
   createCatalog(abh, x => k.push(x));
   createCatalog(abh, x => k.push(x));
   const [k1, k2] = k;
-  k1.faecher.slot('themenbaum', () => ({ n: 1 })).n = 2;
-  assert.equal(k2.faecher.slot('themenbaum', () => ({ n: 1 })).n, 1);
+  k1.compartments.slot('themenbaum', () => ({ n: 1 })).n = 2;
+  assert.equal(k2.compartments.slot('themenbaum', () => ({ n: 1 })).n, 1);
 });

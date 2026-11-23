@@ -27,7 +27,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartColorChangeTest {
 
-    private val paths = PathServer("/api/v1/parts/3001/5/color" to """{"success":true}""")
+    private val paths = PathServer("/api/v2/parts/3001/5/color" to """{"success":true}""")
     private val t = TestServices(paths.onTick(), io = Dispatchers.Main)
 
     @Before
@@ -54,7 +54,7 @@ class PartColorChangeTest {
         vm().setPartColor("3001", 5, 11, owner = 7) { opened = it }
         assertTrue("reopened", opened != null)
         // The store fetches the color itself afterward; only the call is counted.
-        assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), paths.requestsTo("/color"))
+        assertEquals(listOf("PUT /api/v2/parts/3001/5/color?owner=7"), paths.requestsTo("/color"))
         val bodyBytes = paths.bodyBytes[paths.requests.indexOfFirst { "/color" in it }]
         assertTrue(bodyBytes, bodyBytes.contains("\"color_id\":11"))
         assertEquals("The screen opens with the new color", 11, opened)

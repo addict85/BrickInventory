@@ -130,13 +130,9 @@ test("price history: the main account sees the sub-account's acquisitions", { co
       assert.equal(r.status, 200, `${kind}: ${path} -> ${r.status}`);
       const b = await r.json();
       const n = b.by_condition?.N;
-      assert.ok(
-        n,
-        `${kind}: keine Zeile für „Neu" — die Erfassung des Unterkontos ` +
-          'wurde nicht gefunden (fehlendes Blickfeld)',
-      );
-      assert.ok(n.purchase_price > 0, `${kind}: der Kaufpreis des Unterkontos fehlt`);
-      assert.ok(n.pnl_pct != null, `${kind}: ohne Kaufpreis gibt es auch keine Prozentangabe`);
+      assert.ok(n, `${kind}: no row for „Neu" — the sub-account's acquisition ` + 'was not found (missing scope)');
+      assert.ok(n.purchase_price > 0, `${kind}: the sub-account's purchase price is missing`);
+      assert.ok(n.pnl_pct != null, `${kind}: without a purchase price there is no percentage either`);
     }
 
     // Opposite direction: with accounts=own the main account explicitly looks only
@@ -149,7 +145,7 @@ test("price history: the main account sees the sub-account's acquisitions", { co
       assert.equal(
         b.by_condition?.N,
         undefined,
-        `${kind}: mit accounts=own darf die Erfassung des Unterkontos nicht mitzählen`,
+        `${kind}: with accounts=own the sub-account's acquisition must not count`,
       );
     }
   } finally {

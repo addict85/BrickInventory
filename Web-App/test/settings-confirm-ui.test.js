@@ -36,7 +36,7 @@ test('registration asks for the password', async () => {
     const field = d.getElementById('reg-enabled');
     field.checked = true;
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => openDialog(d)), 'kein Dialog');
+    assert.ok(await warte(() => openDialog(d)), 'no dialog');
     d.getElementById('cd-pw').value = 'Chef-Passwort-1';
     d.getElementById('cd-confirm').click();
     await warte(() => posts(aufrufe).length === 2);
@@ -56,11 +56,11 @@ test('cancel takes back the checkmark', async () => {
     const field = d.getElementById('reg-enabled');
     field.checked = true;
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => openDialog(d)), 'kein Dialog');
+    assert.ok(await warte(() => openDialog(d)), 'no dialog');
     d.getElementById('cd-cancel').click();
     await warte(() => !openDialog(d));
     await warte(() => !field.checked, 500);
-    assert.equal(field.checked, false, 'das Häkchen bleibt nach Abbrechen stehen');
+    assert.equal(field.checked, false, 'the tick stays after cancelling');
     assert.equal(posts(aufrufe).length, 1);
   } finally {
     w.close();
@@ -73,7 +73,7 @@ test('the API key asks for the password', async () => {
     await reiter(w, 'settings');
     d.getElementById('rb-key').value = 'neuer-schluessel';
     d.getElementById('btn-sav-rb').click();
-    assert.ok(await warte(() => openDialog(d)), 'kein Dialog');
+    assert.ok(await warte(() => openDialog(d)), 'no dialog');
     d.getElementById('cd-pw').value = 'Chef-Passwort-1';
     d.getElementById('cd-confirm').click();
     await warte(() => posts(aufrufe).length === 2);

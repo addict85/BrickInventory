@@ -179,7 +179,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     const zeilen = ohne.recording.map(z => z.row);
     assert.ok(
       zeilen.some(z => /^EHLO/i.test(z)),
-      'Der Mailer hat den Server gar nicht erreicht',
+      'The mailer did not reach the server at all',
     );
     assert.deepEqual(
       zeilen.filter(z => /^(AUTH|MAIL FROM|DATA)/i.test(z) || z.includes('token=')),
@@ -268,7 +268,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     assert.deepEqual(asked, ['mail.fake.test']);
     assert.equal(r.code, 'smtp_error');
     assert.match(r.vars.reason, /keine erlaubte Adresse/);
-    assert.equal(ohne.recording.length, beforeRows, 'kein Verbindungsversuch');
+    assert.equal(ohne.recording.length, beforeRows, 'no connection attempt');
   });
 
   await t.test('a name that resolves to an allowed address: the connection goes to the checked address', async () => {

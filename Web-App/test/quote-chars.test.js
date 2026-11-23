@@ -48,7 +48,7 @@ test('every „ has its “, and English has no straight quotes around words', a
   try {
     const de = Object.entries(w.I18N_DE),
       en = Object.entries(w.I18N_EN);
-    assert.ok(de.length > 500 && en.length > 500, 'Wörterbücher nicht geladen');
+    assert.ok(de.length > 500 && en.length > 500, 'dictionaries not loaded');
     const deWrong = de.filter(
       ([, v]) => (v.match(/„/g) || []).length !== (v.match(/“/g) || []).length || /„[^“]*"/.test(v),
     );
@@ -61,7 +61,7 @@ test('every „ has its “, and English has no straight quotes around words', a
     assert.deepEqual(
       enWrong.map(([k]) => k),
       [],
-      'en: gerade oder deutsche Anführungszeichen',
+      'en: straight or German quotation marks',
     );
   } finally {
     w.close();

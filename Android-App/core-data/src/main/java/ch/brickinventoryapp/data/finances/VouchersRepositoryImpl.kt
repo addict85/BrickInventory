@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.finances
 
-import ch.brickinventoryapp.contract.GuthabenAntwort
-import ch.brickinventoryapp.contract.GutscheinAntwort
-import ch.brickinventoryapp.contract.GutscheinRequest
-import ch.brickinventoryapp.contract.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.contract.BalanceReply
+import ch.brickinventoryapp.contract.SecondFactorRequest
+import ch.brickinventoryapp.contract.VoucherReply
+import ch.brickinventoryapp.contract.VoucherRequest
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.api.VouchersApi
 import ch.brickinventoryapp.data.collection.asRequest
@@ -92,13 +92,13 @@ internal class VouchersRepositoryImpl @Inject constructor(
                 (raw ?: "").toResponseBody("application/json".toMediaType()))
         }
         val parsed = raw?.let {
-            runCatching { json.decodeFromString<GuthabenAntwort>(it) }.getOrNull()
+            runCatching { json.decodeFromString<BalanceReply>(it) }.getOrNull()
         }
         if (parsed != null) retrofit2.Response.success(parsed)
         else retrofit2.Response.error(response.code(), (raw ?: "").toResponseBody("application/json".toMediaType()))
     }.mapData {
-        BalanceInfo(success = it.success && it.voucher != null, voucher = it.voucher?.asView(), displayed = it.angezeigt,
-            currencyChanged = it.waehrungGeaendert, reason = it.grund, waitSec = it.wartenSek, error = it.error)
+        BalanceInfo(success = it.success && it.voucher != null, voucher = it.voucher?.asView(), displayed = it.displayed,
+            currencyChanged = it.currencyChanged, reason = it.reason, waitSec = it.waitSeconds, error = it.error)
     }
 
     /**
@@ -133,17 +133,17 @@ internal class VouchersRepositoryImpl @Inject constructor(
                 // An error with sentence and code, otherwise it would say „read incompletely“.
                 val toLang = ErrorBody.read(raw).errorCode == ErrorCode.PDF_TOO_MANY_PAGES
                 val parsed = raw?.takeIf { !toLang }?.let {
-                    runCatching { json.decodeFromString<GutscheinAntwort>(it) }.getOrNull()
+                    runCatching { json.decodeFromString<VoucherReply>(it) }.getOrNull()
                 }
                 when {
                     parsed != null -> retrofit2.Response.success(parsed)
-                    toLang -> retrofit2.Response.error<GutscheinAntwort>(response.code(), (raw ?: "").toResponseBody("application/json".toMediaType()))
+                    toLang -> retrofit2.Response.error<VoucherReply>(response.code(), (raw ?: "").toResponseBody("application/json".toMediaType()))
                     else -> response
                 }
             } else response
         }.mapData { a ->
-            if (a.success) VoucherStorage.Saved(a.mehrere?.added, a.mehrere?.updated)
-            else a.gelesen.let { g -> VoucherStorage.Incomplete(g?.number, g?.pin, g?.amount.asMoney(), g?.currency) }
+            if (a.success) VoucherStorage.Saved(a.multiple?.added, a.multiple?.updated)
+            else a.parsed.let { g -> VoucherStorage.Incomplete(g?.number, g?.pin, g?.amount.asMoney(), g?.currency) }
         }
     }
 
@@ -163,7 +163,7 @@ internal class VouchersRepositoryImpl @Inject constructor(
         /** The limit per account shares the code with the general throttle; only `reason` distinguishes. */
         private fun isAccountLimit(raw: String?): Boolean = runCatching {
             val o = org.json.JSONObject(raw ?: return false)
-            ErrorCode.from(o.optString("code")) == ErrorCode.TOO_MANY_REQUESTS && o.optString("grund") == "konto"
+            ErrorCode.from(o.optString("code")) == ErrorCode.TOO_MANY_REQUESTS && o.optString("reason") == "konto"
         }.getOrDefault(false)
     }
 
@@ -173,9 +173,9 @@ internal class VouchersRepositoryImpl @Inject constructor(
 }
 
 /** A refusal when creating or changing is an error with the server's sentence. */
-private fun Outcome<GutscheinAntwort>.saved(): Outcome<VoucherStorage> =
-    promised({ it.success }, { it.error }) { VoucherStorage.Saved(it.mehrere?.added, it.mehrere?.updated) }
+private fun Outcome<VoucherReply>.saved(): Outcome<VoucherStorage> =
+    promised({ it.success }, { it.error }) { VoucherStorage.Saved(it.multiple?.added, it.multiple?.updated) }
 
-private fun VoucherInfo.asRequest() = GutscheinRequest(number = number, pin = pin, amount = amount.asDouble(), currency = currency)
+private fun VoucherInfo.asRequest() = VoucherRequest(number = number, pin = pin, amount = amount.asDouble(), currency = currency)
 
-private fun Confirmation.asRequest() = ZweiterFaktorAnfrage(password = password, code = code)
+private fun Confirmation.asRequest() = SecondFactorRequest(password = password, code = code)

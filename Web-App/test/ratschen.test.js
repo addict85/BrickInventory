@@ -285,7 +285,12 @@ function routesMatchContexts() {
   // src/collection/deletion.ts (with `export const readSets = …` in src/sets/index.ts) → red (1 facade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
-  const FETCHER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
+  // A module-level `const x = getter<XServices>(…)` is such a store, whatever the getter is called.
+  const FETCHER = /^\s*(?:export\s+)?(?:const|let)\s+\w+\s*=\s*\w+<\w*Services>\s*\(/m;
+  assert.ok(
+    FETCHER.test("export const sets = processSlot<SetsServices>('sets');"),
+    'self-proof: a process slot is recognised',
+  );
   const fetcher = sources().filter(f => FETCHER.test(ohneKommentare(fs.readFileSync(f, 'utf8'))));
   assert.deepEqual(
     fetcher.map(f => path.relative(WEB, f)),
@@ -428,16 +433,16 @@ test('any in all forms, unknown parameters and success in services become fewer,
   // (src/contract, src/infra, src/http) and error parameters.
   // Counter-check (11.11.2026): `condition: unknown` back in deleteAlarmOfSets → red (75).
   const LIMIT_UNKNOWN = 61;
-  const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
+  const PATTERN = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(
-    ('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length,
+    ('f(a: unknown, b?: unknown = 1)'.match(PATTERN) || []).length + ('catch (e: unknown)'.match(PATTERN) || []).length,
     2,
   );
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const RAW = /[\\/]src[\\/](?:contract|infra|http)[\\/]/;
   const unbekannt = sources()
     .filter(f => /[\\/]src[\\/]/.test(f) && !RAW.test(f))
-    .reduce((n, f) => n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(MUSTER) || []).length, 0);
+    .reduce((n, f) => n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(PATTERN) || []).length, 0);
   assert.ok(unbekannt > 20, `only ${unbekannt} unknown parameters found — does the search still apply?`);
   assert.ok(
     unbekannt <= LIMIT_UNKNOWN,
@@ -458,7 +463,7 @@ test('direct clock calls in domain areas become fewer, never more', () => {
   const CLOCK = /\bDate\.now\(\)|\bnew Date\(\)/g;
   assert.equal('Date.now(); new Date(); new Date(x); k.uhr.jetzt()'.match(CLOCK)?.length, 2, 'Selbstbeweis');
   const domainArea = (/** @type {string} */ f) =>
-    /^(src[\\/](?!infra|http|vertrag)\w+|jobs)[\\/]/.test(path.relative(WEB, f));
+    /^(src[\\/](?!infra|http|contract)\w+|jobs)[\\/]/.test(path.relative(WEB, f));
   const ist = zaehle([CLOCK], domainArea);
   assert.ok(ist <= LIMIT, `${ist} direct clock calls in domain areas and jobs, allowed are ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ Uhr-Aufrufe: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
@@ -784,7 +789,7 @@ test('test cases that only read source text become fewer, never more', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'self-proof: a mere await runs nothing, a function of the file and a built module do',
   );
-  const LIMIT = 296;
+  const LIMIT = 295;
   const { n, all: alle, readers } = sourceTextCases();
   assert.ok(alle > 1500, `only ${alle} test cases found — does the search still apply?`);
   assert.ok(
@@ -865,7 +870,7 @@ test('tests use the real setup: no DB facade, substitute paths become fewer', ()
 
 /**
  * Web tests read no Android source text: what the app needs from the server stands in
- * shared/app-schnittstelle.json (generated from its source text and checked in the Android run);
+ * shared/app-interface.json (generated from its source text and checked in the Android run);
  * what only concerns the app is checked by the Android suite. The helpers are counted too.
  */
 const READS_ANDROID = /require\(['"]\.\/helpers\/android['"]\)|['"`]Android-App['"`/]|\.kt['"`]/;
@@ -885,7 +890,7 @@ test('web tests do not read Android source code', () => {
   assert.ok(
     readsOnly.length <= LIMIT,
     `${readsOnly.length} web test files read Android sources, allowed are ${LIMIT}: ${readsOnly.join(', ')}. ` +
-      'Check the server against shared/app-schnittstelle.json; what only concerns the app belongs in the Android suite.',
+      'Check the server against shared/app-interface.json; what only concerns the app belongs in the Android suite.',
   );
 });
 
@@ -954,7 +959,7 @@ test('fixed waits in tests become fewer, never more', () => {
     2,
     'self-proof: the pause after a statement and the wrapped one count, loops and short ones do not',
   );
-  const OWN = /^\s*const (warte|takt|sleep|schlafe)\s*=/;
+  const OWN = /^\s*const (warte|takt|sleep|schlafe|wait|delay)\s*=/;
   let ist = 0;
   const eigene = [];
   for (const n of fs.readdirSync(__dirname).filter(x => x.endsWith('.js'))) {
@@ -1627,14 +1632,28 @@ test('paths named in test comments exist', () => {
 });
 
 // ---- Language of the code: German identifiers per area ---------------------
+// The server has a fixed ban; the test area still counts down.
 // Counter-checks (22.11.2026): `const fehlerZahl = 1;` added to src/infra/config.ts
-// → "server" red (953 > 952); the word list emptied → the sample check red;
-// `'Fehler'` only as a string → stays green (texts are not code).
-test('German identifiers become fewer, never more (server and tests separately; public/ has its ban)', () => {
+// → "server" red (fehlerZahl); `const liesPause = 1;` there → red (the extended word
+// list knows `lies`); `zeit` removed from STORED → red (src/images/imageDemandRun.ts);
+// the word list emptied → the sample check red; `'Fehler'` only as a string → green.
+// The helper reads nested templates and regex literals (samples below): before, both hid code.
+test('German identifiers: none in the server, fewer and fewer in the tests', () => {
   const { germanIdentifiers, isGerman } = require('./helpers/german-identifiers');
   assert.ok(isGerman('backInDieTable') && isGerman('preiseNachladen') && isGerman('ladeAn'), 'Stichprobe deutsch');
+  assert.ok(isGerman('liesPause') && isGerman('fetchesJeMinute') && isGerman('planeNext'), 'sample German (round 31)');
   assert.ok(!isGerman('importStatus') && !isGerman('jobKinds') && !isGerman('settable'), 'Stichprobe englisch');
   assert.equal(germanIdentifiers("const x = 'Fehler'; // Fehler").size, 0, 'texts and comments do not count');
+  assert.deepEqual(
+    [...germanIdentifiers('const a = `x ${`y ${"z"}`} w`; const fehlerZahl = 1;')],
+    ['fehlerZahl'],
+    'a nested template does not end the outer one',
+  );
+  assert.deepEqual(
+    [...germanIdentifiers("const r = /'/; const fehlerZahl = 1;")],
+    ['fehlerZahl'],
+    'regex with a quote',
+  );
   const SKIP = new Set(['node_modules', 'dist', 'coverage', 'data', 'vendor', '.git']);
   const files = (/** @type {string} */ d, /** @type {string[]} */ out = []) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -1648,30 +1667,82 @@ test('German identifiers become fewer, never more (server and tests separately; 
   const SERVER = ['src', 'routes', 'db', 'clients', 'startup', 'jobs', 'scripts'].filter(d =>
     fs.existsSync(path.join(WEB, d)),
   );
-  const AREAS = {
-    server: [path.join(WEB, 'server.ts'), ...SERVER.flatMap(d => files(path.join(WEB, d)))],
-    test: files(__dirname),
+  /** Dictionaries of names that are not ours: v1 and the Kotlin types (Android), and the keys of
+   * shared/design-tokens.json, which the Android build reads as well. */
+  const NOT_OUR_FILES = new Set(['scripts/contract-kotlin-mapping.js', 'scripts/generate-design-tokens.js']);
+  /** German names the server does not own, per group; each one is a value that lives outside the code. */
+  const NOT_OURS = {
+    /** Stored: database columns, JSON keys in run_state, job payloads, setting keys, session fields,
+     * trash kinds. Renaming them voids what is already stored. */
+    STORED: [
+      'pruefsumme',
+      'sitzungsVersion',
+      'angemeldetAm',
+      'eingabe',
+      'nur_ausweichquelle',
+      'versuch',
+      'schritt',
+      'geheimnisse',
+      'vorschauen',
+      'katalog',
+      'anleitungen',
+      'set_bilder',
+      'kaufpreise',
+      'einrichtung_erledigt',
+      'gutschein_land',
+      'figur',
+      'teil',
+      'nummern',
+      'zeit',
+      'ergebnis',
+      // Payloads of queued jobs: csv_import (lauf, rows[].error.wert), price_refresh (items[].farbe).
+      'lauf',
+      'wert',
+      'farbe',
+    ],
+    /** On the wire: a field the UI reads (contract.d.ts does not list it), a QR validity older pages send. */
+    WIRE: ['abdeckung', 'unbegrenzt'],
+    /** Names of others: Node's TLS option, operator environment variables, the keys of the JSON log
+     * line (README) and of the security events in it, which log tools read. */
+    EXTERNAL: ['servername', 'DB_LESEN_USER', 'TEST_NACHLAUF', 'stufe', 'kontext', 'ereignis', 'konto', 'zugang'],
   };
-  // Distinct names per area; the goal for "server" is 0.
-  const LIMITS = { server: 530, test: 980 };
-  for (const [area, list] of Object.entries(AREAS)) {
-    const found = new Set();
-    for (const f of list) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) found.add(id);
-    const limit = LIMITS[/** @type {keyof typeof LIMITS} */ (area)];
-    assert.ok(found.size <= limit, `${found.size} German identifiers in ${area}, allowed are ${limit}`);
-    if (found.size < limit)
-      console.log(`  ℹ deutsche Bezeichner ${area}: ${found.size} (Schranke ${limit}) — Schranke nachziehen`);
-  }
+  const exempt = new Set(Object.values(NOT_OURS).flat());
+  const server = [path.join(WEB, 'server.ts'), ...SERVER.flatMap(d => files(path.join(WEB, d)))].filter(
+    f => !NOT_OUR_FILES.has(path.relative(WEB, f).split(path.sep).join('/')),
+  );
+  /** @type {Map<string, string>} */
+  const found = new Map();
+  const seen = new Set();
+  for (const f of server)
+    for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) {
+      seen.add(id);
+      if (!exempt.has(id) && !found.has(id)) found.set(id, path.relative(WEB, f));
+    }
+  assert.deepEqual(
+    [...found].map(([id, f]) => `${f}: ${id}`),
+    [],
+    'identifiers in the server in English; a stored or foreign name belongs in NOT_OURS, with a reason',
+  );
+  const unused = [...exempt].filter(id => !seen.has(id));
+  assert.deepEqual(unused, [], 'exception without an occurrence — remove it from NOT_OURS');
+
+  // Distinct names in the test area; the goal is 0.
+  const LIMIT_TEST = 810;
+  const inTests = new Set();
+  for (const f of files(__dirname)) for (const id of germanIdentifiers(fs.readFileSync(f, 'utf8'))) inTests.add(id);
+  assert.ok(inTests.size <= LIMIT_TEST, `${inTests.size} German identifiers in test, allowed are ${LIMIT_TEST}`);
+  if (inTests.size < LIMIT_TEST)
+    console.log(`  ℹ deutsche Bezeichner test: ${inTests.size} (Schranke ${LIMIT_TEST}) — Schranke nachziehen`);
 });
 
 test('German assertion messages become fewer, never more', () => {
   // Tests speak English (CLAUDE.md), as on Android; texts users read stay German and count only outside „…“.
-  // Counter-check: `assert.ok(1, 'Die Liste fehlt')` added to app-scrollbar.test.js → red (5568 of 5567).
+  // Counter-check: `assert.ok(1, 'Die Liste fehlt')` added to app-scrollbar.test.js → red (62 of 61).
   const { messages, isGermanMessage, germanMessages } = require('./helpers/assert-messages');
   assert.ok(messages(`assert${'.'}ok(x, 'Die Liste fehlt')`).some(isGermanMessage), 'self-proof: a German message');
   assert.ok(!isGermanMessage("'the list is missing'"), 'self-proof: an English message');
   assert.deepEqual(messages("assert.equal(title, 'Galerie')"), [], 'an expected value is no message');
-  const LIMIT = 5567;
+  const LIMIT = 61;
   const found = germanMessages(__dirname);
   assert.ok(found.length <= LIMIT, `${found.length} German assertion messages, allowed are ${LIMIT}`);
   if (found.length < LIMIT)

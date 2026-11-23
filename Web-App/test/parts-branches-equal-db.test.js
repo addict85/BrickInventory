@@ -71,12 +71,12 @@ test('both paths of the parts list deliver the same types', async t => {
 
     // ── Path 1: the live query (no summary yet) ───────────────
     const live = await H.partsQuery(U, abfrage);
-    assert.equal(live.source, 'db', 'ohne Zusammenfassung muss die Live-Abfrage antworten');
+    assert.equal(live.source, 'db', 'without a summary the live query must answer');
 
     // ── Path 2: the summary ─────────────────────────────────────────
     await PS.rebuildNow(U);
     const zsf = await H.partsQuery(U, abfrage);
-    assert.equal(zsf.source, 'summary', 'nach dem Aufbau muss die Zusammenfassung antworten');
+    assert.equal(zsf.source, 'summary', 'after building, the summary must answer');
 
     // ── The rule: same fields, same types ───────────────────────────
     const typ = v => (v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v);
@@ -84,8 +84,8 @@ test('both paths of the parts list deliver the same types', async t => {
     const a = nach(live.parts),
       b = nach(zsf.parts);
 
-    assert.ok(a.size > 0, 'die Live-Abfrage lieferte keine Teile — dann prüft der Vergleich nichts');
-    assert.deepEqual([...a.keys()].sort(), [...b.keys()].sort(), 'beide Wege müssen dieselben Teile liefern');
+    assert.ok(a.size > 0, 'the live query returned no parts — then the comparison checks nothing');
+    assert.deepEqual([...a.keys()].sort(), [...b.keys()].sort(), 'both paths must return the same parts');
 
     const deviations = [];
     for (const [schluessel, links] of a) {
@@ -104,9 +104,9 @@ test('both paths of the parts list deliver the same types', async t => {
     assert.deepEqual(
       deviations,
       [],
-      'Der JSON-Typ eines Feldes darf nicht davon abhängen, welcher Zweig antwortet — ' +
-        'ein Client, der den einen Typ erwartet, scheitert sonst genau dann, wenn die ' +
-        'Zusammenfassung zum ersten Mal frisch ist:\n  ' +
+      'The JSON type of a field must not depend on which branch answers — ' +
+        'a client expecting one type otherwise fails exactly when the ' +
+        'summary is fresh for the first time:\n  ' +
         deviations.join('\n  '),
     );
 
@@ -121,13 +121,13 @@ test('both paths of the parts list deliver the same types', async t => {
         assert.equal(
           typeof p.is_spare,
           'boolean',
-          `${name}: is_spare ist ${typeof p.is_spare} (${JSON.stringify(p.is_spare)}) statt boolean — ` +
-            'genau daran ist die Teileliste der App gescheitert',
+          `${name}: is_spare is ${typeof p.is_spare} (${JSON.stringify(p.is_spare)}) instead of boolean — ` +
+            "exactly that is where the app's parts list failed",
         );
 
     // And the value is right too: 3002 is the spare part.
-    assert.equal(b.get('3002|1').is_spare, true, 'das Ersatzteil muss als true herauskommen');
-    assert.equal(b.get('3001|5').is_spare, false, 'das gewöhnliche Teil muss als false herauskommen');
+    assert.equal(b.get('3002|1').is_spare, true, 'the spare part must come out as true');
+    assert.equal(b.get('3001|5').is_spare, false, 'the ordinary part must come out as false');
   } finally {
     await aufraeumen();
     await db.run('DELETE FROM users WHERE id=$1', [U]).catch(() => {});

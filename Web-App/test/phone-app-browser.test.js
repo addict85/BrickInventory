@@ -174,8 +174,8 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
         schrift.push(...m.schrift.map(k => `${r}: ${k}`));
       }
     }
-    assert.deepEqual([...new Set(klein)], [], 'Tippziele unter 44 × 44 px');
-    assert.deepEqual([...new Set(schrift)], [], 'Text unter 12 px');
+    assert.deepEqual([...new Set(klein)], [], 'tap targets below 44 × 44 px');
+    assert.deepEqual([...new Set(schrift)], [], 'text below 12 px');
   });
 
   await t.test('skip link and exactly one h1 per tab', async () => {
@@ -197,11 +197,11 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
         .find(x => x.tabIndex >= 0 && !x.disabled && x.getClientRects().length > 0);
       e.focus(); const r = e.getBoundingClientRect();
       return { klasse: e.className, text: e.textContent.trim(), oben: r.top, hoehe: r.height }; })()`);
-    assert.equal(fokus.klasse, 'skip-link', `Erster Tab-Halt: ${JSON.stringify(fokus)}`);
+    assert.equal(fokus.klasse, 'skip-link', `first tab stop: ${JSON.stringify(fokus)}`);
     assert.equal(fokus.text, 'Zum Inhalt');
     assert.ok(
       fokus.oben >= 0 && fokus.hoehe >= 24,
-      `Der Sprunglink ist mit Fokus nicht sichtbar: ${JSON.stringify(fokus)}`,
+      `The skip link is not visible with focus: ${JSON.stringify(fokus)}`,
     );
     await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
@@ -219,10 +219,10 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
                navRows: new Set([...document.querySelectorAll('.settings-nav a')].map(a => Math.round(a.getBoundingClientRect().top))).size,
                navHoehe: Math.round(nav.height), pagesWidth: document.documentElement.scrollWidth }; })()`);
     const vorher = await state();
-    assert.equal(vorher.sichtbar.length, 1, `sichtbar: ${vorher.sichtbar}`);
+    assert.equal(vorher.sichtbar.length, 1, `visible: ${vorher.sichtbar}`);
     assert.equal(vorher.current, vorher.sichtbar[0]);
-    assert.equal(vorher.navRows, 1, 'am Telefon steht die Leiste in einer Zeile');
-    assert.ok(vorher.pagesWidth <= 390, `Seite ${vorher.pagesWidth} px breit`);
+    assert.equal(vorher.navRows, 1, 'on the phone the bar is on one line');
+    assert.ok(vorher.pagesWidth <= 390, `page ${vorher.pagesWidth} px wide`);
     await b.auswerten(`document.querySelector('.settings-nav a[data-arg="settings-smtp"]').click(); true`);
     await ruhig();
     const nachher = await state();
@@ -238,9 +238,9 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
       return { text: s.innerText.trim(), current: s.getAttribute('aria-current'),
                partsVisible: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
     // The place is always called „Sammlung“; which view is open is told by the toggle at the top.
-    assert.equal(telefon.text, 'Sammlung', 'Der erste Platz der Leiste wechselt seinen Namen');
+    assert.equal(telefon.text, 'Sammlung', 'The first place in the bar changes its name');
     assert.equal(telefon.current, 'page');
-    assert.equal(telefon.partsVisible, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
+    assert.equal(telefon.partsVisible, false, 'On the phone only five targets fit into the bar');
     // On the computer ONE navigation: „Sammlung“ in the bar, sets/parts/
     // minifigures only in the toggle on the page (before, both).
     await b.tab('Emulation.setDeviceMetricsOverride', {
@@ -278,10 +278,10 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     assert.deepEqual(
       { schmal: raster.schmal, scattered: raster.scattered, breit: raster.breit },
       { schmal: 0, scattered: 0, breit: 0 },
-      'Farbüberschrift nicht über die volle Breite, oder die Teile stehen nicht im Raster',
+      'Colour heading not across the full width, or the parts are not in the grid',
     );
     const sichtbar = id => `document.getElementById('${id}').getClientRects().length > 0`;
-    assert.equal(await b.auswerten(sichtbar('parts-spare')), false, 'Die Auswahlfelder stehen offen da');
+    assert.equal(await b.auswerten(sichtbar('parts-spare')), false, 'The select fields are shown openly');
     await b.auswerten(`document.querySelector('#tab-parts .filter-button').click(); true`);
     const open = await b.auswerten(`(() => ({
       erweitert: document.querySelector('#tab-parts .filter-button').getAttribute('aria-expanded'),
@@ -290,7 +290,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
         .map(x => Math.round(x.getBoundingClientRect().width)) }))()`);
     assert.equal(open.erweitert, 'true');
     assert.equal(open.sichtbar, true);
-    assert.equal(new Set(open.breiten).size, 1, `ungleich breite Felder: ${open.breiten}`);
+    assert.equal(new Set(open.breiten).size, 1, `fields of unequal width: ${open.breiten}`);
     await b.auswerten(`document.querySelector('#tab-parts .filter-button').click(); true`);
   });
 
@@ -316,8 +316,8 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
       const m = await messen();
       // On the phone the fields wrap; there only the equal height counts.
       const row = mobileView ? m : m.filter(x => x.oben === m[0].oben);
-      assert.equal(row.length, m.length, `${breite} px: nicht in einer Zeile ${JSON.stringify(m)}`);
-      assert.equal(new Set(m.map(x => x.hoehe)).size, 1, `${breite} px: Höhen ${JSON.stringify(m)}`);
+      assert.equal(row.length, m.length, `${breite} px: not on one line ${JSON.stringify(m)}`);
+      assert.equal(new Set(m.map(x => x.hoehe)).size, 1, `${breite} px: heights ${JSON.stringify(m)}`);
     }
   });
 
@@ -343,10 +343,10 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     // Set detail: delete stands behind „Weitere Aktionen“, the price alert in
     // a row of its own across the full width.
     const sichtbar = sel => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;
-    assert.equal(await b.auswerten(sichtbar('#btn-md')), false, 'Löschen steht offen im Fuss');
+    assert.equal(await b.auswerten(sichtbar('#btn-md')), false, '„Löschen“ is shown openly in the footer');
     await b.auswerten(`document.querySelector('#set-modal .more-menu > summary').click(); true`);
     await ruhig();
-    assert.equal(await b.auswerten(sichtbar('#btn-md')), true, 'Löschen ist hinter „Weitere Aktionen“ nicht zu finden');
+    assert.equal(await b.auswerten(sichtbar('#btn-md')), true, '„Löschen“ cannot be found behind „Weitere Aktionen“');
     const alarm = await b.auswerten(`(() => {
       const zeile = document.querySelector('#set-modal .alert-row');
       const titel = zeile.querySelector('.dl').getBoundingClientRect();
@@ -370,9 +370,9 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
         currencyBeside: true,
         breite: true,
       },
-      `Preisalarm: ${JSON.stringify(alarm)}`,
+      `price alert: ${JSON.stringify(alarm)}`,
     );
-    assert.ok(alarm.hoehe >= 44, `Preisalarm-Felder ${alarm.hoehe} px hoch`);
+    assert.ok(alarm.hoehe >= 44, `price alert fields ${alarm.hoehe} px high`);
     await b.auswerten(`document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });
   await t.test('reduced motion: dialog and tab without animation', async () => {
@@ -391,11 +391,11 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     assert.ok(
       bewegt.dialog >= 0.15 && bewegt.reiter >= 0.15,
-      `ohne Einstellung keine Übergänge: ${JSON.stringify(bewegt)}`,
+      `without the setting no transitions: ${JSON.stringify(bewegt)}`,
     );
     assert.ok(
       ruhig.dialog < 0.001 && ruhig.reiter < 0.001,
-      `mit „weniger Bewegung“ trotzdem Animation: ${JSON.stringify(ruhig)}`,
+      `with „weniger Bewegung“ still an animation: ${JSON.stringify(ruhig)}`,
     );
   });
 });

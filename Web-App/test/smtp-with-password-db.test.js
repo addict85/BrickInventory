@@ -45,7 +45,7 @@ const mails = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _n, kind, o) => {
-    mails.push({ an, kind, konto: o.konto });
+    mails.push({ an, kind, konto: o.account });
     return { success: true };
   },
 });
@@ -139,11 +139,11 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       body: await x.json(),
     }));
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(await host(), 'mail.neu.example', 'smtp_host kam über den Import');
+    assert.equal(await host(), 'mail.neu.example', 'smtp_host came in via the import');
     assert.equal(
       (await db.get("SELECT value FROM global_settings WHERE key = 'smtp_insecure_tls'"))?.value,
       undefined,
-      'smtp_insecure_tls kam über den Import',
+      'smtp_insecure_tls came in via the import',
     );
     // The rest of the file arrives — otherwise the case would check an import that does nothing at all.
     assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'voucher_country'"))?.value, 'AT');

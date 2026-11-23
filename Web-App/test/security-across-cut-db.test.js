@@ -160,7 +160,7 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
     assert.deepEqual(
       inline.map(b => b.slice(0, 60)),
       [],
-      'script-src ohne unsafe-inline blockiert es',
+      'script-src without unsafe-inline blocks it',
     );
   });
 
@@ -205,10 +205,10 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
       }).then(async r => ({ status: r.status, body: await r.json() }));
     const vergeben = await register(NEU, MAIL.toUpperCase());
     assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
-    assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEU]), undefined, 'Konto angelegt');
+    assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEU]), undefined, 'account created');
     assert.ok(
       gesendet.some(m => m.to === MAIL),
-      'Der Inhaber bekommt keinen Hinweis',
+      'The owner gets no hint',
     );
     const neu = await register(NEU, `anders_${MAIL}`);
     assert.deepEqual(vergeben.body, neu.body);
@@ -226,7 +226,7 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
     const andere = `name_${MAIL}`;
     const vergeben = await register(NAME, andere);
     assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
-    assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [andere]), undefined, 'Konto angelegt');
+    assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [andere]), undefined, 'account created');
     assert.ok(
       gesendet.some(m => m.to === andere && /Benutzername schon vergeben/.test(m.subject)),
       gesendet.map(m => m.subject).join(' | '),

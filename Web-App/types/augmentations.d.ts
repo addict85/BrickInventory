@@ -16,7 +16,7 @@ declare module 'express-session' {
     /** Last request of an admin session, to the minute (src/account/sessionDeadline.ts). */
     lastlyAt?: number;
     /** Start password not yet replaced; undefined for sessions from before the field. */
-    mussPasswortAendern?: boolean;
+    mustChangePassword?: boolean;
     /** When the password was last entered in this session (ms); basis of the grace period. */
     passwordConfirmedAt?: number;
     /** users.session_version at login; if it differs, the session has ended. */
@@ -36,7 +36,7 @@ declare global {
         is_admin: boolean;
         username?: string;
         created_at?: string | Date;
-        muss_passwort_aendern?: boolean;
+        must_change_password?: boolean;
       };
       /** Set by requireLoginOrToken when authenticated via bearer/query token. */
       tokenUserId?: number;
@@ -63,7 +63,7 @@ declare global {
       is_admin: boolean;
       username?: string;
       created_at?: string | Date;
-      muss_passwort_aendern?: boolean;
+      must_change_password?: boolean;
     };
   };
 }

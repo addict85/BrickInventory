@@ -38,8 +38,8 @@ test('both versions attach the same', { concurrency: 1 }, async t => {
   t.after(() => db.pool.end().catch(() => {}));
   const alle = inputs();
   // Self-proof: the corpus delivers candidates, and both branches of the rule occur.
-  assert.ok(alle.length >= 40, `nur ${alle.length} Eingaben — liest der Test den Korpus noch?`);
-  assert.ok(alle.some(x => withVersion(x) === x) && alle.some(x => withVersion(x) !== x), 'beide Zweige');
+  assert.ok(alle.length >= 40, `only ${alle.length} inputs — does the test still read the corpus?`);
+  assert.ok(alle.some(x => withVersion(x) === x) && alle.some(x => withVersion(x) !== x), 'both branches');
   const zeilen = await db.all(
     'SELECT e AS ein, set_number_with_version(e) AS aus FROM unnest($1::text[]) WITH ORDINALITY AS u(e, i) ORDER BY i',
     [alle],

@@ -20,7 +20,7 @@ const { openUi, warte } = require('./helpers/ui');
 
 test('the aggregate rule now exists in only one place', () => {
   const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /function conditionAggregate/, 'Der gemeinsame Helfer fehlt');
+  assert.match(h, /function conditionAggregate/, 'The shared helper is missing');
   // Neither setsLesen()/readSet() nor the manual lists may ever phrase the rule
   // on their own — it stands in conditionFromAcquisitions().
   // Two parameters, not three: the third was the stored condition of the
@@ -37,7 +37,7 @@ test('the aggregate rule now exists in only one place', () => {
   assert.equal(
     inlineRules.length,
     1,
-    `Die Regel steht ${inlineRules.length}× im Code — sie gehört genau einmal in conditionFromAcquisitions()`,
+    `The rule appears ${inlineRules.length}× in the code — it belongs exactly once in conditionFromAcquisitions()`,
   );
 });
 
@@ -54,13 +54,9 @@ test('an unknown theme value resets nothing', () => {
   w.fetch = () => new Promise(() => {});
   w.eval(fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), 'utf8'));
   for (const wert of [undefined, null, '', 'gibtsnicht']) {
-    assert.equal(w.__bimApplyTheme(wert), null, `${wert} wurde als Design angenommen`);
-    assert.equal(
-      w.document.documentElement.getAttribute('data-theme'),
-      'brick',
-      `${wert} hat das Design zurückgesetzt`,
-    );
-    assert.equal(w.localStorage.getItem('bim_theme'), 'brick', `${wert} hat den Cache überschrieben`);
+    assert.equal(w.__bimApplyTheme(wert), null, `${wert} was accepted as a design`);
+    assert.equal(w.document.documentElement.getAttribute('data-theme'), 'brick', `${wert} reset the design`);
+    assert.equal(w.localStorage.getItem('bim_theme'), 'brick', `${wert} overwrote the cache`);
   }
   w.close();
 });
@@ -78,7 +74,7 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   assert.match(
     fc,
     /export async function conditionOfSet\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
-    'Der Helfer muss exportiert sein',
+    'The helper must be exported',
   );
 
   // Both callers must really import it, not put an own
@@ -100,7 +96,7 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   // price, not a history) — exactly one occurrence.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/prices.ts'), 'utf8');
   const uses = (apiV1.match(/sk\.finances\.setState\(scope, sn\)/g) || []).length;
-  assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
+  assert.equal(uses, 1, 'The /price route must use it; the history goes via priceHistory.ts');
 });
 
 // The database lock of the rebuild is checked by test/parts-summary-lock-db.test.js.
@@ -123,14 +119,14 @@ test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', 
   // Counter-check (05.11.2026): family: 4 deleted from https.get in abruf.ts or from the pool → red.
   const _req = require('./helpers/sources').buildAndRequire();
   const { holeHttps } = _req('src/infra/fetch.js');
-  const { oeffneBild } = _req('clients/imageCdn.js');
+  const { openImage } = _req('clients/imageCdn.js');
   const { recording } = require('./helpers/https-recording');
   const hosts = ['cdn.rebrickable.com'];
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
   const aufrufe = await recording(async () => {
-    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000 }).catch(() => {});
-    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000, methode: 'POST', rumpf: '{}' }).catch(() => {});
-    await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
+    await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000 }).catch(() => {});
+    await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000, method: 'POST', bodyText: '{}' }).catch(() => {});
+    await openImage(url, { maxBytes: 1000, pool: true }).catch(() => {});
   });
   assert.deepEqual(
     aufrufe.map(a => [a.kind, a.options.family]),
@@ -140,7 +136,7 @@ test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', 
       ['get', 4],
     ],
   );
-  assert.equal(aufrufe[2].options.agent?.options?.family, 4, 'der Pool der Bild-CDNs erzwingt IPv4 nicht');
+  assert.equal(aufrufe[2].options.agent?.options?.family, 4, 'the pool of image CDNs does not force IPv4');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -160,8 +156,8 @@ test('mixed entries result in TWO badges', () => {
 });
 
 test('only one condition results in one badge', () => {
-  assert.deepEqual(conditionsFromAcquisitions(3, 0), ['N'], 'alle Erfassungen neu → nur Neu');
-  assert.deepEqual(conditionsFromAcquisitions(2, 2), ['U'], 'alle Erfassungen gebraucht → nur Gebraucht');
+  assert.deepEqual(conditionsFromAcquisitions(3, 0), ['N'], 'all acquisitions new → only new');
+  assert.deepEqual(conditionsFromAcquisitions(2, 2), ['U'], 'all acquisitions used → only used');
 });
 
 test('without entries “Neu” applies', () => {
@@ -182,13 +178,13 @@ test('the order is fixed: new before used', () => {
 
 test('the tiles do not compute the badges themselves', () => {
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'components.js'), 'utf8');
-  assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
+  assert.match(gal, /export function condBadges/, 'One shared version for set, part and minifigure tiles');
   // One badge, no copies with hard-coded colors instead of the CSS classes:
   // no row may carry a condition label AND an own color.
   for (const f of ['public/js/parts.js', 'public/js/minifigs.js', 'public/js/finances.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l => /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
-    assert.equal(inline.length, 0, `${f}: Zustandsfarben gehören in die CSS-Klassen cond-new/cond-used`);
+    assert.equal(inline.length, 0, `${f}: condition colours belong in the CSS classes cond-new/cond-used`);
   }
 });
 
@@ -205,7 +201,7 @@ test('the login name may be an e-mail address', () => {
   // allowed characters in the username.
   assert.ok(loginNameValid('marco@example.com'));
   assert.ok(loginNameValid('marco.meier+lego@sub.example.co.uk'));
-  assert.ok(loginNameValid('marco'), 'Benutzername muss weiterhin gehen');
+  assert.ok(loginNameValid('marco'), 'A user name must still work');
   assert.ok(loginNameValid('mar_co.1-x'));
 });
 
@@ -221,7 +217,7 @@ test('obvious nonsense still does not reach the query', () => {
     'a'.repeat(300) + '@example.com',
     "' OR 1=1 --",
   ]) {
-    assert.equal(loginNameValid(bad), false, `\`${bad}\` sollte abgelehnt werden`);
+    assert.equal(loginNameValid(bad), false, `\`${bad}\` should be rejected`);
   }
 });
 
@@ -242,7 +238,7 @@ test('both login paths check the same', async () => {
   for (const name of ['a b', "' OR 1=1 --", '@example.com'])
     assert.deepEqual(
       await checkCredentials({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),
-      { ok: false, absage: { kind: 'ungueltig', code: 'enter_name_or_email' } },
+      { ok: false, refusal: { kind: 'invalid', code: 'enter_name_or_email' } },
       name,
     );
 
@@ -252,12 +248,12 @@ test('both login paths check the same', async () => {
       return e.isDirectory() ? dateien(p) : e.name.endsWith('.ts') ? [p] : [];
     });
   const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src'))];
-  assert.ok(alle.length >= 30, `nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
+  assert.ok(alle.length >= 30, `only ${alle.length} files searched — paths outdated?`);
 
   const kopien = alle
     .filter(f => /\/\^\[A-Za-z0-9_\.-\]\{3,32\}\$\/\.test\(\s*username\s*\)/.test(fs.readFileSync(f, 'utf8')))
     .map(f => path.relative(ROOT, f));
-  assert.deepEqual(kopien, [], `eigene Kopie des Benutzernamen-Musters statt USERNAME_RE: ${kopien.join(', ')}`);
+  assert.deepEqual(kopien, [], `own copy of the user name pattern instead of USERNAME_RE: ${kopien.join(', ')}`);
 });
 
 test('the tile takes the condition from the server response', async () => {
@@ -290,18 +286,18 @@ test('the tile takes the condition from the server response', async () => {
   });
   const badges = () => d.querySelector('#gallery .sc .sbadges')?.textContent ?? '';
   try {
-    assert.ok(await warte(() => /Neu/.test(badges())), `vorher: ${badges()}`);
+    assert.ok(await warte(() => /Neu/.test(badges())), `before: ${badges()}`);
     d.querySelector('#gallery [data-click="openModal"]').click();
     assert.ok(await warte(() => d.querySelector('[data-click="openAcqModal"]')));
     d.querySelector('[data-click="openAcqModal"]').click();
     assert.ok(
       await warte(() => d.querySelector('select[data-change="acqSave"][data-arg3="cond"]')),
-      'Keine Zustandswahl',
+      'no condition choice',
     );
     const wahl = d.querySelector('select[data-change="acqSave"][data-arg3="cond"]');
     wahl.value = 'U';
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => /Gebraucht/.test(badges()) && !/Neu/.test(badges())), `nachher: ${badges()}`);
+    assert.ok(await warte(() => /Gebraucht/.test(badges()) && !/Neu/.test(badges())), `after: ${badges()}`);
   } finally {
     w.close();
   }

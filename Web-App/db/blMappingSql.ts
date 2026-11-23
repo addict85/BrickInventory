@@ -3,16 +3,16 @@
  * db/ because repositories of several areas embed them in their queries and
  * a repository must not import a service.
  */
-export type BlArt = 'part' | 'fig' | 'set';
+export type BlKind = 'part' | 'fig' | 'set';
 
-/** LEFT JOIN on the shared mapping and the account's own for `konto`
- * (migration 0094); without an account the own one stays empty. `art` and `konto` are
+/** LEFT JOIN on the shared mapping and the account's own for `account`
+ * (migration 0094); without an account the own one stays empty. `art` and `account` are
  * column names or fixed values, not parameters. */
-export function blJoin(rbColumn: string, kind: BlArt, konto: string | null, alias = 'blz'): string {
+export function blJoin(rbColumn: string, kind: BlKind, account: string | null, alias = 'blz'): string {
   return `LEFT JOIN bl_mapping ${alias}
                ON ${alias}.type = '${kind}' AND ${alias}.rb_id = ${rbColumn}
              LEFT JOIN bl_mapping_custom ${alias}_e
-               ON ${alias}_e.user_id = ${konto ?? 'NULL'} AND ${alias}_e.type = '${kind}' AND ${alias}_e.rb_id = ${rbColumn}`;
+               ON ${alias}_e.user_id = ${account ?? 'NULL'} AND ${alias}_e.type = '${kind}' AND ${alias}_e.rb_id = ${rbColumn}`;
 }
 
 /** The account's own number before the shared one, otherwise the Rebrickable number. */

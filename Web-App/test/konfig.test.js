@@ -23,7 +23,7 @@
  *      src/account/sessionDeadline instead of the message)
  *   G  (30.10.) in loadConfig `veraltet` always empty → red: “invalid values:
  *      all at once, with names” (WEB_WORKERS was no longer named)
- *   H  (11.11.2026) in attestationWurzeln() the check for developmentEnvironment
+ *   H  (11.11.2026) in attestationRoots() the check for developmentEnvironment
  *      deleted → red: “own attestation roots only in development and test”
  *   I  (15.11.2026) in legacyKeyUntil() the comparison with the cutoff date deleted
  *      (every valid date applies) → red in the same test (2099-12-31 got through)
@@ -129,24 +129,24 @@ test('invalid values: all at once, with names', () => {
     APP_BASE_URL: 'https://lego.example.org//',
   });
   assert.equal(k.port, 8080);
-  assert.equal(k.rolle, 'jobs');
-  assert.deepEqual(k.veraltet, ['WEB_WORKERS'], 'WEB_WORKERS wirkt nicht mehr, der Start nennt es');
-  assert.equal(loadConfig({}).rolle, 'both', 'ohne Angabe ein Prozess für alles');
+  assert.equal(k.role, 'jobs');
+  assert.deepEqual(k.deprecated, ['WEB_WORKERS'], 'WEB_WORKERS no longer has an effect, the startup names it');
+  assert.equal(loadConfig({}).role, 'both', 'without a setting one process for everything');
   assert.throws(() => loadConfig({ ROLE: 'primary' }), /ROLE="primary" ist weder web noch jobs noch both/);
   assert.equal(k.cookieSecure, false);
   assert.equal(k.appBaseUrl, 'https://lego.example.org');
-  assert.equal(loadConfig({}).sitzungLeerlaufMin, 240, 'ohne Angabe die Vorgabe');
+  assert.equal(loadConfig({}).sessionIdleMin, 240, 'without a setting the default');
 });
 
 test('own attestation roots only in development and test; the cutoff date is a date', () => {
   assert.throws(() => loadConfig({ ATTESTATION_ROOTS: 'PEM' }), /ATTESTATION_ROOTS gilt nur mit NODE_ENV/);
   assert.throws(() => loadConfig({ NODE_ENV: 'production', ATTESTATION_ROOTS: 'PEM' }), ConfigError);
-  assert.equal(loadConfig({ NODE_ENV: 'test', ATTESTATION_ROOTS: 'PEM' }).attestationWurzeln, 'PEM');
-  assert.equal(loadConfig({}).attestationWurzeln, null);
-  assert.equal(loadConfig({}).geraeteschluesselAltBis.toISOString(), '2027-02-01T00:00:00.000Z');
-  assert.equal(loadConfig({ DEVICE_KEY_OLD_UNTIL: '2026-01-01' }).geraeteschluesselAltBis.getUTCFullYear(), 2026);
+  assert.equal(loadConfig({ NODE_ENV: 'test', ATTESTATION_ROOTS: 'PEM' }).attestationRoots, 'PEM');
+  assert.equal(loadConfig({}).attestationRoots, null);
+  assert.equal(loadConfig({}).deviceKeyLegacyUntil.toISOString(), '2027-02-01T00:00:00.000Z');
+  assert.equal(loadConfig({ DEVICE_KEY_OLD_UNTIL: '2026-01-01' }).deviceKeyLegacyUntil.getUTCFullYear(), 2026);
   assert.throws(() => loadConfig({ DEVICE_KEY_OLD_UNTIL: 'bald' }), /DEVICE_KEY_OLD_UNTIL="bald"/);
-  assert.equal(loadConfig({ DEVICE_KEY_OLD_UNTIL: '2027-02-01' }).geraeteschluesselAltBis.getUTCMonth(), 1);
+  assert.equal(loadConfig({ DEVICE_KEY_OLD_UNTIL: '2027-02-01' }).deviceKeyLegacyUntil.getUTCMonth(), 1);
   for (const spaeter of ['2027-02-02', '2099-12-31'])
     assert.throws(() => loadConfig({ DEVICE_KEY_OLD_UNTIL: spaeter }), /liegt nach 2027-02-01/, spaeter);
 });

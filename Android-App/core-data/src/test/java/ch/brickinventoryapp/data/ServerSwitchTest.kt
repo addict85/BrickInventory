@@ -121,7 +121,7 @@ class ServerSwitchTest {
 
     @Test
     fun `a request without a token does not reach for the new server's token after the switch`() {
-        val status = duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/settings/theme")).build()) {
+        val status = duringOfSwitch(client(), Request.Builder().url(a.url("/api/v2/settings/theme")).build()) {
             switchAndLogIn(b, "TOKEN-VON-B")
         }
         assertEquals(401, status)
@@ -132,7 +132,7 @@ class ServerSwitchTest {
     @Test
     fun `a swap after the switch does not send the new server's token to the old one`() {
         token = "TOKEN-VON-A"; origin = NetworkPolicy.origin(address(a))
-        lateResponse = { MockResponse().setResponseCode(401).setBody("""{"code":"token_rotation_noetig"}""") }
+        lateResponse = { MockResponse().setResponseCode(401).setBody("""{"code":"token_rotation_required"}""") }
         val swapping = TokenSwap(
             state = { TokenStatus(token, origin, limit.generation) },
             replace = { _, _, _ -> false },
@@ -141,7 +141,7 @@ class ServerSwitchTest {
             // The test waits for needed(); due() would not need an own scope.
             background = CoroutineScope(Job()),
         )
-        val status = duringOfSwitch(client(swapping), Request.Builder().url(a.url("/api/v1/sets"))
+        val status = duringOfSwitch(client(swapping), Request.Builder().url(a.url("/api/v2/sets"))
             .post("geheim".toRequestBody()).build()) {
             switchAndLogIn(b, "TOKEN-VON-B")
         }
@@ -152,8 +152,8 @@ class ServerSwitchTest {
     @Test
     fun `a 401 or 403 of the old server does not end the new session`() {
         token = "TOKEN-VON-A"; origin = NetworkPolicy.origin(address(a))
-        lateResponse = { MockResponse().setResponseCode(401).setBody("""{"code":"token_ungueltig"}""") }
-        duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/sets")).build()) {
+        lateResponse = { MockResponse().setResponseCode(401).setBody("""{"code":"token_invalid"}""") }
+        duringOfSwitch(client(), Request.Builder().url(a.url("/api/v2/sets")).build()) {
             switchAndLogIn(b, "TOKEN-VON-B")
         }
         assertEquals("A ended the session at B", 0, expired.get())
@@ -161,12 +161,12 @@ class ServerSwitchTest {
         // Counterpart without switch: the same 401 signs out, a 403 only_admins pulls rights along.
         token = "TOKEN-VON-B"
         b.dispatcher = object : Dispatcher() {
-            override fun dispatch(request: RecordedRequest) = if (request.path.orEmpty().startsWith("/api/v1/admin"))
-                MockResponse().setResponseCode(403).setBody("""{"code":"nur_admins"}""")
-            else MockResponse().setResponseCode(401).setBody("""{"code":"token_ungueltig"}""")
+            override fun dispatch(request: RecordedRequest) = if (request.path.orEmpty().startsWith("/api/v2/admin"))
+                MockResponse().setResponseCode(403).setBody("""{"code":"admins_only"}""")
+            else MockResponse().setResponseCode(401).setBody("""{"code":"token_invalid"}""")
         }
-        client().newCall(Request.Builder().url(b.url("/api/v1/sets")).build()).execute().close()
-        client().newCall(Request.Builder().url(b.url("/api/v1/admin/x")).build()).execute().close()
+        client().newCall(Request.Builder().url(b.url("/api/v2/sets")).build()).execute().close()
+        client().newCall(Request.Builder().url(b.url("/api/v2/admin/x")).build()).execute().close()
         assertEquals(1, expired.get())
         assertEquals(1, revoked.get())
     }
@@ -174,8 +174,8 @@ class ServerSwitchTest {
     @Test
     fun `a 403 only_admins of the old server takes no rights from the new session`() {
         token = "TOKEN-VON-A"; origin = NetworkPolicy.origin(address(a))
-        lateResponse = { MockResponse().setResponseCode(403).setBody("""{"code":"nur_admins"}""") }
-        duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/admin/x")).build()) {
+        lateResponse = { MockResponse().setResponseCode(403).setBody("""{"code":"admins_only"}""") }
+        duringOfSwitch(client(), Request.Builder().url(a.url("/api/v2/admin/x")).build()) {
             switchAndLogIn(b, "TOKEN-VON-B")
         }
         assertEquals(0, revoked.get())
@@ -184,7 +184,7 @@ class ServerSwitchTest {
     @Test
     fun `after signing in to the same server a request without a token still reaches for it`() {
         // The race the reaching-for exists for: the same origin, new generation.
-        val status = duringOfSwitch(client(), Request.Builder().url(a.url("/api/v1/settings/theme")).build()) {
+        val status = duringOfSwitch(client(), Request.Builder().url(a.url("/api/v2/settings/theme")).build()) {
             runBlocking { limit.write { origin = NetworkPolicy.origin(address(a)); token = "TOKEN-VON-A" } }
         }
         assertEquals(listOf(null, "Bearer TOKEN-VON-A"), anA.toList())

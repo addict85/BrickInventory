@@ -74,18 +74,18 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
     await new Promise(r => setTimeout(r, 1100)); // Timestamps have second resolution in the display
 
     const ok = await maintainTable(sql => db.exec(sql), 'parts_summary');
-    assert.equal(ok, true, 'maintainTable hat aufgegeben — laeuft der Test als Eigentuemer der Tabelle?');
+    assert.equal(ok, true, 'maintainTable gave up — does the test run as owner of the table?');
 
     const nachher = await waitOnStatus('parts_summary', vorher);
     assert.ok(
       nachher.vacuum > vorher.vacuum,
-      `last_vacuum hat sich nicht bewegt (${nachher.vacuum} vs ${vorher.vacuum}). Ohne VACUUM ` +
-        `bleibt die Warteliste von GIN stehen, und jede Suche geht sie zusaetzlich durch.`,
+      `last_vacuum did not move (${nachher.vacuum} vs ${vorher.vacuum}). Without VACUUM ` +
+        `the GIN pending list stays, and every search goes through it in addition.`,
     );
     assert.ok(
       nachher.analyze > vorher.analyze,
-      `last_analyze hat sich nicht bewegt. Ohne frische Statistik schaetzt der Planer die ` +
-        `Tabelle auf eine Zeile und greift zum falschen Index.`,
+      `last_analyze did not move. Without fresh statistics the planner estimates the ` +
+        `table at one row and picks the wrong index.`,
     );
   });
 
@@ -103,13 +103,9 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
       'Parts_Summary',
     ]) {
       const ok = await maintainTable(runFrom, name);
-      assert.equal(ok, false, `"${name}" haette abgelehnt werden muessen.`);
+      assert.equal(ok, false, `"${name}" should have been rejected.`);
     }
-    assert.deepEqual(
-      gerufen,
-      [],
-      `Fuer einen abgelehnten Namen wurde trotzdem SQL ausgefuehrt: ${gerufen.join(' | ')}`,
-    );
+    assert.deepEqual(gerufen, [], `SQL was executed anyway for a rejected name: ${gerufen.join(' | ')}`);
   });
 
   await t.test('a failure stays a failure and does not become a crash', async () => {
@@ -155,9 +151,9 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
 
     assert.ok(
       nachher.analyze > vorher.analyze,
-      `rebuild() hat parts_summary nicht vermessen (analyze ${nachher.analyze} vs ` +
-        `${vorher.analyze}). DELETE + INSERT aller Zeilen eines Nutzers ist ein ` +
-        `Masseneinfuegen — danach ist die Statistik schief.`,
+      `rebuild() did not analyse parts_summary (analyze ${nachher.analyze} vs ` +
+        `${vorher.analyze}). DELETE + INSERT of all rows of a user is a ` +
+        `bulk insert — afterwards the statistics are skewed.`,
     );
   });
 
@@ -166,11 +162,11 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
     const idx = await db.all(`SELECT c.relname, c.reloptions FROM pg_index i
       JOIN pg_class c ON c.oid = i.indexrelid JOIN pg_am a ON a.oid = c.relam
       WHERE i.indrelid = 'parts_summary'::regclass AND a.amname = 'gin'`);
-    assert.ok(idx.length >= 3, `zu wenige GIN-Indizes gefunden: ${idx.map(r => r.relname).join(', ')}`);
+    assert.ok(idx.length >= 3, `too few GIN indexes found: ${idx.map(r => r.relname).join(', ')}`);
     for (const r of idx)
       assert.ok(
         (r.reloptions || []).includes('fastupdate=off'),
-        `${r.relname} sammelt Einträge in einer Warteliste, die nur VACUUM leert`,
+        `${r.relname} collects entries in a pending list that only VACUUM empties`,
       );
   });
 });

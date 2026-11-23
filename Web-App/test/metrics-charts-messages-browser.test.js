@@ -49,11 +49,11 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
       unter: document.getElementById('fin-cost-basis-sub').textContent,
       gesamt: document.querySelector('#fin-tbl .dt-sum tfoot td.fin-footer-value').textContent.trim(),
       basis: document.getElementById('fin-basis').hidden })`);
-    assert.equal(z.basis, false, 'Testdaten: Positionen ohne Marktpreis');
+    assert.equal(z.basis, false, 'test data: items without a market price');
     // Named briefly since UX check 25 (B2); what „bewertet“ means stands in the tooltip and below the cards.
-    assert.equal(z.titel, 'Kaufpreis (bewertete Positionen)', 'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“');
-    assert.match(z.unter, /^Insgesamt bezahlt: /, 'die Summe aller Käufe ist benannt (UX-Prüfung 19 N4)');
-    assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
+    assert.equal(z.titel, 'Kaufpreis (bewertete Positionen)', 'purchase price card names its scope, not „gesamt“');
+    assert.match(z.unter, /^Insgesamt bezahlt: /, 'the sum of all purchases is labelled (UX review 19 N4)');
+    assert.ok(z.unter.includes(z.gesamt), `the sum of all purchase prices is below: ${z.unter} / ${z.gesamt}`);
   });
 
   await t.test('value line in the accent color', async () => {
@@ -61,7 +61,7 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
     const farbe = await b.auswerten(`(() => { const h = document.documentElement, alt = h.getAttribute('data-theme');
       h.setAttribute('data-theme', 'werkbank'); const f = getComputedStyle(document.querySelector('#portfolio-chart svg polyline')).stroke;
       if (alt === null) h.removeAttribute('data-theme'); else h.setAttribute('data-theme', alt); return f; })()`);
-    assert.equal(farbe, 'rgb(201, 150, 63)', 'Wertlinie in der Akzentfarbe (Messing bei Werkbank)');
+    assert.equal(farbe, 'rgb(201, 150, 63)', 'value line in the accent colour (brass for the workbench theme)');
   });
 
   await t.test('chart grows with the font', async () => {
@@ -81,13 +81,10 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
     await bis(`!!document.querySelector('#portfolio-chart svg polyline')`, 'Wertdiagramm bei 200 %', 200);
     const nachher = await b.auswerten(mass);
     await b.auswerten(`document.documentElement.style.fontSize = ''; true`);
-    assert.ok(
-      nachher.breite >= nachher.container * 0.95,
-      `Diagramm wächst mit der Schrift: ${JSON.stringify(nachher)}`,
-    );
+    assert.ok(nachher.breite >= nachher.container * 0.95, `chart grows with the font: ${JSON.stringify(nachher)}`);
     assert.ok(
       nachher.schrift >= vorher.schrift * 1.8,
-      `Diagramm wächst mit der Schrift: ${vorher.schrift} → ${nachher.schrift}`,
+      `chart grows with the font: ${vorher.schrift} → ${nachher.schrift}`,
     );
   });
 
@@ -110,7 +107,7 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
     assert.equal(
       await b.auswerten(`!!document.querySelector('#toasts .toast .toast-action')`),
       true,
-      'mit „Hinzufügen“',
+      'with „Hinzufügen“',
     );
   });
 
@@ -131,9 +128,9 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
       fuss: document.querySelector('#set-modal .more-menu > summary').getBoundingClientRect().top })`);
     assert.ok(
       situation.liste <= situation.fuss + 1,
-      `Weitere Aktionen überlagern den Inhalt (über ihrem Knopf): ${JSON.stringify(situation)}`,
+      `More actions overlay the content (above their button): ${JSON.stringify(situation)}`,
     );
-    assert.ok(Math.abs((await b.auswerten(hoehe)) - vorher) < 2, 'die Fusszeile wächst nicht');
+    assert.ok(Math.abs((await b.auswerten(hoehe)) - vorher) < 2, 'the footer does not grow');
     await b.auswerten(`document.querySelector('#set-modal [data-dialog-close]').click(); true`);
   });
 
@@ -155,11 +152,11 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
       const eigene = zeile(${JSON.stringify(`r11_${process.pid}`)}), andere = zeile(${JSON.stringify(OTHERS)});
       return { eigene: eigene.querySelectorAll('button').length, otherDirect: andere.querySelectorAll('.user-actions > button').length,
         otherMore: andere.querySelectorAll('.v-more .more-list button').length }; })()`);
-    assert.equal(z.eigene, 0, 'keine Aktionen gegen das eigene Konto');
+    assert.equal(z.eigene, 0, 'no actions against the own account');
     assert.deepEqual(
       [z.otherDirect, z.otherMore],
       [1, 2],
-      'Passwort direkt, Deaktivieren und Löschen hinter „Weitere“; die Rolle steht am Chip',
+      'password directly, deactivate and delete behind „Weitere“; the role is on the chip',
     );
   });
 
@@ -186,6 +183,6 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
     await b.auswerten(`document.getElementById('btn-login').click(); true`);
     // Since round 26 (N4) the empty field reports itself without asking the server.
     await bis(`document.getElementById('lu-error')?.hidden === false`, 'Fehler am Feld', 100);
-    assert.equal(await b.auswerten(`document.activeElement?.id`), 'lu', 'leere Anmeldung: Fokus ins erste Feld');
+    assert.equal(await b.auswerten(`document.activeElement?.id`), 'lu', 'empty login: focus in the first field');
   });
 });

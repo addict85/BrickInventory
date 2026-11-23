@@ -50,9 +50,9 @@ test('without an entry no condition in the chart, the raw data stays', { concurr
   assert.deepEqual(
     v.chart.values.map(s => s.name),
     ['U'],
-    'nur Gebraucht wird gezeichnet',
+    'only used is drawn',
   );
-  assert.equal(v.history_new.length, 1, 'die Rohdaten bleiben vollständig');
+  assert.equal(v.history_new.length, 1, 'the raw data stay complete');
   assert.equal(v.history_used.length, 2);
 
   // Without any acquisition the fallback applies: both conditions.

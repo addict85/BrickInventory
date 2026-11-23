@@ -4,8 +4,8 @@
  * the routes' error path (handleRouteError) makes of it.
  *
  * Counter-checks (measured 09.11.2026, each alone):
- *   A  in STATUS_THE_KIND `konflikt: 400` → red: “every kind yields its status”
- *      (konflikt 400 instead of 409)
+ *   A  in STATUS_THE_KIND `conflict: 400` → red: “every kind yields its status”
+ *      (conflict 400 instead of 409)
  *   B  in handleRouteError again `typeof e.status === 'number' ? e.status : 500`
  *      instead of statusOf(e) → red: “every kind yields its status” (all 500)
  *   C  `import { statusOf } from '../http/fehlerArt'` in src/sets/service.ts →
@@ -13,7 +13,7 @@
  *   D  in src/infra/money.ts a status number 400 appended to fachfehler() → red:
  *      the same check, list `status`
  *   E  (15.11.2026) in sendError `res.status(500)` instead of STATUS_THE_KIND[art] → red:
- *      “every kind yields its status” (sendError ungueltig: 500 instead of 400)
+ *      “every kind yields its status” (sendError invalid: 500 instead of 400)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -60,29 +60,29 @@ const thrown = fn => {
   } catch (e) {
     return e;
   }
-  throw new Error('nichts geworfen');
+  throw new Error('nothing thrown');
 };
 
 test('every kind yields its status', () => {
   const erwartet = {
-    ungueltig: 400,
+    invalid: 400,
     not_signed_in: 401,
-    verboten: 403,
+    forbidden: 403,
     not_found: 404,
-    konflikt: 409,
-    zu_gross: 413,
-    falscher_typ: 415,
-    zu_langsam: 408,
-    nicht_mehr_da: 410,
-    nicht_verarbeitbar: 422,
-    zu_viele: 429,
-    speicher_voll: 507,
-    intern: 500,
-    fremddienst: 502,
-    nicht_verfuegbar: 503,
-    zeitueberschreitung: 504,
-    falscher_host: 421,
-    zu_alt: 426,
+    conflict: 409,
+    too_large: 413,
+    unsupported_type: 415,
+    request_timeout: 408,
+    gone: 410,
+    unprocessable: 422,
+    too_many: 429,
+    storage_full: 507,
+    internal: 500,
+    upstream: 502,
+    unavailable: 503,
+    upstream_timeout: 504,
+    misdirected: 421,
+    upgrade_required: 426,
   };
   assert.deepEqual(Object.keys(STATUS_THE_KIND).sort(), Object.keys(erwartet).sort());
   for (const [kind, status] of Object.entries(erwartet)) {
@@ -106,7 +106,7 @@ test('every kind yields its status', () => {
 
 test('a duplicate from the database becomes a conflict', () => {
   const e = thrown(() => asDuplicate('username_taken')({ code: '23505' }));
-  assert.equal(e.kind, 'konflikt');
+  assert.equal(e.kind, 'conflict');
   assert.deepEqual(response(e), { status: 409, code: 'username_taken' });
   // A foreign error with its own status (body parser) keeps it.
   assert.equal(response(Object.assign(new Error('x'), { status: 413, type: 'entity.too.large' })).status, 413);
@@ -128,8 +128,10 @@ function dienste() {
 
 test('only src/http maps kinds to status, no service names a status', () => {
   const liste = dienste();
-  assert.ok(liste.length > 200, `nur ${liste.length} Dienste gefunden — greift die Suche noch?`);
-  const treffer = liste.filter(d => /from '[./]+\/http\/fehlerArt'/.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
+  assert.ok(liste.length > 200, `only ${liste.length} services found — does the search still match?`);
+  const IMPORT = /from '[./]+\/http\/errorKind'/;
+  assert.ok(IMPORT.test("from '../http/errorKind'"), 'self-proof: the pattern finds the import');
+  const treffer = liste.filter(d => IMPORT.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
   assert.deepEqual(treffer, []);
 
   // No service names a status: a number as the second argument would mean that
@@ -137,11 +139,11 @@ test('only src/http maps kinds to status, no service names a status', () => {
   const status = [];
   for (const d of liste) {
     const s = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
-    for (const m of s.matchAll(/\b(?:fehlerWerfen|fachfehler|fileError)\([^)]*?,\s*\d{3}\b/g))
-      status.push(`${d}: ${m[0]}`);
-    for (const m of s.matchAll(/new Fachfehler\(\s*'[a-z_]+',\s*\d{3}/g)) status.push(`${d}: ${m[0]}`);
+    for (const m of s.matchAll(/\b(?:failDomain|fileError)\([^)]*?,\s*\d{3}\b/g)) status.push(`${d}: ${m[0]}`);
+    for (const m of s.matchAll(/new DomainError\(\s*'[a-z_]+',\s*\d{3}/g)) status.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(status, []);
   // Self-proof of the search on a probe.
-  assert.ok(/\b(?:fehlerWerfen|fachfehler|fileError)\([^)]*?,\s*\d{3}\b/.test("fehlerWerfen('x', 400)"));
+  assert.ok(/\b(?:failDomain|fileError)\([^)]*?,\s*\d{3}\b/.test("failDomain('x', 400)"));
+  assert.ok(/new DomainError\(\s*'[a-z_]+',\s*\d{3}/.test("new DomainError('x', 400)"));
 });

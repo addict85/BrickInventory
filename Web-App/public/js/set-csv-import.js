@@ -111,82 +111,80 @@ async function startSetCsvImport() {
     toast(errorMessage(e), 'error');
   }
 }
+/** @typedef {{ total: number, prevDone: number | null | undefined, prevResultCount: number }} CsvOverlayCtx */
+
+/** The progress bar in the header. @param {number} done @param {number} total */
+function showHeaderProgress(done, total) {
+  const _p = total > 0 ? Math.round((done / total) * 100) : 0;
+  const _b = G('global-import-bar');
+  if (!_b) return;
+  _b.style.display = 'flex';
+  G('gib-fill').style.width = _p + '%';
+  G('gib-text').textContent = done + '/' + total + ' (' + fmtPct(_p, { sign: false, places: 0 }) + ')';
+}
+
+/** Results not yet in the log, with the same row builder as progress.js. No esc(), because addCsvLog
+ * sets textContent. @param {import('./progress.js').ImportStatus} s @param {CsvOverlayCtx} ctx
+ * @param {string} [timeoutHint] */
+function logNewResults(s, ctx, timeoutHint) {
+  if (!s.results) return;
+  for (const r of s.results.slice(ctx.prevResultCount)) {
+    const z = timeoutHint === undefined ? logRow(r) : logRow(r, timeoutHint);
+    if (z) addCsvLog(z.text, z.kind);
+  }
+  ctx.prevResultCount = s.results.length;
+}
+
+/** @param {import('./progress.js').ImportStatus} s @param {CsvOverlayCtx} ctx */
+function showCsvProgress(s, ctx) {
+  const total = ctx.total;
+  ctx.prevDone = s.done;
+  const done = s.done ?? 0;
+  setProgBar(total > 0 ? (done / total) * 95 : 0);
+  G('prog-footer').textContent = `${tRaw('csv.items_progress', { done, total })} (${importCounter(s)})`;
+  const waiting = done === 0 && s.status === 'running' ? tRaw('csv.waiting') : '';
+  G('prog-set-name').textContent = s.current ? tRaw('csv.processing', { set: s.current, done, total }) : waiting;
+  showHeaderProgress(done, total);
+  // Show live results as they come in
+  if (s.results && s.results.length > ctx.prevResultCount) logNewResults(s, ctx);
+}
+
+/** The end of a successful import: the rest of the log, the summary and the reload.
+ * @param {import('./progress.js').ImportStatus} s @param {CsvOverlayCtx} ctx @param {HTMLInputElement | null} fi */
+function finishCsvImport(s, ctx, fi) {
+  // The timeout-retry hint only applies here.
+  logNewResults(s, ctx, tRaw('csv.timeout_retry'));
+  if ((s.err ?? 0) > 0) {
+    const errorSets = (s.results || []).filter(r => !r.success);
+    const errorList = errorSets.map(r => r.set_number + ': ' + (r.error || '?')).join('; ');
+    console.warn('[CSV import] errors: ' + errorList);
+  }
+  const counter = importCounter(s, 'csv.warnings_n');
+  G('prog-footer').textContent = `${tRaw('csv.rows_read', { n: s.total ?? 0 })} · ${counter}`;
+  showImportCompletion();
+  emit('collectionLoad');
+  toast(tRaw('csv.import_message', { result: counter }), s.err ? 'error' : s.warn ? 'info' : 'success');
+  if (fi) fi.value = '';
+}
 
 // Processes a CSV status object for the starting window's overlay. Returns true once the import is done.
 /**
  * @param {import('./progress.js').ImportStatus} s
- * @param {{ total: number, prevDone: number | null | undefined, prevResultCount: number }} ctx
+ * @param {CsvOverlayCtx} ctx
  * @param {HTMLInputElement | null} fi
  */
 function csvApplyOverlayStatus(s, ctx, fi) {
   if (!s.success) return true;
-  const total = ctx.total;
-  if (s.done !== ctx.prevDone) {
-    ctx.prevDone = s.done;
-    const done = s.done ?? 0;
-    const pct = total > 0 ? (done / total) * 95 : 0;
-    setProgBar(pct);
-    G('prog-footer').textContent = `${tRaw('csv.items_progress', { done, total })} (${importCounter(s)})`;
-    G('prog-set-name').textContent = s.current
-      ? tRaw('csv.processing', { set: s.current, done, total })
-      : done === 0 && s.status === 'running'
-        ? tRaw('csv.waiting')
-        : '';
-    // Update the progress bar in the header directly
-    {
-      const _p = total > 0 ? Math.round((done / total) * 100) : 0;
-      const _b = G('global-import-bar');
-      if (_b) {
-        _b.style.display = 'flex';
-        G('gib-fill').style.width = _p + '%';
-        G('gib-text').textContent = done + '/' + total + ' (' + fmtPct(_p, { sign: false, places: 0 }) + ')';
-      }
-    }
-    // Show live results as they come in
-    if (s.results && s.results.length > ctx.prevResultCount) {
-      const newResults = s.results.slice(ctx.prevResultCount);
-      newResults.forEach(r => {
-        // Same builder as in progress.js — the reasoning lives there.
-        const z = logRow(r);
-        if (z) addCsvLog(z.text, z.kind);
-      });
-      ctx.prevResultCount = s.results.length;
-    }
-  }
-  if (s.status === 'done' || s.status === 'cancelled' || s.status === 'error') {
-    setCsvPollActive(false);
-    G('btn-cancel-import').style.display = 'none';
-    setProgBar(100);
-    if (s.status === 'error') {
-      hideProgress();
-      toast(s.error || t('csv.import_error'), 'error');
-    } else {
-      // Add any remaining results not yet shown in live log
-      if (s.results) {
-        const remaining = s.results.slice(ctx.prevResultCount);
-        remaining.forEach(r => {
-          // Same row builder as in progress.js. No esc(), because addCsvLog sets textContent; the
-          // timeout-retry hint only applies here.
-          const z = logRow(r, tRaw('csv.timeout_retry'));
-          if (z) addCsvLog(z.text, z.kind);
-        });
-        ctx.prevResultCount = s.results.length;
-      }
-      if ((s.err ?? 0) > 0) {
-        const errorSets = (s.results || []).filter(r => !r.success);
-        const errorList = errorSets.map(r => r.set_number + ': ' + (r.error || '?')).join('; ');
-        console.warn('[CSV import] errors: ' + errorList);
-      }
-      const counter = importCounter(s, 'csv.warnings_n');
-      G('prog-footer').textContent = `${tRaw('csv.rows_read', { n: s.total ?? 0 })} · ${counter}`;
-      showImportCompletion();
-      emit('collectionLoad');
-      toast(tRaw('csv.import_message', { result: counter }), s.err ? 'error' : s.warn ? 'info' : 'success');
-      if (fi) fi.value = '';
-    }
-    return true;
-  }
-  return false;
+  if (s.done !== ctx.prevDone) showCsvProgress(s, ctx);
+  if (s.status !== 'done' && s.status !== 'cancelled' && s.status !== 'error') return false;
+  setCsvPollActive(false);
+  G('btn-cancel-import').style.display = 'none';
+  setProgBar(100);
+  if (s.status === 'error') {
+    hideProgress();
+    toast(s.error || t('csv.import_error'), 'error');
+  } else finishCsvImport(s, ctx, fi);
+  return true;
 }
 
 // Polling fallback for the starting window (only when SSE is unavailable).

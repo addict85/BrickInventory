@@ -9,7 +9,7 @@ type Def = Record<string, unknown> & { type: string };
 type Map = Readonly<Record<string, string>>;
 
 /** Like zod's own registry, keyed by the schema objects of the contract. */
-const R = processWide('v1Namen', () => ({
+const R = processWide('v1Names', () => ({
   keys: new WeakMap<z.ZodType, Map>(),
   values: new WeakMap<z.ZodType, Map>(),
   insteadOf: new WeakMap<z.ZodType, string>(),
@@ -43,6 +43,30 @@ export const v1ErrorCode = (code: string): string => V1_ERROR_CODES[code] ?? cod
 const def = (s: z.ZodType) => (s as unknown as { _zod: { def: Def } })._zod.def;
 const CHILDREN = ['innerType', 'element', 'keyType', 'valueType', 'in', 'out', 'left', 'right', 'catchall', 'rest'];
 
+/** The renamed enum or literal values of a schema, if it has v1 names; undefined otherwise. */
+function renamedValues(schema: z.ZodType, d: Def): Partial<Def> | undefined {
+  const map = VALUES.get(schema) as Map | undefined;
+  if (!map) return undefined;
+  if (d.type === 'enum')
+    return { entries: Object.fromEntries(Object.values(d.entries as Map).map(v => [map[v] ?? v, map[v] ?? v])) };
+  if (d.type === 'literal')
+    return { values: (d.values as unknown[]).map(v => (typeof v === 'string' ? (map[v] ?? v) : v)) };
+  return undefined;
+}
+
+/** The twin carries the meta without the id; a description naming the successor names its v1 field. */
+function twinOf(schema: z.ZodType, next: Def, successor: string | undefined): z.ZodType {
+  const twin = (schema as unknown as { clone(d: Def): z.ZodType }).clone(next);
+  const meta = z.globalRegistry.get(schema);
+  if (meta) {
+    const m = { ...meta };
+    delete m.id;
+    if (successor && m.description) m.description = m.description.replace(successor, v1Field(undefined, successor));
+    z.globalRegistry.add(twin, m);
+  }
+  return twin;
+}
+
 /** The v1 twin of a schema; unchanged parts stay the same object (components keep their identity). */
 const converted = R.converted;
 export function toV1Schema<T extends z.ZodType | undefined>(schema: T): T {
@@ -69,32 +93,16 @@ export function toV1Schema<T extends z.ZodType | undefined>(schema: T): T {
     next.shape = shape;
   } else if (Array.isArray(d.options)) next.options = d.options.map(sub);
   else if (Array.isArray(d.items)) next.items = d.items.map(sub);
-  if (d.type === 'enum' && VALUES.has(schema)) {
-    const map = VALUES.get(schema) as Map;
-    next.entries = Object.fromEntries(Object.values(d.entries as Map).map(v => [map[v] ?? v, map[v] ?? v]));
+  const values = renamedValues(schema, d);
+  if (values) {
+    Object.assign(next, values);
     changed = true;
   }
-  if (d.type === 'literal' && VALUES.has(schema)) {
-    const map = VALUES.get(schema) as Map;
-    next.values = (d.values as unknown[]).map(v => (typeof v === 'string' ? (map[v] ?? v) : v));
-    changed = true;
-  }
-  const meta = z.globalRegistry.get(schema);
   const successor = INSTEAD_OF.get(schema);
-  if (successor && meta?.description) changed = true;
-  if (!changed) {
-    converted.set(schema, schema);
-    return schema;
-  }
-  const twin = (schema as unknown as { clone(d: Def): z.ZodType }).clone(next);
-  if (meta) {
-    const m = { ...meta };
-    delete m.id;
-    if (successor && m.description) m.description = m.description.replace(successor, v1Field(undefined, successor));
-    z.globalRegistry.add(twin, m);
-  }
-  converted.set(schema, twin);
-  return twin as T;
+  if (successor && z.globalRegistry.get(schema)?.description) changed = true;
+  const result = changed ? twinOf(schema, next, successor) : schema;
+  converted.set(schema, result);
+  return result as T;
 }
 
 type Direction = 'v1' | 'v2';
@@ -118,34 +126,24 @@ function mapValue(s: z.ZodType, value: string, to: Direction): string {
   return value.includes(',') ? value.split(',').map(one).join(',') : one(value);
 }
 
-/** A value along its schema into the other version: field names and enum values, nothing else. */
-export function translate(schema: z.ZodType | undefined, value: unknown, to: Direction): unknown {
-  if (!schema || value === null || value === undefined) return value;
-  const s = unwrap(schema);
-  const d = def(s);
-  if (typeof value === 'string') {
-    if (d.type === 'union') {
-      for (const o of d.options as z.ZodType[]) {
-        const m = mapValue(unwrap(o), value, to);
-        if (m !== value) return m;
-      }
-      return value;
-    }
-    return mapValue(s, value, to);
+function translateString(s: z.ZodType, d: Def, value: string, to: Direction): string {
+  if (d.type !== 'union') return mapValue(s, value, to);
+  for (const o of d.options as z.ZodType[]) {
+    const m = mapValue(unwrap(o), value, to);
+    if (m !== value) return m;
   }
-  if (Array.isArray(value)) {
-    const element = d.type === 'array' ? (d.element as z.ZodType) : arrayOption(d);
-    return element ? value.map(v => translate(element, v, to)) : value;
-  }
-  if (typeof value !== 'object') return value;
-  if (d.type === 'record') {
-    const out: Record<string, unknown> = {};
-    const key = unwrap(d.keyType as z.ZodType);
-    for (const [k, v] of Object.entries(value)) out[mapValue(key, k, to)] = translate(d.valueType as z.ZodType, v, to);
-    return out;
-  }
-  const objects = d.type === 'object' ? [s] : objectOptions(d);
-  if (!objects.length) return value;
+  return value;
+}
+
+function translateRecord(d: Def, value: object, to: Direction): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const key = unwrap(d.keyType as z.ZodType);
+  for (const [k, v] of Object.entries(value)) out[mapValue(key, k, to)] = translate(d.valueType as z.ZodType, v, to);
+  return out;
+}
+
+/** Field names of all object variants: the first variant naming a field decides its schema. */
+function translateObject(objects: z.ZodType[], value: object, to: Direction): Record<string, unknown> {
   const fields = new Map<string, [string, z.ZodType]>();
   for (const o of objects)
     for (const [k, v] of Object.entries(def(o).shape as Record<string, z.ZodType>)) {
@@ -159,6 +157,22 @@ export function translate(schema: z.ZodType | undefined, value: unknown, to: Dir
     else out[k] = v;
   }
   return out;
+}
+
+/** A value along its schema into the other version: field names and enum values, nothing else. */
+export function translate(schema: z.ZodType | undefined, value: unknown, to: Direction): unknown {
+  if (!schema || value === null || value === undefined) return value;
+  const s = unwrap(schema);
+  const d = def(s);
+  if (typeof value === 'string') return translateString(s, d, value, to);
+  if (Array.isArray(value)) {
+    const element = d.type === 'array' ? (d.element as z.ZodType) : arrayOption(d);
+    return element ? value.map(v => translate(element, v, to)) : value;
+  }
+  if (typeof value !== 'object') return value;
+  if (d.type === 'record') return translateRecord(d, value, to);
+  const objects = d.type === 'object' ? [s] : objectOptions(d);
+  return objects.length ? translateObject(objects, value, to) : value;
 }
 
 function objectOptions(d: Def, out: z.ZodType[] = []): z.ZodType[] {

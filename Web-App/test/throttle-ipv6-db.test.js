@@ -57,9 +57,9 @@ test('ipThrottle: the sixth attempt from the same /64 is rejected', async t => {
   assert.deepEqual(
     status,
     [200, 200, 200, 200, 200, 429],
-    'ipThrottle: der sechste Versuch aus demselben /64 wird abgewiesen',
+    'ipThrottle: the sixth attempt from the same /64 is rejected',
   );
-  assert.equal(await von('2001:db8:aa:cc::1'), 200, 'ein anderes /64 ist nicht betroffen');
+  assert.equal(await von('2001:db8:aa:cc::1'), 200, 'another /64 is not affected');
 });
 
 test('login: spraying from a /64 hits the per-address limit', async t => {
@@ -68,14 +68,14 @@ test('login: spraying from a /64 hits the per-address limit', async t => {
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE '%2001:db8:5:%' OR key LIKE '%v6\\_spray\\_%'`);
   await clean();
   t.after(clean);
-  for (let i = 0; i < L.MAX_JE_ADDRESS; i++) {
+  for (let i = 0; i < L.MAX_PER_ADDRESS; i++) {
     const ip = `2001:db8:5:0:${(i + 1).toString(16)}::1`;
     const name = `v6_spray_${i}`;
-    assert.equal(await L.loginAllowed(ip, name), null, `Versuch ${i + 1} darf noch`);
+    assert.equal(await L.loginAllowed(ip, name), null, `attempt ${i + 1} is still allowed`);
     await L.loginFailed(ip, name);
   }
   const sperre = await L.loginAllowed('2001:db8:5:0:ffff::9', 'v6_spray_neu');
-  assert.ok(sperre, 'Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse');
+  assert.ok(sperre, 'login: spraying from one /64 hits the per-address limit');
   assert.equal(sperre.code, 'too_many_failed_attempts');
 });
 
@@ -83,7 +83,7 @@ test('key per address: /64, IPv4 in IPv6, others stay', () => {
   assert.equal(throttleAddress('2001:0db8:0000:0042:1:2:3:4'), '2001:db8:0:42::/64');
   assert.equal(throttleAddress('2001:db8::1'), '2001:db8:0:0::/64');
   assert.equal(throttleAddress('::1'), '0:0:0:0::/64');
-  assert.equal(throttleAddress('::ffff:192.0.2.7'), '192.0.2.7', 'IPv4 in IPv6 zählt wie IPv4');
+  assert.equal(throttleAddress('::ffff:192.0.2.7'), '192.0.2.7', 'IPv4 in IPv6 counts like IPv4');
   assert.equal(throttleAddress('192.0.2.7'), '192.0.2.7');
   assert.equal(throttleAddress('konto:7'), 'konto:7');
   assert.equal(throttleAddress('?'), '?');

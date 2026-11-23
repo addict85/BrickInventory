@@ -9,7 +9,7 @@
  *   A  the store not passed on in valueParts → red:
  *      “twelve parts, one query on the parts cache”
  *   B  the same in valueMinifigs → red: “six minifigures, …”
- *   C  the account filter ignored in mengeJoin → red: “the set quantity only reads
+ *   C  the account filter ignored in setQuantityJoin → red: “the set quantity only reads
  *      the entries of the requested accounts”
  *   D  inAccountCurrency always delivers TRUE → red: “the average purchase price
  *      of the gallery only counts the account currency” (200 instead of 100)
@@ -94,9 +94,9 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
     assert.equal(m.ergebnis.parts.length, 12);
     assert.ok(
       m.ergebnis.parts.every(p => Number(p.avg_price) === 1.5),
-      'nicht jedes Teil kam aus dem Cache',
+      'not every part came from the cache',
     );
-    assert.equal(m.treffer(), 1, `${m.treffer()} Abfragen auf part_price_cache`);
+    assert.equal(m.treffer(), 1, `${m.treffer()} queries on part_price_cache`);
   });
 
   await t.test('six minifigures, one query on the minifigure cache', async () => {
@@ -104,19 +104,19 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
     assert.equal(m.ergebnis.figs.length, 6);
     assert.ok(
       m.ergebnis.figs.every(f => Number(f.avg_price) === 4),
-      'nicht jede Figur kam aus dem Cache',
+      'not every figure came from the cache',
     );
-    assert.equal(m.treffer(), 1, `${m.treffer()} Abfragen auf minifig_price_cache`);
+    assert.equal(m.treffer(), 1, `${m.treffer()} queries on minifig_price_cache`);
   });
 
   await t.test('the set quantity only reads the entries of the requested accounts', async () => {
     await holdsSet(db, uid, `bw${ID}-1`, 2);
     for (let i = 0; i < 40; i++) await holdsSet(db, fremd, `bw${ID}x${i}-1`, 1);
-    const { mengeJoin, quantityFrom } = _req('db/stockQuantity.js');
+    const { setQuantityJoin, quantityFrom } = _req('db/stockQuantity.js');
     const plan = await db.get(
       `EXPLAIN (ANALYZE, FORMAT JSON)
        SELECT s.set_number, ${quantityFrom('sm', 0)} AS quantity
-         FROM sets s ${mengeJoin('s', 'sm', '= ANY($1)')}
+         FROM sets s ${setQuantityJoin('s', 'sm', '= ANY($1)')}
         WHERE s.user_id = ANY($1)`,
       [[uid]],
     );
@@ -126,10 +126,10 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
       if (k['Relation Name'] === 'set_acquisitions') zeilen.push(k['Actual Rows']);
       for (const u of k.Plans || []) lauf(u);
     })(plan['QUERY PLAN'][0].Plan);
-    assert.ok(zeilen.length > 0, 'kein Scan auf set_acquisitions im Plan');
+    assert.ok(zeilen.length > 0, 'no scan on set_acquisitions in the plan');
     assert.ok(
       zeilen.every(n => n <= 1),
-      `gelesene Erfassungen: ${zeilen.join(', ')}`,
+      `acquisitions read: ${zeilen.join(', ')}`,
     );
   });
 
@@ -153,7 +153,7 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
     const { readSets } = require('./helpers/sources').areaPage('sets');
     const r = await readSets([uid], {});
     const row = (r.sets || r).find(z => z.set_number === SN);
-    assert.ok(row, 'das Set fehlt in der Liste');
+    assert.ok(row, 'the set is missing in the list');
     assert.equal(Number(row.avg_purchase_price), 100);
   });
 });

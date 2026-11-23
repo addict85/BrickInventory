@@ -33,9 +33,7 @@ function chrome() {
   ];
   const bin = kandidaten.find(k => k && fs.existsSync(k)) ?? null;
   if (!bin && process.env.REQUIRE_BROWSER === '1')
-    throw new Error(
-      `REQUIRE_BROWSER=1, aber kein Chrome gefunden (CHROME_BIN=${process.env.CHROME_BIN || 'empty-state'})`,
-    );
+    throw new Error(`REQUIRE_BROWSER=1, but no Chrome found (CHROME_BIN=${process.env.CHROME_BIN || 'empty-state'})`);
   return bin;
 }
 
@@ -132,7 +130,7 @@ async function cdp(wsUrl) {
  */
 async function startApp(t, opt = {}) {
   const bin = chrome();
-  if (!bin) return { reason: 'kein Chrome gefunden' };
+  if (!bin) return { reason: 'no Chrome found' };
   const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   process.env.DATABASE_URL = URL_DB;
   const _req = require('./sources').buildAndRequire();
@@ -141,9 +139,8 @@ async function startApp(t, opt = {}) {
   try {
     await db.initSchema();
   } catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    return { reason: 'Test-DB nicht erreichbar' };
+    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, but the test DB is not reachable: ${e.message}`);
+    return { reason: 'test DB not reachable' };
   }
   const c = await db.pool.connect();
   try {
@@ -250,7 +247,7 @@ async function startApp(t, opt = {}) {
   const ursache = /^.*(?:FATAL|Socket path too long).*$/m.exec(browser.log())?.[0]?.trim();
   if (!wsUrl)
     throw new Error(
-      `Chrome meldet keinen DevTools-Zugang (Ende: ${browser.p.exitCode ?? browser.p.signalCode ?? 'läuft'})` +
+      `Chrome reports no DevTools access (end: ${browser.p.exitCode ?? browser.p.signalCode ?? 'running'})` +
         `${ursache ? ` — ${ursache}` : ''}:\n` +
         browser.log().slice(-1500),
     );
@@ -326,7 +323,7 @@ async function startApp(t, opt = {}) {
       .slice(-5)
       .map(e => e.params.exceptionDetails.exception?.description ?? e.params.exceptionDetails.text);
     const sFrom = exceptions.length ? `\nAusnahmen der Seite:\n${exceptions.join('\n')}` : '';
-    throw new Error(`Zeitüberschreitung: ${was} — ${condition}${s401}${sFrom}\nServer:\n${server.log().slice(-3000)}`);
+    throw new Error(`Timeout: ${was} — ${condition}${s401}${sFrom}\nServer:\n${server.log().slice(-3000)}`);
   };
   await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
@@ -344,7 +341,7 @@ async function startApp(t, opt = {}) {
   // On the phone the name only stands in the menu; that is why the account badge itself is checked.
   await bis(
     `(document.getElementById('ubadge')?.textContent || '').includes(${JSON.stringify(NAME)})`,
-    'Kontoname im Kontoschild',
+    'Account name in the account badge',
   );
   // The start is only decided once the collection has loaded; before that
   // its build could overtake a tab switch of the test.

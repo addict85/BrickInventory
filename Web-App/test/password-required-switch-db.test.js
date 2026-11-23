@@ -101,20 +101,20 @@ test('start password: change it first, then everything else', { concurrency: 1 }
 
   await t.test('session and token only get as far as the change', async () => {
     const s = await callFn('/settings/tokens', { cookie });
-    assert.equal(s.status, 403, 'Sitzung kommt am Wechsel vorbei');
+    assert.equal(s.status, 403, 'session gets past the switch');
     assert.equal(s.body.code, 'password_change_required');
     const k = await callFn('/settings/tokens', { token });
-    assert.equal(k.status, 403, 'Token kommt am Wechsel vorbei');
+    assert.equal(k.status, 403, 'token gets past the switch');
     const ich = await callFn('/auth/me', { cookie });
     assert.equal(ich.status, 200);
-    assert.equal(ich.body.user.mustChangePassword, true, '/me sagt der Oberfläche nichts vom Wechsel');
+    assert.equal(ich.body.user.mustChangePassword, true, '/me tells the interface nothing about the switch');
   });
 
   await t.test('a session from before the field asks the database', async () => {
     const sid = _req('src/account/sessionStore.js').sessionDigest(
       decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0],
     );
-    await db.run(`UPDATE user_sessions SET sess = (sess::jsonb - 'mussPasswortAendern')::json WHERE sid = $1`, [sid]);
+    await db.run(`UPDATE user_sessions SET sess = (sess::jsonb - 'mustChangePassword')::json WHERE sid = $1`, [sid]);
     assert.equal((await callFn('/settings/tokens', { cookie })).status, 403);
   });
 

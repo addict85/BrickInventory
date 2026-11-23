@@ -61,12 +61,12 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
     assert.equal(
       Number(preis?.avg_price),
       12,
-      `fetchPartPrice lieferte ${JSON.stringify(preis)} statt des zwischengespeicherten 12. ` +
-        'Der Eintrag liegt unter der BrickLink-Nummer; wer mit der Rebrickable-Nummer ' +
-        'ruft, legt sonst eine zweite Zeile für denselben Gegenstand an und fragt ' +
-        'BrickLink erneut.',
+      `fetchPartPrice returned ${JSON.stringify(preis)} instead of the cached 12. ` +
+        'The entry is stored under the BrickLink number; whoever calls with the Rebrickable number ' +
+        'otherwise creates a second row for the same item and asks ' +
+        'BrickLink again.',
     );
-    assert.equal(preis?.from_cache, true, 'Der Wert kam nicht aus dem Cache');
+    assert.equal(preis?.from_cache, true, 'The value did not come from the cache');
 
     // ── 2. The history finds BOTH numbers ───────────────────────────────
     // Acquisition under the user's number — that is how he captured the part.
@@ -86,21 +86,21 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
     const v = await priceHistoryPart(uid, RB, FARBE, CURRENCY);
     assert.ok(
       v.history_new.length >= 1,
-      'Der Verlauf ist leer. Punkte unter der Rebrickable-Nummer sind alter Bestand — ' +
-        'sie dürfen nicht aus dem Diagramm verschwinden, bloss weil künftig unter der ' +
-        'BrickLink-Nummer geschrieben wird.',
+      'The history is empty. Points under the Rebrickable number are legacy data — ' +
+        'they must not disappear from the chart just because writes will go under the ' +
+        'BrickLink number from now on.',
     );
-    assert.ok(v.by_condition?.N, 'Für den Zustand „N" kam keine Zeile zurück, obwohl eine Erfassung existiert');
+    assert.ok(v.by_condition?.N, 'No row came back for the condition „N", although an acquisition exists');
     assert.equal(
       Number(v.by_condition.N.market_price),
       12,
-      `Der Marktpreis kam als ${v.by_condition.N.market_price} statt 12 zurück — ` +
-        'der Cache-Eintrag unter der BrickLink-Nummer wird nicht gefunden.',
+      `The market price came back as ${v.by_condition.N.market_price} instead of 12 — ` +
+        'the cache entry under the BrickLink number is not found.',
     );
     assert.equal(
       Number(v.by_condition.N.purchase_price),
       5,
-      'Der Kaufpreis steht unter der Nummer des Benutzers und muss weiter gefunden werden',
+      "The purchase price is stored under the user's number and must still be found",
     );
 
     // 3. WITHOUT a mapping the Rebrickable number applies
@@ -117,9 +117,9 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
     assert.equal(
       Number(price2?.avg_price),
       15,
-      `fetchPartPrice lieferte ${JSON.stringify(price2)} statt 15. Ohne Zuordnung ` +
-        'muss die Rebrickable-Nummer selbst der Schlüssel sein — sonst fragt jeder ' +
-        'Aufruf BrickLink neu, obwohl der Preis dasteht.',
+      `fetchPartPrice returned ${JSON.stringify(price2)} instead of 15. Without a mapping ` +
+        'the Rebrickable number itself must be the key — otherwise every ' +
+        'call asks BrickLink again although the price is there.',
     );
   } finally {
     await db.run(`DELETE FROM part_price_history WHERE part_number = ANY($1)`, [[RB, BL, RB2]]).catch(() => {});

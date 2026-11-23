@@ -1,4 +1,4 @@
-import type { Sicht } from '../household';
+import type { Viewer } from '../household';
 import { buildChartData } from './portfolio/chartData';
 import { reconstructCurve, type CurvesPoint } from './portfolio/curve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
@@ -34,7 +34,7 @@ function withStartPoint(rawPoints: CurvesPoint[], period: string, purchaseTotal:
 export async function portfolioHistory(
   k: FinancesContext,
   viewerId: number,
-  idsChoice: Sicht | number[],
+  idsChoice: Viewer | number[],
   period: string,
   db: FinancesContext['db'] = k.db,
   getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.settings.userValue,
@@ -90,7 +90,7 @@ export async function portfolioHistory(
   if (condensed) rawPoints = onMonths(rawPoints);
   const downsampled = monthResolution || condensed;
 
-  const now = k.clock.datum();
+  const now = k.clock.date();
   if (rawPoints.length <= 1) rawPoints = withStartPoint(rawPoints, period, purchaseTotal, now);
 
   if (!rawPoints.length) {

@@ -65,7 +65,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     // in the gallery, in the portfolio value and in the finance view —
     // each of these views would from then on need a filter it does not have.
     const inSets = await db.get('SELECT COUNT(*)::int AS n FROM sets WHERE user_id=$1', [U.grandparent]);
-    assert.equal(inSets.n, 0, 'Der Merkposten hat eine Zeile in `sets` angelegt');
+    assert.equal(inSets.n, 0, 'The wanted item created a row in `sets`');
   });
 
   await t.test('the master data comes from the catalog, not from a copy', async () => {
@@ -78,7 +78,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     // wishlist changes it too. Exactly for that there is no name column in 0021.
     await db.run(`UPDATE rb_sets SET name='Millennium Falcon (UCS)' WHERE set_num='75192-1'`);
     const [nachher] = await W.wantedItemsOf([U.grandparent]);
-    assert.equal(nachher.name, 'Millennium Falcon (UCS)', 'Der Name stammt aus einer Kopie und veraltet');
+    assert.equal(nachher.name, 'Millennium Falcon (UCS)', 'The name comes from a copy and goes stale');
     await db.run(`UPDATE rb_sets SET name='Millennium Falcon' WHERE set_num='75192-1'`);
   });
 
@@ -87,7 +87,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     // It should be VISIBLE and not show up as a crash.
     await W.addWantedItem(U.grandparent, '99999-1', 'N');
     const w = (await W.wantedItemsOf([U.grandparent])).find(x => x.set_number === '99999-1');
-    assert.ok(w, 'Der Merkposten fehlt ganz — der LEFT JOIN ist ein INNER JOIN');
+    assert.ok(w, 'The wanted item is missing entirely — the LEFT JOIN is an INNER JOIN');
     assert.equal(w.name, null);
     assert.equal(w.year, null);
   });
@@ -105,7 +105,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
       (await W.wantedItemsOf([U.grandparent], undefined, 'EUR', { search: 'riven' })).some(
         x => x.set_number === '10316-1',
       ),
-      'Die Suche findet den Namen aus set_catalog nicht',
+      'The search does not find the name from set_catalog',
     );
     await db.run(`DELETE FROM wanted WHERE set_number = '10316-1'`);
   });
@@ -115,18 +115,18 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     // two wishlist items with two thresholds. Since 0019 price_alerts carries the condition
     // in the key just the same.
     const b = await W.addWantedItem(U.grandparent, '75192-1', 'U');
-    assert.equal(b.was_new, true, 'Der gebrauchte Merkposten hat den neuen überschrieben');
+    assert.equal(b.was_new, true, 'The used wanted item overwrote the new one');
     const bothOnes = (await W.wantedItemsOf([U.grandparent], '75192-1')).map(w => w.condition).sort();
     assert.deepEqual(bothOnes, ['N', 'U']);
   });
 
   await t.test('adding the same wishlist item twice is not a second entry', async () => {
     const wieder = await W.addWantedItem(U.grandparent, '75192-1', 'N');
-    assert.equal(wieder.was_new, false, 'war_neu meldet einen Neuzugang, den es nicht gab');
+    assert.equal(wieder.was_new, false, 'war_neu reports a new addition that did not happen');
     const n = await db.get(`SELECT COUNT(*)::int AS n FROM wanted WHERE user_id=$1 AND set_number='75192-1'`, [
       U.grandparent,
     ]);
-    assert.equal(n.n, 2, 'N und U — nicht mehr');
+    assert.equal(n.n, 2, 'N and U — no more');
   });
 
   await t.test("the grandfather sees the grandchild's wishlist items", async () => {
@@ -134,11 +134,11 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     // but the purpose: whoever looks for a gift looks exactly there.
     await W.addWantedItem(U.enkel, '75192-1', 'N');
     const onlyGrandparent = await W.wantedItemsOf([U.grandparent]);
-    assert.ok(!onlyGrandparent.some(w => w.user_id === U.enkel), 'Ohne Blickfeld kommen fremde Merkposten mit');
+    assert.ok(!onlyGrandparent.some(w => w.user_id === U.enkel), 'Without a scope foreign wanted items come along');
 
     const zusammen = await W.wantedItemsOf([U.grandparent, U.enkel]);
     const fromGrandchild = zusammen.find(w => w.user_id === U.enkel);
-    assert.ok(fromGrandchild, 'Der Merkposten des Enkels fehlt im gemeinsamen Blickfeld');
+    assert.ok(fromGrandchild, "The grandchild's wanted item is missing in the shared scope");
     assert.equal(fromGrandchild.set_number, '75192-1');
   });
 
@@ -151,7 +151,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     const inScope = await W.wantedItemsOf([U.grandparent, U.enkel], '75192-1');
     assert.ok(
       inScope.every(w => w.owned === true),
-      'owned sieht nur das eigene Konto an',
+      'owned only looks at the own account',
     );
     await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1`, [U.enkel]);
     await db.run(`DELETE FROM sets WHERE user_id=$1`, [U.enkel]);
@@ -161,7 +161,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     const weg = await W.removeWantedItem(U.grandparent, '75192-1', 'U');
     assert.equal(weg, 1);
     const uebrig = (await W.wantedItemsOf([U.grandparent], '75192-1')).map(w => w.condition);
-    assert.deepEqual(uebrig, ['N'], 'Löschen hat den anderen Zustand mitgenommen');
+    assert.deepEqual(uebrig, ['N'], 'Deleting took the other condition along');
 
     // Deleting twice is no error — the goal is reached.
     assert.equal(await W.removeWantedItem(U.grandparent, '75192-1', 'U'), 0);
@@ -176,7 +176,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     const r = await W.fulfillWantedItem(U.grandparent, U.grandparent, '75192-1', 'N', { quantity: 2 });
     assert.equal(r.action, 'added');
 
-    assert.ok(await haltRow(db, U.grandparent, '75192-1'), 'Das Set ist nicht in der Galerie gelandet');
+    assert.ok(await haltRow(db, U.grandparent, '75192-1'), 'The set did not land in the gallery');
     // The quantity from the acquisitions (migration 0036).
     assert.equal(await quantityOf(db, U.grandparent, '75192-1'), 2);
 
@@ -184,7 +184,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
       U.grandparent,
       '75192-1',
     ]);
-    assert.equal(erf.n, 1, 'Keine Erfassungszeile — die Übernahme ruft acquireSet() nicht');
+    assert.equal(erf.n, 1, 'No acquisition row — the takeover does not call acquireSet()');
   });
 
   await t.test('after the takeover wishlist item AND alert are gone', async () => {
@@ -196,10 +196,10 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     await W.addWantedItem(U.enkel, '10276-1', 'N');
     const P = {
       ..._req('src/finances/priceAlert.js'),
-      ...require('./helpers/sources').testArea('finances').preisalarm,
+      ...require('./helpers/sources').testArea('finances').priceAlert,
     };
     await P.setAlert(U.enkel, '10276-1', 'EUR', { direction: 'below', threshold: 249, condition: 'U' });
-    assert.equal((await P.alertsFor(U.enkel, '10276-1')).length, 1, 'Aufbau: Alarm fehlt');
+    assert.equal((await P.alertsFor(U.enkel, '10276-1')).length, 1, 'setup: alert is missing');
 
     await W.fulfillWantedItem(U.enkel, U.enkel, '10276-1', 'U', {});
 
@@ -207,8 +207,8 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     // — it is a DIFFERENT wishlist item, and exactly for that the condition stands
     // in the key.
     const uebrig = (await W.wantedItemsOf([U.enkel], '10276-1')).map(w => w.condition);
-    assert.deepEqual(uebrig, ['N'], 'Der U-Merkposten steht noch — oder der N-Merkposten wurde mitgenommen');
-    assert.equal((await P.alertsFor(U.enkel, '10276-1')).length, 0, 'Der Alarm steht noch');
+    assert.deepEqual(uebrig, ['N'], 'The U wanted item is still there — or the N wanted item was taken along');
+    assert.equal((await P.alertsFor(U.enkel, '10276-1')).length, 0, 'The alert is still there');
   });
 
   await t.test('taking over a set one already has does NOT top up', async () => {
@@ -220,7 +220,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     const r = await W.fulfillWantedItem(U.grandparent, U.grandparent, '75192-1', 'N', { quantity: 5 });
     assert.equal(r.action, 'exists');
     const nachher = await quantityOf(db, U.grandparent, '75192-1');
-    assert.equal(nachher, vorher, 'Die Menge wurde aufgestockt');
+    assert.equal(nachher, vorher, 'The quantity was topped up');
     // The wishlist item is done nevertheless — otherwise it would remain for a set
     // that one has long had.
     assert.equal((await W.wantedItemsOf([U.grandparent], '75192-1')).length, 0);
@@ -236,7 +236,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
       condition: 'U',
     });
 
-    assert.equal(await quantityOf(db, U.grandparent, '10497-1'), 3, 'Die Anzahl wurde nicht übernommen');
+    assert.equal(await quantityOf(db, U.grandparent, '10497-1'), 3, 'The quantity was not taken over');
 
     // Since migration 0032 purchase price and condition only stand in the acquisition —
     // before, this place checked the price on the sets row.
@@ -244,8 +244,12 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
       `SELECT purchase_price, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
       [U.grandparent, '10497-1'],
     );
-    assert.equal(parseFloat(erf.purchase_price), 88.5, 'Der Kaufpreis wurde nicht übernommen');
-    assert.equal(erf.condition, 'U', 'Die Erfassung steht im Zustand des MERKPOSTENS statt in dem, was gekauft wurde');
+    assert.equal(parseFloat(erf.purchase_price), 88.5, 'The purchase price was not taken over');
+    assert.equal(
+      erf.condition,
+      'U',
+      'The acquisition is in the condition of the WANTED ITEM instead of the one that was bought',
+    );
   });
 
   await t.test('the wishlist item disappears by ITS condition, not by the purchased one', async () => {
@@ -258,11 +262,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     await W.fulfillWantedItem(U.enkel, U.enkel, '21034-1', 'U', { condition: 'N' });
 
     const uebrig = (await W.wantedItemsOf([U.enkel], '21034-1')).map(w => w.condition);
-    assert.deepEqual(
-      uebrig,
-      ['N'],
-      'Geräumt wurde nach dem GEKAUFTEN Zustand — damit trifft es den falschen Merkposten',
-    );
+    assert.deepEqual(uebrig, ['N'], 'Clearing went by the BOUGHT condition — that hits the wrong wanted item');
   });
 
   await t.test('the price comparison hangs on the wishlist item, not on the catalog', async () => {
@@ -278,23 +278,23 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     await W.addWantedItem(U.grandparent, '75192-1', 'N');
     const [withCatalog] = await W.wantedItemsOf([U.grandparent], '75192-1');
     const url = decodeURIComponent(withCatalog.price_comparison_url || '');
-    assert.ok(url.startsWith('http'), 'Ohne Adresse führt der Knopf ins Leere');
-    assert.ok(url.includes('75192'), `Die Setnummer fehlt in der Adresse: ${url}`);
+    assert.ok(url.startsWith('http'), 'Without an address the button leads nowhere');
+    assert.ok(url.includes('75192'), `The set number is missing in the address: ${url}`);
     assert.ok(
       url.includes('Millennium Falcon'),
-      `Der Name macht die Suche brauchbar — "LEGO 75192 Millennium Falcon" findet, ` +
-        `die blosse Nummer oft nicht: ${url}`,
+      `The name makes the search usable — "LEGO 75192 Millennium Falcon" finds it, ` +
+        `the bare number often does not: ${url}`,
     );
 
     // And the case that so far made the button disappear: a set that does not
     // stand in the catalog at all. The name is missing then — the address is not.
     await W.addWantedItem(U.grandparent, '99999-1', 'N');
     const [withoutCatalog] = await W.wantedItemsOf([U.grandparent], '99999-1');
-    assert.equal(withoutCatalog.name, null, 'Vorbedingung: dieses Set kennt der Katalog nicht');
+    assert.equal(withoutCatalog.name, null, 'precondition: the catalogue does not know this set');
     const url2 = decodeURIComponent(withoutCatalog.price_comparison_url || '');
     assert.ok(
       url2.includes('99999'),
-      `Gerade hier muss die Adresse stehen — der Katalog liefert für dieses Set ` + `nichts: ${url2}`,
+      `Exactly here the address must be present — the catalogue returns nothing for this set: ${url2}`,
     );
   });
 
@@ -336,15 +336,15 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     try {
       // ── Without a file: no image_local, but an order instead ──────────────
       const [a] = await W.wantedItemsOf([U.grandparent], withoutFile);
-      assert.equal(a.image_local, null, 'Vorbedingung: für dieses Set liegt keine Datei');
+      assert.equal(a.image_local, null, 'precondition: there is no file for this set');
       await IQ._writeBuffer();
       const notiz = await db.get('SELECT set_number FROM image_wanted WHERE url=$1', [
         `http://cdn.example/media/sets/${withoutFile}.jpg`,
       ]);
       assert.ok(
         notiz,
-        'Das fehlende Bild wurde nicht bestellt — dann holt es der ' +
-          'Hintergrundjob nie, und die Anzeige bleibt für immer am Proxy hängen',
+        'The missing image was not ordered — then the ' +
+          'background job never fetches it, and the display stays stuck on the proxy forever',
       );
       assert.equal(notiz.set_number, withoutFile);
 
@@ -352,7 +352,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
       const [b] = await W.wantedItemsOf([U.grandparent], withFile);
       assert.ok(
         String(b.image_local || '').startsWith('/images/sets/'),
-        `image_local fehlt oder zeigt woandershin: ${b.image_local}`,
+        `image_local is missing or points elsewhere: ${b.image_local}`,
       );
     } finally {
       fs.rmSync(datei, { force: true });
@@ -372,7 +372,7 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     //      turns red (UNIQUE violation instead of merging).
     const P = {
       ..._req('src/finances/priceAlert.js'),
-      ...require('./helpers/sources').testArea('finances').preisalarm,
+      ...require('./helpers/sources').testArea('finances').priceAlert,
     };
     const sn = `wlmv${process.pid}-1`;
     await db.run(
@@ -384,11 +384,11 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     await W.addWantedItem(U.grandparent, sn, 'N');
     await P.setAlert(U.grandparent, sn, 'EUR', { direction: 'below', threshold: 99, condition: 'N' });
     const [vorher] = await W.wantedItemsOf([U.grandparent], sn);
-    assert.ok(vorher, 'Aufbau: der Merkposten fehlt');
+    assert.ok(vorher, 'setup: the wanted item is missing');
 
     // ── The same owner is not a move ─────────────────────────────────
     const nix = await W.moveWantedItem(U.grandparent, sn, 'N', U.grandparent);
-    assert.equal(nix.moved, false, 'Ein Umzug auf dasselbe Konto ist keiner');
+    assert.equal(nix.moved, false, 'A move to the same account is no move');
 
     // ── The move ───────────────────────────────────────────────────────
     const r = await W.moveWantedItem(U.grandparent, sn, 'N', U.enkel);
@@ -396,34 +396,34 @@ test('wishlist against a real database', { concurrency: 1 }, async t => {
     assert.equal(r.merged, false);
 
     const onGrandparent = await W.wantedItemsOf([U.grandparent], sn);
-    assert.deepEqual(onGrandparent, [], 'Der Merkposten steht noch beim alten Konto');
+    assert.deepEqual(onGrandparent, [], 'The wanted item is still at the old account');
     const [nachher] = await W.wantedItemsOf([U.enkel], sn);
-    assert.ok(nachher, 'Der Merkposten ist beim neuen Konto nicht angekommen');
+    assert.ok(nachher, 'The wanted item did not arrive at the new account');
 
     // The date added is the only detail a wishlist item carries about
     // itself — re-creating would set it to today.
     assert.equal(
       new Date(nachher.created_at).getTime(),
       new Date(vorher.created_at).getTime(),
-      'Das Aufnahmedatum wurde neu gesetzt — dann ist es nicht derselbe Merkposten',
+      'The date added was reset — then it is not the same wanted item',
     );
 
     assert.equal(
       (await P.alertsFor(U.grandparent, sn)).length,
       0,
-      'Der Alarm blieb beim alten Konto — es bekäme Meldungen für etwas, ' + 'das nicht mehr auf seiner Liste steht',
+      'The alert stayed with the old account — it would get messages for something ' + 'that is no longer on its list',
     );
     const alarm = (await P.alertsFor(U.enkel, sn)).find(a => a.condition === 'N');
-    assert.ok(alarm, 'Der Alarm ist nicht mitgezogen');
+    assert.ok(alarm, 'The alert did not move along');
     assert.equal(parseFloat(alarm.threshold), 99);
 
     // ── And if the target already has the wishlist item ──────────────────────────
     await W.addWantedItem(U.grandparent, sn, 'N');
     const r2 = await W.moveWantedItem(U.grandparent, sn, 'N', U.enkel);
-    assert.equal(r2.merged, true, 'Ein Merkposten, den das Ziel schon hat, muss zusammengeführt werden');
-    assert.deepEqual(await W.wantedItemsOf([U.grandparent], sn), [], 'Die Quelle steht noch da');
+    assert.equal(r2.merged, true, 'A wanted item the target already has must be merged');
+    assert.deepEqual(await W.wantedItemsOf([U.grandparent], sn), [], 'The source is still there');
     const nachMerge = (await P.alertsFor(U.enkel, sn)).find(a => a.condition === 'N');
-    assert.equal(parseFloat(nachMerge.threshold), 99, 'Die Schwelle des ZIELS wurde überschrieben');
+    assert.equal(parseFloat(nachMerge.threshold), 99, "The TARGET's threshold was overwritten");
   });
 
   await t.test('close connections', async () => {

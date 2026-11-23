@@ -12,19 +12,19 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * When a price alert reports. On the wire "unter" or "ueber" ([identifier]); in
- * code the type, so that no comparison with a word rebuilds the rule.
+ * When a price alert reports. On the wire "below" or "above" ([identifier]); in
+ * code the type, so that no comparison with a word rebuilds the rule. [v1] is the
+ * value of API v1: rows stored before the move to v2 still carry it.
  */
 @Serializable(with = AlarmDirectionSerializer::class)
-enum class AlarmDirection(val identifier: String) {
-    BELOW("unter"),
-    OVER("ueber");
+enum class AlarmDirection(val identifier: String, private val v1: String) {
+    BELOW("below", "unter"),
+    OVER("above", "ueber");
 
     companion object {
-        /** Contract bridge until API v2: Vertrag.kt still names this value `UNTER`. */
-        val UNTER get() = BELOW
-
-        fun from(identifier: String?): AlarmDirection? = entries.firstOrNull { it.identifier == identifier?.trim()?.lowercase() }
+        fun from(identifier: String?): AlarmDirection? = identifier?.trim()?.lowercase()?.let { w ->
+            entries.firstOrNull { it.identifier == w || it.v1 == w }
+        }
     }
 }
 

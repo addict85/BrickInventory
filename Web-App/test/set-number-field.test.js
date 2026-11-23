@@ -39,11 +39,11 @@ test('abc is rejected, with a message at the field', async () => {
   const o = await openUi({});
   try {
     const r = await versuche(o, 'abc');
-    assert.equal(r.gesendet, false, '„abc“ ging an den Server');
+    assert.equal(r.gesendet, false, '„abc“ went to the server');
     assert.match(r.error, /„abc“ ist keine Setnummer/);
     assert.equal(r.field.getAttribute('aria-invalid'), 'true');
     assert.equal(r.field.getAttribute('aria-describedby'), 'add-num-error');
-    assert.equal(o.d.activeElement, r.field, 'Der Fokus steht nicht im Feld');
+    assert.equal(o.d.activeElement, r.field, 'The focus is not in the field');
     // Typing clears the message away.
     r.field.value = '1';
     r.field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
@@ -62,7 +62,7 @@ test('wrong forms are rejected', async () => {
   try {
     for (const n of ['abc', 'fig-000123', '10294-', '10294-1-2', '-1', '10 294', '<b>1</b>']) {
       const r = await versuche(o, n);
-      assert.equal(r.gesendet, false, `„${n}“ ging an den Server`);
+      assert.equal(r.gesendet, false, `„${n}“ went to the server`);
     }
   } finally {
     o.w.close();
@@ -73,10 +73,10 @@ test('valid numbers pass', async () => {
   const o = await openUi({});
   try {
     const korpus = CORPUS.map(f => f.erwartet).filter(Boolean);
-    assert.ok(korpus.length >= 10, 'Korpus nicht gelesen');
+    assert.ok(korpus.length >= 10, 'corpus not read');
     for (const n of [...korpus, '10294', '10294-1', ' 42143-1 ', 'llca30-1', 'comcon001', '6284070-1', '71000-12']) {
       const r = await versuche(o, n);
-      assert.equal(r.gesendet, true, `„${n}“ wurde abgewiesen: ${r.error}`);
+      assert.equal(r.gesendet, true, `„${n}“ was rejected: ${r.error}`);
       assert.equal(r.error, '');
     }
   } finally {

@@ -51,7 +51,7 @@ class ScreenFetchesDataNotSelfTest {
      * field or a different nullability in the DTO should stand out in the repository or ViewModel,
      * not in a composable. Without exception.
      * Counter-check: in VouchersCard.kt again
-     * `import ch.brickinventoryapp.contract.Gutschein` → red, names the file.
+     * `import ch.brickinventoryapp.contract.Voucher` → red, names the file.
      */
     @Test
     fun `no screen knows the server models`() {

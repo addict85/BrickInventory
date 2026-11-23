@@ -41,14 +41,14 @@ test('a vanished file during delivery does not end the process', async () => {
       out = execFileSync(process.execPath, [file], { encoding: 'utf8', timeout: 20000 });
     } catch (e) {
       assert.fail(
-        `Der Kindprozess ist nicht sauber beendet worden (Exitcode ${e.status}). ` +
-          `Ausgabe: ${(e.stdout || '').toString().trim() || '(leer)'}`,
+        `The child process did not exit cleanly (exit code ${e.status}). ` +
+          `Output: ${(e.stdout || '').toString().trim() || '(empty)'}`,
       );
     }
-    assert.ok(!out.includes('CRASH:'), `der Lesefehler hat den Prozess abgeschossen: ${out.trim()}`);
+    assert.ok(!out.includes('CRASH:'), `the read error killed the process: ${out.trim()}`);
     // As long as no headers are out yet, the error is reported as 404
     // instead of silently dropping the connection.
-    assert.match(out, /STATUS:404/, `erwartet wurde HTTP 404, Ausgabe: ${out.trim()}`);
+    assert.match(out, /STATUS:404/, `expected HTTP 404, output: ${out.trim()}`);
   } finally {
     fs.rmSync(file, { force: true });
   }

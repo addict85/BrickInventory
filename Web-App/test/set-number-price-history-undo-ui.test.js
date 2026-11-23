@@ -59,13 +59,13 @@ test('unknown set number: ask first, then create', async () => {
     assert.equal(
       aufrufe.some(a => a.url.includes('add-stream')),
       false,
-      'ohne Rückfrage angelegt',
+      'created without a confirmation prompt',
     );
     d.getElementById('btn-add').click();
     await warte(() => aufrufe.some(a => a.url.includes('add-stream')));
     assert.ok(
       aufrufe.some(a => a.url.includes('add-stream')),
-      'nach der Bestätigung nicht angelegt',
+      'not created after the confirmation',
     );
   } finally {
     w.close();
@@ -98,7 +98,7 @@ test('price history: purchase price as a point, not as the start of the curve', 
     d.querySelector('#gallery [data-click="openModal"]').click();
     await warte(() => d.querySelector('#set-modal svg.chart-price'), 4000);
     const linie = d.querySelector('#set-modal svg.chart-price polyline');
-    assert.equal(linie.getAttribute('points').trim().split(/\s+/).length, 2, 'Kaufpreis in der Marktkurve');
+    assert.equal(linie.getAttribute('points').trim().split(/\s+/).length, 2, 'purchase price in the market curve');
     assert.equal(d.querySelectorAll('#set-modal .purchase-dot').length, 1);
   } finally {
     w.close();
@@ -117,7 +117,7 @@ test('account: currency applies immediately, password has its own button', async
     // Before the change a prompt says that the market prices are reloaded.
     assert.ok(
       await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
-      'Rückfrage vor dem Währungswechsel',
+      'confirmation prompt before the currency change',
     );
     assert.match(d.getElementById('cd-msg').textContent, /Marktpreise/);
     d.getElementById('cd-confirm').click();
@@ -135,7 +135,7 @@ test('account: currency applies immediately, password has its own button', async
     assert.equal(
       aufrufe.some(a => a.url.endsWith('/v2/auth/profile') && a.method === 'PUT'),
       false,
-      'Passwort speichert das Profil mit',
+      'password saves the profile along with it',
     );
   } finally {
     w.close();
@@ -233,7 +233,7 @@ test('background jobs: labeled columns, error in the row, time in 24 h', async (
     await warte(() => d.querySelector('#jobs-card table') && d.querySelector('#monitor-content table'));
     const headers = [...d.querySelectorAll('#jobs-card .mon-kinds th')].map(text);
     assert.deepEqual(headers, ['Art', 'Offen', 'Läuft', 'Aufgegeben', 'Nächster Lauf', 'Aktionen']);
-    assert.ok(d.querySelector('#jobs-card tbody tr .error-box'), 'Fehler nicht in der Zeile seines Auftrags');
+    assert.ok(d.querySelector('#jobs-card tbody tr .error-box'), 'error not in the row of its job');
     assert.equal(d.querySelectorAll('#tab-monitor h1, #tab-monitor h2').length, 5);
     assert.match(text(d.querySelector('#monitor-content .mon-plan')), /03:00/);
     await reiter(w, 'settings');

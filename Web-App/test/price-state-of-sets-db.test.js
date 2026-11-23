@@ -54,10 +54,10 @@ test('price and history of a new set come in condition N', { concurrency: 1 }, a
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: false }, t });
   try {
     let j = await (await fetch(`${base}/api/v2/sets/${SET}/price`)).json();
-    assert.equal(j.avg_price, 100, '/price nimmt den Neupreis');
+    assert.equal(j.avg_price, 100, '/price takes the new price');
     j = await (await fetch(`${base}/api/v2/sets/${SET}/price-history`)).json();
     assert.equal(j.success, true);
-    assert.equal(j.condition, 'N', '/price-history im Zustand des Sets');
+    assert.equal(j.condition, 'N', '/price-history in the condition of the set');
   } finally {
     await db.run(`DELETE FROM users WHERE username = $1`, [NAME]);
     await db.run(`DELETE FROM price_cache WHERE set_number = $1`, [SET]);

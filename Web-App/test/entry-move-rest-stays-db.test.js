@@ -109,20 +109,20 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     assert.deepEqual(
       sender.acquisitions,
       [3],
-      `Der Absender hat ${sender.acquisitions.length} Erfassungen uebrig (${sender.acquisitions}), ` +
-        'erwartet 1 mit Menge 3. Sind es 0, hat das Verschieben ALLE geloescht — ' +
-        'genau der Fehler, um den es hier geht.',
+      `The sender has ${sender.acquisitions.length} acquisitions left (${sender.acquisitions}), ` +
+        'expected 1 with quantity 3. If it is 0, the move deleted ALL of them — ' +
+        'exactly the bug this is about.',
     );
-    assert.equal(sender.zeilen, 1, 'Die Bestandszeile des Absenders ist weg, obwohl er noch 3 Stueck hat');
+    assert.equal(sender.zeilen, 1, 'The holding row of the sender is gone although it still has 3 pieces');
     assert.equal(
       a.body.source_emptied,
       false,
-      'Die Antwort sagt source_emptied=true, obwohl beim Absender etwas bleibt',
+      'The response says source_emptied=true although something stays at the sender',
     );
 
     const ziel = await zaehle(KIND);
-    assert.deepEqual(ziel.acquisitions, [2], `Das Ziel hat ${ziel.acquisitions} statt [2]`);
-    assert.equal(ziel.zeilen, 1, 'Das Ziel hat keine Bestandszeile bekommen');
+    assert.deepEqual(ziel.acquisitions, [2], `The target has ${ziel.acquisitions} instead of [2]`);
+    assert.equal(ziel.zeilen, 1, 'The target got no holding row');
   });
 
   await t.test('if the LAST acquisition moves, the row disappears after all', async () => {
@@ -132,29 +132,29 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     const erf = await setup();
     assert.equal((await move(erf[0].id, KIND)).status, 200);
     const zweite = (await db.all(`SELECT id FROM part_acquisitions WHERE user_id=$1`, [MAIN])).map(r => r.id);
-    assert.equal(zweite.length, 1, 'Vorbedingung: beim Absender muss genau eine uebrig sein');
+    assert.equal(zweite.length, 1, 'Precondition: exactly one must be left at the sender');
     const b = await move(zweite[0], KIND);
     assert.equal(b.status, 200, JSON.stringify(b.body));
     assert.equal(
       b.body.source_emptied,
       true,
-      'Die Antwort muss source_emptied=true melden, wenn beim Absender nichts bleibt',
+      'The response must report source_emptied=true when nothing stays at the sender',
     );
 
     const sender = await zaehle(MAIN);
-    assert.deepEqual(sender.acquisitions, [], 'Beim Absender darf keine Erfassung bleiben');
+    assert.deepEqual(sender.acquisitions, [], 'No acquisition may stay at the sender');
     assert.equal(
       sender.zeilen,
       0,
-      'Die leere Bestandszeile des Absenders muss weg sein — eine manuelle Zeile ' +
-        'ohne Erfassung ist Ballast, kein Bestand',
+      'The empty holding row of the sender must be gone — a manual row ' +
+        'without an acquisition is ballast, not stock',
     );
 
     const ziel = await zaehle(KIND);
     assert.deepEqual(
       ziel.acquisitions,
       [2, 3],
-      `Das Ziel muss beide Mengen halten, hat ${JSON.stringify(ziel.acquisitions)}`,
+      `The target must hold both quantities, has ${JSON.stringify(ziel.acquisitions)}`,
     );
   });
 });

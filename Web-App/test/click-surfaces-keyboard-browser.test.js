@@ -89,7 +89,7 @@ test('click areas with the keyboard', { timeout: 280_000 }, async t => {
       );
       for (const f of await b.auswerten(UNBEDIENBAR)) funde.push(`${seite}: ${f}`);
     }
-    assert.ok(geprueft > 200, `nur ${geprueft} Klickflächen gesehen — prüft der Test noch etwas?`);
+    assert.ok(geprueft > 200, `only ${geprueft} click surfaces seen — does the test still check anything?`);
     assert.deepEqual(funde, []);
   });
 
@@ -101,7 +101,7 @@ test('click areas with the keyboard', { timeout: 280_000 }, async t => {
       ['table', '#figs-list tr .row-open[data-click="openSetItemDetail"]'],
     ]) {
       await b.auswerten(ansicht('figs-view', wert));
-      await bis(`!!document.querySelector(${JSON.stringify(sel)})`, `Figur aus Set (${wert})`);
+      await bis(`!!document.querySelector(${JSON.stringify(sel)})`, `Minifig from set (${wert})`);
       // Get there with Tab, not with focus(): the finding was that the tab order skipped them.
       await b.auswerten(`document.activeElement?.blur(); document.getElementById('fig-search').focus(); true`);
       let erreicht = false;
@@ -110,7 +110,7 @@ test('click areas with the keyboard', { timeout: 280_000 }, async t => {
         await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
         erreicht = await b.auswerten(`document.activeElement === document.querySelector(${JSON.stringify(sel)})`);
       }
-      assert.ok(erreicht, `${wert}: Tab erreicht die Figur aus dem Set nicht`);
+      assert.ok(erreicht, `${wert}: Tab does not reach the minifig from the set`);
       await b.tab('Input.dispatchKeyEvent', {
         type: 'keyDown',
         key: 'Enter',
@@ -121,11 +121,11 @@ test('click areas with the keyboard', { timeout: 280_000 }, async t => {
       await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
       await bis(
         `document.getElementById('setitem-modal')?.classList.contains('open')`,
-        `${wert}: Eingabe öffnet den Dialog`,
+        `${wert}: input opens the dialog`,
       );
       await bis(
         `/Marty McFly/.test(document.getElementById('setitem-modal').textContent)`,
-        `${wert}: Dialog der Figur`,
+        `${wert}: dialog of the minifig`,
       );
       await b.auswerten(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
       await bis(`!document.getElementById('setitem-modal').classList.contains('open')`, 'Dialog zu');

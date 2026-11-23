@@ -101,7 +101,7 @@ class ApiAreasTest {
                 .build().create(SetsApi::class.java)
             runBlocking { sets.getParts(page = 1, pageSize = 5, setNumber = "75192-1") }
             val path = server.takeRequest().path.orEmpty()
-            assertTrue(path, path.startsWith("/api/v1/parts") && "set_number=75192-1" in path)
+            assertTrue(path, path.startsWith("/api/v2/parts") && "set_number=75192-1" in path)
         } finally {
             server.shutdown()
         }

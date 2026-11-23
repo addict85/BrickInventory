@@ -27,13 +27,13 @@ test('switching off during a claim', async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const A = { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').jobs };
   const { createWorker } = _req('jobs/jobWorker.js');
-  const ART = `abschalten-${process.pid}`;
+  const KIND = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
   // A test kind needs a schema for its payload like any other.
   require('./helpers/sources')
     .testServices()
-    .jobQueue.registerKind({ kind: ART, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
-  await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
+    .jobQueue.registerKind({ kind: KIND, payload: require('zod').looseObject({}), run: async () => {} });
+  await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [KIND]);
   const sperre = await db.pool.connect();
   let letGo = () => {};
   const haengt = new Promise(r => {
@@ -50,25 +50,25 @@ test('switching off during a claim', async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const id = await A.placeJobOne(ART, { marke: MARKE });
+  const id = await A.placeJobOne(KIND, { marke: MARKE });
   let started = false;
   // Hangs until the end of the test: a started job would thus stay at 'laeuft'.
   const w = createWorker(
     require('./helpers/sources').testServices().jobQueue,
     {
-      [ART]: {
-        ausfuehren: () => {
+      [KIND]: {
+        run: () => {
           started = true;
           return haengt;
         },
       },
     },
-    { deadlineSec: 600, taktMs: 60_000 },
+    { deadlineSec: 600, tickMs: 60_000 },
   );
 
   await sperre.query('BEGIN');
   await sperre.query('LOCK TABLE jobs IN SHARE MODE');
-  w.starte();
+  w.launch();
   // The occupation now stands in the lock.
   for (let i = 0; i < 50; i++) {
     const r = await db.get(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_class c ON c.oid = l.relation
@@ -84,6 +84,6 @@ test('switching off during a claim', async t => {
   await warte(300);
 
   const z = await db.get('SELECT status FROM jobs WHERE id = $1', [id]);
-  assert.equal(started, false, 'nach stoppe() läuft kein Bearbeiter mehr an');
-  assert.notEqual(z.status, 'running', 'der Auftrag bleibt nicht belegt');
+  assert.equal(started, false, 'after stoppe() no handler starts anymore');
+  assert.notEqual(z.status, 'running', 'the job does not stay claimed');
 });

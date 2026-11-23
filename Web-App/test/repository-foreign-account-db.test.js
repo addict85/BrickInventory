@@ -104,9 +104,9 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
     });
     assert.equal((await lies('part_acquisitions', id)).quantity, 4);
     await ein(tx => manuell.shortenEntry(tx, 'part', id, 1, [fremd]));
-    assert.equal((await lies('part_acquisitions', id)).quantity, 3, 'Gegenprobe: das eigene Konto kürzt');
+    assert.equal((await lies('part_acquisitions', id)).quantity, 3, 'counter-check: the own account shortens');
     await ein(tx => manuell.removeEntry(tx, 'part', id, [fremd]));
-    assert.equal(await lies('part_acquisitions', id), undefined, 'Gegenprobe: das eigene Konto entfernt');
+    assert.equal(await lies('part_acquisitions', id), undefined, 'counter-check: the own account removes');
   });
 
   await t.test('a foreign entry cannot be deleted from a move', async () => {
@@ -127,7 +127,7 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
       await various.deleteSetEntry(tx, setId, [fremd]);
       await various.deleteManualEntry(tx, 'fig', figId, [fremd]);
     });
-    assert.equal(await lies('set_acquisitions', setId), undefined, 'Gegenprobe: das eigene Konto löscht');
+    assert.equal(await lies('set_acquisitions', setId), undefined, 'counter-check: the own account deletes');
     assert.equal(await lies('minifig_acquisitions', figId), undefined);
   });
 
@@ -139,8 +139,8 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
       )
     ).id;
     await ein(tx => various.removeManual(tx, 'fig', eigen, ['fig-000002'], row));
-    assert.ok(await lies('minifigs', row), 'mit dem Konto des Absenders ist es eine fremde Zeile');
+    assert.ok(await lies('minifigs', row), "with the sender's account it is a foreign row");
     await ein(tx => various.removeManual(tx, 'fig', fremd, ['fig-000002'], row));
-    assert.equal(await lies('minifigs', row), undefined, 'Gegenprobe: das eigene Konto entfernt');
+    assert.equal(await lies('minifigs', row), undefined, 'counter-check: the own account removes');
   });
 });

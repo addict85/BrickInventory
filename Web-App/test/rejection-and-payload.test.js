@@ -62,14 +62,14 @@ test('household routes: payload and refusal', { concurrency: 1 }, async t => {
     assert.equal(r.status, 409, `${code}: ${JSON.stringify(r.body)}`);
     assert.equal(r.body.success, false);
     assert.equal(r.body.code, code);
-    assert.ok(r.body.error && r.body.error !== code && !/[{}]/.test(r.body.error), `Kein Satz: ${r.body.error}`);
+    assert.ok(r.body.error && r.body.error !== code && !/[{}]/.test(r.body.error), `not a sentence: ${r.body.error}`);
   };
 
   await t.test('inviting returns the code as payload', async () => {
     const r = await post(a, 'invite');
     assert.equal(r.status, 200);
     assert.equal(r.body.success, true);
-    assert.match(r.body.code, /\w{4}/, 'der Einladungscode fehlt');
+    assert.match(r.body.code, /\w{4}/, 'the invitation code is missing');
     assert.equal(r.body.error, undefined);
   });
 
@@ -79,7 +79,7 @@ test('household routes: payload and refusal', { concurrency: 1 }, async t => {
     absage(await post(a, 'redeem', { code: await invitation(a), password: PASS }), 'account_with_itself');
     const currency = await post(c, 'redeem', { code: await invitation(a), password: PASS });
     absage(currency, 'currency_mismatch');
-    assert.match(currency.body.error, /CHF/, 'Die Währungen stehen nicht im Satz');
+    assert.match(currency.body.error, /CHF/, 'The currencies are not in the sentence');
 
     const ok = await post(b, 'redeem', { code: await invitation(a), password: PASS });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
@@ -114,7 +114,7 @@ test('errorText does not fall over on an unknown code', () => {
   assert.notEqual(
     errorText('invite_code_expired', 'de'),
     'invite_code_expired',
-    'Vorbedingung: ein bekannter Code hat einen Satz',
+    'precondition: a known code has a sentence',
   );
 });
 
@@ -137,20 +137,17 @@ test('after the currency change the household card is redrawn', async () => {
   try {
     await sicht(w, 'profile');
     const karte = () => d.getElementById('household-state').textContent;
-    assert.ok(await warte(() => /Währung: EUR/.test(karte())), `Karte vorher: ${karte()}`);
+    assert.ok(await warte(() => /Währung: EUR/.test(karte())), `card before: ${karte()}`);
     const field = d.getElementById('s-cur');
     field.value = 'CHF';
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(
       await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
-      'Rückfrage vor dem Wechsel',
+      'confirmation prompt before the switch',
     );
     d.getElementById('cd-confirm').click();
-    assert.ok(
-      await warte(() => aufrufe.some(x => x.method === 'POST' && x.url.endsWith('/v2/settings'))),
-      'nicht gespeichert',
-    );
-    assert.ok(await warte(() => /Währung: CHF/.test(karte())), `Karte nachher: ${karte()}`);
+    assert.ok(await warte(() => aufrufe.some(x => x.method === 'POST' && x.url.endsWith('/v2/settings'))), 'not saved');
+    assert.ok(await warte(() => /Währung: CHF/.test(karte())), `card after: ${karte()}`);
   } finally {
     w.close();
   }

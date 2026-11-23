@@ -2,7 +2,7 @@
  * be attested. The job process stores it in laufzustand; half a list would be worse than the old one. */
 export const REVOCATION_STATE = 'attestation_widerruf';
 const AT_MOST = 1_000_000;
-const CLOCK_SPIEL_MS = 5 * 60_000;
+const CLOCK_SLACK_MS = 5 * 60_000;
 
 export function readRevocationList(raw: Buffer | string): string[] {
   const j: unknown = JSON.parse(raw.toString());
@@ -20,19 +20,20 @@ export function readRevocationList(raw: Buffer | string): string[] {
 
 export interface SavedList {
   state: string;
+  /** Key of the lists already stored in run_state; renaming it would void them until the next fetch. */
   nummern: string[];
 }
 
 /** null: no list or older than [atMostDays]; then the server accepts no key. */
-export function applicableList(wert: string | null, atMostDays: number, now: Date): ReadonlySet<string> | null {
-  if (!wert) return null;
+export function applicableList(value: string | null, atMostDays: number, now: Date): ReadonlySet<string> | null {
+  if (!value) return null;
   let l: SavedList;
   try {
-    l = JSON.parse(wert) as SavedList;
+    l = JSON.parse(value) as SavedList;
   } catch {
     return null;
   }
   const alter = now.getTime() - new Date(l?.state).getTime();
-  if (!Array.isArray(l?.nummern) || !(alter >= -CLOCK_SPIEL_MS && alter <= atMostDays * 86_400_000)) return null;
+  if (!Array.isArray(l?.nummern) || !(alter >= -CLOCK_SLACK_MS && alter <= atMostDays * 86_400_000)) return null;
   return new Set(l.nummern);
 }

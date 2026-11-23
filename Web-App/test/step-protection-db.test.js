@@ -57,9 +57,9 @@ const auth = _req('src/account/deviceToken.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { bis } = require('./helpers/time');
 const { adminWithFactor } = require('./helpers/admin');
-const { geraeteSchluessel, signIt, releaseDevice, deposit } = require('./helpers/device');
+const { deviceKeys, signIt, releaseDevice, deposit } = require('./helpers/device');
 const attestation = require('./helpers/attestation');
-const repo = require('./helpers/sources').testArea('devices').geraeteSchluessel;
+const repo = require('./helpers/sources').testArea('devices').deviceKeys;
 const { pairQr } = require('./helpers/qr');
 const freePort = () =>
   new Promise(r => {
@@ -180,7 +180,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
         }
       }
       assert.deepEqual(open, []);
-      assert.ok(await db.get('SELECT 1 FROM vouchers WHERE id = $1', [gid]), 'der Gutschein ist noch da');
+      assert.ok(await db.get('SELECT 1 FROM vouchers WHERE id = $1', [gid]), 'the voucher is still there');
     },
   );
 
@@ -216,7 +216,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     assert.deepEqual(
       [withoutChain.status, withoutChain.body.code],
       [400, 'device_key_attestation'],
-      'Ein Schlüssel ohne Attestation (ältere App) wird nicht mehr angenommen',
+      'A key without attestation (older app) is no longer accepted',
     );
   });
 
@@ -237,7 +237,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       token: (await anmelden(NAME)).body.token,
       body: { chain: attestation.chain({ challenge: Buffer.from(ok.nonce, 'base64url') }).chain },
     });
-    assert.equal(zweimal.body.code, 'device_key_attestation', 'Die Nonce gilt einmal und nur ihrer Familie');
+    assert.equal(zweimal.body.code, 'device_key_attestation', 'The nonce is valid once and only for its family');
   });
 
   await t.test('a key without attestation applies until the cutoff date and gives way to an attested one', async () => {
@@ -251,10 +251,14 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     await db.run('INSERT INTO device_keys (user_id, token_family, public_key) VALUES ($1, $2, $3)', [
       f.uid,
       f.since,
-      geraeteSchluessel().public_key,
+      deviceKeys().public_key,
     ]);
-    assert.equal((await klartext({ token: alt })).body.code, 'step_approval_required', 'vor dem Stichtag gilt er');
-    assert.equal(await repo.keyThe(f, new Date(Date.now() - 1000)), null, 'nach dem Stichtag nicht mehr');
+    assert.equal(
+      (await klartext({ token: alt })).body.code,
+      'step_approval_required',
+      'before the cut-off date it is valid',
+    );
+    assert.equal(await repo.keyThe(f, new Date(Date.now() - 1000)), null, 'after the cut-off date no longer');
     const h = await deposit(callFn, alt);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
     assert.deepEqual(await repo.entryThe(f), { public_key: h.schluessel.public_key, attested: true });
@@ -271,7 +275,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     assert.match(a.body.key_nonce, /^[\w-]{43}$/);
     for (let i = 0; i < 2; i++) {
       const n = await callFn('/device/key/nonce', { method: 'POST', token: a.body.token, body: {} });
-      assert.equal(n.body.nonce, a.body.key_nonce, 'keine zweite Nonce neben der aus der Abholung');
+      assert.equal(n.body.nonce, a.body.key_nonce, 'no second nonce next to the one from the pickup');
     }
     const h = await deposit(callFn, a.body.token);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
@@ -288,7 +292,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     const fremd = await callFn('/device/step/approval', {
       method: 'POST',
       token,
-      body: { challenge: c.body.challenge, signature: signIt(geraeteSchluessel().privateKey, c.body.message) },
+      body: { challenge: c.body.challenge, signature: signIt(deviceKeys().privateKey, c.body.message) },
     });
     assert.deepEqual([fremd.status, fremd.body.code], [400, 'step_signature_invalid']);
     const spaeter = await callFn('/device/step/approval', {
@@ -296,7 +300,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       token,
       body: { challenge: c.body.challenge, signature: signIt(device.privateKey, c.body.message) },
     });
-    assert.equal(spaeter.status, 400, 'Eine Challenge gilt genau einmal');
+    assert.equal(spaeter.status, 400, 'A challenge is valid exactly once');
     assert.equal((await klartext({ token })).status, 403);
   });
 
@@ -324,7 +328,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     assert.equal(
       (await klartext({ token: zweiter })).body.code,
       'device_key_missing',
-      'Die Freigabe gilt der Token-Familie, nicht dem Konto',
+      'The approval applies to the token family, not the account',
     );
     await db.run(`UPDATE step_up_approvals SET until_at = NOW() - INTERVAL '1 second' WHERE user_id = $1`, [uid]);
     assert.equal((await klartext({ token })).body.code, 'step_approval_required');
@@ -373,7 +377,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     assert.equal(
       (await callFn('/admin/cache-ttl', { token: voll })).status,
       403,
-      'Die Freigabe der Gutscheine öffnet keine Verwaltung',
+      'Approving the vouchers opens no administration',
     );
     await releaseDevice(callFn, voll, 'admin', s);
     assert.equal((await callFn('/admin/cache-ttl', { token: voll })).status, 200);
@@ -415,18 +419,18 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     const s = h.schluessel;
     for (const [weg, callIt] of Object.entries(pathList)) {
       const r = await callIt();
-      assert.deepEqual([r.status, r.body?.code], [403, 'step_approval_required'], `${weg} ohne Freigabe`);
+      assert.deepEqual([r.status, r.body?.code], [403, 'step_approval_required'], `${weg} without approval`);
     }
     assert.equal(
       (await db.get(`SELECT value FROM global_settings WHERE key = 'default_price_condition'`))?.value,
       undefined,
-      'ohne Freigabe ist nichts geschrieben',
+      'without approval nothing is written',
     );
     const ohne = await callFn('/settings/raw', { token: voll });
     assert.equal(ohne.status, 200);
-    assert.equal(ohne.body.settings.smtp_host, undefined, 'ohne Freigabe zeigt /settings/raw nur Kontowerte');
+    assert.equal(ohne.body.settings.smtp_host, undefined, 'without approval /settings/raw only shows account values');
     const eigene = await callFn('/settings', { method: 'POST', token: voll, body: { language: 'de' } });
-    assert.equal(eigene.status, 200, 'die eigenen Werte braucht keine Freigabe');
+    assert.equal(eigene.status, 200, 'the own values need no approval');
 
     await releaseDevice(callFn, voll, 'admin', s);
     const erwartet = {
@@ -440,7 +444,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     };
     for (const [weg, callIt] of Object.entries(pathList)) {
       const r = await callIt();
-      assert.deepEqual([r.status, r.body?.code], erwartet[weg], `${weg} mit Freigabe: ${JSON.stringify(r.body)}`);
+      assert.deepEqual([r.status, r.body?.code], erwartet[weg], `${weg} with approval: ${JSON.stringify(r.body)}`);
     }
     assert.equal((await db.get(`SELECT value FROM global_settings WHERE key = 'einrichtung_erledigt'`))?.value, '1');
     assert.equal((await callFn('/settings/raw', { token: voll })).body.settings.smtp_host, 'mail.schritt.example');

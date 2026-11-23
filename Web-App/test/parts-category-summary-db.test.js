@@ -71,7 +71,7 @@ test('category from the summary', { concurrency: 1 }, async t => {
     const liveSpare = await H.partsQuery(U, { page: 1, page_size: 50, spare: '1' });
     assert.equal(live.source, 'db');
     assert.equal(liveSpare.source, 'db');
-    assert.deepEqual(zeilen(live), ['kz1|5|8', 'kz2|5|4'], 'Testdaten: beide Teile der Kategorie, mit Setmenge');
+    assert.deepEqual(zeilen(live), ['kz1|5|8', 'kz2|5|4'], 'test data: both parts of the category, with set quantity');
     await PS.rebuildNow(U);
 
     await t.test('the category filter reads from the summary', async () => {

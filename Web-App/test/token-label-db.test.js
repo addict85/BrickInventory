@@ -74,15 +74,15 @@ test('token label at login', { concurrency: 1 }, async t => {
     });
     const body = await r.json();
     assert.equal(r.status, 200, JSON.stringify(body));
-    assert.ok(body.token, 'kein Token ausgestellt');
+    assert.ok(body.token, 'no token issued');
     return (await db.get('SELECT label FROM api_tokens WHERE user_id = $1', [uid])).label;
   };
 
   await t.test('1. a long label is shortened to 100 characters', async () => {
     const gespeichert = await labelNach('Pixel ' + 'x'.repeat(5000));
-    assert.equal(gespeichert.length, 100, `${gespeichert.length} Zeichen gespeichert`);
+    assert.equal(gespeichert.length, 100, `${gespeichert.length} characters saved`);
     assert.ok(gespeichert.startsWith('Pixel x'));
-    assert.equal(await labelNach('  Galaxy S24  '), 'Galaxy S24', 'ein kurzes bleibt, nur getrimmt');
+    assert.equal(await labelNach('  Galaxy S24  '), 'Galaxy S24', 'a short one stays, only trimmed');
   });
 
   await t.test('2. non-text and empty fall back to the default', async () => {

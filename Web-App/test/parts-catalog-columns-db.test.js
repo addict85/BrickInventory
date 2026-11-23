@@ -95,20 +95,20 @@ test('after the whole chain parts and minifigs only carry the inventory', { conc
   ]) {
     assert.ok(
       !nachher.includes(sp),
-      `parts.${sp} ist nach allen Migrationen noch da — Migration 0034 hat nicht ` +
-        'geloescht, oder etwas legt die Spalte danach wieder an.',
+      `parts.${sp} is still there after all migrations — migration 0034 did not ` +
+        'delete it, or something creates the column again afterwards.',
     );
   }
   for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id', 'source', 'storage_id', 'added_at']) {
-    assert.ok(nachher.includes(sp), `parts.${sp} fehlt — genau diese Spalten soll die Tabelle behalten`);
+    assert.ok(nachher.includes(sp), `parts.${sp} is missing — exactly these columns are meant to stay in the table`);
   }
 
   const figsAfter = await columnsOf('minifigs');
   for (const sp of ['fig_name', 'image_url', 'image_local']) {
-    assert.ok(!figsAfter.includes(sp), `minifigs.${sp} ist nach allen Migrationen noch da`);
+    assert.ok(!figsAfter.includes(sp), `minifigs.${sp} is still there after all migrations`);
   }
   for (const sp of ['id', 'user_id', 'set_number', 'fig_number', 'source', 'storage_id']) {
-    assert.ok(figsAfter.includes(sp), `minifigs.${sp} fehlt`);
+    assert.ok(figsAfter.includes(sp), `minifigs.${sp} is missing`);
   }
 
   // ── And they have not disappeared but moved ───────────────────
@@ -116,19 +116,19 @@ test('after the whole chain parts and minifigs only carry the inventory', { conc
   const pcc = await columnsOf('part_color_catalog');
   const mc = await columnsOf('minifigs_catalog');
   for (const sp of ['part_number', 'part_name', 'category_name']) {
-    assert.ok(pc.includes(sp), `part_catalog.${sp} fehlt — dann gibt es den Namen nirgends mehr`);
+    assert.ok(pc.includes(sp), `part_catalog.${sp} is missing — then the name exists nowhere any more`);
   }
   for (const sp of ['part_number', 'color_id', 'color_name', 'color_hex', 'image_url', 'image_local']) {
-    assert.ok(pcc.includes(sp), `part_color_catalog.${sp} fehlt`);
+    assert.ok(pcc.includes(sp), `part_color_catalog.${sp} is missing`);
   }
   for (const sp of ['fig_number', 'fig_name', 'image_url', 'image_local']) {
-    assert.ok(mc.includes(sp), `minifigs_catalog.${sp} fehlt`);
+    assert.ok(mc.includes(sp), `minifigs_catalog.${sp} is missing`);
   }
   // is_spare does not move into a new catalog: it is a property of the
   // PARTS LIST of a set and has always stood there.
   assert.ok(
     (await columnsOf('set_parts_catalog')).includes('is_spare'),
-    'set_parts_catalog.is_spare fehlt — dann gibt es das Ersatzteilkennzeichen nirgends',
+    'set_parts_catalog.is_spare is missing — then the spare-part flag exists nowhere',
   );
 });
 
@@ -173,23 +173,23 @@ test('the parts list delivers description and storage location from the catalogs
   // ── The description arrives ────────────────────────────────────────────
   const alle = await handlers.partsQuery(uid, { exclude_manual: '1' });
   const nach = nr => alle.parts.find(p => String(p.part_number) === nr);
-  assert.equal(alle.parts.length, 2, `Erwartet 2 Teile, bekommen ${alle.parts.length}: ${JSON.stringify(alle.parts)}`);
-  assert.equal(nach('3001')?.part_name, 'Brick 2x4', 'Der Teilename kommt nicht aus part_catalog an');
-  assert.equal(nach('3001')?.color_name, 'Red', 'Die Farbbezeichnung kommt nicht aus part_color_catalog an');
-  assert.equal(nach('3001')?.color_hex, 'C91A09', 'Der Farbcode kommt nicht an');
-  assert.equal(nach('3001')?.category_name, 'Bricks', 'Die Kategorie kommt nicht an');
-  assert.equal(nach('3001')?.image_url, 'http://cdn/3001r.png', 'Das Bild kommt nicht an');
+  assert.equal(alle.parts.length, 2, `Expected 2 parts, got ${alle.parts.length}: ${JSON.stringify(alle.parts)}`);
+  assert.equal(nach('3001')?.part_name, 'Brick 2x4', 'The part name does not arrive from part_catalog');
+  assert.equal(nach('3001')?.color_name, 'Red', 'The colour name does not arrive from part_color_catalog');
+  assert.equal(nach('3001')?.color_hex, 'C91A09', 'The colour code does not arrive');
+  assert.equal(nach('3001')?.category_name, 'Bricks', 'The category does not arrive');
+  assert.equal(nach('3001')?.image_url, 'http://cdn/3001r.png', 'The image does not arrive');
   // Quantity: 6 parts per set, 2 sets in the stock.
-  assert.equal(nach('3001')?.total_quantity, 12, 'Die Menge wird nicht mehr mit der Set-Anzahl multipliziert');
+  assert.equal(nach('3001')?.total_quantity, 12, 'The quantity is no longer multiplied by the set count');
 
   // ── is_spare from set_parts_catalog, as a real boolean ─────────────
-  assert.equal(nach('3001')?.is_spare, false, 'Ein Pflichtteil wird als Ersatzteil gemeldet');
-  assert.equal(nach('3002')?.is_spare, true, 'Das Ersatzteilkennzeichen kommt nicht aus set_parts_catalog an');
+  assert.equal(nach('3001')?.is_spare, false, 'A required part is reported as a spare part');
+  assert.equal(nach('3002')?.is_spare, true, 'The spare-part flag does not arrive from set_parts_catalog');
   const nurErsatz = await handlers.partsQuery(uid, { exclude_manual: '1', spare: '1' });
   assert.deepEqual(
     nurErsatz.parts.map(p => String(p.part_number)),
     ['3002'],
-    `spare=1 filtert nicht über set_parts_catalog: ${JSON.stringify(nurErsatz.parts.map(p => p.part_number))}`,
+    `spare=1 does not filter via set_parts_catalog: ${JSON.stringify(nurErsatz.parts.map(p => p.part_number))}`,
   );
 
   // ── The color filter ───────────────────────────────────────────────────────
@@ -197,7 +197,7 @@ test('the parts list delivers description and storage location from the catalogs
   assert.deepEqual(
     nurRot.parts.map(p => String(p.part_number)),
     ['3001'],
-    'Der Farbfilter greift nicht über part_color_catalog',
+    'The colour filter does not work via part_color_catalog',
   );
 
   // The storage location filter — and its COUNT
@@ -205,22 +205,22 @@ test('the parts list delivers description and storage location from the catalogs
   assert.deepEqual(
     inBox.parts.map(p => String(p.part_number)),
     ['3001'],
-    'Der Lagerortfilter liefert die falschen Teile',
+    'The location filter returns the wrong parts',
   );
   assert.equal(
     inBox.total,
     1,
-    `Die Zählabfrage des Lagerortfilters gibt ${inBox.total} statt 1 — ` +
-      'sie braucht dieselben JOINs wie die Hauptabfrage (joinClause)',
+    `The count query of the location filter returns ${inBox.total} instead of 1 — ` +
+      'it needs the same JOINs as the main query (joinClause)',
   );
-  assert.equal(inBox.parts[0].storage, 'Kiste 3', 'Der Lagerortname kommt nicht aus storage_locations an');
+  assert.equal(inBox.parts[0].storage, 'Kiste 3', 'The location name does not arrive from storage_locations');
 
   // ── Search via the catalog name ──────────────────────────────────────────
   const sought = await handlers.partsQuery(uid, { exclude_manual: '1', search: 'brick 2x3' });
   assert.deepEqual(
     sought.parts.map(p => String(p.part_number)),
     ['3002'],
-    'Die Suche findet den Teilenamen nicht mehr (er steht in part_catalog)',
+    'The search no longer finds the part name (it is in part_catalog)',
   );
 });
 
@@ -249,10 +249,10 @@ test('the figure list delivers name and image from minifigs_catalog', { concurre
   const liste = await handlers.readMinifigs(uid, {});
   const figs = liste.minifigs || liste.figs || liste;
   const f = (Array.isArray(figs) ? figs : []).find(x => x.fig_number === 'fig-000123');
-  assert.ok(f, `Die Figur fehlt in der Antwort: ${JSON.stringify(liste).slice(0, 400)}`);
-  assert.equal(f.fig_name, 'Chewbacca', 'Der Figurenname kommt nicht aus minifigs_catalog an');
-  assert.equal(f.image_url, 'http://cdn/chewie.png', 'Das Figurenbild kommt nicht an');
-  assert.equal(Number(f.total_quantity), 3, 'Die Menge wird nicht mehr mit der Set-Anzahl multipliziert');
+  assert.ok(f, `The figure is missing in the response: ${JSON.stringify(liste).slice(0, 400)}`);
+  assert.equal(f.fig_name, 'Chewbacca', 'The figure name does not arrive from minifigs_catalog');
+  assert.equal(f.image_url, 'http://cdn/chewie.png', 'The figure image does not arrive');
+  assert.equal(Number(f.total_quantity), 3, 'The quantity is no longer multiplied by the set count');
 
   // The search runs via the catalog name.
   const sought = await handlers.readMinifigs(uid, { search: 'chewb' });
@@ -260,6 +260,6 @@ test('the figure list delivers name and image from minifigs_catalog', { concurre
   assert.equal(
     (Array.isArray(gFigs) ? gFigs : []).length,
     1,
-    'Die Suche findet den Figurennamen nicht mehr (er steht in minifigs_catalog)',
+    'The search no longer finds the figure name (it is in minifigs_catalog)',
   );
 });

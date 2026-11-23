@@ -9,11 +9,11 @@ import * as service from './service';
 import * as content from './content';
 import * as barcode from './barcode';
 import * as prices from './prices';
-import * as anleitungen from './instructions';
+import * as instructions from './instructions';
 import * as csvImport from './csvImport';
 import { setsJobTypes } from './jobTypes';
 import * as setsRepo from './repository/sets';
-import * as csvImportLauf from './csvImportRun';
+import * as csvImportRun from './csvImportRun';
 
 export function createSets(a: SetsDependencies, inspect?: Inspect<SetsContext>) {
   return buildArea(
@@ -25,7 +25,7 @@ export function createSets(a: SetsDependencies, inspect?: Inspect<SetsContext>) 
       acquireSet: bound(sk)(acquire.acquireSet),
       setSupplement: bound(sk)(acquire.setSupplement),
       changeSet: bound(sk)(service.changeSet),
-      setsAlsCsv: bound(sk)(service.setsAlsCsv),
+      setsAsCsv: bound(sk)(service.setsAsCsv),
       readSets: bound(sk)(read.readSets),
       readSet: bound(sk)(read.readSet),
       withSetAggregate: bound(sk)(read.withSetAggregate),
@@ -46,12 +46,12 @@ export function createSets(a: SetsDependencies, inspect?: Inspect<SetsContext>) 
       deleteAlarmOfSets: bound(sk)(prices.deleteAlarmOfSets),
       startAlarmCsvImport: bound(sk)(prices.startAlarmCsvImport),
       setPriceHistory: bound(sk)(prices.setPriceHistory),
-      rememberInstruction: bound(sk)(anleitungen.rememberInstruction),
-      deleteInstruction: bound(sk)(anleitungen.deleteInstruction),
-      loadInstructionsNew: bound(sk)(anleitungen.loadInstructionsNew),
+      rememberInstruction: bound(sk)(instructions.rememberInstruction),
+      deleteInstruction: bound(sk)(instructions.deleteInstruction),
+      loadInstructionsNew: bound(sk)(instructions.loadInstructionsNew),
       startSetCsvImport: bound(sk)(csvImport.startSetCsvImport),
       cancelSetCsvImport: bound(sk)(csvImport.cancelSetCsvImport),
-      csvImportStand: bound(sk)(csvImport.csvImportStand),
+      csvImportState: bound(sk)(csvImport.csvImportState),
       csvImportStatusForStream: bound(sk)(csvImport.csvImportStatusForStream),
       subscribeCsvImportStatus: bound(sk)(csvImport.subscribeCsvImportStatus),
       rebrickableList: bound(sk)(service.rebrickableList),
@@ -59,8 +59,8 @@ export function createSets(a: SetsDependencies, inspect?: Inspect<SetsContext>) 
       setLocationOfSets: bound(sk)(service.setLocationOfSets),
       locationsWithDefault: bound(sk)(service.locationsWithDefault),
       jobKinds: () => setsJobTypes(sk),
-      runCsvImportFrom: bound(sk)(csvImportLauf.runCsvImportFrom),
-      csvImportGivenUp: bound(sk)(csvImportLauf.csvImportGivenUp),
+      runCsvImportFrom: bound(sk)(csvImportRun.runCsvImportFrom),
+      csvImportGivenUp: bound(sk)(csvImportRun.csvImportGivenUp),
     }),
     inspect,
   );

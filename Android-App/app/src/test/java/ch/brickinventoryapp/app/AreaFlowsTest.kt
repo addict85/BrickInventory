@@ -257,8 +257,8 @@ class AreaFlowsTest {
 
     @Test
     fun `the invitation can be shared and copied, with validity and lock reason`() {
-        world.paths.responses["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF","sub_accounts":[]}"""
-        world.paths.responses["/api/v1/settings/household/invite"] = """{"success":true,"code":"ABCD-1234","expires_in":86400}"""
+        world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF","sub_accounts":[]}"""
+        world.paths.responses["/api/v2/settings/household/invite"] = """{"success":true,"code":"ABCD-1234","expires_in":86400}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api), testAccountRepository(world.t.api)))
         show { HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
@@ -274,7 +274,7 @@ class AreaFlowsTest {
 
     @Test
     fun `in the error state there is no add button, as in gallery and wishlist`() {
-        world.paths.codes["/api/v1/parts"] = 500
+        world.paths.codes["/api/v2/parts"] = 500
         val vm = world.parts().also { it.loadParts() }
         wait("error") { vm.partsState.value.let { it.partsFetch is Load.Failure } }
         show { PartsRoute(vm = vm, imageLoader = images) }

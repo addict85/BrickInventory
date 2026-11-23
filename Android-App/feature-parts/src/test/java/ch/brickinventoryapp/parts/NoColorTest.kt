@@ -49,8 +49,8 @@ import org.junit.Test
 class NoColorTest {
 
     private val paths = PathServer(
-        "/api/v1/parts" to """{"success":true,"action":"added","part_number":"3001"}""",
-        "/api/v1/parts/3001/5/color" to """{"success":true}""",
+        "/api/v2/parts" to """{"success":true,"action":"added","part_number":"3001"}""",
+        "/api/v2/parts/3001/5/color" to """{"success":true}""",
     )
     private val t = TestServices(paths.onTick(), io = Dispatchers.Main)
 
@@ -75,13 +75,13 @@ class NoColorTest {
     @Test
     fun `a part without a color goes out as 9999`() {
         vm().addPart(PartEntry("3001"))
-        assertTrue("Part entered", paths.requestsTo("POST /api/v1/parts").isNotEmpty())
-        val k = bodyTo("POST /api/v1/parts")
+        assertTrue("Part entered", paths.requestsTo("POST /api/v2/parts").isNotEmpty())
+        val k = bodyTo("POST /api/v2/parts")
         assertTrue(k, k.contains("\"color_id\":9999"))
         // A name sent along does not count as "keine Farbe" either.
         vm().addPart(PartEntry("3002", NO_COLOR, "[No Color/Any Color]", "05131D"))
-        assertTrue("second part", paths.requestsTo("POST /api/v1/parts").size == 2)
-        val k2 = paths.bodyBytes[paths.requests.indexOfLast { it == "POST /api/v1/parts" }]
+        assertTrue("second part", paths.requestsTo("POST /api/v2/parts").size == 2)
+        val k2 = paths.bodyBytes[paths.requests.indexOfLast { it == "POST /api/v2/parts" }]
         assertFalse(k2, k2.contains("No Color") || k2.contains("05131D"))
     }
 
@@ -90,7 +90,7 @@ class NoColorTest {
         var newValue: Int? = null
         vm().setPartColor("3001", 5, NO_COLOR, "Keine Farbe", null) { newValue = it }
         assertTrue("changed", newValue != null)
-        val k = bodyTo("PUT /api/v1/parts/3001/5/color")
+        val k = bodyTo("PUT /api/v2/parts/3001/5/color")
         assertTrue(k, k.contains("\"color_id\":9999"))
         assertFalse(k, k.contains("Keine Farbe"))
         assertEquals(NO_COLOR, newValue)

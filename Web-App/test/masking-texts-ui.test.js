@@ -33,13 +33,13 @@ test('delete message names the set name literally', async () => {
     },
   });
   try {
-    assert.ok(await warte(() => d.querySelector('#gallery .delbtn[data-click="delSetStop"]')), 'Kachel mit Papierkorb');
+    assert.ok(await warte(() => d.querySelector('#gallery .delbtn[data-click="delSetStop"]')), 'tile with trash can');
     d.querySelector('#gallery .delbtn[data-click="delSetStop"]').click();
     // The own set goes without a question (js/deletion.js); the name stands in the toast instead.
-    assert.ok(await warte(() => d.querySelector('#toasts .toast.success .toast-text')), 'keine Meldung');
+    assert.ok(await warte(() => d.querySelector('#toasts .toast.success .toast-text')), 'no message');
     const text = d.querySelector('#toasts .toast.success .toast-text').textContent;
-    assert.ok(text.includes(NAME), `Meldung: ${text}`);
-    assert.ok(!text.includes('&amp;'), `Meldung maskiert doppelt: ${text}`);
+    assert.ok(text.includes(NAME), `message: ${text}`);
+    assert.ok(!text.includes('&amp;'), `message is escaped twice: ${text}`);
   } finally {
     w.close();
   }
@@ -58,10 +58,10 @@ test('former link names the path literally', async () => {
   });
   try {
     await sicht(w, 'household');
-    assert.ok(await warte(() => d.body.textContent.includes('Jerry')), 'Haushalt geladen');
+    assert.ok(await warte(() => d.body.textContent.includes('Jerry')), 'household loaded');
     const place = [...d.querySelectorAll('span')].find(s => s.textContent.includes('Jerry'));
     assert.ok(place.textContent.includes('Tom & Jerry'), `Text: ${place.textContent}`);
-    assert.ok(!place.innerHTML.includes('&amp;amp;'), `doppelt maskiert: ${place.innerHTML}`);
+    assert.ok(!place.innerHTML.includes('&amp;amp;'), `escaped twice: ${place.innerHTML}`);
   } finally {
     w.close();
   }
@@ -85,10 +85,10 @@ test('pause names an unknown job kind literally', async () => {
     await ruhig();
     assert.ok(
       await warte(() => d.body.textContent.includes('x&y') || d.body.innerHTML.includes('x&amp;amp;y')),
-      'Pause sichtbar',
+      'pause visible',
     );
-    assert.ok(d.body.textContent.includes('x&y'), 'Auftragsart steht wörtlich da');
-    assert.ok(!d.body.innerHTML.includes('x&amp;amp;y'), 'Auftragsart doppelt maskiert');
+    assert.ok(d.body.textContent.includes('x&y'), 'job type is shown literally');
+    assert.ok(!d.body.innerHTML.includes('x&amp;amp;y'), 'job type escaped twice');
   } finally {
     w.close();
   }

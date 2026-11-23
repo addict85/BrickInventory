@@ -13,14 +13,14 @@ export { ECB_HISTORY, ECB_DAILY_RATES, firstZipFile, readHistory, readDailyRates
 export { RebrickableLocked, firstBlNumber, parseThrottleWait } from '../../clients/rebrickable';
 export { RbSet, RbSetMinifig, rbPage } from '../../clients/responses';
 import { loadCatalogCsv } from '../../clients/rebrickableCsv';
-import { oeffneBild, fetchImage } from '../../clients/imageCdn';
+import { openImage, fetchImage } from '../../clients/imageCdn';
 import { ecbFetch } from '../../clients/ecb';
 export { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../clients/imageCdn';
 import { legoFetch } from '../../clients/legoBalance';
 export { legoFetch };
 export { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../../clients/legoBalance';
 export type { Fetch, Rate } from '../../clients/ecb';
-export type { RbSetTeil } from '../../clients/rebrickable';
+export type { RbSetPart } from '../../clients/rebrickable';
 export type { ClientsAccess } from '../../clients/access';
 
 /** The clients of an access, flat like the exports used to be; `setAngaben` is the one from
@@ -45,7 +45,7 @@ export function buildSources(z: ClientsAccess) {
     revocationListFetch,
     downloadFile,
     rebrickableRaw,
-    oeffneBild,
+    openImage,
     fetchImage,
     ecbFetch,
   };

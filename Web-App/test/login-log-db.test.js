@@ -68,7 +68,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
   const uid = await konto(NAME),
     zfId = await konto(FACTOR);
   const g = await zf.beginSetup(zfId);
-  assert.ok(await zf.confirmSetup(zfId, zf.hotp(zf.fromBase32(g), zf.timeStep())), 'Vorbedingung: Faktor aktiv');
+  assert.ok(await zf.confirmSetup(zfId, zf.hotp(zf.fromBase32(g), zf.timeStep())), 'Precondition: factor active');
   const emptyCounter = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%' OR key LIKE 'sperr-hinweis%' OR key LIKE $1`, [
       `%-bestaetigen|${uid}|%`,
@@ -114,13 +114,13 @@ test('login events in the log', { concurrency: 1 }, async t => {
   await t.test('an unknown name: line without name and password', async () => {
     assert.equal(await anmelden(`niemand_${P}`, WRONG), 401);
     const [z] = eventList('anmeldung_fehlgeschlagen');
-    assert.equal(z?.stufe, 'warn', 'keine Warnzeile');
+    assert.equal(z?.stufe, 'warn', 'no warning line');
     // Depending on the machine, localhost is 127.0.0.1 or ::1 (shortened to the /64).
     assert.match(z.kontext.address, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
     assert.equal(z.kontext.konto, 'unbekannt');
     assert.ok(
       !zeilen.join('\n').includes(`niemand_${P}`) && !zeilen.join('\n').includes(WRONG),
-      'Name oder Passwort im Protokoll',
+      'Name or password in the log',
     );
   });
 
@@ -133,9 +133,9 @@ test('login events in the log', { concurrency: 1 }, async t => {
       `SELECT count(*)::int n FROM rate_limit_attempts WHERE key ILIKE '%' || lower($1) || '%'`,
       [X],
     );
-    assert.equal(klar.n, 0, 'der eingegebene Name steht im Klartext in der Tabelle');
+    assert.equal(klar.n, 0, 'the entered name is in plain text in the table');
     const je = await db.get(`SELECT count FROM rate_limit_attempts WHERE key LIKE 'login-name|name:%'`);
-    assert.equal(Number(je?.count), 2, 'zwei Versuche mit demselben Namen zählen auf denselben Schlüssel');
+    assert.equal(Number(je?.count), 2, 'two attempts with the same name count on the same key');
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
   });
 
@@ -149,7 +149,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
     assert.equal(erfolg[0].kontext.zugang, 'passwort');
     assert.ok(
       ![...infos, ...zeilen].join('\n').includes(NAME) && !infos.join('\n').includes(PASS),
-      'Name oder Passwort im Protokoll',
+      'Name or password in the log',
     );
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
   });
@@ -162,7 +162,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
       [uid, uid, uid, uid, uid],
     );
     await waitOnMails(1);
-    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, kind: 'anmeldung_gebremst' }]);
+    assert.deepEqual(mails, [{ an: `${NAME}@example.org`, kind: 'login_throttled' }]);
   });
 
   await t.test('the lock is in the log', async () => {

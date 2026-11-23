@@ -51,7 +51,7 @@ test('quota and counters across workers', { concurrency: 1 }, async t => {
 
   await t.test('a limit changed elsewhere applies at once', async () => {
     const used = (await Q.quotaOverview('rebrickable')).count;
-    assert.equal(await RL.consumeRebrickableDaily(), false, 'Vorbedingung: ausgeschöpft');
+    assert.equal(await RL.consumeRebrickableDaily(), false, 'precondition: exhausted');
     // As another worker's PUT would write it: straight into the table.
     await setLimit(used + 1);
     assert.equal(await RL.consumeRebrickableDaily(), true);

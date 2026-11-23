@@ -56,7 +56,7 @@ test('no yes/no column carries 0/1', async t => {
         WHERE table_schema = 'public' AND column_name ~ $1 AND data_type = 'boolean'`,
         [FLAG],
       );
-      assert.ok(booleans.n >= 10, `nur ${booleans.n} Flaggen-Spalten gefunden — greift das Muster noch?`);
+      assert.ok(booleans.n >= 10, `only ${booleans.n} flag columns found — does the pattern still match?`);
       await db.exec(`DROP SCHEMA IF EXISTS schalter_probe CASCADE; CREATE SCHEMA schalter_probe;
         CREATE TABLE schalter_probe.p (is_probe integer NOT NULL DEFAULT 0, CONSTRAINT p_probe_null_eins CHECK (is_probe IN (0, 1)))`);
       try {

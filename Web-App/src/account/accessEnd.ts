@@ -37,12 +37,12 @@ export function accessTransaction<T>(k: AccountContext, fn: (t: AccountContext) 
  * between may have picked up the old state again. */
 export async function withAccessEnd<T>(
   k: AccountContext,
-  konto: number | ((r: T) => number | null),
+  account: number | ((r: T) => number | null),
   fn: (t: AccountContext) => Promise<T>,
 ): Promise<T> {
   const r = await inSystemContext('zugangsende', () => k.transact(fn, { repeatAtConflict: true }));
   emptyTokenCache(k);
-  const uid = typeof konto === 'function' ? konto(r) : konto;
+  const uid = typeof account === 'function' ? account(r) : account;
   if (uid) forgetSessionVersion(k, uid);
   return r;
 }
@@ -52,12 +52,12 @@ export async function withAccessEnd<T>(
 export async function endOther(
   k: AccountContext,
   uid: number,
-  o: { sitzung: string | null; token: string | null; accesses: boolean },
-): Promise<{ sitzungen: number; accesses: number; version: number }> {
+  o: { session: string | null; token: string | null; accesses: boolean },
+): Promise<{ sessions: number; accesses: number; version: number }> {
   return withAccessEnd(k, uid, async t => {
-    const accesses = o.accesses ? await t.konten.deleteOtherAccesses(uid, o.token ? tokenDigest(o.token) : null) : 0;
+    const accesses = o.accesses ? await t.accounts.deleteOtherAccesses(uid, o.token ? tokenDigest(o.token) : null) : 0;
     const version = await increaseSessionVersion(t, uid);
-    const sitzungen = await t.konten.deleteOtherSessions(uid, o.sitzung ? sessionDigest(o.sitzung) : '');
-    return { sitzungen, accesses, version };
+    const sessions = await t.accounts.deleteOtherSessions(uid, o.session ? sessionDigest(o.session) : '');
+    return { sessions, accesses, version };
   });
 }

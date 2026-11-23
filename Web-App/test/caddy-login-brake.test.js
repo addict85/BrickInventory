@@ -34,10 +34,10 @@ const { portOf } = require('./helpers/server');
 const ROOT = path.join(__dirname, '..');
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
 // REQUIRE_CADDY=1 (CI): a missing Caddy is an error, not a silent skip.
-if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
+if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, but no Caddy (CADDY_BIN)');
 
 test('Caddy passes the login paths on unthrottled, but only with a complete body', {
-  skip: !CADDY && 'kein Caddy (CADDY_BIN)',
+  skip: !CADDY && 'no Caddy (CADDY_BIN)',
   timeout: 120_000,
 }, async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-bremse-'));
@@ -109,7 +109,7 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
       .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`)
       .replace('http:// {', `http://:${umleitung} {`)
       .replaceAll('app:3000', `127.0.0.1:${portOf(app)}`);
-    assert.ok(datei.includes('import anmeldung'), 'der Block (anmeldung) ist nicht eingebunden');
+    assert.ok(datei.includes('import anmeldung'), 'the block „(anmeldung)“ is not imported');
     fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
     error = '';
     caddy = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
@@ -136,7 +136,7 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
     if (bereit === 200 || versuch >= 3 || !error.includes('address already in use')) break;
     caddy.kill('SIGKILL');
   }
-  assert.equal(bereit, 200, `Caddy antwortet nicht (Exit ${caddy.exitCode}): ${error.slice(-600)}`);
+  assert.equal(bereit, 200, `Caddy does not answer (exit ${caddy.exitCode}): ${error.slice(-600)}`);
 
   // Held long so that even a slow run has all 16 open at once.
   now = 0;
@@ -144,13 +144,13 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
   halten = 1500;
   const logins = await Promise.all(Array.from({ length: 16 }, () => anfrage('POST', '/api/v2/auth/login')));
   halten = 300;
-  assert.deepEqual(logins, Array(16).fill(200), 'Anmeldungen gehen verloren');
-  assert.ok(highest > 8, `Caddy lässt die Anmeldungen ungebremst zur App (${highest} zugleich)`);
+  assert.deepEqual(logins, Array(16).fill(200), 'Sign-ins get lost');
+  assert.ok(highest > 8, `Caddy lets the sign-ins through to the app unthrottled (${highest} at once)`);
 
   assert.equal(
     await anfrage('POST', '/api/v2/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })),
     413,
-    'ein Rumpf über 16 KB erreicht die Anmeldung',
+    'a body over 16 KB reaches the sign-in',
   );
 
   // Header immediately, only part of the body, then silence: four barely started
@@ -174,7 +174,7 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
   await new Promise(r => setTimeout(r, 500));
   assert.equal(await anfrage('POST', '/api/v2/auth/login'), 200, 'Vorbedingung: Caddy nimmt Anmeldungen an');
   const slow = lengths.filter(l => l === '200' || l === '17000');
-  assert.deepEqual(slow, [], 'kein angefangener Rumpf erreicht die App');
+  assert.deepEqual(slow, [], 'no started body reaches the app');
 
   const headerStart = Date.now();
   const headerTo = await new Promise(fertig => {
@@ -188,6 +188,6 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
   });
   assert.ok(
     headerTo !== null && headerTo < 13_000,
-    `Caddy schliesst eine Verbindung, deren Kopf stockt (nach ${headerTo} ms)`,
+    `Caddy closes a connection whose header stalls (after ${headerTo} ms)`,
   );
 });

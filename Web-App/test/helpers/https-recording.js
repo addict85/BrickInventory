@@ -13,7 +13,7 @@ async function recording(/** @type {() => Promise<unknown>} */ lauf) {
   const fake = (/** @type {'get' | 'request'} */ kind) => (/** @type {unknown} */ _u, /** @type {any} */ options) => {
     aufrufe.push({ kind, options });
     const req = Object.assign(new EventEmitter(), { destroy: () => {}, end: () => {} });
-    setImmediate(() => req.emit('error', Object.assign(new Error('attrappe'), { code: 'ECONNREFUSED' })));
+    setImmediate(() => req.emit('error', Object.assign(new Error('dummy'), { code: 'ECONNREFUSED' })));
     return req;
   };
   Object.assign(https, { get: fake('get'), request: fake('request') });

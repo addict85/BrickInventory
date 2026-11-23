@@ -67,7 +67,7 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
     assert.deepEqual(
       values.filter(w => w.kontrast < 3),
       [],
-      'Griff zu blass gegen den Seitengrund',
+      'thumb too pale against the page background',
     );
   });
 
@@ -94,10 +94,10 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
     await mouse('mouseReleased', g.y + 150);
     const danach = await b.auswerten(`({ zieht: document.getElementById('app-scrollbar').classList.contains('dragging'),
       etikett: getComputedStyle(document.getElementById('app-scrollbar-label')).display })`);
-    assert.ok(during.y > 300, `Seite nur um ${during.y} px gerollt`);
+    assert.ok(during.y > 300, `page scrolled by only ${during.y} px`);
     assert.equal(during.zieht, true);
-    assert.equal(danach.zieht, false, 'der Balken bleibt im Ziehzustand');
-    assert.equal(danach.etikett, 'none', 'das Etikett bleibt nach dem Loslassen stehen');
+    assert.equal(danach.zieht, false, 'the bar stays in the dragging state');
+    assert.equal(danach.etikett, 'none', 'the label stays after releasing');
   });
 
   await t.test("contrast mode: the browser's bar stays", async () => {
@@ -105,8 +105,8 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
       b.auswerten(`({ eigen: getComputedStyle(document.getElementById('app-scrollbar')).display,
       browserBar: innerWidth - document.documentElement.clientWidth })`);
     const normal = await state();
-    assert.equal(normal.eigen, 'block', 'Vorbedingung: der Eigenbau steht');
-    assert.equal(normal.browserBar, 0, 'Vorbedingung: die Leiste des Browsers ist versteckt');
+    assert.equal(normal.eigen, 'block', 'precondition: the custom scrollbar is there');
+    assert.equal(normal.browserBar, 0, "precondition: the browser's bar is hidden");
     await b.tab('Emulation.setEmulatedMedia', {
       features: [
         { name: 'forced-colors', value: 'active' },
@@ -124,7 +124,7 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
         { name: 'prefers-reduced-motion', value: 'reduce' },
       ],
     });
-    assert.equal(kontrast.eigen, 'none', 'der Eigenbau bleibt sichtbar, obwohl das System die Farben setzt');
-    assert.ok(kontrast.browserBar > 0, `die Leiste des Browsers fehlt (${kontrast.browserBar} px)`);
+    assert.equal(kontrast.eigen, 'none', 'the custom scrollbar stays visible although the system sets the colours');
+    assert.ok(kontrast.browserBar > 0, `the browser's bar is missing (${kontrast.browserBar} px)`);
   });
 });

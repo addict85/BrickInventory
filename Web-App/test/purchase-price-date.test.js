@@ -32,7 +32,7 @@ async function dialog(browserLanguage) {
 test('German browser, German app: the date appears once', async () => {
   const o = await dialog('de-DE');
   try {
-    assert.equal(o.d.getElementById('acq-date-7'), null, 'das Datum steht unter dem Feld noch einmal');
+    assert.equal(o.d.getElementById('acq-date-7'), null, 'the date is shown once more below the field');
   } finally {
     o.w.close();
   }

@@ -78,7 +78,7 @@ test('confirm password', { concurrency: 1 }, async t => {
   await t.test('after five failed attempts it stops — even with the correct password', async () => {
     for (let i = 0; i < 5; i++) {
       const r = await post(withSession, '/change-password', { current: 'falsch' + i, newPassword: 'NeuesPasswort123' });
-      assert.equal(r.status, 400, `Versuch ${i + 1}`);
+      assert.equal(r.status, 400, `attempt ${i + 1}`);
     }
     const r = await post(withSession, '/change-password', { current: PASS, newPassword: 'NeuesPasswort123' });
     assert.equal(r.status, 429, JSON.stringify(r.body));
@@ -93,7 +93,7 @@ test('confirm password', { concurrency: 1 }, async t => {
     assert.equal(
       (await post(withSession, '/second-factor/setup', { password: 'falsch' })).status,
       400,
-      'nach dem Erfolg zählt wieder von vorn',
+      'after success it counts from the start again',
     );
   });
 });

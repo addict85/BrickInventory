@@ -10,17 +10,17 @@ export function buildTrashRouter(d: Pick<Services, 'account' | 'inventory' | 'co
   const router = contractRouter('/api/v2');
 
   router.endpoint('GET /api/v2/trash', requireToken, async req => {
-    return { entries: await d.inventory.listTrash({ schreiber: req.apiUser.user_id }) };
+    return { entries: await d.inventory.listTrash({ writer: req.apiUser.user_id }) };
   });
 
   router.endpoint('POST /api/v2/trash/:id/restore', requireToken, async req => {
-    return { ...(await d.inventory.restore({ schreiber: req.apiUser.user_id }, req.pathArgs.id)) };
+    return { ...(await d.inventory.restore({ writer: req.apiUser.user_id }, req.pathArgs.id)) };
   });
 
   // Confirmed like /bestand: otherwise a captured token would empty everything piece by piece, irreversibly.
   router.endpoint('DELETE /api/v2/trash/:id', requireToken, async (req, res) => {
     if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
-    await d.inventory.deleteFinal({ schreiber: req.apiUser.user_id }, req.pathArgs.id);
+    await d.inventory.deleteFinal({ writer: req.apiUser.user_id }, req.pathArgs.id);
     return {};
   });
 
@@ -32,7 +32,7 @@ export function buildTrashRouter(d: Pick<Services, 'account' | 'inventory' | 'co
 
   router.endpoint('DELETE /api/v2/trash', requireToken, async (req, res) => {
     if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
-    return { removed: await d.inventory.emptyTrash({ schreiber: req.apiUser.user_id }) };
+    return { removed: await d.inventory.emptyTrash({ writer: req.apiUser.user_id }) };
   });
   return router;
 }

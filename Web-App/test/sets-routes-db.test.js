@@ -98,11 +98,7 @@ test('routes/sets against a real database', async t => {
     const id = await anleitung(U.anna, '10001-1', '/data/uploads/1/a_1.pdf');
     const r = await asAccount(U.anna, `/api/v2/sets/10001-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
-    assert.equal(
-      await db.get('SELECT id FROM instructions WHERE id=$1', [id]),
-      undefined,
-      'Die Zeile wurde nicht gelöscht',
-    );
+    assert.equal(await db.get('SELECT id FROM instructions WHERE id=$1', [id]), undefined, 'The row was not deleted');
   });
 
   await t.test('a foreign account can NOT delete them', async () => {
@@ -114,11 +110,8 @@ test('routes/sets against a real database', async t => {
     // it simply deletes somebody else's data.
     const id = await anleitung(U.anna, '10002-1', '/data/uploads/1/b_1.pdf');
     const r = await asAccount(U.bruno, `/api/v2/sets/10002-1/instructions/${id}`, { method: 'DELETE' });
-    assert.equal(r.status, 404, 'Ein fremdes Konto bekam Zugriff auf die Anleitung');
-    assert.ok(
-      await db.get('SELECT id FROM instructions WHERE id=$1', [id]),
-      'Die Zeile eines anderen Kontos wurde gelöscht',
-    );
+    assert.equal(r.status, 404, 'A foreign account got access to the instructions');
+    assert.ok(await db.get('SELECT id FROM instructions WHERE id=$1', [id]), "Another account's row was deleted");
   });
 
   await t.test('the shared file stays as long as a row points to it', async () => {
@@ -133,7 +126,7 @@ test('routes/sets against a real database', async t => {
 
     const r = await asAccount(U.anna, `/api/v2/sets/10003-1/instructions/${idA}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
-    assert.ok(fs.existsSync(abs), 'Die Datei wurde gelöscht, obwohl das andere Konto noch darauf zeigt');
+    assert.ok(fs.existsSync(abs), 'The file was deleted although the other account still points to it');
     fs.rmSync(path.dirname(abs), { recursive: true, force: true });
   });
 
@@ -147,7 +140,7 @@ test('routes/sets against a real database', async t => {
     const id = await anleitung(U.anna, '10004-1', rel);
 
     await asAccount(U.anna, `/api/v2/sets/10004-1/instructions/${id}`, { method: 'DELETE' });
-    assert.equal(fs.existsSync(abs), false, 'Die verwaiste Datei blieb liegen');
+    assert.equal(fs.existsSync(abs), false, 'The orphaned file was left behind');
     fs.rmSync(path.dirname(abs), { recursive: true, force: true });
   });
 

@@ -30,7 +30,7 @@ test.after(async () => {
   } catch (e) {
     // Do not swallow: if the database stays broken, the next files fail
     // on something that has nothing to do with them.
-    console.error('[sets-ohne-kaufpreisspalte] Aufraeumen fehlgeschlagen:', e.message);
+    console.error('[sets-ohne-kaufpreisspalte] cleanup failed:', e.message);
   }
   await db.pool.end().catch(() => {});
 });
@@ -72,19 +72,22 @@ test('after the complete schema setup sets has no purchase price and no conditio
   // test/set-quantity-from-entries-db.test.js.)
   assert.ok(
     nachher.includes('user_id') && nachher.includes('set_number'),
-    `Die Spaltenliste von sets sieht falsch aus: ${nachher.join(', ')}`,
+    `The column list of sets looks wrong: ${nachher.join(', ')}`,
   );
   for (const sp of ['purchase_price', 'condition']) {
     assert.ok(
       !nachher.includes(sp),
-      `sets.${sp} ist nach allen Migrationen noch da — Migration 0032 hat nicht ` +
-        'gelöscht, oder etwas legt die Spalte danach wieder an.',
+      `sets.${sp} is still there after all migrations — migration 0032 did not ` +
+        'delete it, or something creates the column again afterwards.',
     );
   }
 
   // And they have not disappeared but moved.
   const erfassung = await columnsOf('set_acquisitions');
   for (const sp of ['purchase_price', 'condition', 'quantity', 'created_at']) {
-    assert.ok(erfassung.includes(sp), `set_acquisitions.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
+    assert.ok(
+      erfassung.includes(sp),
+      `set_acquisitions.${sp} is missing — then the purchase price exists nowhere any more`,
+    );
   }
 });

@@ -40,7 +40,7 @@ function dateien() {
 const references = text => [...text.matchAll(REFERENCE)].flatMap(m => [m[1], ...m[2].split(', #').filter(Boolean)]);
 
 test('every reference hits an anchor, no more section numbers; the startup message as superuser points to an anchor', () => {
-  assert.ok(ANKER.size >= 10, `nur ${ANKER.size} Anker in UPGRADE.md`);
+  assert.ok(ANKER.size >= 10, `only ${ANKER.size} anchors in UPGRADE.md`);
   assert.deepEqual(references('(UPGRADE.md#a, #b-c) und UPGRADE.md#d.'), ['a', 'b-c', 'd'], 'Selbstbeweis');
 
   const absent = [],
@@ -56,9 +56,9 @@ test('every reference hits an anchor, no more section numbers; the startup messa
     if (/UPGRADE\.md,?\s*(?:'\s*\+\s*')?(?:Abschnitte?|section)\s*\d/.test(sources.ohneKommentare(text)))
       nummern.push(rel);
   }
-  assert.ok(found >= 20, `nur ${found} Verweise gefunden — greift die Suche noch?`);
-  assert.deepEqual(absent, [], 'jeder Verweis auf UPGRADE.md trifft einen Anker');
-  assert.deepEqual(nummern, [], 'keine Abschnittsnummern mehr');
+  assert.ok(found >= 20, `only ${found} references found — does the search still work?`);
+  assert.deepEqual(absent, [], 'every reference to UPGRADE.md hits an anchor');
+  assert.deepEqual(nummern, [], 'no more section numbers');
 
   // The message the operator really sees at startup: superuser without a way out.
   sources.buildDist();
@@ -70,5 +70,5 @@ test('every reference hits an anchor, no more section numbers; the startup messa
   assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
   const inMessage = references(lauf.stderr);
   assert.deepEqual(inMessage, ['eigene-datenbankrolle', 'superuser-ausnahme'], lauf.stderr);
-  for (const a of inMessage) assert.ok(ANKER.has(a), `die Startmeldung als Superuser zeigt auf einen Anker: #${a}`);
+  for (const a of inMessage) assert.ok(ANKER.has(a), `the start message as superuser points to an anchor: #${a}`);
 });

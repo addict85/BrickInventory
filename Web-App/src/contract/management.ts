@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { v1Keys, v1Values } from './v1';
 import { V1_JOB_KINDS, V1_JOB_STATUS, V1_MONITOR_CODES, V1_PROXY_HINTS, V1_ADMIN_ACTIONS } from './v1Names';
-import { type Route, time, whole, WITHOUT_BODY, TEXT, JA_NO, query, Q, PAGE, PAGES_DETAIL } from './base';
+import { type Route, time, whole, WITHOUT_BODY, TEXT, YES_NO, query, Q, PAGE, PAGES_DETAIL } from './base';
 import { GenericAdminResponse, ImportRow } from './shared';
 
 export { ImportRow };
@@ -317,7 +317,7 @@ export const routes = {
     response: GenericAdminResponse,
   },
   'POST /api/v2/admin/catalog-images': {
-    input: z.strictObject({ all_again: JA_NO.optional() }),
+    input: z.strictObject({ all_again: YES_NO.optional() }),
     response: CatalogImagesEnqueued,
   },
   'POST /api/v2/admin/brickset-queue/:setNumber/retry': { input: WITHOUT_BODY, response: AdminSet },
@@ -327,7 +327,7 @@ export const routes = {
     response: AdminTtl,
   },
   'POST /api/v2/admin/cache-clear': {
-    input: z.strictObject({ all: JA_NO.optional() }),
+    input: z.strictObject({ all: YES_NO.optional() }),
     response: AdminMessage,
   },
   'PUT /api/v2/admin/api-limits': {
@@ -354,7 +354,7 @@ export const routes = {
   'GET /api/v2/admin/audit-log': { small: true, response: LogEntries },
   'GET /api/v2/admin/image-diag/:setNumber': { small: true, response: ImageDiagnosis },
   'POST /api/v2/admin/forget-image-misses': {
-    input: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NO.optional() }),
+    input: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: YES_NO.optional() }),
     response: ImageMarkerForgotten,
   },
   'POST /api/v2/admin/img-probe': { response: Diagnose, input: z.strictObject({ url: TEXT(2048).optional() }) },

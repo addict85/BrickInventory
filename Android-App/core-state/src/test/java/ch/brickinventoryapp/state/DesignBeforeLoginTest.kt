@@ -14,14 +14,14 @@ class DesignBeforeLoginTest {
 
     /**
      * The query against a test server; wiring it into the AppViewModel is run by
-     * AppViewModelTest. Counter-check: `@GET("api/v1/settings/theme")`
+     * AppViewModelTest. Counter-check: `@GET("api/v2/settings/theme")`
      * changed to "…/design" → red.
      */
     @Test
     fun `stage two - the public address is called`() {
         withRepo(::testAccountRepository) { paths, admin ->
             runBlocking { admin.getAppTheme() }
-            assertEquals(listOf("GET /api/v1/settings/theme"), paths.requests.toList())
+            assertEquals(listOf("GET /api/v2/settings/theme"), paths.requests.toList())
         }
     }
 }
@@ -41,7 +41,7 @@ class CacheClearTest {
             admin.clearCache(everything = false)
             admin.clearCache(everything = true)
         }
-        assertEquals(listOf("POST /api/v1/admin/cache-clear", "POST /api/v1/admin/cache-clear"), paths.requests.toList())
+        assertEquals(listOf("POST /api/v2/admin/cache-clear", "POST /api/v2/admin/cache-clear"), paths.requests.toList())
         assertEquals("the scope (prices only / everything) is not distinguished",
             listOf("{}", """{"all":true}"""), paths.bodyBytes.toList())
     }

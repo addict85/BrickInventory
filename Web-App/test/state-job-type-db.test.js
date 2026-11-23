@@ -115,7 +115,7 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
       .jobQueue.signedInKinds()
       .map(a => a.kind);
     const inDb = (await db.all('SELECT type FROM job_types ORDER BY type')).map(z => z.type);
-    assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet`);
+    assert.ok(angemeldet.length > 15, `only ${angemeldet.length} kinds registered`);
     assert.deepEqual(inDb, [...angemeldet].sort());
   });
 

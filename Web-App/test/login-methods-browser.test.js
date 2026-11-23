@@ -42,20 +42,24 @@ test('login methods: the most recent response applies', { timeout: 120_000 }, as
   await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
   await bis(
     `!window.__alt && typeof document.getElementById('btn-login')?.onclick === 'function'`,
-    'Anmeldemaske nach dem Neuladen',
+    'Sign-in form after the reload',
     200,
   );
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(name)};
     document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('btn-login').click(); true`);
-  await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet', 300);
+  await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'signed in', 300);
   // The session ends at the server; the next call of the app gets 401 and shows the form again.
   await b.auswerten(`fetch('/api/v2/auth/logout', { method: 'POST' }).then(() => {
     document.querySelector('.ntab[data-tab="finance"]').click(); return true; })`);
-  await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Sitzung abgelaufen');
+  await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Session expired');
   await bis(`document.getElementById('login-screen').dataset.loginMethods === 'loaded'`, 'Anmeldewege eingetragen');
   // Wait for the late first response.
-  await bis('window.__spaet === true', 'späte erste Antwort', 150);
+  await bis('window.__spaet === true', 'late first response', 150);
   await ruhig();
-  assert.equal(await b.auswerten(`document.getElementById('link-forgot').hidden`), false, 'die jüngste Antwort gilt');
+  assert.equal(
+    await b.auswerten(`document.getElementById('link-forgot').hidden`),
+    false,
+    'the latest response applies',
+  );
   assert.equal(await b.auswerten(`document.getElementById('login-screen').dataset.loginMethods`), 'loaded');
 });
