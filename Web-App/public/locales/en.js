@@ -119,6 +119,7 @@ window.I18N_EN = {
   'gallery.add.price_ph': 'e.g. {amount}',
   'gallery.add.qty': 'Quantity',
   'gallery.add.price': 'Purchase price (optional)',
+  'gallery.add.price_hint': '(empty = market price)',
   'gallery.add.submit': 'Add',
 
   // Set detail

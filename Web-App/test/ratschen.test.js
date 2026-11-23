@@ -211,6 +211,7 @@ const PROCESS_ACCESS = new Set([
   'getPoolStats',
   'databaseResponds',
   'asSuperuserConnected',
+  'escapesRowSecurity',
   'ownConnection',
   'inTransaction',
   'standardDb',

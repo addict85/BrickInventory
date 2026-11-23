@@ -125,6 +125,9 @@ export interface Db extends DbInterface, Access<Db> {
   getPoolStats(): { total: number; idle: number; waiting: number; active: number };
   databaseResponds(): Promise<boolean>;
   asSuperuserConnected(): Promise<boolean>;
+  /** Whether the runtime role itself already lifts row-level security (BYPASSRLS, ownership
+   *  or superuser) — the single-role setup UPGRADE.md used to allow silently defeats RLS this way. */
+  escapesRowSecurity(): Promise<boolean>;
   ownConnection(): Promise<Client>;
   /** See withCommitCompanion (transaction.ts): applies to the transactions of this call path. */
   withCommitCompanion<T>(companion: (tx: DbInterface) => Promise<void>, work: () => T): T;
@@ -359,6 +362,19 @@ function newSpace(r: Frame, access: Db, counter: { savepoints: number }): Connec
 
 /** An access to the database with a pool of its own. The pool is created here, not
  * on import: whoever knows the address calls the factory. */
+/** Whether the given pool's current_user already lifts row-level security on `public.sets`
+ *  (superuser, BYPASSRLS or ownership) — the shared check behind systemFrameActs/escapesRowSecurity. */
+async function liftsRowSecurity(pool: Pool): Promise<boolean> {
+  return (
+    (
+      await pool.query<{ free: boolean }>(
+        `SELECT r.rolsuper OR r.rolbypassrls OR pg_has_role(current_user, c.relowner, 'USAGE') AS free
+           FROM pg_roles r, pg_class c WHERE r.rolname = current_user AND c.oid = 'public.sets'::regclass`,
+      )
+    ).rows[0]?.free === true
+  );
+}
+
 export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
   const { pool, systemPool, systemWebPool } = createPools(k);
   const r: Frame = {
@@ -405,13 +421,7 @@ export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
     pool,
     systemPool,
     systemWebPool,
-    systemFrameActs: async () =>
-      (
-        await systemPool.query<{ free: boolean }>(
-          `SELECT r.rolsuper OR r.rolbypassrls OR pg_has_role(current_user, c.relowner, 'USAGE') AS free
-             FROM pg_roles r, pg_class c WHERE r.rolname = current_user AND c.oid = 'public.sets'::regclass`,
-        )
-      ).rows[0]?.free === true,
+    systemFrameActs: () => liftsRowSecurity(systemPool),
     all,
     get,
     run,
@@ -450,6 +460,7 @@ export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
     asSuperuserConnected: async () =>
       !!(await pool.query<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user')).rows[0]
         ?.s,
+    escapesRowSecurity: () => liftsRowSecurity(pool),
   };
   return access;
 }

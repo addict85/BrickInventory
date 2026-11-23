@@ -6,10 +6,10 @@ Rot: one term per thing in both languages
 diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 --- a/Android-App/core-resources/src/main/res/values-de/strings.xml
 +++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
-@@ -146,7 +146,7 @@
-     </plurals>
+@@ -147,7 +147,7 @@
      <string name="gallery_add_set">Set hinzufügen</string>
      <string name="gallery_add_set_title">Set hinzufügen</string>
+     <string name="gallery_add_manually">Manuell erfassen</string>
 -    <string name="gallery_set_number">Setnummer</string>
 +    <string name="gallery_set_number">Set-Nummer</string>
      <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">z. B. 75192-1 oder 75192</string>

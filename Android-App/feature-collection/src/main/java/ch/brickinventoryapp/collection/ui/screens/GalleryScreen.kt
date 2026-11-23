@@ -170,6 +170,7 @@ internal fun GalleryScreen(
 ) {
     val gallery = condition.gallery
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showAddMenu by rememberSaveable { mutableStateOf(false) }
 
     // ── An unsuccessful scan opens manual entry ──
     //
@@ -200,8 +201,8 @@ internal fun GalleryScreen(
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             // Search and one button for everything else: account, storage location, theme and
-            // sorting live in the sheet; the figures scroll with the grid. Scanning
-            // sits next to it, so only ONE button floats at the bottom. Not in the error state:
+            // sorting live in the sheet; the figures scroll with the grid. The FAB below asks
+            // manual or scan, so only ONE button floats at the bottom. Not in the error state:
             // without a collection there's nothing to search.
             if (display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) GallerySearch(
                 condition, events, searchInput, { searchInput = it }, onScanBarcode,
@@ -222,10 +223,25 @@ internal fun GalleryScreen(
         // Add only once the collection is there: in the error state, attention belongs to the
         // reason and "Try again", not a button that would go nowhere.
         // Not empty either: the empty message itself offers Add and Scan.
-        if (!large && display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) AddFab(
-            addText, { showAddDialog = true },
+        if (!large && display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) Box(
             Modifier.align(Alignment.BottomEnd).padding(Spacing.large),
-        )
+        ) {
+            AddFab(addText, { showAddMenu = true })
+            // The FAB is the one entry point for capture; it asks manual or scan
+            // instead of floating a second button next to the search field.
+            DropdownMenu(showAddMenu, { showAddMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.gallery_add_manually)) },
+                    leadingIcon = { Icon(Icons.Default.Add, null) },
+                    onClick = { showAddMenu = false; showAddDialog = true },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.gallery_scan_barcode)) },
+                    leadingIcon = { Icon(BarcodeSymbol, null) },
+                    onClick = { showAddMenu = false; onScanBarcode() },
+                )
+            }
+        }
     }
 
     if (showFilter) GalleryFilter(condition, events, onClose = { showFilter = false })
@@ -258,7 +274,9 @@ private fun GallerySearch(
         activeFilter = FilterCount.gallery(condition.glance.householdMembers, condition.accountChoice(), condition.storage.locations,
             condition.storageChoice(), gallery.galleryTheme),
         onFilter = onFilter,
-        scanOn = onScanBarcode,
+        // At normal size the FAB itself offers scanning (next to manual entry); with large
+        // text there's no FAB (record sits here instead), so scanning stays next to it.
+        scanOn = onScanBarcode.takeIf { largeFont() },
         record = record,
         active = listOfNotNull(
             accountFilter(condition.glance.householdMembers, condition.accountChoice()) { events.account(ScopeFilter.ALL) },

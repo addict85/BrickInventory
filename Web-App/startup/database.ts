@@ -20,6 +20,26 @@ export async function warnAtSuperuser(db: Db): Promise<boolean> {
   return true;
 }
 
+/** Die Eigentümerin der Tabellen (so wie jede Rolle mit BYPASSRLS) hebt den Zeilenschutz
+ * auf, ganz ohne app.konto — das war bisher die stillschweigende Folge der Kurzform
+ * "eine Rolle, der die Tabellen gehören: nichts zu tun" (UPGRADE.md). Dieselbe
+ * Ausnahme wie beim Superuser: wer es bewusst so betreibt, setzt DB_SUPERUSER_ALLOWED=1. */
+export async function warnAtRowSecurityBypass(db: Db): Promise<boolean> {
+  if (!config().operation || (await db.asSuperuserConnected()) || !(await db.escapesRowSecurity())) return false;
+  if (!config().dbSuperuserAllowed) {
+    console.error(
+      '❌ [datenbank] Die Laufzeitrolle gehört den Tabellen oder hat BYPASSRLS und unterliegt damit nicht dem ' +
+        'Zeilenschutz — Start verweigert. Eigene Rolle: UPGRADE.md#eigene-datenbankrolle; wer es bewusst so ' +
+        'betreibt, setzt DB_SUPERUSER_ALLOWED=1 (UPGRADE.md#superuser-ausnahme).',
+    );
+    process.exit(1);
+  }
+  console.warn(
+    '⚠️  [datenbank] Die Laufzeitrolle unterliegt dem Zeilenschutz nicht (DB_SUPERUSER_ALLOWED=1). Eigene Rolle: UPGRADE.md#eigene-datenbankrolle.',
+  );
+  return true;
+}
+
 /** The marker in the run state. A restored older backup does not bring it
  * along; then the conversion runs again on the next start. */
 export const LEGACY_STOCK_BRAND = 'altbestand_v2';
@@ -79,6 +99,7 @@ export async function prepareDatabaseBefore(db: Db, d: Services, o: { jobs?: boo
   // location of the key should appear in the startup log.
   dataKey();
   await warnAtSuperuser(db);
+  await warnAtRowSecurityBypass(db);
   await db.initSchemaOnce();
   // Otherwise jobs, admin and login would silently see no row of the account tables.
   if (!(await db.systemFrameActs()))

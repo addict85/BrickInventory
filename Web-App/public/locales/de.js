@@ -121,6 +121,7 @@ window.I18N_DE = {
   'gallery.add.price_ph': 'z. B. {amount}',
   'gallery.add.qty': 'Anzahl',
   'gallery.add.price': 'Kaufpreis (optional)',
+  'gallery.add.price_hint': '(leer = Marktpreis)',
   'gallery.add.submit': 'Hinzufügen',
 
   // Set detail

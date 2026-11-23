@@ -38,9 +38,11 @@ val FabSpace = 56.dp + 16.dp * 2
 val LocalSnackbarSpace = compositionLocalOf { 0.dp }
 
 /**
- * The one floating button of a screen: capture. Scanning sits as an icon next to
- * the search field (ScanButton) — two stacked buttons covered the end of the list, and which
- * one was more important was only said by their size.
+ * The one floating button of a screen: capture. In the gallery it opens a choice between
+ * manual entry and scanning instead of floating a second button next to the search field —
+ * two stacked buttons covered the end of the list, and which one was more important was only
+ * said by their size. Screens with no scanner (parts, figures, watchlist) still open the dialog
+ * directly.
  */
 @Composable
 fun AddFab(description: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
