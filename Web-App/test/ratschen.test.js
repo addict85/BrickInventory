@@ -784,7 +784,7 @@ test('test cases that only read source text become fewer, never more', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'self-proof: a mere await runs nothing, a function of the file and a built module do',
   );
-  const LIMIT = 363;
+  const LIMIT = 296;
   const { n, all: alle, readers } = sourceTextCases();
   assert.ok(alle > 1500, `only ${alle} test cases found — does the search still apply?`);
   assert.ok(
@@ -796,22 +796,19 @@ test('test cases that only read source text become fewer, never more', () => {
   behaviorChecksReadingSource(readers);
 });
 
-/** Of the reading cases, those outside the structure list are behavior checks. */
+/** Of the reading cases, those outside the structure list are behavior checks — banned since 22.11.2026. */
 function behaviorChecksReadingSource(/** @type {string[]} */ readers) {
-  // Structure (helpers/structure-checks.js) may read source text; a behavior check runs the code. Target: 0.
-  // Counter-checks: an entry of STRUCTURE_FILES removed → red (count above the limit); an entry naming
+  // Structure (helpers/structure-checks.js) may read source text; a behavior check runs the code.
+  // Counter-checks: an entry of STRUCTURE_FILES removed → red (its cases count as behavior); an entry naming
   // a file without a reading case → red „without a reading case“.
   const { STRUCTURE_FILES, STRUCTURE_CHECKS } = require('./helpers/structure-checks');
-  const LIMIT = 68;
-  assert.equal(caseName("test('a b', () => {"), 'a b', 'self-proof of the case name');
   const behavior = readers.filter(r => !(r.split(': ')[0] in STRUCTURE_FILES) && !(r in STRUCTURE_CHECKS));
-  assert.ok(
-    behavior.length <= LIMIT,
-    `${behavior.length} behavior checks read source text, allowed are ${LIMIT}. Run the code instead; ` +
-      `structure goes into helpers/structure-checks.js with a reason:\n  ${behavior.join('\n  ')}`,
+  assert.deepEqual(
+    behavior,
+    [],
+    'These cases check behavior by reading source text. Run the code instead (buildAndRequire, testServer, ' +
+      'openUi, DB); only real structure goes into helpers/structure-checks.js, with a reason',
   );
-  if (behavior.length < LIMIT)
-    console.log(`  ℹ behavior checks reading source text: ${behavior.length} (limit ${LIMIT}) — tighten the limit`);
   const files = new Set(readers.map(r => r.split(': ')[0]));
   const stale = [
     ...Object.keys(STRUCTURE_FILES).filter(f => !files.has(f)),

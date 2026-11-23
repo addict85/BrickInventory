@@ -11,10 +11,7 @@
 require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { ohneKommentare, testData } = require('./helpers/sources');
@@ -24,33 +21,66 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 
-test('deleting asks at most once', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/collection.js'), 'utf8'));
-  const detail = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/set-detail.js'), 'utf8'));
-
-  // The button in the detail dialog must NOT ask itself.
-  const btn = detail.slice(detail.indexOf("G('btn-md').onclick"));
-  const handler = btn.slice(0, btn.indexOf('\n};'));
-  assert.ok(handler.length > 20, 'Handler von btn-md nicht gefunden');
-  assert.doesNotMatch(
-    handler,
-    /confirmDelete/,
-    'Der Löschknopf im Dialog fragt wieder selbst — zusammen mit der Rückfrage ' + 'in delSet() sind das zwei',
-  );
-  assert.match(handler, /await delSet\(/, 'Er muss über delSet() gehen');
-
-  // …and delSet asks at most once: only the account choice of a household; the own set is restorable.
-  const fn = src.slice(
-    src.indexOf('async function deletionChoice'),
-    src.indexOf('export async function reimportParts'),
-  );
-  assert.equal((fn.match(/confirmDelete\(/g) || []).length, 0, 'das eigene Set ist wiederherstellbar: keine Rückfrage');
-  assert.equal((fn.match(/deleteWithChoice\(/g) || []).length, 1, 'im Haushalt genau eine Rückfrage mit Wahl');
-  assert.match(fn, /if \(!foreign\)\s*return '';/, 'ohne fremde Besitzer keine Wahl');
-  // And the prompt must be able to cancel without anything being deleted.
-  assert.match(fn, /\) return false;/, 'Ein „Abbrechen" muss vor dem DELETE herausspringen');
-  // loadGallery() loads the metrics along; the parts and minifigures of the set are gone too.
-  assert.match(fn, /loadGallery\(\);\s*emit\('loadParts'\);/, 'Nach dem Löschen müssen Sammlung und Teile nachziehen');
+test('deleting asks at most once', async () => {
+  // Real bundle in jsdom, the trash on the tile (the detail's trash calls the same delSet()). The own
+  // set is restorable: it is deleted without asking.
+  // In the household exactly one question with the account choice; cancelling deletes nothing.
+  // Counter-checks (22.11.2026, each alone): delSet asks with confirmDelete first → red “own set” (a dialog);
+  // deletionChoice without `if (!foreign) return ''` → red the same test; a cancelled choice still deletes
+  // (`account === null` check removed) → red “household”.
+  const { openUi, warte, takt } = require('./helpers/ui');
+  const mk = owners => ({ set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, owners });
+  const deletes = aufrufe => aufrufe.filter(a => a.method === 'DELETE').map(a => a.url.replace(/^.*\/api/, ''));
+  const modalOpen = d => d.getElementById('confirm-modal')?.style.display === 'flex';
+  for (const [kind, owners] of [
+    ['own set', [{ id: 1, username: 'anna' }]],
+    [
+      'household',
+      [
+        { id: 1, username: 'anna' },
+        { id: 7, username: 'ben' },
+      ],
+    ],
+  ]) {
+    const SET = mk(owners);
+    const { w, d, aufrufe } = await openUi(
+      {
+        '/v2/sets/household-members': {
+          success: true,
+          members: [
+            { id: 1, username: 'anna', is_self: true, depth: 0 },
+            { id: 7, username: 'ben', is_self: false, depth: 1 },
+          ],
+        },
+        '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
+        '/v2/sets/10294-1': { success: true, set: SET },
+        '/v2/sets/10294-1/acquisitions': {
+          success: true,
+          acquisitions: [],
+          totals: { quantity: 1, amount: null, currency: 'EUR' },
+        },
+      },
+      // jsdom has no CSS.escape; every browser does.
+      { before: win => Object.assign(win, { CSS: { escape: x => String(x).replace(/[^\w-]/g, c => `\\${c}`) } }) },
+    );
+    try {
+      const trash = () => d.querySelector('#gallery .delbtn[data-click="delSetStop"]');
+      assert.ok(await warte(() => trash()), `${kind}: no trash on the tile`);
+      trash().click();
+      if (kind === 'own set') {
+        assert.ok(await warte(() => deletes(aufrufe).length === 1), `${kind}: nothing deleted`);
+        assert.equal(modalOpen(d), false, `${kind}: a question for a restorable set`);
+        assert.deepEqual(deletes(aufrufe), ['/v2/sets/10294-1']);
+      } else {
+        assert.ok(await warte(() => modalOpen(d)), `${kind}: no account choice`);
+        d.getElementById('cd-cancel').click();
+        await takt(50);
+        assert.deepEqual(deletes(aufrufe), [], `${kind}: deleted after cancelling`);
+      }
+    } finally {
+      w.close();
+    }
+  }
 });
 
 test('the quantity multiplication is in all places', () => {

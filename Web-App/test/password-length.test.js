@@ -58,18 +58,60 @@ test('the error message names the same number as the rule', () => {
   }
 });
 
-test('the web app checks before submitting', () => {
-  // Otherwise it would submit and only then show the server error.
-  const core = ohneKommentare(read('public/js/form.js'));
-  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('settings'));
-  // Login, registration and resetting stand in sitzung.js since the rebuild.
-  const sitzung = ohneKommentare(read('public/js/session.js'));
-  const webCalls =
-    (core.match(/passwordRuleText\(/g) || []).length +
-    (settings.match(/passwordRuleText\(/g) || []).length +
-    (sitzung.match(/passwordRuleText\(/g) || []).length;
-  // Five places set a password in the web app: registering,
-  // resetting, changing, creating an account, resetting an account password.
-  // Plus the definition itself in formular.js.
-  assert.ok(webCalls >= 6, `Nur ${webCalls} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
+test('the web app checks before submitting', async () => {
+  // Real bundle in jsdom: every form that sets a password names the rule at once and sends nothing.
+  // Counter-checks (22.11.2026, each alone): the passwordRuleText check removed from btn-sav-pw
+  // (settings.js), btn-cu or btn-rpw (user-management.js), btn-register, btn-reset or btn-required
+  // (session.js) → red with the name of that form (rule not named, asked or sent anyway).
+  const { openUi, takt } = require('./helpers/ui');
+  const SHORT = 'kurz-1';
+  const { de } = require('./helpers/sources').loadTranslations();
+  const rule = de['settings.password.too_short'].replace('{n}', String(PASSWORD_MIN_CHARS));
+  const forms = {
+    'change password': { fields: { 'pw-n': SHORT, 'pw-r': SHORT }, button: 'btn-sav-pw', where: '#pw-n-error' },
+    'create account': { fields: { 'nu-n': 'carla', 'nu-p': SHORT }, button: 'btn-cu', where: '#nu-p-error' },
+    'reset account password': { fields: { 'rpw-uid': '7', 'rpw-v': SHORT }, button: 'btn-rpw', where: '#toasts' },
+    register: {
+      fields: { 'reg-user': 'carla', 'reg-email': 'c@example.org', 'reg-pass': SHORT, 'reg-pass2': SHORT },
+      button: 'btn-register',
+      where: '#reg-err',
+      signedOut: true,
+    },
+    'reset via link': {
+      fields: { 'reset-pass': SHORT, 'reset-pass2': SHORT },
+      button: 'btn-reset',
+      where: '#reset-err',
+      signedOut: true,
+    },
+    'required change': {
+      fields: { 'required-alt': 'alt-passwort-123', 'required-new': SHORT, 'required-repeat': SHORT },
+      button: 'btn-required',
+      where: '#required-err',
+    },
+  };
+  for (const [name, f] of Object.entries(forms)) {
+    const { w, d, aufrufe, ruhig } = await openUi({}, { loggedIn: !f.signedOut });
+    try {
+      await ruhig();
+      const before = aufrufe.length;
+      for (const [id, v] of Object.entries(f.fields)) {
+        const el = d.getElementById(id);
+        assert.ok(el, `${name}: field #${id} is missing`);
+        el.value = v;
+      }
+      assert.ok(d.getElementById(f.button), `${name}: button #${f.button} is missing`);
+      d.getElementById(f.button).click();
+      await takt(50);
+      const sent = aufrufe.slice(before).filter(a => a.method !== 'GET');
+      assert.deepEqual(
+        sent.map(a => a.url),
+        [],
+        `${name}: a request went out with a too short password`,
+      );
+      assert.ok(d.querySelector(f.where)?.textContent.includes(rule), `${name}: the rule is not named at ${f.where}`);
+      assert.notEqual(d.getElementById('confirm-modal')?.style.display, 'flex', `${name}: asked before checking`);
+    } finally {
+      w.close();
+    }
+  }
 });

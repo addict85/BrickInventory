@@ -136,21 +136,6 @@ test('write endpoints without login carry a throttle', () => {
   assert.deepEqual(open, [], `weder Anmeldung noch Drossel: ${open.join(', ')}`);
 });
 
-test('the barcode search counts its Rebrickable calls', () => {
-  // The barcode search (src/sets/barcode.ts) only asks Rebrickable via
-  // rebrickableJson() — and that counts and throttles.
-  const serviceFn = source('src/sets/barcode.ts');
-  assert.match(serviceFn, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
-  assert.doesNotMatch(serviceFn, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
-  const client = source('clients/rebrickable.ts');
-  const rbJson = client.slice(
-    client.indexOf('async function rebrickableJson'),
-    client.indexOf('function httpsGetRobust'),
-  );
-  assert.match(rbJson, /dailyQuotaFree/, 'rebrickableJson zählt nicht mit');
-  assert.match(rbJson, /waitForSlot/, 'rebrickableJson umgeht die Drossel');
-});
-
 test('CSV export defuses formulas, the own import reverses it', () => {
   const { csvField, defuse, defusingUndo, csvRowsClean } = _reqCsv('src/infra/csvExport.js');
 

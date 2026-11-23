@@ -5,13 +5,10 @@
 require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
-const fs = require('node:fs');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, ohneKommentare, testData } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const { holdsSet } = require('./helpers/inventory');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
@@ -100,19 +97,33 @@ test('instructions: the server says which one was uploaded by the user', { concu
   }
 });
 
-test('instructions: the web app attaches the trash to is_manual', () => {
-  const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/set-detail.js'), 'utf8'));
-
-  assert.ok(
-    /const isUpload = !!i\.is_manual;/.test(galerie),
-    'Die Webapp soll die Herkunft vom Server nehmen, nicht selbst am Pfad ablesen',
-  );
-  assert.ok(
-    !/local_path\.startsWith\('\/data\/uploads\/'\)/.test(galerie),
-    'Der Pfadvergleich war die zweite Fassung derselben Regel und soll weg sein',
-  );
-  assert.ok(
-    /\$\{isUpload \? (?:html)?`<button[^>]*data-click="delInstr"/.test(galerie),
-    'Der Loeschknopf der Webapp soll nur bei selbst hochgeladenen Anleitungen stehen',
-  );
+test('instructions: the web app attaches the trash to is_manual', async () => {
+  // Real bundle in jsdom: the origin comes from the server, not from the path. An imported file lying
+  // under /data/uploads/ gets no trash, an own upload elsewhere does.
+  // Counter-checks (22.11.2026, each alone, public/js/set-detail.js): isUpload from
+  // `local_path.startsWith('/data/uploads/')` again → red; the trash shown for every instruction → red.
+  const { openUi, warte } = require('./helpers/ui');
+  const SET = {
+    set_number: '10294-1',
+    name: 'Titanic',
+    year: 2021,
+    quantity: 1,
+    instructions: [
+      { id: 1, description: 'Import', local_path: '/data/uploads/import.pdf', url: null, is_manual: false },
+      { id: 2, description: 'Eigene', local_path: '/data/instructions/eigen.pdf', url: null, is_manual: true },
+    ],
+  };
+  const { w, d } = await openUi({
+    '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
+    '/v2/sets/10294-1': { success: true, set: SET },
+  });
+  try {
+    assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
+    d.querySelector('#gallery [data-click="openModal"]').click();
+    assert.ok(await warte(() => d.getElementById('instr-2')), 'the instructions are not shown');
+    assert.equal(d.querySelector('#instr-1 [data-click="delInstr"]'), null, 'trash on an imported instruction');
+    assert.ok(d.querySelector('#instr-2 [data-click="delInstr"]'), 'no trash on the own upload');
+  } finally {
+    w.close();
+  }
 });
