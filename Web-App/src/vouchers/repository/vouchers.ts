@@ -153,7 +153,7 @@ export async function markVoucherDeleted(db: DbInterface, uid: number, id: numbe
 }
 
 /** Only a row deleted since `sinceMs`: past the window the cleanup may already be removing it. */
-export async function restoreVoucher(
+export async function restoreVoucherRow(
   db: DbInterface,
   uid: number,
   id: number,
@@ -169,7 +169,7 @@ export async function restoreVoucher(
 
 /** Under row security only the account's own rows; in the system frame (cleanup) all of them.
  * @returns the removed rows, so that the caller deletes their PDFs */
-export function purgeDeletedVouchers(db: DbInterface, beforeMs: number) {
+export function purgeDeletedVoucherRows(db: DbInterface, beforeMs: number) {
   return db.all<{ user_id: number; pdf_path: string | null }>(
     'DELETE FROM vouchers WHERE deleted_at < to_timestamp($1 / 1000.0) RETURNING user_id, pdf_path',
     [beforeMs],

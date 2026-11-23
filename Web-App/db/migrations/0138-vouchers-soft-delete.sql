@@ -7,5 +7,9 @@ ALTER TABLE vouchers ADD COLUMN deleted_at TIMESTAMPTZ;
 ALTER TABLE vouchers DROP CONSTRAINT vouchers_user_id_number_search_key;
 CREATE UNIQUE INDEX vouchers_user_id_number_search_key ON vouchers (user_id, number_search) WHERE deleted_at IS NULL;
 
+-- The dropped constraint was also the index behind the user_id foreign key; the partial one
+-- above does not serve it.
+CREATE INDEX vouchers_user_id ON vouchers (user_id);
+
 -- The cleanup searches the few deleted rows, not the whole table.
 CREATE INDEX vouchers_deleted_at ON vouchers (deleted_at) WHERE deleted_at IS NOT NULL;

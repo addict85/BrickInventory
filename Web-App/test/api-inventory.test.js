@@ -277,6 +277,7 @@ const C = {
   'GET /api/v2/vouchers/export/pdf': 'nur-v1',
   'PUT /api/v2/vouchers/:id': 'nur-v1',
   'DELETE /api/v2/vouchers/:id': 'nur-v1',
+  'POST /api/v2/vouchers/:id/restore': 'nur-v1',
   // Query the balance at LEGO. 'nur-v1' like the other voucher paths:
   // both UIs call them, there is no old address beside them.
   'POST /api/v2/vouchers/:id/balance': 'nur-v1',

@@ -25,7 +25,7 @@ export function createVouchers(a: Omit<VoucherDependencies, 'compartments'>, ins
       exportVouchers: bound(k)(service.exportVouchers),
       voucherPdf: bound(k)(service.voucherPdf),
       redeemTicket: bound(k)(pdfTicket.redeemTicket),
-      cleanup: bound(k)(cleanup),
+      cleanup: bound(k)(cleanupVouchers),
       encryptLegacyFiles: encryptLegacyVoucherFiles,
       // Re-encrypting at startup (startup/database.ts): across all accounts, without a request.
       reencrypt: bound(k)(reencrypt),
@@ -43,7 +43,7 @@ async function reencrypt(k: VoucherContext, o: { all?: boolean } = {}): Promise<
 }
 
 /** The hourly cleanup: expired PDF tickets and cards deleted longer than RESTORE_DAYS ago. */
-async function cleanup(k: VoucherContext): Promise<number> {
+async function cleanupVouchers(k: VoucherContext): Promise<number> {
   return (await pdfTicket.cleanupTickets(k)) + (await service.purgeDeletedVouchers(k));
 }
 

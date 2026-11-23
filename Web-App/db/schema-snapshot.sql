@@ -1184,6 +1184,7 @@ CREATE TABLE vouchers (
   CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX vouchers_deleted_at ON vouchers USING btree (deleted_at) WHERE (deleted_at IS NOT NULL);
+CREATE INDEX vouchers_user_id ON vouchers USING btree (user_id);
 CREATE UNIQUE INDEX vouchers_user_id_number_search_key ON vouchers USING btree (user_id, number_search) WHERE (deleted_at IS NULL);
 CREATE TRIGGER vouchers_currency BEFORE INSERT OR UPDATE ON vouchers FOR EACH ROW EXECUTE FUNCTION acquisition_currency();
 ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
