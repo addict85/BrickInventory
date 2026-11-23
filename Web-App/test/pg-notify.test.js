@@ -117,7 +117,7 @@ test('own connection, with capped reconnect', async t => {
   const net = require('node:net');
   const closed = await new Promise(r => {
     const s = net.createServer().listen(0, '127.0.0.1', () => {
-      const port = s.address().port;
+      const port = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
       s.close(() => r(port));
     });
   });

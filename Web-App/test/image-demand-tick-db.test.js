@@ -32,7 +32,6 @@ test('a web worker writes its image notes away on its own', { concurrency: 1 }, 
   testServices().images.rememberUsed(`https://cdn.rebrickable.com/media/sets/${SN}.jpg`, SN);
   t.mock.timers.tick(10_000);
   const count = async () => (await db.get('SELECT COUNT(*)::int AS n FROM image_wanted WHERE set_number = $1', [SN])).n;
-  let n = 0;
-  await bis(async () => (n = await count()) > 0, 3000);
-  assert.equal(n, 1);
+  await bis(async () => (await count()) > 0, 3000);
+  assert.equal(await count(), 1);
 });

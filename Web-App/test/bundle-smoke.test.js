@@ -149,7 +149,8 @@ test('unhandled errors do not only end up in the console', async () => {
   const { de } = require('./helpers/sources').loadTranslations();
   const ours = { stack: 'Error: kaputt\n    at http://localhost/js/app.bundle.js:1:1' };
   // One window per kind: the net reports at most one message per five seconds.
-  for (const [kind, raise] of [
+  /** @type {[string, (w: any) => void][]} */
+  const kinds = [
     [
       'promise',
       w => {
@@ -159,7 +160,8 @@ test('unhandled errors do not only end up in the console', async () => {
       },
     ],
     ['script', w => w.dispatchEvent(new w.ErrorEvent('error', { error: ours, message: 'kaputt' }))],
-  ]) {
+  ];
+  for (const [kind, raise] of kinds) {
     const { w, d } = await openUi();
     w.console.error = () => {};
     try {
