@@ -101,6 +101,7 @@ test('?thumb=1: original at once, the preview once in the background', { concurr
   renames.length = 0;
 
   await t.test('the request does not wait for the preview', async () => {
+    /** @type {(value?: unknown) => void} */
     let release = () => {};
     holdThumb = new Promise(r => (release = r));
     try {
