@@ -6,12 +6,11 @@ Rot: gallery at 200 percent shows several sets fully and add lies on none
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
-@@ -222,7 +222,7 @@
+@@ -223,6 +223,6 @@ internal fun GalleryScreen(
          // Add only once the collection is there: in the error state, attention belongs to the
          // reason and "Try again", not a button that would go nowhere.
          // Not empty either: the empty message itself offers Add and Scan.
--        if (!large && display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) AddFab(
-+        if (display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) AddFab(
-             addText, { showAddDialog = true },
+-        if (!large && display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) Box(
++        if (display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) Box(
              Modifier.align(Alignment.BottomEnd).padding(Spacing.large),
-         )
+         ) {

@@ -146,6 +146,7 @@
     </plurals>
     <string name="gallery_add_set">Set hinzufügen</string>
     <string name="gallery_add_set_title">Set hinzufügen</string>
+    <string name="gallery_add_manually">Manuell erfassen</string>
     <string name="gallery_set_number">Setnummer</string>
     <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">z. B. 75192-1 oder 75192</string>
     <string name="gallery_purchase_price">Kaufpreis (optional)</string>

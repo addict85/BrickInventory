@@ -573,8 +573,17 @@ class UisRulesTest {
         }
     }
 
+    /**
+     * One floating button, no scan icon next to the search: the button itself asks manual or
+     * scan, so the search row carries only the filter.
+     *
+     * Counter-check (run here): `.takeIf { largeFont() }` removed from `scanOn` in
+     * GalleryScreen's GallerySearch → red "no scan icon next to the search" (the icon
+     * reappears there). Counter-check (run here): the scan menu item's `onClick` no longer
+     * calling `onScanBarcode` → red "choosing scan calls onScanBarcode".
+     */
     @Test
-    fun `gallery has a floating button and scanning next to the search`() {
+    fun `gallery's floating button opens a choice between manual entry and scan`() {
         val world = Examples.World(ContextTexts())
         try {
             val vm = world.gallery().also { it.loadSets() }
@@ -585,18 +594,18 @@ class UisRulesTest {
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
                 }))
+            var scanned = 0
             show {
                 GalleryRoute(vm = vm, entryVm = entryVm,
-                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
+                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = { scanned++ }, onSetClick = {})
             }
             wait("gallery") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.fetch.loading }
-            val scan = compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode))
-            scan.assertCountEquals(1)
+            compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode)).assertCountEquals(0)
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_add_set)).assertCountEquals(1)
-            val search = compose.onNode(androidx.compose.ui.test.hasSetTextAction())
-                .fetchSemanticsNode().boundsInRoot
-            val button = scan[0].fetchSemanticsNode().boundsInRoot
-            assertTrue("scan stands in the row of the search", button.top < search.bottom && button.bottom > search.top)
+            compose.onNodeWithContentDescription(ctx.getString(R.string.gallery_add_set)).performClick()
+            compose.onNodeWithText(ctx.getString(R.string.gallery_add_manually)).fetchSemanticsNode()
+            compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).performClick()
+            assertEquals("choosing scan calls onScanBarcode", 1, scanned)
         } finally {
             world.close()
         }

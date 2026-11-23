@@ -164,6 +164,7 @@
     </plurals>
     <string name="gallery_add_set">Add set</string>
     <string name="gallery_add_set_title">Add set</string>
+    <string name="gallery_add_manually">Enter manually</string>
     <string name="gallery_set_number">Set number</string>
     <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">e.g. 75192-1 or 75192</string>
     <string name="gallery_purchase_price">Purchase price (optional)</string>
