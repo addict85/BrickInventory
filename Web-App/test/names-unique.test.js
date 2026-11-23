@@ -33,22 +33,22 @@ const ALLOWED = new Map([
 ]);
 
 test('a function name means one thing', () => {
-  const dateien = [];
+  const files = [];
   const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts', 'public', '.git'].includes(e.name) || e.name.startsWith('.'))
         continue;
       const abs = path.join(d, e.name);
       if (e.isDirectory()) go(abs);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) files.push(abs);
     }
   };
   go(ROOT);
-  assert.ok(dateien.length >= 60, `Only ${dateien.length} source files found — the search no longer works`);
+  assert.ok(files.length >= 60, `Only ${files.length} source files found — the search no longer works`);
 
-  const wo = new Map();
+  const where = new Map();
   let found = 0;
-  for (const f of dateien) {
+  for (const f of files) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -57,37 +57,37 @@ test('a function name means one thing', () => {
     // Generic functions too (`function all<T = any>(`).
     for (const m of code.matchAll(/^(?:export )?(?:async )?function (\w+)(?:<[^>(]*>)?\(/gm)) {
       found++;
-      if (!wo.has(m[1])) wo.set(m[1], new Set());
-      wo.get(m[1]).add(rel);
+      if (!where.has(m[1])) where.set(m[1], new Set());
+      where.get(m[1]).add(rel);
     }
   }
   // Self-proof: if the search found hardly any functions, the rule would be vacuously true.
   assert.ok(found >= 300, `Only ${found} functions found — the search no longer works`);
 
-  const doppelt = [];
-  const gebraucht = new Set();
-  for (const [name, locations] of wo) {
+  const twice = [];
+  const used = new Set();
+  for (const [name, locations] of where) {
     if (locations.size < 2) continue;
     // An allowed name is not skipped but BOOKED: only that way it
     // becomes noticeable when it has long stood in only one place and the
     // entry describes nothing any more. A dead entry looks like a
     // decision and yet is merely a guess as soon as nobody checks.
     if (ALLOWED.has(name)) {
-      gebraucht.add(name);
+      used.add(name);
       continue;
     }
-    doppelt.push(`${name}: ${[...locations].sort().join(', ')}`);
+    twice.push(`${name}: ${[...locations].sort().join(', ')}`);
   }
-  const veraltet = [...ALLOWED.keys()].filter(k => !gebraucht.has(k)).sort();
+  const stale = [...ALLOWED.keys()].filter(k => !used.has(k)).sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
     'These entries in ALLOWED no longer describe a duplicate:\n  ' +
-      veraltet.join('\n  ') +
+      stale.join('\n  ') +
       '\nThe name is only in one place now — remove it.',
   );
   assert.deepEqual(
-    doppelt.sort(),
+    twice.sort(),
     [],
     'These names are in several files. Either they mean the same thing — then ' +
       'they belong in a shared function —, or they mean DIFFERENT things, ' +

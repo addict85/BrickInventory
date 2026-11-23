@@ -39,15 +39,15 @@ test('image follow-up: manual parts and minifigures get a preview', { concurrenc
   if (!(await dataOrSkip(t, _req))) return;
   const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } = _req('src/infra/appPaths.js');
   const files = [path.join(PART_IMAGES_DIR, `${PART}_4.jpg`), path.join(MINIFIG_IMAGES_DIR, `${FIG}_0.jpg`)];
-  const weg = async () => {
+  const route = async () => {
     for (const f of files) fs.rmSync(f, { force: true });
     await db.run('DELETE FROM users WHERE username = $1', [`ifp-${P}`]);
     await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [PART]);
     await db.run('DELETE FROM minifigs_catalog WHERE fig_number = ANY($1)', [[FIG, SETFIG, NOBODY]]);
   };
-  await weg();
+  await route();
   t.after(async () => {
-    await weg().catch(() => {});
+    await route().catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`ifp-${P}`]))

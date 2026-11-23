@@ -8,7 +8,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 const acqList = {
   '/v2/sets/10294-1/acquisitions': () => ({
@@ -20,12 +20,12 @@ const acqList = {
 
 async function dialog(browserLanguage) {
   const o = await openUi(acqList, { language: 'de', browserLanguage });
-  const knopf = o.d.createElement('button');
-  knopf.dataset.click = 'openAcqModal';
-  knopf.dataset.arg = '10294-1';
-  o.d.body.append(knopf);
-  knopf.click();
-  await warte(() => o.d.getElementById('acq-price-7'));
+  const button = o.d.createElement('button');
+  button.dataset.click = 'openAcqModal';
+  button.dataset.arg = '10294-1';
+  o.d.body.append(button);
+  button.click();
+  await waitFor(() => o.d.getElementById('acq-price-7'));
   return o;
 }
 

@@ -26,7 +26,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { startPageStyleHash, startPageHtml, stripComments } = _req('src/profile/indexHtml.js');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 // startPageHtml() asks the database for the theme; left open, the pool would stall the run.
 test.after(() =>
   testData()
@@ -38,8 +38,8 @@ test('the hash matches the delivered block', async () => {
   const html = await startPageHtml();
   const block = /<style id="start-style">([\s\S]*?)<\/style>/.exec(html);
   assert.ok(block, 'no start scaffold style in the served HTML');
-  const erwartet = `'sha256-${crypto.createHash('sha256').update(block[1]).digest('base64')}'`;
-  assert.equal(startPageStyleHash(false), erwartet);
+  const expected = `'sha256-${crypto.createHash('sha256').update(block[1]).digest('base64')}'`;
+  assert.equal(startPageStyleHash(false), expected);
 });
 
 test('before the first stylesheet and before every blocking script', () => {
@@ -55,7 +55,7 @@ test('before the first stylesheet and before every blocking script', () => {
 test('logged in: skeleton gone, app there', async () => {
   const { w, d } = await openUi({});
   try {
-    await warte(() => !d.getElementById('start-skeleton'));
+    await waitFor(() => !d.getElementById('start-skeleton'));
     assert.equal(d.getElementById('start-skeleton'), null, 'logged in: scaffold gone');
   } finally {
     w.close();
@@ -65,7 +65,7 @@ test('logged in: skeleton gone, app there', async () => {
 test('logged out: skeleton gone, login there', async () => {
   const { w, d } = await openUi({}, { loggedIn: false });
   try {
-    await warte(() => d.getElementById('login-screen').style.display === 'flex');
+    await waitFor(() => d.getElementById('login-screen').style.display === 'flex');
     assert.equal(d.getElementById('start-skeleton'), null);
   } finally {
     w.close();
@@ -80,8 +80,8 @@ test('Stein (blue): header blue, background blue-gray', () => {
   // By default JSDOM runs no scripts and loads no foreign ones: the skeleton stands alone.
   const w = new JSDOM(html).window;
   try {
-    const kopf = w.getComputedStyle(w.document.querySelector('#start-skeleton .sg-header'));
-    assert.equal(kopf.backgroundColor, 'rgb(61, 90, 128)', 'the header tile is blue as in the brick design');
+    const head = w.getComputedStyle(w.document.querySelector('#start-skeleton .sg-header'));
+    assert.equal(head.backgroundColor, 'rgb(61, 90, 128)', 'the header tile is blue as in the brick design');
     const reason = w.getComputedStyle(w.document.querySelector('#start-skeleton'));
     assert.equal(reason.getPropertyValue('--sg-bg').trim(), '#c9d5e2', 'the background is blue-grey, not white');
   } finally {
@@ -91,7 +91,7 @@ test('Stein (blue): header blue, background blue-gray', () => {
 
 test('without a session: no app tiles in the skeleton, with a session yes', async () => {
   const { JSDOM } = require('jsdom');
-  const sichtbar = html => {
+  const visible = html => {
     const w = new JSDOM(html).window;
     try {
       return ['.sg-header', '.sg-bar', '.sg-content'].map(
@@ -102,9 +102,9 @@ test('without a session: no app tiles in the skeleton, with a session yes', asyn
     }
   };
   assert.deepEqual(
-    sichtbar(await startPageHtml()),
+    visible(await startPageHtml()),
     [false, false, false],
     'without a session: no app tiles in the scaffold',
   );
-  assert.deepEqual(sichtbar(await startPageHtml(1)), [true, true, true], 'with a session: header, bar and tiles');
+  assert.deepEqual(visible(await startPageHtml(1)), [true, true, true], 'with a session: header, bar and tiles');
 });

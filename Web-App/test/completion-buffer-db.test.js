@@ -32,49 +32,49 @@ test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
 
   // Which timers are created, and which end again.
   const open = new Set();
-  const echt = { set: global.setInterval, clear: global.clearInterval };
+  const original = { set: global.setInterval, clear: global.clearInterval };
   // @ts-expect-error — recording with exactly the shape the timers use.
   global.setInterval = (fn, ms) => {
-    const h = echt.set(fn, ms);
+    const h = original.set(fn, ms);
     open.add(h);
     return h;
   };
   global.clearInterval = h => {
     open.delete(h);
-    echt.clear(h);
+    original.clear(h);
   };
-  const zurueck = P.installLog({ out: () => {}, err: () => {}, now: () => Date.now() });
+  const back = P.installLog({ out: () => {}, err: () => {}, now: () => Date.now() });
   t.after(() => {
-    zurueck();
-    Object.assign(global, { setInterval: echt.set, clearInterval: echt.clear });
+    back();
+    Object.assign(global, { setInterval: original.set, clearInterval: original.clear });
   });
 
-  const kennung = `abschluss-${process.pid}`;
+  const tokenId = `abschluss-${process.pid}`;
   P.logToDatabase(db.pool);
   await B.setUpImageDemand();
   await F.setUpImageGaps();
   assert.ok(open.size >= 4, `Setup: ${open.size} ticks, expected at least four`);
 
-  B.rememberUsed(`https://cdn.rebrickable.com/media/sets/${kennung}.jpg`, `${kennung}-1`);
-  F.rememberMissing(`fehlt:${kennung}`, '404');
-  console.log(`letzte Zeile ${kennung}`);
+  B.rememberUsed(`https://cdn.rebrickable.com/media/sets/${tokenId}.jpg`, `${tokenId}-1`);
+  F.rememberMissing(`fehlt:${tokenId}`, '404');
+  console.log(`letzte Zeile ${tokenId}`);
 
   await closeBufferAndTicks(testAccess(), require('./helpers/sources').testServices());
 
   await t.test('the image demand is in image_wanted afterwards', async () => {
     const z = await db.get('SELECT set_number FROM image_wanted WHERE url = $1', [
-      `https://cdn.rebrickable.com/media/sets/${kennung}.jpg`,
+      `https://cdn.rebrickable.com/media/sets/${tokenId}.jpg`,
     ]);
-    assert.equal(z?.set_number, `${kennung}-1`);
+    assert.equal(z?.set_number, `${tokenId}-1`);
   });
 
   await t.test('the negative result is in image_misses afterwards', async () => {
-    const z = await db.get('SELECT reason FROM image_misses WHERE cache_key = $1', [`fehlt:${kennung}`]);
+    const z = await db.get('SELECT reason FROM image_misses WHERE cache_key = $1', [`fehlt:${tokenId}`]);
     assert.equal(z?.reason, '404');
   });
 
   await t.test('the last line is in app_logs', async () => {
-    const z = await db.get('SELECT 1 AS ja FROM app_logs WHERE message LIKE $1', [`%letzte Zeile ${kennung}%`]);
+    const z = await db.get('SELECT 1 AS ja FROM app_logs WHERE message LIKE $1', [`%letzte Zeile ${tokenId}%`]);
     assert.ok(z, 'the row is missing');
   });
 
@@ -83,9 +83,9 @@ test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
   });
 
   await t.test('afterwards the log no longer writes to the database', async () => {
-    console.log(`nach dem Abschluss ${kennung}`);
+    console.log(`nach dem Abschluss ${tokenId}`);
     await P.emptyLog();
-    const z = await db.get('SELECT 1 AS ja FROM app_logs WHERE message LIKE $1', [`%nach dem Abschluss ${kennung}%`]);
+    const z = await db.get('SELECT 1 AS ja FROM app_logs WHERE message LIKE $1', [`%nach dem Abschluss ${tokenId}%`]);
     assert.equal(z, undefined);
   });
 });

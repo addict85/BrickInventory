@@ -41,7 +41,7 @@ async function seed() {
   ]) {
     await holdsSet(db, uid, sn, 1);
   }
-  for (const [uid, sn, num, farbe] of [
+  for (const [uid, sn, num, color] of [
     [U.ich, '10179-1', '3001', 4],
     [U.ich, '75192-1', '3001', 4],
     // THE SAME part in another color. Without this line the
@@ -57,7 +57,7 @@ async function seed() {
        ON CONFLICT (part_number) DO NOTHING`,
       [num, 'Teil ' + num],
     );
-    await holdsPart(db, uid, num, { setNumber: sn, quantity: 1, colorId: farbe });
+    await holdsPart(db, uid, num, { setNumber: sn, quantity: 1, colorId: color });
   }
 }
 
@@ -114,7 +114,7 @@ test('storage location against a real database', async t => {
   await t.test('setting stays in the write scope', async () => {
     // Without this boundary the storage location would be a way to write into foreign
     // data — and inconspicuously at that, because nothing else changes.
-    const vorher =
+    const prior =
       (
         await db.get(
           `SELECT l.name AS storage FROM parts t
@@ -124,7 +124,7 @@ test('storage location against a real database', async t => {
         )
       )?.storage ?? null;
     await L.setLocation('part', writable, ['3001', '4'], 'Kiste 9');
-    const nachher =
+    const later =
       (
         await db.get(
           `SELECT l.name AS storage FROM parts t
@@ -133,7 +133,7 @@ test('storage location against a real database', async t => {
           [U.fremd],
         )
       )?.storage ?? null;
-    assert.equal(nachher, vorher, 'A foreign row was changed');
+    assert.equal(later, prior, 'A foreign row was changed');
 
     // Reset: the overview further down counts the same rows. Without
     // that it said „Kiste 9" instead of „Kiste 3" — the first draft of this
@@ -145,8 +145,8 @@ test('storage location against a real database', async t => {
 
   await t.test('empty means NULL, not a place called "nothing"', async () => {
     // An empty text would stand as its own entry in every selection list.
-    for (const eingabe of ['', '   ', null, undefined]) {
-      assert.equal(L.normalizeLocation(eingabe), null, `„${eingabe}“ did not become null`);
+    for (const input of ['', '   ', null, undefined]) {
+      assert.equal(L.normalizeLocation(input), null, `„${input}“ did not become null`);
     }
     assert.equal(L.normalizeLocation('  Kiste 3  '), 'Kiste 3', 'Not trimmed');
 
@@ -177,13 +177,13 @@ test('storage location against a real database', async t => {
     await L.setLocation('set', writable, ['75192-1'], 'Regal B');
 
     const locations = await L.storages(await household.scopeIds(U.ich, 'all'));
-    const karte = Object.fromEntries(locations.map(o => [o.location, o]));
+    const card = Object.fromEntries(locations.map(o => [o.location, o]));
     // „Kiste 3" has a set AND two part rows — one place, not two
     // entries. Delivering two separate lists would mean that every UI
     // merges them itself, and each one on its own.
     // `figuren`: a minifigure carries a storage location too (migration 0024).
-    assert.deepEqual(karte['Kiste 3'], { location: 'Kiste 3', sets: 1, parts: 2, minifigs: 0 });
-    assert.deepEqual(karte['Regal B'], { location: 'Regal B', sets: 1, parts: 0, minifigs: 0 });
+    assert.deepEqual(card['Kiste 3'], { location: 'Kiste 3', sets: 1, parts: 2, minifigs: 0 });
+    assert.deepEqual(card['Regal B'], { location: 'Regal B', sets: 1, parts: 0, minifigs: 0 });
     // Alphabetical — the selection list should not differ on every call.
     assert.deepEqual(
       locations.map(o => o.location),
@@ -195,11 +195,11 @@ test('storage location against a real database', async t => {
 
   await t.test('the overview follows the scope', async () => {
     await L.setLocation('set', await household.writeScope(U.kind), ['21318-1'], 'Kinderzimmer');
-    const oben = (await L.storages(await household.scopeIds(U.ich, 'all'))).map(o => o.location);
-    const unten = (await L.storages(await household.scopeIds(U.kind, 'all'))).map(o => o.location);
-    assert.ok(oben.includes('Kinderzimmer'), 'The main account does not see the location of the child');
+    const upper = (await L.storages(await household.scopeIds(U.ich, 'all'))).map(o => o.location);
+    const lower = (await L.storages(await household.scopeIds(U.kind, 'all'))).map(o => o.location);
+    assert.ok(upper.includes('Kinderzimmer'), 'The main account does not see the location of the child');
     assert.ok(
-      !unten.includes('Kiste 3'),
+      !lower.includes('Kiste 3'),
       'The sub-account sees a location of the main account — the view only goes downwards',
     );
   });

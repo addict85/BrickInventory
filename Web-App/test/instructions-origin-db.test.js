@@ -48,17 +48,17 @@ test('instructions: the server says which one was uploaded by the user', { concu
     assert.ok(detail, 'Set not found');
     assert.equal(detail.instructions.length, 2, 'Both instructions should arrive — shared and self-uploaded');
 
-    const geteilt = detail.instructions.find(i => i.description === 'Anleitung automatisch');
-    const eigene = detail.instructions.find(i => i.description === 'Anleitung selbst');
-    assert.ok(geteilt && eigene, 'Both instructions should be in the list');
+    const shared = detail.instructions.find(i => i.description === 'Anleitung automatisch');
+    const owned = detail.instructions.find(i => i.description === 'Anleitung selbst');
+    assert.ok(shared && owned, 'Both instructions should be in the list');
 
     assert.equal(
-      geteilt.is_manual,
+      shared.is_manual,
       false,
       'The automatically imported instruction is NOT self-uploaded — no trash button',
     );
     assert.equal(
-      eigene.is_manual,
+      owned.is_manual,
       true,
       'The self-uploaded instruction carries is_manual=true — only here a trash button',
     );
@@ -69,11 +69,11 @@ test('instructions: the server says which one was uploaded by the user', { concu
     // and the counters of the two tables are independent of each other — the
     // numbers can therefore coincide.
     assert.notEqual(
-      geteilt.id,
+      shared.id,
       null,
       'Measured: the shared instruction also brings an id — the old rule did not separate',
     );
-    assert.notEqual(eigene.id, null, 'The own instruction brings an id as well');
+    assert.notEqual(owned.id, null, 'The own instruction brings an id as well');
 
     // ── 3. List: the same marking so that the tile counts the same ─────────
     const { sets } = await readSets(uid, {});
@@ -98,7 +98,7 @@ test('instructions: the web app attaches the trash to is_manual', async () => {
   // under /data/uploads/ gets no trash, an own upload elsewhere does.
   // Counter-checks (22.11.2026, each alone, public/js/set-detail.js): isUpload from
   // `local_path.startsWith('/data/uploads/')` again → red; the trash shown for every instruction → red.
-  const { openUi, warte } = require('./helpers/ui');
+  const { openUi, waitFor } = require('./helpers/ui');
   const SET = {
     set_number: '10294-1',
     name: 'Titanic',
@@ -114,9 +114,9 @@ test('instructions: the web app attaches the trash to is_manual', async () => {
     '/v2/sets/10294-1': { success: true, set: SET },
   });
   try {
-    assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
+    assert.ok(await waitFor(() => d.querySelector('#gallery [data-click="openModal"]')));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => d.getElementById('instr-2')), 'the instructions are not shown');
+    assert.ok(await waitFor(() => d.getElementById('instr-2')), 'the instructions are not shown');
     assert.equal(d.querySelector('#instr-1 [data-click="delInstr"]'), null, 'trash on an imported instruction');
     assert.ok(d.querySelector('#instr-2 [data-click="delInstr"]'), 'no trash on the own upload');
   } finally {

@@ -16,19 +16,19 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const EXPIRY = path.join(__dirname, 'helpers', 'expiry.js');
-const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'auslauf-'));
-test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'auslauf-'));
+test.after(() => fs.rmSync(dir, { recursive: true, force: true }));
 
 /** Run a test file in its own `node --test`, as test-run.js does.
- * @param {string} name @param {string} inhalt @param {Record<string, string>} env */
-function lauf(name, inhalt, env) {
-  const datei = path.join(ordner, name);
-  fs.writeFileSync(datei, `const test = require('node:test');\n${inhalt}\n`);
+ * @param {string} name @param {string} content @param {Record<string, string>} env */
+function run(name, content, env) {
+  const file = path.join(dir, name);
+  fs.writeFileSync(file, `const test = require('node:test');\n${content}\n`);
   // Without these markers the inner node --test would consider itself a child.
-  const { NODE_TEST_CONTEXT: _k, TEST_AUSLAUF_AKTIV: _a, TEST_FILE_DEADLINE_MS: _f, ...rest } = process.env;
+  const { NODE_TEST_CONTEXT: _k, TEST_EXPIRY_ACTIVE: _a, TEST_FILE_DEADLINE_MS: _f, ...rest } = process.env;
   const start = Date.now();
-  const r = spawnSync(process.execPath, ['--require', EXPIRY, '--test', '--test-reporter=tap', datei], {
-    cwd: ordner,
+  const r = spawnSync(process.execPath, ['--require', EXPIRY, '--test', '--test-reporter=tap', file], {
+    cwd: dir,
     encoding: 'utf8',
     timeout: 60_000,
     env: { ...rest, ...env },
@@ -37,10 +37,10 @@ function lauf(name, inhalt, env) {
 }
 
 test('an open server after the last test ends the file red and is named', () => {
-  const r = lauf(
+  const r = run(
     'server.test.js',
     "test('lässt einen Server offen', () => { require('node:net').createServer().listen(0); });",
-    { TEST_AUSLAUF_MS: '500' },
+    { TEST_EXPIRY_MS: '500' },
   );
   assert.equal(r.error, undefined, `the child did not end: ${r.error}`);
   assert.equal(r.status, 1, r.text);
@@ -52,10 +52,10 @@ test('an open server after the last test ends the file red and is named', () => 
 });
 
 test('a hanging t.after hits the deadline of the whole file', () => {
-  const r = lauf(
+  const r = run(
     'haken.test.js',
     "test('t.after hängt', (t) => { t.after(() => new Promise(() => { setInterval(() => {}, 1000); })); });",
-    { TEST_AUSLAUF_MS: '60000', TEST_FILE_DEADLINE_MS: '1500' },
+    { TEST_EXPIRY_MS: '60000', TEST_FILE_DEADLINE_MS: '1500' },
   );
   assert.equal(r.error, undefined, `the child did not end: ${r.error}`);
   assert.equal(r.status, 1, r.text);
@@ -63,8 +63,8 @@ test('a hanging t.after hits the deadline of the whole file', () => {
 });
 
 test('a clean file ends immediately and green', () => {
-  const r = lauf('sauber.test.js', "test('nichts offen', () => {});", {
-    TEST_AUSLAUF_MS: '30000',
+  const r = run('sauber.test.js', "test('nichts offen', () => {});", {
+    TEST_EXPIRY_MS: '30000',
     TEST_FILE_DEADLINE_MS: '30000',
   });
   assert.equal(r.status, 0, r.text);

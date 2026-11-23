@@ -20,18 +20,18 @@ const os = require('node:os');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bildroute-'));
-process.env.APP_ROOT = wurzel;
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bildroute-'));
+process.env.APP_ROOT = root;
 const express = require('express');
 const sharp = require('sharp');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const deliverImage = (...a) =>
   _req('src/images/http/imageDelivery.js').deliverImage(require('./helpers/sources').testServices(), ...a);
 
-const ordner = path.join(wurzel, 'data', 'images', 'parts');
+const dir = path.join(root, 'data', 'images', 'parts');
 const NR = `zz-vorschau-${process.pid}`;
 const CDN = `https://cdn.rebrickable.com/media/parts/elements/${NR}.jpg`;
 
@@ -42,7 +42,7 @@ test.after(async () => {
   await testData()
     .pool?.end?.()
     .catch(() => {});
-  fs.rmSync(wurzel, { recursive: true, force: true });
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 test('if the preview is missing, the original comes before the CDN', async t => {
@@ -54,9 +54,9 @@ test('if the preview is missing, the original comes before the CDN', async t => 
     ON CONFLICT DO NOTHING`,
     [NR, CDN, `/images/parts/${NR}.jpg`],
   );
-  fs.mkdirSync(ordner, { recursive: true });
-  const original = path.join(ordner, `${NR}.jpg`),
-    preview = path.join(ordner, `${NR}_thumb.jpg`);
+  fs.mkdirSync(dir, { recursive: true });
+  const original = path.join(dir, `${NR}.jpg`),
+    preview = path.join(dir, `${NR}_thumb.jpg`);
   await sharp({ create: { width: 600, height: 400, channels: 3, background: '#c33' } })
     .jpeg()
     .toFile(original);
@@ -79,7 +79,7 @@ test('if the preview is missing, the original comes before the CDN', async t => 
 
   const a = await hole(`/images/parts/${NR}_thumb.jpg`);
   assert.deepEqual([a.status, a.n], [200, fs.statSync(original).size], `delivered: ${JSON.stringify(a)}`);
-  assert.ok(await bis(() => fs.existsSync(preview)), 'the missing preview is not created');
+  assert.ok(await until(() => fs.existsSync(preview)), 'the missing preview is not created');
 
   const b = await hole(`/images/parts/${NR}_thumb.jpg`);
   assert.deepEqual([b.status, b.n], [200, fs.statSync(preview).size], 'now the preview applies');

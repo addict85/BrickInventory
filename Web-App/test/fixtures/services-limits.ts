@@ -11,17 +11,17 @@ export function probe(d: Services): unknown[] {
     // @ts-expect-error
     d.inventory.transact,
     // @ts-expect-error
-    d.inventory.papierkorb,
+    d.inventory.trash,
     // @ts-expect-error
-    d.inventory.manuelleMengen,
+    d.inventory.manualQuantities,
     // @ts-expect-error
     d.jobQueue.db,
     // @ts-expect-error
-    d.jobQueue.auftraege,
+    d.jobQueue.jobs,
     // @ts-expect-error
-    d.jobQueue.laufzustand,
+    d.jobQueue.runState,
     // @ts-expect-error
-    d.jobQueue.faecher,
+    d.jobQueue.fans,
     // @ts-expect-error
     d.settings.repository,
     // @ts-expect-error
@@ -31,19 +31,19 @@ export function probe(d: Services): unknown[] {
     // @ts-expect-error
     d.account.db,
     // @ts-expect-error
-    d.account.protokoll,
+    d.account.log,
     // @ts-expect-error
-    d.account.konten,
+    d.account.accounts,
     // @ts-expect-error
     d.catalog.db,
     // @ts-expect-error
-    d.catalog.quellen,
+    d.catalog.sources,
     // @ts-expect-error
-    d.catalog.bildwerk,
+    d.catalog.imageWork,
     // @ts-expect-error
     d.finances.db,
     // @ts-expect-error
-    d.finances.preisCache,
+    d.finances.priceCache,
     // @ts-expect-error
     d.sets.db,
     // @ts-expect-error

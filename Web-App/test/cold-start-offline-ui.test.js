@@ -12,14 +12,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 test('without server: hint and try again', async () => {
-  const state = { weg: true };
+  const state = { route: true };
   const o = await openUi(
     {
       '/v2/startup-status': () => {
-        if (state.weg) throw new TypeError('Failed to fetch');
+        if (state.route) throw new TypeError('Failed to fetch');
         return { ready: true };
       },
       '/v2/auth/me': { loggedIn: false },
@@ -29,23 +29,23 @@ test('without server: hint and try again', async () => {
   try {
     const hint = o.d.getElementById('start-offline');
     assert.ok(hint.hidden, 'not right at the first failure');
-    assert.ok(await warte(() => !hint.hidden, 8000), 'no hint after 8 s');
+    assert.ok(await waitFor(() => !hint.hidden, 8000), 'no hint after 8 s');
     assert.match(hint.textContent, /nicht erreichbar/);
     assert.equal(hint.getAttribute('role'), 'alert');
-    const knopf = o.d.getElementById('start-again');
-    assert.match(knopf.textContent, /Erneut versuchen/);
+    const button = o.d.getElementById('start-again');
+    assert.match(button.textContent, /Erneut versuchen/);
 
-    state.weg = false;
-    const vorher = o.aufrufe.length;
-    knopf.click();
+    state.route = false;
+    const prior = o.calls.length;
+    button.click();
     // The normal tick after an error is two seconds; the button must be faster.
     assert.ok(
-      await warte(() => o.d.getElementById('login-screen').style.display === 'flex', 500),
+      await waitFor(() => o.d.getElementById('login-screen').style.display === 'flex', 500),
       'Button does not catch up on the startup immediately',
     );
-    assert.ok(o.aufrufe.length > vorher);
+    assert.ok(o.calls.length > prior);
     assert.ok(hint.hidden, 'Hint stays after the startup');
-    await takt(10);
+    await tick(10);
   } finally {
     o.w.close();
   }

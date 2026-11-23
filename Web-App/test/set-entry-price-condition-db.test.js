@@ -30,20 +30,20 @@ testSources(null, {
 const P = process.pid;
 const BACK = `93${P}-1`,
   HIST = `94${P}-1`,
-  NEU = `95${P}-1`;
+  NEW = `95${P}-1`;
 
 test('set entries without a price: priced in their condition', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
-  const sets = [BACK, HIST, NEU];
-  const weg = async () => {
+  const sets = [BACK, HIST, NEW];
+  const route = async () => {
     await db.run('DELETE FROM users WHERE username = $1', [`sepc-${P}`]);
     await db.run('DELETE FROM price_cache WHERE set_number = ANY($1)', [sets]);
     await db.run('DELETE FROM price_history WHERE set_number = ANY($1)', [sets]);
   };
-  await weg();
+  await route();
   t.after(async () => {
-    await weg().catch(() => {});
+    await route().catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`sepc-${P}`]))
@@ -105,9 +105,9 @@ test('set entries without a price: priced in their condition', { concurrency: 1 
     await setGlobalSetting('bricklink_consumer_key', 'schluessel');
     fetches.length = 0;
     const { currentMarketPrice } = _req('src/finances/marketPrice.js');
-    assert.equal(await currentMarketPrice(NEU, uid, 'U'), 60);
+    assert.equal(await currentMarketPrice(NEW, uid, 'U'), 60);
     assert.deepEqual(
-      fetches.filter(([p]) => p.includes(NEU)).map(([, c]) => c),
+      fetches.filter(([p]) => p.includes(NEW)).map(([, c]) => c),
       ['U'],
     );
   });

@@ -12,7 +12,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 const { countryForCurrency } = _req('src/vouchers/balanceLookup.js');
-const { openUi, sicht, warte } = require('./helpers/ui');
+const { openUi, view, waitFor } = require('./helpers/ui');
 
 test('server: country for the account currency', () => {
   assert.deepEqual(['CHF', 'EUR', 'GBP', 'USD', 'JPY'].map(countryForCurrency), [
@@ -33,8 +33,8 @@ test('EUR account without a stored country: Germany, no deviation hint', async (
     },
   });
   try {
-    await sicht(w, 'vouchers');
-    await warte(() => d.querySelector('.voucher-row'));
+    await view(w, 'vouchers');
+    await waitFor(() => d.querySelector('.voucher-row'));
     assert.equal(d.getElementById('voucher-country').value, 'de-DE', 'EUR-Konto');
     assert.equal(d.querySelector('.voucher-deviation'), null);
     assert.equal(d.getElementById('v-currency').value, 'EUR');

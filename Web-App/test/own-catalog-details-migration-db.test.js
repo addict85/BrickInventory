@@ -56,11 +56,11 @@ test('migration 0093: own catalog details', { concurrency: 1 }, async t => {
   const anna = (
     await c.query(`INSERT INTO public.users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [SCHEMA])
   ).rows[0].id;
-  const weg = 2147480000; // a deleted account
+  const route = 2147480000; // a deleted account
   await c.query(
     `INSERT INTO part_catalog (part_number, part_name, category_name, name_von, kategorie_von) VALUES
     ('p1', 'Annas Name', 'Brick', $1, NULL), ('p2', 'Geprüft', NULL, NULL, NULL), ('p3', 'Verwaist', NULL, $2, NULL)`,
-    [anna, weg],
+    [anna, route],
   );
   await c.query(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex, image_url, farbname_von, farbcode_von, bild_von)
@@ -72,13 +72,13 @@ test('migration 0093: own catalog details', { concurrency: 1 }, async t => {
     [anna],
   );
   // 0093 calls the trigger functions by their names of that time (0127 renamed them).
-  for (const [alt, neu] of [
+  for (const [alt, fresh] of [
     ['merke_teilekatalog_alt', 'remember_parts_catalog_old'],
     ['merke_teilekatalog_neu', 'remember_parts_catalog_new'],
     ['merke_teilekatalog_beide', 'remember_parts_catalog_both'],
   ]) {
-    const def = (await c.query(`SELECT pg_get_functiondef('public.${neu}()'::regprocedure) AS d`)).rows[0].d;
-    await c.query(def.replace(`public.${neu}(`, `${SCHEMA}.${alt}(`));
+    const def = (await c.query(`SELECT pg_get_functiondef('public.${fresh}()'::regprocedure) AS d`)).rows[0].d;
+    await c.query(def.replace(`public.${fresh}(`, `${SCHEMA}.${alt}(`));
   }
   await c.query(MIGRATION);
 

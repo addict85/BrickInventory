@@ -34,19 +34,19 @@ test("one palette per theme with the web app's primary color", () => {
 test('template, button and info box draw in the passed theme', () => {
   const { MAIL_THEMES, emailTemplate, emailBtn, infoBox } = _req('src/mail/template.js');
   const { classic, brick } = MAIL_THEMES;
-  for (const [name, bau] of /** @type {[string, (theme: string | undefined) => string][]} */ ([
+  for (const [name, build] of /** @type {[string, (theme: string | undefined) => string][]} */ ([
     ['emailTemplate', th => emailTemplate('Titel', 'Vorschau', '<p>x</p>', th)],
     ['emailBtn', th => emailBtn('https://lego.example.org/', 'Los', th)],
     ['infoBox', th => infoBox('Hinweis', th)],
   ])) {
-    const withBrick = bau(brick);
+    const withBrick = build(brick);
     assert.ok(withBrick.includes(brick.primary) || withBrick.includes(brick.bg), `${name}: the design does not arrive`);
     assert.ok(
       !withBrick.includes(classic.primary) && !withBrick.includes(classic.bg),
       `${name}: fixed colour of classic`,
     );
     // Without a setting classic applies: a mail should never fail because of the theme.
-    assert.equal(bau(undefined), bau(classic), `${name}: the default is not classic`);
+    assert.equal(build(undefined), build(classic), `${name}: the default is not classic`);
   }
 });
 

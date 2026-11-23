@@ -19,17 +19,17 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 // Both notations: de-DE (1.097,93) and de-CH (1’097.93).
-const zahl = s =>
+const num = s =>
   s
     .replace(/[’'’\s]/g, '')
     .replace(/\.(?=\d{3}\b)/g, '')
     .replace(',', '.');
 
-function antworten({ withPrice }) {
+function answers({ withPrice }) {
   const setPrice = withPrice ? 700 : 0;
   return {
     '/v2/finance/valuation': {
@@ -120,42 +120,42 @@ function antworten({ withPrice }) {
   };
 }
 
-async function finanzen(opt) {
-  const o = await openUi(antworten(opt));
-  await reiter(o.w, 'finance');
-  await warte(() => o.d.querySelector('#fin-tbl tfoot'));
+async function finances(opt) {
+  const o = await openUi(answers(opt));
+  await switchTab(o.w, 'finance');
+  await waitFor(() => o.d.querySelector('#fin-tbl tfoot'));
   return o;
 }
 
 test('without market prices: cost basis at the top and in the sums, a hint instead of "—"', async () => {
-  const { w, d } = await finanzen({ withPrice: false });
+  const { w, d } = await finances({ withPrice: false });
   try {
-    assert.match(zahl(text(d.getElementById('fin-cost-basis'))), /1097\.93/, 'Cost basis missing at the top');
+    assert.match(num(text(d.getElementById('fin-cost-basis'))), /1097\.93/, 'Cost basis missing at the top');
     assert.equal(text(d.getElementById('fin-value')), 'Marktpreis fehlt für 4 Positionen');
     // The G&L tile stays (the row does not jump) and says what is missing.
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none', 'G&V-Kachel verschwindet');
     assert.equal(text(d.getElementById('fin-total-pnl')), '—');
     assert.equal(text(d.getElementById('fin-pnl-sub')), 'Braucht Kauf- und Marktpreise');
     const setsFuss = d.querySelector('[data-fin-kind="sets"] tfoot');
-    assert.match(zahl(text(setsFuss)), /1028\.00/, 'The totals row of the sets does not show the cost basis');
-    const summe = d.querySelector('.dt-sum tfoot');
-    assert.match(zahl(text(summe)), /1097\.93/, 'The grand total does not show the cost basis');
+    assert.match(num(text(setsFuss)), /1028\.00/, 'The totals row of the sets does not show the cost basis');
+    const sum = d.querySelector('.dt-sum tfoot');
+    assert.match(num(text(sum)), /1097\.93/, 'The grand total does not show the cost basis');
   } finally {
     w.close();
   }
 });
 
 test('with market prices: total value and P&L', async () => {
-  const { w, d } = await finanzen({ withPrice: true });
+  const { w, d } = await finances({ withPrice: true });
   try {
-    assert.match(zahl(text(d.getElementById('fin-value'))), /700\.00/);
+    assert.match(num(text(d.getElementById('fin-value'))), /700\.00/);
     assert.match(text(d.getElementById('fin-basis')), /3 Positionen ohne Marktpreis nicht gerechnet/);
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none');
     assert.match(text(d.getElementById('fin-total-pnl')), /11[.,]3/);
     // Amount from the same items as the percentage: 700 − 629, not 700 − 1097.93.
     // Behind it stands what it is computed against; the percent in the chart computes against the period.
     assert.match(
-      zahl(text(d.getElementById('fin-pnl-sub'))),
+      num(text(d.getElementById('fin-pnl-sub'))),
       /^\+[^0-9]*71\.00[^0-9]*$/,
       `Amount does not match the percentage: ${text(d.getElementById('fin-pnl-sub'))}`,
     );
@@ -168,10 +168,10 @@ test('with market prices: total value and P&L', async () => {
 test('nothing captured: one empty state, no "price missing"', async () => {
   const o = await openUi({});
   try {
-    await reiter(o.w, 'finance');
-    await warte(() => o.d.querySelector('#fin-tbl .empty-state'));
-    const finanzen = text(o.d.getElementById('tab-finance'));
-    assert.equal((finanzen.match(/fehlt/gi) || []).length, 0, `meldet „fehlt“: ${finanzen.slice(0, 300)}`);
+    await switchTab(o.w, 'finance');
+    await waitFor(() => o.d.querySelector('#fin-tbl .empty-state'));
+    const finances = text(o.d.getElementById('tab-finance'));
+    assert.equal((finances.match(/fehlt/gi) || []).length, 0, `meldet „fehlt“: ${finances.slice(0, 300)}`);
     assert.match(text(o.d.querySelector('#fin-tbl .empty-state')), /Noch nichts zu bewerten/);
   } finally {
     o.w.close();

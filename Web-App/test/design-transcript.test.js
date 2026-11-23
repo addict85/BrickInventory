@@ -33,25 +33,25 @@ test('the generated stylesheet matches shared/design-tokens.json', () => {
 
 test('no handwritten stylesheet redefines a generated token', () => {
   // An own --b600 in styles.css would win (loaded later); the app would keep following the source.
-  const erzeugt = new Set(Object.values(DATA.designs).flatMap(t => Object.keys(t).map(cssToken)));
-  assert.ok(erzeugt.size >= 10, `Only ${erzeugt.size} generated tokens — does the search still match?`);
+  const generated = new Set(Object.values(DATA.designs).flatMap(t => Object.keys(t).map(cssToken)));
+  assert.ok(generated.size >= 10, `Only ${generated.size} generated tokens — does the search still match?`);
 
-  const doppelt = [];
-  for (const datei of [CSS_BASIS, CSS_BRICK, CSS_MOBILE]) {
+  const twice = [];
+  for (const file of [CSS_BASIS, CSS_BRICK, CSS_MOBILE]) {
     // The dark variants (since 29.10.) are a second assignment of the same
     // names; the light one is read here.
     const src = fs
-      .readFileSync(datei, 'utf8')
+      .readFileSync(file, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\[data-dark\][^{]*\{[^}]*\}/g, '');
     for (const m of src.matchAll(/--([a-z0-9-]+)\s*:/g)) {
-      if (erzeugt.has(m[1])) doppelt.push(`${path.basename(datei)}: --${m[1]}`);
+      if (generated.has(m[1])) twice.push(`${path.basename(file)}: --${m[1]}`);
     }
   }
   assert.deepEqual(
-    doppelt,
+    twice,
     [],
-    `These tokens are generated AND set by hand:\n  ${doppelt.join('\n  ')}\nThen the handwritten value applies on the web and the generated one in the app. The value belongs in shared/design-tokens.json.`,
+    `These tokens are generated AND set by hand:\n  ${twice.join('\n  ')}\nThen the handwritten value applies on the web and the generated one in the app. The value belongs in shared/design-tokens.json.`,
   );
 });
 

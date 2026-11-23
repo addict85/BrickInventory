@@ -54,8 +54,8 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}${AUTH}`;
 
-  const callFn = async (weg, opt = {}) => {
-    const r = await fetch(basis + weg, {
+  const callFn = async (route, opt = {}) => {
+    const r = await fetch(basis + route, {
       method: opt.method || 'GET',
       headers: { 'content-type': 'application/json', ...(opt.headers || {}) },
       ...(opt.body ? { body: JSON.stringify(opt.body) } : {}),
@@ -69,14 +69,14 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
 
   try {
     // ── 1. Without never_expires: a token with seven fixed days, no cookie ──
-    const kurz = await callFn('/login', { method: 'POST', body: { username: NAME, password: PASS } });
-    assert.equal(kurz.status, 200, `Sign-in failed: ${JSON.stringify(kurz.body)}`);
-    assert.equal(kurz.body.success, true);
-    assert.equal(kurz.cookie, null, 'A sign-in with a token carries no session cookie');
-    assert.ok(kurz.body.token);
-    assert.equal(kurz.body.never_expires, false);
-    assert.equal(kurz.body.user.is_admin, true, 'The app reads is_admin — the field must be there');
-    const webToken = kurz.body.token;
+    const short = await callFn('/login', { method: 'POST', body: { username: NAME, password: PASS } });
+    assert.equal(short.status, 200, `Sign-in failed: ${JSON.stringify(short.body)}`);
+    assert.equal(short.body.success, true);
+    assert.equal(short.cookie, null, 'A sign-in with a token carries no session cookie');
+    assert.ok(short.body.token);
+    assert.equal(short.body.never_expires, false);
+    assert.equal(short.body.user.is_admin, true, 'The app reads is_admin — the field must be there');
+    const webToken = short.body.token;
     assert.ok((await expiry(webToken))?.expires_at, 'The short token must have an expiry date');
     // The browser: only the session.
     const web = await callFn('/login', {
@@ -134,32 +134,32 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
 
     // Without anything: 200 and „no". The browser asks this BEFORE every login —
     // a 401 there would be the normal answer to a normal question.
-    const ohne = await callFn('/me');
-    assert.equal(ohne.status, 200, 'Without credentials „nicht angemeldet“ is not a failure');
-    assert.equal(ohne.body.loggedIn, false);
+    const without = await callFn('/me');
+    assert.equal(without.status, 200, 'Without credentials „nicht angemeldet“ is not a failure');
+    assert.equal(without.body.loggedIn, false);
 
     // With a token that does not exist: 401. The interceptor of the app makes
     // „Sitzung abgelaufen" out of it and leads back to the login
     // (RepoBasis.kt). With 200 it would stay with a dead token.
-    const falsch = await callFn('/me', { headers: { authorization: 'Bearer ' + 'f'.repeat(64) } });
+    const wrong = await callFn('/me', { headers: { authorization: 'Bearer ' + 'f'.repeat(64) } });
     assert.equal(
-      falsch.status,
+      wrong.status,
       401,
       'A presented invalid token must result in 401 — otherwise the app does not notice the expiry',
     );
 
     // ── 3b. If the invalidation fails, the logout has not succeeded ───────
-    const konto = require('./helpers/sources').testServices().account;
-    const echt = konto.deleteToken;
-    konto.deleteToken = async () => {
+    const account = require('./helpers/sources').testServices().account;
+    const original = account.deleteToken;
+    account.deleteToken = async () => {
       throw new Error('Database gone');
     };
     try {
-      const halb = await callFn('/logout', { method: 'POST', headers: { authorization: `Bearer ${webToken}` } });
-      assert.equal(halb.status, 500, 'A token that stays valid must not count as signed out');
+      const half = await callFn('/logout', { method: 'POST', headers: { authorization: `Bearer ${webToken}` } });
+      assert.equal(half.status, 500, 'A token that stays valid must not count as signed out');
       assert.ok(await expiry(webToken), 'The token is still there');
     } finally {
-      konto.deleteToken = echt;
+      account.deleteToken = original;
     }
 
     // ── 4. Logging out invalidates BOTH ────────────────────────────────────────
@@ -169,16 +169,16 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
     });
     assert.equal(ab.status, 200);
     assert.equal(await expiry(webToken), undefined, 'The token must disappear on sign-out');
-    const danach = await callFn('/me', { headers: { cookie: webCookie } });
-    assert.equal(danach.body.loggedIn, false, 'The session must end on sign-out');
+    const afterwards = await callFn('/me', { headers: { cookie: webCookie } });
+    assert.equal(afterwards.body.loggedIn, false, 'The session must end on sign-out');
     // The token of the app is NOT affected by it — the browser logged out.
     const appStill = await callFn('/me', { headers: { authorization: `Bearer ${appToken}` } });
     assert.equal(appStill.body.loggedIn, true, 'Signing out in the browser must not sign out the phone too');
 
     // ── 5. A wrong password stays wrong ──────────────────────────────────
-    const daneben = await callFn('/login', { method: 'POST', body: { username: NAME, password: 'falsch' } });
-    assert.equal(daneben.status, 401);
-    assert.equal(daneben.body.token, undefined, 'A failed sign-in must not issue a token');
+    const beside = await callFn('/login', { method: 'POST', body: { username: NAME, password: 'falsch' } });
+    assert.equal(beside.status, 401);
+    assert.equal(beside.body.token, undefined, 'A failed sign-in must not issue a token');
   } finally {
     await new Promise(r => srv.close(r));
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});

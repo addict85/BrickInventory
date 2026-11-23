@@ -164,7 +164,7 @@ w.eval(`
   Element.prototype.scrollIntoView = function () { window.__scrollZiele.push(this); };
 `);
 w.eval(CODE);
-const { warte: sleep } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const fire = (el, type) => el.dispatchEvent(new w.Event(type, { bubbles: true }));
 const problems = [];
 const check = (name, cond, extra) => {
@@ -174,7 +174,7 @@ const lastSetsReq = () => requests.filter(u => u.includes('/catalog/sets?')).pop
 const hasYearFilter = u => /[?&]year_(from|to)=/.test(u);
 const blockList = () => w.document.querySelectorAll('#catalog-grid .cat-page');
 const realTiles = () => w.document.querySelectorAll('#catalog-grid .sc:not(.cat-page-ph)').length;
-const platzhalter = () => w.document.querySelectorAll('#catalog-grid .cat-page-ph').length;
+const placeholder = () => w.document.querySelectorAll('#catalog-grid .cat-page-ph').length;
 /** Push a page into view — as the observer reports it. */
 const showPage = n => {
   const el = w.document.querySelector(`#catalog-grid .cat-page[data-page="${n}"]`);
@@ -195,7 +195,7 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
   // coordinates. What is checked here is therefore the RESULT of loading more; that …
   await sleep(80);
   check('alle Seiten geladen (85 Kacheln)', realTiles() === 85, realTiles());
-  check('keine Platzhalter mehr übrig', platzhalter() === 0, platzhalter());
+  check('keine Platzhalter mehr übrig', placeholder() === 0, placeholder());
 
   // A loaded page must not be fetched a second time — otherwise every
   // scroll step would trigger the same fetch again.

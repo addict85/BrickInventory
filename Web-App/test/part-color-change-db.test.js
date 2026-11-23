@@ -108,12 +108,12 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   await db.run(`INSERT INTO rb_colors (id,name,rgb,bl_color_id)
                 VALUES (4,'Red','C91A09',5), (7,'Blue','0055BF',7)`);
 
-  const { base } = testServer(_req, { sitzung: { userId: UID }, t });
-  const changeOne = async (number, oldColor, koerper) => {
+  const { base } = testServer(_req, { session: { userId: UID }, t });
+  const changeOne = async (number, oldColor, payload) => {
     const r = await fetch(`${base}/api/v2/parts/${number}/${oldColor}/color`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(koerper),
+      body: JSON.stringify(payload),
     });
     return { status: r.status, body: await r.json() };
   };
@@ -132,7 +132,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
         [UID],
       )
     ).map(r => ({ farbe: r.color_id, quantity: Number(r.quantity), tag: String(r.tag).slice(0, 10) }));
-  const leeren = async () => {
+  const clear = async () => {
     await db.run(`DELETE FROM part_acquisitions`);
     await db.run(`DELETE FROM parts`);
     await db.run(`DELETE FROM part_color_catalog`);
@@ -140,15 +140,15 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     // color change — without clearing, the next case would carry the image of the previous one.
     await db.run(`DELETE FROM set_parts`);
   };
-  const colorImage = async farbe =>
+  const colorImage = async color =>
     db.get(
       `SELECT image_url, image_local FROM part_color_catalog
       WHERE part_number='3001' AND color_id=$1`,
-      [farbe],
+      [color],
     );
 
   await t.test('without a target row the row moves including acquisitions', async () => {
-    await leeren();
+    await clear();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',0,'manual')`,
@@ -194,7 +194,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   });
 
   await t.test('if the target color already exists, the rows are merged', async () => {
-    await leeren();
+    await clear();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',0,'manual'), ($1,'3001',4,'manual')`,
@@ -238,7 +238,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   });
 
   await t.test('two acquisitions from the SAME day are added, not rejected', async () => {
-    await leeren();
+    await clear();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',0,'manual'), ($1,'3001',4,'manual')`,
@@ -272,7 +272,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   });
 
   await t.test('different prices from the same day stay rows of their own', async () => {
-    await leeren();
+    await clear();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',0,'manual'), ($1,'3001',4,'manual')`,
@@ -295,27 +295,27 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   });
 
   await t.test('the storage location moves along if the target row has none', async () => {
-    await leeren();
+    await clear();
     await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3')`, [UID]);
-    const ORT = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
+    const PLACE = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source,storage_id)
                   VALUES ($1,'3001',0,'manual',$2), ($1,'3001',4,'manual',NULL)`,
-      [UID, ORT],
+      [UID, PLACE],
     );
 
     assert.equal((await changeOne('3001', 0, { color_id: 4 })).status, 200);
-    const zeilen = await holding();
-    assert.equal(zeilen.length, 1);
+    const lines = await holding();
+    assert.equal(lines.length, 1);
     assert.equal(
-      zeilen[0].storage_id,
-      ORT,
+      lines[0].storage_id,
+      PLACE,
       '„Kiste 3“ is a human entry and must not disappear because of a colour ' + 'correction',
     );
   });
 
   await t.test('without color_id there is a refusal, no silent 0', async () => {
-    await leeren();
+    await clear();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',4,'manual')`,
@@ -337,7 +337,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   });
 
   await t.test('a part FROM A SET stays untouched', async () => {
-    await leeren();
+    await clear();
     await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,'10497-1') ON CONFLICT DO NOTHING`, [UID]);
     await db.run(
       `INSERT INTO parts (user_id,set_number,part_number,color_id,source)
@@ -363,7 +363,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     // The opposite direction: the cases above would be green too if the function
     // simply deleted and rewrote EVERY time. Here nothing happens, and
     // the response says so.
-    await leeren();
+    await clear();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',4,'manual')`,
@@ -392,7 +392,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   // The image of the new color (Marco's finding of 20.10.)
 
   await t.test('an already existing color image is not overwritten', async () => {
-    await leeren();
+    await clear();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',4,'manual')`,
@@ -414,7 +414,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   });
 
   await t.test('if nobody knows an image, the response says so — the color changes anyway', async () => {
-    await leeren();
+    await clear();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',4,'manual')`,

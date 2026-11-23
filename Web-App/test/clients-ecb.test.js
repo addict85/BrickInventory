@@ -34,7 +34,7 @@ test('the daily rates come as XML from the ECB host', async t => {
 test('the history as ZIP, packed and stored', async t => {
   const zip = { '/stats/eurofxref/eurofxref-hist.zip': 'ecb-hist.zip', '/stored.zip': 'ecb-hist-stored.zip' };
   await httpsStub(t, (c, res) => reply(res, 200, fixture(zip[c.path], true)));
-  const erwartet = [
+  const expected = [
     { tag: '2026-11-20', currency: 'USD', per_eur: 1.0832 },
     { tag: '2026-11-20', currency: 'JPY', per_eur: 162.1 },
     { tag: '2026-11-20', currency: 'CHF', per_eur: 0.9415 },
@@ -43,7 +43,7 @@ test('the history as ZIP, packed and stored', async t => {
   ];
   for (const url of [ecb.ECB_HISTORY, 'https://www.ecb.europa.eu/stored.zip']) {
     const csv = ecb.firstZipFile(await ecb.ecbFetch(url)).toString('utf8');
-    assert.deepEqual(ecb.readHistory(csv), erwartet, url);
+    assert.deepEqual(ecb.readHistory(csv), expected, url);
   }
 });
 
@@ -71,10 +71,10 @@ test('a hanging ECB ends at the deadline', async t => {
   const stub = await httpsStub(t, () => {});
   mock.timers.enable({ apis: ['setTimeout'] });
   t.after(() => mock.timers.reset());
-  const lauf = ecb.ecbFetch(ecb.ECB_DAILY_RATES);
+  const run = ecb.ecbFetch(ecb.ECB_DAILY_RATES);
   await stub.nextCall();
   mock.timers.tick(60_000);
-  await assert.rejects(lauf, /Zeitlimit 60000 ms/);
+  await assert.rejects(run, /Zeitlimit 60000 ms/);
 });
 
 test('broken XML gives no rates, a broken ZIP an error', () => {
@@ -82,8 +82,8 @@ test('broken XML gives no rates, a broken ZIP an error', () => {
   assert.deepEqual(ecb.readDailyRates('kein xml'), []);
   assert.throws(() => ecb.firstZipFile(Buffer.from('kein zip')), /kein ZIP-Archiv/);
   const zip = Buffer.from(fixture('ecb-hist.zip', true));
-  const ende = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
-  const verzeichnis = zip.readUInt32LE(ende + 16);
+  const end = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  const verzeichnis = zip.readUInt32LE(end + 16);
   const withoutDir = Buffer.from(zip);
   withoutDir.writeUInt32LE(0, verzeichnis);
   assert.throws(() => ecb.firstZipFile(withoutDir), /zentrales Verzeichnis fehlt/);

@@ -17,7 +17,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, view, waitFor, tick } = require('./helpers/ui');
 
 const STYLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
 const withStyle = w =>
@@ -26,7 +26,7 @@ const withStyle = w =>
     s.textContent = STYLE;
     w.document.head.append(s);
   });
-const zu = (w, e) => {
+const closed = (w, e) => {
   for (let x = e; x && x.nodeType === 1; x = x.parentElement) if (w.getComputedStyle(x).display === 'none') return true;
   return false;
 };
@@ -44,16 +44,16 @@ const VOUCHER = {
 test('vouchers: row and actions', async () => {
   const o = await openUi({ '/v2/vouchers': { success: true, vouchers: [VOUCHER] } }, { before: withStyle });
   try {
-    await sicht(o.w, 'vouchers');
-    await warte(() => o.d.querySelector('.voucher-row'));
+    await view(o.w, 'vouchers');
+    await waitFor(() => o.d.querySelector('.voucher-row'));
     const row = o.d.querySelector('.voucher-row');
     assert.match(row.querySelector('.voucher-nopdf').textContent.trim(), /^kein PDF$/);
-    const loeschen = row.querySelector('[data-click="deleteVoucher"]');
+    const remove = row.querySelector('[data-click="deleteVoucher"]');
     const edit = row.querySelector('[data-click="editVoucher"]');
     // Both labeled (UI check 6, M7), delete marked as danger.
-    assert.equal(loeschen.className, edit.className + ' v-btn-danger');
-    assert.deepEqual([edit.textContent.trim(), loeschen.textContent.trim()], ['Bearbeiten', 'Löschen']);
-    for (const e of o.d.querySelectorAll('[data-only-with-vouchers]')) assert.equal(zu(o.w, e), false);
+    assert.equal(remove.className, edit.className + ' v-btn-danger');
+    assert.deepEqual([edit.textContent.trim(), remove.textContent.trim()], ['Bearbeiten', 'Löschen']);
+    for (const e of o.d.querySelectorAll('[data-only-with-vouchers]')) assert.equal(closed(o.w, e), false);
   } finally {
     o.w.close();
   }
@@ -62,15 +62,15 @@ test('vouchers: row and actions', async () => {
 test('without vouchers: no sum, no “query all”, no export', async () => {
   const o = await openUi({ '/v2/vouchers': { success: true, vouchers: [] } }, { before: withStyle });
   try {
-    await sicht(o.w, 'vouchers');
-    await warte(() => o.d.querySelector('.voucher-empty'));
+    await view(o.w, 'vouchers');
+    await waitFor(() => o.d.querySelector('.voucher-empty'));
     const parts = [...o.d.querySelectorAll('[data-only-with-vouchers]')];
     assert.equal(parts.length, 3);
     assert.deepEqual(
-      parts.map(e => zu(o.w, e)),
+      parts.map(e => closed(o.w, e)),
       [true, true, true],
     );
-    assert.equal(zu(o.w, o.d.querySelector('[data-click="exportVouchers"]')), true);
+    assert.equal(closed(o.w, o.d.querySelector('[data-click="exportVouchers"]')), true);
   } finally {
     o.w.close();
   }
@@ -83,16 +83,16 @@ test('Rebrickable banner only in collection and catalog', async () => {
   );
   try {
     const band = o.d.getElementById('rb-hint');
-    await warte(() => !band.hidden, 2000);
-    assert.equal(zu(o.w, band), false, 'collection');
-    for (const [tab, versteckt] of /** @type {[string, boolean][]} */ ([
+    await waitFor(() => !band.hidden, 2000);
+    assert.equal(closed(o.w, band), false, 'collection');
+    for (const [tab, hidden] of /** @type {[string, boolean][]} */ ([
       ['finance', true],
       ['wanted', true],
       ['catalog', false],
       ['parts', false],
     ])) {
-      await reiter(o.w, tab);
-      assert.equal(zu(o.w, band), versteckt, tab);
+      await switchTab(o.w, tab);
+      assert.equal(closed(o.w, band), hidden, tab);
     }
   } finally {
     o.w.close();
@@ -117,7 +117,7 @@ test('no access for a normal account, administrator sees none of it', async () =
   });
   try {
     normal.d.querySelector('.ntab[data-tab="settings"]').click();
-    await takt(50);
+    await tick(50);
     const f = normal.d.getElementById('settings-no-access');
     assert.equal(f.hidden, false);
     assert.match(f.textContent, /Kein Zugriff/);
@@ -127,7 +127,7 @@ test('no access for a normal account, administrator sees none of it', async () =
   const chef = await openUi({});
   try {
     chef.d.querySelector('.ntab[data-tab="settings"]').click();
-    await takt(50);
+    await tick(50);
     assert.equal(chef.d.getElementById('settings-no-access').hidden, true);
   } finally {
     chef.w.close();
@@ -135,7 +135,7 @@ test('no access for a normal account, administrator sees none of it', async () =
 });
 
 test('design: one sentence for the choice, Noppe and Hochglanz different', async () => {
-  const texte = {};
+  const texts = {};
   for (const design of ['noppe', 'hochglanz', 'werkbank']) {
     const o = await openUi({
       '/v2/settings/theme': { success: true, preset: 'classic', own: design, theme: design },
@@ -145,14 +145,14 @@ test('design: one sentence for the choice, Noppe and Hochglanz different', async
       },
     });
     try {
-      await sicht(o.w, 'profile');
-      await warte(() => o.d.getElementById('design-hint').textContent);
-      texte[design] = o.d.getElementById('design-hint').textContent;
+      await view(o.w, 'profile');
+      await waitFor(() => o.d.getElementById('design-hint').textContent);
+      texts[design] = o.d.getElementById('design-hint').textContent;
     } finally {
       o.w.close();
     }
   }
-  assert.match(texte.noppe, /verspielt/);
-  assert.match(texte.hochglanz, /glatte Flächen/);
-  assert.match(texte.werkbank, /Messing/);
+  assert.match(texts.noppe, /verspielt/);
+  assert.match(texts.hochglanz, /glatte Flächen/);
+  assert.match(texts.werkbank, /Messing/);
 });

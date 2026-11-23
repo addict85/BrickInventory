@@ -28,10 +28,10 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const namen = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
@@ -53,12 +53,12 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
     // Like a request of the account: invitations stand under its row security.
     const { code } = await require('./helpers/sources').asAccount(ids[0], () => hh.createInvitation(ids[0]));
     assert.ok(code, 'no code created');
-    const zeilen = await db.all('SELECT token_hash FROM account_link_invites WHERE main_user_id = $1', [ids[0]]);
-    assert.equal(zeilen.length, 1);
-    assert.notEqual(zeilen[0].token_hash, code, 'The code is stored in plain text in the database');
-    const roh = code.replace(/[\s-]/g, '').toUpperCase();
-    assert.ok(!zeilen[0].token_hash.toUpperCase().includes(roh), 'The code is stored (reformatted) in the database');
-    assert.match(zeilen[0].token_hash, /^[0-9a-f]{64}$/, 'A SHA-256 hash is stored');
+    const lines = await db.all('SELECT token_hash FROM account_link_invites WHERE main_user_id = $1', [ids[0]]);
+    assert.equal(lines.length, 1);
+    assert.notEqual(lines[0].token_hash, code, 'The code is stored in plain text in the database');
+    const raw = code.replace(/[\s-]/g, '').toUpperCase();
+    assert.ok(!lines[0].token_hash.toUpperCase().includes(raw), 'The code is stored (reformatted) in the database');
+    assert.match(lines[0].token_hash, /^[0-9a-f]{64}$/, 'A SHA-256 hash is stored');
   });
 
   await t.test('write rights never come from memory', async () => {
@@ -67,31 +67,31 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ids[0], ids[1]]);
     hh.reportHouseholdChange();
     // Under the main account's row security: the runtime role does not see foreign links (0121).
-    const als = (uid, f) => require('./helpers/sources').asAccount(uid, f);
+    const as = (uid, f) => require('./helpers/sources').asAccount(uid, f);
     assert.deepEqual(
-      (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
+      (await as(ids[0], () => hh.householdOf(ids[0]))).memberIds,
       ids,
       'Precondition: the sub-account is remembered',
     );
-    assert.equal(await als(ids[0], () => hh.mayWriteFor(ids[0], ids[1])), true);
+    assert.equal(await as(ids[0], () => hh.mayWriteFor(ids[0], ids[1])), true);
     // Unlinked from outside without this process hearing of it.
     await db.run('DELETE FROM account_links WHERE main_user_id = $1', [ids[0]]);
     assert.deepEqual(
-      (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
+      (await as(ids[0], () => hh.householdOf(ids[0]))).memberIds,
       ids,
       'Precondition: the memory is still old',
     );
     assert.equal(
-      await als(ids[0], () => hh.mayWriteFor(ids[0], ids[1])),
+      await as(ids[0], () => hh.mayWriteFor(ids[0], ids[1])),
       false,
       'mayWriteFor decides by the remembered view',
     );
     assert.deepEqual(
-      await als(ids[0], () => hh.writeScope(ids[0])),
+      await as(ids[0], () => hh.writeScope(ids[0])),
       [ids[0]],
       '„schreibbereich“ decides by the remembered view',
     );
-    assert.equal(await als(ids[1], () => hh.mayWriteFor(ids[1], ids[1])), true, 'Own data always');
+    assert.equal(await as(ids[1], () => hh.mayWriteFor(ids[1], ids[1])), true, 'Own data always');
   });
 });
 

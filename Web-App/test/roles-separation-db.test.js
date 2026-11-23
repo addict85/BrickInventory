@@ -24,48 +24,48 @@ const { asSuperuser, inSystemFrame } = require('./helpers/roles');
 const { createDb, dbConfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
 
 const ROLE = `SELECT r.rolsuper AS super, r.rolbypassrls AS bypass,
-                      pg_has_role(current_user, c.relowner, 'USAGE') AS eigentum
+                      pg_has_role(current_user, c.relowner, 'USAGE') AS ownership
                  FROM pg_roles r, pg_class c WHERE r.rolname = current_user AND c.oid = 'public.sets'::regclass`;
 
 test('the suite separates the roles as in production, exceptions become fewer', async t => {
-  const zugang = await accessOrSkip(t, _req);
-  if (!zugang) return;
-  t.after(() => zugang.pool.end().catch(() => {}));
+  const access = await accessOrSkip(t, _req);
+  if (!access) return;
+  t.after(() => access.pool.end().catch(() => {}));
   if (!process.env.TEST_DB_TEMPLATE) return missingPrecondition(t, 'nur npm test trennt Rollen');
 
   assert.deepEqual(
-    (await zugang.pool.query(ROLE)).rows[0],
-    { super: false, bypass: false, eigentum: false },
+    (await access.pool.query(ROLE)).rows[0],
+    { super: false, bypass: false, ownership: false },
     'the app queries as runtime role',
   );
   assert.deepEqual(
-    (await zugang.systemPool.query(ROLE)).rows[0],
-    { super: false, bypass: true, eigentum: false },
+    (await access.systemPool.query(ROLE)).rows[0],
+    { super: false, bypass: true, ownership: false },
     'the system frame queries as system role',
   );
   const k = dbConfigFromEnvironment();
-  const eigen = createDb({ ...k, connection: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
+  const own = createDb({ ...k, connection: { connectionString: process.env.TEST_DB_OWN_URL }, system: null });
   try {
     assert.deepEqual(
-      (await eigen.pool.query(ROLE)).rows[0],
-      { super: false, bypass: false, eigentum: true },
+      (await own.pool.query(ROLE)).rows[0],
+      { super: false, bypass: false, ownership: true },
       'the owner role writes the test data',
     );
   } finally {
-    await eigen.pool.end();
+    await own.pool.end();
   }
 
   const LIMIT = { superuser: 21, systemFrame: 129 };
-  const dateien = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'));
+  const files = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'));
   const source = (/** @type {string} */ n) => fs.readFileSync(path.join(__dirname, n), 'utf8');
   /** @type {Record<string, number>} */
-  const ist = {
-    superuser: dateien.filter(n => asSuperuser(source(n))).length,
-    systemFrame: dateien.filter(n => !asSuperuser(source(n)) && inSystemFrame(source(n))).length,
+  const actual = {
+    superuser: files.filter(n => asSuperuser(source(n))).length,
+    systemFrame: files.filter(n => !asSuperuser(source(n)) && inSystemFrame(source(n))).length,
   };
-  assert.ok(dateien.length > 500, `only ${dateien.length} test files — does the search still work?`);
+  assert.ok(files.length > 500, `only ${files.length} test files — does the search still work?`);
   for (const [kind, s] of Object.entries(LIMIT)) {
-    assert.ok((ist[kind] ?? 0) <= s, `${ist[kind]} test files with ${kind}, allowed are ${s}`);
-    if ((ist[kind] ?? 0) < s) console.log(`  ℹ test files with ${kind}: ${ist[kind]} (limit ${s}) — tighten it`);
+    assert.ok((actual[kind] ?? 0) <= s, `${actual[kind]} test files with ${kind}, allowed are ${s}`);
+    if ((actual[kind] ?? 0) < s) console.log(`  ℹ test files with ${kind}: ${actual[kind]} (limit ${s}) — tighten it`);
   }
 });

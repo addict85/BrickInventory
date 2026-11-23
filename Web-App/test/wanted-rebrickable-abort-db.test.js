@@ -26,21 +26,21 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
 /** Every request gets `status` with an empty JSON body. */
-async function withResponse(status, lauf) {
-  const echt = https.get;
-  let anfragen = 0;
+async function withResponse(status, run) {
+  const original = https.get;
+  let requests = 0;
   // @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
   https.get = (_u, _o, atResponse) => {
-    anfragen++;
+    requests++;
     const r = Object.assign(Readable.from([Buffer.from('{}')]), { statusCode: status, headers: {} });
     // @ts-expect-error — not a complete IncomingMessage
     setImmediate(() => atResponse(r));
     return Object.assign(new EventEmitter(), { destroy: () => {}, end: () => {} });
   };
   try {
-    return { ergebnis: await lauf(), anfragen };
+    return { ergebnis: await run(), requests };
   } finally {
-    https.get = echt;
+    https.get = original;
   }
 }
 
@@ -73,25 +73,25 @@ test('wanted resolution via Rebrickable aborts with a reason', { concurrency: 1 
   await k.setQuotaBack('rebrickable');
 
   await t.test('404 is unknown, the run continues', async () => {
-    const { ergebnis, anfragen } = await withResponse(404, () => resolveViaRebrickableOn(items(3)));
-    assert.equal(ergebnis.aborted, undefined);
-    assert.equal(ergebnis.asked, 3);
+    const { ergebnis: outcome, requests } = await withResponse(404, () => resolveViaRebrickableOn(items(3)));
+    assert.equal(outcome.aborted, undefined);
+    assert.equal(outcome.asked, 3);
     // Two paths per item (the number itself, then the filter).
-    assert.equal(anfragen, 3 * 2);
+    assert.equal(requests, 3 * 2);
   });
 
   await t.test('server error 500 is not “unknown”', async () => {
-    const { ergebnis, anfragen } = await withResponse(500, () => resolveViaRebrickableOn(items(3)));
-    assert.equal(ergebnis.aborted, 'failure');
-    assert.equal(anfragen, 1, 'kept asking after the first error');
+    const { ergebnis: outcome, requests } = await withResponse(500, () => resolveViaRebrickableOn(items(3)));
+    assert.equal(outcome.aborted, 'failure');
+    assert.equal(requests, 1, 'kept asking after the first error');
   });
 
   await t.test('daily limit: aborted with reason kontingent', async () => {
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('api_limit_rebrickable', '1')
                   ON CONFLICT (key) DO UPDATE SET value = '1'`);
     await k.setQuotaBack('rebrickable');
-    const { ergebnis, anfragen } = await withResponse(404, () => resolveViaRebrickableOn(items(3)));
-    assert.equal(ergebnis.aborted, 'quota');
-    assert.equal(anfragen, 1, 'only the one quota call went out');
+    const { ergebnis: outcome, requests } = await withResponse(404, () => resolveViaRebrickableOn(items(3)));
+    assert.equal(outcome.aborted, 'quota');
+    assert.equal(requests, 1, 'only the one quota call went out');
   });
 });

@@ -8,15 +8,15 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/ui');
+const { openUi, switchTab } = require('./helpers/ui');
 
 test('the same view buttons in all three tabs', async () => {
   const { w, d } = await openUi();
   try {
     for (const tab of ['tab-gallery', 'tab-parts', 'tab-minifigs']) {
-      const gruppe = d.querySelector(`#${tab} .vtgl[role="group"]`);
-      assert.ok(gruppe, `${tab}: no view buttons`);
-      assert.equal(gruppe.querySelectorAll('button.vb[aria-pressed]').length, 2, `${tab}: not cards and table`);
+      const group = d.querySelector(`#${tab} .vtgl[role="group"]`);
+      assert.ok(group, `${tab}: no view buttons`);
+      assert.equal(group.querySelectorAll('button.vb[aria-pressed]').length, 2, `${tab}: not cards and table`);
     }
     assert.equal(
       d.querySelectorAll('select#parts-view:not(.vh), select#figs-view:not(.vh)').length,
@@ -29,20 +29,20 @@ test('the same view buttons in all three tabs', async () => {
 });
 
 test('parts: the table loads the set mapping', async () => {
-  const { w, d, aufrufe, ruhig } = await openUi();
+  const { w, d, calls, settle } = await openUi();
   try {
-    await reiter(w, 'parts');
-    assert.ok(await ruhig(), 'the tab does not finish loading');
-    const vorher = aufrufe.length;
-    const knopf = d.querySelector('[data-click="chooseView"][data-arg="parts-view"][data-arg2="table"]');
-    knopf.click();
-    await ruhig();
+    await switchTab(w, 'parts');
+    assert.ok(await settle(), 'the tab does not finish loading');
+    const prior = calls.length;
+    const button = d.querySelector('[data-click="chooseView"][data-arg="parts-view"][data-arg2="table"]');
+    button.click();
+    await settle();
     assert.ok(
-      aufrufe.slice(vorher).some(a => /\/v2\/parts\?.*with_sets=1/.test(a.url)),
+      calls.slice(prior).some(a => /\/v2\/parts\?.*with_sets=1/.test(a.url)),
       'the switch did not reload',
     );
     assert.equal(d.getElementById('parts-view').value, 'table');
-    assert.equal(knopf.getAttribute('aria-pressed'), 'true');
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
     assert.equal(d.querySelector('[data-arg="parts-view"][data-arg2="grid"]').getAttribute('aria-pressed'), 'false');
   } finally {
     w.close();

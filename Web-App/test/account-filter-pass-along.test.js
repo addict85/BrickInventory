@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/ui');
+const { openUi, switchTab } = require('./helpers/ui');
 
 // The CSV import status is polled on a timer, not by the filter change: if
 // a poll falls into the window, it is not a fetch behind the account filter.
@@ -34,7 +34,7 @@ const NEW_LOADED = {
 };
 
 test('every fetch behind the account filter passes the account filter along', async () => {
-  const { w, d, aufrufe, ruhig } = await openUi({
+  const { w, d, calls, settle } = await openUi({
     '/v2/sets/household-members': {
       success: true,
       members: [
@@ -44,33 +44,33 @@ test('every fetch behind the account filter passes the account filter along', as
     },
   });
   try {
-    for (const [ansicht, pfade] of Object.entries(NEW_LOADED)) {
-      await reiter(w, ansicht);
-      await ruhig();
-      const filter = d.getElementById(`scope-${ansicht}`);
+    for (const [viewName, paths] of Object.entries(NEW_LOADED)) {
+      await switchTab(w, viewName);
+      await settle();
+      const filter = d.getElementById(`scope-${viewName}`);
       assert.ok(
         [...filter.options].some(o => o.value === '2'),
-        `${ansicht}: no sub-account in the filter`,
+        `${viewName}: no sub-account in the filter`,
       );
-      const ab = aufrufe.length;
+      const ab = calls.length;
       filter.value = '2';
       filter.dispatchEvent(new w.Event('change', { bubbles: true }));
-      await ruhig();
-      const neu = aufrufe
+      await settle();
+      const fresh = calls
         .slice(ab)
         .filter(a => a.method === 'GET')
         .map(a => new URL(a.url, 'http://localhost'))
         .filter(u => !BACKGROUND.has(u.pathname));
-      const geholt = new Set(neu.map(u => u.pathname.replace(/^\/api/, '')));
+      const fetched = new Set(fresh.map(u => u.pathname.replace(/^\/api/, '')));
       assert.deepEqual(
-        pfade.filter(p => !geholt.has(p)),
+        paths.filter(p => !fetched.has(p)),
         [],
-        `${ansicht}: not reloaded`,
+        `${viewName}: not reloaded`,
       );
       assert.deepEqual(
-        neu.filter(u => u.searchParams.get('accounts') !== '2').map(u => u.pathname + u.search),
+        fresh.filter(u => u.searchParams.get('accounts') !== '2').map(u => u.pathname + u.search),
         [],
-        `${ansicht}: fetched without account filter`,
+        `${viewName}: fetched without account filter`,
       );
     }
   } finally {

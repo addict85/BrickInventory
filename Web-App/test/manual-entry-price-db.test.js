@@ -31,7 +31,7 @@ const PART = `mep${P}`,
 test('manual captures: price of the condition, one entry per capture', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
-  const weg = async () => {
+  const route = async () => {
     await db.run('DELETE FROM users WHERE username = $1', [`mep-${P}`]);
     await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [[PART, EPART]]);
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number = ANY($1)', [[FIG, EST]]);
@@ -39,26 +39,26 @@ test('manual captures: price of the condition, one entry per capture', { concurr
     await db.run('DELETE FROM minifig_parts_cache WHERE fig_number = ANY($1)', [[FIG, EST]]);
     await db.run(`DELETE FROM jobs WHERE type = 'price_refresh'`);
   };
-  await weg();
+  await route();
   t.after(async () => {
-    await weg().catch(() => {});
+    await route().catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`mep-${P}`]))
     .id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','CHF')`, [uid]);
   // New 100, used 60: a price from the wrong condition shows as the wrong number.
-  for (const [z, preis] of [
+  for (const [z, price] of [
     ['N', 100],
     ['U', 60],
   ]) {
     await db.run(
       `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price) VALUES ($1,77,$2,'CHF',$3)`,
-      [PART, z, preis],
+      [PART, z, price],
     );
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,$2,'CHF',$3)`,
-      [FIG, z, preis],
+      [FIG, z, price],
     );
   }
   const rows = (table, col, key) =>
@@ -97,13 +97,13 @@ test('manual captures: price of the condition, one entry per capture', { concurr
       EST,
       JSON.stringify([{ part_num: EPART, color_id: 777, quantity: 2 }]),
     ]);
-    for (const [z, preis] of [
+    for (const [z, price] of [
       ['N', 1],
       ['U', 1.5],
     ])
       await db.run(
         `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price) VALUES ($1,777,$2,'CHF',$3)`,
-        [EPART, z, preis],
+        [EPART, z, price],
       );
     const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
     await addManualMinifig(uid, { fig_number: EST, fig_name: 'Probe', condition: 'N', acquired_at: '2026-01-05' });

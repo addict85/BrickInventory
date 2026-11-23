@@ -11,17 +11,17 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, sicht, warte } = require('./helpers/ui');
+const { openUi, view, waitFor } = require('./helpers/ui');
 
 const PROFILE = {
   '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
 };
-const putCalls = aufrufe => aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith('/v2/auth/profile'));
+const putCalls = calls => calls.filter(a => a.method === 'PUT' && a.url.endsWith('/v2/auth/profile'));
 const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
 
 async function store(w, d) {
-  await sicht(w, 'profile');
-  await warte(() => d.getElementById('prof-user').value === 'anna');
+  await view(w, 'profile');
+  await waitFor(() => d.getElementById('prof-user').value === 'anna');
   assert.equal(
     d.querySelectorAll('#tab-profile input[type="password"][autocomplete="current-password"]').length,
     0,
@@ -29,32 +29,32 @@ async function store(w, d) {
   );
   d.getElementById('prof-user').value = 'anna2';
   d.getElementById('btn-sav-prof').click();
-  await warte(() => openDialog(d));
+  await waitFor(() => openDialog(d));
 }
 
 test('without a password no request goes out', async () => {
-  const { w, d, aufrufe } = await openUi(PROFILE);
+  const { w, d, calls } = await openUi(PROFILE);
   try {
     await store(w, d);
-    assert.deepEqual(putCalls(aufrufe), [], 'before the confirmation');
+    assert.deepEqual(putCalls(calls), [], 'before the confirmation');
     d.getElementById('cd-cancel').click();
-    await warte(() => !openDialog(d));
-    assert.deepEqual(putCalls(aufrufe), [], 'after cancelling');
+    await waitFor(() => !openDialog(d));
+    assert.deepEqual(putCalls(calls), [], 'after cancelling');
   } finally {
     w.close();
   }
 });
 
 test('with a password it goes along, even with a mere name change', async () => {
-  const { w, d, aufrufe } = await openUi(PROFILE);
+  const { w, d, calls } = await openUi(PROFILE);
   try {
     await store(w, d);
     d.getElementById('cd-pw').value = 'Mein-Passwort-1';
     d.getElementById('cd-confirm').click();
-    await warte(() => putCalls(aufrufe).length);
-    const rumpf = JSON.parse(putCalls(aufrufe)[0].body);
-    assert.equal(rumpf.username, 'anna2');
-    assert.equal(rumpf.password_current, 'Mein-Passwort-1');
+    await waitFor(() => putCalls(calls).length);
+    const body = JSON.parse(putCalls(calls)[0].body);
+    assert.equal(body.username, 'anna2');
+    assert.equal(body.password_current, 'Mein-Passwort-1');
     assert.equal(d.getElementById('cd-pw').value, '', 'the password does not stay in the field');
   } finally {
     w.close();
@@ -63,7 +63,7 @@ test('with a password it goes along, even with a mere name change', async () => 
 
 test('a wrong password asks again', async () => {
   let n = 0;
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     ...PROFILE,
     '/v2/auth/profile': (_url, o) =>
       o?.method === 'PUT' && ++n === 1
@@ -74,13 +74,13 @@ test('a wrong password asks again', async () => {
     await store(w, d);
     d.getElementById('cd-pw').value = 'wrong';
     d.getElementById('cd-confirm').click();
-    await warte(
-      () => putCalls(aufrufe).length === 1 && openDialog(d) && /falsch/.test(d.getElementById('cd-msg').textContent),
+    await waitFor(
+      () => putCalls(calls).length === 1 && openDialog(d) && /falsch/.test(d.getElementById('cd-msg').textContent),
     );
     d.getElementById('cd-pw').value = 'richtig';
     d.getElementById('cd-confirm').click();
-    await warte(() => putCalls(aufrufe).length === 2);
-    assert.equal(JSON.parse(putCalls(aufrufe)[1].body).password_current, 'richtig');
+    await waitFor(() => putCalls(calls).length === 2);
+    assert.equal(JSON.parse(putCalls(calls)[1].body).password_current, 'richtig');
   } finally {
     w.close();
   }

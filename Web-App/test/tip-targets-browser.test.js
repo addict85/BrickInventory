@@ -51,28 +51,28 @@ const CASES = [
 
 function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
-  const faelle = CASES.map(
-    ([, html], i) => `<section data-fall="${i}" style="margin:24px 16px">${html}</section>`,
-  ).join('\n');
+  const cases = CASES.map(([, html], i) => `<section data-fall="${i}" style="margin:24px 16px">${html}</section>`).join(
+    '\n',
+  );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">${css}</head>
-<body>${faelle}<pre id="ergebnis"></pre>
+<body>${cases}<pre id="ergebnis"></pre>
 <script>
 window.addEventListener('load', () => {
   const MIN = 44, h = MIN / 2 - 0.5;
-  const aus = [...document.querySelectorAll('[data-fall]')].map(sec => {
+  const out = [...document.querySelectorAll('[data-fall]')].map(sec => {
     const el = sec.querySelector('[data-ziel]');
     // Ein Häkchen in einer Beschriftung: Die Beschriftung ist die Tippfläche.
-    const ziel = (el.type === 'checkbox' && el.closest('label')) || el;
-    const r = ziel.getBoundingClientRect();
+    const target = (el.type === 'checkbox' && el.closest('label')) || el;
+    const r = target.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    ziel.scrollIntoView({ block: 'center' });
-    const r2 = ziel.getBoundingClientRect(), x = r2.left + r2.width / 2, y = r2.top + r2.height / 2;
-    const trifft = ([a, b]) => { const t = document.elementFromPoint(a, b); return !!t && (t === ziel || ziel.contains(t)); };
-    const ok = [[x - h, y], [x + h, y], [x, y - h], [x, y + h]].every(trifft);
+    target.scrollIntoView({ block: 'center' });
+    const r2 = target.getBoundingClientRect(), x = r2.left + r2.width / 2, y = r2.top + r2.height / 2;
+    const matches = ([a, b]) => { const t = document.elementFromPoint(a, b); return !!t && (t === target || target.contains(t)); };
+    const ok = [[x - h, y], [x + h, y], [x, y - h], [x, y + h]].every(matches);
     return { fall: +sec.dataset.fall, ok, w: Math.round(r.width), h: Math.round(r.height) };
   });
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(aus) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(out) + 'ENDE';
 });
 </script></body></html>`;
 }
@@ -83,10 +83,10 @@ test('on the phone every control is at least 44 px large', t => {
     t.skip('no Chrome found');
     return;
   }
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'tippziele-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testPage());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tippziele-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'seite.html');
+  fs.writeFileSync(file, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -97,14 +97,14 @@ test('on the phone every control is at least 44 px large', t => {
       '--window-size=390,844',
       '--virtual-time-budget=3000',
       '--dump-dom',
-      `file://${datei}`,
+      `file://${file}`,
     ],
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'The test page wrote no result');
-  const ergebnis = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
-  assert.equal(ergebnis.length, CASES.length);
-  const toSmall = ergebnis.filter(e => !e.ok).map(e => `${CASES[e.fall]?.[0]} (${e.w}×${e.h})`);
+  const outcome = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
+  assert.equal(outcome.length, CASES.length);
+  const toSmall = outcome.filter(e => !e.ok).map(e => `${CASES[e.fall]?.[0]} (${e.w}×${e.h})`);
   assert.deepEqual(toSmall, []);
 });

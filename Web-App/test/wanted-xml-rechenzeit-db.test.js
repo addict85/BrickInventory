@@ -34,9 +34,9 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-function item(id, farbe, quantity) {
+function item(id, color, quantity) {
   return (
-    `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>${id}</ITEMID><COLOR>${farbe}</COLOR>` +
+    `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>${id}</ITEMID><COLOR>${color}</COLOR>` +
     `<MAXPRICE>-1.0000</MAXPRICE><MINQTY>${quantity}</MINQTY><CONDITION>X</CONDITION></ITEM>\n`
   );
 }
@@ -49,11 +49,11 @@ function duration(f) {
 
 test('1. open tags without an end cost no quadratic computing time', () => {
   // About 480 KB each; the old version needed 8 to 11 s for it.
-  const faelle = {
+  const cases = {
     'ITEM ohne Ende': '<INVENTORY>' + '<ITEM>'.repeat(80000),
     'ITEMID ohne Ende': '<INVENTORY><ITEM>' + '<ITEMID>'.repeat(60000) + '</ITEM>',
   };
-  for (const [name, xml] of Object.entries(faelle)) {
+  for (const [name, xml] of Object.entries(cases)) {
     const { r, ms } = duration(() => readWantedList(xml));
     assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — parsing is not linear`);
     assert.equal(r.items.length, 0, `${name}: ${r.items.length} items read from garbage`);
@@ -98,7 +98,7 @@ test('3. the route rejects a list above the XML limit', async t => {
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('xmlgrenze','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='xmlgrenze'`)).id;
   importWorker(t, _req);
-  const srv = testServer(_req, { sitzung: { userId: uid }, t });
+  const srv = testServer(_req, { session: { userId: uid }, t });
   const sendIt = async xml => {
     const fd = new FormData();
     fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
@@ -108,14 +108,14 @@ test('3. the route rejects a list above the XML limit', async t => {
 
   // A VALID list just above the limit — the size is rejected,
   // not the content. The items are all unknown, the preview writes nothing.
-  const ein = item('99999', 5, 1);
-  const gross = '<INVENTORY>\n' + ein.repeat(Math.ceil(XML_MAX_BYTES / ein.length) + 10) + '</INVENTORY>';
+  const on = item('99999', 5, 1);
+  const gross = '<INVENTORY>\n' + on.repeat(Math.ceil(XML_MAX_BYTES / on.length) + 10) + '</INVENTORY>';
   assert.ok(Buffer.byteLength(gross) > XML_MAX_BYTES);
   const tooLarge = await sendIt(gross);
   assert.notEqual(tooLarge.status, 200, `Status ${tooLarge.status}: ${JSON.stringify(tooLarge.body).slice(0, 200)}`);
   assert.ok(tooLarge.status >= 400, `status ${tooLarge.status} instead of a refusal`);
 
-  const klein = await sendIt('<INVENTORY>\n' + item('99999', 5, 1) + '</INVENTORY>');
-  assert.equal(klein.status, 200, `small list: ${klein.status} ${JSON.stringify(klein.body)}`);
-  assert.equal(klein.body.parsed, 1);
+  const small = await sendIt('<INVENTORY>\n' + item('99999', 5, 1) + '</INVENTORY>');
+  assert.equal(small.status, 200, `small list: ${small.status} ${JSON.stringify(small.body)}`);
+  assert.equal(small.body.parsed, 1);
 });

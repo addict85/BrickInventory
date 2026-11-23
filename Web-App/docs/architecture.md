@@ -325,7 +325,7 @@ Bereich, der ihn einbindet. Die Stufen gelten deshalb auch für Daten:
 - Liegt der Leser über dem Besitzer, importiert er den Baustein.
 - Liegt er darunter (Einstellungen, Aufträge, Haushalt, Geräte, Bilder, Katalog,
   Finanzen, Bestand), nennt er in `src/<bereich>/readContract.ts` die Form, die er
-  braucht (Unterabfragen mit festen Spalten), und bekommt sie als `lesevertrag` im
+  braucht (Unterabfragen mit festen Spalten), und bekommt sie als `readContract` im
   Kontext. Gefüllt wird der Vertrag aus `READ_CONTRACT` in `src/services.ts`
   (Stufe 19, über jedem Besitzer); die Repositories nehmen ihn nach dem Zugang
   (`withContract`). Wer eine Tabelle umbaut, passt den Baustein an, der Vertrag
@@ -347,7 +347,7 @@ Papierkorb) gehören `src/inventory`: Papierkorb, Lagerorte und Tageserfassung
 arbeiten über alle drei Arten, und nur der tiefste Bereich, der sie schreibt, kann
 von den anderen gerufen werden. Sets, Teile und Figuren schreiben über
 `t.inventory`. Wählt eine Datei den Tabellennamen zur Laufzeit, misst der Test,
-was sie liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
+was sie liest und schreibt (`DYNAMIC`); dafür gelten dieselben Regeln.
 
 | Besitzer | Tabellen |
 |---|---|

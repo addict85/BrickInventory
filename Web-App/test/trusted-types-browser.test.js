@@ -35,26 +35,26 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
     assert.match(csp, /(^|; )report-uri \/csp-bericht; report-to csp(;|$)/, csp);
     assert.equal(r.headers.get('reporting-endpoints'), 'csp="/csp-bericht"');
     // Also without an origin, as the browser sends a report: accepted, without content.
-    const bericht = await fetch(`http://127.0.0.1:${app.port}/csp-bericht`, {
+    const report = await fetch(`http://127.0.0.1:${app.port}/csp-bericht`, {
       method: 'POST',
       headers: { 'content-type': 'application/csp-report', 'sec-fetch-site': 'same-origin' },
       body: '{}',
     });
-    assert.equal(bericht.status, 204);
+    assert.equal(report.status, 204);
   });
 
   await t.test('setHtml() builds the collection, innerHTML outside throws TypeError', async () => {
     assert.ok(
-      (await app.b.auswerten(`document.querySelectorAll('#gallery .sc').length`)) > 0,
+      (await app.b.evaluate(`document.querySelectorAll('#gallery .sc').length`)) > 0,
       'no tile in the collection',
     );
-    const error = await app.b.auswerten(`(() => {
+    const error = await app.b.evaluate(`(() => {
       const versuch = (f) => { try { f(); return 'kein Fehler'; } catch (e) { return e.name; } };
       const div = document.createElement('div');
       return {
         innerHTML: versuch(() => { div.innerHTML = '<b>x</b>'; }),
         insertAdjacentHTML: versuch(() => div.insertAdjacentHTML('beforeend', '<img src=x>')),
-        leer: versuch(() => { div.innerHTML = ''; }),
+        empty: versuch(() => { div.innerHTML = ''; }),
         script: versuch(() => { document.createElement('script').src = 'https://fremd.example/x.js'; }),
         ownScript: versuch(() => { document.createElement('script').src = '/locales/en.js'; }),
       };
@@ -62,7 +62,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
     assert.deepEqual(error, {
       innerHTML: 'TypeError',
       insertAdjacentHTML: 'TypeError',
-      leer: 'kein Fehler',
+      empty: 'kein Fehler',
       script: 'TypeError',
       ownScript: 'kein Fehler',
     });
@@ -78,16 +78,16 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
       window.open = (...a) => (window.__fenster = o.apply(window, a));
       document.querySelector('[data-click="openLogViewer"]').click(); return true; })()`,
     });
-    await app.bis(
+    await app.until(
       `!!window.__fenster?.document.getElementById('log-wrap')?.firstElementChild`,
       'Protokollfenster mit Inhalt',
       200,
     );
     const f =
-      await app.b.auswerten(`({ klasse: window.__fenster.document.getElementById('log-wrap').firstElementChild.className,
-      stand: window.__fenster.document.getElementById('status').textContent })`);
-    assert.match(f.klasse, /^(ll|leer)\b/);
-    assert.doesNotMatch(f.stand, /Fehler/, f.stand);
-    await app.b.auswerten(`window.__fenster.close(); true`);
+      await app.b.evaluate(`({ cls: window.__fenster.document.getElementById('log-wrap').firstElementChild.className,
+      state: window.__fenster.document.getElementById('status').textContent })`);
+    assert.match(f.cls, /^(ll|leer)\b/);
+    assert.doesNotMatch(f.state, /Fehler/, f.state);
+    await app.b.evaluate(`window.__fenster.close(); true`);
   });
 });

@@ -15,8 +15,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const lies = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
-const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
+const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
+const withoutComments = (/** @type {string} */ s) => require('./helpers/sources').withoutComments(s);
 
 const PROGRESS = 'public/js/progress.js';
 
@@ -24,13 +24,13 @@ test('only ONE version builds the line for the import log', () => {
   const sources = fs
     .readdirSync(path.join(ROOT, 'public', 'js'))
     .filter(n => n.endsWith('.js') && n !== 'app.bundle.js')
-    .map(n => ['public/js/' + n, ohneKommentare(lies('public/js/' + n))]);
+    .map(n => ['public/js/' + n, withoutComments(read('public/js/' + n))]);
   // Self-proof: if the search found hardly any files, the rule would be vacuously true.
   assert.ok(sources.length >= 20, `Only ${sources.length} UI files found — the search no longer matches`);
 
-  const definiert = sources.filter(([, js]) => /function logRow\s*\(/.test(js));
+  const defined = sources.filter(([, js]) => /function logRow\s*\(/.test(js));
   assert.deepEqual(
-    definiert.map(([n]) => n),
+    defined.map(([n]) => n),
     [PROGRESS],
     'logRow() belongs in the tree exactly once. Two versions mean ' +
       'two places where the next barrier is missing — and that was exactly ' +

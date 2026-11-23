@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, ANMELDUNG } = require('./helpers/ui');
+const { openUi, waitFor, tick, SIGNED_IN } = require('./helpers/ui');
 
 const HOUSEHOLD = {
   '/v2/sets/household-members': {
@@ -33,12 +33,12 @@ const REMEMBERED = {
 const remember = w => {
   for (const [k, v] of Object.entries(REMEMBERED)) w.localStorage.setItem(k, v);
 };
-const setQueries = o => o.aufrufe.filter(a => a.method === 'GET' && /\/v2\/sets(\?|$)/.test(a.url));
+const setQueries = o => o.calls.filter(a => a.method === 'GET' && /\/v2\/sets(\?|$)/.test(a.url));
 
 test('login resets the account and location filters before the list loads', async () => {
   const o = await openUi(
     {
-      ...ANMELDUNG,
+      ...SIGNED_IN,
       ...HOUSEHOLD,
       '/v2/auth/me': { success: true, loggedIn: false },
       '/v2/auth/login': {
@@ -49,15 +49,15 @@ test('login resets the account and location filters before the list loads', asyn
     { loggedIn: false, before: remember },
   );
   try {
-    await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
+    await waitFor(() => o.d.getElementById('login-screen').style.display === 'flex');
     assert.equal(setQueries(o).length, 0, 'nothing loads before the login');
     o.d.getElementById('lu').value = 'anna';
     o.d.getElementById('lp').value = 'geheim-geheim';
     o.d.getElementById('btn-login').click();
-    assert.ok(await warte(() => setQueries(o).length > 0), 'after the login no set list loads');
-    await o.ruhig();
-    const erste = setQueries(o)[0].url;
-    assert.doesNotMatch(erste, /accounts=|storage=/, `the first set query still filters: ${erste}`);
+    assert.ok(await waitFor(() => setQueries(o).length > 0), 'after the login no set list loads');
+    await o.settle();
+    const first = setQueries(o)[0].url;
+    assert.doesNotMatch(first, /accounts=|storage=/, `the first set query still filters: ${first}`);
     for (const k of Object.keys(REMEMBERED)) assert.equal(o.w.localStorage.getItem(k), null, `${k} stayed saved`);
     assert.equal(o.d.getElementById('scope-gallery').value, 'all');
   } finally {
@@ -68,7 +68,7 @@ test('login resets the account and location filters before the list loads', asyn
 test('a reload in the same session keeps the choice', async () => {
   const o = await openUi(HOUSEHOLD, { before: remember });
   try {
-    await o.ruhig();
+    await o.settle();
     assert.ok(
       setQueries(o).some(a => /accounts=7/.test(a.url) && /storage=Regal(\+|%20)A/.test(a.url)),
       setQueries(o)
@@ -85,13 +85,13 @@ test('a reload in the same session keeps the choice', async () => {
 test('the choice is remembered and goes to the server', async () => {
   const o = await openUi(HOUSEHOLD);
   try {
-    await o.ruhig();
+    await o.settle();
     const field = o.d.getElementById('scope-gallery');
     assert.equal(field.style.display, '', 'the account filter is hidden for a household');
     field.value = 'own';
     field.dispatchEvent(new o.w.Event('change', { bubbles: true }));
-    await takt(30);
-    await o.ruhig();
+    await tick(30);
+    await o.settle();
     assert.equal(o.w.localStorage.getItem('bim_scope_gallery'), 'own');
     assert.match(setQueries(o).at(-1).url, /accounts=own/);
   } finally {

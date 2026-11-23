@@ -44,7 +44,7 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
-  const kauf = am =>
+  const purchase = am =>
     addPurchaseAtTag('set', uid, [SN], {
       quantity: 1,
       price: 10,
@@ -52,15 +52,15 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
       currency: 'CHF',
       createdAt: am,
     });
-  const zeilen = () =>
+  const lines = () =>
     db.all(`SELECT day::text AS tag, quantity FROM set_acquisitions WHERE user_id=$1 ORDER BY day`, [uid]);
 
   try {
     await t.test('a purchase at 00:30 belongs to the same day as one at noon', async () => {
-      assert.equal((await kauf('2026-03-04T23:30:00Z')).merged, false); // 05.03. 00:30 in Zurich
-      assert.equal((await kauf('2026-03-05T11:00:00Z')).merged, true); // 05.03. 12:00
-      assert.equal((await kauf('2026-03-04T21:30:00Z')).merged, false); // 04.03. 22:30
-      assert.deepEqual(await zeilen(), [
+      assert.equal((await purchase('2026-03-04T23:30:00Z')).merged, false); // 05.03. 00:30 in Zurich
+      assert.equal((await purchase('2026-03-05T11:00:00Z')).merged, true); // 05.03. 12:00
+      assert.equal((await purchase('2026-03-04T21:30:00Z')).merged, false); // 04.03. 22:30
+      assert.deepEqual(await lines(), [
         { tag: '2026-03-04', quantity: 1 },
         { tag: '2026-03-05', quantity: 2 },
       ]);

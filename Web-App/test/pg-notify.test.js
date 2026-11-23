@@ -28,7 +28,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { noDb } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const ROOT = path.join(__dirname, '..');
 test.after(() =>
   testData()
@@ -39,10 +39,10 @@ test('no scheduler asks for triggers any more', () => {
   // Kicks and schedules are jobs (src/jobQueue/schedule.ts); the old
   // trigger entries with their own channel are gone.
   const { allSources } = require('./helpers/sources');
-  const treffer = allSources().filter(rel =>
+  const hits = allSources().filter(rel =>
     /csv_sync_trigger|job_reschedule_trigger|instr_queue_trigger/.test(fs.readFileSync(path.join(ROOT, rel), 'utf8')),
   );
-  assert.deepEqual(treffer, []);
+  assert.deepEqual(hits, []);
 });
 
 test('missed signals are caught up when connecting', { concurrency: 1 }, async t => {
@@ -58,8 +58,8 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
     await pgNotify.close();
   });
   const CHANNEL = `ae_probe_${process.pid}`;
-  const bekommen = [];
-  const waitOn = n => bis(() => bekommen.length >= n, 5000);
+  const received = [];
+  const waitOn = n => until(() => received.length >= n, 5000);
 
   assert.throws(
     () => pgNotify.listen('kein kanal', () => {}),
@@ -68,14 +68,14 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
   );
 
   pgNotify.listen(CHANNEL, payload => {
-    bekommen.push(payload ?? null);
+    received.push(payload ?? null);
   });
   await waitOn(1);
-  assert.deepEqual(bekommen, [null], 'on connecting, the handler asks once on its own');
+  assert.deepEqual(received, [null], 'on connecting, the handler asks once on its own');
 
   await pgNotify.notify(CHANNEL, 'hallo');
   await waitOn(2);
-  assert.deepEqual(bekommen, [null, 'hallo'], 'the signal arrives');
+  assert.deepEqual(received, [null, 'hallo'], 'the signal arrives');
 
   // Tear down the listening connection: a signal in the gap would be
   // lost, hence the handler catches up when reconnecting.
@@ -85,7 +85,7 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
     [`LISTEN "${CHANNEL}"%`],
   );
   await waitOn(3);
-  assert.deepEqual(bekommen, [null, 'hallo', null], 'after reconnecting the handler catches up');
+  assert.deepEqual(received, [null, 'hallo', null], 'after reconnecting the handler catches up');
 });
 
 test('when sending, channel and payload are bound, not inserted', { concurrency: 1 }, async t => {
@@ -104,10 +104,10 @@ test('when sending, channel and payload are bound, not inserted', { concurrency:
   pgNotify.listen(CHANNEL, payload => {
     if (payload != null) got.push(payload);
   });
-  assert.ok(await bis(() => pgNotify.listensTo(CHANNEL), 5000), 'not listening');
+  assert.ok(await until(() => pgNotify.listensTo(CHANNEL), 5000), 'not listening');
   const payload = `it's "quoted"; SELECT 1 --`;
   await pgNotify.notify(CHANNEL, payload);
-  assert.ok(await bis(() => got.length > 0, 5000), 'the signal did not arrive');
+  assert.ok(await until(() => got.length > 0, 5000), 'the signal did not arrive');
   assert.deepEqual(got, [payload]);
 });
 
@@ -134,6 +134,6 @@ test('own connection, with capped reconnect', async t => {
   const n = new Notification({ host: '127.0.0.1', port: closed, user: 'x', database: 'x' }, async () => {});
   t.after(() => n.close());
   n.listen('probe', () => {});
-  assert.ok(await bis(() => waits.length >= 8, 5000), `only ${waits.length} attempts`);
+  assert.ok(await until(() => waits.length >= 8, 5000), `only ${waits.length} attempts`);
   assert.deepEqual(waits, [1000, 2000, 4000, 8000, 16000, 30000, 30000, 30000]);
 });

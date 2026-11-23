@@ -34,10 +34,10 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
   const basis = 97000 + (process.pid % 900);
   const OWN = `${basis}-1`; // belongs to the main account
   const KIND = `${basis + 1000}-1`; // belongs to the sub-account
-  const NEU = `${basis + 2000}-1`; // exists nowhere
+  const NEW = `${basis + 2000}-1`; // exists nowhere
 
-  const aufraeumen = async () => {
-    for (const sn of [OWN, KIND, NEU]) {
+  const cleanUp = async () => {
+    for (const sn of [OWN, KIND, NEW]) {
       await db.run(`DELETE FROM sets WHERE set_number=$1`, [sn]).catch(() => {});
       await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [sn]).catch(() => {});
     }
@@ -51,18 +51,18 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
     mainId,
     subId,
   ]);
-  await aufraeumen();
+  await cleanUp();
 
-  const anlegen = async (besitzer, sn) => {
-    await holdsSet(db, besitzer, sn, 0); // quantity 0: the acquisition behind it carries it
+  const create = async (owner, sn) => {
+    await holdsSet(db, owner, sn, 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`,
-      [besitzer, sn],
+      [owner, sn],
     );
   };
-  await anlegen(mainId, OWN);
-  await anlegen(subId, KIND);
+  await create(mainId, OWN);
+  await create(subId, KIND);
 
   const state = async sn => ({
     // From the acquisitions (migration 0036), across ALL accounts — the test
@@ -77,23 +77,23 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
       )
     ).q,
     acqs: (await db.get(`SELECT COUNT(*)::int AS c FROM set_acquisitions WHERE set_number=$1`, [sn])).c,
-    zeilen: (await db.get(`SELECT COUNT(*)::int AS c FROM sets WHERE set_number=$1`, [sn])).c,
+    lines: (await db.get(`SELECT COUNT(*)::int AS c FROM sets WHERE set_number=$1`, [sn])).c,
   });
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
+  const { base, srv } = testServer(_req, { session: { userId: mainId }, t });
 
-  const erfassen = async (path, sn) => {
+  const record = async (path, sn) => {
     const r = await fetch(base + path, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ set_number: sn, quantity: 1 }),
     });
-    return { status: r.status, typ: r.headers.get('content-type') || '', body: await r.json().catch(() => null) };
+    return { status: r.status, kind: r.headers.get('content-type') || '', body: await r.json().catch(() => null) };
   };
 
   try {
     // 1. OWN set and set of the SUB-ACCOUNT — both paths, both sets.
-    for (const [wer, sn] of [
+    for (const [who, sn] of [
       ['eigenes', OWN],
       ['Unterkonto', KIND],
     ]) {
@@ -102,16 +102,16 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
         ['Webapp (add-stream)', '/api/v2/sets/add-stream'],
       ]) {
         const ago = await state(sn);
-        const r = await erfassen(path, sn);
-        assert.equal(r.status, 200, `${wer}/${name}: ${r.status}`);
-        assert.equal(r.body?.action, 'exists', `${wer}/${name}: expected action=exists, was ${JSON.stringify(r.body)}`);
+        const r = await record(path, sn);
+        assert.equal(r.status, 200, `${who}/${name}: ${r.status}`);
+        assert.equal(r.body?.action, 'exists', `${who}/${name}: expected action=exists, was ${JSON.stringify(r.body)}`);
         assert.match(
-          r.typ,
+          r.kind,
           /application\/json/,
-          `${wer}/${name}: the response must be ordinary JSON — there is nothing to follow`,
+          `${who}/${name}: the response must be ordinary JSON — there is nothing to follow`,
         );
         const nach = await state(sn);
-        assert.deepEqual(nach, ago, `${wer}/${name}: something was written although the set already exists`);
+        assert.deepEqual(nach, ago, `${who}/${name}: something was written although the set already exists`);
       }
     }
 
@@ -120,29 +120,29 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
     //    hangs exactly on that.
     const withoutSuffix = OWN.replace(/-\d+$/, '');
     const ago = await state(OWN);
-    const r = await erfassen('/api/v2/sets', withoutSuffix);
+    const r = await record('/api/v2/sets', withoutSuffix);
     assert.equal(r.body?.action, 'exists', 'entered without a suffix, the same set must be recognised');
     assert.deepEqual(await state(OWN), ago);
 
     // 3. The pre-query says the same as the capture — otherwise the
     //    scanner could show an intermediate dialog for a set that is afterwards
     //    rejected as „already present".
-    for (const [sn, erwartet] of [
+    for (const [sn, expected] of [
       [OWN, true],
       [KIND, true],
-      [NEU, false],
+      [NEW, false],
       [withoutSuffix, true],
     ]) {
       const e = await (await fetch(`${base}/api/v2/sets/exists/${encodeURIComponent(sn)}`)).json();
-      assert.equal(e.exists, erwartet, `exists for ${sn}`);
-      if (erwartet) assert.ok(e.owner_user_id > 0, `owner missing for ${sn}`);
+      assert.equal(e.exists, expected, `exists for ${sn}`);
+      if (expected) assert.ok(e.owner_user_id > 0, `owner missing for ${sn}`);
     }
     // Without a hit the pre-query names the number as it would be created (with suffix).
-    const newWithoutSuffix = NEU.replace(/-1$/, '');
+    const newWithoutSuffix = NEW.replace(/-1$/, '');
     const none = await (await fetch(`${base}/api/v2/sets/exists/${newWithoutSuffix}`)).json();
-    assert.deepEqual([none.exists, none.set_number], [false, NEU], 'exists: false, set_number');
+    assert.deepEqual([none.exists, none.set_number], [false, NEW], 'exists: false, set_number');
     // The own account wins if both have the same set.
-    await anlegen(subId, OWN);
+    await create(subId, OWN);
     const bothOnes = await (await fetch(`${base}/api/v2/sets/exists/${OWN}`)).json();
     assert.equal(
       bothOnes.owner_user_id,
@@ -164,7 +164,7 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
     assert.equal(erg.action, 'updated', 'the import must top up — otherwise the CSV import stalls');
     assert.equal((await state(KIND)).quantity, vorImport.quantity + 1);
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await new Promise(r => srv.close(r));
@@ -178,7 +178,7 @@ test('one rule for set numbers: normalizeSetNumber', () => {
   const sets = _req('src/sets/index.js');
   assert.equal(sets.normalizeSetNumber, undefined);
   assert.equal(sets.sanitizeSetNumber, undefined);
-  for (const [eingabe, erwartet] of [
+  for (const [input, expected] of [
     ['75192', '75192-1'],
     ['75192-1', '75192-1'],
     [' 75192 ', '75192-1'],
@@ -187,5 +187,5 @@ test('one rule for set numbers: normalizeSetNumber', () => {
     ['ab-12', 'ab-12'],
     ['4002!!', '4002-1'],
   ])
-    assert.equal(normalizeSetNumber(eingabe), erwartet, `for "${eingabe}"`);
+    assert.equal(normalizeSetNumber(input), expected, `for "${input}"`);
 });

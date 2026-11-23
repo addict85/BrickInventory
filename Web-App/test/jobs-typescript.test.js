@@ -43,7 +43,7 @@ test('the Dockerfile builds jobs/ instead of copying it raw', () => {
   assert.match(
     df,
     /COPY --from=builder \/app\/dist \.\/dist\//,
-    'dist/ muss transpiliert aus dem Build-Stage kommen, sonst landen .ts-Dateien im Image',
+    'dist/ must come transpiled from the build stage, otherwise .ts files end up in the image',
   );
 
   const runtime = df.slice(df.lastIndexOf('FROM '));
@@ -66,7 +66,7 @@ test('named exports instead of module.exports', () => {
   for (const f of fs.readdirSync(JOBS).filter(f => f.endsWith('.ts'))) {
     const src = fs.readFileSync(path.join(JOBS, f), 'utf8');
     assert.doesNotMatch(src, /^module\.exports = /m, `${f}: still module.exports`);
-    if (!ENTRY_POINTS.has(f)) assert.match(src, /^export \{/m, `${f}: kein benannter Export`);
+    if (!ENTRY_POINTS.has(f)) assert.match(src, /^export \{/m, `${f}: no named export`);
   }
 });
 

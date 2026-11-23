@@ -8,20 +8,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { ROOT, withoutComments } = require('./helpers/sources');
 
 /** All server sources that could report progress. */
 function serverSources() {
   const dirs = ['src', 'routes', 'jobs', 'clients'];
   const out = [];
-  const lauf = d => {
+  const run = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) lauf(p);
-      else if (e.name.endsWith('.ts')) out.push([path.relative(ROOT, p), ohneKommentare(fs.readFileSync(p, 'utf8'))]);
+      if (e.isDirectory()) run(p);
+      else if (e.name.endsWith('.ts')) out.push([path.relative(ROOT, p), withoutComments(fs.readFileSync(p, 'utf8'))]);
     }
   };
-  for (const d of dirs) lauf(path.join(ROOT, d));
+  for (const d of dirs) run(path.join(ROOT, d));
   return out;
 }
 
@@ -96,33 +96,33 @@ function bracketContent(src, start) {
 function reachableSteps() {
   const sources = serverSources();
   const alles = sources.map(([, s]) => s).join('\n');
-  const erreichbar = new Set();
+  const reachable = new Set();
 
   // Steps that a route writes directly into its own stream are always
   // reachable — there is no passed-through reporter there.
-  for (const m of alles.matchAll(/\bsend\(\{\s*step\s*:\s*'([^']+)'/g)) erreichbar.add(m[1]);
+  for (const m of alles.matchAll(/\bsend\(\{\s*step\s*:\s*'([^']+)'/g)) reachable.add(m[1]);
   // A JSON response instead of a stream (domain error, „exists“) makes readSSE() turn it into an event.
-  const lesen = fs.readFileSync(path.join(ROOT, 'public', 'js', 'progress.js'), 'utf8');
-  for (const m of lesen.matchAll(/onEvent\(\{\s*step:[^,}]*\?\s*'(\w+)'\s*:\s*'(\w+)'/g)) {
-    erreichbar.add(m[1]);
-    erreichbar.add(m[2]);
+  const read = fs.readFileSync(path.join(ROOT, 'public', 'js', 'progress.js'), 'utf8');
+  for (const m of read.matchAll(/onEvent\(\{\s*step:[^,}]*\?\s*'(\w+)'\s*:\s*'(\w+)'/g)) {
+    reachable.add(m[1]);
+    reachable.add(m[2]);
   }
 
-  for (const [datei, src] of sources) {
+  for (const [file, src] of sources) {
     for (const m of src.matchAll(/(?:async\s+)?function\s+(\w+)\s*\(/g)) {
       const name = m[1];
       const params = bracketContent(src, m.index + m[0].length - 1);
       if (params === null || !/\bsendProgress\b/.test(params)) continue;
       const idx = argList(params).findIndex(a => /^sendProgress\b/.test(a));
-      assert.notEqual(idx, -1, `${datei}: sendProgress parameter of ${name} not found`);
+      assert.notEqual(idx, -1, `${file}: sendProgress parameter of ${name} not found`);
 
       // Does this function report steps at all?
-      const rumpf = bracketContent(src, src.indexOf('{', m.index + m[0].length)) ?? '';
-      const gemeldet = [...src.slice(m.index).matchAll(/sendProgress\(\{\s*step\s*:\s*'([^']+)'/g)].map(x => x[1]);
-      if (!gemeldet.length) continue;
+      const body = bracketContent(src, src.indexOf('{', m.index + m[0].length)) ?? '';
+      const reported = [...src.slice(m.index).matchAll(/sendProgress\(\{\s*step\s*:\s*'([^']+)'/g)].map(x => x[1]);
+      if (!reported.length) continue;
 
       // Does any caller pass something other than null?
-      let lebt = false;
+      let alive = false;
       for (const [, s2] of sources) {
         for (const c of s2.matchAll(new RegExp(`\\b${name}\\s*\\(`, 'g'))) {
           if (/function\s*$/.test(s2.slice(0, c.index))) continue; // the declaration itself
@@ -130,32 +130,32 @@ function reachableSteps() {
           if (args === null) continue;
           const a = argList(args)[idx];
           if (a !== undefined && a !== 'null') {
-            lebt = true;
+            alive = true;
             break;
           }
         }
-        if (lebt) break;
+        if (alive) break;
       }
-      if (lebt) for (const g of gemeldet) erreichbar.add(g);
-      void rumpf;
+      if (alive) for (const g of reported) reachable.add(g);
+      void body;
     }
   }
-  return erreichbar;
+  return reachable;
 }
 
-const galerie = fs.readFileSync(path.join(ROOT, 'public', 'js', 'progress.js'), 'utf8');
+const gallery = fs.readFileSync(path.join(ROOT, 'public', 'js', 'progress.js'), 'utf8');
 const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 test('every step in the progress dialog can also reach the browser', () => {
-  const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));
-  const rumpf = schalter.slice(0, schalter.indexOf('\n}\n'));
-  const faelle = [...rumpf.matchAll(/case\s+'([^']+)'/g)].map(m => m[1]);
-  assert.ok(faelle.length >= 3, `handleSseEvent has only ${faelle.length} cases — the anchor is no longer right`);
+  const toggle = gallery.slice(gallery.indexOf('export function handleSseEvent'));
+  const body = toggle.slice(0, toggle.indexOf('\n}\n'));
+  const cases = [...body.matchAll(/case\s+'([^']+)'/g)].map(m => m[1]);
+  assert.ok(cases.length >= 3, `handleSseEvent has only ${cases.length} cases — the anchor is no longer right`);
 
-  const erreichbar = reachableSteps();
-  assert.ok(erreichbar.size >= 4, `only ${erreichbar.size} reachable steps found — the anchor is no longer right`);
+  const reachable = reachableSteps();
+  assert.ok(reachable.size >= 4, `only ${reachable.size} reachable steps found — the anchor is no longer right`);
 
-  const tot = faelle.filter(f => !erreichbar.has(f));
+  const tot = cases.filter(f => !reachable.has(f));
   assert.deepEqual(
     tot,
     [],
@@ -165,9 +165,9 @@ test('every step in the progress dialog can also reach the browser', () => {
 });
 
 test('every addressed ps identifier also exists in the dialog', () => {
-  const ids = new Set([...galerie.matchAll(/'ps-([a-z-]+)'/g)].map(m => 'ps-' + m[1]));
+  const ids = new Set([...gallery.matchAll(/'ps-([a-z-]+)'/g)].map(m => 'ps-' + m[1]));
   // setStep() assembles the identifier from 'ps-' + name; collect both forms.
-  for (const m of galerie.matchAll(/setStep\('([a-z-]+)'/g)) ids.add('ps-' + m[1]);
+  for (const m of gallery.matchAll(/setStep\('([a-z-]+)'/g)) ids.add('ps-' + m[1]);
   assert.ok(ids.size >= 2, `only ${ids.size} ps identifiers found — the anchor is no longer right`);
 
   const absent = [...ids].filter(id => !html.includes(`id="${id}"`));
@@ -175,12 +175,12 @@ test('every addressed ps identifier also exists in the dialog', () => {
 });
 
 test('no language key for the removed steps remains', () => {
-  for (const datei of ['de.js', 'en.js']) {
-    const s = fs.readFileSync(path.join(ROOT, 'public', 'locales', datei), 'utf8');
+  for (const file of ['de.js', 'en.js']) {
+    const s = fs.readFileSync(path.join(ROOT, 'public', 'locales', file), 'utf8');
     for (const key of ['prog.step_instr', 'prog.step_parts', 'prog.step_partimgs', 'prog.step_price']) {
-      assert.ok(!s.includes(`'${key}'`), `${datei}: ${key} belongs to a removed step`);
+      assert.ok(!s.includes(`'${key}'`), `${file}: ${key} belongs to a removed step`);
     }
-    assert.ok(s.includes("'prog.hint_background'"), `${datei}: the hint about the background work is missing`);
+    assert.ok(s.includes("'prog.hint_background'"), `${file}: the hint about the background work is missing`);
   }
 });
 

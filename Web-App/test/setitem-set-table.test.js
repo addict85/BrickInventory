@@ -11,7 +11,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 test('the web app shows the sets as a table with image, number and name, below the label', async () => {
   const SETS = [
@@ -32,16 +32,16 @@ test('the web app shows the sets as a table with image, number and name, below t
     },
   });
   try {
-    await o.ruhig();
-    const knopf = o.d.createElement('button');
-    Object.assign(knopf.dataset, { click: 'openSetItemDetail', arg: 'part', arg2: '3001', arg3: '5' });
-    o.d.body.append(knopf);
-    knopf.click();
-    await warte(() => o.d.querySelector('#setitem-body table'));
-    const tabelle = o.d.querySelector('#setitem-body table');
-    const zeilen = [...tabelle.querySelectorAll('tbody tr')];
-    assert.equal(zeilen.length, 2);
-    const text = zeilen.map(z => [...z.cells].map(c => c.textContent.trim()));
+    await o.settle();
+    const button = o.d.createElement('button');
+    Object.assign(button.dataset, { click: 'openSetItemDetail', arg: 'part', arg2: '3001', arg3: '5' });
+    o.d.body.append(button);
+    button.click();
+    await waitFor(() => o.d.querySelector('#setitem-body table'));
+    const table = o.d.querySelector('#setitem-body table');
+    const lines = [...table.querySelectorAll('tbody tr')];
+    assert.equal(lines.length, 2);
+    const text = lines.map(z => [...z.cells].map(c => c.textContent.trim()));
     assert.deepEqual(
       text.map(z => z.slice(1, 3)),
       [
@@ -49,12 +49,12 @@ test('the web app shows the sets as a table with image, number and name, below t
         ['6080-1', 'Königsburg'],
       ],
     );
-    const image = zeilen[0].cells[0].querySelector('img');
+    const image = lines[0].cells[0].querySelector('img');
     assert.ok(image, 'the first set has no image');
     assert.match(image.getAttribute('src'), /\/images\/sets\/10305-1\.jpg$/, 'the local image is missing');
     assert.match(image.dataset.orig ?? '', /10305-1\.jpg/, 'without data-orig no fallback to the CDN image');
-    assert.ok(zeilen[1].cells[0].querySelector('.image-ph'), 'a set without an image shows no placeholder');
-    const row = tabelle.closest('.dr');
+    assert.ok(lines[1].cells[0].querySelector('.image-ph'), 'a set without an image shows no placeholder');
+    const row = table.closest('.dr');
     assert.equal(row.style.flexDirection, 'column', 'the table is next to the label');
   } finally {
     o.w.close();

@@ -91,11 +91,11 @@ test('2. many streams just below the limit add up', () => {
 });
 
 test('3. more streams than allowed are rejected', () => {
-  const klein = zlib.deflateSync(Buffer.from('BT (x) Tj ET'));
-  const { error } = duration(() => pdfText(pdfFrom(Array(STREAMS_MAX + 1).fill(klein))));
+  const small = zlib.deflateSync(Buffer.from('BT (x) Tj ET'));
+  const { error } = duration(() => pdfText(pdfFrom(Array(STREAMS_MAX + 1).fill(small))));
   assert.ok(error instanceof PdfTooLarge, `expected PdfTooLarge, got ${error}`);
   assert.equal(
-    pdfText(pdfFrom(Array(10).fill(klein))).split('\n').length,
+    pdfText(pdfFrom(Array(10).fill(small))).split('\n').length,
     10,
     'Ten small streams are allowed and are read',
   );
@@ -103,13 +103,13 @@ test('3. more streams than allowed are rejected', () => {
 
 test('4. open beginnings cost no quadratic computing time', () => {
   const n = 80000;
-  const faelle = {
+  const cases = {
     'stream ohne Ende': Buffer.from('%PDF-1.4\n' + 'stream\n'.repeat(n)),
     'Literal ohne Ende': Buffer.from('%PDF-1.4\nstream\n(' + '\\('.repeat(n) + '\nendstream'),
     'Feld ohne Ende': Buffer.from('%PDF-1.4\nstream\n[(' + '\\('.repeat(n) + ')\nendstream'),
     'Leerraum im Text': pdfFrom([Buffer.from('(im Wert von 1' + ' '.repeat(n) + ') Tj')]),
   };
-  for (const [name, pdf] of Object.entries(faelle)) {
+  for (const [name, pdf] of Object.entries(cases)) {
     const { error, ms } = duration(() => valuesFromPdf(pdf));
     assert.equal(error, null, `${name}: ${error}`);
     assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — reading is not linear`);
@@ -117,11 +117,11 @@ test('4. open beginnings cost no quadratic computing time', () => {
 });
 
 test('5. valid text operators are still read', () => {
-  const inhalt =
+  const content =
     'BT /F1 14 Tf 60 700 Td [(Ihre LEGO-Geschenkkarte im Wert von )-20(400 CHF:)] TJ\n' +
     '0 -20 Td (5045076374450011166) Tj <50494E3A2035323235> Tj\n' +
     "(Karte \\(neu\\) \\061) ' (Geschenk (Ostern)) Tj <</MCID 0>> BDC ET";
-  const text = pdfText(pdfFrom([zlib.deflateSync(Buffer.from(inhalt, 'latin1'))]));
+  const text = pdfText(pdfFrom([zlib.deflateSync(Buffer.from(content, 'latin1'))]));
   assert.deepEqual(text.split('\n'), [
     'Ihre LEGO-Geschenkkarte im Wert von 400 CHF:',
     '5045076374450011166',
@@ -130,34 +130,34 @@ test('5. valid text operators are still read', () => {
     'Geschenk (Ostern)',
   ]);
   assert.deepEqual(
-    valuesFromPdf(pdfFrom([Buffer.from(inhalt, 'latin1')])),
+    valuesFromPdf(pdfFrom([Buffer.from(content, 'latin1')])),
     { number: '5045076374450011166', pin: '5225', amount: 400, currency: 'CHF' },
     'uncompressed as well',
   );
 });
 
-/** Two fonts, one with its own encoding; `inhalt` chooses them via Tf. */
-async function twoFonts(inhalt) {
+/** Two fonts, one with its own encoding; `content` chooses them via Tf. */
+async function twoFonts(content) {
   const PL = require('@cantoo/pdf-lib');
   const doc = await PL.PDFDocument.create();
-  const seite = doc.addPage([595, 842]);
+  const page = doc.addPage([595, 842]);
   const ctx = doc.context;
-  const eigen = ctx.obj({
+  const own = ctx.obj({
     Type: 'Font',
     Subtype: 'TrueType',
     BaseFont: 'Sonderbar',
     Encoding: ctx.obj({ Type: 'Encoding', Differences: ctx.obj([48, PL.PDFName.of('five')]) }),
   });
   const sicher = ctx.obj({ Type: 'Font', Subtype: 'Type1', BaseFont: 'Helvetica', Encoding: 'WinAnsiEncoding' });
-  seite.node.set(
+  page.node.set(
     PL.PDFName.of('Resources'),
     ctx.obj({
-      Font: ctx.obj({ F1: ctx.register(sicher), F9: ctx.register(eigen) }),
+      Font: ctx.obj({ F1: ctx.register(sicher), F9: ctx.register(own) }),
     }),
   );
-  seite.node.set(
+  page.node.set(
     PL.PDFName.of('Contents'),
-    ctx.register(PL.PDFRawStream.of(ctx.obj({ Length: inhalt.length }), Buffer.from(inhalt, 'latin1'))),
+    ctx.register(PL.PDFRawStream.of(ctx.obj({ Length: content.length }), Buffer.from(content, 'latin1'))),
   );
   return Buffer.from(await doc.save());
 }
@@ -198,7 +198,7 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
   }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
-  const srv = testServer(_req, { sitzung: { userId: uid }, t });
+  const srv = testServer(_req, { session: { userId: uid }, t });
 
   // With typed values: the route then also stores an unreadable PDF.
   async function uploadIt(pdf, number) {
@@ -209,8 +209,8 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
     fd.append('amount', '50');
     fd.append('currency', 'CHF');
     const r = await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
-    const nummer_suche = _req('src/vouchers/repository/vouchers.js').numberSearch(uid, number);
-    const row = await db.get('SELECT id FROM vouchers WHERE user_id=$1 AND number_search=$2', [uid, nummer_suche]);
+    const number_search = _req('src/vouchers/repository/vouchers.js').numberSearch(uid, number);
+    const row = await db.get('SELECT id FROM vouchers WHERE user_id=$1 AND number_search=$2', [uid, number_search]);
     return { status: r.status, body: await r.json().catch(() => ({})), row };
   }
 
@@ -231,8 +231,8 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
     assert.ok(r.status >= 400, `Status ${r.status}: ${JSON.stringify(r.body)}`);
     assert.equal(r.row, undefined, 'The voucher was created anyway');
 
-    const klein = await uploadIt(Buffer.from('%PDF-1.4\n%%EOF\n'), '5045076374450099993');
-    assert.ok(klein.status < 300, `kleines PDF: ${klein.status} ${JSON.stringify(klein.body)}`);
-    assert.ok(klein.row, 'precondition: with typed values a small PDF is stored');
+    const small = await uploadIt(Buffer.from('%PDF-1.4\n%%EOF\n'), '5045076374450099993');
+    assert.ok(small.status < 300, `kleines PDF: ${small.status} ${JSON.stringify(small.body)}`);
+    assert.ok(small.row, 'precondition: with typed values a small PDF is stored');
   });
 });

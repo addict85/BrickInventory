@@ -31,10 +31,10 @@ const db = testData();
 test('household currency', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const namen = ['eltern', 'kind', 'enkel', 'fremd', 'carl', 'dora', 'erik', 'cleo'].map(n => `hw-${n}-${process.pid}`);
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = ['eltern', 'kind', 'enkel', 'fremd', 'carl', 'dora', 'erik', 'cleo'].map(n => `hw-${n}-${process.pid}`);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [n])).id);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2), ($2, $3)', [
     ids[0],
@@ -79,9 +79,9 @@ test('household currency', { concurrency: 1 }, async t => {
   });
 
   await t.test('a sub-account does not change the household currency', async () => {
-    for (const unter of [ids[1], ids[2]]) {
+    for (const sub of [ids[1], ids[2]]) {
       await assert.rejects(
-        setUserSetting(unter, 'currency', 'USD'),
+        setUserSetting(sub, 'currency', 'USD'),
         (/** @type {any} */ e) => e.code === 'currency_main_account_only' && e.kind === 'forbidden',
       );
     }

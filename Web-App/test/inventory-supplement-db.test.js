@@ -26,9 +26,8 @@ test('an inventory is found under both spellings', { concurrency: 1 }, async t =
   const idBlank = 900000 + (process.pid % 10000) * 2;
   const idWithV = idBlank + 1;
   const NR = `${9000000 + (process.pid % 100000)}`;
-  const aufraeumen = () =>
-    db.run('DELETE FROM rb_inventories WHERE id = ANY($1)', [[idBlank, idWithV]]).catch(() => {});
-  await aufraeumen();
+  const cleanUp = () => db.run('DELETE FROM rb_inventories WHERE id = ANY($1)', [[idBlank, idWithV]]).catch(() => {});
+  await cleanUp();
 
   try {
     // 1. Written BLANK: the database stores the number with a suffix.
@@ -51,14 +50,14 @@ test('an inventory is found under both spellings', { concurrency: 1 }, async t =
     await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,2)', [idWithV, `${NR}-1`]);
     assert.equal(await newestInventory(NR), idWithV);
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end();
   }
 });
 
 test('the inventory lookup lives in only one place', () => {
   // Found, not enumerated.
-  const dateien = [];
+  const files = [];
   const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (
@@ -71,15 +70,15 @@ test('the inventory lookup lives in only one place', () => {
         continue;
       const abs = path.join(d, e.name);
       if (e.isDirectory()) go(abs);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) files.push(abs);
     }
   };
   go(ROOT);
   // Self-proof: if the search found nothing, the rule would be vacuously true.
-  assert.ok(dateien.length >= 40, `Only ${dateien.length} source files found — the search no longer matches`);
+  assert.ok(files.length >= 40, `Only ${files.length} source files found — the search no longer matches`);
 
   const placeList = [];
-  for (const f of dateien) {
+  for (const f of files) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')

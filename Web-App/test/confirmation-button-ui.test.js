@@ -15,23 +15,23 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, sicht } = require('./helpers/ui');
+const { openUi, waitFor, tick, view } = require('./helpers/ui');
 
 /** Reads the open dialog, cancels it and waits until it is closed. */
-async function liesDialog(d) {
+async function readDialog(d) {
   const modal = d.getElementById('confirm-modal');
-  assert.ok(await warte(() => modal.style.display === 'flex'), 'the confirmation dialog appears');
-  const knopf = d.getElementById('cd-confirm');
+  assert.ok(await waitFor(() => modal.style.display === 'flex'), 'the confirmation dialog appears');
+  const button = d.getElementById('cd-confirm');
   const state = {
-    text: knopf.textContent.trim(),
-    rot: knopf.classList.contains('bd'),
-    haupt: knopf.classList.contains('bp'),
-    titel: d.getElementById('cd-title').textContent.trim(),
-    meldung: d.getElementById('cd-msg').textContent.trim(),
+    text: button.textContent.trim(),
+    rot: button.classList.contains('bd'),
+    main: button.classList.contains('bp'),
+    title: d.getElementById('cd-title').textContent.trim(),
+    message: d.getElementById('cd-msg').textContent.trim(),
   };
   d.getElementById('cd-cancel').click();
-  await warte(() => modal.style.display === 'none');
-  await takt(10);
+  await waitFor(() => modal.style.display === 'none');
+  await tick(10);
   return state;
 }
 
@@ -53,33 +53,29 @@ test('confirmation dialogs: button text and color per caller', async () => {
     d.getElementById('nu-n').value = 'carla';
     d.getElementById('nu-p').value = 'Ein-langes-Passwort-42';
     d.getElementById('btn-cu').click();
-    const konto = await liesDialog(d);
-    assert.deepEqual([konto.text, konto.rot, konto.haupt], ['Konto anlegen', false, true], 'Create account');
+    const account = await readDialog(d);
+    assert.deepEqual([account.text, account.rot, account.main], ['Konto anlegen', false, true], 'Create account');
 
-    await sicht(w, 'vouchers');
-    assert.ok(await warte(() => d.querySelector('[data-click="toggleVoucherPin"]')), 'Gutscheinliste');
+    await view(w, 'vouchers');
+    assert.ok(await waitFor(() => d.querySelector('[data-click="toggleVoucherPin"]')), 'Gutscheinliste');
     d.querySelector('[data-click="toggleVoucherPin"]').click();
-    const pin = await liesDialog(d);
-    assert.deepEqual([pin.text, pin.rot, pin.haupt], ['Anzeigen', false, true], 'Gutschein-PIN');
+    const pin = await readDialog(d);
+    assert.deepEqual([pin.text, pin.rot, pin.main], ['Anzeigen', false, true], 'Gutschein-PIN');
 
-    await sicht(w, 'household');
-    assert.ok(await warte(() => d.querySelector('[data-click="unlinkHousehold"]')), 'Haushaltsliste');
+    await view(w, 'household');
+    assert.ok(await waitFor(() => d.querySelector('[data-click="unlinkHousehold"]')), 'Haushaltsliste');
     d.querySelector('[data-click="unlinkHousehold"]').click();
-    const haushalt = await liesDialog(d);
-    assert.deepEqual([haushalt.text, haushalt.rot], ['Verknüpfung lösen', false], 'Household');
+    const household = await readDialog(d);
+    assert.deepEqual([household.text, household.rot], ['Verknüpfung lösen', false], 'Household');
 
     d.getElementById('btn-clr-all-cache').click();
-    const speicher = await liesDialog(d);
-    assert.deepEqual([speicher.text, speicher.rot], ['Leeren', true], 'Cache: button');
-    assert.match(
-      speicher.meldung,
-      /4 gespeicherte Preise, 2 Baulisten und 7 Katalog-Einträge/,
-      'Zwischenspeicher: was verloren geht',
-    );
-    assert.match(speicher.meldung, /kontingent/i, 'Cache: what refetching costs');
+    const storage = await readDialog(d);
+    assert.deepEqual([storage.text, storage.rot], ['Leeren', true], 'Cache: button');
+    assert.match(storage.message, /4 gespeicherte Preise, 2 Baulisten und 7 Katalog-Einträge/, 'cache: what gets lost');
+    assert.match(storage.message, /kontingent/i, 'Cache: what refetching costs');
 
     d.getElementById('btn-dall').click();
-    const alles = await liesDialog(d);
+    const alles = await readDialog(d);
     assert.deepEqual([alles.text, alles.rot], ['Alles löschen', true], 'Delete everything stays red');
   } finally {
     w.close();
@@ -100,12 +96,12 @@ test('confirmation dialogs in English: the same verb translated', async () => {
     d.getElementById('nu-n').value = 'carla';
     d.getElementById('nu-p').value = 'Ein-langes-Passwort-42';
     d.getElementById('btn-cu').click();
-    const k = await liesDialog(d);
+    const k = await readDialog(d);
     assert.deepEqual([k.text, k.rot], ['Create account', false]);
-    await sicht(w, 'vouchers');
-    assert.ok(await warte(() => d.querySelector('[data-click="toggleVoucherPin"]')), 'Gutscheinliste');
+    await view(w, 'vouchers');
+    assert.ok(await waitFor(() => d.querySelector('[data-click="toggleVoucherPin"]')), 'Gutscheinliste');
     d.querySelector('[data-click="toggleVoucherPin"]').click();
-    assert.equal((await liesDialog(d)).text, 'Show');
+    assert.equal((await readDialog(d)).text, 'Show');
   } finally {
     w.close();
   }

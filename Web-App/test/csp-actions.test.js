@@ -73,7 +73,7 @@ test('the dispatcher gets by without eval', () => {
   assert.doesNotMatch(
     code,
     /\beval\s*\(|new Function/,
-    "Ein eval() würde 'unsafe-eval' verlangen und damit dasselbe Problem erzeugen",
+    "An eval() would require 'unsafe-eval' and so create the same problem",
   );
   // The typeof check moved with the registry to js/registry.js
   // (resolveAction) — the dispatcher only calls it now.
@@ -82,7 +82,7 @@ test('the dispatcher gets by without eval', () => {
   assert.match(
     ACT,
     /console\.warn\('\[actions\] unknown handler:'/,
-    'Ein Tippfehler im Handlernamen muss auffallen, nicht stumm nichts tun',
+    'A typo in the handler name must be noticed, not silently do nothing',
   );
 });
 
@@ -178,7 +178,7 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
   assert.match(
     css,
     /\.sc:hover \.ca, \.man-tile:hover \.ca, \.mk-row:hover \.ca\{opacity:1\}/,
-    'Manuelle Kacheln oder die Merklisten-Zeile zeigen den Löschknopf nicht beim Überfahren',
+    'Manual tiles or the wanted-list row do not show the delete button on hover',
   );
   assert.match(
     css,
@@ -203,16 +203,16 @@ test('the delete button has its own version per theme', () => {
   assert.match(
     brick,
     /\[data-theme="brick"\] \.sc \.delbtn\{/,
-    'Das Stein-Design braucht eine eigene Fassung — sonst sitzt der helle Knopf auf der dunklen Leiste',
+    'The brick design needs its own version — otherwise the light button sits on the dark bar',
   );
   assert.match(
     brick,
     /\[data-theme="brick"\] \.sc \.delbtn:hover\{/,
-    'Auch der Hover braucht im Stein-Design eine eigene Fassung',
+    'The hover needs its own version in the brick design too',
   );
 
   // 2) Fokusring
-  assert.match(del, /\.delbtn:focus-visible\{outline/, 'Ohne Fokusring ist der Knopf per Tastatur unsichtbar');
+  assert.match(del, /\.delbtn:focus-visible\{outline/, 'Without a focus ring the button is invisible to the keyboard');
 
   // 3) token instead of literal — which token does not matter to the test
   for (const [name, src] of [
@@ -246,8 +246,8 @@ test('external links open without access to the opener window', () => {
   // (tabnabbing). Modern browsers now set noopener for _blank by
   // themselves; older ones and embedded WebViews do not, and the code set it on …
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  const ohne = [...html.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)]
+  const without = [...html.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)]
     .map(m => m[0])
     .filter(tag => !/rel="[^"]*noopener/.test(tag));
-  assert.deepEqual(ohne, [], `target="_blank" without rel="noopener": ${ohne.join(' | ')}`);
+  assert.deepEqual(without, [], `target="_blank" without rel="noopener": ${without.join(' | ')}`);
 });

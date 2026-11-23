@@ -40,19 +40,19 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t });
-  const me = async (kopf = {}) => {
-    const r = await fetch(`${base}/api/v2/auth/me`, { headers: kopf });
+  const session = {};
+  const { base } = testServer(_req, { session, t });
+  const me = async (head = {}) => {
+    const r = await fetch(`${base}/api/v2/auth/me`, { headers: head });
     return { status: r.status, body: await r.json() };
   };
   /** Every query fails while `work` runs. */
   const withError = async work => {
     // With an account the database layer takes its own connection (row security): both paths,
     // in all pools of the app (runtime, system and web system role).
-    const zugang = require('./helpers/sources').testAccess();
-    const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
-    const echt = pools.map(p => ({ query: p.query, connect: p.connect }));
+    const access = require('./helpers/sources').testAccess();
+    const pools = [...new Set([access.pool, access.systemPool, access.systemWebPool])];
+    const original = pools.map(p => ({ query: p.query, connect: p.connect }));
     const error = async () => {
       throw new Error('Lost the connection to the database');
     };
@@ -60,23 +60,23 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
     try {
       return await work();
     } finally {
-      for (const [i, p] of pools.entries()) Object.assign(p, echt[i]);
+      for (const [i, p] of pools.entries()) Object.assign(p, original[i]);
     }
   };
 
   await t.test('with session: 503 instead of "not logged in"', async () => {
-    Object.assign(sitzung, { userId: uid, username: NAME });
+    Object.assign(session, { userId: uid, username: NAME });
     assert.equal((await me()).body.loggedIn, true, 'Precondition: signed in without an error');
     const r = await withError(() => me());
     assert.deepEqual([r.status, r.body.code, r.body.loggedIn], [503, 'server_busy', undefined]);
-    for (const k of Object.keys(sitzung)) delete sitzung[k];
+    for (const k of Object.keys(session)) delete session[k];
   });
 
   await t.test('with token: 503 instead of 401', async () => {
-    const kopf = { authorization: `Bearer ${token}` };
-    assert.equal((await me(kopf)).body.loggedIn, true, 'Precondition: signed in without an error');
+    const head = { authorization: `Bearer ${token}` };
+    assert.equal((await me(head)).body.loggedIn, true, 'Precondition: signed in without an error');
     tokenCache.emptyTokenCache();
-    const r = await withError(() => me(kopf));
+    const r = await withError(() => me(head));
     assert.deepEqual([r.status, r.body.code], [503, 'server_busy']);
   });
 });

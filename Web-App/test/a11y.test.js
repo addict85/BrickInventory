@@ -19,7 +19,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 /** Fields that deliberately need no visible label. */
 const EXEMPT = new Set([
@@ -42,7 +42,7 @@ const FIN_SETS = [
 
 let _o;
 /** One UI for all cases: loading takes time, the checks only read. */
-async function oberflaeche() {
+async function ui() {
   _o ??= await openUi({
     '/v2/finance/valuation': {
       success: true,
@@ -58,24 +58,24 @@ async function oberflaeche() {
 }
 test.after(() => _o?.w.close());
 
-const felder = d =>
+const fields = d =>
   [...d.querySelectorAll('input[id], select[id], textarea[id]')].filter(f => f.type !== 'hidden' && !EXEMPT.has(f.id));
 
 test('every form field is labeled', async () => {
-  const { d } = await oberflaeche();
-  const alle = felder(d);
-  assert.ok(alle.length >= 50, `only ${alle.length} fields found`);
-  const ohne = alle.filter(
+  const { d } = await ui();
+  const all = fields(d);
+  assert.ok(all.length >= 50, `only ${all.length} fields found`);
+  const without = all.filter(
     f => !f.labels?.length && !f.getAttribute('aria-label') && !f.getAttribute('aria-labelledby'),
   );
   assert.deepEqual(
-    ohne.map(f => f.id),
+    without.map(f => f.id),
     [],
   );
 });
 
 test('every for= points to an existing field, an enclosing label to its own', async () => {
-  const { d } = await oberflaeche();
+  const { d } = await ui();
   const labels = [...d.querySelectorAll('label[for]')];
   assert.ok(labels.length >= 30, `only ${labels.length} labels with for=`);
   assert.deepEqual(
@@ -85,8 +85,8 @@ test('every for= points to an existing field, an enclosing label to its own', as
   );
   // A click puts focus on the target of for=, not on the wrapped field.
   const fremd = labels.filter(l => {
-    const innen = l.querySelector('input, select, textarea');
-    return innen && l.control !== innen;
+    const inner = l.querySelector('input, select, textarea');
+    return inner && l.control !== inner;
   });
   assert.deepEqual(
     fremd.map(l => `${l.htmlFor} → ${l.querySelector('input, select, textarea').id}`),
@@ -95,7 +95,7 @@ test('every for= points to an existing field, an enclosing label to its own', as
 });
 
 test('modal overlays are marked up as dialogs', async () => {
-  const { d } = await oberflaeche();
+  const { d } = await ui();
   const modals = [...d.querySelectorAll('div.ovl[id$="modal"]')];
   assert.ok(modals.length >= 5, `Only ${modals.length} modals found`);
   assert.deepEqual(
@@ -112,16 +112,16 @@ test('the language is set on the <html> element', async () => {
   } finally {
     en.w.close();
   }
-  assert.equal((await oberflaeche()).d.documentElement.lang, 'de');
+  assert.equal((await ui()).d.documentElement.lang, 'de');
 });
 
 test('meaningful symbols in the finance table are explained', async () => {
   // The price status column is a single sign; without title (mouse) and aria-label (reader) unreadable.
   // The legend signs are aria-hidden: the sentence next to them explains them.
-  const { w, d } = await oberflaeche();
-  await reiter(w, 'finance');
+  const { w, d } = await ui();
+  await switchTab(w, 'finance');
   assert.ok(
-    await warte(() => d.querySelectorAll('#fin-tbl .pst:not([aria-hidden])').length >= 3),
+    await waitFor(() => d.querySelectorAll('#fin-tbl .pst:not([aria-hidden])').length >= 3),
     'Badges are missing',
   );
   const states = new Set();
@@ -137,13 +137,13 @@ test('meaningful symbols in the finance table are explained', async () => {
 });
 
 /** Visible here means: no ancestor with display:none (markup or script). */
-const sichtbar = el => {
+const visible = el => {
   for (let e = el; e; e = e.parentElement) if (e.style?.display === 'none' || e.hidden) return false;
   return true;
 };
 
 test('every visible control has a name that can be read aloud', async () => {
-  const { d } = await oberflaeche();
+  const { d } = await ui();
   const name = el =>
     el.getAttribute('aria-label') ||
     el.getAttribute('title') ||
@@ -153,21 +153,21 @@ test('every visible control has a name that can be read aloud', async () => {
       .join(' ') ||
     [...(el.labels || [])].map(l => l.textContent).join(' ') ||
     el.textContent;
-  const elements = [...d.querySelectorAll('button, a[href], select, textarea')].filter(sichtbar);
+  const elements = [...d.querySelectorAll('button, a[href], select, textarea')].filter(visible);
   assert.ok(elements.length >= 50, `Only ${elements.length} controls found`);
   // At least two letters — a symbol or a ✕ is not a name.
-  const ohne = elements
+  const without = elements
     .filter(el => !/[^\W\d_]{2,}/u.test(name(el) || ''))
     .map(el => `<${el.tagName.toLowerCase()}> ${el.id || el.className}`);
-  assert.deepEqual(ohne, []);
+  assert.deepEqual(without, []);
 });
 
 test('no aria-label that is only the identifier', async () => {
   // The value is read aloud — “mon-default-condition" helps nobody.
-  const { d } = await oberflaeche();
-  const mit = [...d.querySelectorAll('[aria-label]')].filter(sichtbar);
-  assert.ok(mit.length >= 20, `Only ${mit.length} aria-label found`);
-  const badOne = mit
+  const { d } = await ui();
+  const withIt = [...d.querySelectorAll('[aria-label]')].filter(visible);
+  assert.ok(withIt.length >= 20, `Only ${withIt.length} aria-label found`);
+  const badOne = withIt
     .filter(el => {
       const v = el.getAttribute('aria-label');
       return v === el.id || (!/\s/.test(v) && /[-_.]/.test(v) && v === v.toLowerCase());

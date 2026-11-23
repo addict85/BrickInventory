@@ -54,49 +54,49 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   ).id;
   await catalogSet(db, SET, { name: 'Hochladeprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);
-  const ordner = path.join(DATA_DIR, 'uploads', String(uid));
+  const dir = path.join(DATA_DIR, 'uploads', String(uid));
   // Start empty: the same account number also exists in the copies of the other test files.
-  fs.rmSync(ordner, { recursive: true, force: true });
+  fs.rmSync(dir, { recursive: true, force: true });
   const altQuota = process.env.UPLOAD_QUOTA_MB;
   t.after(async () => {
     if (altQuota === undefined) environment({ UPLOAD_QUOTA_MB: undefined });
     else environment({ UPLOAD_QUOTA_MB: altQuota });
-    fs.rmSync(ordner, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SET]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const uploadIt = async (inhalt, typ, name, set = SET) => {
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  const uploadIt = async (content, kind, name, set = SET) => {
     const form = new FormData();
-    form.append('file', new Blob([inhalt], { type: typ }), name);
+    form.append('file', new Blob([content], { type: kind }), name);
     const r = await fetch(`${base}/api/v2/sets/${set}/instructions/upload`, { method: 'POST', body: form });
     return { status: r.status, body: await r.json() };
   };
-  const dateien = () => (fs.existsSync(ordner) ? fs.readdirSync(ordner) : []);
+  const files = () => (fs.existsSync(dir) ? fs.readdirSync(dir) : []);
 
   await t.test('a real PDF', async () => {
     const r = await uploadIt(PDF, 'application/pdf', 'anleitung.pdf');
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(dateien().length, 1);
+    assert.equal(files().length, 1);
   });
 
   await t.test('readable only by the service, even in an older folder', async () => {
-    for (const o of [path.dirname(ordner), ordner]) fs.chmodSync(o, 0o755);
+    for (const o of [path.dirname(dir), dir]) fs.chmodSync(o, 0o755);
     const r = await uploadIt(PDF, 'application/pdf', 'zweite.pdf');
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const rechte = p => (fs.statSync(p).mode & 0o777).toString(8);
-    const datei = path.join(ordner, path.basename(r.body.instruction.url));
-    assert.deepEqual([rechte(datei), rechte(ordner), rechte(path.dirname(ordner))], ['600', '700', '700']);
-    fs.rmSync(datei);
+    const rights = p => (fs.statSync(p).mode & 0o777).toString(8);
+    const file = path.join(dir, path.basename(r.body.instruction.url));
+    assert.deepEqual([rights(file), rights(dir), rights(path.dirname(dir))], ['600', '700', '700']);
+    fs.rmSync(file);
   });
 
   await t.test('a text as a PDF', async () => {
     const r = await uploadIt(Buffer.from('<script>alert(1)</script>'), 'application/pdf', 'boese.pdf');
     assert.equal(r.status, 400, JSON.stringify(r.body));
     assert.equal(r.body.code, 'file_content_wrong');
-    assert.equal(dateien().length, 1, 'the rejected file is still in the folder');
+    assert.equal(files().length, 1, 'the rejected file is still in the folder');
   });
 
   await t.test('a PNG with a JPEG type', async () => {
@@ -108,33 +108,33 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   await t.test('above the quota', async () => {
     environment({ UPLOAD_QUOTA_MB: String(1 / 1024) }); // 1 KB
     const gross = Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]);
-    const vorher = dateien().length;
+    const prior = files().length;
     const r = await uploadIt(gross, 'application/pdf', 'gross.pdf');
     assert.equal(r.status, 413, JSON.stringify(r.body));
     assert.equal(r.body.code, 'upload_quota_full');
-    assert.equal(dateien().length, vorher, 'the file above the quota is still in the folder');
+    assert.equal(files().length, prior, 'the file above the quota is still in the folder');
   });
 
   await t.test('above the limit of all accounts together: 507, nothing stored', async st => {
     environment({ UPLOAD_QUOTA_MB: '1000', UPLOAD_TOTAL_MB: String(1 / 1024) }); // together 1 KB
     st.after(() => environment({ UPLOAD_TOTAL_MB: undefined }));
-    const vorher = dateien().length;
+    const prior = files().length;
     const r = await uploadIt(Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]), 'application/pdf', 'gesamt.pdf');
     assert.deepEqual([r.status, r.body.code], [507, 'upload_total_full'], JSON.stringify(r.body));
     assert.match(r.body.error, /alle Konten|all accounts/);
-    assert.equal(dateien().length, vorher);
+    assert.equal(files().length, prior);
     const form = new FormData();
     form.append('file', new Blob([PDF, Buffer.alloc(2048, 0x20)], { type: 'application/pdf' }), 'gutschein.pdf');
     const g = await fetch(`${base}/api/v2/vouchers/pdf`, { method: 'POST', body: form });
     assert.deepEqual([g.status, (await g.json()).code], [507, 'upload_total_full'], 'Gutschein-PDF');
     // Already at the header: a response although the content never comes.
-    const upfront = await new Promise((fertig, fehl) => {
+    const upfront = await new Promise((done, fail) => {
       const a = require('node:http').request(
         `${base}/api/v2/sets/${SET}/instructions/upload`,
         { method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': '4096' } },
         response => {
           response.resume();
-          fertig(response.statusCode);
+          done(response.statusCode);
           a.destroy();
         },
       );
@@ -142,7 +142,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
       a.write('--x\r\n');
       setTimeout(() => {
         a.destroy();
-        fehl(new Error('no response as long as the content is missing'));
+        fail(new Error('no response as long as the content is missing'));
       }, 3000);
     });
     assert.equal(upfront, 507);
@@ -156,8 +156,8 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     // server answers anyway, it decided before reading.
     environment({ UPLOAD_QUOTA_MB: '1' });
     const http = require('node:http');
-    const status = await new Promise((fertig, fehl) => {
-      const anfrage = http.request(
+    const status = await new Promise((done, fail) => {
+      const request = http.request(
         `${base}/api/v2/sets/${SET}/instructions/upload`,
         {
           method: 'POST',
@@ -165,15 +165,15 @@ test('upload an instruction', { concurrency: 1 }, async t => {
         },
         response => {
           response.resume();
-          fertig(response.statusCode);
-          anfrage.destroy();
+          done(response.statusCode);
+          request.destroy();
         },
       );
-      anfrage.on('error', () => {});
-      anfrage.write('--x\r\n');
+      request.on('error', () => {});
+      request.write('--x\r\n');
       setTimeout(() => {
-        anfrage.destroy();
-        fehl(new Error('no response as long as the content is missing'));
+        request.destroy();
+        fail(new Error('no response as long as the content is missing'));
       }, 3000);
     });
     assert.equal(status, 413);
@@ -181,9 +181,9 @@ test('upload an instruction', { concurrency: 1 }, async t => {
 
   await t.test('for a set the account does not have', async () => {
     environment({ UPLOAD_QUOTA_MB: undefined });
-    const vorher = dateien().length;
+    const prior = files().length;
     const r = await uploadIt(PDF, 'application/pdf', 'fremd.pdf', '99074-1');
     assert.equal(r.status, 404, JSON.stringify(r.body));
-    assert.equal(dateien().length, vorher, 'the file for the foreign set is still in the folder');
+    assert.equal(files().length, prior, 'the file for the foreign set is still in the folder');
   });
 });

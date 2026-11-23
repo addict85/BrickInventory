@@ -11,9 +11,9 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
-const ANTWORT = {
+const ANSWER = {
   success: true,
   done: false,
   configured: false,
@@ -31,9 +31,9 @@ const ANTWORT = {
 };
 
 test('the state shows ready or missing per check', async () => {
-  const { w, d, ruhig } = await openUi({ '/v2/setup/state': ANTWORT }, { loggedIn: false });
+  const { w, d, settle } = await openUi({ '/v2/setup/state': ANSWER }, { loggedIn: false });
   try {
-    await ruhig();
+    await settle();
     // Without a stored source the check belongs to the initial setup and stands there.
     assert.equal(d.getElementById('btn-setup-check').hidden, false, 'without a source the check button stays');
     // First-time users must read at the button what is checked.
@@ -43,8 +43,8 @@ test('the state shows ready or missing per check', async () => {
     assert.match(hint.textContent, /Datenbank, HTTPS, erstes Konto und Rebrickable-Schlüssel/);
     assert.equal(d.getElementById('btn-setup-check').getAttribute('aria-describedby'), hint.id);
     d.getElementById('btn-setup-check').click();
-    await warte(() => d.getElementById('setup-status-modal').classList.contains('open'));
-    await warte(() => d.querySelectorAll('#es-list .es-row').length === 6);
+    await waitFor(() => d.getElementById('setup-status-modal').classList.contains('open'));
+    await waitFor(() => d.querySelectorAll('#es-list .es-row').length === 6);
 
     assert.equal(d.querySelectorAll('#es-list .es-row').length, 6, 'every check needs a row');
     assert.ok(d.getElementById('es-database').classList.contains('ok'), 'ready is not marked as such');
@@ -61,10 +61,10 @@ test('the state shows ready or missing per check', async () => {
 });
 
 test('with a stored source the check button disappears', async () => {
-  const response = { ...ANTWORT, configured: true };
-  const { w, d, ruhig } = await openUi({ '/v2/setup/state': response }, { loggedIn: false });
+  const response = { ...ANSWER, configured: true };
+  const { w, d, settle } = await openUi({ '/v2/setup/state': response }, { loggedIn: false });
   try {
-    await ruhig();
+    await settle();
     assert.equal(d.getElementById('btn-setup-check').hidden, true, 'with a source it disappears');
     assert.equal(d.getElementById('setup-check-hint').hidden, true, 'with a source the hint disappears too');
   } finally {
@@ -73,11 +73,11 @@ test('with a stored source the check button disappears', async () => {
 });
 
 test('after completion the message stays, the checklist disappears', async () => {
-  const response = { ...ANTWORT, done: true, steps: [] };
+  const response = { ...ANSWER, done: true, steps: [] };
   const { w, d } = await openUi({ '/v2/setup/state': response }, { loggedIn: false });
   try {
     d.getElementById('btn-setup-check').click();
-    await warte(() => d.getElementById('es-banner').textContent.includes('abgeschlossen'));
+    await waitFor(() => d.getElementById('es-banner').textContent.includes('abgeschlossen'));
     assert.equal(d.getElementById('es-list').hidden, true, 'after completion no list');
     assert.ok(d.getElementById('es-banner').classList.contains('done'));
   } finally {
@@ -86,10 +86,12 @@ test('after completion the message stays, the checklist disappears', async () =>
 });
 
 test('English: button and hint', async () => {
-  const { w, d, ruhig } = await openUi({ '/v2/setup/state': ANTWORT }, { loggedIn: false, language: 'en' });
+  const { w, d, settle } = await openUi({ '/v2/setup/state': ANSWER }, { loggedIn: false, language: 'en' });
   try {
-    await ruhig();
-    await warte(() => d.getElementById('btn-setup-check').textContent.trim() === 'What is still missing in the setup?');
+    await settle();
+    await waitFor(
+      () => d.getElementById('btn-setup-check').textContent.trim() === 'What is still missing in the setup?',
+    );
     assert.match(
       d.getElementById('setup-check-hint').textContent,
       /database, HTTPS, first account and Rebrickable key/,

@@ -10,9 +10,9 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte, ANMELDUNG } = require('./helpers/ui');
+const { openUi, switchTab, waitFor, SIGNED_IN } = require('./helpers/ui');
 
-const teil = {
+const part = {
   id: 1,
   user_id: 1,
   part_number: '3001',
@@ -25,7 +25,7 @@ const teil = {
   value_total: 1,
   acquisitions: [],
 };
-const figur = {
+const minifig = {
   id: 2,
   user_id: 1,
   fig_number: 'fig-000002',
@@ -38,21 +38,21 @@ const figur = {
 };
 
 // Like the server: with a search (that hits nothing) the list stays empty.
-const filtered = (schluessel, entryRow) => url => ({
+const filtered = (key, entryRow) => url => ({
   success: true,
-  [schluessel]: /[?&]search=/.test(String(url)) ? [] : [entryRow],
+  [key]: /[?&]search=/.test(String(url)) ? [] : [entryRow],
 });
 
 async function openIt() {
   const o = await openUi({
-    '/v2/finance/parts-valuation': { ...ANMELDUNG['/v2/finance/parts-valuation'], parts: [teil], total_value: '1.00' },
+    '/v2/finance/parts-valuation': { ...SIGNED_IN['/v2/finance/parts-valuation'], parts: [part], total_value: '1.00' },
     '/v2/finance/minifigs-valuation': {
-      ...ANMELDUNG['/v2/finance/minifigs-valuation'],
-      figs: [figur],
+      ...SIGNED_IN['/v2/finance/minifigs-valuation'],
+      figs: [minifig],
       total_value: '3.00',
     },
-    '/v2/parts/manual': filtered('parts', teil),
-    '/v2/minifigs/manual': filtered('figs', figur),
+    '/v2/parts/manual': filtered('parts', part),
+    '/v2/minifigs/manual': filtered('figs', minifig),
   });
   return o;
 }
@@ -63,33 +63,33 @@ async function clickIt(o, kind) {
   assert.ok(row, `no ${kind} row in the finance table`);
   const m = o.d.getElementById('man-detail-modal');
   row.querySelector('td.fin-value').click();
-  const open = await warte(() => m.classList.contains('open'), 2000);
-  const titel = o.d.getElementById('man-detail-tit').textContent;
+  const open = await waitFor(() => m.classList.contains('open'), 2000);
+  const title = o.d.getElementById('man-detail-tit').textContent;
   if (open) m.querySelector('[data-click="closeManDetail"]').click();
-  await o.ruhig();
-  return open ? titel : null;
+  await o.settle();
+  return open ? title : null;
 }
 
-for (const [fall, suche] of [
+for (const [fall, search] of [
   ['ohne Filter', false],
   ['mit Suche in den Reitern', true],
 ]) {
   test(`finances: part and figure row open the detail (${fall})`, async () => {
     const o = await openIt();
     try {
-      if (suche) {
+      if (search) {
         o.d.getElementById('parts-search').value = 'Plate';
         o.d.getElementById('fig-search').value = 'Marty';
       }
-      await reiter(o.w, 'finance');
+      await switchTab(o.w, 'finance');
       assert.ok(
-        await warte(() => o.d.querySelectorAll('#fin-tbl tr[data-click="openManDetail"]').length === 2, 3000),
+        await waitFor(() => o.d.querySelectorAll('#fin-tbl tr[data-click="openManDetail"]').length === 2, 3000),
         'Test data: one part row and one minifig row each',
       );
-      await o.ruhig();
-      const titel = { teil: await clickIt(o, 'parts'), figur: await clickIt(o, 'figs') };
-      assert.deepEqual(titel, { teil: 'Brick 2 x 4', figur: 'Doc Brown' }, 'every row opens its own detail');
-      const urls = o.aufrufe.map(a => a.url);
+      await o.settle();
+      const title = { teil: await clickIt(o, 'parts'), figur: await clickIt(o, 'figs') };
+      assert.deepEqual(title, { teil: 'Brick 2 x 4', figur: 'Doc Brown' }, 'every row opens its own detail');
+      const urls = o.calls.map(a => a.url);
       assert.ok(
         urls.some(u => u.includes('/v2/parts/3001/4/acquisitions')),
         'Purchase prices of the part loaded',

@@ -18,7 +18,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { checkResponse } = require('./helpers/ui');
-const { warte: takt } = require('./helpers/time');
+const { sleep: tick } = require('./helpers/time');
 
 const ROOT = path.join(__dirname, '..');
 const SCRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 'utf8');
@@ -38,10 +38,10 @@ function openIt() {
     { runScripts: 'outside-only', url: 'http://localhost/' },
   );
   const w = dom.window;
-  const aufrufe = [];
+  const calls = [];
   w.fetch = async (url, o = {}) => {
-    aufrufe.push({ url: String(url), headers: o.headers || {}, credentials: o.credentials });
-    const daten = checkResponse(o.method || 'GET', url, {
+    calls.push({ url: String(url), headers: o.headers || {}, credentials: o.credentials });
+    const data = checkResponse(o.method || 'GET', url, {
       success: true,
       logs: [
         { level: 'info', message: 'Start fertig', logged_at: '2026-11-05T10:00:00Z' },
@@ -53,27 +53,27 @@ function openIt() {
         },
       ],
     });
-    return { ok: true, json: async () => daten };
+    return { ok: true, json: async () => data };
   };
   let alarm = 0;
   w.alert = () => {
     alarm++;
   };
   w.eval(SCRIPT);
-  return { w, d: w.document, aufrufe, alarm: () => alarm };
+  return { w, d: w.document, calls, alarm: () => alarm };
 }
 
 test('loads with the session cookie and only shows the chosen levels, escaped', async () => {
-  const { w, d, aufrufe } = openIt();
+  const { w, d, calls } = openIt();
   try {
-    await takt(10);
-    assert.equal(aufrufe.length, 1);
-    assert.match(aufrufe[0].url, /\/api\/v2\/admin\/logs\?minutes=15$/);
-    assert.equal(aufrufe[0].credentials, 'same-origin');
-    assert.equal(aufrufe[0].headers.Authorization, undefined, 'no token anymore');
-    const zeilen = d.querySelectorAll('#log-wrap .ll');
-    assert.equal(zeilen.length, 2, 'info is hidden at the start');
-    assert.match(zeilen[0].innerHTML, /&lt;b&gt;kaputt/, 'Message text is escaped');
+    await tick(10);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /\/api\/v2\/admin\/logs\?minutes=15$/);
+    assert.equal(calls[0].credentials, 'same-origin');
+    assert.equal(calls[0].headers.Authorization, undefined, 'no token anymore');
+    const lines = d.querySelectorAll('#log-wrap .ll');
+    assert.equal(lines.length, 2, 'info is hidden at the start');
+    assert.match(lines[0].innerHTML, /&lt;b&gt;kaputt/, 'Message text is escaped');
     assert.equal(d.getElementById('status').textContent, '2 / 3 Einträge');
   } finally {
     w.close();
@@ -83,12 +83,12 @@ test('loads with the session cookie and only shows the chosen levels, escaped', 
 test('switch on level info and filter the search', async () => {
   const { w, d } = openIt();
   try {
-    await takt(10);
+    await tick(10);
     d.getElementById('btn-info').click();
     assert.equal(d.querySelectorAll('#log-wrap .ll').length, 3, 'Switch on level info');
-    const suche = d.getElementById('search');
-    suche.value = 'start fertig';
-    suche.dispatchEvent(new w.Event('input'));
+    const search = d.getElementById('search');
+    search.value = 'start fertig';
+    search.dispatchEvent(new w.Event('input'));
     assert.equal(d.querySelectorAll('#log-wrap .ll').length, 1);
     assert.match(d.querySelector('#log-wrap mark').textContent, /Start/);
   } finally {
@@ -99,7 +99,7 @@ test('switch on level info and filter the search', async () => {
 test('a foreign name stays ineffective', async () => {
   const { w, d, alarm } = openIt();
   try {
-    await takt(10);
+    await tick(10);
     d.getElementById('fremd').click();
     assert.equal(alarm(), 0, 'data-click="alert" must not reach window.alert');
     assert.equal(typeof w.loadLogs, 'undefined', 'The handlers should not be global');
@@ -111,15 +111,15 @@ test('a foreign name stays ineffective', async () => {
 test('level translated, stack trace collapsed, the search expands it', async () => {
   const { w, d } = openIt();
   try {
-    await takt(10);
-    const stapel = [...d.querySelectorAll('#log-wrap .ll')].find(z => z.textContent.includes('Abbruch'));
-    assert.equal(stapel.querySelector('.lv').textContent, 'Error');
-    const auf = stapel.querySelector('details');
-    assert.ok(auf && !auf.open, 'Stack trace not collapsed');
-    assert.match(auf.querySelector('summary').textContent, /^Abbruch \(2 weitere Zeilen\)$/);
-    const suche = d.getElementById('search');
-    suche.value = 'b.js';
-    suche.dispatchEvent(new w.Event('input'));
+    await tick(10);
+    const stack = [...d.querySelectorAll('#log-wrap .ll')].find(z => z.textContent.includes('Abbruch'));
+    assert.equal(stack.querySelector('.lv').textContent, 'Error');
+    const opened = stack.querySelector('details');
+    assert.ok(opened && !opened.open, 'Stack trace not collapsed');
+    assert.match(opened.querySelector('summary').textContent, /^Abbruch \(2 weitere Zeilen\)$/);
+    const search = d.getElementById('search');
+    search.value = 'b.js';
+    search.dispatchEvent(new w.Event('input'));
     assert.equal(d.querySelector('#log-wrap details')?.open, true, 'Match in the stack trace stays hidden');
   } finally {
     w.close();

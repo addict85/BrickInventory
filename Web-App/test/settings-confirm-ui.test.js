@@ -11,11 +11,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
-const posts = aufrufe =>
-  aufrufe.filter(a => a.method === 'POST' && /\/v2\/settings$/.test(a.url)).map(a => JSON.parse(a.body));
+const posts = calls =>
+  calls.filter(a => a.method === 'POST' && /\/v2\/settings$/.test(a.url)).map(a => JSON.parse(a.body));
 /** The server demands the password until it stands in the body. */
 const SERVER = {
   '/v2/settings': (_url, o) =>
@@ -30,17 +30,17 @@ const SERVER = {
 };
 
 test('registration asks for the password', async () => {
-  const { w, d, aufrufe } = await openUi(SERVER);
+  const { w, d, calls } = await openUi(SERVER);
   try {
-    await reiter(w, 'settings');
+    await switchTab(w, 'settings');
     const field = d.getElementById('reg-enabled');
     field.checked = true;
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => openDialog(d)), 'no dialog');
+    assert.ok(await waitFor(() => openDialog(d)), 'no dialog');
     d.getElementById('cd-pw').value = 'Chef-Passwort-1';
     d.getElementById('cd-confirm').click();
-    await warte(() => posts(aufrufe).length === 2);
-    assert.deepEqual(posts(aufrufe), [
+    await waitFor(() => posts(calls).length === 2);
+    assert.deepEqual(posts(calls), [
       { registration_enabled: '1' },
       { registration_enabled: '1', admin_password: 'Chef-Passwort-1' },
     ]);
@@ -50,35 +50,35 @@ test('registration asks for the password', async () => {
 });
 
 test('cancel takes back the checkmark', async () => {
-  const { w, d, aufrufe } = await openUi(SERVER);
+  const { w, d, calls } = await openUi(SERVER);
   try {
-    await reiter(w, 'settings');
+    await switchTab(w, 'settings');
     const field = d.getElementById('reg-enabled');
     field.checked = true;
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => openDialog(d)), 'no dialog');
+    assert.ok(await waitFor(() => openDialog(d)), 'no dialog');
     d.getElementById('cd-cancel').click();
-    await warte(() => !openDialog(d));
-    await warte(() => !field.checked, 500);
+    await waitFor(() => !openDialog(d));
+    await waitFor(() => !field.checked, 500);
     assert.equal(field.checked, false, 'the tick stays after cancelling');
-    assert.equal(posts(aufrufe).length, 1);
+    assert.equal(posts(calls).length, 1);
   } finally {
     w.close();
   }
 });
 
 test('the API key asks for the password', async () => {
-  const { w, d, aufrufe } = await openUi(SERVER);
+  const { w, d, calls } = await openUi(SERVER);
   try {
-    await reiter(w, 'settings');
+    await switchTab(w, 'settings');
     d.getElementById('rb-key').value = 'neuer-schluessel';
     d.getElementById('btn-sav-rb').click();
-    assert.ok(await warte(() => openDialog(d)), 'no dialog');
+    assert.ok(await waitFor(() => openDialog(d)), 'no dialog');
     d.getElementById('cd-pw').value = 'Chef-Passwort-1';
     d.getElementById('cd-confirm').click();
-    await warte(() => posts(aufrufe).length === 2);
-    assert.equal(posts(aufrufe)[1].admin_password, 'Chef-Passwort-1');
-    assert.equal(posts(aufrufe)[1].rebrickable_api_key, 'neuer-schluessel');
+    await waitFor(() => posts(calls).length === 2);
+    assert.equal(posts(calls)[1].admin_password, 'Chef-Passwort-1');
+    assert.equal(posts(calls)[1].rebrickable_api_key, 'neuer-schluessel');
   } finally {
     w.close();
   }

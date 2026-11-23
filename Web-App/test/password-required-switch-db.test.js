@@ -31,7 +31,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `pflicht_${process.pid}`,
   PASS = 'start-Passwort-1',
-  NEU = 'eigenes-Passwort-2';
+  NEW = 'eigenes-Passwort-2';
 
 test('start password: change it first, then everything else', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -73,9 +73,9 @@ test('start password: change it first, then everything else', { concurrency: 1 }
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%konto:${uid}%`]);
     await db.pool.end().catch(() => {});
   });
-  /** @param {string} weg @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
-  const callFn = async (weg, { body, cookie, token } = {}) => {
-    const r = await fetch(basis + weg, {
+  /** @param {string} route @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
+  const callFn = async (route, { body, cookie, token } = {}) => {
+    const r = await fetch(basis + route, {
       method: body ? 'POST' : 'GET',
       headers: {
         'content-type': 'application/json',
@@ -91,12 +91,12 @@ test('start password: change it first, then everything else', { concurrency: 1 }
     };
   };
 
-  const anmeldung = await callFn('/auth/login', { body: { username: NAME, password: PASS } });
-  assert.equal(anmeldung.status, 200, JSON.stringify(anmeldung.body));
-  assert.equal(anmeldung.body.user.mustChangePassword, true);
+  const login = await callFn('/auth/login', { body: { username: NAME, password: PASS } });
+  assert.equal(login.status, 200, JSON.stringify(login.body));
+  assert.equal(login.body.user.mustChangePassword, true);
   const {
     body: { token },
-  } = anmeldung;
+  } = login;
   const { cookie } = await callFn('/auth/login', { body: { username: NAME, password: PASS, without_token: true } });
 
   await t.test('session and token only get as far as the change', async () => {
@@ -119,13 +119,13 @@ test('start password: change it first, then everything else', { concurrency: 1 }
   });
 
   await t.test('the change itself works, afterwards (as an admin with a second factor) everything', async () => {
-    const w = await callFn('/auth/change-password', { cookie, body: { current: PASS, newPassword: NEU } });
+    const w = await callFn('/auth/change-password', { cookie, body: { current: PASS, newPassword: NEW } });
     assert.equal(w.status, 200, JSON.stringify(w.body));
-    const neu = w.cookie ?? cookie;
+    const fresh = w.cookie ?? cookie;
     // Since 04.11.2026 admin rights require a code generator afterwards.
-    assert.equal((await callFn('/settings/tokens', { cookie: neu })).body.code, 'second_factor_mandatory');
+    assert.equal((await callFn('/settings/tokens', { cookie: fresh })).body.code, 'second_factor_mandatory');
     await require('./helpers/admin').adminWithFactor(_req, uid);
-    assert.equal((await callFn('/settings/tokens', { cookie: neu })).status, 200);
-    assert.equal((await callFn('/auth/me', { cookie: neu })).body.user.mustChangePassword, false);
+    assert.equal((await callFn('/settings/tokens', { cookie: fresh })).status, 200);
+    assert.equal((await callFn('/auth/me', { cookie: fresh })).body.user.mustChangePassword, false);
   });
 });

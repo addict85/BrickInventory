@@ -17,7 +17,7 @@ const { noDb } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
-async function erreichbar() {
+async function reachable() {
   try {
     await db.get('SELECT 1');
     return true;
@@ -29,7 +29,7 @@ async function erreichbar() {
 after(() => db.pool.end());
 
 test('every list with a badge in the client carries it in the response too', async t => {
-  if (!(await erreichbar())) {
+  if (!(await reachable())) {
     noDb(t);
     return;
   }
@@ -48,9 +48,9 @@ test('every list with a badge in the client carries it in the response too', asy
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
   const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  const haupt = await id('haupt'),
+  const main = await id('haupt'),
     kind = await id('kind');
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [main, kind]);
 
   // ONLY the sub-account owns something. That makes the badge meaningful:
   // if the own account stands there, the assignment is wrong; if it is missing,
@@ -66,7 +66,7 @@ test('every list with a badge in the client carries it in the response too', asy
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const uids = await scopeIds(haupt, 'all');
+  const uids = await scopeIds(main, 'all');
   const S = require('./helpers/sources').areaPage('sets');
   const P = _req('src/parts/queries.js');
   const M = _req('src/minifigs/queries.js');
@@ -82,9 +82,9 @@ test('every list with a badge in the client carries it in the response too', asy
   ];
 
   for (const [name, hole] of listen) {
-    const zeilen = await hole();
-    assert.ok(zeilen?.length, `${name}: precondition returns no row — then the rest checks nothing`);
-    for (const z of zeilen) {
+    const lines = await hole();
+    assert.ok(lines?.length, `${name}: precondition returns no row — then the rest checks nothing`);
+    for (const z of lines) {
       assert.ok(
         Array.isArray(z.owners) && z.owners.length === 1,
         `${name}: no owner badge in the response. Both clients draw it ` +
@@ -112,7 +112,7 @@ test('every list with a badge in the client carries it in the response too', asy
 });
 
 test('in a single account there is no badge', async t => {
-  if (!(await erreichbar())) {
+  if (!(await reachable())) {
     noDb(t);
     return;
   }
@@ -129,32 +129,32 @@ test('in a single account there is no badge', async t => {
     }
   }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('allein','x')`);
-  const allein = (await db.get(`SELECT id FROM users WHERE username='allein'`)).id;
-  await holdsSet(db, allein, '21318-1', 1);
-  await holdsMinifig(db, allein, 'sw0003', { setNumber: '21318-1', quantity: 1 });
-  await holdsPart(db, allein, '3021', { quantity: 2, colorId: 0 });
-  await holdsMinifig(db, allein, 'sw0004', { quantity: 1 });
+  const alone = (await db.get(`SELECT id FROM users WHERE username='allein'`)).id;
+  await holdsSet(db, alone, '21318-1', 1);
+  await holdsMinifig(db, alone, 'sw0003', { setNumber: '21318-1', quantity: 1 });
+  await holdsPart(db, alone, '3021', { quantity: 2, colorId: 0 });
+  await holdsMinifig(db, alone, 'sw0004', { quantity: 1 });
 
   const { scopeIds } = {
     ..._req('src/household/rules.js'),
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const uids = await scopeIds(allein, 'all');
+  const uids = await scopeIds(alone, 'all');
   const S = require('./helpers/sources').areaPage('sets');
   const M = _req('src/minifigs/queries.js');
   const P = _req('src/parts/queries.js');
 
   // „mine" on every tile would only be noise — and additional fields in
   // every response. The same decision as for the sets all along.
-  for (const [name, zeilen] of [
+  for (const [name, lines] of [
     ['/v2/sets', (await S.readSets(uids, { page_size: 60 })).sets],
     ['/v2/minifigs', (await M.readMinifigs(uids, { source: 'set' })).figs],
-    ['/v2/parts/manual', await P.manualPartsList(uids, allein)],
-    ['/v2/minifigs/manual', await M.readManualMinifigs(uids, allein)],
+    ['/v2/parts/manual', await P.manualPartsList(uids, alone)],
+    ['/v2/minifigs/manual', await M.readManualMinifigs(uids, alone)],
   ]) {
-    assert.ok(zeilen?.length, `${name}: precondition returns no row`);
-    for (const z of zeilen) {
+    assert.ok(lines?.length, `${name}: precondition returns no row`);
+    for (const z of lines) {
       assert.equal(z.owners, undefined, `${name}: a badge does not belong in a single account`);
       assert.equal(z.owner_ids, undefined, `${name}: owner_ids does not belong in a single account`);
     }

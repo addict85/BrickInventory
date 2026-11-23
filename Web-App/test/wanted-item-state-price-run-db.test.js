@@ -35,7 +35,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   // Own users per process — the test runs alongside others on the same DB.
-  const anlegen = async suffix =>
+  const create = async suffix =>
     (
       await db.get(
         `INSERT INTO users (username, password_hash) VALUES ($1,'x')
@@ -44,8 +44,8 @@ test('price run: the condition of a wishlist item is that of the user', { concur
         [`wzp_${process.pid}_${suffix}`],
       )
     ).id;
-  const a = await anlegen('a');
-  const b = await anlegen('b');
+  const a = await create('a');
+  const b = await create('b');
 
   try {
     // ── Two users, the SAME set, different wishlist items ─────────────────────

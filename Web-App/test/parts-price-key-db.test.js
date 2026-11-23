@@ -28,16 +28,16 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
   }
 
   const p = String(process.pid).slice(-5);
-  const NUTZER = `pks_${p}`;
+  const USER = `pks_${p}`;
   const RB = `pt${p}`; // this is how the part stands in the collection
   const BL = `pt${p}bl`; // this is how BrickLink knows it
-  const FARBE = 0; // 0 is not translated (resolveBlColorId)
+  const COLOR = 0; // 0 is not translated (resolveBlColorId)
   const RB2 = `qt${p}`; // second part: NO mapping AT ALL
   const CURRENCY = 'CHF';
 
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   // Account currency like the queried one: another one would be converted (migration 0077).
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, CURRENCY]);
   // Since migration 0037 the mapping stands in bl_mapping (type, rb_id, bl_id).
@@ -54,36 +54,36 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
        VALUES ($1,$2,'N',$3,12.00,12.00,NOW())
        ON CONFLICT (part_number,color_id,condition,currency_code)
        DO UPDATE SET avg_price=12.00, qty_avg_price=12.00, fetched_at=NOW()`,
-      [BL, FARBE, CURRENCY],
+      [BL, COLOR, CURRENCY],
     );
 
-    const preis = await fetchPartPrice(RB, FARBE, 'N', CURRENCY, 24);
+    const price = await fetchPartPrice(RB, COLOR, 'N', CURRENCY, 24);
     assert.equal(
-      Number(preis?.avg_price),
+      Number(price?.avg_price),
       12,
-      `fetchPartPrice returned ${JSON.stringify(preis)} instead of the cached 12. ` +
+      `fetchPartPrice returned ${JSON.stringify(price)} instead of the cached 12. ` +
         'The entry is stored under the BrickLink number; whoever calls with the Rebrickable number ' +
         'otherwise creates a second row for the same item and asks ' +
         'BrickLink again.',
     );
-    assert.equal(preis?.from_cache, true, 'The value did not come from the cache');
+    assert.equal(price?.from_cache, true, 'The value did not come from the cache');
 
     // ── 2. The history finds BOTH numbers ───────────────────────────────
     // Acquisition under the user's number — that is how he captured the part.
     await db.run(
       `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
        VALUES ($1,$2,$3,1,5.00,'N')`,
-      [uid, RB, FARBE],
+      [uid, RB, COLOR],
     );
     // An OLD history point under the Rebrickable number — that is how the
     // parts view wrote it until now.
     await db.run(
       `INSERT INTO part_price_history (part_number,color_id,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,$2,'N',$3,11.00,11.00)`,
-      [RB, FARBE, CURRENCY],
+      [RB, COLOR, CURRENCY],
     );
 
-    const v = await priceHistoryPart(uid, RB, FARBE, CURRENCY);
+    const v = await priceHistoryPart(uid, RB, COLOR, CURRENCY);
     assert.ok(
       v.history_new.length >= 1,
       'The history is empty. Points under the Rebrickable number are legacy data — ' +
@@ -104,16 +104,16 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
     );
 
     // 3. WITHOUT a mapping the Rebrickable number applies
-    await holdsPart(db, uid, RB2, { quantity: 1, colorId: FARBE });
+    await holdsPart(db, uid, RB2, { quantity: 1, colorId: COLOR });
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
        VALUES ($1,$2,'N',$3,15.00,15.00,NOW())
        ON CONFLICT (part_number,color_id,condition,currency_code)
        DO UPDATE SET avg_price=15.00, qty_avg_price=15.00, fetched_at=NOW()`,
-      [RB2, FARBE, CURRENCY],
+      [RB2, COLOR, CURRENCY],
     );
 
-    const price2 = await fetchPartPrice(RB2, FARBE, 'N', CURRENCY, 24);
+    const price2 = await fetchPartPrice(RB2, COLOR, 'N', CURRENCY, 24);
     assert.equal(
       Number(price2?.avg_price),
       15,

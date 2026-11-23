@@ -76,15 +76,15 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   const TAG = '2026-10-21';
 
   /** The entries of a part, prepared for comparison. */
-  const zeilen = async nr =>
+  const lines = async nr =>
     (
       await db.all(
-        `SELECT quantity, unit_price::float AS preis, COALESCE(condition,'N') AS condition
+        `SELECT quantity, unit_price::float AS price, COALESCE(condition,'N') AS condition
        FROM part_acquisitions WHERE user_id=$1 AND part_number=$2
       ORDER BY condition`,
         [UID, nr],
       )
-    ).map(z => ({ quantity: Number(z.quantity), preis: z.preis, condition: z.condition }));
+    ).map(z => ({ quantity: Number(z.quantity), price: z.price, condition: z.condition }));
 
   await t.test('two conditions, two rows', async () => {
     await addPurchaseAtTag('part', UID, ['3001', 4], {
@@ -99,7 +99,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
       condition: 'U',
       createdAt: TAG,
     });
-    const z = await zeilen('3001');
+    const z = await lines('3001');
     assert.equal(
       z.length,
       2,
@@ -110,10 +110,10 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
 
   await t.test('every row keeps its own price', async () => {
     assert.deepEqual(
-      await zeilen('3001'),
+      await lines('3001'),
       [
-        { quantity: 3, preis: 1.5, condition: 'N' },
-        { quantity: 2, preis: 0.5, condition: 'U' },
+        { quantity: 3, price: 1.5, condition: 'N' },
+        { quantity: 2, price: 0.5, condition: 'U' },
       ],
       'The blended price 1.10 would be the old calculation over two different purchases',
     );
@@ -141,10 +141,10 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
       createdAt: TAG,
     });
     assert.deepEqual(
-      (await zeilen('3002')).sort((x, y) => x.preis - y.preis),
+      (await lines('3002')).sort((x, y) => x.price - y.price),
       [
-        { quantity: 3, preis: 2, condition: 'N' },
-        { quantity: 2, preis: 4, condition: 'N' },
+        { quantity: 3, price: 2, condition: 'N' },
+        { quantity: 2, price: 4, condition: 'N' },
       ],
       'The single purchases must remain reconstructible — no blended price 3',
     );
@@ -157,10 +157,10 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
         addPurchaseAtTag('part', UID, ['3004', 1], { quantity: 1, price: 1.0, condition: 'N', createdAt: TAG }),
       ),
     );
-    const z = await zeilen('3004');
+    const z = await lines('3004');
     assert.deepEqual(
       z,
-      [{ quantity: 12, preis: 1, condition: 'N' }],
+      [{ quantity: 12, price: 1, condition: 'N' }],
       `Instead of 12, ${z.reduce((s, r) => s + r.quantity, 0)} arrived: ${JSON.stringify(z)}`,
     );
   });
@@ -227,13 +227,13 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
        VALUES ($1,'3003',4,1,'U',$2::date)`,
       [UID, TAG],
     );
-    const doppelt = db.run(
+    const twice = db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, condition, created_at)
        VALUES ($1,'3003',4,1,'N',$2::date)`,
       [UID, TAG],
     );
     await assert.rejects(
-      doppelt,
+      twice,
       /duplicate key|unique/i,
       'The database must reject a THIRD row with an already used condition ' +
         '— otherwise the index has become too wide',

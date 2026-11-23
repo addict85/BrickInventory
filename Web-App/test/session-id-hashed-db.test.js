@@ -28,7 +28,7 @@ const bcrypt = require('bcryptjs');
 const signature = require(path.join(__dirname, '..', 'node_modules', 'cookie-signature'));
 const db = testData();
 
-const GEHEIM = 'h'.repeat(48);
+const SECRET = 'h'.repeat(48);
 const { sessionDigest } = _req('src/account/sessionStore.js');
 const MIGRATION = fs.readFileSync(
   path.join(__dirname, '..', 'db', 'migrations', '0125-session-ids-hashed.sql'),
@@ -52,12 +52,12 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
     await db.pool.end().catch(() => {});
   });
 
-  const dienste = testServices();
+  const services = testServices();
   const app = _req('startup/app.js').buildApp({
     pool: db.systemPool,
     config: _req('src/infra/config.js').config(),
-    sessionSecret: GEHEIM,
-    services: dienste,
+    sessionSecret: SECRET,
+    services: services,
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
@@ -70,55 +70,55 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
     });
     return { status: r.status, body: await r.json().catch(() => null), cookie: r.headers.get('set-cookie') };
   };
-  const anmelden = async () => {
+  const signIn = async () => {
     const r = await callFn('/api/v2/auth/login', null, { username: NAME, password: PASS, without_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return (r.cookie ?? '').split(';')[0];
   };
-  const idFrom = cookie => signature.unsign(decodeURIComponent(cookie.split('=')[1]).slice(2), GEHEIM);
-  const keks = sid => `bim.sid=${encodeURIComponent(`s:${signature.sign(sid, GEHEIM)}`)}`;
-  const angemeldet = async cookie => (await callFn('/api/v2/auth/me', cookie)).body?.loggedIn === true;
-  const zeilen = async () =>
+  const idFrom = cookie => signature.unsign(decodeURIComponent(cookie.split('=')[1]).slice(2), SECRET);
+  const keks = sid => `bim.sid=${encodeURIComponent(`s:${signature.sign(sid, SECRET)}`)}`;
+  const signedIn = async cookie => (await callFn('/api/v2/auth/me', cookie)).body?.loggedIn === true;
+  const lines = async () =>
     (await db.all(`SELECT sid FROM user_sessions WHERE sess::jsonb->>'userId' = $1`, [String(uid)])).map(z => z.sid);
 
   await t.test('the table holds the hash, not the id', async () => {
-    const cookie = await anmelden();
+    const cookie = await signIn();
     const sid = idFrom(cookie);
     assert.ok(sid, cookie);
-    assert.ok(await angemeldet(cookie));
-    const da = await zeilen();
+    assert.ok(await signedIn(cookie));
+    const da = await lines();
     assert.ok(da.includes(sessionDigest(sid)), 'the row carries the hash');
     assert.ok(!da.includes(sid), 'the row does not carry the ID from the cookie');
   });
 
   await t.test('a stolen row is no cookie', async () => {
     // Even with the secret: the stored value as id is hashed once more and found nowhere.
-    const [gestohlen] = await zeilen();
-    assert.equal(await angemeldet(keks(gestohlen)), false);
+    const [stolen] = await lines();
+    assert.equal(await signedIn(keks(stolen)), false);
   });
 
   await t.test('logout deletes the row', async () => {
-    const cookie = await anmelden();
-    const vorher = (await zeilen()).length;
+    const cookie = await signIn();
+    const prior = (await lines()).length;
     assert.equal((await callFn('/api/v2/auth/logout', cookie, {})).status, 200);
-    assert.equal((await zeilen()).length, vorher - 1);
-    assert.ok(!(await zeilen()).includes(sessionDigest(idFrom(cookie))));
-    assert.equal(await angemeldet(cookie), false);
+    assert.equal((await lines()).length, prior - 1);
+    assert.ok(!(await lines()).includes(sessionDigest(idFrom(cookie))));
+    assert.equal(await signedIn(cookie), false);
   });
 
   await t.test('end other sessions keeps the own one', async () => {
-    const eigen = await anmelden();
-    const fremd = await anmelden();
-    const r = await callFn('/api/v2/settings/sessions/end-others', eigen, { password: PASS });
+    const own = await signIn();
+    const fremd = await signIn();
+    const r = await callFn('/api/v2/settings/sessions/end-others', own, { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(r.body.deleted >= 1);
-    assert.deepEqual(await zeilen(), [sessionDigest(idFrom(eigen))]);
-    assert.ok(await angemeldet(r.cookie ? r.cookie.split(';')[0] : eigen));
-    assert.equal(await angemeldet(fremd), false);
+    assert.deepEqual(await lines(), [sessionDigest(idFrom(own))]);
+    assert.ok(await signedIn(r.cookie ? r.cookie.split(';')[0] : own));
+    assert.equal(await signedIn(fremd), false);
   });
 
   await t.test('the stream watch finds the session by the hash', async () => {
-    const cookie = await anmelden();
+    const cookie = await signIn();
     const sid = idFrom(cookie);
     const { accessAppliesStill } = _req('src/account/http/accessWatch.js');
     const session = require(path.join(__dirname, '..', 'node_modules', 'express-session'));
@@ -126,22 +126,22 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
     const store = _req('src/account/sessionStore.js').hashSessionIds(
       new pgSession({ pool: db.systemPool, tableName: 'user_sessions', createTableIfMissing: false }),
     );
-    const sitzung = (await db.get('SELECT sess FROM user_sessions WHERE sid = $1', [sessionDigest(sid)])).sess;
-    const req = { session: sitzung, sessionID: sid, sessionStore: store, headers: {} };
-    assert.equal(await accessAppliesStill(dienste.account, req), true);
+    const sessionObj = (await db.get('SELECT sess FROM user_sessions WHERE sid = $1', [sessionDigest(sid)])).sess;
+    const req = { session: sessionObj, sessionID: sid, sessionStore: store, headers: {} };
+    assert.equal(await accessAppliesStill(services.account, req), true);
     await db.run('DELETE FROM user_sessions WHERE sid = $1', [sessionDigest(sid)]);
-    assert.equal(await accessAppliesStill(dienste.account, req), false);
+    assert.equal(await accessAppliesStill(services.account, req), false);
   });
 
   await t.test('the migration hashes old rows, once', async () => {
     // The session of a real login, stored under its plaintext id as before the update.
-    const cookie = await anmelden();
+    const cookie = await signIn();
     const alt = idFrom(cookie);
     const { sess } = await db.get('SELECT sess FROM user_sessions WHERE sid = $1', [sessionDigest(alt)]);
     await db.run('DELETE FROM user_sessions WHERE sid = $1', [sessionDigest(alt)]);
-    assert.equal(await angemeldet(cookie), false);
+    assert.equal(await signedIn(cookie), false);
     const c = await db.systemPool.connect();
-    let neu;
+    let fresh;
     try {
       await c.query('BEGIN');
       // A copy of the table in pg_temp: the migration must not touch the rows of parallel tests.
@@ -153,16 +153,16 @@ test('session ids are stored hashed', { concurrency: 1, timeout: 60_000 }, async
       ]);
       await c.query(MIGRATION);
       await c.query(MIGRATION);
-      neu = (await c.query('SELECT sid FROM user_sessions')).rows.map(z => z.sid);
+      fresh = (await c.query('SELECT sid FROM user_sessions')).rows.map(z => z.sid);
       await c.query('ROLLBACK');
     } finally {
       c.release();
     }
-    assert.deepEqual(neu, [sessionDigest(alt)]);
+    assert.deepEqual(fresh, [sessionDigest(alt)]);
     await db.run(`INSERT INTO user_sessions (sid, sess, expire) VALUES ($1, $2, NOW() + INTERVAL '1 hour')`, [
-      neu[0],
+      fresh[0],
       JSON.stringify(sess),
     ]);
-    assert.equal(await angemeldet(cookie), true, 'the old cookie stays valid after the update');
+    assert.equal(await signedIn(cookie), true, 'the old cookie stays valid after the update');
   });
 });

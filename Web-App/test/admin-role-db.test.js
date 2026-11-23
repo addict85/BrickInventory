@@ -33,22 +33,22 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
   }
 
   const ADMIN = 'rollen-admin-test',
-    ZIEL = 'rollen-ziel-test';
-  await db.run(`DELETE FROM users WHERE username IN ($1, $2)`, [ADMIN, ZIEL]);
+    TARGET = 'rollen-ziel-test';
+  await db.run(`DELETE FROM users WHERE username IN ($1, $2)`, [ADMIN, TARGET]);
   const bcrypt = require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs'));
   const ADMIN_PW = 'verwalterPasswort1';
   await db.run(
     `INSERT INTO users (username, password_hash, is_admin, is_active)
                 VALUES ($1,$3,true,true), ($2,'x',true,true)`,
-    [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)],
+    [ADMIN, TARGET, await bcrypt.hash(ADMIN_PW, 4)],
   );
   const adminId = (await db.get(`SELECT id FROM users WHERE username=$1`, [ADMIN])).id;
-  const targetId = (await db.get(`SELECT id FROM users WHERE username=$1`, [ZIEL])).id;
+  const targetId = (await db.get(`SELECT id FROM users WHERE username=$1`, [TARGET])).id;
 
   const { base, srv } = routerServer(_req, {
-    sitzung: { userId: adminId, username: ADMIN, isAdmin: true },
+    session: { userId: adminId, username: ADMIN, isAdmin: true },
     apiAccount: { user_id: adminId, is_admin: 1 },
-    routen: { [AUTH]: 'routes/auth.js', '/api/v2': 'routes/api/index.js' },
+    routes: { [AUTH]: 'routes/auth.js', '/api/v2': 'routes/api/index.js' },
     t,
   });
 
@@ -65,12 +65,12 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
     return admin && !announced ? 1 : 0;
   };
 
-  const revoke = async (url, methode, wert) => {
+  const revoke = async (url, method, value) => {
     await setTargetAdmin();
     const r = await fetch(url, {
-      method: methode,
+      method: method,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ is_admin: wert, admin_password: ADMIN_PW }),
+      body: JSON.stringify({ is_admin: value, admin_password: ADMIN_PW }),
     });
     return { status: r.status, adminAfterwards: await adminFlag() };
   };
@@ -113,7 +113,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
     assert.equal(r.status, 400, 'the own admin role must not be removed, not even with "false"');
     assert.equal((await db.get(`SELECT is_admin FROM users WHERE id=$1`, [adminId])).is_admin, true);
   } finally {
-    await db.run(`DELETE FROM users WHERE username IN ($1, $2)`, [ADMIN, ZIEL]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1, $2)`, [ADMIN, TARGET]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

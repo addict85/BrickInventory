@@ -14,7 +14,7 @@ process.env.TOKEN_IDLE_DAYS = '23';
 const { buildAndRequire, mounting, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const AUTH = mounting('auth');
 const db = testData();
 const auth = _req('src/account/deviceToken.js');
@@ -54,20 +54,20 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
-  const callFn = async (weg, opt = {}) => {
-    const r = await fetch(basis + weg, {
+  const callFn = async (route, opt = {}) => {
+    const r = await fetch(basis + route, {
       method: opt.method || 'GET',
       headers: { 'content-type': 'application/json', ...(opt.headers || {}) },
       ...(opt.body ? { body: JSON.stringify(opt.body) } : {}),
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const row = klartext =>
-    db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenDigest(klartext)]);
+  const row = plaintext =>
+    db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenDigest(plaintext)]);
 
   try {
-    const frist = _req('src/infra/config.js').config().tokenIdleDays;
-    assert.equal(frist, 23, 'the period comes from TOKEN_IDLE_DAYS');
+    const deadline = _req('src/infra/config.js').config().tokenIdleDays;
+    assert.equal(deadline, 23, 'the period comes from TOKEN_IDLE_DAYS');
 
     // ── 1. The app token ────────────────────────────────────────────────────
     const appA = await callFn(AUTH + '/login', {
@@ -83,8 +83,8 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     const daysUntil = d => Math.round((new Date(d).getTime() - Date.now()) / TAG);
     assert.equal(
       daysUntil(appRow.expires_at),
-      frist,
-      `The app token must run for ${frist} days — the period is in TOKEN_IDLE_DAYS`,
+      deadline,
+      `The app token must run for ${deadline} days — the period is in TOKEN_IDLE_DAYS`,
     );
 
     // ── 2. The browser token does not slide ──────────────────────────────────
@@ -102,16 +102,16 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
       auth.tokenDigest(appToken),
     ]);
     tokenCache.emptyTokenCache();
-    const wer = await callFn(AUTH + '/me', { headers: { authorization: `Bearer ${appToken}` } });
-    assert.equal(wer.body?.user?.id, uid, 'precondition: the request must get through at all');
+    const who = await callFn(AUTH + '/me', { headers: { authorization: `Bearer ${appToken}` } });
+    assert.equal(who.body?.user?.id, uid, 'precondition: the request must get through at all');
 
     // The UPDATE runs without await in the request path (fire-and-forget, so that
     // auth does not cost two DB rounds). Hence we wait instead of guess —
     // a fixed sleep would be either too short or a waste of time.
-    await bis(async () => daysUntil((await row(appToken)).expires_at) > 3, 2000);
+    await until(async () => daysUntil((await row(appToken)).expires_at) > 3, 2000);
     assert.equal(
       daysUntil((await row(appToken)).expires_at),
-      frist,
+      deadline,
       'Use must push the expiry date back to the full period — otherwise ' +
         'a phone used daily locks itself out after 90 days',
     );
@@ -125,7 +125,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     await callFn(AUTH + '/me', { headers: { authorization: `Bearer ${webA.body.token}` } });
     // The touch writes last_used; only afterwards is it certain that it did not push the period.
     assert.ok(
-      await bis(
+      await until(
         async () =>
           (await db.get('SELECT last_used FROM api_tokens WHERE token = $1', [auth.tokenDigest(webA.body.token)]))
             ?.last_used,
@@ -152,7 +152,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     assert.equal(followedUp.sliding, true, 'A legacy row without a date was an app/QR token and slides');
     assert.equal(
       Math.round((new Date(followedUp.expires_at).getTime() - Date.now()) / TAG),
-      frist - 10,
+      deadline - 10,
       'It is extended from the last use, not from now — otherwise the migration extends every legacy row',
     );
 

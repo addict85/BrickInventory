@@ -79,9 +79,9 @@ test('token label at login', { concurrency: 1 }, async t => {
   };
 
   await t.test('1. a long label is shortened to 100 characters', async () => {
-    const gespeichert = await labelNach('Pixel ' + 'x'.repeat(5000));
-    assert.equal(gespeichert.length, 100, `${gespeichert.length} characters saved`);
-    assert.ok(gespeichert.startsWith('Pixel x'));
+    const saved = await labelNach('Pixel ' + 'x'.repeat(5000));
+    assert.equal(saved.length, 100, `${saved.length} characters saved`);
+    assert.ok(saved.startsWith('Pixel x'));
     assert.equal(await labelNach('  Galaxy S24  '), 'Galaxy S24', 'a short one stays, only trimmed');
   });
 
@@ -92,8 +92,8 @@ test('token label at login', { concurrency: 1 }, async t => {
   });
 
   await t.test('3. shortening goes by characters, not in the middle of one', async () => {
-    const gespeichert = await labelNach('🧱'.repeat(150));
-    assert.equal(Array.from(gespeichert).length, 100);
-    assert.equal(gespeichert, '🧱'.repeat(100));
+    const saved = await labelNach('🧱'.repeat(150));
+    assert.equal(Array.from(saved).length, 100);
+    assert.equal(saved, '🧱'.repeat(100));
   });
 });

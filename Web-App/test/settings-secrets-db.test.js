@@ -27,7 +27,7 @@ const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 /** Secrets that must stand in plain text in no response. */
-const GEHEIM = {
+const SECRET = {
   bricklink_consumer_secret: 'GEHEIM-bl-cs-4711',
   bricklink_token_secret: 'GEHEIM-bl-ts-4712',
   brickset_api_key: 'GEHEIM-bs-key-4713',
@@ -88,8 +88,8 @@ function readRoutes() {
   // Self-proof: if the pattern did not apply, the list would be empty and the test
   // green without having looked at a single route.
   assert.ok(found.length >= 4, `Only ${found.length} GET routes found in routes/api/settings.ts — pattern outdated?`);
-  const veraltet = [...EXEMPT.keys()].filter(p => !found.includes(p));
-  assert.deepEqual(veraltet, [], 'These exceptions no longer describe a route — remove them: ' + veraltet.join(', '));
+  const stale = [...EXEMPT.keys()].filter(p => !found.includes(p));
+  assert.deepEqual(stale, [], 'These exceptions no longer describe a route — remove them: ' + stale.join(', '));
   return found.filter(p => !EXEMPT.has(p)).map(p => '/api/v2/settings' + (p === '/' ? '' : p));
 }
 
@@ -104,14 +104,14 @@ function allValues(x, out = []) {
 test('settings never hand out secrets in plain text', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
-  const NUTZER = `sec-user-${process.pid}`;
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  const USER = `sec-user-${process.pid}`;
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
-  const vorher = {};
-  for (const [k, v] of Object.entries({ ...GEHEIM, ...MANAGEMENT })) {
-    vorher[k] = (await db.get(`SELECT value FROM global_settings WHERE key=$1`, [k]))?.value ?? null;
+  const prior = {};
+  for (const [k, v] of Object.entries({ ...SECRET, ...MANAGEMENT })) {
+    prior[k] = (await db.get(`SELECT value FROM global_settings WHERE key=$1`, [k]))?.value ?? null;
     await db.run(
       `INSERT INTO global_settings (key,value) VALUES ($1,$2)
                   ON CONFLICT (key) DO UPDATE SET value=$2`,
@@ -147,7 +147,7 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
     for (const path of readRoutes()) {
       // 1. An account WITHOUT admin rights must not see the keys at all.
       const asUser = await fetchIt(baseUser, path);
-      for (const [k, v] of Object.entries(GEHEIM)) {
+      for (const [k, v] of Object.entries(SECRET)) {
         assert.ok(!asUser.includes(v), `${path}: an account without admin rights gets ${k} in plain text`);
       }
 
@@ -157,31 +157,31 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
 
       // 2. Even an admin only gets the mask — otherwise the values end up in the
       //    browser storage, where every XSS gap takes them along.
-      const alsAdmin = await fetchIt(baseAdmin, path);
-      for (const [k, v] of Object.entries(GEHEIM)) {
-        assert.ok(!alsAdmin.includes(v), `${path}: even an admin may only get ${k} masked`);
+      const asAdmin = await fetchIt(baseAdmin, path);
+      for (const [k, v] of Object.entries(SECRET)) {
+        assert.ok(!asAdmin.includes(v), `${path}: even an admin may only get ${k} masked`);
       }
       // Opposite direction: the mask must arrive at all, otherwise the
       // form cannot tell „set" from „not set" — a test
       // that only checks the absence would also be green with an empty response.
       assert.ok(
-        alsAdmin.some(s => s.includes('\u2022'.repeat(12))),
+        asAdmin.some(s => s.includes('\u2022'.repeat(12))),
         `${path}: the admin must see the masked version`,
       );
       // Not even the end of the value: it shortens the guessing.
-      for (const [k, v] of Object.entries(GEHEIM))
-        assert.ok(!alsAdmin.some(s => s.includes(v.slice(-4))), `${path}: the mask of ${k} reveals „${v.slice(-4)}"`);
+      for (const [k, v] of Object.entries(SECRET))
+        assert.ok(!asAdmin.some(s => s.includes(v.slice(-4))), `${path}: the mask of ${k} reveals „${v.slice(-4)}"`);
       for (const [k, v] of Object.entries(MANAGEMENT)) {
-        assert.ok(alsAdmin.includes(v), `${path}: the admin needs ${k} for the form`);
+        assert.ok(asAdmin.includes(v), `${path}: the admin needs ${k} for the form`);
       }
     }
   } finally {
-    for (const [k, v] of Object.entries(vorher)) {
+    for (const [k, v] of Object.entries(prior)) {
       if (v === null) await db.run(`DELETE FROM global_settings WHERE key=$1`, [k]).catch(() => {});
       else await db.run(`UPDATE global_settings SET value=$2 WHERE key=$1`, [k, v]).catch(() => {});
     }
     await db.run(`DELETE FROM user_settings WHERE user_id=$1`, [uid]).catch(() => {});
-    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await new Promise(r => srvUser.close(r));
     await new Promise(r => srvAdmin.close(r));
     await db.pool.end().catch(() => {});

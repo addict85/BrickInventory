@@ -15,47 +15,47 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
-const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'startpasswort-gleich-'));
-process.env.APP_ROOT = wurzel;
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'startpasswort-gleich-'));
+process.env.APP_ROOT = root;
 const _req = require('./helpers/sources').buildAndRequire();
-const modul = require.resolve(path.join(__dirname, '..', 'dist', 'src', 'infra', 'startPassword.js'));
+const mod = require.resolve(path.join(__dirname, '..', 'dist', 'src', 'infra', 'startPassword.js'));
 
-test.after(() => fs.rmSync(wurzel, { recursive: true, force: true }));
+test.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
-function schreiber(nr) {
-  const code = `const s = require(${JSON.stringify(modul)});
+function writer(nr) {
+  const code = `const s = require(${JSON.stringify(mod)});
     for (let i = 0; i < 40; i++) s.writeStartPassword('admin', 'p${nr}-' + i);`;
-  return new Promise(fertig => {
+  return new Promise(done => {
     const k = spawn(process.execPath, ['-e', code], {
-      env: { ...process.env, APP_ROOT: wurzel },
+      env: { ...process.env, APP_ROOT: root },
       stdio: ['ignore', 'ignore', 'pipe'],
     });
     let error = '';
     k.stderr.on('data', d => {
       error += d;
     });
-    k.on('exit', code => fertig({ code, error }));
+    k.on('exit', code => done({ code, error }));
   });
 }
 
 test('all processes write the file', async () => {
-  const results = await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(schreiber));
+  const results = await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(writer));
   for (const e of results) assert.equal(e.code, 0, e.error.split('\n').find(z => z.includes('Error')) ?? e.error);
-  const datei = _req('src/infra/startPassword.js').startPasswordFile();
-  assert.match(fs.readFileSync(datei, 'utf8'), /^admin\np\d-\d+\n$/);
-  const remainders = fs.readdirSync(path.dirname(datei)).filter(n => n.startsWith('admin-startpasswort.txt.'));
+  const file = _req('src/infra/startPassword.js').startPasswordFile();
+  assert.match(fs.readFileSync(file, 'utf8'), /^admin\np\d-\d+\n$/);
+  const remainders = fs.readdirSync(path.dirname(file)).filter(n => n.startsWith('admin-startpasswort.txt.'));
   assert.deepEqual(remainders, [], 'no half-written files stay behind');
 });
 
 test('the symlink redirects nothing', () => {
   const s = _req('src/infra/startPassword.js');
-  const datei = s.startPasswordFile();
-  const fremd = path.join(wurzel, 'fremd.txt');
+  const file = s.startPasswordFile();
+  const fremd = path.join(root, 'fremd.txt');
   fs.writeFileSync(fremd, 'unberuehrt');
-  fs.rmSync(datei, { force: true });
-  fs.symlinkSync(fremd, datei);
+  fs.rmSync(file, { force: true });
+  fs.symlinkSync(fremd, file);
   s.writeStartPassword('admin', 'geheim');
   assert.equal(fs.readFileSync(fremd, 'utf8'), 'unberuehrt');
-  assert.equal(fs.lstatSync(datei).isSymbolicLink(), false);
-  assert.equal(fs.statSync(datei).mode & 0o777, 0o600);
+  assert.equal(fs.lstatSync(file).isSymbolicLink(), false);
+  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
 });

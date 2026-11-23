@@ -82,7 +82,7 @@ test('the storage location default applies to every new capture', { concurrency:
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url) VALUES
                   ('fig-000123','Chewbacca','https://cdn.example/e.jpg')`);
   await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 7'), ($1,'Kiste 3')`, [UID]);
-  const ortId = async name =>
+  const placeId = async name =>
     (await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, name])).id;
 
   const holding = require('./helpers/sources').testArea('inventory');
@@ -94,7 +94,7 @@ test('the storage location default applies to every new capture', { concurrency:
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
-  await setDefault(UID, await ortId('Kiste 7'));
+  await setDefault(UID, await placeId('Kiste 7'));
 
   const locationOfPart = async nr =>
     (

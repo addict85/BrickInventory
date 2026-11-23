@@ -14,9 +14,9 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
-const BOESE = '03:00"><img id="eingeschleust" src="x">';
+const EVIL = '03:00"><img id="eingeschleust" src="x">';
 
 test('the schedule inserts server values escaped', async () => {
   const o = await openUi({
@@ -32,23 +32,26 @@ test('the schedule inserts server values escaped', async () => {
     '/v2/admin/jobs': {
       success: true,
       jobs: { priceJob: { status: 'idle', progress: 0, total: 0 }, imgDl: { status: 'idle', progress: 0, total: 0 } },
-      schedules: { priceJob: { type: 'daily', time: BOESE }, imgDl: { type: 'interval', minutes: 15 } },
+      schedules: { priceJob: { type: 'daily', time: EVIL }, imgDl: { type: 'interval', minutes: 15 } },
       db: { csvCache: {}, blMapping: {} },
     },
   });
   try {
-    await reiter(o.w, 'monitor');
+    await switchTab(o.w, 'monitor');
     assert.ok(
-      await warte(() => o.d.querySelectorAll('#monitor-content .mon-plan').length === 2),
+      await waitFor(() => o.d.querySelectorAll('#monitor-content .mon-plan').length === 2),
       'Hintergrundarbeiten',
     );
     assert.equal(o.d.getElementById('eingeschleust'), null, 'background jobs: a value became markup');
-    assert.ok(o.d.querySelector('#monitor-content .mon-plan').textContent.includes(BOESE));
-    await reiter(o.w, 'settings');
-    assert.ok(await warte(() => o.d.querySelectorAll('#settings-schedules .job-sched-input').length === 2), 'settings');
+    assert.ok(o.d.querySelector('#monitor-content .mon-plan').textContent.includes(EVIL));
+    await switchTab(o.w, 'settings');
+    assert.ok(
+      await waitFor(() => o.d.querySelectorAll('#settings-schedules .job-sched-input').length === 2),
+      'settings',
+    );
     assert.equal(o.d.getElementById('eingeschleust'), null, 'settings: a value became markup');
     assert.equal(o.d.querySelector('.mon-minutes').value, '15');
-    assert.equal(o.d.querySelector('.mon-time').value, BOESE, 'the value did not arrive unchanged in the field');
+    assert.equal(o.d.querySelector('.mon-time').value, EVIL, 'the value did not arrive unchanged in the field');
     assert.equal(o.d.querySelector('.mon-time').dataset.arg, 'priceJob');
   } finally {
     o.w.close();

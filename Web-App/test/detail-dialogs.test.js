@@ -19,8 +19,8 @@ function dialog(id) {
   const ab = html.indexOf(`id="${id}"`);
   assert.ok(ab > 0, `Dialog #${id} not found — markup rebuilt?`);
   // Up to the next dialog start; the last one reaches to the end of the file.
-  const naechster = html.indexOf('<div class="ovl"', ab);
-  return html.slice(ab, naechster > 0 ? naechster : html.length);
+  const nextOne = html.indexOf('<div class="ovl"', ab);
+  return html.slice(ab, nextOne > 0 ? nextOne : html.length);
 }
 
 // The three dialogs with a trash. The fourth (#setitem-modal, parts FROM
@@ -32,19 +32,19 @@ const WITH_TRASH = [
 ];
 
 test('the trash is the same size in every detail dialog', () => {
-  for (const [name, modal, knopf] of WITH_TRASH) {
+  for (const [name, modal, button] of WITH_TRASH) {
     const row = dialog(modal)
       .split('\n')
-      .find(z => z.includes(`id="${knopf}"`));
-    assert.ok(row, `${name}: the trash button #${knopf} is missing`);
-    const klassen = /class="([^"]*)"/.exec(row)?.[1] ?? '';
+      .find(z => z.includes(`id="${button}"`));
+    assert.ok(row, `${name}: the trash button #${button} is missing`);
+    const classes = /class="([^"]*)"/.exec(row)?.[1] ?? '';
     assert.ok(
-      klassen.includes('btn') && klassen.includes('bd'),
-      `${name}: #${knopf} no longer carries „btn bd“ (${klassen})`,
+      classes.includes('btn') && classes.includes('bd'),
+      `${name}: #${button} no longer carries „btn bd“ (${classes})`,
     );
     assert.ok(
-      !klassen.includes('btn-sm'),
-      `${name}: #${knopf} carries „btn-sm“ and is therefore smaller than in the ` +
+      !classes.includes('btn-sm'),
+      `${name}: #${button} carries „btn-sm“ and is therefore smaller than in the ` +
         'other detail dialogs — exactly Marco’s finding.',
     );
   }
@@ -52,7 +52,7 @@ test('the trash is the same size in every detail dialog', () => {
 
 test('the set detail no longer shows purchase addresses', async () => {
   // Real bundle in jsdom: whoever owns the set gets no shop link; the catalog detail (not owned yet) does.
-  const { openUi, reiter, warte } = require('./helpers/ui');
+  const { openUi, switchTab, waitFor } = require('./helpers/ui');
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, conditions: ['N'], condition: 'N' };
   const { w, d } = await openUi({
     '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
@@ -77,17 +77,17 @@ test('the set detail no longer shows purchase addresses', async () => {
   const shopLinks = id =>
     [...d.querySelectorAll(`#${id} a[href]`)].filter(a => /bricklink\.com|vergleich|compare/i.test(a.href + a.id));
   try {
-    assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
+    assert.ok(await waitFor(() => d.querySelector('#gallery [data-click="openModal"]')));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => d.getElementById('set-modal')?.classList.contains('open')), 'set detail');
+    assert.ok(await waitFor(() => d.getElementById('set-modal')?.classList.contains('open')), 'set detail');
     assert.deepEqual(
       shopLinks('set-modal').map(a => a.id),
       [],
     );
-    await reiter(w, 'catalog');
-    assert.ok(await warte(() => d.querySelector('[data-click="openCatModal"]')), 'catalog tile');
+    await switchTab(w, 'catalog');
+    assert.ok(await waitFor(() => d.querySelector('[data-click="openCatModal"]')), 'catalog tile');
     d.querySelector('[data-click="openCatModal"]').click();
-    assert.ok(await warte(() => /bricklink\.com/.test(d.getElementById('cat-m-bricklink')?.href ?? '')));
+    assert.ok(await waitFor(() => /bricklink\.com/.test(d.getElementById('cat-m-bricklink')?.href ?? '')));
     assert.notEqual(d.getElementById('cat-m-bricklink').style.display, 'none');
   } finally {
     w.close();
@@ -117,22 +117,22 @@ test('title and footer bar stick — and can do so', () => {
   //
   // Searched, not enumerated: every dialog with a .mhd is checked, a
   // new one is thus included automatically.
-  const dialoge = [...html.matchAll(/<div class="ovl"[^>]*id="([\w-]+)"/g)].map(m => m[1]);
+  const dialogs = [...html.matchAll(/<div class="ovl"[^>]*id="([\w-]+)"/g)].map(m => m[1]);
   assert.ok(
-    dialoge.length >= 8,
-    `Only ${dialoge.length} dialogs found — pattern outdated? Without a match the rest checks nothing.`,
+    dialogs.length >= 8,
+    `Only ${dialogs.length} dialogs found — pattern outdated? Without a match the rest checks nothing.`,
   );
 
   let withBar = 0;
-  for (const id of dialoge) {
-    const rumpf = dialog(id);
-    if (!/class="mhd"/.test(rumpf)) continue;
+  for (const id of dialogs) {
+    const body = dialog(id);
+    if (!/class="mhd"/.test(body)) continue;
     withBar++;
     // Between `<div class="modal…">` and `<div class="mhd">` no further
     // opening <div> may stand.
-    const abModal = rumpf.search(/<div class="modal/);
+    const abModal = body.search(/<div class="modal/);
     assert.ok(abModal >= 0, `#${id}: no .modal found`);
-    const untilHeader = rumpf.slice(abModal, rumpf.indexOf('<div class="mhd"'));
+    const untilHeader = body.slice(abModal, body.indexOf('<div class="mhd"'));
     const between = (untilHeader.match(/<div\b/g) || []).length - 1; // subtract the .modal itself
     assert.equal(
       between,
@@ -153,18 +153,18 @@ test('title and footer bar stick — and can do so', () => {
   // violation — exactly that happened while writing this file.
   const withoutCssComments = t => t.replace(/\/\*[\s\S]*?\*\//g, '');
   const css = withoutCssComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8'));
-  const regel = wahl => {
-    const ab = css.indexOf(wahl + '{');
-    assert.ok(ab > 0, `${wahl} no longer found in styles.css`);
+  const rule = choice => {
+    const ab = css.indexOf(choice + '{');
+    assert.ok(ab > 0, `${choice} no longer found in styles.css`);
     return css.slice(ab, css.indexOf('}', ab));
   };
 
-  const kopf = regel('.mhd'),
-    fuss = regel('.mfooter');
-  assert.match(kopf, /position:sticky/, 'The title bar no longer sticks.');
+  const head = rule('.mhd'),
+    fuss = rule('.mfooter');
+  assert.match(head, /position:sticky/, 'The title bar no longer sticks.');
   assert.match(fuss, /position:sticky/, 'The footer bar no longer sticks.');
   assert.match(
-    kopf,
+    head,
     /top:calc\(var\(--modal-pady\) \* -1\)/,
     'The offset of the title bar is no longer the negative padding. With top:0 ' +
       'it stays too low by exactly this padding — measured in Chromium: 28px.',
@@ -177,7 +177,7 @@ test('title and footer bar stick — and can do so', () => {
   // Full width: without the negative side margins a strip remains left and right
   // through which the content visibly scrolls past.
   for (const [name, r] of [
-    ['Titelleiste', kopf],
+    ['Titelleiste', head],
     ['Fussleiste', fuss],
   ])
     assert.match(
@@ -187,15 +187,15 @@ test('title and footer bar stick — and can do so', () => {
     );
   // Opaque, otherwise the content shines through.
   for (const [name, r] of [
-    ['Titelleiste', kopf],
+    ['Titelleiste', head],
     ['Fussleiste', fuss],
   ])
     assert.match(r, /background:var\(--sur\)/, `${name}: no background of its own.`);
   // The divider is SHAPE, not color — Marco has a red-green deficiency.
-  assert.match(kopf, /border-bottom:1px solid/, 'The title bar lacks the divider line.');
+  assert.match(head, /border-bottom:1px solid/, 'The title bar lacks the divider line.');
   assert.match(fuss, /border-top:1px solid/, 'The footer bar lacks the divider line.');
 
-  const modal = regel('.modal');
+  const modal = rule('.modal');
   for (const v of ['--modal-padx', '--modal-pady', '--modal-padb'])
     assert.ok(
       modal.includes(v + ':'),

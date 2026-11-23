@@ -27,8 +27,8 @@ test('if the image address is missing on the set, it comes from the shared catal
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const USERNAME = 'img-fallback-test';
-  const OHNE = '60445-1'; // image only in the catalog
-  const MIT = '60446-1'; // own address present
+  const WITHOUT = '60445-1'; // image only in the catalog
+  const WITH = '60446-1'; // own address present
   const CDN = 'https://cdn.rebrickable.com/media/sets/60445-1.jpg';
   const OWN = 'https://cdn.rebrickable.com/media/sets/eigen.jpg';
 
@@ -36,37 +36,37 @@ test('if the image address is missing on the set, it comes from the shared catal
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USERNAME]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USERNAME])).id;
 
-  await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
-  await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
+  await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[WITHOUT, WITH]]);
+  await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[WITHOUT, WITH]]);
 
   // What migration 0033 changed in this setup
-  await holdsSet(db, uid, OHNE, 1);
-  await catalogSet(db, OHNE, { name: 'F1 Truck', image_url: CDN });
+  await holdsSet(db, uid, WITHOUT, 1);
+  await catalogSet(db, WITHOUT, { name: 'F1 Truck', image_url: CDN });
 
   // Counterpart: a DIFFERENT address in the catalog — it must get through unchanged.
-  await holdsSet(db, uid, MIT, 1);
-  await catalogSet(db, MIT, { name: 'Anderes', image_url: OWN });
+  await holdsSet(db, uid, WITH, 1);
+  await catalogSet(db, WITH, { name: 'Anderes', image_url: OWN });
 
   try {
     const { readSets } = require('./helpers/sources').handlerModule(_req);
     const r = await readSets([uid], {});
-    const ohne = r.sets.find(s => s.set_number === OHNE);
-    const mit = r.sets.find(s => s.set_number === MIT);
+    const without = r.sets.find(s => s.set_number === WITHOUT);
+    const withIt = r.sets.find(s => s.set_number === WITH);
 
-    assert.ok(ohne, 'the set without its own image address must be in the list');
-    assert.equal(ohne.image_local, null, 'Precondition: no local file');
+    assert.ok(without, 'the set without its own image address must be in the list');
+    assert.equal(without.image_local, null, 'Precondition: no local file');
     assert.equal(
-      ohne.image_url,
+      without.image_url,
       CDN,
       'without its own address the CDN address must come from the shared catalog — ' +
         'otherwise both clients have nothing to show',
     );
 
-    assert.equal(mit.image_url, OWN, 'an existing own address has priority and is NOT overwritten by the catalog');
+    assert.equal(withIt.image_url, OWN, 'an existing own address has priority and is NOT overwritten by the catalog');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USERNAME]).catch(() => {});
-    await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[OHNE, MIT]]).catch(() => {});
-    await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[OHNE, MIT]]).catch(() => {});
+    await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[WITHOUT, WITH]]).catch(() => {});
+    await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[WITHOUT, WITH]]).catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

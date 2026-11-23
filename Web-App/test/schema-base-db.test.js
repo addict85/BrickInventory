@@ -32,9 +32,9 @@ const ROOT = path.join(__dirname, '..');
 const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { testName, cleanRemainder, id } = require('./helpers/test-names');
 const NAME = testName('schema_basis');
-const ziel = new URL(BASIS);
-ziel.pathname = '/' + NAME;
-process.env.DATABASE_URL = ziel.toString();
+const target = new URL(BASIS);
+target.pathname = '/' + NAME;
+process.env.DATABASE_URL = target.toString();
 process.env.ADMIN_PASSWORD = 'Basis-Pruefung-2026';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
@@ -54,8 +54,8 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
   await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
   // Like server.ts: the access gets the first start along, which creates the first account.
-  const modul = require(path.join(ROOT, 'dist', 'db', 'database.js'));
-  const db = modul.createDb(modul.dbConfigFromEnvironment(), {
+  const mod = require(path.join(ROOT, 'dist', 'db', 'database.js'));
+  const db = mod.createDb(mod.dbConfigFromEnvironment(), {
     firstStart: () => require('./helpers/sources').testServices().account.createStartAdmin(),
   });
   t.after(async () => {
@@ -69,8 +69,8 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
 
   await t.test('an empty database gets base, defaults and an administrator', async () => {
     await db.initSchemaOnce();
-    const konto = await db.get(`SELECT is_admin, is_active FROM users WHERE username = 'admin'`);
-    assert.equal(Number(konto?.is_admin), 1, 'no administrator created');
+    const account = await db.get(`SELECT is_admin, is_active FROM users WHERE username = 'admin'`);
+    assert.equal(Number(account?.is_admin), 1, 'no administrator created');
     const preset = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`);
     assert.equal(preset?.value, '4000', 'the default values are missing');
     const rb = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_rebrickable'`);
@@ -79,13 +79,13 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
       JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
       WHERE i.indrelid = 'rate_limit_attempts'::regclass AND i.indisprimary`);
     assert.equal(pk?.attname, 'key', 'the login counters need their key as primary key');
-    const dateien = fs
+    const files = fs
       .readdirSync(path.join(ROOT, 'db/migrations'))
       .filter(f => f.endsWith('.sql'))
       .sort();
     const applied = (await db.all('SELECT name FROM schema_migrations')).map(r => r.name);
     assert.deepEqual(
-      dateien.filter(f => !applied.includes(f)),
+      files.filter(f => !applied.includes(f)),
       [],
       'not every migration counts as applied',
     );
@@ -121,12 +121,12 @@ test('first start via db/base.sql', { concurrency: 1, timeout: 180_000 }, async 
   // says so instead of putting the younger migrations onto a foreign schema.
   await t.test('a database older than 0050 stops the start and stays untouched', async () => {
     await db.run(`DELETE FROM schema_migrations WHERE name >= '0050'`);
-    const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n;
-    assert.ok(vorher > 0, 'the probe needs migrations before 0050');
+    const prior = (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n;
+    assert.ok(prior > 0, 'the probe needs migrations before 0050');
     await assert.rejects(db.initSchemaOnce(), /älter als Migration 0050.*UPGRADE\.md/s);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n,
-      vorher,
+      prior,
       'a migration ran on the too old state',
     );
     await db.run('DROP TABLE schema_migrations');
@@ -158,22 +158,22 @@ test('db/base.sql is generated, not written', { concurrency: 1, timeout: 180_000
     await admin.end().catch(() => {});
   });
   await c.connect();
-  const datei = fs.readFileSync(path.join(ROOT, 'db/base.sql'), 'utf8');
-  await c.query(datei);
+  const file = fs.readFileSync(path.join(ROOT, 'db/base.sql'), 'utf8');
+  await c.query(file);
 
   await t.test('the base names a gapless sequence of existing migrations', async () => {
     const inBasis = (await c.query('SELECT name FROM schema_migrations ORDER BY name')).rows.map(r => r.name);
-    const dateien = fs
+    const files = fs
       .readdirSync(path.join(ROOT, 'db/migrations'))
       .filter(f => f.endsWith('.sql'))
       .sort();
     assert.ok(inBasis.length > 50, `only ${inBasis.length} migrations in the base`);
-    assert.deepEqual(inBasis, dateien.slice(0, inBasis.length), 'The base is an image of the first N migration files');
+    assert.deepEqual(inBasis, files.slice(0, inBasis.length), 'The base is an image of the first N migration files');
   });
 
   await t.test('db/base.sql is an unchanged image of the database it creates', async tt => {
     const sk = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
-    const createdWith = Number((datei.match(/^-- Generated with pg_dump (\d+)\./m) || [])[1]);
+    const createdWith = Number((file.match(/^-- Generated with pg_dump (\d+)\./m) || [])[1]);
     let now = null;
     try {
       now = sk.pgDumpVersion();
@@ -187,7 +187,7 @@ test('db/base.sql is generated, not written', { concurrency: 1, timeout: 180_000
     }
     assert.equal(
       sk.basisText(target2.toString()),
-      datei,
+      file,
       'db/base.sql differs from the generated output — do not edit by hand, regenerate: npm run build && npm run schema:snapshot',
     );
   });

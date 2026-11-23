@@ -36,7 +36,7 @@ test('orphaned imports', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const auftrag = vorMin =>
+  const job = vorMin =>
     db.run(
       `INSERT INTO import_status (user_id, status, total, done, current, updated_at)
      VALUES ($1, 'running', 10, 3, '10001-1', NOW() - make_interval(mins => $2))
@@ -46,13 +46,13 @@ test('orphaned imports', { concurrency: 1 }, async t => {
     );
 
   await t.test('a running job stays', async () => {
-    await auftrag(1);
+    await job(1);
     assert.equal((await jobGet(uid)).status, 'running');
     assert.equal(await startJob(uid, { total: 5 }), false, 'A second job displaces the running one');
   });
 
   await t.test('an orphaned job', async () => {
-    await auftrag(ORPHANED_MIN + 1);
+    await job(ORPHANED_MIN + 1);
     const state = await jobGet(uid);
     assert.equal(state.status, 'error');
     assert.match(state.error, /unterbrochen/);

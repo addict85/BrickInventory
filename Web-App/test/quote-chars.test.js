@@ -12,21 +12,21 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
-async function suche(language) {
+async function search(language) {
   const o = await openUi({}, { language });
   const field = o.d.getElementById('gs');
   field.value = 'xyzxyz';
   field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
-  await warte(() => /xyzxyz/.test(o.d.getElementById('gallery').textContent), 3000);
-  await takt(20);
+  await waitFor(() => /xyzxyz/.test(o.d.getElementById('gallery').textContent), 3000);
+  await tick(20);
   const text = o.d.querySelector('#gallery .empty-state h2')?.textContent || o.d.getElementById('gallery').textContent;
   return { o, text: text.trim() };
 }
 
 test('search without results: de', async () => {
-  const { o, text } = await suche('de');
+  const { o, text } = await search('de');
   try {
     assert.equal(text, 'Keine Treffer für „xyzxyz“');
   } finally {
@@ -35,7 +35,7 @@ test('search without results: de', async () => {
 });
 
 test('search without results: en', async () => {
-  const { o, text } = await suche('en');
+  const { o, text } = await search('en');
   try {
     assert.equal(text, 'No results for “xyzxyz”');
   } finally {

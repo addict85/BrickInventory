@@ -50,12 +50,12 @@ test('request path: the three indexes exist and the planner can take them', asyn
 
     // ── 1. Created ─────────────────────────────────────────────────────────
     const da = (
-      await db.all('SELECT indexname FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)', [
+      await db.all('SELECT indexname AS "indexName" FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)', [
         'public',
         EXPECTED,
       ])
     )
-      .map(r => r.indexname)
+      .map(r => r.indexName)
       .sort();
     assert.deepEqual(
       da,

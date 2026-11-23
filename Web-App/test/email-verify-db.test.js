@@ -108,8 +108,8 @@ test('email verification against a real database', async t => {
   });
 
   await t.test('a missing token is rejected', async () => {
-    for (const leer of [undefined, null, '', '   '])
-      await assert.rejects(verifyEmailToken(leer), INVALID, `${JSON.stringify(leer)} was accepted`);
+    for (const empty of [undefined, null, '', '   '])
+      await assert.rejects(verifyEmailToken(empty), INVALID, `${JSON.stringify(empty)} was accepted`);
   });
 
   await t.test('redeeming the same token a second time fails', async () => {
@@ -119,11 +119,11 @@ test('email verification against a real database', async t => {
   });
 
   await t.test('the first confirmation wins, the second registration stays open', async () => {
-    const erste = await newUser('erste', { email: 'geteilt@example.ch' });
-    const zweite = await newUser('zweite', { email: 'GETEILT@example.ch' });
-    await verifyEmailToken(erste.token);
-    await assert.rejects(verifyEmailToken(zweite.token), { code: 'email_taken' });
-    const z = await condition(zweite.id);
+    const first = await newUser('erste', { email: 'geteilt@example.ch' });
+    const second = await newUser('zweite', { email: 'GETEILT@example.ch' });
+    await verifyEmailToken(first.token);
+    await assert.rejects(verifyEmailToken(second.token), { code: 'email_taken' });
+    const z = await condition(second.id);
     assert.deepEqual([z.email, z.registration_pending, z.new_email_token], [null, true, null]);
   });
 

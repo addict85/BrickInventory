@@ -36,15 +36,15 @@ test('login lock under concurrent attempts', { concurrency: 1 }, async t => {
       [NAME, bcrypt.hashSync('richtig-geheim', 4)],
     )
   ).id;
-  const aufraeumen = () =>
+  const cleanUp = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key LIKE $3`, [
       `%|${NAME}`,
       `%konto:${uid}`,
       `%-bestaetigen|${uid}|%`,
     ]);
-  await aufraeumen();
+  await cleanUp();
   t.after(async () => {
-    await aufraeumen();
+    await cleanUp();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
@@ -52,17 +52,17 @@ test('login lock under concurrent attempts', { concurrency: 1 }, async t => {
   const lim = _req('src/account/loginLimiter.js');
 
   await t.test('20 concurrent failed attempts, at most 5 checks', async () => {
-    const anfrage = { ip: '203.0.113.7', socket: {}, headers: {} };
-    const r = await Promise.all(Array.from({ length: 20 }, () => checkCredentials(anfrage, NAME, 'falsch')));
-    const geprueft = r.filter(x => x.refusal?.kind === 'not_signed_in').length;
-    const gesperrt = r.filter(x => x.refusal?.kind === 'too_many').length;
-    assert.ok(geprueft <= lim.MAX_ATTEMPTS, `${geprueft} password checks, ${gesperrt} locked`);
-    assert.equal(geprueft + gesperrt, 20);
+    const request = { ip: '203.0.113.7', socket: {}, headers: {} };
+    const r = await Promise.all(Array.from({ length: 20 }, () => checkCredentials(request, NAME, 'falsch')));
+    const checked = r.filter(x => x.refusal?.kind === 'not_signed_in').length;
+    const locked = r.filter(x => x.refusal?.kind === 'too_many').length;
+    assert.ok(checked <= lim.MAX_ATTEMPTS, `${checked} password checks, ${locked} locked`);
+    assert.equal(checked + locked, 20);
   });
 
   await t.test('confirmation: 20 concurrent attempts, at most 5 free', async () => {
     const r = await Promise.all(Array.from({ length: 20 }, () => lim.confirmationLocked(uid)));
-    const frei = r.filter(x => x === null).length;
-    assert.ok(frei <= lim.MAX_ATTEMPTS, `${frei} attempts let through`);
+    const free = r.filter(x => x === null).length;
+    assert.ok(free <= lim.MAX_ATTEMPTS, `${free} attempts let through`);
   });
 });

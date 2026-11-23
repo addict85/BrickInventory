@@ -38,7 +38,7 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
   const S = `tx_umgebung_${process.pid}`;
   // Only the system role writes global_settings (0117): the transactions run in its context.
   const { inSystemContext } = _req('src/infra/accountContext.js');
-  const transaktion = fn => inSystemContext('test', () => db.transaction(fn));
+  const transaction = fn => inSystemContext('test', () => db.transaction(fn));
   t.after(async () => {
     await inSystemContext('test', () => db.run('DELETE FROM global_settings WHERE key LIKE $1', [`${S}%`])).catch(
       () => {},
@@ -49,26 +49,26 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
   const settings = require('./helpers/sources').testServices().settings;
   /** The settings over the access of a transaction, as they stand in `t`. */
   const in_ = tx => settings.over(tx.db);
-  const schreibe = (tx, k, v) => tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [`${S}${k}`, v]);
+  const write = (tx, k, v) => tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [`${S}${k}`, v]);
 
   await t.test('a service via tx.db sees what the transaction wrote; on the unbound access it throws', async () => {
-    let gesehen;
+    let seen;
     await assert.rejects(
-      transaktion(async tx => {
-        await schreibe(tx, 'a', 'eins');
+      transaction(async tx => {
+        await write(tx, 'a', 'eins');
         await assert.rejects(getGlobalSetting(`${S}a`), { name: 'Error', message: /ungebundenen Zugang/ });
-        gesehen = await in_(tx).globalValue(`${S}a`);
+        seen = await in_(tx).globalValue(`${S}a`);
         throw new Error('zurück');
       }),
       /zurück/,
     );
-    assert.equal(gesehen, 'eins');
+    assert.equal(seen, 'eins');
     assert.equal(await getGlobalSetting(`${S}a`), null, 'rolled back with the transaction');
   });
 
   await t.test('a failed inner transaction lets the outer one continue', async () => {
-    await transaktion(async tx => {
-      await schreibe(tx, 'b', 'aussen');
+    await transaction(async tx => {
+      await write(tx, 'b', 'aussen');
       await assert.rejects(
         tx.db.transaction(async inner => {
           assert.equal(
@@ -76,12 +76,12 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
             'aussen',
             'the inner one sees the state of the outer one',
           );
-          await schreibe(inner, 'c', 'innen');
+          await write(inner, 'c', 'innen');
           throw new Error('innen kaputt');
         }),
         /innen kaputt/,
       );
-      await schreibe(tx, 'd', 'danach');
+      await write(tx, 'd', 'danach');
     });
     assert.deepEqual(
       [await getGlobalSetting(`${S}b`), await getGlobalSetting(`${S}c`), await getGlobalSetting(`${S}d`)],
@@ -90,16 +90,16 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
   });
 
   await t.test('whoever asks after COMMIT gets the pool', async () => {
-    let spaeter, inside;
-    await transaktion(async tx => {
-      await schreibe(tx, 'e', 'fest');
+    let subsequent, inside;
+    await transaction(async tx => {
+      await write(tx, 'e', 'fest');
       inside = db.inTransaction();
-      spaeter = new Promise(r => setTimeout(r, 50)).then(async () => [
+      subsequent = new Promise(r => setTimeout(r, 50)).then(async () => [
         db.inTransaction(),
         await db.get('SELECT 1 AS x'),
       ]);
     });
     assert.equal(inside, true);
-    assert.deepEqual(await spaeter, [false, { x: 1 }], 'a straggler runs via the pool');
+    assert.deepEqual(await subsequent, [false, { x: 1 }], 'a straggler runs via the pool');
   });
 });

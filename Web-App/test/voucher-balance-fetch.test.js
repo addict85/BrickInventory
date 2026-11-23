@@ -40,25 +40,25 @@ const TOKEN = [
   'x',
 ].join('.');
 
-let modus = 'gut',
+let mode = 'gut',
   port = 0;
-const gesehen = [];
+const seen = [];
 const server = https.createServer({ key: fs.readFileSync(path.join(FIX, 'fetch-test.key')), cert }, (req, res) => {
-  let rumpf = '';
+  let body = '';
   req.on('data', d => {
-    rumpf += d;
+    body += d;
   });
   req.on('end', () => {
-    gesehen.push({
+    seen.push({
       host: req.headers.host,
-      methode: req.method,
+      method: req.method,
       path: req.url,
       keks: req.headers.cookie || '',
       auth: req.headers.authorization || '',
-      rumpf,
+      body,
     });
     if (req.url === '/de-ch/gift-cards/balance') {
-      if (modus === 'umleitung') {
+      if (mode === 'umleitung') {
         res.writeHead(302, { Location: 'https://example.org/de-ch/gift-cards/balance' });
         return res.end();
       }
@@ -71,7 +71,7 @@ const server = https.createServer({ key: fs.readFileSync(path.join(FIX, 'fetch-t
     }
     if (req.url === '/api/graphql/giftCardBalanceQuery' && req.method === 'POST') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      if (modus === 'gross') {
+      if (mode === 'gross') {
         res.write('{"data":"');
         res.write(Buffer.alloc(2 * 1024 * 1024, 0x61));
         return res.end('"}');
@@ -88,7 +88,7 @@ const server = https.createServer({ key: fs.readFileSync(path.join(FIX, 'fetch-t
 });
 
 /** Every host lands at the test server; the certificate does not apply to www.lego.com. */
-class Umlenker extends https.Agent {
+class Redirector extends https.Agent {
   createConnection(opt, cb) {
     return tls.connect(
       {
@@ -104,56 +104,56 @@ class Umlenker extends https.Agent {
   }
 }
 
-const vorher = https.globalAgent;
+const prior = https.globalAgent;
 test.before(async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', () => r(null)));
   port = portOf(server);
-  https.globalAgent = new Umlenker();
+  https.globalAgent = new Redirector();
 });
 test.after(() => {
-  https.globalAgent = vorher;
+  https.globalAgent = prior;
   server.closeAllConnections();
   server.close();
 });
 test.beforeEach(() => {
-  gesehen.length = 0;
+  seen.length = 0;
   stockList.clear();
 });
 
 test('cookies, token and body arrive via the real fetch path', async () => {
-  modus = 'gut';
+  mode = 'gut';
   const g = await G.fetchBalance(stockList, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch });
   assert.deepEqual(g, { amount: 12.5, currency: 'CHF', formatted: 'CHF 12.50' });
   assert.deepEqual(
-    gesehen.map(a => `${a.methode} ${a.path}`),
+    seen.map(a => `${a.method} ${a.path}`),
     ['GET /de-ch/gift-cards/balance', 'POST /api/graphql/Login', 'POST /api/graphql/giftCardBalanceQuery'],
   );
-  const abfrage = gesehen[2];
+  const query = seen[2];
   assert.ok(
-    gesehen.every(a => a.host === 'www.lego.com'),
-    JSON.stringify(gesehen.map(a => a.host)),
+    seen.every(a => a.host === 'www.lego.com'),
+    JSON.stringify(seen.map(a => a.host)),
   );
-  assert.match(abfrage.keks, /sitzung=s1/);
-  assert.match(abfrage.keks, new RegExp(`gqauth=${TOKEN.replace(/\./g, '\\.')}`));
-  assert.equal(abfrage.auth, TOKEN);
-  assert.deepEqual(JSON.parse(abfrage.rumpf).variables, { cardNumber: NUMBER, pin: PIN });
+  assert.match(query.keks, /sitzung=s1/);
+  assert.match(query.keks, new RegExp(`gqauth=${TOKEN.replace(/\./g, '\\.')}`));
+  assert.equal(query.auth, TOKEN);
+  assert.deepEqual(JSON.parse(query.body).variables, { cardNumber: NUMBER, pin: PIN });
 });
 
 test('a redirect to a foreign host is not followed', async () => {
-  modus = 'umleitung';
+  mode = 'umleitung';
   await assert.rejects(
     G.fetchBalance(stockList, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch }),
     (/** @type {any} */ e) => e instanceof FetchError && e.reason === 'umleitung',
   );
-  assert.ok(gesehen.length >= 1, 'the test server was not asked');
+  assert.ok(seen.length >= 1, 'the test server was not asked');
   assert.deepEqual(
-    gesehen.filter(a => a.host !== 'www.lego.com'),
+    seen.filter(a => a.host !== 'www.lego.com'),
     [],
   );
 });
 
 test('an oversized response is aborted', async () => {
-  modus = 'gross';
+  mode = 'gross';
   await assert.rejects(
     G.fetchBalance(stockList, NUMBER, PIN, { locale: 'de-CH', fetch: legoFetch }),
     (/** @type {any} */ e) => e instanceof FetchError && e.reason === 'zu-gross',

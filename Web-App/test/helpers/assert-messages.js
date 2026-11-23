@@ -57,6 +57,17 @@ function argumentsAt(src, open) {
       }
     } else if (c === '/' && src[i + 1] === '/') {
       while (i < src.length && src[i] !== '\n') i++;
+    } else if (c === '/' && /[(,=:[!&|?{};]\s*$/.test(src.slice(Math.max(open, i - 8), i))) {
+      // A regex literal: its quotes and brackets belong to the pattern, not to the call.
+      for (let inClass = false, j = i + 1; j < src.length && src[j] !== '\n'; j++) {
+        if (src[j] === '\\') j++;
+        else if (src[j] === '[') inClass = true;
+        else if (src[j] === ']') inClass = false;
+        else if (src[j] === '/' && !inClass) {
+          i = j;
+          break;
+        }
+      }
     } else if ('([{'.includes(c)) depth++;
     else if (')]}'.includes(c)) {
       depth--;
@@ -110,7 +121,7 @@ function germanMessages(dir) {
   );
   const found = [];
   for (const f of files)
-    for (const msg of messages(require('./sources').ohneKommentare(fs.readFileSync(f, 'utf8'))))
+    for (const msg of messages(require('./sources').withoutComments(fs.readFileSync(f, 'utf8'))))
       if (isGermanMessage(msg)) found.push(`${path.relative(dir, f)}: ${msg.slice(0, 80)}`);
   return found;
 }

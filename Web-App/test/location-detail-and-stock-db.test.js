@@ -90,8 +90,8 @@ test('storage location: detail and stock against a real database', async t => {
 
     // List and detail must say the same. Exactly between these two
     // the QUANTITY already drifted apart (see readSet in src/sets/read.ts).
-    const liste = await S.readSets(writable, { page: 1, page_size: 10 });
-    const row = (liste.sets || []).find(s => s.set_number === SN);
+    const list = await S.readSets(writable, { page: 1, page_size: 10 });
+    const row = (list.sets || []).find(s => s.set_number === SN);
     assert.ok(row, 'The set is missing in the list');
     assert.equal(
       row.storage,
@@ -120,9 +120,9 @@ test('storage location: detail and stock against a real database', async t => {
   });
 
   await t.test('finding 2: the place only arises in the account whose row it describes', async () => {
-    const haupt = (await L.locationsOf([MAIN])).map(o => o.name);
+    const main = (await L.locationsOf([MAIN])).map(o => o.name);
     const kind = (await L.locationsOf([KIND])).map(o => o.name);
-    assert.deepEqual(haupt, ['Estrich'], `Stock of the main account: ${haupt}`);
+    assert.deepEqual(main, ['Estrich'], `Stock of the main account: ${main}`);
     assert.deepEqual(
       kind,
       [],
@@ -146,11 +146,11 @@ test('storage location: detail and stock against a real database', async t => {
       'The former form creates NO entry in the sub-account — then this ' +
         'counter-check no longer checks what it should',
     );
-    const belegt = await db.get(`SELECT COUNT(*)::int AS n FROM sets WHERE user_id = $1 AND storage_id IS NOT NULL`, [
+    const occupied = await db.get(`SELECT COUNT(*)::int AS n FROM sets WHERE user_id = $1 AND storage_id IS NOT NULL`, [
       KIND,
     ]);
     assert.equal(
-      belegt.n,
+      occupied.n,
       0,
       'The sub-account suddenly holds a set with a storage location — the situation is not the intended one',
     );
@@ -163,14 +163,14 @@ test('storage location: detail and stock against a real database', async t => {
     // now it is asked beforehand who holds a row at all.
     const n = await L.setLocation('set', writable, ['99999-1'], 'Garage');
     assert.equal(n, 0, 'A set nobody holds must not hit any row');
-    for (const [wer, id] of [
+    for (const [who, id] of [
       ['Hauptkonto', MAIN],
       ['Unterkonto', KIND],
     ]) {
       const locations = (await L.locationsOf([id])).map(o => o.name);
       assert.ok(
         !locations.includes('Garage'),
-        `The stock of ${wer} got „Garage“ although no set was hit: ${locations}`,
+        `The stock of ${who} got „Garage“ although no set was hit: ${locations}`,
       );
     }
   });
@@ -183,12 +183,12 @@ test('storage location: detail and stock against a real database', async t => {
     await holdsSet(db, KIND, SN, 1);
     const n = await L.setLocation('set', writable, [SN], 'Keller');
     assert.equal(n, 2, `${n} rows hit, expected 2 (both accounts hold the set)`);
-    for (const [wer, id] of [
+    for (const [who, id] of [
       ['Hauptkonto', MAIN],
       ['Unterkonto', KIND],
     ]) {
       const locations = (await L.locationsOf([id])).map(o => o.name);
-      assert.ok(locations.includes('Keller'), `The stock of ${wer} does not have „Keller“: ${locations}`);
+      assert.ok(locations.includes('Keller'), `The stock of ${who} does not have „Keller“: ${locations}`);
     }
     // And the detail combines both instead of concealing one.
     await L.setLocation('set', [MAIN], [SN], 'Estrich');
@@ -222,9 +222,9 @@ test("the lists' storage location filter works via the route", async t => {
   };
   // A second set WITHOUT a storage location — without it the filter would have nothing
   // to sift out, and „all" would be indistinguishable from „the right ones".
-  const OHNE = '21058-1';
-  await catalogSet(db, OHNE, { name: 'Cheops' });
-  await holdsSet(db, MAIN, OHNE, 1);
+  const WITHOUT = '21058-1';
+  await catalogSet(db, WITHOUT, { name: 'Cheops' });
+  await holdsSet(db, MAIN, WITHOUT, 1);
   await L.setLocation('set', [MAIN], [SN], 'Estrich');
 
   // A part in the same box and one without — for the parts list next to it.
@@ -235,12 +235,12 @@ test("the lists' storage location filter works via the route", async t => {
                   ('3001',4,'Rot'), ('3002',4,'Rot')
                 ON CONFLICT (part_number, color_id) DO NOTHING`);
   await holdsPart(db, MAIN, '3001', { setNumber: SN, quantity: 2, colorId: 4 });
-  await holdsPart(db, MAIN, '3002', { setNumber: OHNE, quantity: 2, colorId: 4 });
+  await holdsPart(db, MAIN, '3002', { setNumber: WITHOUT, quantity: 2, colorId: 4 });
   // The keys are a FLAT list in the order of the CONDITION
   // (src/inventory/storageLocation.ts): for a part number AND color, i.e. two entries.
   await L.setLocation('part', [MAIN], ['3001', 4], 'Estrich');
 
-  const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const { base } = testServer(_req, { session: { userId: MAIN }, t });
   const hole = async path => {
     const r = await fetch(base + path);
     assert.equal(r.status, 200, `${path} antwortete ${r.status}`);
@@ -249,21 +249,21 @@ test("the lists' storage location filter works via the route", async t => {
 
   await t.test('sets: without a filter both come', async () => {
     const d = await hole('/api/v2/sets?page=1&page_size=60');
-    const nummern = (d.sets || []).map(s => s.set_number).sort();
+    const numbers = (d.sets || []).map(s => s.set_number).sort();
     assert.deepEqual(
-      nummern,
-      [OHNE, SN].sort(),
-      `Precondition: both sets must come without a filter, got ${JSON.stringify(nummern)}`,
+      numbers,
+      [WITHOUT, SN].sort(),
+      `Precondition: both sets must come without a filter, got ${JSON.stringify(numbers)}`,
     );
   });
 
   await t.test('sets: with storage=Estrich ONLY the set in the box comes', async () => {
     const d = await hole(`/api/v2/sets?page=1&page_size=60&storage=${encodeURIComponent('Estrich')}`);
-    const nummern = (d.sets || []).map(s => s.set_number);
+    const numbers = (d.sets || []).map(s => s.set_number);
     assert.deepEqual(
-      nummern,
+      numbers,
       [SN],
-      `Expected only ${SN}, got ${JSON.stringify(nummern)}. If BOTH come, the ` +
+      `Expected only ${SN}, got ${JSON.stringify(numbers)}. If BOTH come, the ` +
         'route dropped the parameter — the filter in setsLesen() is fine, ' +
         'it just never gets to see it.',
     );
@@ -287,8 +287,8 @@ test("the lists' storage location filter works via the route", async t => {
   });
 
   await t.test('parts: the same filter, the same path', async () => {
-    const alle = await hole('/api/v2/parts?page=1&page_size=60');
-    const numbersAll = (alle.parts || []).map(p => p.part_number).sort();
+    const all = await hole('/api/v2/parts?page=1&page_size=60');
+    const numbersAll = (all.parts || []).map(p => p.part_number).sort();
     assert.deepEqual(
       numbersAll,
       ['3001', '3002'],

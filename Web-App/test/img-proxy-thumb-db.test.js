@@ -21,8 +21,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-imgthumb-'));
-process.env.APP_ROOT = wurzel;
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-imgthumb-'));
+process.env.APP_ROOT = root;
 process.env.IMAGE_FETCHES_PER_MINUTE = '1000';
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const express = require('express');
@@ -31,7 +31,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { httpsStub } = require('./helpers/https-stub');
 const { portOf } = require('./helpers/server');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 replaceServices('images', { setNumberInScope: async () => false });
 
 // The preview lock holds its own connection open; recorded so that the test can close it.
@@ -59,13 +59,13 @@ test.after(async () => {
   await testData()
     .pool?.end?.()
     .catch(() => {});
-  fs.rmSync(wurzel, { recursive: true, force: true });
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 test('?thumb=1: original at once, the preview once in the background', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const { Jimp } = require(path.join(__dirname, '..', 'node_modules', 'jimp'));
-  const imageFile = path.join(wurzel, 'cdn.png');
+  const imageFile = path.join(root, 'cdn.png');
   await new Jimp({ width: 2400, height: 1800, color: 0x336699ff }).write(imageFile);
   const IMAGE = fs.readFileSync(imageFile);
   await httpsStub(t, (_c, res) => {
@@ -74,7 +74,7 @@ test('?thumb=1: original at once, the preview once in the background', { concurr
   });
   const u = `https://cdn.rebrickable.com/media/parts/thumb-${process.pid}.png`;
   const { proxyCacheKey } = _req('src/images/images.js');
-  const cacheFile = path.join(wurzel, 'data', 'img_proxy_cache', proxyCacheKey(u));
+  const cacheFile = path.join(root, 'data', 'img_proxy_cache', proxyCacheKey(u));
   const thumbFile = `${cacheFile}_thumb.jpg`;
   const renames = [];
   const realRename = fs.promises.rename;
@@ -88,10 +88,10 @@ test('?thumb=1: original at once, the preview once in the background', { concurr
     require('./helpers/sources')
       .testContext('images')
       .compartments.slot('vorschauen', () => null);
-  const drained = () => bis(() => !queue() || (queue().running === 0 && queue()._thumbQueue.length === 0), 10000);
+  const drained = () => until(() => !queue() || (queue().running === 0 && queue()._thumbQueue.length === 0), 10000);
   // The first request fills the disk cache (and queues its own preview, which is removed again).
   assert.ok((await get()).equals(IMAGE));
-  assert.ok(await bis(() => fs.existsSync(cacheFile)), 'not cached');
+  assert.ok(await until(() => fs.existsSync(cacheFile)), 'not cached');
   assert.ok(await drained(), 'the first preview does not finish');
   fs.rmSync(thumbFile, { force: true });
   renames.length = 0;
@@ -102,18 +102,21 @@ test('?thumb=1: original at once, the preview once in the background', { concurr
   });
   await t.test('a tile wall starts the preview only once', async () => {
     await Promise.all(Array.from({ length: 6 }, get));
-    assert.ok(await bis(() => fs.existsSync(thumbFile), 5000), 'no preview was made');
+    assert.ok(await until(() => fs.existsSync(thumbFile), 5000), 'no preview was made');
     // Until the background queue is empty: only then would a second preview have been written.
     const queue = require('./helpers/sources')
       .testContext('images')
       .compartments.slot('vorschauen', () => null);
-    assert.ok(await bis(() => queue.running === 0 && queue._thumbQueue.length === 0, 5000), 'the queue does not drain');
+    assert.ok(
+      await until(() => queue.running === 0 && queue._thumbQueue.length === 0, 5000),
+      'the queue does not drain',
+    );
     assert.equal(renames.filter(r => r === thumbFile).length, 1, renames.join('\n'));
   });
 });
 
 test('the UI asks for the preview', async () => {
-  const { openUi, reiter, warte } = require('./helpers/ui');
+  const { openUi, switchTab, waitFor } = require('./helpers/ui');
   const part = {
     part_number: '3001',
     color_id: 5,
@@ -142,16 +145,16 @@ test('the UI asks for the preview', async () => {
   const src = sel => d.querySelector(sel)?.getAttribute('src') ?? '';
   try {
     assert.ok(
-      await warte(() => /img-proxy/.test(src('#gallery img[src*="img-proxy"]'))),
+      await waitFor(() => /img-proxy/.test(src('#gallery img[src*="img-proxy"]'))),
       'gallery without a proxied image',
     );
     assert.match(src('#gallery img[src*="img-proxy"]'), /[?&]thumb=1(?!&gen=0)/, 'the gallery creates previews');
-    await reiter(w, 'parts');
-    assert.ok(await warte(() => d.querySelector('#manual-parts-list img[src*="img-proxy"]')), 'no proxied image');
+    await switchTab(w, 'parts');
+    assert.ok(await waitFor(() => d.querySelector('#manual-parts-list img[src*="img-proxy"]')), 'no proxied image');
     assert.match(src('#manual-parts-list img[src*="img-proxy"]'), /[?&]thumb=1/);
-    await reiter(w, 'catalog');
+    await switchTab(w, 'catalog');
     assert.ok(
-      await warte(() => d.querySelector('#catalog-grid img[src*="img-proxy"]')),
+      await waitFor(() => d.querySelector('#catalog-grid img[src*="img-proxy"]')),
       'catalog without a proxied image',
     );
     assert.match(
@@ -167,7 +170,7 @@ test('the UI asks for the preview', async () => {
 test('one preview at a time, at most 40 waiting, gen=0 creates nothing', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const { Jimp } = require(path.join(__dirname, '..', 'node_modules', 'jimp'));
-  const dir = path.join(wurzel, 'bulk');
+  const dir = path.join(root, 'bulk');
   fs.mkdirSync(dir, { recursive: true });
   const src = path.join(dir, 'src.png');
   await new Jimp({ width: 1200, height: 900, color: 0x884422ff }).write(src);
@@ -196,12 +199,12 @@ test('one preview at a time, at most 40 waiting, gen=0 creates nothing', { concu
     res.end(IMAGE);
   });
   const { proxyCacheKey } = _req('src/images/images.js');
-  const cacheFile = path.join(wurzel, 'data', 'img_proxy_cache', proxyCacheKey(u));
+  const cacheFile = path.join(root, 'data', 'img_proxy_cache', proxyCacheKey(u));
   const gen0 = `http://127.0.0.1:${portOf(srv)}/p?thumb=1&gen=0&url=${encodeURIComponent(u)}`;
   await fetch(gen0).then(r => r.arrayBuffer());
-  assert.ok(await bis(() => fs.existsSync(cacheFile)), 'not cached');
+  assert.ok(await until(() => fs.existsSync(cacheFile)), 'not cached');
   await fetch(gen0).then(r => r.arrayBuffer());
-  await bis(() => queue().running === 0 && queue()._thumbQueue.length === 0);
+  await until(() => queue().running === 0 && queue()._thumbQueue.length === 0);
   await t.test('gen=0 creates nothing', () => assert.equal(fs.existsSync(`${cacheFile}_thumb.jpg`), false));
 });
 
@@ -213,16 +216,16 @@ test('another process holds the lock: no preview, no waiting; afterwards it is f
   const { Jimp } = require(path.join(__dirname, '..', 'node_modules', 'jimp'));
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
   const { createProxyPreview } = _req('src/images/proxyThumbs.js');
-  const src = path.join(wurzel, 'lock.png');
+  const src = path.join(root, 'lock.png');
   await new Jimp({ width: 400, height: 300, color: 0x2244aaff }).write(src);
   const other = await testData().pool.connect();
   t.after(() => other.release());
   await other.query('SELECT pg_advisory_lock($1)', [LOCKS.PROXY_THUMBS]);
   const started = Date.now();
-  assert.equal(await createProxyPreview(src, path.join(wurzel, 'lock1_thumb.jpg')), false);
+  assert.equal(await createProxyPreview(src, path.join(root, 'lock1_thumb.jpg')), false);
   assert.ok(Date.now() - started < 2000, 'the preview waited for the lock');
   await other.query('SELECT pg_advisory_unlock($1)', [LOCKS.PROXY_THUMBS]);
-  assert.equal(await createProxyPreview(src, path.join(wurzel, 'lock2_thumb.jpg')), true);
+  assert.equal(await createProxyPreview(src, path.join(root, 'lock2_thumb.jpg')), true);
   const free = await other.query('SELECT pg_try_advisory_lock($1) AS ok', [LOCKS.PROXY_THUMBS]);
   assert.equal(free.rows[0].ok, true, 'the preview connection kept the lock');
   await other.query('SELECT pg_advisory_unlock($1)', [LOCKS.PROXY_THUMBS]);

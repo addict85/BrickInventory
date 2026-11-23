@@ -36,14 +36,14 @@ test('manual parts and figures: list and valuation state the same condition', { 
   try {
     // The rule: as soon as ONE acquisition is used, the piece counts as
     // used. Without an acquisition „Neu" applies.
-    const faelle = [
-      { nr: '3001', acquisitions: [], erwartet: 'N' },
-      { nr: '3002', acquisitions: ['N'], erwartet: 'N' },
-      { nr: '3003', acquisitions: ['U'], erwartet: 'U' },
-      { nr: '3004', acquisitions: ['N', 'U'], erwartet: 'U' },
-      { nr: '3005', acquisitions: ['N', 'N'], erwartet: 'N' },
+    const cases = [
+      { nr: '3001', acquisitions: [], expected: 'N' },
+      { nr: '3002', acquisitions: ['N'], expected: 'N' },
+      { nr: '3003', acquisitions: ['U'], expected: 'U' },
+      { nr: '3004', acquisitions: ['N', 'U'], expected: 'U' },
+      { nr: '3005', acquisitions: ['N', 'N'], expected: 'N' },
     ];
-    for (const f of faelle) {
+    for (const f of cases) {
       // Name and color label into the catalogs (migration 0034).
       await db.run(
         `INSERT INTO part_catalog (part_number,part_name) VALUES ($1,$2)
@@ -77,7 +77,7 @@ test('manual parts and figures: list and valuation state the same condition', { 
       }
     }
 
-    const [liste, bewertung, figList, figValuation] = await Promise.all([
+    const [list, rating, figList, figValuation] = await Promise.all([
       manualPartsList([uid]),
       valueParts(uid, [uid]),
       readManualMinifigs([uid]),
@@ -87,29 +87,29 @@ test('manual parts and figures: list and valuation state the same condition', { 
     // Self-proof: if empty lists came back, every comparison below would be
     // trivially fulfilled and the test green without having checked anything.
     for (const [was, l] of [
-      ['/parts/manual', liste],
-      ['parts-valuation', bewertung.parts],
+      ['/parts/manual', list],
+      ['parts-valuation', rating.parts],
       ['/minifigs/manual', figList],
-      ['minifigs-valuation', bewertung.parts],
+      ['minifigs-valuation', rating.parts],
     ])
-      assert.equal(l.length, faelle.length, `${was}: ${l.length} instead of ${faelle.length} entries`);
+      assert.equal(l.length, cases.length, `${was}: ${l.length} instead of ${cases.length} entries`);
 
-    const condition = (liste, schluessel, wert) => liste.find(x => x[schluessel] === wert)?.condition;
+    const condition = (list, key, value) => list.find(x => x[key] === value)?.condition;
 
-    for (const f of faelle) {
-      const beschreibung =
+    for (const f of cases) {
+      const description =
         `Teil ${f.nr} (` + (f.acquisitions.length ? `Erfassungen ${f.acquisitions.join('+')}` : 'ohne Erfassung') + ')';
 
-      const fromList = condition(liste, 'part_number', f.nr);
-      const fromValuation = condition(bewertung.parts, 'part_number', f.nr);
+      const fromList = condition(list, 'part_number', f.nr);
+      const fromValuation = condition(rating.parts, 'part_number', f.nr);
       assert.equal(
         fromList,
         fromValuation,
-        `${beschreibung}: /parts/manual says ${fromList}, the valuation says ${fromValuation}. ` +
+        `${description}: /parts/manual says ${fromList}, the valuation says ${fromValuation}. ` +
           'The web app reads one answer, the app the other — the same part ' +
           'would carry different badges in the two interfaces.',
       );
-      assert.equal(fromList, f.erwartet, `${beschreibung}: expected ${f.erwartet}, got ${fromList}`);
+      assert.equal(fromList, f.expected, `${description}: expected ${f.expected}, got ${fromList}`);
 
       const figFromList = condition(figList, 'fig_number', 'fig' + f.nr);
       const figFromValuation = condition(figValuation.figs, 'fig_number', 'fig' + f.nr);
@@ -118,7 +118,7 @@ test('manual parts and figures: list and valuation state the same condition', { 
         figFromValuation,
         `figure fig${f.nr}: /minifigs/manual says ${figFromList}, the valuation says ${figFromValuation}`,
       );
-      assert.equal(figFromList, f.erwartet, `figure fig${f.nr}: expected ${f.erwartet}, got ${figFromList}`);
+      assert.equal(figFromList, f.expected, `figure fig${f.nr}: expected ${f.expected}, got ${figFromList}`);
     }
 
     // And the envelope of the two valuations is shaped the same. The topmost
@@ -126,7 +126,7 @@ test('manual parts and figures: list and valuation state the same condition', { 
     // next to the `condition` per piece, which means something else — exactly the
     // confusion from which the error above arose. Nobody read it
     // (looked up in both clients).
-    assert.deepEqual(Object.keys(bewertung).sort(), [
+    assert.deepEqual(Object.keys(rating).sort(), [
       'converted_purchase_prices',
       'currency',
       'foreign_currency_purchases',
@@ -152,11 +152,11 @@ test('manual parts and figures: list and valuation state the same condition', { 
 
 test('the app fetches the manual pieces from their own address', () => {
   // What the app calls stands in shared/app-interface.json (generated from its source text).
-  const gerufen = new Set(
+  const called = new Set(
     require('./helpers/contract')
       .appRoutes(_req)
       .map(r => `${r.method} ${r.path}`),
   );
-  assert.ok(gerufen.has('GET /api/v2/parts/manual'), 'The app does not call /parts/manual');
-  assert.ok(gerufen.has('GET /api/v2/minifigs/manual'), 'The app does not call /minifigs/manual');
+  assert.ok(called.has('GET /api/v2/parts/manual'), 'The app does not call /parts/manual');
+  assert.ok(called.has('GET /api/v2/minifigs/manual'), 'The app does not call /minifigs/manual');
 });

@@ -66,12 +66,13 @@ test('migration 0105: set master from rb_sets', { concurrency: 1 }, async t => {
 
   await t.test('rb_sets leads; a set only from set_catalog becomes an api row, the theme via its name', async () => {
     assert.deepEqual(
-      (await c.query('SELECT set_num, name, year, theme_id, num_parts, herkunft FROM rb_sets ORDER BY 1')).rows,
+      (await c.query('SELECT set_num, name, year, theme_id, num_parts, herkunft AS provenance FROM rb_sets ORDER BY 1'))
+        .rows,
       [
-        { set_num: '10497-1', name: 'Galaxy Explorer', year: 2022, theme_id: 3, num_parts: 1254, herkunft: 'csv' },
-        { set_num: '5008-1', name: 'Promo', year: 2022, theme_id: 1, num_parts: 50, herkunft: 'api' },
-        { set_num: '75192-1', name: 'Millennium Falcon', year: 2017, theme_id: 1, num_parts: 7541, herkunft: 'csv' },
-        { set_num: '9999-1', name: 'Set 9999-1', year: null, theme_id: null, num_parts: null, herkunft: 'api' },
+        { set_num: '10497-1', name: 'Galaxy Explorer', year: 2022, theme_id: 3, num_parts: 1254, provenance: 'csv' },
+        { set_num: '5008-1', name: 'Promo', year: 2022, theme_id: 1, num_parts: 50, provenance: 'api' },
+        { set_num: '75192-1', name: 'Millennium Falcon', year: 2017, theme_id: 1, num_parts: 7541, provenance: 'csv' },
+        { set_num: '9999-1', name: 'Set 9999-1', year: null, theme_id: null, num_parts: null, provenance: 'api' },
       ],
     );
   });

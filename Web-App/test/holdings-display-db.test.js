@@ -26,7 +26,7 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     SUB = `bs-${process.pid}`;
   const SN = `83${(process.pid % 900) + 100}-1`;
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const tab of ['sets', 'set_acquisitions', 'price_history', 'price_cache'])
       await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [SN]).catch(() => {});
   };
@@ -39,24 +39,24 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     mainId,
     subId,
   ]);
-  await aufraeumen();
+  await cleanUp();
 
   // The price job writes BOTH conditions regardless of what anyone
   // owns — exactly that is where the surplus series came from.
-  for (const [cond, preis] of [
+  for (const [cond, price] of [
     ['N', 7.99],
     ['U', 3.94],
   ]) {
     await db.run(
       `INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                   VALUES ($1,$2,'CHF',$3,$3,5)`,
-      [SN, cond, preis],
+      [SN, cond, price],
     );
     for (let d = 1; d >= 0; d--)
       await db.run(
         `INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                     VALUES ($1,$2,'CHF',$3,$3, CURRENT_DATE - $4::int + interval '9 hours')`,
-        [SN, cond, preis, d],
+        [SN, cond, price, d],
       );
   }
 
@@ -121,11 +121,11 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       const row = r.sets.find(s => s.set_number === SN);
       assert.ok(row, 'the set is missing in the gallery');
       assert.equal(row.quantity, 1, 'the household quantity is the sum');
-      const namen = (row.owners || []).map(o => o.username);
+      const names = (row.owners || []).map(o => o.username);
       assert.deepEqual(
-        namen,
+        names,
         [SUB],
-        `Owner label wrong: ${namen.join(',')} — an account whose purchase price was deleted ` +
+        `Owner label wrong: ${names.join(',')} — an account whose purchase price was deleted ` +
           'no longer holds a copy',
       );
     });
@@ -136,11 +136,11 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       // “Hold a copy again" means: create an entry.
       await record(db, mainId, SN, 2);
       const r = await readSets([mainId, subId], {});
-      const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();
-      assert.deepEqual(namen, [MAIN, SUB].sort(), 'both accounts now hold copies');
+      const names = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();
+      assert.deepEqual(names, [MAIN, SUB].sort(), 'both accounts now hold copies');
     });
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await db.pool.end().catch(() => {});

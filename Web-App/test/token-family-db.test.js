@@ -30,11 +30,11 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-const gesendet = [];
+const sent = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _name, kind, o) => {
-    gesendet.push({ an, kind, name: o.passkey });
+    sent.push({ an, kind, name: o.passkey });
     return { success: true };
   },
 });
@@ -70,59 +70,59 @@ test('token family with reuse detection', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const callFn = async (weg, token, body) => {
-    const r = await fetch(basis + weg, {
+  const callFn = async (route, token, body) => {
+    const r = await fetch(basis + route, {
       method: body ? 'POST' : 'GET',
       headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const anmelden = async label => {
+  const signIn = async label => {
     const r = await callFn('/login', null, { username: NAME, password: PASS, label, never_expires: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return r.body.token;
   };
-  const gilt = async token => {
+  const applies = async token => {
     tokenCache.emptyTokenCache();
     return (await callFn('/me', token)).status === 200;
   };
   const consumed = async () =>
     (await db.all('SELECT token FROM api_tokens_consumed WHERE user_id = $1', [uid])).map(z => z.token);
   // Every login reports its new access (token_added); here the warning is counted.
-  const warnings = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.kind !== 'token_added');
+  const warnings = () => sent.filter(m => m.an === `${NAME}@example.org` && m.kind !== 'token_added');
   const mails = async count => {
     for (let i = 0; i < 60 && warnings().length < count; i++) await new Promise(r => setTimeout(r, 25));
     return warnings();
   };
 
-  const a = await anmelden('Pixel');
-  const anderes = await anmelden('Tablet');
+  const a = await signIn('Pixel');
+  const another = await signIn('Tablet');
   const swapped = await callFn('/rotate-token', a, {});
   assert.equal(swapped.status, 200, JSON.stringify(swapped.body));
   const b = swapped.body.token;
 
   await t.test('the predecessor is marked as used', async () => {
-    assert.equal(await gilt(b), true, 'the first use of the successor');
+    assert.equal(await applies(b), true, 'the first use of the successor');
     assert.deepEqual(await consumed(), [auth.tokenDigest(a)]);
-    assert.equal(await gilt(a), false, 'the predecessor is no longer valid after the overlap');
+    assert.equal(await applies(a), false, 'the predecessor is no longer valid after the overlap');
   });
 
   await t.test('a straggler in the grace period locks nothing', async () => {
     assert.equal((await callFn('/rotate-token', a, {})).status, 401);
-    assert.equal(await gilt(b), true, 'a request still in flight with the old one locks out the device');
+    assert.equal(await applies(b), true, 'a request still in flight with the old one locks out the device');
     assert.deepEqual(await mails(0), []);
   });
 
   await t.test('the exchange with the used one locks the family', async () => {
     await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [uid]);
     assert.equal((await callFn('/rotate-token', a, {})).status, 401);
-    assert.equal(await gilt(b), false, 'the successor of the copied token stays valid');
+    assert.equal(await applies(b), false, 'the successor of the copied token stays valid');
     assert.deepEqual(await consumed(), [], 'the family is gone including the note');
   });
 
   await t.test('the other device stays logged in', async () => {
-    assert.equal(await gilt(anderes), true);
+    assert.equal(await applies(another), true);
   });
 
   await t.test('the owner gets exactly one mail', async () => {
@@ -133,8 +133,8 @@ test('token family with reuse detection', { concurrency: 1 }, async t => {
   });
 
   await t.test('orphaned marks are cleared by the background run', async () => {
-    const c2 = await callFn('/rotate-token', anderes, {});
-    assert.equal(await gilt(c2.body.token), true);
+    const c2 = await callFn('/rotate-token', another, {});
+    assert.equal(await applies(c2.body.token), true);
     assert.equal((await consumed()).length, 1, 'precondition: a note of the living family');
     await auth.tokensCleanup();
     assert.equal((await consumed()).length, 1, 'the note of a living family stays');

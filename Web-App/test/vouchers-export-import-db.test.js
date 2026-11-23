@@ -31,7 +31,7 @@ const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 const PL = require('@cantoo/pdf-lib');
-const suche = (uid, nr) => _req('src/vouchers/repository/vouchers.js').numberSearch(uid, nr);
+const search = (uid, nr) => _req('src/vouchers/repository/vouchers.js').numberSearch(uid, nr);
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -46,11 +46,11 @@ const CARDS = [
 ];
 
 function buildVoucher(amountText, number, pin) {
-  return new Promise(fertig => {
+  return new Promise(done => {
     const d = new PDFKit({ size: 'A4' });
     const s = [];
     d.on('data', c => s.push(c));
-    d.on('end', () => fertig(Buffer.concat(s)));
+    d.on('end', () => done(Buffer.concat(s)));
     d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${amountText} CHF:`, 60, 100);
     d.fontSize(12).text(number, 60, 140).text(`PIN: ${pin}`, 60, 170);
     d.end();
@@ -100,19 +100,19 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
   }
   await setup();
 
-  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const srv = testServer(_req, { session: { userId: MAIN }, t });
 
   let pdf = null,
-    befunde = null;
+    findings = null;
   /** First the confirmed release, then the one fetch with the ticket. */
-  const freigabe = () =>
+  const release = () =>
     fetch(`${srv.base}/api/v2/vouchers/export/pdf-grant`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ password: PASS }),
     });
   const exportIt = async () =>
-    fetch(`${srv.base}/api/v2/vouchers/export/pdf?ticket=${(await (await freigabe()).json()).ticket}`);
+    fetch(`${srv.base}/api/v2/vouchers/export/pdf?ticket=${(await (await release()).json()).ticket}`);
 
   await t.test('1. the export delivers ONE PDF with all own vouchers', async () => {
     const r = await exportIt();
@@ -126,18 +126,18 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
       'Expected three pages — two with an original, one generated',
     );
 
-    const kopf = r.headers.get('x-gutschein-befunde');
+    const head = r.headers.get('x-gutschein-befunde');
     assert.ok(
-      kopf,
+      head,
       'The findings are missing in the header. The body IS the PDF, so the ' +
         'header is the only place that can say what became of each voucher.',
     );
-    befunde = JSON.parse(Buffer.from(kopf, 'base64').toString('utf-8'));
-    assert.equal(befunde.length, 3, `${befunde.length} findings instead of 3`);
+    findings = JSON.parse(Buffer.from(head, 'base64').toString('utf-8'));
+    assert.equal(findings.length, 3, `${findings.length} findings instead of 3`);
     assert.deepEqual(
-      befunde.map(b => b.kind),
+      findings.map(b => b.kind),
       ['ersetzt', 'stimmte_schon', 'erzeugt'],
-      `The findings read ${JSON.stringify(befunde.map(b => b.kind))} — expected: the ` +
+      `The findings read ${JSON.stringify(findings.map(b => b.kind))} — expected: the ` +
         'first is replaced (400→250), the second is already right (150), the third has ' +
         'no original',
     );
@@ -147,7 +147,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     // „⚠ …: Der Betrag im PDF stimmt schon", i.e. a warning about a
     // success. Here the difference is fixed.
     assert.equal(
-      befunde.filter(b => b.kind === 'unveraendert' && b.reason).length,
+      findings.filter(b => b.kind === 'unveraendert' && b.reason).length,
       0,
       'An „already right" must not count as an open item',
     );
@@ -157,12 +157,12 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     // A voucher carries number and PIN. In the export of another account
     // that would be passing on a means of payment.
     const { readPageByPage } = _req('src/vouchers/pdfExport.js');
-    const drin = (await readPageByPage(pdf)).map(w => w.number);
+    const inside = (await readPageByPage(pdf)).map(w => w.number);
     assert.ok(
-      !drin.includes('9999999999999999999'),
-      `The own export contains the card of a foreign account: ${drin.join(', ')}`,
+      !inside.includes('9999999999999999999'),
+      `The own export contains the card of a foreign account: ${inside.join(', ')}`,
     );
-    assert.equal(drin.length, 3, `${drin.length} cards in the PDF instead of 3`);
+    assert.equal(inside.length, 3, `${inside.length} cards in the PDF instead of 3`);
   });
 
   await t.test('3. the exported PDF carries the APP amount, not the printed one', async () => {
@@ -207,7 +207,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     for (const k of CARDS) {
       const z = await db.get('SELECT id, amount, pin, currency FROM vouchers WHERE user_id=$1 AND number_search=$2', [
         MAIN,
-        suche(MAIN, k.nr),
+        search(MAIN, k.nr),
       ]);
       assert.ok(z, `${k.nr} did not come back`);
       assert.equal(Number(z.amount), k.app, `${k.nr}: ${z.amount} instead of ${k.app}`);
@@ -218,13 +218,13 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
       );
     }
     // And the one captured by hand, which never had a PDF.
-    const ohne = await db.get('SELECT amount, pin FROM vouchers WHERE user_id=$1 AND number_search=$2', [
+    const without = await db.get('SELECT amount, pin FROM vouchers WHERE user_id=$1 AND number_search=$2', [
       MAIN,
-      suche(MAIN, '5045076374450033388'),
+      search(MAIN, '5045076374450033388'),
     ]);
-    assert.ok(ohne, 'The manually recorded voucher did not come back');
-    assert.equal(Number(ohne.amount), 42.5);
-    assert.equal(ohne.pin, null, '„keine PIN“ became something else');
+    assert.ok(without, 'The manually recorded voucher did not come back');
+    assert.equal(Number(without.amount), 42.5);
+    assert.equal(without.pin, null, '„keine PIN“ became something else');
   });
 
   await t.test('5. a second import refreshes the amount instead of doing nothing', async () => {
@@ -242,7 +242,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
         (
           await db.get('SELECT amount FROM vouchers WHERE user_id=$1 AND number_search=$2', [
             MAIN,
-            suche(MAIN, CARDS[0].nr),
+            search(MAIN, CARDS[0].nr),
           ])
         ).amount,
       ),
@@ -258,7 +258,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
 
   await t.test('6. without a voucher an information comes, not an empty PDF', async () => {
     await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
-    const r = await freigabe();
+    const r = await release();
     assert.equal(r.status, 404, `expected 404, got ${r.status}`);
     const b = await r.json().catch(() => ({}));
     assert.match(
@@ -298,9 +298,9 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     // STORED as the original of the voucher (not for the stack — there it is
     // the backup, not the card).
     await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
-    const eine = await buildVoucher('250', CARDS[0].nr, CARDS[0].pin);
+    const single = await buildVoucher('250', CARDS[0].nr, CARDS[0].pin);
     const fd = new FormData();
-    fd.append('file', new Blob([eine], { type: 'application/pdf' }), 'einer.pdf');
+    fd.append('file', new Blob([single], { type: 'application/pdf' }), 'einer.pdf');
     const r = await fetch(`${srv.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, `response ${r.status}: ${JSON.stringify(b)}`);

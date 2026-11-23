@@ -60,9 +60,9 @@ test('the rule itself', () => {
 test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const CHEF = `regel_chef_${process.pid}`,
-    ZIEL = `regel_ziel_${process.pid}`,
+    TARGET = `regel_ziel_${process.pid}`,
     PASS = 'Regel-Pruefung-7';
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ZIEL]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, TARGET]]);
   const hash = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs')).hashSync(PASS, 4);
   const chef = (
     await db.get(
@@ -71,11 +71,11 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
       [CHEF, hash],
     )
   ).id;
-  const ziel = (
+  const target = (
     await db.get(
       `INSERT INTO users (username, password_hash, is_active, email_verified)
     VALUES ($1, $2, true, true) RETURNING id`,
-      [ZIEL, hash],
+      [TARGET, hash],
     )
   ).id;
   const regBefore = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
@@ -88,11 +88,11 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     if (regBefore)
       await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regBefore.value]);
     await mailBack();
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, ziel]]);
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, target]]);
   });
   const { base } = routerServer(_req, {
-    sitzung: { userId: chef, username: CHEF, isAdmin: true },
-    routen: { '/api/v2/auth': 'routes/auth.js' },
+    session: { userId: chef, username: CHEF, isAdmin: true },
+    routes: { '/api/v2/auth': 'routes/auth.js' },
     t,
   });
   /** @param {string} pw @returns {[string, string, object][]} */
@@ -105,24 +105,24 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     ['POST', '/change-password', { current: PASS, newPassword: pw }],
     ['POST', '/reset-password', { token: 'a'.repeat(64), password: pw }],
     ['POST', '/users', { username: `regel_vw_${process.pid}`, password: pw, admin_password: PASS }],
-    ['PUT', `/users/${ziel}/password`, { password: pw, admin_password: PASS }],
+    ['PUT', `/users/${target}/password`, { password: pw, admin_password: PASS }],
   ];
-  const callFn = async ([methode, path, rumpf]) => {
+  const callFn = async ([method, path, body]) => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%' OR key LIKE 'reset-password|%'");
     const r = await fetch(`${base}/api/v2/auth${path}`, {
-      method: methode,
+      method: method,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(rumpf),
+      body: JSON.stringify(body),
     });
     const b = await r.json();
     return `${path} ${r.status} ${b.code ?? ''}`;
   };
 
   await t.test('common passwords are rejected on all five paths', async () => {
-    const ist = [];
-    for (const w of pathList('sonnenschein')) ist.push(await callFn(w));
+    const actual = [];
+    for (const w of pathList('sonnenschein')) actual.push(await callFn(w));
     assert.deepEqual(
-      ist,
+      actual,
       pathList('').map(([, p]) => `${p} 400 password_too_common`),
     );
     const text = (
@@ -139,10 +139,10 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
 
   // Above 1024 characters the contract already rejects (input_invalid), otherwise the rule.
   await t.test('oversized passwords are rejected', async () => {
-    const ist = [];
-    for (const w of pathList('Ä'.repeat(1025))) ist.push((await callFn(w)).replace(/ \S*$/, ''));
+    const actual = [];
+    for (const w of pathList('Ä'.repeat(1025))) actual.push((await callFn(w)).replace(/ \S*$/, ''));
     assert.deepEqual(
-      ist,
+      actual,
       pathList('').map(([, p]) => `${p} 400`),
     );
   });
@@ -174,57 +174,57 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
   // /users/:id/password again without names → red (200 for the name of the target).
   await t.test('the username is no password, even without a name in the session', async () => {
     const app = routerServer(_req, {
-      sitzung: { userId: chef, isAdmin: true },
-      routen: { '/api/v2/auth': 'routes/auth.js' },
+      session: { userId: chef, isAdmin: true },
+      routes: { '/api/v2/auth': 'routes/auth.js' },
       t,
     });
-    const put = (methode, path, rumpf) =>
+    const put = (method, path, body) =>
       fetch(`${app.base}/api/v2/auth${path}`, {
-        method: methode,
+        method: method,
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(rumpf),
+        body: JSON.stringify(body),
       }).then(async r => `${r.status} ${(await r.json()).code ?? ''}`);
     assert.equal(
       await put('POST', '/change-password', { current: PASS, newPassword: CHEF.toUpperCase() }),
       '400 password_too_common',
     );
     assert.equal(
-      await put('PUT', `/users/${ziel}/password`, { password: ZIEL, admin_password: PASS }),
+      await put('PUT', `/users/${target}/password`, { password: TARGET, admin_password: PASS }),
       '400 password_too_common',
     );
     assert.ok(
-      await passwordFits(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash),
+      await passwordFits(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [target])).password_hash),
     );
   });
 
   // Counter-check (measured 05.11.2026): in /reset-password the second check
   // with user.username deleted → red (200, the password is the name).
   await t.test('reset: the username is no password', async () => {
-    const roh = 'b'.repeat(64);
+    const raw = 'b'.repeat(64);
     await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
-      ziel,
-      require('node:crypto').createHash('sha256').update(roh).digest('hex'),
+      target,
+      require('node:crypto').createHash('sha256').update(raw).digest('hex'),
     ]);
     assert.equal(
-      await callFn(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() + '-x' }]).then(
+      await callFn(['POST', '/reset-password', { token: raw, password: TARGET.toUpperCase() + '-x' }]).then(
         r => r.split(' ')[1],
       ),
       '200',
       'another password works (check of the token)',
     );
     await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
-      ziel,
-      require('node:crypto').createHash('sha256').update(roh).digest('hex'),
+      target,
+      require('node:crypto').createHash('sha256').update(raw).digest('hex'),
     ]);
     assert.equal(
-      await callFn(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() }]),
+      await callFn(['POST', '/reset-password', { token: raw, password: TARGET.toUpperCase() }]),
       '/reset-password 400 password_too_common',
     );
     assert.ok(
       !(await passwordFits(
-        ZIEL.toUpperCase(),
+        TARGET.toUpperCase(),
         (
-          await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])
+          await db.get('SELECT password_hash FROM users WHERE id = $1', [target])
         ).password_hash,
       )),
     );
@@ -233,10 +233,10 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
   // Counter-check (measured 11.11.2026): changeOwnPassword() (src/account/loginFlow.ts)
   // lets password_too_short through → red (/change-password 200 instead of 400).
   await t.test('passwords that are too short are rejected on all five paths', async () => {
-    const ist = [];
-    for (const w of pathList('Kurz-12345')) ist.push(await callFn(w));
+    const actual = [];
+    for (const w of pathList('Kurz-12345')) actual.push(await callFn(w));
     assert.deepEqual(
-      ist,
+      actual,
       pathList('').map(([, p]) => `${p} 400 password_too_short`),
     );
   });
@@ -244,13 +244,13 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
   // Counter-check (measured 11.11.2026, bcrypt back then): in setForeignPassword (src/account/accounts.ts)
   // hashed with 4 instead of BCRYPT_ROUNDS → red (PUT /users/:id/password: 4); since argon2id see E in the header.
   await t.test('every path hashes with the same costs', async () => {
-    const NEU = `regel_neu_${process.pid}`,
+    const NEW = `regel_neu_${process.pid}`,
       VW = `regel_vw_${process.pid}`;
-    t.after(() => db.run('DELETE FROM users WHERE username = ANY($1)', [[NEU, VW]]));
-    const roh = 'c'.repeat(64);
+    t.after(() => db.run('DELETE FROM users WHERE username = ANY($1)', [[NEW, VW]]));
+    const raw = 'c'.repeat(64);
     await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
-      ziel,
-      require('node:crypto').createHash('sha256').update(roh).digest('hex'),
+      target,
+      require('node:crypto').createHash('sha256').update(raw).digest('hex'),
     ]);
     const round = async name =>
       (await db.get('SELECT password_hash FROM users WHERE username = $1', [name])).password_hash.startsWith(
@@ -259,24 +259,24 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
         ? 'argon2id'
         : 'anders';
     // Above 72 bytes: bcrypt would have cut off the rest, the old rule rejected it.
-    const gut = `Brick-Sammlung-2026-${'ä'.repeat(40)}`;
+    const good = `Brick-Sammlung-2026-${'ä'.repeat(40)}`;
     // The own password last: the paths before it confirm with PASS.
     /** @type {[string, string, object, string][]} */
     const steps = [
-      ['POST', '/register', { username: NEU, email: `regel_${process.pid}@example.org`, password: gut }, NEU],
-      ['POST', '/reset-password', { token: roh, password: gut }, ZIEL],
-      ['POST', '/users', { username: VW, password: gut, admin_password: PASS }, VW],
-      ['PUT', `/users/${ziel}/password`, { password: gut, admin_password: PASS }, ZIEL],
-      ['POST', '/change-password', { current: PASS, newPassword: gut }, CHEF],
+      ['POST', '/register', { username: NEW, email: `regel_${process.pid}@example.org`, password: good }, NEW],
+      ['POST', '/reset-password', { token: raw, password: good }, TARGET],
+      ['POST', '/users', { username: VW, password: good, admin_password: PASS }, VW],
+      ['PUT', `/users/${target}/password`, { password: good, admin_password: PASS }, TARGET],
+      ['POST', '/change-password', { current: PASS, newPassword: good }, CHEF],
     ];
-    const ist = [];
-    for (const [methode, path, rumpf, name] of steps) {
-      const response = await callFn([methode, path, rumpf]);
-      ist.push(`${response.split(' ')[0]} ${response.split(' ')[1]} ${await round(name)}`);
+    const actual = [];
+    for (const [method, path, body, name] of steps) {
+      const response = await callFn([method, path, body]);
+      actual.push(`${response.split(' ')[0]} ${response.split(' ')[1]} ${await round(name)}`);
     }
     assert.deepEqual(
-      ist,
-      ['/register', '/reset-password', '/users', `/users/${ziel}/password`, '/change-password'].map(
+      actual,
+      ['/register', '/reset-password', '/users', `/users/${target}/password`, '/change-password'].map(
         p => `${p} 200 argon2id`,
       ),
     );
@@ -286,14 +286,14 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');
     environment({ ADMIN_PASSWORD: 'passwort123' });
-    const echt = { log: console.log, warn: console.warn },
+    const original = { log: console.log, warn: console.warn },
       warnings = [];
     console.log = () => {};
     console.warn = (...a) => warnings.push(a.join(' '));
     try {
       await db.initSchema();
     } finally {
-      Object.assign(console, echt);
+      Object.assign(console, original);
       environment({ ADMIN_PASSWORD: undefined });
     }
     const admin = await db.get("SELECT password_hash, must_change_password FROM users WHERE username = 'admin'");

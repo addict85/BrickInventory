@@ -26,8 +26,8 @@ const { dataOrSkip } = require('./helpers/db');
 const { startBans, loadConfig, cookieSafe } = _req('src/infra/config.js');
 
 /** Start without NODE_ENV; `PATH` alone, so that nothing from the test environment falls in. */
-function starte(env, ms = 25_000) {
-  return new Promise(fertig => {
+function start(env, ms = 25_000) {
+  return new Promise(done => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -51,7 +51,7 @@ function starte(env, ms = 25_000) {
     }, ms);
     srv.on('exit', code => {
       clearTimeout(clock);
-      fertig({ code, log });
+      done({ code, log });
     });
   });
 }
@@ -65,7 +65,7 @@ test('startBans without NODE_ENV', () => {
 });
 
 test('MAIL_CONSOLE_WITH_TOKEN=1 without NODE_ENV: startup refused', { timeout: 40_000 }, async () => {
-  const r = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', MAIL_CONSOLE_WITH_TOKEN: '1' });
+  const r = await start({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', MAIL_CONSOLE_WITH_TOKEN: '1' });
   assert.notEqual(r.code, 0, r.log.slice(-400));
   assert.match(r.log, /❌ \[mail\] MAIL_CONSOLE_WITH_TOKEN=1 .*Start verweigert/);
   assert.doesNotMatch(r.log, /Database initialisation failed/, 'the ban comes before the database');
@@ -77,7 +77,7 @@ test('as superuser without NODE_ENV: startup refused', { timeout: 60_000 }, asyn
   t.after(() => db.pool.end().catch(() => {}));
   const isSuper = (await db.get('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rolsuper;
   assert.equal(isSuper, true, 'precondition: the test DB connects as superuser');
-  const r = await starte({ DATABASE_URL: URL_DB });
+  const r = await start({ DATABASE_URL: URL_DB });
   assert.equal(r.code, 1, r.log.slice(-600));
   assert.match(r.log, /als Superuser — Start verweigert/);
 });

@@ -15,10 +15,10 @@ const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 const { patternCollection } = require('./helpers/inventory');
 
-const felder = `({ lu: document.getElementById('lu').value, lp: document.getElementById('lp').value,
+const fields = `({ lu: document.getElementById('lu').value, lp: document.getElementById('lp').value,
   lc: document.getElementById('lc').value, mask: getComputedStyle(document.getElementById('login-screen')).display,
   hint: document.getElementById('login-hint').hidden ? '' : document.getElementById('login-hint').textContent,
-  fehler: [...document.querySelectorAll('#toasts .toast.error')].map(t => t.textContent) })`;
+  error: [...document.querySelectorAll('#toasts .toast.error')].map(t => t.textContent) })`;
 
 test('login fields after the session expired and after logout', { timeout: 180_000 }, async t => {
   const app = await startApp(t, { name: `ablauf_${process.pid}`, holding: patternCollection });
@@ -30,39 +30,39 @@ test('login fields after the session expired and after logout', { timeout: 180_0
 
   await t.test('session expired: name stays, password gone, exactly one message', async () => {
     assert.notEqual(
-      await app.b.auswerten(`document.getElementById('lp').value`),
+      await app.b.evaluate(`document.getElementById('lp').value`),
       '',
       'Precondition: password in the field',
     );
     await app.db.run(`DELETE FROM user_sessions`);
     // Two views in the same beat: the collection reloads while the parts already get 401.
-    await app.b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click();
+    await app.b.evaluate(`document.querySelector('.ntab[data-tab="finance"]').click();
       document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-    await app.bis(mask, 'Sign-in form after 401');
+    await app.until(mask, 'Sign-in form after 401');
     // The second 401 is answered too and its hint drawn.
-    await app.ruhig();
-    const f = await app.b.auswerten(felder);
+    await app.settle();
+    const f = await app.b.evaluate(fields);
     assert.equal(f.lp, '', 'the password is still in the field');
     assert.match(f.lu, /^ablauf_/, 'the name stays for a quick sign-in again');
     assert.match(f.hint, /Sitzung abgelaufen/);
-    assert.deepEqual(f.fehler, [], 'Error toast next to the hint');
+    assert.deepEqual(f.error, [], 'Error toast next to the hint');
   });
 
   await t.test('logout clears name, password and code', async () => {
     // Admins need the second factor; the first code went to the first login.
-    await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1';
+    await app.b.evaluate(`document.getElementById('lp').value = 'app-Passwort-1';
       document.getElementById('lc').value = ${JSON.stringify(app.furtherCodes[0])};
       document.getElementById('btn-login').click(); true`);
-    await app.bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'signed in again', 300);
+    await app.until(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'signed in again', 300);
     assert.equal(
-      await app.b.auswerten(`document.getElementById('login-hint').hidden`),
+      await app.b.evaluate(`document.getElementById('login-hint').hidden`),
       true,
       'Hint disappears with the sign-in',
     );
-    await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('lc').value = '123456';
+    await app.b.evaluate(`document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('lc').value = '123456';
       window.__alt = true; document.getElementById('btn-logout').click(); true`);
-    await app.bis(`!window.__alt && ${mask}`, 'Anmeldemaske');
-    const f = await app.b.auswerten(felder);
+    await app.until(`!window.__alt && ${mask}`, 'Anmeldemaske');
+    const f = await app.b.evaluate(fields);
     assert.equal(f.lp, '', 'the password is still in the field');
     assert.equal(f.lc, '', 'the code is still in the field');
     assert.equal(f.lu, '', 'the name is still in the field');

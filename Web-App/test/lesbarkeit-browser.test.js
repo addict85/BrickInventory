@@ -61,11 +61,11 @@ function testPage() {
   <div class="fstat hi"><div class="fsub" data-kontrast="hell: Unterzeile der hellblauen Kachel">Spanne 4'005 – 6'295</div></div>
   <label class="btn bs" id="csv">CSV<input type="file" class="file-hidden" id="datei"></label>
   <div class="sc"><div class="scb"><div class="snum" id="snum">10294-1</div><div class="smeta" id="smeta">2021</div></div></div>
-  <div class="lcard" data-fokus="hell"><button class="btn bp" type="button">Anmelden</button></div>
+  <div class="lcard" data-focused="hell"><button class="btn bp" type="button">Anmelden</button></div>
   <button class="btn bp" type="button"><span id="wort">Set hinzufügen</span></button>
 </section>
 <section data-theme="werkbank" style="background:var(--bg)">
-  <div class="lcard" data-fokus="dark"><button class="btn bp" type="button">Anmelden</button></div>
+  <div class="lcard" data-focused="dark"><button class="btn bp" type="button">Anmelden</button></div>
 </section>
 <section data-theme="werkbank" style="background:var(--bg)">
   <button class="btn bp" data-kontrast="werkbank: Primärknopf">Speichern</button>
@@ -140,11 +140,11 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
     const a = lum(rgb(getComputedStyle(el).color)), b = lum(rgb(hinter(el)));
     return { name: el.dataset.kontrast, wert: Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100 };
   });
-  const ring = [...document.querySelectorAll('[data-fokus]')].map(karte => {
-    const k = karte.querySelector('button'); k.focus();
+  const ring = [...document.querySelectorAll('[data-focused]')].map(card => {
+    const k = card.querySelector('button'); k.focus();
     const cs = getComputedStyle(k);
-    const a = lum(rgb(cs.outlineColor)), b = lum(rgb(hinter(karte)));
-    return { name: karte.dataset.fokus, breite: parseFloat(cs.outlineWidth), stil: cs.outlineStyle,
+    const a = lum(rgb(cs.outlineColor)), b = lum(rgb(hinter(card)));
+    return { name: card.dataset.focused, width: parseFloat(cs.outlineWidth), style: cs.outlineStyle,
              wert: Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100 };
   });
   const farbton = [...document.querySelectorAll('[data-farbton]')].map(el => {
@@ -158,10 +158,10 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
   const brands = [...document.querySelectorAll('[data-marke]')].map(el => getComputedStyle(el).color);
   const darkReason = [...document.querySelectorAll('section[data-dark] > div')]
     .map(el => ({ name: el.parentElement.dataset.theme, hell: Math.round(lum(rgb(getComputedStyle(el).backgroundColor)) * 1000) / 1000 }));
-  const datei = document.getElementById('datei'); datei.focus();
-  const fokus = document.activeElement === datei;
+  const file = document.getElementById('datei'); file.focus();
+  const focused = document.activeElement === file;
   const px = id => parseFloat(getComputedStyle(document.getElementById(id)).fontSize);
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, farbton, brands, darkReason, fokus, ring, space: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, farbton, brands, darkReason, focused, ring, space: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
 }));
 /** Breite eines Leerzeichens in der Schrift des Knopfs, in em. */
 function wortabstand() {
@@ -178,10 +178,10 @@ test('contrast, file fields and tile font', t => {
     t.skip('no Chrome found');
     return;
   }
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'lesbar-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testPage());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lesbar-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'seite.html');
+  fs.writeFileSync(file, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -192,7 +192,7 @@ test('contrast, file fields and tile font', t => {
       '--window-size=1200,800',
       '--virtual-time-budget=3000',
       '--dump-dom',
-      `file://${datei}`,
+      `file://${file}`,
     ],
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
@@ -218,12 +218,12 @@ test('contrast, file fields and tile font', t => {
     e.kontrast.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
     [],
   );
-  assert.equal(e.fokus, true, 'File field focusable: Tab skipped CSV and BrickLink XML');
+  assert.equal(e.focused, true, 'File field focusable: Tab skipped CSV and BrickLink XML');
   assert.ok(e.snum >= 12 && e.smeta >= 12, `Kachelschrift ${e.snum}/${e.smeta} px`);
   assert.ok(e.space >= 0.22, `Word spacing ${e.space} em — „Set hinzufügen“ reads like one word`);
   assert.equal(e.ring.length, 2);
   for (const r of e.ring) {
-    assert.ok(r.stil !== 'none' && r.breite >= 3, `Fokusring ${r.name}: ${r.breite}px ${r.stil}`);
+    assert.ok(r.style !== 'none' && r.width >= 3, `Fokusring ${r.name}: ${r.width}px ${r.style}`);
     assert.ok(r.wert >= 3, `Focus ring ${r.name}: only ${r.wert}:1 against the background`);
   }
 });

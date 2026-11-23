@@ -7,23 +7,23 @@
  */
 const path = require('node:path');
 
-const SCHLUESSEL = ['smtp_host', 'smtp_user'];
+const KEY = ['smtp_host', 'smtp_user'];
 
 function mailFake() {
   const nodemailer = require(path.join(__dirname, '..', '..', 'node_modules', 'nodemailer'));
-  const gesendet = [];
+  const sent = [];
   nodemailer.createTransport = () => ({
     sendMail: async m => {
-      gesendet.push(m);
+      sent.push(m);
       return { messageId: 'attrappe' };
     },
   });
-  return gesendet;
+  return sent;
 }
 
 /** Registers the mail server; returns the cleanup back to the state before. */
 async function enterMailServer(db) {
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [KEY]);
   for (const [k, v] of [
     ['smtp_host', '192.0.2.25' /* one address: a name would have to resolve */],
     ['smtp_user', 'versand'],
@@ -33,8 +33,8 @@ async function enterMailServer(db) {
       [k, v],
     );
   return async () => {
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-    for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [KEY]);
+    for (const z of prior) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
   };
 }
 

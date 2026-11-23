@@ -32,7 +32,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const { warte, bis } = require('./helpers/time');
+const { sleep, until } = require('./helpers/time');
 
 test('CSV import: no double booking', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -49,80 +49,80 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
   /** Holds the lock of acquireSet() for `sn` until loslassen(); returns the end of the transaction. */
   const hold = async (/** @type {string} */ sn) => {
     /** @type {Promise<unknown>} */
-    let ende = Promise.resolve();
+    let end = Promise.resolve();
     await /** @type {Promise<void>} */ (
-      new Promise(gehalten => {
-        ende = db.transaction(async (/** @type {any} */ tx) => {
+      new Promise(held => {
+        end = db.transaction(async (/** @type {any} */ tx) => {
           await lockUntilToEnd(tx, LOCKS.SET_ADD, sn);
           await new Promise(r => {
             letGo = () => r(undefined);
-            gehalten(undefined);
+            held(undefined);
           });
         });
       })
     );
-    return { ende };
+    return { end };
   };
-  const booked = async (/** @type {string} */ praefix) =>
+  const booked = async (/** @type {string} */ prefix) =>
     (
       await db.all(`SELECT set_number FROM set_acquisitions WHERE user_id = $1 AND set_number LIKE $2`, [
         uid,
-        `${praefix}%`,
+        `${prefix}%`,
       ])
     ).map((/** @type {any} */ z) => z.set_number);
   testImageWorker(t, { loadSetImage: async () => null });
   const NAME = `csvlauf-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
     kinds: ['csv_import'],
     tickMs: 50,
   });
 
-  const importIt = async zeilen => {
+  const importIt = async lines => {
     const fd = new FormData();
-    fd.append('file', new Blob(['set_number,quantity\n' + zeilen.map(z => `${z},1`).join('\n')]), 'import.csv');
+    fd.append('file', new Blob(['set_number,quantity\n' + lines.map(z => `${z},1`).join('\n')]), 'import.csv');
     const r = await fetch(`${base}/api/v2/sets/import/csv`, { method: 'POST', body: fd });
     assert.equal(r.status, 200, await r.text());
   };
-  const auftrag = () => db.get('SELECT status, done, results FROM import_status WHERE user_id=$1', [uid]);
+  const job = () => db.get('SELECT status, done, results FROM import_status WHERE user_id=$1', [uid]);
   const untilDone = async () => {
     for (let i = 0; i < 100; i++) {
-      const a = await auftrag();
+      const a = await job();
       if (a?.status !== 'running') return a;
-      await warte(50);
+      await sleep(50);
     }
-    return auftrag();
+    return job();
   };
 
   try {
     await t.test('no second attempt after a timeout', async () => {
-      const { ende } = await hold('70001-1');
+      const { end } = await hold('70001-1');
       await importIt(['70001-1']);
       const a = await untilDone();
       letGo();
-      await ende;
-      await warte(300);
+      await end;
+      await sleep(300);
       assert.deepEqual(await booked('70001'), ['70001-1'], 'exactly one booking, no second attempt');
       assert.equal(a.results[0].isWarning, true, 'the row ends as a warning');
     });
 
     await t.test('a superseded run stops', async () => {
-      const { ende: lockEnd } = await hold('71002-1');
+      const { end: lockEnd } = await hold('71002-1');
       await importIt(['71001-1', '71002-1', '71003-1', '71004-1', '71005-1']);
-      assert.ok(await bis(async () => (await booked('71')).length > 0), 'the first run already books');
+      assert.ok(await until(async () => (await booked('71')).length > 0), 'the first run already books');
       await importIt(['72001-1']);
       const a = await untilDone();
       letGo();
       await lockEnd;
-      await warte(700);
-      const alte = await booked('71');
-      assert.ok(alte.length <= 2, `the old run kept booking: ${alte.join(', ')}`);
-      const ende = await auftrag();
-      assert.equal(ende.status, 'done');
+      await sleep(700);
+      const old = await booked('71');
+      assert.ok(old.length <= 2, `the old run kept booking: ${old.join(', ')}`);
+      const end = await job();
+      assert.equal(end.status, 'done');
       assert.deepEqual(
-        ende.results.map(r => r.set_number),
+        end.results.map(r => r.set_number),
         ['72001-1'],
         'the row belongs to the new run',
       );

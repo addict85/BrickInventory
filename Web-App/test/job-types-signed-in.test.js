@@ -16,12 +16,12 @@ const _req = buildAndRequire();
 const { DECLARED_KINDS } = _req('startup/wiring.js');
 
 test('exactly what is declared is registered', () => {
-  const angemeldet = testServices()
+  const signedIn = testServices()
     .jobQueue.signedInKinds()
     .map(a => a.kind)
     .sort();
-  assert.ok(angemeldet.length > 15, `only ${angemeldet.length} kinds registered — does the wiring still work?`);
-  assert.deepEqual(angemeldet, Object.keys(DECLARED_KINDS).sort());
+  assert.ok(signedIn.length > 15, `only ${signedIn.length} kinds registered — does the wiring still work?`);
+  assert.deepEqual(signedIn, Object.keys(DECLARED_KINDS).sort());
 });
 
 test('the Brickset resubmission registers its kind with payload, the run is provided by the catalog', async () => {

@@ -13,14 +13,14 @@ const { valuesFromPdf, valuesFromText, parseNumber, pdfText } = _req('src/vouche
 const PDFDocument = require('pdfkit');
 
 /** Build a PDF with the passed lines — one text operator per line. */
-function pdfWith(zeilen) {
-  return new Promise(fertig => {
+function pdfWith(lines) {
+  return new Promise(done => {
     const doc = new PDFDocument({ compress: true });
-    const stuecke = [];
-    doc.on('data', s => stuecke.push(s));
-    doc.on('end', () => fertig(Buffer.concat(stuecke)));
+    const pieces = [];
+    doc.on('data', s => pieces.push(s));
+    doc.on('end', () => done(Buffer.concat(pieces)));
     doc.fontSize(12);
-    for (const z of zeilen) doc.text(z);
+    for (const z of lines) doc.text(z);
     doc.end();
   });
 }

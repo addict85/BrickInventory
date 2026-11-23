@@ -17,16 +17,16 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ROOT, buildAndRequire, ohneKommentare, testData, testAccess } = require('./helpers/sources');
+const { ROOT, buildAndRequire, withoutComments, testData, testAccess } = require('./helpers/sources');
 const _reqCsv = buildAndRequire();
 const _req = buildAndRequire();
 const { noDb } = require('./helpers/db');
 const { portOf } = require('./helpers/server');
 const db = testData();
 
-/** Read a file without comments (see ohneKommentare() in helpers/sources.js). */
+/** Read a file without comments (see withoutComments() in helpers/sources.js). */
 function source(...parts) {
-  return ohneKommentare(fs.readFileSync(path.join(ROOT, ...parts), 'utf8'));
+  return withoutComments(fs.readFileSync(path.join(ROOT, ...parts), 'utf8'));
 }
 
 // ── Behavior ───────────────────────────────────────────────────────────────
@@ -95,8 +95,8 @@ test.after(() => db.pool.end().catch(() => {}));
 test('image downloads are capped', () => {
   const src = source('src/images/setImages.ts');
   const fn = src.slice(src.indexOf('async function downloadSetImage'));
-  const ende = fn.indexOf('\n}\n');
-  const body = fn.slice(0, ende);
+  const end = fn.indexOf('\n}\n');
+  const body = fn.slice(0, end);
 
   assert.doesNotMatch(
     body,
@@ -107,7 +107,7 @@ test('image downloads are capped', () => {
   assert.match(
     body,
     /(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
-    'eigener Abruf statt des Helfers mit Umleitungsgrenze',
+    'own fetch instead of the helper with the redirect limit',
   );
   assert.match(body, /MAX_BYTES/, 'no size cap — an arbitrarily large response lands completely in memory');
 });
@@ -117,7 +117,7 @@ test('write endpoints without login carry a throttle', () => {
   // here stand the endpoints that are naturally reachable before login.
   // Every writing one may either require a login (via
   // middleware or in the body), or it counts attempts per IP. qr-login had …
-  const src = ohneKommentare(require('./helpers/sources').loginSource());
+  const src = withoutComments(require('./helpers/sources').loginSource());
   // Old form router.post('/pfad' and contract form router.endpoint('POST /api/v2/auth/pfad'.
   // Every route ends the body of the one before, reading ones too: a POST used to pass
   // because the GET /me after it reads req.session.userId.
@@ -134,12 +134,12 @@ test('write endpoints without login carry a throttle', () => {
   for (let i = 0; i < placeList.length; i++) {
     const method = (placeList[i][1] ?? placeList[i][2]).toUpperCase();
     if (method === 'GET') continue;
-    const von = placeList[i].index;
-    const bis = i + 1 < placeList.length ? placeList[i + 1].index : src.length;
-    const rumpf = src.slice(von, bis);
+    const from = placeList[i].index;
+    const until = i + 1 < placeList.length ? placeList[i + 1].index : src.length;
+    const reqBody = src.slice(from, until);
     const protectedOne =
       /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|login\(|req\.session\??\.?\.?userId/.test(
-        rumpf,
+        reqBody,
       );
     const name = `${method} ${placeList[i][3]}`;
     if (!protectedOne && !Object.hasOwn(WITHOUT, name)) open.push(name);
@@ -158,8 +158,8 @@ test('CSV export defuses formulas, the own import reverses it', () => {
 
   // Numbers stay numbers — otherwise every negative purchase price would come back with an apostrophe
   // and the own importer would read it as text.
-  for (const zahl of ['-5', '-5.00', '-5,00', '42']) {
-    assert.equal(defuse(zahl), zahl, `${zahl} was wrongly defused`);
+  for (const num of ['-5', '-5.00', '-5,00', '42']) {
+    assert.equal(defuse(num), num, `${num} was wrongly defused`);
   }
 
   // Harmless texts stay unchanged.
@@ -188,9 +188,9 @@ test('CSV export: separators in the field are quoted, formulas also defused afte
   const { csvField, toCsv, defuse, defusingUndo, csvRowsFromRequest } = _reqCsv('src/infra/csvExport.js');
   assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 stays one cell');
   for (const t of ['a\rb', 'a\tb', 'a\nb', 'a,b', 'a"b']) assert.equal(csvField(t)[0], '"', JSON.stringify(t));
-  for (const boese of [' =1+1', '\u3000=1+1', '＝1+1', '＋1', '\n=1']) {
-    assert.equal(defuse(boese)[0], "'", `${JSON.stringify(boese)} not defused`);
-    assert.equal(defusingUndo(defuse(boese)), boese);
+  for (const evil of [' =1+1', '\u3000=1+1', '＝1+1', '＋1', '\n=1']) {
+    assert.equal(defuse(evil)[0], "'", `${JSON.stringify(evil)} not defused`);
+    assert.equal(defusingUndo(defuse(evil)), evil);
   }
   assert.equal(defuse(' -5 '), ' -5 ', 'numbers with whitespace stay numbers');
   const csv = toCsv(['a', 'b'], [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }]);
@@ -231,13 +231,13 @@ test('the CSV progress stream survives back pressure on the first write', async 
   // A full buffer already on the first write: send() then calls cleanup() immediately.
   const express = require('express');
   const app = express();
-  let geschrieben = 0;
+  let written = 0;
   app.use((req, res, next) => {
     /** @type {any} */ (req).session = { userId: uid };
-    const schreibe = res.write.bind(res);
+    const write = res.write.bind(res);
     res.write = (...a) => {
-      schreibe(...a);
-      return ++geschrieben > 1;
+      write(...a);
+      return ++written > 1;
     };
     next();
   });
@@ -254,15 +254,15 @@ test('the CSV progress stream survives back pressure on the first write', async 
   t.after(() => testAccess().notification.close());
   // The stream listens via the signal path of the access; counting happens on it.
   const signals = testAccess().notification;
-  const zahl = { an: 0, ab: 0 };
+  const num = { an: 0, ab: 0 };
   const { listen, unlisten } = signals;
-  signals.listen = (kanal, h) => {
-    if (kanal === 'csv_import_progress') zahl.an++;
-    return listen.call(signals, kanal, h);
+  signals.listen = (channel, h) => {
+    if (channel === 'csv_import_progress') num.an++;
+    return listen.call(signals, channel, h);
   };
-  signals.unlisten = (kanal, h) => {
-    if (kanal === 'csv_import_progress') zahl.ab++;
-    return unlisten.call(signals, kanal, h);
+  signals.unlisten = (channel, h) => {
+    if (channel === 'csv_import_progress') num.ab++;
+    return unlisten.call(signals, channel, h);
   };
   t.after(() => {
     signals.listen = listen;
@@ -273,14 +273,14 @@ test('the CSV progress stream survives back pressure on the first write', async 
   });
   const text = await r.text();
   assert.equal(r.status, 200);
-  assert.match(text, /^data: \{/, 'Der erste Stand kommt nicht an');
+  assert.match(text, /^data: \{/, 'The first state does not arrive');
   assert.deepEqual(
     error.map(e => e.message),
     [],
     'cleanup() accesses listeners that are not created yet',
   );
   // Cleaned up: no listener stays hanging on the signal path.
-  for (let i = 0; i < 40 && zahl.ab < zahl.an; i++) await new Promise(r => setTimeout(r, 50));
-  assert.ok(zahl.an > 0, 'the stream did not listen at all — does the count still work?');
-  assert.equal(zahl.ab, zahl.an, 'no listener stays attached to the signal');
+  for (let i = 0; i < 40 && num.ab < num.an; i++) await new Promise(r => setTimeout(r, 50));
+  assert.ok(num.an > 0, 'the stream did not listen at all — does the count still work?');
+  assert.equal(num.ab, num.an, 'no listener stays attached to the signal');
 });

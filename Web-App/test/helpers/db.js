@@ -50,10 +50,10 @@ function noDb(t, e) {
  * What cannot be checked without a database (or pg_dump, superuser …) is
  * skipped — under REQUIRE_DB=1 it is an error so that CI is not
  * green where it checked nothing.
- * @param {any} t @param {string} reason @param {string} [meldung]
+ * @param {any} t @param {string} reason @param {string} [message]
  */
-function missingPrecondition(t, reason, meldung = reason) {
-  if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber ${meldung}`);
+function missingPrecondition(t, reason, message = reason) {
+  if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber ${message}`);
   t.skip(reason);
 }
 

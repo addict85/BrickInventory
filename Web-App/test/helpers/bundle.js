@@ -22,7 +22,7 @@ const BUNDLE_FILE = path.join(ROOT, 'public', OUT_REL);
 function buildTestBundle(name, extra) {
   const esbuild = require(path.join(ROOT, 'node_modules', 'esbuild'));
   const { allowedStyles } = require('../../scripts/build-frontend');
-  const ziel = path.join(os.tmpdir(), `${name}-${process.pid}.js`);
+  const target = path.join(os.tmpdir(), `${name}-${process.pid}.js`);
   esbuild.buildSync({
     stdin: {
       contents: `import './main.js';\n${extra}`,
@@ -33,12 +33,12 @@ function buildTestBundle(name, extra) {
     bundle: true,
     format: 'iife',
     charset: 'utf8',
-    outfile: ziel,
+    outfile: target,
     logLevel: 'error',
     define: { __ALLOWED_STYLES__: JSON.stringify(allowedStyles()) },
   });
-  process.on('exit', () => fs.rmSync(ziel, { force: true }));
-  return ziel;
+  process.on('exit', () => fs.rmSync(target, { force: true }));
+  return target;
 }
 
 module.exports = { BUNDLE_FILE, placeBundleSafe, buildTestBundle };

@@ -69,11 +69,11 @@ test('two concurrent imports of the same table do not collide', { concurrency: 1
   try {
     const results = await Promise.allSettled([TASKS.colors(), TASKS.colors()]);
 
-    const gescheitert = results.filter(r => r.status === 'rejected');
+    const failed = results.filter(r => r.status === 'rejected');
     assert.equal(
-      gescheitert.length,
+      failed.length,
       0,
-      `both runs must complete — failed: ${gescheitert.map(r => r.reason.message).join(' | ')}`,
+      `both runs must complete — failed: ${failed.map(r => r.reason.message).join(' | ')}`,
     );
 
     for (const r of results) {

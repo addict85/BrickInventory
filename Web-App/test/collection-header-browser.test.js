@@ -54,54 +54,54 @@ test('header of the collection: the same and without a jump', { concurrency: 1, 
       await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal')`, [uid]);
     },
     intercept: [
-      { muster: '*household-members*', contains: '/household-members', delay: 600 },
-      { muster: '*settings/raw*', contains: '/settings/raw', delay: 300 },
-      { muster: '*/v2/stats*', contains: '/v2/stats', delay: 900 },
+      { pattern: '*household-members*', contains: '/household-members', delay: 600 },
+      { pattern: '*settings/raw*', contains: '/settings/raw', delay: 300 },
+      { pattern: '*/v2/stats*', contains: '/v2/stats', delay: 900 },
       // List and parts filter only come after the skeleton: then the select fields visibly fill.
-      { muster: '*/v2/sets?*', contains: '/v2/sets?', delay: 1200 },
-      { muster: '*/v2/parts/colors*', contains: '/v2/parts/colors', delay: 1200 },
+      { pattern: '*/v2/sets?*', contains: '/v2/sets?', delay: 1200 },
+      { pattern: '*/v2/parts/colors*', contains: '/v2/parts/colors', delay: 1200 },
     ],
   });
   if (app.reason) {
     t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
-  await ruhig(15_000);
+  const { b, until, settle } = app;
+  await settle(15_000);
   await b.tab('Page.addScriptToEvaluateOnNewDocument', { source: RECORD });
 
   /** @type {Record<string, string>} */
   const endState = {};
-  for (const [name, hash, fertig] of [
+  for (const [name, hash, done] of [
     [
       'Sets',
       '#/sammlung',
       `!!document.querySelector('#gallery .sc') && document.getElementById('bstat-sets').textContent !== '—'`,
     ],
-    ['Teile', '#/teile', `document.getElementById('ps-total').textContent !== '—'`],
-    ['Minifiguren', '#/minifiguren', `document.getElementById('mf-total').textContent !== '—'`],
+    ['Parts', '#/teile', `document.getElementById('ps-total').textContent !== '—'`],
+    ['Minifigs', '#/minifiguren', `document.getElementById('mf-total').textContent !== '—'`],
   ]) {
     await t.test(`${name}: loading without a jump`, async () => {
-      await b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
+      await b.evaluate(`location.hash = ${JSON.stringify(hash)}; true`);
       await b.tab('Page.reload');
-      await bis(`!!window.__kopf && ${fertig}`, `${name} loaded`, 300);
-      await ruhig(4000);
-      const bilder = await b.auswerten('window.__kopf');
-      assert.ok(bilder.length >= 1, 'no frame recorded');
-      assert.deepEqual(bilder, [bilder.at(-1)], 'the header changed after the first frame');
-      assert.equal(await b.auswerten(`document.getElementById('rb-hint').hidden`), false, 'Band is missing');
-      endState[name] = bilder.at(-1);
+      await until(`!!window.__kopf && ${done}`, `${name} loaded`, 300);
+      await settle(4000);
+      const images = await b.evaluate('window.__kopf');
+      assert.ok(images.length >= 1, 'no frame recorded');
+      assert.deepEqual(images, [images.at(-1)], 'the header changed after the first frame');
+      assert.equal(await b.evaluate(`document.getElementById('rb-hint').hidden`), false, 'Band is missing');
+      endState[name] = images.at(-1);
     });
   }
 
   await t.test('same header in all three views', () => {
     // Up to the add bar everything matches; widths of path and subtitle depend on the text.
-    const kopf = z =>
+    const head = z =>
       z
         .split(' | ')
         .slice(0, 6)
         .map(s => s.replace(/^(\.breadcrumb|\.ptitle-sub|h1): (\d+)\/(\d+)\/\d+/, '$1: $2/$3'));
-    assert.deepEqual(kopf(endState.Teile), kopf(endState.Sets));
-    assert.deepEqual(kopf(endState.Minifiguren), kopf(endState.Sets));
+    assert.deepEqual(head(endState.Parts), head(endState.Sets));
+    assert.deepEqual(head(endState.Minifigs), head(endState.Sets));
   });
 });

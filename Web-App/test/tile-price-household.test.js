@@ -16,11 +16,11 @@ const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { tileValues } = _req('src/finances/setValue.js');
-const kachel = (zeilen, nr) => tileValues(zeilen.map(z => ({ purchase_price: null, pnl_pct: null, ...z }))).get(nr);
+const tile = (lines, nr) => tileValues(lines.map(z => ({ purchase_price: null, pnl_pct: null, ...z }))).get(nr);
 
 test('several owners: the tile price is weighted by quantity', () => {
   // The measured case without acquisition rows: two accounts, one set, 600 and 100.
-  const k = kachel(
+  const k = tile(
     [
       { set_number: '75192-1', quantity: 1, baseline_price: 600, current_price: 850, baseline_pnl_pct: '41.7' },
       { set_number: '75192-1', quantity: 1, baseline_price: 100, current_price: 850, baseline_pnl_pct: '750.0' },
@@ -32,7 +32,7 @@ test('several owners: the tile price is weighted by quantity', () => {
 });
 
 test('several owners with entered purchase prices: unchanged', () => {
-  const k = kachel(
+  const k = tile(
     [
       { set_number: '75192-1', quantity: 1, baseline_price: 350, current_price: 850, baseline_pnl_pct: '142.9' },
       { set_number: '75192-1', quantity: 1, baseline_price: 350, current_price: 850, baseline_pnl_pct: '142.9' },
@@ -44,7 +44,7 @@ test('several owners with entered purchase prices: unchanged', () => {
 
 test('different quantities weigh differently', () => {
   // Three copies at 100, one at 500: (3·100 + 500)/4 = 200.
-  const k = kachel(
+  const k = tile(
     [
       { set_number: '6346-1', quantity: 3, baseline_price: 100, current_price: 400, baseline_pnl_pct: '300.0' },
       { set_number: '6346-1', quantity: 1, baseline_price: 500, current_price: 400, baseline_pnl_pct: '-20.0' },
@@ -55,7 +55,7 @@ test('different quantities weigh differently', () => {
 });
 
 test('one row: the server value stays', () => {
-  const k = kachel(
+  const k = tile(
     [
       {
         set_number: '21318-1',
@@ -72,7 +72,7 @@ test('one row: the server value stays', () => {
 });
 
 test('without purchase price and without market price there is no percentage and no amount', () => {
-  const k = kachel(
+  const k = tile(
     [
       { set_number: '10290-1', quantity: 1, baseline_price: null, current_price: 0, baseline_pnl_pct: null },
       { set_number: '10290-1', quantity: 1, baseline_price: null, current_price: 0, baseline_pnl_pct: null },
@@ -86,12 +86,12 @@ test('the web takes over the server values', () => {
   // Run enrichGalleryWithPrices() with a response and look at what
   // arrives at the tile — without a browser, via the module function itself.
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'collection.js'), 'utf8');
-  const von = src.indexOf('  setPnlBySet({});');
-  const bis = src.indexOf('  // Inject price data into cached sets');
-  assert.ok(von > 0 && bis > von, 'enrichGalleryWithPrices() not found — refactored?');
+  const from = src.indexOf('  setPnlBySet({});');
+  const until = src.indexOf('  // Inject price data into cached sets');
+  assert.ok(from > 0 && until > from, 'enrichGalleryWithPrices() not found — refactored?');
   const pnlBySet = {};
   // eslint-disable-next-line no-new-func
-  new Function('pnl', 'pnlBySet', 'setPnlBySet', src.slice(von, bis))(
+  new Function('pnl', 'pnlBySet', 'setPnlBySet', src.slice(from, until))(
     {
       sets: [
         { set_number: 'A-1', current_price: 99, tile_price: 10.5, tile_pnl_pct: 12.3, tile_source: 'purchase' },

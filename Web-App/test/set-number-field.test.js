@@ -14,32 +14,32 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, takt } = require('./helpers/ui');
+const { openUi, tick } = require('./helpers/ui');
 
 const CORPUS = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'),
 ).faelle;
 
-async function versuche(o, number) {
-  const { d, w, aufrufe } = o;
+async function attempts(o, number) {
+  const { d, w, calls } = o;
   d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
-  await takt(20);
+  await tick(20);
   const field = d.getElementById('add-num');
   field.value = number;
   field.dispatchEvent(new w.Event('input', { bubbles: true }));
-  const vorher = aufrufe.length;
+  const prior = calls.length;
   d.getElementById('btn-add').click();
-  await takt(30);
-  const gesendet = aufrufe.slice(vorher).some(a => a.url.includes('/sets/add-stream'));
+  await tick(30);
+  const sent = calls.slice(prior).some(a => a.url.includes('/sets/add-stream'));
   const error = d.getElementById('add-num-error');
-  return { gesendet, field, error: error && !error.hidden ? error.textContent : '' };
+  return { sent, field, error: error && !error.hidden ? error.textContent : '' };
 }
 
 test('abc is rejected, with a message at the field', async () => {
   const o = await openUi({});
   try {
-    const r = await versuche(o, 'abc');
-    assert.equal(r.gesendet, false, '„abc“ went to the server');
+    const r = await attempts(o, 'abc');
+    assert.equal(r.sent, false, '„abc“ went to the server');
     assert.match(r.error, /„abc“ ist keine Setnummer/);
     assert.equal(r.field.getAttribute('aria-invalid'), 'true');
     assert.equal(r.field.getAttribute('aria-describedby'), 'add-num-error');
@@ -49,9 +49,9 @@ test('abc is rejected, with a message at the field', async () => {
     r.field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
     assert.equal(o.d.getElementById('add-num-error').hidden, true);
     // Empty: the same place, own text.
-    const leer = await versuche(o, '   ');
-    assert.equal(leer.gesendet, false);
-    assert.match(leer.error, /Setnummer eingeben/);
+    const empty = await attempts(o, '   ');
+    assert.equal(empty.sent, false);
+    assert.match(empty.error, /Setnummer eingeben/);
   } finally {
     o.w.close();
   }
@@ -61,8 +61,8 @@ test('wrong forms are rejected', async () => {
   const o = await openUi({});
   try {
     for (const n of ['abc', 'fig-000123', '10294-', '10294-1-2', '-1', '10 294', '<b>1</b>']) {
-      const r = await versuche(o, n);
-      assert.equal(r.gesendet, false, `„${n}“ went to the server`);
+      const r = await attempts(o, n);
+      assert.equal(r.sent, false, `„${n}“ went to the server`);
     }
   } finally {
     o.w.close();
@@ -72,11 +72,11 @@ test('wrong forms are rejected', async () => {
 test('valid numbers pass', async () => {
   const o = await openUi({});
   try {
-    const korpus = CORPUS.map(f => f.erwartet).filter(Boolean);
-    assert.ok(korpus.length >= 10, 'corpus not read');
-    for (const n of [...korpus, '10294', '10294-1', ' 42143-1 ', 'llca30-1', 'comcon001', '6284070-1', '71000-12']) {
-      const r = await versuche(o, n);
-      assert.equal(r.gesendet, true, `„${n}“ was rejected: ${r.error}`);
+    const corpus = CORPUS.map(f => f.erwartet).filter(Boolean);
+    assert.ok(corpus.length >= 10, 'corpus not read');
+    for (const n of [...corpus, '10294', '10294-1', ' 42143-1 ', 'llca30-1', 'comcon001', '6284070-1', '71000-12']) {
+      const r = await attempts(o, n);
+      assert.equal(r.sent, true, `„${n}“ was rejected: ${r.error}`);
       assert.equal(r.error, '');
     }
   } finally {

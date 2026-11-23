@@ -50,7 +50,7 @@
  *      sets“; if it assembles the name at runtime, it stays green: the result is what is counted.
  *
  * If a file chooses the table name at runtime, what counts is what it reads and writes when called via a recording
- * access (DYNAMISCH, measureFile). Counter-checks (measured 15.11.2026, each on its own):
+ * access (DYNAMIC, measureFile). Counter-checks (measured 15.11.2026, each on its own):
  *   P  src/inventory/repository/storageLocation.ts: TABELLEN.set = 'instructions' → red: “measured as
  *      registered”, “only it writes into it” ['…/lagerort.ts → instructions'] and “never read
  *      upwards” ['src/inventory → instructions']; the regex on literal names saw neither
@@ -72,7 +72,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, ohneKommentare, testData, asAccount, testSources } = require('./helpers/sources');
+const { buildAndRequire, withoutComments, testData, asAccount, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { noDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/jobs');
@@ -92,27 +92,27 @@ const ACCOUNT = 'account_id'; // belongs to an account via another key
 
 /** type, eingabe (false or why inputs may go in), schreiber (catalog only). */
 const SHARED = {
-  bl_mapping: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/blMapping.ts'] },
+  bl_mapping: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/blMapping.ts'] },
   catalog_cache: {
     type: CATALOG,
     eingabe: false,
-    schreiber: ['src/catalog/repository/catalogCache.ts', 'src/catalog/repository/rebrickableCache.ts'],
+    writer: ['src/catalog/repository/catalogCache.ts', 'src/catalog/repository/rebrickableCache.ts'],
   },
   set_catalog: {
     type: CATALOG,
     eingabe: false,
-    schreiber: [
+    writer: [
       'src/catalog/repository/imageState.ts',
       'src/catalog/repository/csvSwap.ts',
       'src/catalog/repository/setMaster.ts',
       'src/catalog/repository/partsEnrichment.ts',
     ],
   },
-  part_catalog: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/catalogMaster.ts'] },
+  part_catalog: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/catalogMaster.ts'] },
   part_color_catalog: {
     type: CATALOG,
     eingabe: false,
-    schreiber: [
+    writer: [
       'src/catalog/repository/csvCatalog.ts',
       'src/catalog/repository/catalogMaster.ts',
       'src/catalog/repository/partsEnrichment.ts',
@@ -121,60 +121,60 @@ const SHARED = {
   minifigs_catalog: {
     type: CATALOG,
     eingabe: false,
-    schreiber: ['src/catalog/repository/catalogMaster.ts', 'src/catalog/repository/partsEnrichment.ts'],
+    writer: ['src/catalog/repository/catalogMaster.ts', 'src/catalog/repository/partsEnrichment.ts'],
   },
-  set_parts: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/catalogMaster.ts'] },
-  set_minifigs: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/catalogMaster.ts'] },
+  set_parts: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/catalogMaster.ts'] },
+  set_minifigs: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/catalogMaster.ts'] },
   subsets_cache: {
     type: CATALOG,
     eingabe: false,
-    schreiber: ['src/catalog/repository/catalogCache.ts', 'src/catalog/repository/rebrickableCache.ts'],
+    writer: ['src/catalog/repository/catalogCache.ts', 'src/catalog/repository/rebrickableCache.ts'],
   },
-  minifig_parts_cache: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/rebrickableCache.ts'] },
-  shared_instructions: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/instructions.ts'] },
+  minifig_parts_cache: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/rebrickableCache.ts'] },
+  shared_instructions: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/instructions.ts'] },
   rb_colors: {
     type: CATALOG,
     eingabe: false,
-    schreiber: ['src/catalog/repository/blMapping.ts', 'src/catalog/repository/csvSwap.ts'],
+    writer: ['src/catalog/repository/blMapping.ts', 'src/catalog/repository/csvSwap.ts'],
   },
-  rb_inventories: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
-  rb_inventory_minifigs: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
-  rb_inventory_parts: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
-  rb_part_categories: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
-  rb_parts: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
+  rb_inventories: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/csvSwap.ts'] },
+  rb_inventory_minifigs: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/csvSwap.ts'] },
+  rb_inventory_parts: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/csvSwap.ts'] },
+  rb_part_categories: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/csvSwap.ts'] },
+  rb_parts: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/csvSwap.ts'] },
   rb_sets: {
     type: CATALOG,
     eingabe: false,
-    schreiber: [
+    writer: [
       'src/catalog/repository/imageState.ts',
       'src/catalog/repository/csvSwap.ts',
       'src/catalog/repository/setMaster.ts',
     ],
   },
-  rb_themes: { type: CATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
-  price_cache: { type: CATALOG, eingabe: false, schreiber: ['src/finances/repository/priceCache.ts'] },
+  rb_themes: { type: CATALOG, eingabe: false, writer: ['src/catalog/repository/csvSwap.ts'] },
+  price_cache: { type: CATALOG, eingabe: false, writer: ['src/finances/repository/priceCache.ts'] },
   price_history: {
     type: CATALOG,
     eingabe: false,
-    schreiber: [
+    writer: [
       'src/finances/repository/priceCache.ts',
       'src/finances/repository/priceRun.ts',
       'src/finances/repository/priceHistory.ts',
     ],
   },
-  part_price_cache: { type: CATALOG, eingabe: false, schreiber: ['src/finances/repository/priceCache.ts'] },
-  part_price_history: { type: CATALOG, eingabe: false, schreiber: ['src/finances/repository/priceCache.ts'] },
+  part_price_cache: { type: CATALOG, eingabe: false, writer: ['src/finances/repository/priceCache.ts'] },
+  part_price_history: { type: CATALOG, eingabe: false, writer: ['src/finances/repository/priceCache.ts'] },
   minifig_price_cache: {
     type: CATALOG,
     eingabe: false,
-    schreiber: ['src/finances/repository/marketPrices.ts', 'src/finances/repository/priceCache.ts'],
+    writer: ['src/finances/repository/marketPrices.ts', 'src/finances/repository/priceCache.ts'],
   },
   minifig_price_history: {
     type: CATALOG,
     eingabe: false,
-    schreiber: ['src/finances/repository/marketPrices.ts', 'src/finances/repository/priceCache.ts'],
+    writer: ['src/finances/repository/marketPrices.ts', 'src/finances/repository/priceCache.ts'],
   },
-  exchange_rates: { type: CATALOG, eingabe: false, schreiber: ['src/finances/repository/exchangeRates.ts'] },
+  exchange_rates: { type: CATALOG, eingabe: false, writer: ['src/finances/repository/exchangeRates.ts'] },
   image_misses: { type: OPERATIONS, eingabe: false },
   image_wanted: { type: OPERATIONS, eingabe: false },
   parts_catalog_pending: {
@@ -206,11 +206,11 @@ const SHARED = {
  * and levels apply to what is measured as to literal names. */
 const DYNAMIC = {
   'src/inventory/repository/acquisitions.ts': {
-    liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
-    schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    reads: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    writes: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
   },
   'src/inventory/repository/shared.ts': {
-    liest: [
+    reads: [
       'minifigs',
       'parts',
       'rb_sets',
@@ -221,26 +221,26 @@ const DYNAMIC = {
       'storage_locations',
       'user_settings',
     ],
-    schreibt: ['minifigs', 'parts', 'set_acquisitions', 'sets'],
+    writes: ['minifigs', 'parts', 'set_acquisitions', 'sets'],
   },
   'src/inventory/repository/purchases.ts': {
-    liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
-    schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    reads: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    writes: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
   },
   'src/inventory/repository/purchaseAcquisitions.ts': {
-    liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
-    schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    reads: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    writes: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
   },
   'src/inventory/repository/storageLocation.ts': {
-    liest: ['minifigs', 'parts', 'sets', 'storage_locations', 'users'],
-    schreibt: ['minifigs', 'parts', 'sets', 'storage_locations'],
+    reads: ['minifigs', 'parts', 'sets', 'storage_locations', 'users'],
+    writes: ['minifigs', 'parts', 'sets', 'storage_locations'],
   },
   'src/inventory/repository/manualQuantities.ts': {
-    liest: ['minifig_acquisitions', 'part_acquisitions'],
-    schreibt: ['minifig_acquisitions', 'part_acquisitions'],
+    reads: ['minifig_acquisitions', 'part_acquisitions'],
+    writes: ['minifig_acquisitions', 'part_acquisitions'],
   },
   'src/inventory/repository/trash.ts': {
-    liest: [
+    reads: [
       'minifig_acquisitions',
       'minifig_custom',
       'minifigs',
@@ -256,14 +256,14 @@ const DYNAMIC = {
       'sets',
       'trash',
     ],
-    schreibt: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts', 'set_acquisitions', 'sets', 'trash'],
+    writes: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts', 'set_acquisitions', 'sets', 'trash'],
   },
   'src/inventory/repository/reassign.ts': {
-    liest: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
-    schreibt: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
+    reads: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
+    writes: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
   },
   'src/finances/repository/priceHistory.ts': {
-    liest: [
+    reads: [
       'minifig_price_cache',
       'minifig_price_history',
       'part_price_cache',
@@ -271,11 +271,11 @@ const DYNAMIC = {
       'price_cache',
       'price_history',
     ],
-    schreibt: ['price_history'],
+    writes: ['price_history'],
   },
-  'src/vouchers/repository/vouchers.ts': { liest: ['vouchers'], schreibt: ['vouchers'] },
+  'src/vouchers/repository/vouchers.ts': { reads: ['vouchers'], writes: ['vouchers'] },
   'src/catalog/repository/csvSwap.ts': {
-    liest: [
+    reads: [
       'rb_colors',
       'rb_inventories',
       'rb_inventory_minifigs',
@@ -285,7 +285,7 @@ const DYNAMIC = {
       'rb_sets',
       'rb_themes',
     ],
-    schreibt: [
+    writes: [
       'rb_colors',
       'rb_inventories',
       'rb_inventory_minifigs',
@@ -298,11 +298,11 @@ const DYNAMIC = {
     ],
   },
   'src/catalog/repository/catalogCache.ts': {
-    liest: ['catalog_cache', 'rb_sets', 'set_catalog', 'subsets_cache'],
-    schreibt: ['catalog_cache', 'subsets_cache'],
+    reads: ['catalog_cache', 'rb_sets', 'set_catalog', 'subsets_cache'],
+    writes: ['catalog_cache', 'subsets_cache'],
   },
   'src/catalog/repository/partsEnrichment.ts': {
-    liest: [
+    reads: [
       'bl_mapping',
       'minifigs_catalog',
       'part_color_catalog',
@@ -310,10 +310,10 @@ const DYNAMIC = {
       'rb_inventory_parts',
       'set_catalog',
     ],
-    schreibt: ['minifigs_catalog', 'part_color_catalog', 'set_catalog'],
+    writes: ['minifigs_catalog', 'part_color_catalog', 'set_catalog'],
   },
   'src/sets/repository/sets.ts': {
-    liest: [
+    reads: [
       'instructions',
       'rb_sets',
       'rb_themes',
@@ -324,26 +324,26 @@ const DYNAMIC = {
       'storage_locations',
       'user_settings',
     ],
-    schreibt: [],
+    writes: [],
   },
 };
 
 const WRITE =
   /\b(?:INSERT INTO|DELETE FROM|TRUNCATE(?: TABLE)?)\s+(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)|(?<!DO )\bUPDATE\s+(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)[^;`'"]*?\bSET\b/g;
-const LIES = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)\b/g;
-const NAME_ZUR_LAUFZEIT =
+const READS = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)\b/g;
+const NAME_AT_RUNTIME =
   /\b(?:FROM|JOIN|USING|INSERT INTO|DELETE FROM|UPDATE|TRUNCATE(?: TABLE)?)\s+(?:ONLY\s+)?\$\{\s*([\w$]+)(\s*[.[(])?/g;
 
 /** Files under src/ whose SQL takes a table name from an own variable. Exempt:
  * the read contract (`l.…`) and read building blocks from db/, whose result the check measures via db/. */
 function filesWithNamesToRuntime() {
-  const aus = [];
-  (function lauf(d) {
+  const out = [];
+  (function run(d) {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
-      if (fs.statSync(p).isDirectory()) lauf(p);
+      if (fs.statSync(p).isDirectory()) run(p);
       else if (n.endsWith('.ts')) {
-        const s = ohneKommentare(fs.readFileSync(p, 'utf8'));
+        const s = withoutComments(fs.readFileSync(p, 'utf8'));
         const fromDb = new Set(
           [...s.matchAll(/^import\s+\{([^}]*)\}\s+from\s+'(?:\.\.?\/)+db\/\w+'/gm)].flatMap(m =>
             m[1].split(',').map(x =>
@@ -354,14 +354,14 @@ function filesWithNamesToRuntime() {
             ),
           ),
         );
-        const eigen = [...s.matchAll(NAME_ZUR_LAUFZEIT)].some(
+        const own = [...s.matchAll(NAME_AT_RUNTIME)].some(
           m => !(m[1] === 'l' && /[.[]/.test(m[2] ?? '')) && !(fromDb.has(m[1]) && (m[2] ?? '').trim() === '('),
         );
-        if (eigen) aus.push(path.relative(ROOT, p).split(path.sep).join('/'));
+        if (own) out.push(path.relative(ROOT, p).split(path.sep).join('/'));
       }
     }
   })(path.join(ROOT, 'src'));
-  return aus.sort();
+  return out.sort();
 }
 
 /** A value that fits every probe: number, text, list, object, read contract. */
@@ -384,38 +384,38 @@ function chamaeleon() {
   return c;
 }
 
-const ARTEN = ['set', 'part', 'fig', 'teil', 'figur'];
+const KINDS = ['set', 'part', 'fig', 'teil', 'figur'];
 
 /** Calls every export of the file per kind via an access that only records the queries. If the
  * caller chooses the name, then from an exported list of the file: its values are further probes.
  * @returns read and written tables, as far as the schema knows them */
-async function measureFile(datei, bekannt) {
-  const liest = new Set(),
-    schreibt = new Set();
+async function measureFile(file, known) {
+  const reads = new Set(),
+    writes = new Set();
   const c = chamaeleon();
   const remember = sql => {
-    for (const m of String(sql).matchAll(LIES)) if (bekannt.has(m[1])) liest.add(m[1]);
-    for (const m of String(sql).matchAll(WRITE)) if (bekannt.has(m[1] ?? m[2])) schreibt.add(m[1] ?? m[2]);
+    for (const m of String(sql).matchAll(READS)) if (known.has(m[1])) reads.add(m[1]);
+    for (const m of String(sql).matchAll(WRITE)) if (known.has(m[1] ?? m[2])) writes.add(m[1] ?? m[2]);
   };
   const response = value => async sql => {
     remember(sql);
     return value;
   };
-  const zugang = {
+  const access = {
     get: response(c),
     all: response([c]),
     run: response({ changes: 1 }),
     query: response({ rows: [c], rowCount: 1 }),
   };
-  const modul = _req(datei.replace(/\.ts$/, '.js'));
-  const listen = Object.values(modul).filter(Array.isArray).flat();
-  const arten = [...ARTEN, ...listen.filter(x => typeof x === 'string')];
-  for (const f of Object.values(modul))
+  const mod = _req(file.replace(/\.ts$/, '.js'));
+  const listen = Object.values(mod).filter(Array.isArray).flat();
+  const kinds = [...KINDS, ...listen.filter(x => typeof x === 'string')];
+  for (const f of Object.values(mod))
     if (typeof f === 'function')
-      for (const type of arten)
+      for (const type of kinds)
         for (const probe of [
-          [zugang, type, c, c, c, c, c, c],
-          [zugang, c, type, c, c, c, c, c],
+          [access, type, c, c, c, c, c, c],
+          [access, c, type, c, c, c, c, c],
         ])
           try {
             const r = f(...probe);
@@ -423,31 +423,31 @@ async function measureFile(datei, bekannt) {
           } catch {
             // A probe that does not fit asks nothing.
           }
-  return { liest: [...liest].sort(), schreibt: [...schreibt].sort() };
+  return { reads: [...reads].sort(), writes: [...writes].sort() };
 }
 
 /** Per scope the tables into which only it writes: the table in docs/architecture.md. */
-function besitzerAusDoku() {
+function ownerFromDoc() {
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8');
-  const abschnitt = doc.slice(doc.indexOf('## Tabellen und Besitzer'), doc.indexOf('## API-Vertrag'));
+  const section = doc.slice(doc.indexOf('## Tabellen und Besitzer'), doc.indexOf('## API-Vertrag'));
   return Object.fromEntries(
-    [...abschnitt.matchAll(/^\| `([^`]+)` \| (.+) \|$/gm)].map(m => [
+    [...section.matchAll(/^\| `([^`]+)` \| (.+) \|$/gm)].map(m => [
       m[1],
       [...m[2].matchAll(/`([^`]+)`/g)].map(x => x[1]),
     ]),
   );
 }
-const BESITZER = besitzerAusDoku();
+const OWNER = ownerFromDoc();
 
 /** Exceptions to „only the owner writes“; a ratchet: only delete, never add. */
-const FREMDSCHREIBER = [
+const FOREIGN_WRITERS = [
   // The schema start writes the time zone before there are services.
   'db/schemaStart.ts → global_settings',
 ];
 
 /** Triggers that write into the table of another scope: „owner of the trigger table →
  * target“ and why that does not go via the target's service. A ratchet like FREMDSCHREIBER. */
-const TRIGGER_FREMDZIELE = {
+const TRIGGER_FOREIGN_TARGETS = {
   'src/inventory → parts_version_user':
     'Der Teilezähler muss jede Änderung an Sets, Käufen, Teilen und Lagerorten sehen, auch ohne src/parts',
   'src/catalog → parts_catalog_pending':
@@ -458,15 +458,15 @@ const TRIGGER_FREMDZIELE = {
  * in db/ or the owner's service? Pairs „scope → table“; db/ itself is the read building block.
  * Upwards (owner on a higher level) is forbidden; catalog tables are shared master data
  * and are counted separately; the rest reads downwards and may only become fewer. */
-const KATALOG_LESER_HOECHSTENS = 49;
-const ABWAERTS_LESER_HOECHSTENS = 24;
+const CATALOG_READERS_MAX = 49;
+const DOWNSTREAM_READERS_MAX = 24;
 
 /** Per scope its level from docs/architecture.md („Rangfolge der Bereiche“). */
-function stufenAusDoku() {
+function levelsFromDoc() {
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architecture.md'), 'utf8');
-  const abschnitt = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## Schema'));
+  const section = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## Schema'));
   return new Map(
-    [...abschnitt.matchAll(/^\| (\d+) \| (.+) \|$/gm)].flatMap(m =>
+    [...section.matchAll(/^\| (\d+) \| (.+) \|$/gm)].flatMap(m =>
       [...m[2].matchAll(/`([^`]+)`/g)].map(x => [x[1], Number(m[1])]),
     ),
   );
@@ -478,25 +478,25 @@ function readDirection(levels, b, owner) {
   return levels.get(owner) > levels.get(b) ? 'aufwärts' : 'abwärts';
 }
 
-function foreignReader(besitzer) {
+function foreignReader(ownerName) {
   const pairs = new Set();
-  (function lauf(d) {
+  (function run(d) {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
-      if (fs.statSync(p).isDirectory()) lauf(p);
+      if (fs.statSync(p).isDirectory()) run(p);
       else if (n.endsWith('.ts')) {
-        const datei = path.relative(ROOT, p).split(path.sep).join('/');
-        const b = areaOf(datei);
-        const s = ohneKommentare(fs.readFileSync(p, 'utf8'));
+        const file = path.relative(ROOT, p).split(path.sep).join('/');
+        const b = areaOf(file);
+        const s = withoutComments(fs.readFileSync(p, 'utf8'));
         for (const m of s.matchAll(/\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b/g))
-          if (besitzer.has(m[1]) && besitzer.get(m[1]) !== b) pairs.add(`${b} → ${m[1]}`);
+          if (ownerName.has(m[1]) && ownerName.get(m[1]) !== b) pairs.add(`${b} → ${m[1]}`);
       }
     }
   })(path.join(ROOT, 'src'));
   return [...pairs].sort();
 }
 
-const areaOf = datei => (datei.startsWith('src/') ? datei.split('/').slice(0, 2).join('/') : datei.split('/')[0]);
+const areaOf = file => (file.startsWith('src/') ? file.split('/').slice(0, 2).join('/') : file.split('/')[0]);
 
 const READ = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b/g;
 
@@ -504,19 +504,19 @@ const READ = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b/g;
  * probes per kind and an access that only records the queries. That way what is read via a
  * constant (ZAEHLT) or an asynchronous query counts too. */
 async function readingBlocks(_req) {
-  const je = {};
-  const ordner = path.join(ROOT, 'db');
-  for (const n of fs.readdirSync(ordner)) {
+  const per = {};
+  const dir = path.join(ROOT, 'db');
+  for (const n of fs.readdirSync(dir)) {
     if (!n.endsWith('.ts') || ['database.ts', 'migrate.ts', 'schemaStart.ts'].includes(n)) continue;
-    if (!/\b(?:FROM|JOIN)\b/.test(fs.readFileSync(path.join(ordner, n), 'utf8'))) continue;
-    const modul = n.replace(/\.ts$/, '');
-    je[modul] = {};
-    for (const [name, value] of Object.entries(_req(`db/${modul}.js`))) {
-      const tabellen = new Set();
+    if (!/\b(?:FROM|JOIN)\b/.test(fs.readFileSync(path.join(dir, n), 'utf8'))) continue;
+    const mod = n.replace(/\.ts$/, '');
+    per[mod] = {};
+    for (const [name, value] of Object.entries(_req(`db/${mod}.js`))) {
+      const tables = new Set();
       const remember = sql => {
-        for (const m of String(sql).matchAll(READ)) tabellen.add(m[1]);
+        for (const m of String(sql).matchAll(READ)) tables.add(m[1]);
       };
-      const zugang = {
+      const access = {
         get: async sql => {
           remember(sql);
           return null;
@@ -534,10 +534,10 @@ async function readingBlocks(_req) {
           const probeList = [
             [],
             ['= ANY($1)'],
-            [type, '$1', ['3001', 4], zugang],
+            [type, '$1', ['3001', 4], access],
             ['s', type, 'tm', '= ANY($1)'],
-            ['$1', '$2', zugang],
-            [1, '3001-1', zugang],
+            ['$1', '$2', access],
+            [1, '3001-1', access],
           ];
           for (const probe of probeList) {
             try {
@@ -549,21 +549,21 @@ async function readingBlocks(_req) {
             }
           }
         }
-      if (tabellen.size) je[modul][name] = [...tabellen].sort();
+      if (tables.size) per[mod][name] = [...tables].sort();
     }
   }
-  return je;
+  return per;
 }
 
 /** Pairs „scope → table“ that a scope reads via imported read building blocks (also `* as`). */
-function readerViaDb(bausteine) {
+function readerViaDb(bricks) {
   const pairs = new Set();
-  const dateien = [];
-  const lauf = d => {
+  const files = [];
+  const run = d => {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
-      if (fs.statSync(p).isDirectory()) lauf(p);
-      else if (n.endsWith('.ts')) dateien.push(p);
+      if (fs.statSync(p).isDirectory()) run(p);
+      else if (n.endsWith('.ts')) files.push(p);
     }
   };
   for (const d of [
@@ -572,15 +572,15 @@ function readerViaDb(bausteine) {
     path.join(ROOT, 'routes'),
     path.join(ROOT, 'startup'),
   ])
-    lauf(d);
-  for (const p of dateien) {
-    const datei = path.relative(ROOT, p).split(path.sep).join('/');
-    const b = datei === 'src/services.ts' ? datei : areaOf(datei);
+    run(d);
+  for (const p of files) {
+    const file = path.relative(ROOT, p).split(path.sep).join('/');
+    const b = file === 'src/services.ts' ? file : areaOf(file);
     const s = fs.readFileSync(p, 'utf8');
     for (const m of s.matchAll(/^import\s+(?:type\s+)?(\{[^}]*\}|\*\s+as\s+\w+)\s+from\s+'(?:\.\.?\/)+db\/(\w+)'/gm)) {
-      const component = bausteine[m[2]];
+      const component = bricks[m[2]];
       if (!component) continue;
-      const namen = m[1].startsWith('*')
+      const names = m[1].startsWith('*')
         ? Object.keys(component)
         : m[1]
             .slice(1, -1)
@@ -593,39 +593,39 @@ function readerViaDb(bausteine) {
                   .split(/\s+as\s+/)[0],
             )
             .filter(Boolean);
-      for (const name of namen) for (const t of component[name] ?? []) pairs.add(`${b} → ${t}`);
+      for (const name of names) for (const t of component[name] ?? []) pairs.add(`${b} → ${t}`);
     }
   }
   return [...pairs].sort();
 }
 
-const MARKE = 'zzmarke7q';
+const MARK = 'zzmarke7q';
 
 /** File → written tables, without comments; `DO UPDATE SET` is not a table name. */
 function writingPlaces() {
-  const tabellen = new Map(),
+  const tables = new Map(),
     dynamic = new Set();
-  (function lauf(d) {
+  (function run(d) {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) {
         if (!['node_modules', 'dist', 'test', 'migrations', 'altbestand', 'public', 'docs', 'scripts'].includes(n))
-          lauf(p);
+          run(p);
         continue;
       }
       if (!n.endsWith('.ts')) continue;
-      const datei = path.relative(ROOT, p).split(path.sep).join('/');
-      const s = ohneKommentare(fs.readFileSync(p, 'utf8'));
-      const muster =
+      const file = path.relative(ROOT, p).split(path.sep).join('/');
+      const s = withoutComments(fs.readFileSync(p, 'utf8'));
+      const pattern =
         /\b(?:INSERT INTO|DELETE FROM|TRUNCATE(?: TABLE)?)\s+([a-z_][a-z0-9_]*|\$\{)|(?<!DO )\bUPDATE\s+([a-z_][a-z0-9_]*|\$\{)[^;`'"]*?\bSET\b/g;
-      for (const m of s.matchAll(muster)) {
+      for (const m of s.matchAll(pattern)) {
         const t = m[1] ?? m[2];
-        if (t === '${') dynamic.add(datei);
-        else (tabellen.get(t) ?? tabellen.set(t, new Set()).get(t)).add(datei);
+        if (t === '${') dynamic.add(file);
+        else (tables.get(t) ?? tables.set(t, new Set()).get(t)).add(file);
       }
     }
   })(ROOT);
-  return { tabellen, dynamic };
+  return { tables, dynamic };
 }
 
 test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
@@ -650,181 +650,183 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
   t.after(() => db.pool.end().catch(() => {}));
 
   await t.test('every table without user_id is in the list', async () => {
-    const ohne = (
+    const without = (
       await db.all(`
       SELECT c.relname AS t FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
        WHERE c.relkind IN ('r', 'p') AND NOT EXISTS (
          SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'user_id' AND NOT a.attisdropped)`)
     ).map(z => z.t);
-    assert.ok(ohne.length > 30, `only ${ohne.length} tables found — does the query still work?`);
-    assert.deepEqual(ohne.sort(), Object.keys(SHARED).sort());
+    assert.ok(without.length > 30, `only ${without.length} tables found — does the query still work?`);
+    assert.deepEqual(without.sort(), Object.keys(SHARED).sort());
   });
 
   // Recorded once, for the checks on writers, owners and levels below.
-  const gemessen = {};
+  const measured = {};
   await t.test('table names at runtime: measured as registered', async () => {
-    const bekannt = new Set(Object.values(BESITZER).flat());
-    const dateien = filesWithNamesToRuntime();
-    assert.ok(dateien.length > 5, `only ${dateien.length} files — does the search still work?`);
-    for (const d of dateien) gemessen[d] = await measureFile(d, bekannt);
-    assert.deepEqual(gemessen, DYNAMIC, 'New file or new table at runtime: add it to DYNAMISCH');
+    const known = new Set(Object.values(OWNER).flat());
+    const files = filesWithNamesToRuntime();
+    assert.ok(files.length > 5, `only ${files.length} files — does the search still work?`);
+    for (const d of files) measured[d] = await measureFile(d, known);
+    assert.deepEqual(measured, DYNAMIC, 'New file or new table at runtime: add it to DYNAMIC');
   });
 
   await t.test('every writing site on a catalog table is registered', () => {
-    const { tabellen, dynamic } = writingPlaces();
-    assert.ok(tabellen.size > 40, `only ${tabellen.size} tables written — does the search still work?`);
+    const { tables, dynamic } = writingPlaces();
+    assert.ok(tables.size > 40, `only ${tables.size} tables written — does the search still work?`);
     assert.ok(dynamic.size > 0, 'self-proof: write sites with names at runtime are recognised');
     assert.deepEqual(
-      [...dynamic].filter(d => !gemessen[d]),
+      [...dynamic].filter(d => !measured[d]),
       [],
       'write site with a name at runtime without measurement',
     );
-    for (const [d, { schreibt }] of Object.entries(gemessen))
-      for (const name of schreibt) (tabellen.get(name) ?? tabellen.set(name, new Set()).get(name)).add(d);
-    const ist = {},
-      soll = {};
+    for (const [d, { writes }] of Object.entries(measured))
+      for (const name of writes) (tables.get(name) ?? tables.set(name, new Set()).get(name)).add(d);
+    const actual = {},
+      want = {};
     for (const [name, e] of Object.entries(SHARED)) {
       if (e.type !== CATALOG) continue;
-      ist[name] = [...(tabellen.get(name) ?? [])].sort();
-      soll[name] = [...e.schreiber].sort();
+      actual[name] = [...(tables.get(name) ?? [])].sort();
+      want[name] = [...e.writer].sort();
     }
     assert.deepEqual(
-      ist,
-      soll,
+      actual,
+      want,
       'A catalogue table gets a new writer: if the value comes from a ' +
         'checked source, add it here; if it is an input, it belongs in a table of the account.',
     );
   });
 
   await t.test('every table has an owner, only it writes into it', async () => {
-    const alle = (
+    const all = (
       await db.all(`SELECT c.relname AS t FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public' WHERE c.relkind IN ('r', 'p')`)
     ).map(z => z.t);
-    const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
-    const doppelt = Object.values(BESITZER)
+    const ownerName = new Map(Object.entries(OWNER).flatMap(([b, ts]) => ts.map(x => [x, b])));
+    const twice = Object.values(OWNER)
       .flat()
       .filter((x, i, a) => a.indexOf(x) !== i);
-    assert.deepEqual(doppelt, [], 'A table has exactly one owner');
-    assert.ok(alle.length > 60, `only ${alle.length} tables found — does the query still work?`);
-    assert.deepEqual(alle.filter(x => !besitzer.has(x)).sort(), [], 'table without an owner: add it to BESITZER');
+    assert.deepEqual(twice, [], 'A table has exactly one owner');
+    assert.ok(all.length > 60, `only ${all.length} tables found — does the query still work?`);
+    assert.deepEqual(all.filter(x => !ownerName.has(x)).sort(), [], 'table without an owner: add it to OWNER');
     assert.deepEqual(
-      [...besitzer.keys()].filter(x => !alle.includes(x)).sort(),
+      [...ownerName.keys()].filter(x => !all.includes(x)).sort(),
       [],
-      'BESITZER names a table that does not exist',
+      'OWNER names a table that does not exist',
     );
     const fremd = [];
     // Tables outside the schema (copies before migrations, temporary ones) have no owner.
-    for (const [tabelle, dateien] of writingPlaces().tabellen)
-      for (const d of dateien)
-        if (besitzer.has(tabelle) && areaOf(d) !== besitzer.get(tabelle)) fremd.push(`${d} → ${tabelle}`);
-    assert.ok(Object.keys(gemessen).length > 5, 'self-proof: the measurement of the names at runtime ran');
-    for (const [d, { schreibt }] of Object.entries(gemessen))
-      for (const tabelle of schreibt)
-        if (areaOf(d) !== besitzer.get(tabelle) && !fremd.includes(`${d} → ${tabelle}`))
-          fremd.push(`${d} → ${tabelle}`);
+    for (const [table, files] of writingPlaces().tables)
+      for (const d of files)
+        if (ownerName.has(table) && areaOf(d) !== ownerName.get(table)) fremd.push(`${d} → ${table}`);
+    assert.ok(Object.keys(measured).length > 5, 'self-proof: the measurement of the names at runtime ran');
+    for (const [d, { writes }] of Object.entries(measured))
+      for (const table of writes)
+        if (areaOf(d) !== ownerName.get(table) && !fremd.includes(`${d} → ${table}`)) fremd.push(`${d} → ${table}`);
     assert.deepEqual(
       fremd.sort(),
-      [...FREMDSCHREIBER].sort(),
+      [...FOREIGN_WRITERS].sort(),
       "Write SQL belongs in the owner area of the table; other areas call that area's service.",
     );
   });
 
   await t.test('triggers only write into tables of their owner or into justified targets', async () => {
-    const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
-    const trigger = await db.all(`SELECT DISTINCT c.relname AS tabelle, p.proname AS funktion, p.prosrc AS source
+    const ownerName = new Map(Object.entries(OWNER).flatMap(([b, ts]) => ts.map(x => [x, b])));
+    const trigger = await db.all(`SELECT DISTINCT c.relname AS "table", p.proname AS funktion, p.prosrc AS source
       FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
       JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
       JOIN pg_proc p ON p.oid = t.tgfoid WHERE NOT t.tgisinternal`);
-    const ziele = new Set(),
+    const targets = new Set(),
       fremd = new Set();
-    for (const { tabelle, source } of trigger)
+    for (const { table, source } of trigger)
       for (const m of source.matchAll(/\b(?:INSERT INTO|DELETE FROM|UPDATE)\s+([a-z_][a-z0-9_]*)/g)) {
-        ziele.add(m[1]);
-        if (besitzer.get(m[1]) !== besitzer.get(tabelle)) fremd.add(`${besitzer.get(tabelle)} → ${m[1]}`);
+        targets.add(m[1]);
+        if (ownerName.get(m[1]) !== ownerName.get(table)) fremd.add(`${ownerName.get(table)} → ${m[1]}`);
       }
     assert.ok(
-      ziele.has('parts_version_user'),
-      `self-proof: trigger targets ${[...ziele]} — does the search still work?`,
+      targets.has('parts_version_user'),
+      `self-proof: trigger targets ${[...targets]} — does the search still work?`,
     );
     assert.deepEqual(
       [...fremd].sort(),
-      Object.keys(TRIGGER_FREMDZIELE).sort(),
+      Object.keys(TRIGGER_FOREIGN_TARGETS).sort(),
       'A trigger writes into the table of another area: assign it to the owner or justify it in TRIGGER_FREMDZIELE.',
     );
   });
 
   await t.test('foreign scopes never read upwards, otherwise fewer tables directly', async () => {
-    const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
-    assert.ok(besitzer.size > 60, `only ${besitzer.size} tables in docs/architecture.md — does the search still work?`);
-    const levels = stufenAusDoku();
+    const ownerName = new Map(Object.entries(OWNER).flatMap(([b, ts]) => ts.map(x => [x, b])));
+    assert.ok(
+      ownerName.size > 60,
+      `only ${ownerName.size} tables in docs/architecture.md — does the search still work?`,
+    );
+    const levels = levelsFromDoc();
     assert.ok(levels.size > 20, `only ${levels.size} levels in docs/architecture.md — does the search still work?`);
-    const je = { aufwärts: [], katalog: [], abwärts: [] };
-    const pairs = new Set(foreignReader(besitzer));
-    assert.ok(Object.keys(gemessen).length > 5, 'self-proof: the measurement of the names at runtime ran');
+    const per = { aufwärts: [], katalog: [], abwärts: [] };
+    const pairs = new Set(foreignReader(ownerName));
+    assert.ok(Object.keys(measured).length > 5, 'self-proof: the measurement of the names at runtime ran');
     // What the measurement sees via an imported read building block is counted by the check via db/ below.
     const viaDb = new Set(readerViaDb(await readingBlocks(_req)));
-    for (const [d, { liest }] of Object.entries(gemessen))
-      for (const tabelle of liest) {
-        const paar = `${areaOf(d)} → ${tabelle}`;
-        if (besitzer.get(tabelle) !== areaOf(d) && !viaDb.has(paar)) pairs.add(paar);
+    for (const [d, { reads }] of Object.entries(measured))
+      for (const table of reads) {
+        const pair = `${areaOf(d)} → ${table}`;
+        if (ownerName.get(table) !== areaOf(d) && !viaDb.has(pair)) pairs.add(pair);
       }
-    for (const paar of [...pairs].sort()) {
-      const [b, tabelle] = paar.split(' → ');
+    for (const pair of [...pairs].sort()) {
+      const [b, table] = pair.split(' → ');
       assert.ok(levels.has(b), `${b} has no level`);
-      je[readDirection(levels, b, besitzer.get(tabelle))].push(paar);
+      per[readDirection(levels, b, ownerName.get(table))].push(pair);
     }
     // Self-proof of the classification, on real levels.
-    assert.equal(readDirection(levels, 'src/finances', besitzer.get('sets')), 'aufwärts');
-    assert.ok(je.abwärts.includes('src/management → sets'), 'self-proof: the administration reads sets directly');
-    assert.ok(je.katalog.length > 10, 'self-proof: catalogue tables are read');
+    assert.equal(readDirection(levels, 'src/finances', ownerName.get('sets')), 'aufwärts');
+    assert.ok(per.abwärts.includes('src/management → sets'), 'self-proof: the administration reads sets directly');
+    assert.ok(per.katalog.length > 10, 'self-proof: catalogue tables are read');
     assert.deepEqual(
-      je.aufwärts,
+      per.aufwärts,
       [],
       'A lower area reads the table of a higher one: name the shape in its own read contract, pass the SQL via src/services.ts.',
     );
     for (const [type, limit] of [
-      ['katalog', KATALOG_LESER_HOECHSTENS],
-      ['abwärts', ABWAERTS_LESER_HOECHSTENS],
+      ['katalog', CATALOG_READERS_MAX],
+      ['abwärts', DOWNSTREAM_READERS_MAX],
     ]) {
       assert.ok(
-        je[type].length <= limit,
-        `${je[type].length} direct read sites (${type}), allowed are ${limit}.\n${je[type].join('\n')}`,
+        per[type].length <= limit,
+        `${per[type].length} direct read sites (${type}), allowed are ${limit}.\n${per[type].join('\n')}`,
       );
-      if (je[type].length < limit)
-        console.log(`  ℹ fremde Leser (${type}): ${je[type].length} (Schranke ${limit}) — Schranke nachziehen`);
+      if (per[type].length < limit)
+        console.log(`  ℹ fremde Leser (${type}): ${per[type].length} (Schranke ${limit}) — Schranke nachziehen`);
     }
   });
 
   await t.test('not even via db/ does a scope read the table of a higher one', async () => {
-    const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
-    const levels = stufenAusDoku();
-    const bausteine = await readingBlocks(_req);
+    const ownerName = new Map(Object.entries(OWNER).flatMap(([b, ts]) => ts.map(x => [x, b])));
+    const levels = levelsFromDoc();
+    const bricks = await readingBlocks(_req);
     // Self-proof: what the building blocks read comes from their result, also via constants.
-    assert.deepEqual(bausteine.inventoryView?.setHoldings, ['sets'], 'setBestand reads sets');
-    assert.deepEqual(bausteine.accessView?.familyAlive, ['api_tokens']);
-    assert.ok(bausteine.inventoryView?.setCounts?.includes('price_alerts'), 'setZaehlt reads via ZAEHLT');
-    assert.ok(bausteine.stockQuantity?.quantityOfSets?.includes('sets'), 'asynchronous building blocks count');
-    const reader = readerViaDb(bausteine);
+    assert.deepEqual(bricks.inventoryView?.setHoldings, ['sets'], 'setHoldings reads sets');
+    assert.deepEqual(bricks.accessView?.familyAlive, ['api_tokens']);
+    assert.ok(bricks.inventoryView?.setCounts?.includes('price_alerts'), 'setCounts reads price_alerts via a constant');
+    assert.ok(bricks.stockQuantity?.quantityOfSets?.includes('sets'), 'asynchronous building blocks count');
+    const reader = readerViaDb(bricks);
     assert.ok(reader.includes('src/sets → set_acquisitions'), 'self-proof: sets reads its own purchases via db/');
     assert.ok(reader.includes('src/services.ts → price_alerts'), 'self-proof: `* as` counts all exports');
-    const upward = reader.filter(paar => {
-      const [b, tabelle] = paar.split(' → ');
+    const upward = reader.filter(pair => {
+      const [b, table] = pair.split(' → ');
       assert.ok(levels.has(b), `${b} has no level`);
-      return besitzer.has(tabelle) && levels.get(besitzer.get(tabelle)) > levels.get(b);
+      return ownerName.has(table) && levels.get(ownerName.get(table)) > levels.get(b);
     });
     assert.deepEqual(
       upward,
       [],
-      'An area reads upwards via db/: put the shape in its read contract (src/<bereich>/lesevertrag.ts), pass the building block via src/services.ts.',
+      'An area reads upwards via db/: put the shape in its read contract (src/<area>/readContract.ts), pass the building block via src/services.ts.',
     );
   });
 
   await t.test('input of an account lands in no shared table', async () => {
-    const neu = async name =>
+    const fresh = async name =>
       (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
-    const A = await neu('anna'),
-      B = await neu('bruno');
+    const A = await fresh('anna'),
+      B = await fresh('bruno');
     await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('3003','Brick 2 x 2')`);
     await db.run(
       `INSERT INTO minifigs_catalog (fig_number, fig_name, image_url) VALUES ('fig-000001','Han','https://cdn.rebrickable.com/f.jpg')`,
@@ -833,42 +835,42 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
 
     const { addManualPart } = _req('src/parts/manualParts.js');
     const { addManualMinifig, updateManualMinifig, importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
-    const image = `https://cdn.rebrickable.com/${MARKE}.png`;
+    const image = `https://cdn.rebrickable.com/${MARK}.png`;
     await asAccount(A, async () => {
       await addManualPart(A, {
         part_number: '3005',
         color_id: 4,
-        part_name: `${MARKE} Teil`,
-        color_name: MARKE,
-        category_name: MARKE,
+        part_name: `${MARK} Teil`,
+        color_name: MARK,
+        category_name: MARK,
         image_url: image,
         quantity: 1,
         unit_price: 1,
       });
       await addManualMinifig(A, {
         fig_number: 'fig-000002',
-        fig_name: `${MARKE} Figur`,
+        fig_name: `${MARK} Figur`,
         image_url: image,
-        bl_fig_number: `${MARKE}1`,
+        bl_fig_number: `${MARK}1`,
         quantity: 1,
         unit_price: 1,
       });
     });
     await asAccount(B, async () => {
       await addManualMinifig(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
-      await updateManualMinifig(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
-      await importMinifigsCsv(B, `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`);
+      await updateManualMinifig(B, 'fig-000001', { bl_fig_number: `${MARK}2` });
+      await importMinifigsCsv(B, `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARK} csv,${MARK}3,1\n`);
     });
 
-    const srv = testServer(_req, { sitzung: { userId: A }, t });
+    const srv = testServer(_req, { session: { userId: A }, t });
     const fd = new FormData();
     fd.append(
       'file',
       new Blob(
         [
           `<?xml version="1.0"?><INVENTORY>
-      <ITEM><ITEMTYPE>M</ITEMTYPE><ITEMID>${MARKE}4</ITEMID><MINQTY>1</MINQTY></ITEM>
-      <ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>${MARKE}5</ITEMID><COLOR>5</COLOR><MINQTY>1</MINQTY></ITEM></INVENTORY>`,
+      <ITEM><ITEMTYPE>M</ITEMTYPE><ITEMID>${MARK}4</ITEMID><MINQTY>1</MINQTY></ITEM>
+      <ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>${MARK}5</ITEMID><COLOR>5</COLOR><MINQTY>1</MINQTY></ITEM></INVENTORY>`,
         ],
         { type: 'text/xml' },
       ),
@@ -877,26 +879,26 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     fd.append(
       'corrections',
       JSON.stringify([
-        { index: 0, blId: `${MARKE}4`, kind: 'fig', rbId: 'fig-000001' },
-        { index: 1, blId: `${MARKE}5`, kind: 'part', rbId: '3003', rbColor: 4 },
+        { index: 0, blId: `${MARK}4`, kind: 'fig', rbId: 'fig-000001' },
+        { index: 1, blId: `${MARK}5`, kind: 'part', rbId: '3003', rbColor: 4 },
       ]),
     );
     const r = await fetch(`${srv.base}/api/v2/wanted-list/import/xml?write=1`, { method: 'POST', body: fd });
-    const bericht = await r.json();
-    assert.equal(bericht.corrections?.applied, 2, JSON.stringify(bericht));
+    const report = await r.json();
+    assert.equal(report.corrections?.applied, 2, JSON.stringify(report));
 
     const befallen = [];
     for (const [name, e] of Object.entries(SHARED)) {
       if (e.eingabe !== false) continue;
-      const n = (await db.get(`SELECT count(*)::int AS n FROM ${name} x WHERE x::text LIKE $1`, [`%${MARKE}%`])).n;
+      const n = (await db.get(`SELECT count(*)::int AS n FROM ${name} x WHERE x::text LIKE $1`, [`%${MARK}%`])).n;
       if (n) befallen.push(`${name} (${n})`);
     }
     assert.deepEqual(befallen, []);
     // Counterpart: the inputs stand with the accounts, otherwise the search above would check nothing.
-    const eigen = await db.get(`SELECT
-      (SELECT count(*) FROM bl_mapping_custom e WHERE e::text LIKE '%${MARKE}%')::int AS bl,
-      (SELECT count(*) FROM minifig_custom e WHERE e::text LIKE '%${MARKE}%')::int AS fig,
-      (SELECT count(*) FROM part_custom e WHERE e::text LIKE '%${MARKE}%')::int AS teil`);
-    assert.deepEqual(eigen, { bl: 5, fig: 2, teil: 1 });
+    const own = await db.get(`SELECT
+      (SELECT count(*) FROM bl_mapping_custom e WHERE e::text LIKE '%${MARK}%')::int AS bl,
+      (SELECT count(*) FROM minifig_custom e WHERE e::text LIKE '%${MARK}%')::int AS fig,
+      (SELECT count(*) FROM part_custom e WHERE e::text LIKE '%${MARK}%')::int AS teil`);
+    assert.deepEqual(own, { bl: 5, fig: 2, teil: 1 });
   });
 });

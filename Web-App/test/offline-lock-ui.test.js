@@ -16,7 +16,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, takt } = require('./helpers/ui');
+const { openUi, tick } = require('./helpers/ui');
 
 test('offline: writing buttons locked', async t => {
   const { w, d } = await openUi();
@@ -26,7 +26,7 @@ test('offline: writing buttons locked', async t => {
     assert.ok(add && filter);
     Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });
     w.dispatchEvent(new w.Event('offline'));
-    await takt(10);
+    await tick(10);
     await t.test('offline: adding locked', () => {
       assert.equal(d.getElementById('offline-band').hidden, false);
       assert.equal(add.disabled, true);
@@ -41,13 +41,13 @@ test('offline: writing buttons locked', async t => {
       assert.equal(import_.parentElement.open, false, 'import opens anyway');
       assert.equal(d.querySelector('#rb-hint .btn.bp').disabled, false, 'entering the key only leads to the settings');
       assert.equal(d.querySelector('#rb-hint .hint-close').disabled, false, 'close the hint');
-      const dateien = [...d.querySelectorAll('input[type=file]')];
-      assert.ok(dateien.length >= 3 && dateien.every(f => f.disabled), 'Datei-Wahl');
+      const files = [...d.querySelectorAll('input[type=file]')];
+      assert.ok(files.length >= 3 && files.every(f => f.disabled), 'Datei-Wahl');
       const div = d.createElement('div');
       div.innerHTML =
         '<button class="v-btn" data-click="editVoucher">B</button><button class="v-btn" data-click="copyVoucher">K</button>';
       d.body.appendChild(div);
-      await takt(10);
+      await tick(10);
       assert.deepEqual(
         [...div.querySelectorAll('button')].map(k => k.disabled),
         [true, false],
@@ -59,13 +59,13 @@ test('offline: writing buttons locked', async t => {
       const div = d.createElement('div');
       div.innerHTML = '<button class="btn bp" data-click="saveAlert">Speichern</button>';
       d.body.appendChild(div);
-      await takt(10);
+      await tick(10);
       assert.equal(div.querySelector('button').disabled, true);
     });
     await t.test('online: free again', async () => {
       Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
       w.dispatchEvent(new w.Event('online'));
-      await takt(10);
+      await tick(10);
       assert.equal(add.disabled, false);
       assert.equal(add.hasAttribute('aria-describedby'), false);
       assert.equal(d.querySelector('#tab-gallery .import-menu > summary').hasAttribute('aria-disabled'), false);

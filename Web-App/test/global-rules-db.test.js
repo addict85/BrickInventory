@@ -33,21 +33,21 @@ test('global settings: one rule per key', { concurrency: 1 }, async t => {
     )
   ).id;
   await adminWithFactor(_req, uid);
-  const { base } = testServer(_req, { t, sitzung: { userId: uid, username: 'v', isAdmin: true } });
-  const wert = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value ?? null;
+  const { base } = testServer(_req, { t, session: { userId: uid, username: 'v', isAdmin: true } });
+  const value = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value ?? null;
   const send = (m, p, body) =>
     fetch(base + p, { method: m, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
   await t.test('invalid limit values yield 400 and change nothing', async () => {
     const r0 = await send('PUT', '/api/v2/admin/api-limits', { bricklink: 4000 });
     assert.equal(r0.status, 200);
-    assert.equal(await wert('api_limit_bricklink'), '4000', 'the limit is in the table after the response');
-    for (const falsch of ['abc', -7, '-7', 0, 100001, '12abc', 1.5]) {
-      const r = await send('PUT', '/api/v2/admin/api-limits', { bricklink: falsch });
-      assert.equal(r.status, 400, `${JSON.stringify(falsch)} was accepted as BrickLink limit`);
+    assert.equal(await value('api_limit_bricklink'), '4000', 'the limit is in the table after the response');
+    for (const wrong of ['abc', -7, '-7', 0, 100001, '12abc', 1.5]) {
+      const r = await send('PUT', '/api/v2/admin/api-limits', { bricklink: wrong });
+      assert.equal(r.status, 400, `${JSON.stringify(wrong)} was accepted as BrickLink limit`);
       assert.equal((await r.json()).code, 'daily_limit_area');
     }
-    assert.equal(await wert('api_limit_bricklink'), '4000', 'the table stays unchanged');
+    assert.equal(await value('api_limit_bricklink'), '4000', 'the table stays unchanged');
     const ttl = await send('POST', '/api/v2/admin/cache-ttl', { ttl: '7' });
     assert.equal(ttl.status, 400, 'a TTL outside the selection');
   });
@@ -61,11 +61,11 @@ test('global settings: one rule per key', { concurrency: 1 }, async t => {
     );
     const r = await fetch(`${base}/api/v2/settings/import`, { method: 'POST', body: form });
     assert.equal(r.status, 400, 'an import with an invalid limit …');
-    assert.equal(await wert('api_limit_bricklink'), '4000');
-    const kaputt = new FormData();
-    kaputt.append('file', new Blob([JSON.stringify({ global: 'kein Objekt' })]), 'k.json');
+    assert.equal(await value('api_limit_bricklink'), '4000');
+    const broken = new FormData();
+    broken.append('file', new Blob([JSON.stringify({ global: 'kein Objekt' })]), 'k.json');
     assert.equal(
-      (await fetch(`${base}/api/v2/settings/import`, { method: 'POST', body: kaputt })).status,
+      (await fetch(`${base}/api/v2/settings/import`, { method: 'POST', body: broken })).status,
       400,
       'an import file outside the schema',
     );
@@ -75,14 +75,14 @@ test('global settings: one rule per key', { concurrency: 1 }, async t => {
     const { GLOBAL_RULES } = _req('src/contract/globalRules.js');
     const { GLOBAL_SETTINGS } = _req('src/contract/settings.js');
     const { DAILY_JOBS } = _req('src/management/timesOfDay.js');
-    const geschrieben = [
+    const written = [
       ...GLOBAL_SETTINGS,
       ...DAILY_JOBS.map(j => `job_time_${j.name}`),
       'app_theme',
       'einrichtung_erledigt',
     ];
     assert.deepEqual(
-      geschrieben.filter(k => !Object.hasOwn(GLOBAL_RULES, k)),
+      written.filter(k => !Object.hasOwn(GLOBAL_RULES, k)),
       [],
     );
     assert.ok(require('node:fs').existsSync(path.join(ROOT, 'src/contract/globalRules.ts')));

@@ -42,8 +42,8 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const columnsOf = async tabelle =>
-  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
+const columnsOf = async table =>
+  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [table]))
     .map(r => r.column_name)
     .sort();
 
@@ -119,7 +119,9 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
   await db.run(`DELETE FROM bl_mapping WHERE rb_id='x'`);
 
   // The index for the uniqueness check of the latch.
-  const idx = (await db.all(`SELECT indexname FROM pg_indexes WHERE tablename='bl_mapping'`)).map(r => r.indexname);
+  const idx = (await db.all(`SELECT indexname AS "indexName" FROM pg_indexes WHERE tablename='bl_mapping'`)).map(
+    r => r.indexName,
+  );
   assert.ok(idx.includes('idx_bl_mapping_bl'), `idx_bl_mapping_bl is missing — found: ${idx.join(', ')}`);
 });
 
@@ -149,8 +151,8 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
                 ON CONFLICT (fig_number) DO NOTHING`);
   // Stock row AND entry in one — since migration 0038 the item count
   // is only there.
-  await holdsPart(db, uid, '3070b', { quantity: 5, colorId: 0, preis: 1.0 });
-  await holdsMinifig(db, uid, 'fig-9', { quantity: 2, preis: 5.0 });
+  await holdsPart(db, uid, '3070b', { quantity: 5, colorId: 0, price: 1.0 });
+  await holdsMinifig(db, uid, 'fig-9', { quantity: 2, price: 5.0 });
   await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 
@@ -158,12 +160,12 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
   const M = _req('src/minifigs/queries.js');
 
   const parts = await H.manualPartsList([uid], uid);
-  const teil = (Array.isArray(parts) ? parts : parts.parts || []).find(p => p.part_number === '3070b');
-  assert.ok(teil, `The part is missing in the response: ${JSON.stringify(parts).slice(0, 300)}`);
+  const part = (Array.isArray(parts) ? parts : parts.parts || []).find(p => p.part_number === '3070b');
+  assert.ok(part, `The part is missing in the response: ${JSON.stringify(parts).slice(0, 300)}`);
   assert.equal(
-    teil.bl_part_number,
+    part.bl_part_number,
     '3070',
-    `bl_part_number came as ${teil.bl_part_number} instead of 3070 — the list does not read the ` +
+    `bl_part_number came as ${part.bl_part_number} instead of 3070 — the list does not read the ` +
       'number from bl_mapping',
   );
 
@@ -188,8 +190,8 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
     `The parts list does not follow the mapping: ${part2.bl_part_number} instead of 3070neu`,
   );
 
-  const figs2 = await M.readManualMinifigs([uid], uid);
-  const fig2 = (Array.isArray(figs2) ? figs2 : figs2.minifigs || []).find(f => f.fig_number === 'fig-9');
+  const secondFigs = await M.readManualMinifigs([uid], uid);
+  const fig2 = (Array.isArray(secondFigs) ? secondFigs : secondFigs.minifigs || []).find(f => f.fig_number === 'fig-9');
   assert.equal(
     fig2.bl_fig_number,
     'sw0000',
@@ -217,23 +219,23 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
   // database: after migration 0037 the columns do not exist, every remaining
   // read site is a hard error — and that is exactly why the read paths
   // above run against a migrated database.
-  const dateien = [];
-  const lauf = dir => {
+  const files = [];
+  const run = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) {
-        lauf(p);
+        run(p);
         continue;
       }
-      if (/\.(ts|js)$/.test(e.name)) dateien.push(p);
+      if (/\.(ts|js)$/.test(e.name)) files.push(p);
     }
   };
-  for (const teil of ['routes', 'src', 'jobs', 'db', 'clients', 'scripts']) {
-    const v = path.join(ROOT, teil);
-    if (fs.existsSync(v)) lauf(v);
+  for (const part of ['routes', 'src', 'jobs', 'db', 'clients', 'scripts']) {
+    const v = path.join(ROOT, part);
+    if (fs.existsSync(v)) run(v);
   }
-  dateien.push(path.join(ROOT, 'server.ts'));
-  assert.ok(dateien.length > 100, `Only ${dateien.length} source files found`);
+  files.push(path.join(ROOT, 'server.ts'));
+  assert.ok(files.length > 100, `Only ${files.length} source files found`);
 
   const codeRows = txt =>
     txt.split('\n').filter(z => {
@@ -245,7 +247,7 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
   // is excluded: this table is a cache, it holds the
   // group key as a finished column (src/parts/summary.ts).
   /** @type {[string, RegExp][]} */
-  const muster = [
+  const pattern = [
     ['setzt parts.bl_part_number', /UPDATE\s+parts\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
     ['setzt minifigs.bl_fig_number', /UPDATE\s+minifigs\s+SET\s+[^;`']*\bbl_fig_number\s*=/i],
     ['setzt den Set-Teile-Katalog', /UPDATE\s+set_parts_catalog\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
@@ -257,12 +259,12 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
   ];
 
   const placeList = [];
-  for (const datei of dateien) {
-    const rel = path.relative(ROOT, datei);
+  for (const file of files) {
+    const rel = path.relative(ROOT, file);
     // Migrations (.sql) are not included: 0037 must keep reading the old columns and
     // the old table.
-    for (const z of codeRows(fs.readFileSync(datei, 'utf8'))) {
-      for (const [was, m] of muster) if (m.test(z)) placeList.push(`${rel} (${was}): ${z.trim().slice(0, 80)}`);
+    for (const z of codeRows(fs.readFileSync(file, 'utf8'))) {
+      for (const [was, m] of pattern) if (m.test(z)) placeList.push(`${rel} (${was}): ${z.trim().slice(0, 80)}`);
     }
   }
   assert.deepEqual(
@@ -289,7 +291,7 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
   ];
   for (const row of probeList) {
     assert.ok(
-      muster.some(([, m]) => m.test(row)),
+      pattern.some(([, m]) => m.test(row)),
       `No pattern matches its own sample: ${row.slice(0, 60)}`,
     );
   }
@@ -299,7 +301,7 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
     'INSERT INTO parts_summary (user_id, part_key, bl_part_number) SELECT 1,2,3',
     'UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2',
   ]) {
-    for (const [was, m] of muster) {
+    for (const [was, m] of pattern) {
       assert.ok(!m.test(row), `The pattern „${was}“ reports an allowed line: ${row.slice(0, 70)}`);
     }
   }

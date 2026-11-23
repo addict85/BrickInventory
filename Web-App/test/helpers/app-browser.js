@@ -13,7 +13,7 @@ const { spawn } = require('node:child_process');
 const { portOf } = require('./server');
 
 const ROOT = path.join(__dirname, '..', '..');
-const warte = ms => new Promise(r => setTimeout(r, ms));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /**
  * Path to Chrome or null (the test skips). With REQUIRE_BROWSER=1 a missing
@@ -23,7 +23,7 @@ const warte = ms => new Promise(r => setTimeout(r, ms));
  * and anmeldefelder-leer-browser red; without the variable skipped.
  */
 function chrome() {
-  const kandidaten = [
+  const candidates = [
     process.env.CHROME_BIN,
     '/usr/bin/google-chrome',
     '/usr/bin/google-chrome-stable',
@@ -31,7 +31,7 @@ function chrome() {
     '/usr/bin/chromium-browser',
     '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   ];
-  const bin = kandidaten.find(k => k && fs.existsSync(k)) ?? null;
+  const bin = candidates.find(k => k && fs.existsSync(k)) ?? null;
   if (!bin && process.env.REQUIRE_BROWSER === '1')
     throw new Error(`REQUIRE_BROWSER=1, but no Chrome found (CHROME_BIN=${process.env.CHROME_BIN || 'empty-state'})`);
   return bin;
@@ -50,7 +50,7 @@ const freePort = () =>
  * hits the whole group: Chrome's child processes otherwise inherit the output pipes
  * and keep the test process open after a SIGKILL.
  */
-function starte(t, bin, args, opt = {}) {
+function start(t, bin, args, opt = {}) {
   const p = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], ...opt });
   let log = '';
   p.stdout.on('data', d => {
@@ -59,7 +59,7 @@ function starte(t, bin, args, opt = {}) {
   p.stderr.on('data', d => {
     log += d;
   });
-  const ende = signal => {
+  const end = signal => {
     try {
       if (opt.detached) process.kill(-p.pid, signal);
       else p.kill(signal);
@@ -68,9 +68,9 @@ function starte(t, bin, args, opt = {}) {
     }
   };
   t.after(async () => {
-    ende('SIGTERM');
-    for (let i = 0; i < 40 && p.exitCode === null && p.signalCode === null; i++) await warte(100);
-    ende('SIGKILL');
+    end('SIGTERM');
+    for (let i = 0; i < 40 && p.exitCode === null && p.signalCode === null; i++) await sleep(100);
+    end('SIGKILL');
   });
   return { p, log: () => log };
 }
@@ -105,12 +105,12 @@ async function cdp(wsUrl) {
   const { targetId } = await sendIt('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await sendIt('Target.attachToTarget', { targetId, flatten: true });
   const tab = (m, p) => sendIt(m, p, sessionId);
-  const auswerten = async expression => {
+  const evaluate = async expression => {
     const r = await tab('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
     return r.result.value;
   };
-  return { tab, auswerten, eventList, listener, sessionId, schliessen: () => ws.close() };
+  return { tab, evaluate, eventList, listener, sessionId, close: () => ws.close() };
 }
 
 /**
@@ -118,13 +118,13 @@ async function cdp(wsUrl) {
  * @param {object} [opt] options:
  * @param [opt.name] account name
  * @param [opt.holding] async (db, uid) => {} creates test data
- * @param [opt.telefon] true: 390 × 844, mobile
+ * @param [opt.phone] true: 390 × 844, mobile
  * @param [opt.movement] true: prefers-reduced-motion no-preference (otherwise reduce)
  * @param [opt.language] language of the account (default de)
  * @param [opt.locale] locale of the browser (default de-DE)
  * @param [opt.allDesigns] true: load all design stylesheets. The page only loads the active one; whoever sets data-theme
  *        themselves would otherwise see the others without styling.
- * @param [opt.intercept] [{ muster, contains, response?, delay? }]: requests
+ * @param [opt.intercept] [{ pattern, contains, response?, delay? }]: requests
  *        whose URL matches the CDP pattern and contains `contains` get
  *        `antwort` as JSON (without `antwort` the real one), `delay` ms later
  */
@@ -169,10 +169,8 @@ async function startApp(t, opt = {}) {
   if (opt.holding) await opt.holding(db, uid);
   // Administrators without a code generator would only get as far as setting it up; login
   // happens with a recovery code in the code field.
-  const verwalter = (await db.get('SELECT is_admin FROM users WHERE id = $1', [uid])).is_admin;
-  const [wiederherstellung = '', ...furtherCodes] = verwalter
-    ? await require('./admin').adminWithFactor(_req, uid)
-    : [];
+  const admin = (await db.get('SELECT is_admin FROM users WHERE id = $1', [uid])).is_admin;
+  const [restore = '', ...furtherCodes] = admin ? await require('./admin').adminWithFactor(_req, uid) : [];
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
       `INSERT INTO run_state (key, value) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
@@ -190,9 +188,9 @@ async function startApp(t, opt = {}) {
   // a port, the test would see the other's server. So once more with a new port.
   let port = 0,
     server;
-  for (let versuch = 0; versuch < 4; versuch++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     port = await freePort();
-    server = starte(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
+    server = start(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
       cwd: ROOT,
       env: {
         ...process.env,
@@ -202,18 +200,18 @@ async function startApp(t, opt = {}) {
         TRUST_PROXY: 'false',
       },
     });
-    for (let i = 0; i < 240 && !/localhost:\d+|Startup complete|EADDRINUSE/.test(server.log()); i++) await warte(250);
+    for (let i = 0; i < 240 && !/localhost:\d+|Startup complete|EADDRINUSE/.test(server.log()); i++) await sleep(250);
     if (!/EADDRINUSE/.test(server.log())) break;
     server.p.kill('SIGKILL');
   }
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/`).catch(() => null)) === null; i++)
-    await warte(250);
+    await sleep(250);
 
   // Chrome creates a Unix socket under TMPDIR (at most 107 characters); with a long
   // TMPDIR it would abort with “Socket path too long”, so profile and TMPDIR then go under /tmp.
   const basis = os.tmpdir().length > 60 && fs.existsSync('/tmp') ? '/tmp' : os.tmpdir();
   const profileData = fs.mkdtempSync(path.join(basis, 'app-browser-'));
-  const browser = starte(
+  const browser = start(
     t,
     bin,
     [
@@ -241,37 +239,37 @@ async function startApp(t, opt = {}) {
   let wsUrl = null;
   for (let i = 0; i < 300 && !wsUrl && browser.p.exitCode === null && browser.p.signalCode === null; i++) {
     wsUrl = /DevTools listening on (ws:\/\/\S+)/.exec(browser.log())?.[1];
-    if (!wsUrl) await warte(100);
+    if (!wsUrl) await sleep(100);
   }
   // The cause stands in Chrome's first FATAL line; it belongs at the start of the message.
-  const ursache = /^.*(?:FATAL|Socket path too long).*$/m.exec(browser.log())?.[0]?.trim();
+  const cause = /^.*(?:FATAL|Socket path too long).*$/m.exec(browser.log())?.[0]?.trim();
   if (!wsUrl)
     throw new Error(
       `Chrome reports no DevTools access (end: ${browser.p.exitCode ?? browser.p.signalCode ?? 'running'})` +
-        `${ursache ? ` — ${ursache}` : ''}:\n` +
+        `${cause ? ` — ${cause}` : ''}:\n` +
         browser.log().slice(-1500),
     );
   const b = await cdp(wsUrl);
-  t.after(() => b.schliessen());
+  t.after(() => b.close());
   await b.tab('Runtime.enable');
   await b.tab('Page.enable');
   // Every 401 from the start: if the UI later throws back to the login,
   // the test thereby names the request that ended the session.
   const rejected = [];
   await b.tab('Network.enable');
-  // Running fetch/XHR requests for ruhig(); images do not count, they depend on the CDN.
-  const laufend = new Set();
+  // Running fetch/XHR requests for settle(); images do not count, they depend on the CDN.
+  const running = new Set();
   b.listener.push(d => {
     if (d.method === 'Network.responseReceived' && d.params.response.status === 401)
       rejected.push(d.params.response.url.replace(/^https?:\/\/[^/]+/, ''));
     if (d.method === 'Network.requestWillBeSent' && ['Fetch', 'XHR'].includes(d.params.type))
-      laufend.add(d.params.requestId);
+      running.add(d.params.requestId);
     if (d.method === 'Network.loadingFinished' || d.method === 'Network.loadingFailed')
-      laufend.delete(d.params.requestId);
+      running.delete(d.params.requestId);
   });
   if (opt.intercept?.length) {
     await b.tab('Fetch.enable', {
-      patterns: opt.intercept.map(a => ({ urlPattern: a.muster, requestStage: 'Request' })),
+      patterns: opt.intercept.map(a => ({ urlPattern: a.pattern, requestStage: 'Request' })),
     });
     b.listener.push(d => {
       if (d.method !== 'Fetch.requestPaused') return;
@@ -302,7 +300,7 @@ async function startApp(t, opt = {}) {
       );
     });
   }
-  if (opt.telefon)
+  if (opt.phone)
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await b.tab('Emulation.setLocaleOverride', { locale: opt.locale || 'de-DE' });
   // What is measured is the final state, not a transition.
@@ -310,12 +308,12 @@ async function startApp(t, opt = {}) {
     features: [{ name: 'prefers-reduced-motion', value: opt.movement ? 'no-preference' : 'reduce' }],
   });
 
-  const bis = async (ausdruck, was, versuche = 100) => {
-    for (let i = 0; i < versuche; i++) {
-      if (await b.auswerten(ausdruck).catch(() => false)) return;
-      await warte(100);
+  const until = async (expr, was, attempts = 100) => {
+    for (let i = 0; i < attempts; i++) {
+      if (await b.evaluate(expr).catch(() => false)) return;
+      await sleep(100);
     }
-    const condition = await b.auswerten(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
+    const condition = await b.evaluate(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
     const s401 = rejected.length ? `\n401 auf: ${rejected.join(', ')}` : '';
     // Exceptions of the page (say Trusted Types): without them a CI run only shows the timeout.
     const exceptions = b.eventList
@@ -326,26 +324,26 @@ async function startApp(t, opt = {}) {
     throw new Error(`Timeout: ${was} — ${condition}${s401}${sFrom}\nServer:\n${server.log().slice(-3000)}`);
   };
   await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
-  await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
-  await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
+  await until(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
+  await b.evaluate(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
-    document.getElementById('lc').value = ${JSON.stringify(wiederherstellung)};
+    document.getElementById('lc').value = ${JSON.stringify(restore)};
     document.getElementById('btn-login').click(); true`);
   // 30 s as at Chrome start: login computes bcrypt with 12 rounds and
   // writes the session; on a busy runner that took over 10 s.
-  await bis(
+  await until(
     `document.getElementById('app')?.style.display === 'block' || getComputedStyle(document.getElementById('app')).display !== 'none'`,
     'loggedIn',
     300,
   );
   // On the phone the name only stands in the menu; that is why the account badge itself is checked.
-  await bis(
+  await until(
     `(document.getElementById('ubadge')?.textContent || '').includes(${JSON.stringify(NAME)})`,
     'Account name in the account badge',
   );
   // The start is only decided once the collection has loaded; before that
   // its build could overtake a tab switch of the test.
-  await bis(
+  await until(
     `(() => {
     if (document.querySelector('.ntab[data-tab="settings"]')?.classList.contains('active')) return true;
     const g = document.getElementById('gallery');
@@ -353,16 +351,16 @@ async function startApp(t, opt = {}) {
     'Start abgeschlossen',
   );
   if (opt.allDesigns)
-    await b.auswerten(`(() => { const v = document.getElementById('theme-styles');
+    await b.evaluate(`(() => { const v = document.getElementById('theme-styles');
       return Promise.all([...v.content.querySelectorAll('link')].map(l => new Promise(r => {
         l.onload = l.onerror = r; v.before(document.adoptNode(l)); }))).then(() => true); })()`);
   /** Until no request runs anymore (twice in a row) and two frames are drawn. */
-  const ruhig = async (ms = 10_000) => {
-    const ende = Date.now() + ms;
-    for (let still = 0; still < 2 && Date.now() < ende; await warte(50)) still = laufend.size ? 0 : still + 1;
-    await b.auswerten('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))');
+  const settle = async (ms = 10_000) => {
+    const end = Date.now() + ms;
+    for (let still = 0; still < 2 && Date.now() < end; await sleep(50)) still = running.size ? 0 : still + 1;
+    await b.evaluate('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))');
   };
-  return { b, bis, warte, ruhig, port, uid, db, rejected, furtherCodes };
+  return { b, until, sleep, settle, port, uid, db, rejected, furtherCodes };
 }
 
-module.exports = { startApp, warte, chrome };
+module.exports = { startApp, sleep, chrome };

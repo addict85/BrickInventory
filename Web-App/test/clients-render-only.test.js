@@ -12,8 +12,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { ohneKommentare } = require('./helpers/sources');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { withoutComments } = require('./helpers/sources');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 /** Field names whose sum would be a business rule. */
 const MONEY_FIELDS =
@@ -31,20 +31,20 @@ const ALLOWED = [
 
 test('the web app sums no money amounts itself', () => {
   const dir = path.join(ROOT, 'public', 'js');
-  const treffer = [];
+  const hits = [];
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.js') && x !== 'app.bundle.js')) {
-    const src = ohneKommentare(fs.readFileSync(path.join(dir, f), 'utf8'));
+    const src = withoutComments(fs.readFileSync(path.join(dir, f), 'utf8'));
     const re = new RegExp(String.raw`reduce\((?:\([^)]*\)|\w+)\s*=>[^;]{0,120}?\.(${MONEY_FIELDS})\b`, 'g');
     for (const m of src.matchAll(re)) {
       const row = src.slice(0, m.index).split('\n').length;
       const entryRow = `${f}:${row} summiert .${m[1]}`;
-      if (!ALLOWED.includes(entryRow)) treffer.push(entryRow);
+      if (!ALLOWED.includes(entryRow)) hits.push(entryRow);
     }
   }
   assert.deepEqual(
-    treffer,
+    hits,
     [],
-    `The UI computes a money total itself:\n  ${treffer.join('\n  ')}\nThe server delivers such totals ready-made (total_value, totals.grand_total). Two ways of computing mean two results as soon as the rule changes.`,
+    `The UI computes a money total itself:\n  ${hits.join('\n  ')}\nThe server delivers such totals ready-made (total_value, totals.grand_total). Two ways of computing mean two results as soon as the rule changes.`,
   );
 });
 
@@ -60,9 +60,9 @@ test("the web app shows the server's total value", async () => {
     },
   });
   try {
-    await reiter(w, 'finance');
+    await switchTab(w, 'finance');
     assert.ok(
-      await warte(() => /777/.test(d.getElementById('portfolio-current')?.textContent || '')),
+      await waitFor(() => /777/.test(d.getElementById('portfolio-current')?.textContent || '')),
       `Kopfzahl: ${d.getElementById('portfolio-current')?.textContent}`,
     );
   } finally {

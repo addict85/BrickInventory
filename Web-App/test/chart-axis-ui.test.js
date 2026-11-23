@@ -10,7 +10,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const SET = {
   set_number: '21318-1',
@@ -25,7 +25,7 @@ const SET = {
 };
 
 test('axis from the first market price, purchase at the edge', async () => {
-  const historie = [
+  const pastEntries = [
     { recorded_at: '2026-06-01', avg_price: 199.99, is_purchase_price: true },
     { recorded_at: '2026-09-01', avg_price: 186 },
     { recorded_at: '2026-10-01', avg_price: 190 },
@@ -36,23 +36,25 @@ test('axis from the first market price, purchase at the edge', async () => {
     '/v2/sets/21318-1/price-history': {
       success: true,
       currency: 'EUR',
-      history_new: historie,
+      history_new: pastEntries,
       history_used: [],
       by_condition: { N: { purchase_price: 199.99, market_price: 190 } },
       chart: {
-        x: historie.map(h => h.recorded_at),
-        values: [{ name: 'N', firstRealIndex: 0, values: historie.map(h => ({ x: h.recorded_at, y: h.avg_price })) }],
+        x: pastEntries.map(h => h.recorded_at),
+        values: [
+          { name: 'N', firstRealIndex: 0, values: pastEntries.map(h => ({ x: h.recorded_at, y: h.avg_price })) },
+        ],
       },
     },
   });
   try {
-    await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
+    await waitFor(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    await warte(() => d.querySelector('#set-modal svg.chart-price'), 4000);
+    await waitFor(() => d.querySelector('#set-modal svg.chart-price'), 4000);
     const svg = d.querySelector('#set-modal svg.chart-price');
     const links = Number(svg.querySelector('line').getAttribute('x1'));
-    const erster = Number(svg.querySelector('polyline').getAttribute('points').trim().split(/\s+/)[0].split(',')[0]);
-    assert.equal(erster, links, 'Axis from the first market price');
+    const firstOne = Number(svg.querySelector('polyline').getAttribute('points').trim().split(/\s+/)[0].split(',')[0]);
+    assert.equal(firstOne, links, 'Axis from the first market price');
     assert.equal(Number(svg.querySelector('.purchase-dot').getAttribute('cx')), links, 'Purchase at the left edge');
   } finally {
     w.close();
@@ -108,8 +110,8 @@ test('cost basis label moves aside', async () => {
     },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .cost-basis-line'));
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#portfolio-chart .cost-basis-line'));
     const g = d.querySelector('#portfolio-chart .cost-basis-line');
     const lineY = Number(g.querySelector('line').getAttribute('y1'));
     const textY = Number(g.querySelector('text').getAttribute('y'));

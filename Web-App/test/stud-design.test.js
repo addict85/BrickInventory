@@ -11,8 +11,8 @@ const path = require('node:path');
 // cost an hour once in this session.
 const TREE = path.join(__dirname, '..', '..');
 const css = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'noppe.css'), 'utf8');
-const glanz = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'hochglanz.css'), 'utf8');
-const source = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-tokens.json'), 'utf8'));
+const shine = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'hochglanz.css'), 'utf8');
+const designTokens = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-tokens.json'), 'utf8'));
 
 /**
  * The theme "noppe" — the clamping brick as a component of the UI. What is checked
@@ -20,7 +20,7 @@ const source = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-toke
  */
 
 test('the lid colors come from the SAME source', () => {
-  const steine = source.listen.steine.werte;
+  const steine = designTokens.listen.steine.werte;
   assert.ok(
     steine.length === 6,
     `The brick list has ${steine.length} entries instead of six — six, so that the ` +
@@ -33,10 +33,10 @@ test('the lid colors come from the SAME source', () => {
   for (const hex of steine) {
     assert.ok(
       !css.toLowerCase().includes(hex.toLowerCase()),
-      `themes/noppe.css spells out ${hex} instead of using var(--brick-N)`,
+      `„themes/noppe.css“ spells out ${hex} instead of using var(--brick-N)`,
     );
   }
-  assert.match(css, /var\(--brick-0\)/, 'themes/noppe.css does not use the brick list');
+  assert.match(css, /var\(--brick-0\)/, '„themes/noppe.css“ does not use the brick list');
 });
 
 test('the brick color runs in step with the brick list', () => {
@@ -48,7 +48,7 @@ test('the brick color runs in step with the brick list', () => {
   assert.equal(
     webTick,
     5,
-    `themes/noppe.css cycles through ${webTick} different positions, expected five ` +
+    `„themes/noppe.css“ cycles through ${webTick} different positions, expected five ` +
       '(--brick-0 is already the default in the base rule)',
   );
 });
@@ -57,9 +57,9 @@ test('frame and offset shadow are on the same tone', () => {
   // Plastic casts no cloud, it rests on top: the shadow is the same tone
   // as the border, only offset. If they were two tones, the edge would look
   // like a misprint.
-  const schatten = [...css.matchAll(/--sh\d:([^;]+);/g)].map(m => m[1].trim());
-  assert.ok(schatten.length >= 3, `Only ${schatten.length} shadow levels — does the search still work?`);
-  for (const s of schatten) {
+  const shadow = [...css.matchAll(/--sh\d:([^;]+);/g)].map(m => m[1].trim());
+  assert.ok(shadow.length >= 3, `Only ${shadow.length} shadow levels — does the search still work?`);
+  for (const s of shadow) {
     assert.match(
       s,
       /var\(--ink\)/,
@@ -74,10 +74,10 @@ test('the brick color stays rhythm and never becomes information', () => {});
 test('the table stays quiet', () => {
   // The loud parts belong at the edges — header bar, buttons, badges —, not
   // between the numbers. An inventory is not something one looks at once.
-  const tabelle = css.slice(css.indexOf('table td'));
-  assert.ok(tabelle.length > 0, 'The table rule can no longer be found');
+  const table = css.slice(css.indexOf('table td'));
+  assert.ok(table.length > 0, 'The table rule can no longer be found');
   assert.ok(
-    !/border-bottom:2\.5px solid var\(--ink\)/.test(tabelle),
+    !/border-bottom:2\.5px solid var\(--ink\)/.test(table),
     'The table rows got the ink edge. That is then a ' + 'grid and not text.',
   );
 });
@@ -86,7 +86,7 @@ test('the design leads its font', () => {
   assert.match(
     css,
     /--font:'Nunito'/,
-    'themes/noppe.css does not switch the font — then the design on the web is ' + 'just a colour variant',
+    '„themes/noppe.css“ does not switch the font — then the design on the web is ' + 'just a colour variant',
   );
   const fonts = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'vendor', 'fonts', 'fonts.css'), 'utf8');
   assert.match(
@@ -100,9 +100,10 @@ test('the design leads its font', () => {
 
 test('hochglanz inherits the palette instead of copying it', () => {
   assert.equal(
-    source.designs.hochglanz.erbt,
+    designTokens.designs.hochglanz.erbt,
     'noppe',
-    'hochglanz keeps its own palette. It is the same as that of noppe — ' + 'a copy will not follow along next time.',
+    '„hochglanz“ keeps its own palette. It is the same as that of „noppe“ — ' +
+      'a copy will not follow along next time.',
   );
   // And the generator must really make values of it, otherwise the
   // theme falls back to the base theme and is blue instead of red.
@@ -111,7 +112,7 @@ test('hochglanz inherits the palette instead of copying it', () => {
   assert.match(
     block.slice(0, 400),
     /--b600: #d91f26;/,
-    'tokens.css carries no resolved palette for hochglanz — then :root applies, and ' +
+    'tokens.css carries no resolved palette for „hochglanz“ — then :root applies, and ' +
       'the design would be blue instead of red',
   );
 });
@@ -120,44 +121,44 @@ test('hochglanz carries only the layers, not the anatomy', () => {
   // Every rule in noppe.css applies to BOTH themes — that is the shared
   // basis. hochglanz.css must not set them up a second time.
   const studRules = [...css.matchAll(/\[data-theme="noppe"\][^{]*\{/g)].length;
-  assert.ok(studRules >= 10, `Only ${studRules} rules in noppe.css — does the search still work?`);
+  assert.ok(studRules >= 10, `Only ${studRules} rules in „noppe.css“ — does the search still work?`);
   assert.ok(
-    !/\[data-theme="noppe"\]/.test(glanz),
-    'hochglanz.css names noppe — the shared rules belong in noppe.css, once',
+    !/\[data-theme="noppe"\]/.test(shine),
+    '„hochglanz.css“ names „noppe“ — the shared rules belong in „noppe.css“, once',
   );
 
   // The anatomy must not stand here once more. These four properties
   // determine it; if one of them shows up here, the file is no longer an overlay
   // but a second theme.
   for (const property of ['--rad:', '--font:', 'border-radius:14px', 'padding-top:26px']) {
-    assert.ok(!glanz.includes(property), `hochglanz.css sets ${property} — that is anatomy and lives in noppe.css`);
+    assert.ok(!shine.includes(property), `„hochglanz.css“ sets ${property} — that is anatomy and lives in „noppe.css“`);
   }
 });
 
 test('the hard offset shadow survives the lacquer', () => {
   // The edge carries, even when it shines. If it drops away, it is a
   // different anatomy and not the same theme in another material.
-  const karte = glanz.slice(glanz.indexOf('[data-theme="hochglanz"] .card'));
+  const card = shine.slice(shine.indexOf('[data-theme="hochglanz"] .card'));
   assert.match(
-    karte,
+    card,
     /0 4px 0 var\(--ink\)/,
     'The hard offset shadow disappeared in the lacquer. Then something other than ' +
-      'noppe shines, and it is no longer the same design.',
+      '„noppe“ shines, and it is no longer the same design.',
   );
 });
 
 test('the light stripe does not lie over the whole tile', () => {
   // A white veil over white text is no shine but gray.
   const strip = '118deg';
-  assert.ok(glanz.includes(strip), 'The light streak is missing entirely');
+  assert.ok(shine.includes(strip), 'The light streak is missing entirely');
   // It may lie on the image field (.sci), not on the tile (.sc) itself.
-  for (const regel of glanz.split('}')) {
-    if (!regel.includes(strip)) continue;
-    const kopf = regel.slice(0, regel.indexOf('{'));
+  for (const rule of shine.split('}')) {
+    if (!rule.includes(strip)) continue;
+    const head = rule.slice(0, rule.indexOf('{'));
     assert.ok(
-      /\.sci\b/.test(kopf) && !/\.sc\s*[,{]/.test(kopf),
-      `Der Lichtstreifen steht in einer Regel fuer "${kopf.trim()}". Er gehoert ` +
-        'auf das Bildfeld (.sci) — ueber weissem Text ist er Grau, nicht Glanz.',
+      /\.sci\b/.test(head) && !/\.sc\s*[,{]/.test(head),
+      `The light stripe sits in a rule for "${head.trim()}". It belongs ` +
+        'on the image field (.sci) — over white text it is grey, not gloss.',
     );
   }
 });
@@ -167,7 +168,7 @@ test('the gloss sits on fixed stops', () => {
   // Brush.verticalGradient in Compose. Different languages, the same four stops —
   // if they drift apart, the same theme looks different on phone and computer,
   // and nobody looks for the reason in a number.
-  const fromCss = [...glanz.matchAll(/rgba\((?:255,255,255|0,0,0),\.(\d+)\) (\d+)%/g)].map(m => `${m[2]}/${m[1]}`);
+  const fromCss = [...shine.matchAll(/rgba\((?:255,255,255|0,0,0),\.(\d+)\) (\d+)%/g)].map(m => `${m[2]}/${m[1]}`);
   assert.ok(fromCss.length >= 4, `Only ${fromCss.length} breakpoints in the CSS — does the search still work?`);
 });
 
@@ -177,21 +178,21 @@ test('the lid is ONE building block, not two', () => {});
 const studsRows = () => css.split('}').filter(r => /header::before|\.sc::after/.test(r.slice(0, r.indexOf('{') + 1)));
 
 test('the studs have a round top edge, not a gradient edge', () => {
-  const reihen = studsRows();
+  const rows = studsRows();
   // Self-proof: MEASURED there are two — the header bar and the tile lid.
-  assert.equal(reihen.length, 2, `${reihen.length} stud rows found instead of two — does the search still work?`);
+  assert.equal(rows.length, 2, `${rows.length} stud rows found instead of two — does the search still work?`);
 
-  for (const rowList of reihen) {
-    const kopf = rowList.slice(0, rowList.indexOf('{')).trim();
-    assert.ok(rowList.includes('var(--studs-form)'), `"${kopf}" does not use the stud shape`);
+  for (const rowList of rows) {
+    const head = rowList.slice(0, rowList.indexOf('{')).trim();
+    assert.ok(rowList.includes('var(--studs-form)'), `"${head}" does not use the stud shape`);
     assert.ok(
       !/repeating-linear-gradient/.test(rowList),
-      `"${kopf}" draws the studs as a gradient again. A gradient cannot do ` +
+      `"${head}" draws the studs as a gradient again. A gradient cannot do ` +
         'rounded corners — that is exactly why they looked like dashes.',
     );
     assert.ok(
       !/border-radius/.test(rowList),
-      `"${kopf}" rounds with border-radius. That rounds the BAR, not the ` +
+      `"${head}" rounds with border-radius. That rounds the BAR, not the ` +
         'single stud — the difference was visible in the running app.',
     );
   }
@@ -209,13 +210,13 @@ test('bar and lid share ONE stud shape', () => {
     `The stud shape appears ${explanations} times in the tree. Once is enough; every ` +
       'further row takes the same shape at a different beat (mask-size).',
   );
-  assert.match(reason, /--studs-form:url\("data:image\/svg\+xml,/, 'Die Noppenform ist keine Maske mehr');
+  assert.match(reason, /--studs-form:url\("data:image\/svg\+xml,/, 'The stud shape is no longer a mask');
 });
 
 test('the gloss is in step with the mask', () => {
   // The place where it silently goes wrong
   const masksTicks = [...css.matchAll(/\bmask-size:(\d+)px \d+px/g)].map(m => m[1]);
-  const glossTicks = [...glanz.matchAll(/\bbackground-size:(\d+)px \d+px/g)].map(m => m[1]);
+  const glossTicks = [...shine.matchAll(/\bbackground-size:(\d+)px \d+px/g)].map(m => m[1]);
   // Self-proof: MEASURED there are four mask beats (per row once with and
   // once without -webkit-) and two shine beats.
   assert.deepEqual(
@@ -253,37 +254,37 @@ test('the lid color does not erase the lacquer', () => {
     [],
     'These rules set the cap colour with the shorthand `background:`. It ' +
       'thereby clears the `background-image` of the lacquer — and because :nth-child counts ' +
-      'like a class, it wins against hochglanz.css. `background-color:` ' +
+      'like a class, it wins against „hochglanz.css“. `background-color:` ' +
       'only sets the colour and leaves the lacquer in place.',
   );
 });
 
-const stein = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'brick.css'), 'utf8');
-const grundCss = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
+const brickCss = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'brick.css'), 'utf8');
+const baseCss = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
 
 test('the stud shape belongs to all designs, not to one', () => {
   // It stood in themes/noppe.css. As long as only one theme drew studs,
   // that was right; since there are two, it is the place where they
   // auseinanderlaufen.
   assert.match(
-    grundCss,
+    baseCss,
     /--studs-form:url\("data:image\/svg\+xml,/,
-    'Die Noppenform steht nicht mehr in styles.css unter :root',
+    'The stud shape is no longer in styles.css under :root',
   );
   assert.ok(
     !/--studs-form:/.test(css),
-    'themes/noppe.css keeps its own stud shape again — then the ' +
+    '„themes/noppe.css“ keeps its own stud shape again — then the ' +
       'brick design has its own, and that is exactly how the difference came about.',
   );
-  assert.match(stein, /var\(--studs-form\)/, 'The brick design does not use the shared stud shape');
+  assert.match(brickCss, /var\(--studs-form\)/, 'The brick design does not use the shared stud shape');
   // Only the ROW, not every circle: the handles of the year sliders are
   // round buttons with a highlight (`circle at 35% 32%`) and should stay
   // that. A stud row is recognized by its anchoring in pixels —
   // `circle at 8px center`, repeated every 16px. The first version forbade
   // both and would have torn down two correct rules with it.
-  const reihen = [...stein.matchAll(/radial-gradient\(circle at \d+px center/g)];
+  const rows = [...brickCss.matchAll(/radial-gradient\(circle at \d+px center/g)];
   assert.deepEqual(
-    reihen.map(m => m[0]),
+    rows.map(m => m[0]),
     [],
     'The brick design draws a stud row as circles again. From the front ' +
       'a stud is a rectangle with a rounded top edge — that was the reason why ' +

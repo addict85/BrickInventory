@@ -26,7 +26,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 
 const ROOT = path.join(__dirname, '..');
@@ -36,12 +36,12 @@ const dbModule = require(path.join(ROOT, 'dist', 'db', 'database.js'));
 function instance(t, uid) {
   const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
   const clock = _req('src/infra/clock.js').settableClock();
-  const dienste = _req('startup/wiring.js').buildServices(db, { clock: clock });
+  const services = _req('startup/wiring.js').buildServices(db, { clock: clock });
   const app = _req('startup/app.js').buildApp({
     pool: db.systemWebPool,
     config: _req('src/infra/config.js').config(),
     sessionSecret: 'zwei-instanzen-geheimnis-lang-genug',
-    services: dienste,
+    services: services,
     sessionStorage: (req, _res, next) => {
       req.session = { userId: uid };
       next();
@@ -53,7 +53,7 @@ function instance(t, uid) {
     await db.pool.end();
   });
   const base = `http://localhost:${portOf(srv)}`;
-  return { db, services: dienste, clock, get: p => fetch(base + p) };
+  return { db, services: services, clock, get: p => fetch(base + p) };
 }
 
 test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, async t => {
@@ -62,13 +62,13 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
   t.after(() => data.pool.end().catch(() => {}));
   const uid = async name =>
     (await data.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [name])).id;
-  const [eins, zwei] = [await uid('zwei-instanzen-1'), await uid('zwei-instanzen-2')];
+  const [one, two] = [await uid('zwei-instanzen-1'), await uid('zwei-instanzen-2')];
   const { BUDGET, JOB_BUDGET, WINDOW_MS, COST, checkBudget } = _req('src/http/apiThrottle.js');
-  const a = instance(t, eins),
-    b = instance(t, eins);
+  const a = instance(t, one),
+    b = instance(t, one);
   const remaining = r => Number(r.headers.get('ratelimit-remaining'));
-  const claim = (inst, konto, method, p, now) =>
-    q.asAccount(konto, () => checkBudget(inst.services.throttle, konto, method, p, now));
+  const claim = (inst, account, method, p, now) =>
+    q.asAccount(account, () => checkBudget(inst.services.throttle, account, method, p, now));
   const clear = () => data.run('DELETE FROM api_budget');
 
   await t.test('both instances draw on one budget', async () => {
@@ -81,10 +81,10 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
   await t.test('what one instance used up gives 429 on the other', async () => {
     await clear();
     const now = Date.now();
-    assert.equal((await claim(a, eins, 'GET', '/sets', now)).allowed, true);
+    assert.equal((await claim(a, one, 'GET', '/sets', now)).allowed, true);
     // The rest of the budget in one claim: BUDGET - 1 units of cost 1 would take 599 queries.
-    await q.asAccount(eins, () =>
-      a.services.throttle.claimApiBudget(eins, {
+    await q.asAccount(one, () =>
+      a.services.throttle.claimApiBudget(one, {
         cost: BUDGET - 1,
         job: false,
         windowS: WINDOW_MS / 1000,
@@ -102,60 +102,60 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
   await t.test('an account does not use up the budget of another', async () => {
     await clear();
     const now = 2_000_000_000_000;
-    for (let i = 0; i < BUDGET; i++) await claim(a, eins, 'GET', '/sets', now);
-    assert.equal((await claim(b, eins, 'GET', '/sets', now)).allowed, false);
-    assert.equal((await claim(b, zwei, 'GET', '/sets', now)).allowed, true);
+    for (let i = 0; i < BUDGET; i++) await claim(a, one, 'GET', '/sets', now);
+    assert.equal((await claim(b, one, 'GET', '/sets', now)).allowed, false);
+    assert.equal((await claim(b, two, 'GET', '/sets', now)).allowed, true);
   });
 
   await t.test('rejected requests do not count; after the window it starts anew', async () => {
     await clear();
     const now = 2_000_000_000_000;
-    for (let i = 0; i < BUDGET; i++) await claim(a, eins, 'GET', '/sets', now);
+    for (let i = 0; i < BUDGET; i++) await claim(a, one, 'GET', '/sets', now);
     let ab;
-    for (let i = 0; i < 5; i++) ab = await claim(b, eins, 'GET', '/sets', now + 1000);
+    for (let i = 0; i < 5; i++) ab = await claim(b, one, 'GET', '/sets', now + 1000);
     assert.equal(ab.allowed, false);
     assert.equal(ab.units, BUDGET, 'the rejection must not push the counter up further');
     assert.equal(ab.restSec, WINDOW_MS / 1000 - 1, 'Retry-After names the end of the window');
-    const neu = await claim(a, eins, 'GET', '/sets', now + WINDOW_MS);
-    assert.deepEqual([neu.allowed, neu.units, neu.restSec], [true, 1, WINDOW_MS / 1000]);
+    const fresh = await claim(a, one, 'GET', '/sets', now + WINDOW_MS);
+    assert.deepEqual([fresh.allowed, fresh.units, fresh.restSec], [true, 1, WINDOW_MS / 1000]);
   });
 
   await t.test('the job pot applies before the general budget, across instances', async () => {
     await clear();
     const now = 2_000_000_000_000;
     for (let i = 0; i < JOB_BUDGET; i++)
-      assert.equal((await claim(i % 2 ? a : b, eins, 'POST', '/sets/partslist-pdf', now)).allowed, true);
-    const ab = await claim(a, eins, 'POST', '/sets/partslist-pdf', now);
+      assert.equal((await claim(i % 2 ? a : b, one, 'POST', '/sets/partslist-pdf', now)).allowed, true);
+    const ab = await claim(a, one, 'POST', '/sets/partslist-pdf', now);
     assert.deepEqual([ab.allowed, ab.job], [false, true]);
     assert.equal(ab.units, JOB_BUDGET * COST.job, 'otherwise the general budget would have closed, not the bucket');
-    assert.equal((await claim(b, eins, 'GET', '/sets', now)).allowed, true);
+    assert.equal((await claim(b, one, 'GET', '/sets', now)).allowed, true);
   });
 
   // The tickets as the voucher routes use them: issued with the approval, redeemed by the GET.
-  await q.asAccount(eins, () =>
-    a.services.vouchers.createVoucher(eins, { number: '6299-0000-0001', pin: null, amount: 5, currency: 'CHF' }),
+  await q.asAccount(one, () =>
+    a.services.vouchers.createVoucher(one, { number: '6299-0000-0001', pin: null, amount: 5, currency: 'CHF' }),
   );
-  const ticketOn = inst => q.asAccount(eins, () => inst.services.vouchers.releaseExport(eins));
-  const redeem = (inst, konto, ticket, ziel = 'export') =>
-    q.asAccount(konto, () => inst.services.vouchers.redeemTicket(ticket, konto, ziel));
+  const ticketOn = inst => q.asAccount(one, () => inst.services.vouchers.releaseExport(one));
+  const redeem = (inst, account, ticket, target = 'export') =>
+    q.asAccount(account, () => inst.services.vouchers.redeemTicket(ticket, account, target));
 
   await t.test('a ticket issued on A is redeemed once on B', async () => {
     const ticket = await ticketOn(a);
-    assert.equal(await redeem(b, eins, ticket), true);
-    assert.equal(await redeem(a, eins, ticket), false, 'a second time');
+    assert.equal(await redeem(b, one, ticket), true);
+    assert.equal(await redeem(a, one, ticket), false, 'a second time');
     assert.equal(await data.get('SELECT count(*)::int AS n FROM pdf_tickets').then(r => r.n), 0);
   });
 
   await t.test('only for its account and target', async () => {
     const ticket = await ticketOn(a);
-    assert.equal(await redeem(b, zwei, ticket), false, 'foreign account');
-    assert.equal(await redeem(b, eins, ticket, '12'), false, 'different target');
+    assert.equal(await redeem(b, two, ticket), false, 'foreign account');
+    assert.equal(await redeem(b, one, ticket, '12'), false, 'different target');
   });
 
   await t.test('after 60 s it no longer applies (set clock instead of waiting)', async () => {
     const ticket = await ticketOn(a);
     b.clock.ago(61_000);
-    assert.equal(await redeem(b, eins, ticket), false);
+    assert.equal(await redeem(b, one, ticket), false);
     // The cleanup in the system frame removes what nobody redeemed.
     await ticketOn(a);
     a.clock.ago(61_000);
@@ -171,7 +171,7 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
           s.close(() => r(p));
         });
       });
-    const starte = async () => {
+    const start = async () => {
       const port = await freePort();
       const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
         cwd: ROOT,
@@ -198,13 +198,13 @@ test('two web instances on one database', { concurrency: 1, timeout: 180_000 }, 
         if (srv.exitCode === null) srv.kill('SIGKILL');
       });
       return {
-        lebt: async () => (await fetch(`http://127.0.0.1:${port}/api/v2/health/live`).catch(() => null))?.ok === true,
+        alive: async () => (await fetch(`http://127.0.0.1:${port}/api/v2/health/live`).catch(() => null))?.ok === true,
         log: () => log,
       };
     };
-    const [x, y] = await Promise.all([starte(), starte()]);
-    assert.ok(await bis(x.lebt, 60_000), x.log().slice(-1500));
-    assert.ok(await bis(y.lebt, 60_000), y.log().slice(-1500));
-    assert.deepEqual([await x.lebt(), await y.lebt()], [true, true]);
+    const [x, y] = await Promise.all([start(), start()]);
+    assert.ok(await until(x.alive, 60_000), x.log().slice(-1500));
+    assert.ok(await until(y.alive, 60_000), y.log().slice(-1500));
+    assert.deepEqual([await x.alive(), await y.alive()], [true, true]);
   });
 });

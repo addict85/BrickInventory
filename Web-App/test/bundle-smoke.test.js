@@ -70,15 +70,15 @@ test('api() delivers an object on every failure instead of throwing', async () =
   // Where this test comes from
   const http = require('node:http');
   const srv = http.createServer((q, r) => {
-    const sende = (code, typ, body) => {
-      r.writeHead(code, { 'content-type': typ });
+    const send = (code, typeName, body) => {
+      r.writeHead(code, { 'content-type': typeName });
       r.end(body);
     };
-    if (q.url === '/api/html502') return sende(502, 'text/html', '<html>502 Bad Gateway</html>');
+    if (q.url === '/api/html502') return send(502, 'text/html', '<html>502 Bad Gateway</html>');
     if (q.url === '/api/json500')
-      return sende(500, 'application/json', JSON.stringify({ success: false, error: 'kaputt' }));
-    if (q.url === '/api/bare500') return sende(500, 'application/json', JSON.stringify({ message: 'oops' }));
-    return sende(200, 'application/json', JSON.stringify({ success: true, wert: 42 }));
+      return send(500, 'application/json', JSON.stringify({ success: false, error: 'kaputt' }));
+    if (q.url === '/api/bare500') return send(500, 'application/json', JSON.stringify({ message: 'oops' }));
+    return send(200, 'application/json', JSON.stringify({ success: true, wert: 42 }));
   });
   await new Promise(r => srv.listen(0, () => r(null)));
   const port = portOf(srv);
@@ -134,9 +134,9 @@ test('api() delivers an object on every failure instead of throwing', async () =
 
     // Network error: no status, but the same shape.
     globalThis.fetch = () => Promise.reject(new Error('offline'));
-    const netz = await core.api('GET', '/x');
-    assert.equal(netz.success, false);
-    assert.equal(netz.networkError, true, 'Offline should remain distinguishable');
+    const net = await core.api('GET', '/x');
+    assert.equal(net.success, false);
+    assert.equal(net.networkError, true, 'Offline should remain distinguishable');
   } finally {
     srv.close();
     dom.window.close();
@@ -145,7 +145,7 @@ test('api() delivers an object on every failure instead of throwing', async () =
 
 test('unhandled errors do not only end up in the console', async () => {
   // In the real bundle: a rejected promise and a script error from our own code show a message.
-  const { openUi, warte } = require('./helpers/ui');
+  const { openUi, waitFor } = require('./helpers/ui');
   const { de } = require('./helpers/sources').loadTranslations();
   const ours = { stack: 'Error: kaputt\n    at http://localhost/js/app.bundle.js:1:1' };
   // One window per kind: the net reports at most one message per five seconds.
@@ -167,7 +167,7 @@ test('unhandled errors do not only end up in the console', async () => {
     try {
       raise(w);
       const toasts = () => d.getElementById('toasts')?.textContent || '';
-      assert.ok(await warte(() => toasts().includes(de['api.unexpected'])), `${kind}: ${toasts()}`);
+      assert.ok(await waitFor(() => toasts().includes(de['api.unexpected'])), `${kind}: ${toasts()}`);
     } finally {
       w.close();
     }
@@ -175,18 +175,18 @@ test('unhandled errors do not only end up in the console', async () => {
 });
 
 test('a 401 leads back to the login, not into a dead UI', async () => {
-  const { openUi, reiter, warte } = require('./helpers/ui');
+  const { openUi, switchTab, waitFor } = require('./helpers/ui');
   const { de } = require('./helpers/sources').loadTranslations();
   const { w, d } = await openUi({
     '/v2/parts': { $status: 401, success: false, error: 'Nicht angemeldet', code: 'not_signed_in' },
   });
   try {
     assert.equal(d.getElementById('login-screen').style.display, 'none', 'precondition: signed in');
-    await reiter(w, 'parts');
-    assert.ok(await warte(() => d.getElementById('login-screen').style.display === 'flex'), 'no login after 401');
+    await switchTab(w, 'parts');
+    assert.ok(await waitFor(() => d.getElementById('login-screen').style.display === 'flex'), 'no login after 401');
     assert.equal(d.getElementById('app').style.display, 'none');
     assert.ok(
-      await warte(() => (d.getElementById('login-hint')?.textContent || '').includes(de['auth.session_expired'])),
+      await waitFor(() => (d.getElementById('login-hint')?.textContent || '').includes(de['auth.session_expired'])),
       `no reason given: ${d.getElementById('login-hint')?.textContent}`,
     );
   } finally {

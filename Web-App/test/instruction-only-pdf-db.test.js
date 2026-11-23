@@ -22,9 +22,9 @@ const { PassThrough } = require('node:stream');
 const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-anleitung-'));
-process.env.APP_ROOT = WURZEL;
-test.after(() => fs.rmSync(WURZEL, { recursive: true, force: true }));
+const ROOT_CERT = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-anleitung-'));
+process.env.APP_ROOT = ROOT_CERT;
+test.after(() => fs.rmSync(ROOT_CERT, { recursive: true, force: true }));
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
@@ -51,7 +51,7 @@ test('instructions only with a PDF start', async t => {
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [sn]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const echt = https.get;
+  const original = https.get;
   const fang = (/** @type {any} */ url, /** @type {any} */ _opt, /** @type {any} */ cb) => {
     /** @type {any} */ const req = new EventEmitter();
     req.setTimeout = () => req;
@@ -67,16 +67,16 @@ test('instructions only with a PDF start', async t => {
   };
   https.get = /** @type {any} */ (fang);
   t.after(() => {
-    https.get = echt;
+    https.get = original;
   });
 
   await loadSetInstructions(sn, true);
 
-  const zeilen = await db.all('SELECT url, local_path FROM shared_instructions WHERE set_number = $1 ORDER BY url', [
+  const lines = await db.all('SELECT url, local_path FROM shared_instructions WHERE set_number = $1 ORDER BY url', [
     sn,
   ]);
-  const localPath = u => zeilen.find(z => z.url === u)?.local_path;
-  const onDisk = rel => fs.existsSync(path.join(WURZEL, rel));
+  const localPath = u => lines.find(z => z.url === u)?.local_path;
+  const onDisk = rel => fs.existsSync(path.join(ROOT_CERT, rel));
 
   await t.test('a real PDF is stored and registered', () => {
     assert.ok(localPath(URLS[0]), 'the path is in the table');
@@ -85,7 +85,7 @@ test('instructions only with a PDF start', async t => {
 
   await t.test('a file without %PDF- is not stored', () => {
     assert.equal(localPath(URLS[1]), null, 'no path in the table without a file');
-    assert.deepEqual(fs.readdirSync(path.join(WURZEL, 'data', 'instructions')).sort(), [
+    assert.deepEqual(fs.readdirSync(path.join(ROOT_CERT, 'data', 'instructions')).sort(), [
       path.basename(localPath(URLS[0])),
     ]);
   });

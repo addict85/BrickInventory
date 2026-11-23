@@ -55,35 +55,36 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
         ADD COLUMN name text, ADD COLUMN year integer, ADD COLUMN theme text, ADD COLUMN pieces integer`);
       const A = (await q(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`sn-${PID}`]))[0]
         .id;
-      const lager = (await q(`INSERT INTO storage_locations (user_id, name) VALUES ($1,'Regal') RETURNING id`, [A]))[0]
-        .id;
+      const storage = (
+        await q(`INSERT INTO storage_locations (user_id, name) VALUES ($1,'Regal') RETURNING id`, [A])
+      )[0].id;
       const T1 = `T${PID}a`,
         T2 = `T${PID}b`,
         T3 = `T${PID}c`;
       await c.query(
         `INSERT INTO sets (user_id, set_number, storage_id) VALUES ($1,$2,$3), ($1,$4,NULL), ($1,$5,NULL)`,
-        [A, T1, lager, `${T1}-1`, T2],
+        [A, T1, storage, `${T1}-1`, T2],
       );
-      const kauf = (sn, preis, quantity) =>
+      const purchase = (sn, price, quantity) =>
         c.query(
           `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
          VALUES ($1,$2,$3,$4,'N','CHF','2026-01-05T12:00:00Z')`,
-          [A, sn, quantity, preis],
+          [A, sn, quantity, price],
         );
-      await kauf(T1, 10, 1);
-      await kauf(`${T1}-1`, 10, 2);
-      await kauf(T1, 20, 1);
-      await kauf(T2, 5, 1);
-      const teil = (sn, nr) =>
+      await purchase(T1, 10, 1);
+      await purchase(`${T1}-1`, 10, 2);
+      await purchase(T1, 20, 1);
+      await purchase(T2, 5, 1);
+      const part = (sn, nr) =>
         c.query(`INSERT INTO parts (user_id, set_number, part_number, color_id, source) VALUES ($1,$2,$3,4,'set')`, [
           A,
           sn,
           nr,
         ]);
-      await teil(T1, 'P1');
-      await teil(`${T1}-1`, 'P1');
-      await teil(T1, 'P2');
-      await teil(T2, 'P3');
+      await part(T1, 'P1');
+      await part(`${T1}-1`, 'P1');
+      await part(T1, 'P2');
+      await part(T2, 'P3');
       await c.query(
         `INSERT INTO instructions (user_id, set_number, url) VALUES ($1,$2,'u1'), ($1,$3,'u1'), ($1,$2,'u2')`,
         [A, T1, `${T1}-1`],
@@ -120,21 +121,21 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
       assert.deepEqual(
         await q('SELECT set_number, storage_id FROM sets WHERE user_id=$1 ORDER BY 1', [A]),
         [
-          { set_number: `${T1}-1`, storage_id: lager },
+          { set_number: `${T1}-1`, storage_id: storage },
           { set_number: `${T2}-1`, storage_id: null },
         ],
         'one row per set, the location of the old one stays',
       );
       assert.deepEqual(
         await q(
-          `SELECT set_number, purchase_price::float AS preis, quantity FROM set_acquisitions
+          `SELECT set_number, purchase_price::float AS price, quantity FROM set_acquisitions
                                  WHERE user_id=$1 ORDER BY 1, 2`,
           [A],
         ),
         [
-          { set_number: `${T1}-1`, preis: 10, quantity: 3 },
-          { set_number: `${T1}-1`, preis: 20, quantity: 1 },
-          { set_number: `${T2}-1`, preis: 5, quantity: 1 },
+          { set_number: `${T1}-1`, price: 10, quantity: 3 },
+          { set_number: `${T1}-1`, price: 20, quantity: 1 },
+          { set_number: `${T2}-1`, price: 5, quantity: 1 },
         ],
         'identical purchase prices are added up',
       );
@@ -205,12 +206,12 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
 
   await t.test('set master: only rb_sets, a placeholder stays a placeholder', async () => {
     const S = `S${PID}`;
-    const weg = () =>
+    const route = () =>
       Promise.all([
         db.run('DELETE FROM rb_sets WHERE set_num LIKE $1', [`${S}%`]),
         db.run('DELETE FROM catalog_cache WHERE set_number LIKE $1', [`${S}%`]),
       ]);
-    await weg();
+    await route();
     try {
       await db.run(`INSERT INTO rb_sets (set_num, name, year, num_parts) VALUES ($1,'Aus Rebrickable',2020,100)`, [
         `${S}a-1`,
@@ -222,20 +223,20 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
       ]);
       await db.run(`INSERT INTO catalog_cache (set_number) VALUES ($1)`, [`${S}d-1`]);
       const { setInfo } = require('./helpers/sources').areaPage('sets');
-      const stamm = async n => {
+      const stem = async n => {
         const r = await setInfo(n);
-        return r && { name: r.name, year: r.year, platzhalter: r.placeholder };
+        return r && { name: r.name, year: r.year, placeholder: r.placeholder };
       };
-      assert.deepEqual(await stamm(`${S}a-1`), { name: 'Aus Rebrickable', year: 2020, platzhalter: false });
-      assert.deepEqual(await stamm(`${S}b-1`), { name: `Set ${S}b-1`, year: null, platzhalter: true });
+      assert.deepEqual(await stem(`${S}a-1`), { name: 'Aus Rebrickable', year: 2020, placeholder: false });
+      assert.deepEqual(await stem(`${S}b-1`), { name: `Set ${S}b-1`, year: null, placeholder: true });
       assert.deepEqual(
-        await stamm(`${S}c`),
-        { name: 'Aus dem Abruf', year: null, platzhalter: false },
+        await stem(`${S}c`),
+        { name: 'Aus dem Abruf', year: null, placeholder: false },
         'setInfo adds the version suffix',
       );
       assert.equal(await setInfo(`${S}d-1`), null, 'a mere fetch state is no set master record');
     } finally {
-      await weg();
+      await route();
     }
   });
 

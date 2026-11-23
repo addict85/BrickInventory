@@ -32,7 +32,7 @@ process.env.TEST_BUNDLE = buildTestBundle(
   "import { actionNames, registerActions } from './registry.js';\n" +
     'window.__registry = { actionNames, registerActions };\n',
 );
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 const PUB = path.join(__dirname, '..', 'public');
 
@@ -50,22 +50,22 @@ function namesInMarkup() {
           .replace(/(^|[^:])\/\/[^\n]*/g, '$1'),
       ),
   ];
-  const namen = new Set();
+  const names = new Set();
   for (const s of sources)
-    for (const m of s.matchAll(/data-(?:click|change|input|blur|keydown)="([A-Za-z_$][\w$]*)"/g)) namen.add(m[1]);
+    for (const m of s.matchAll(/data-(?:click|change|input|blur|keydown)="([A-Za-z_$][\w$]*)"/g)) names.add(m[1]);
   // The log viewer runs in its own window with its own table (logviewer-ui.test.js).
-  for (const n of ['loadLogs', 'renderLogs', 'toggleAuto', 'toggleLevel']) namen.delete(n);
-  return [...namen].sort();
+  for (const n of ['loadLogs', 'renderLogs', 'toggleAuto', 'toggleLevel']) names.delete(n);
+  return [...names].sort();
 }
 
 test('every handler from markup and templates is registered', async () => {
   const { w } = await openUi();
   try {
-    const namen = namesInMarkup();
-    assert.ok(namen.length > 100, `only ${namen.length} names found — does the search still match?`);
-    const angemeldet = new Set(w.__registry.actionNames());
+    const names = namesInMarkup();
+    assert.ok(names.length > 100, `only ${names.length} names found — does the search still match?`);
+    const signedIn = new Set(w.__registry.actionNames());
     assert.deepEqual(
-      namen.filter(n => !angemeldet.has(n)),
+      names.filter(n => !signedIn.has(n)),
       [],
       'Not signed in — these buttons would do nothing on click',
     );
@@ -77,10 +77,10 @@ test('every handler from markup and templates is registered', async () => {
 test('a click passes arguments, field value and this through', async () => {
   const { w, d } = await openUi();
   try {
-    const gesehen = [];
+    const seen = [];
     w.__registry.registerActions({
       probeAction(...args) {
-        gesehen.push({ dies: this, args });
+        seen.push({ dies: this, args });
       },
     });
     const host = d.createElement('div');
@@ -94,12 +94,12 @@ test('a click passes arguments, field value and this through', async () => {
     const warnings = [];
     w.console.warn = (...a) => warnings.push(a.join(' '));
     d.getElementById('p3').click();
-    assert.equal(gesehen.length, 2);
-    assert.equal(gesehen[0].dies, d.getElementById('p1'), 'this is the triggering element');
+    assert.equal(seen.length, 2);
+    assert.equal(seen[0].dies, d.getElementById('p1'), 'this is the triggering element');
     // data-arg always arrives as a string; the event comes last.
-    assert.deepEqual(gesehen[0].args.slice(0, 3), ['1', 'b', 'c']);
-    assert.equal(gesehen[0].args[3]?.type, 'click');
-    assert.deepEqual(gesehen[1].args.slice(0, 2), ['k', '42'], 'data-val="1" passes the field value');
+    assert.deepEqual(seen[0].args.slice(0, 3), ['1', 'b', 'c']);
+    assert.equal(seen[0].args[3]?.type, 'click');
+    assert.deepEqual(seen[1].args.slice(0, 2), ['k', '42'], 'data-val="1" passes the field value');
     assert.ok(
       warnings.some(t => t.includes('unknown handler') && t.includes('gibtEsNicht')),
       'A typo in the handler name must be noticed',
@@ -119,23 +119,23 @@ test('an image error is retried once before the fallback applies', async () => {
     host.innerHTML = '<img id="b1" alt="" src="/images/sets/1-1.jpg" data-orig="/images/sets/1-1-gross.jpg">';
     d.body.append(host);
     const img = d.getElementById('b1');
-    const gesetzt = [];
-    const echt = Object.getOwnPropertyDescriptor(w.HTMLImageElement.prototype, 'src');
+    const isSet = [];
+    const original = Object.getOwnPropertyDescriptor(w.HTMLImageElement.prototype, 'src');
     Object.defineProperty(img, 'src', {
       get() {
-        return echt.get.call(this);
+        return original.get.call(this);
       },
       set(v) {
-        gesetzt.push(v);
-        echt.set.call(this, v);
+        isSet.push(v);
+        original.set.call(this, v);
       },
     });
     failure(w, img);
     assert.equal(img.dataset.retried, '1', 'No second attempt scheduled');
     assert.ok(img.getAttribute('src'), 'The image is already gone after the first error');
     // After one second the same address again, via a freshly set attribute.
-    assert.ok(await warte(() => gesetzt.length > 0, 3000), 'The second attempt does not come');
-    assert.equal(gesetzt[0], 'http://localhost/images/sets/1-1.jpg');
+    assert.ok(await waitFor(() => isSet.length > 0, 3000), 'The second attempt does not come');
+    assert.equal(isSet[0], 'http://localhost/images/sets/1-1.jpg');
     // Only the second error resorts to the fallback: the full resolution from data-orig.
     failure(w, img);
     assert.equal(img.getAttribute('src'), '/images/sets/1-1-gross.jpg');
@@ -169,22 +169,22 @@ test('the zoom keeps its address if the image does not load', async () => {
 test('the log window loads its script as a file', async () => {
   const { w, d } = await openUi();
   try {
-    let geschrieben = '';
+    let written = '';
     w.open = () => ({
       document: {
         open() {},
         write(s) {
-          geschrieben += s;
+          written += s;
         },
         close() {},
       },
     });
     d.querySelector('[data-click="openLogViewer"]').click();
-    await takt(0);
-    assert.ok(geschrieben.length > 500, 'The window gets no markup');
+    await tick(0);
+    assert.ok(written.length > 500, 'The window gets no markup');
     const { JSDOM } = require(path.join(__dirname, '..', 'node_modules', 'jsdom'));
-    const fenster = new JSDOM(geschrieben).window.document;
-    const scriptList = [...fenster.querySelectorAll('script')];
+    const win = new JSDOM(written).window.document;
+    const scriptList = [...win.querySelectorAll('script')];
     assert.deepEqual(
       scriptList.filter(s => !s.src).map(s => s.textContent.slice(0, 40)),
       [],
@@ -195,9 +195,9 @@ test('the log window loads its script as a file', async () => {
       'logviewer.js is missing',
     );
     // The data is in the attribute, escaped: the JSON with its quotes arrives intact.
-    assert.equal(fenster.body.dataset.base, 'http://localhost');
-    assert.equal(typeof JSON.parse(fenster.body.dataset.i18n)['log.entries'], 'string');
-    assert.equal(fenster.body.hasAttribute('data-auth'), false, 'The session signs the window in, not a token');
+    assert.equal(win.body.dataset.base, 'http://localhost');
+    assert.equal(typeof JSON.parse(win.body.dataset.i18n)['log.entries'], 'string');
+    assert.equal(win.body.hasAttribute('data-auth'), false, 'The session signs the window in, not a token');
   } finally {
     w.close();
   }

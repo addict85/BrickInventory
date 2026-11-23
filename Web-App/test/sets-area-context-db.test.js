@@ -25,25 +25,25 @@ const SN = '99871-1';
 const INVENTORY = 987654;
 
 /** An access that records every query and passes it on to the real one. */
-function countingAccess(echt, sql) {
+function countingAccess(original, sql) {
   const remember = f => (text, p) => {
     sql.push(text);
     return f(text, p);
   };
-  const huelle = z => ({ all: remember(z.all), get: remember(z.get), run: remember(z.run), exec: remember(z.exec) });
-  return new Proxy(echt, {
-    get(ziel, name) {
-      if (name === 'transaction') return (fn, o) => ziel.transaction(tx => fn(huelle(tx)), o);
-      if (['all', 'get', 'run', 'exec'].includes(String(name))) return huelle(ziel)[name];
-      return Reflect.get(ziel, name);
+  const shell = z => ({ all: remember(z.all), get: remember(z.get), run: remember(z.run), exec: remember(z.exec) });
+  return new Proxy(original, {
+    get(target, name) {
+      if (name === 'transaction') return (fn, o) => target.transaction(tx => fn(shell(tx)), o);
+      if (['all', 'get', 'run', 'exec'].includes(String(name))) return shell(target)[name];
+      return Reflect.get(target, name);
     },
   });
 }
 
 /** A catalog that records which enrichment was triggered. */
-const recording = notiz => ({
+const recording = note => ({
   enrichSetParts: async sn => {
-    notiz.push(['enrichSetParts', sn]);
+    note.push(['enrichSetParts', sn]);
   },
 });
 
@@ -66,13 +66,13 @@ test('sets with their own context', { concurrency: 1 }, async t => {
   );
 
   const sql = [],
-    notiz = [],
+    note = [],
     processNote = [];
-  const zugang = countingAccess(sources.testAccess(), sql);
+  const access = countingAccess(sources.testAccess(), sql);
   const { buildServices } = _req('startup/wiring.js');
-  const alle = buildServices(zugang);
-  Object.assign(alle.catalog, recording(notiz));
-  const sets = alle.sets;
+  const all = buildServices(access);
+  Object.assign(all.catalog, recording(note));
+  const sets = all.sets;
   sources.replaceServices('catalog', recording(processNote));
 
   await t.test('reading goes through the passed access', async () => {
@@ -87,7 +87,7 @@ test('sets with their own context', { concurrency: 1 }, async t => {
     const r = await sets.partListWithRework(SN);
     assert.equal(r.parts.length, 1);
     assert.ok(sql.some(s => /FROM rb_inventory_parts/.test(s)));
-    assert.deepEqual(notiz, [['enrichSetParts', SN]]);
+    assert.deepEqual(note, [['enrichSetParts', SN]]);
     assert.deepEqual(processNote, []);
   });
 });

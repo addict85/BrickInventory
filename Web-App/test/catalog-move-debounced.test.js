@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
 
@@ -20,28 +20,28 @@ function withoutModuleShell(src) {
 }
 
 const BLOCK_HEIGHT = 900; // pixels per page block
-const SEITEN = 50;
-const SETS = SEITEN * 60;
+const PAGES = 50;
+const SETS = PAGES * 60;
 const STEPS = 40; // touch points of a drag
 const STEP_MS = 15; // distance between two points — faster than the rest period
 
 /**
  * Drag across the whole bar and count the page fetches.
- * @param {boolean} debounced false = counter-check, the rest period is taken out
+ * @param {boolean} withDebounce false = counter-check, the rest period is taken out
  */
-async function measureMove(debounced) {
+async function measureMove(withDebounce) {
   let code =
     withoutModuleShell(fs.readFileSync(path.join(JS, 'components.js'), 'utf8')) +
     '\n' +
     withoutModuleShell(fs.readFileSync(path.join(JS, 'load-guard.js'), 'utf8')) +
     '\n' +
     withoutModuleShell(fs.readFileSync(path.join(JS, 'catalog.js'), 'utf8'));
-  if (!debounced) {
-    const vorher = code;
+  if (!withDebounce) {
+    const prior = code;
     code = code.replace(/_catLoadTimer = setTimeout\(tun, \d+\)/, 'tun()');
     assert.notEqual(
       code,
-      vorher,
+      prior,
       'The counter-check did not find the debouncing. Either it has ' +
         'a different name — then update this file — or it no longer exists.',
     );
@@ -61,9 +61,9 @@ async function measureMove(debounced) {
   );
   const w = dom.window;
 
-  const daten = [];
+  const data = [];
   for (let i = 0; i < SETS; i++) {
-    daten.push({
+    data.push({
       set_number: `${i}-1`,
       name: `Set ${i}`,
       year: 2000 + (i % 27),
@@ -83,13 +83,13 @@ async function measureMove(debounced) {
     }
     if (url.startsWith('/v2/catalog/sets?')) {
       const p = new w.URLSearchParams(url.split('?')[1]);
-      const seite = parseInt(p.get('page') || '1', 10);
-      fetches.push(seite);
+      const page = parseInt(p.get('page') || '1', 10);
+      fetches.push(page);
       return Promise.resolve({
         success: true,
         total: SETS,
-        page: seite,
-        sets: daten.slice((seite - 1) * 60, seite * 60),
+        page: page,
+        sets: data.slice((page - 1) * 60, page * 60),
       });
     }
     if (url.startsWith('/v2/catalog/year-distribution')) {
@@ -131,21 +131,21 @@ async function measureMove(debounced) {
 
   w.eval(code);
   w.eval('initCatalog()');
-  await warte(300);
+  await sleep(300);
   const beforeTheMove = fetches.length;
 
-  const maxRoles = SEITEN * BLOCK_HEIGHT - 800;
+  const maxRoles = PAGES * BLOCK_HEIGHT - 800;
   for (let i = 0; i < STEPS; i++) {
     rollY = Math.round((i / (STEPS - 1)) * maxRoles);
     w.dispatchEvent(new w.Event('scroll'));
-    await warte(STEP_MS);
+    await sleep(STEP_MS);
   }
-  await warte(400); // rest after release — now loading may happen
+  await sleep(400); // rest after release — now loading may happen
 
   const inMove = fetches.slice(beforeTheMove);
   const condition = {
     count: inMove.length,
-    seiten: [...new Set(inMove)].sort((a, b) => a - b),
+    pages: [...new Set(inMove)].sort((a, b) => a - b),
     setup: beforeTheMove,
   };
   dom.window.close();
@@ -153,44 +153,44 @@ async function measureMove(debounced) {
 }
 
 test('catalog: a drag across the bar loads the target, not the way there', async () => {
-  const mit = await measureMove(true);
-  const ohne = await measureMove(false);
+  const withIt = await measureMove(true);
+  const without = await measureMove(false);
 
   // The test bench must do something at all: on setup the first page is
   // fetched. If that did not happen, “few fetches" would be meaningless.
-  assert.ok(mit.setup >= 1, `The setup fetched no page (${mit.setup}) — the test bench runs empty`);
+  assert.ok(withIt.setup >= 1, `The setup fetched no page (${withIt.setup}) — the test bench runs empty`);
 
   // The counter-check proves that the drag leads across many pages at all.
   // Without it the bar might only sweep across a few blocks.
   assert.ok(
-    ohne.seiten.length >= 25,
-    `Without the pause only ${ohne.seiten.length} pages were fetched. Then ` +
+    without.pages.length >= 25,
+    `Without the pause only ${without.pages.length} pages were fetched. Then ` +
       `the drag does not cover the whole catalog and this measurement says nothing.`,
   );
 
   // And the actual assurance: WITH the rest period it stays at a handful.
   assert.ok(
-    mit.count <= 10,
-    `One drag over the bar triggered ${mit.count} page fetches (pages ` +
-      `${JSON.stringify(mit.seiten)}). Expected is the target with its neighbors. ` +
+    withIt.count <= 10,
+    `One drag over the bar triggered ${withIt.count} page fetches (pages ` +
+      `${JSON.stringify(withIt.pages)}). Expected is the target with its neighbors. ` +
       `Apparently it loads on the way again — exactly Marco’s „dauert einige Sekunden“.`,
   );
 
   // The gap is the most robust statement: both runs are in the same
   // process under the same conditions, a delay hits both.
   assert.ok(
-    ohne.count >= mit.count * 5,
-    `With pause ${mit.count} fetches, without ${ohne.count} — the pause makes no ` +
+    without.count >= withIt.count * 5,
+    `With pause ${withIt.count} fetches, without ${without.count} — the pause makes no ` +
       `difference anymore. Either the drag loads past the timer, or the ` +
       `counter-check hits the wrong place.`,
   );
 
   // The target must really arrive: loading less is only right
   // if the end of the drag is shown afterwards.
-  const letzte = SEITEN;
+  const last = PAGES;
   assert.ok(
-    mit.seiten.includes(letzte),
-    `The target page ${letzte} was never fetched (${JSON.stringify(mit.seiten)}) — ` +
+    withIt.pages.includes(last),
+    `The target page ${last} was never fetched (${JSON.stringify(withIt.pages)}) — ` +
       `then the debouncing saves fetches by letting the jump run into nothing.`,
   );
 });

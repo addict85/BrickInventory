@@ -13,14 +13,14 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 // Intercept download and downscaling — what counts here is WHEN they are called,
 // not what they do.
-let geladen = 0,
+let loaded = 0,
   shrunk = 0;
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
   loadSetImage: async () => {
-    geladen++;
+    loaded++;
     return '/images/sets/test.jpg';
   },
   createPreview: async () => {
@@ -44,8 +44,8 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
   const IQ = _req('src/images/imageDemandRun.js');
   await IQ.setUpImageDemand();
   const PREFIX = `TQ${process.pid}`;
-  const weg = async () => db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%']).catch(() => {});
-  await weg();
+  const route = async () => db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%']).catch(() => {});
+  await route();
 
   try {
     await t.test('duplicate notes count once', async () => {
@@ -67,14 +67,14 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
       // be computed in one go.
       // The batch size stands in the source (: raised from 5 to 20
       // after the CPU causes were fixed). The test reads it …
-      const stapel = IQ.BATCH;
-      assert.ok(stapel > 0, '„STAPEL“ not found');
-      const vorher = geladen;
+      const stack = IQ.BATCH;
+      assert.ok(stack > 0, '„STAPEL“ not found');
+      const prior = loaded;
       const n1 = (await IQ._workStack()).total;
-      assert.ok(n1 > 0 && n1 <= stapel, `${n1} images in one pass at „STAPEL“ = ${stapel} — the limit does not apply`);
+      assert.ok(n1 > 0 && n1 <= stack, `${n1} images in one pass at „STAPEL“ = ${stack} — the limit does not apply`);
       assert.ok(n1 < 25, 'The whole backlog was computed in one go');
-      assert.equal(geladen - vorher, n1, 'more images were fetched than processed');
-      assert.equal(shrunk, geladen, 'every fetched image has a preview');
+      assert.equal(loaded - prior, n1, 'more images were fetched than processed');
+      assert.equal(shrunk, loaded, 'every fetched image has a preview');
     });
 
     await t.test('at the end no note remains', async () => {
@@ -83,7 +83,7 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
       assert.equal(n, 0, `${n} notes left`);
     });
   } finally {
-    await weg();
+    await route();
     // Do NOT close the pool here: the tile test further below still needs it.
     // It closes as the last DB test.
   }
@@ -101,30 +101,30 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
   // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
 
-  const NUTZER = `ka-${process.pid}`;
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  const USER = `ka-${process.pid}`;
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
   await adminWithFactor(_req, uid);
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
-  const kachel = async () => (await (await fetch(`${base}/api/v2/admin/jobs`)).json()).jobs?.imgDl;
+  const { base, srv } = testServer(_req, { session: { userId: uid, isAdmin: 1 }, t });
+  const tile = async () => (await (await fetch(`${base}/api/v2/admin/jobs`)).json()).jobs?.imgDl;
 
   try {
     await db.run(`DELETE FROM image_wanted`);
-    const leer = await kachel();
-    assert.ok(leer, 'The tile is missing in the response');
-    assert.equal(leer.queue, 0);
-    assert.doesNotMatch(leer.sub, /Katalog/, 'Without a queue the tile should not talk about catalog images');
+    const empty = await tile();
+    assert.ok(empty, 'The tile is missing in the response');
+    assert.equal(empty.queue, 0);
+    assert.doesNotMatch(empty.sub, /Katalog/, 'Without a queue the tile should not talk about catalog images');
 
     await db.run(`INSERT INTO image_wanted (url,set_number)
                   SELECT 'https://x/'||g||'.jpg', 'KA'||g FROM generate_series(1,137) g`);
-    const voll = await kachel();
-    assert.equal(voll.queue, 137, 'The queue is not counted');
-    assert.match(voll.sub, /137 Katalog-Bilder in Warteschlange/, 'The number is not in the text of the tile');
+    const full = await tile();
+    assert.equal(full.queue, 137, 'The queue is not counted');
+    assert.match(full.sub, /137 Katalog-Bilder in Warteschlange/, 'The number is not in the text of the tile');
     // “stock" must stand next to it — otherwise one does not know what the
     // OTHER number refers to.
-    assert.match(voll.sub, /Bestand:/, 'Without this label the two numbers cannot be told apart');
+    assert.match(full.sub, /Bestand:/, 'Without this label the two numbers cannot be told apart');
     // “running" now means: has done something recently
     await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
     await db.run(`DELETE FROM run_state WHERE key='imgredl_status'`);
@@ -132,18 +132,18 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
       .imgDlReset()
       .catch(() => {});
     _req('src/images/imageDemandRun.js').lastRun.zeit = null;
-    const withoutRun = await kachel();
+    const withoutRun = await tile();
     assert.equal(withoutRun.status, 'idle', 'Without a pass the tile must not report activity');
     assert.match(withoutRun.sub, /Job noch nicht gelaufen/, 'The tile hides that the job has not run yet');
 
     // And after a pass it reports operation. What is meant is the TICK —
     // there the state is stored for the other worker processes.
     await _req('src/images/imageDemandRun.js')._tickPass();
-    const nachLauf = await kachel();
-    assert.equal(nachLauf.status, 'running', 'After a pass the tile must report activity');
-    assert.ok(nachLauf.queueLastRun, 'The time of the last pass is missing');
+    const afterRun = await tile();
+    assert.equal(afterRun.status, 'running', 'After a pass the tile must report activity');
+    assert.ok(afterRun.queueLastRun, 'The time of the last pass is missing');
     // And the bar must not stand at 100 % while something is still pending.
-    assert.ok(voll.total >= 137, `total=${voll.total} does not contain the queue`);
+    assert.ok(full.total >= 137, `total=${full.total} does not contain the queue`);
 
     // A STUCK “running" is not operation
     await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
@@ -152,24 +152,24 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
       .imgDlReset()
       .catch(() => {});
     assert.notEqual(
-      (await kachel()).status,
+      (await tile()).status,
       'running',
       'Precondition violated: without a follow-up there must be no activity here',
     );
 
-    const redl = async at =>
+    const redeliver = async at =>
       db.run(
         `INSERT INTO run_state (key, value) VALUES ('imgredl_status',$1)
          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
         [JSON.stringify({ running: true, phase: 'scanning', at })],
       );
 
-    await redl(Date.now());
-    const frisch = await kachel();
-    assert.equal(frisch.status, 'running', 'A FRESH follow-up must still count as activity');
+    await redeliver(Date.now());
+    const fresh = await tile();
+    assert.equal(fresh.status, 'running', 'A FRESH follow-up must still count as activity');
 
-    await redl(Date.now() - 10 * 60_000);
-    const alt = await kachel();
+    await redeliver(Date.now() - 10 * 60_000);
+    const alt = await tile();
     assert.notEqual(
       alt.status,
       'running',
@@ -179,7 +179,7 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
     await db.run(`DELETE FROM run_state WHERE key='imgredl_status'`);
   } finally {
     await db.run(`DELETE FROM image_wanted`).catch(() => {});
-    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await new Promise(r => srv.close(r));
     // Last test with database in this file.
     await db.pool.end().catch(() => {});
@@ -188,7 +188,7 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
 
 test('the job also reports pure skips', () => {
   // Marco's finding
-  const { message: meldung } = _req('src/images/imageDemandRun.js');
+  const { message } = _req('src/images/imageDemandRun.js');
   const onlySkipped = {
     fetched: 0,
     preview: 0,
@@ -201,7 +201,7 @@ test('the job also reports pure skips', () => {
     setAside: 0,
     work: 0,
   };
-  const text = meldung(onlySkipped);
+  const text = message(onlySkipped);
   assert.match(text, /10 bearbeitet/, 'A pass with nothing but skips does not name its number');
   assert.match(
     text,
@@ -218,7 +218,7 @@ test('the job also reports pure skips', () => {
   assert.doesNotMatch(
     fn,
     /if \(e\.geholt/,
-    'Gemeldet wird nur bei geladenen Bildern — ein Durchgang mit lauter ' + 'Übersprüngen bleibt unsichtbar',
+    'Only loaded images are reported — a pass with nothing but ' + 'skips stays invisible',
   );
   assert.match(
     fn,
@@ -235,16 +235,16 @@ test('the image tables come from a MIGRATION, not from initSchema', () => {
 
   // And NO longer elsewhere — two places that create the same thing drift
   // apart at some point.
-  for (const datei of ['db/database.ts', 'src/images/imageMisses.ts', 'src/images/imageDemandRun.ts']) {
+  for (const file of ['db/database.ts', 'src/images/imageMisses.ts', 'src/images/imageDemandRun.ts']) {
     const src = fs
-      .readFileSync(path.join(ROOT, datei), 'utf8')
+      .readFileSync(path.join(ROOT, file), 'utf8')
       .split('\n')
       .filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('--'))
       .join('\n');
     assert.doesNotMatch(
       src,
       /CREATE TABLE IF NOT EXISTS image_(wanted|misses)/,
-      `${datei} also creates the table — that belongs only in the migration`,
+      `${file} also creates the table — that belongs only in the migration`,
     );
   }
 
@@ -265,7 +265,7 @@ test('the request no longer computes anything, it only takes notes', () => {
   // the note. A test via the route would not distinguish the two —
   // delivery is immediate either way.
   const px = require('./helpers/sources').compact(require('./helpers/sources').proxyThumbSource());
-  assert.match(px, /const note = \(\) => \{/, 'Der Proxy hinterlässt keine Notiz');
+  assert.match(px, /const note = \(\) => \{/, 'The proxy leaves no note');
   assert.match(
     px,
     /if \(createMay\) queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\); else note\(\);/,

@@ -27,7 +27,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const PART = {
@@ -39,7 +39,7 @@ const PART = {
   total_quantity: 6,
 };
 
-async function create(parts, nummern = '10294') {
+async function create(parts, numbers = '10294') {
   const o = await openUi({
     '/v2/sets/10294-1/parts-list': { success: true, parts: parts },
     '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
@@ -49,11 +49,11 @@ async function create(parts, nummern = '10294') {
     '/v2/sets/99999-1/minifigs-list': { success: true, figs: [] },
     '/v2/parts/bl-color-map': { success: true, map: { 4: 5 } },
   });
-  await reiter(o.w, 'partslist');
-  o.d.getElementById('pl-setnr').value = nummern;
+  await switchTab(o.w, 'partslist');
+  o.d.getElementById('pl-setnr').value = numbers;
   o.d.querySelector('[data-click="plAddSet"]').click();
   // Close the window without a list: kept open, jsdom would keep the test process alive.
-  if (!(await warte(() => / aus \d+ Set/.test(o.d.getElementById('pl-status').textContent), 3000))) {
+  if (!(await waitFor(() => / aus \d+ Set/.test(o.d.getElementById('pl-status').textContent), 3000))) {
     o.w.close();
     assert.fail('List created');
   }
@@ -82,10 +82,10 @@ test('adding computes immediately, without a second step; "recompute" only with 
   });
   const { w, d } = o;
   try {
-    await reiter(w, 'partslist');
-    const haupt = () => [...d.querySelectorAll('#tab-partslist .btn.bp')].map(text);
+    await switchTab(w, 'partslist');
+    const main = () => [...d.querySelectorAll('#tab-partslist .btn.bp')].map(text);
     const gen = d.getElementById('btn-pl-gen');
-    assert.deepEqual(haupt(), ['Hinzufügen'], 'without sets');
+    assert.deepEqual(main(), ['Hinzufügen'], 'without sets');
     assert.equal(gen.hidden, true, '„Neu berechnen“ visible without content');
     assert.match(
       text(d.getElementById('pl-sets')),
@@ -97,9 +97,9 @@ test('adding computes immediately, without a second step; "recompute" only with 
 
     d.getElementById('pl-setnr').value = '10294';
     d.getElementById('btn-pl-add').click();
-    assert.ok(await warte(() => / aus 1 Set/.test(d.getElementById('pl-status').textContent), 3000), 'no list');
+    assert.ok(await waitFor(() => / aus 1 Set/.test(d.getElementById('pl-status').textContent), 3000), 'no list');
     assert.ok(d.querySelector('#pl-result .pl-have-input'), 'the table is missing');
-    assert.deepEqual(haupt(), ['Hinzufügen'], 'with set');
+    assert.deepEqual(main(), ['Hinzufügen'], 'with set');
     assert.equal(gen.hidden, false, '„Neu berechnen“ missing with set');
   } finally {
     w.close();
@@ -111,7 +111,7 @@ test('removing recomputes', async () => {
   try {
     d.querySelector('#pl-sets .pl-chip:nth-child(2) [data-click="plRemoveSet"]').click();
     assert.ok(
-      await warte(() => text(d.getElementById('pl-status')) === '1 Sorte (6 Teile) aus 1 Set', 3000),
+      await waitFor(() => text(d.getElementById('pl-status')) === '1 Sorte (6 Teile) aus 1 Set', 3000),
       text(d.getElementById('pl-status')),
     );
     assert.ok(d.querySelector('#pl-result .pl-have-input'), 'the table is missing');
@@ -137,11 +137,11 @@ test('unknown number: named in the chip, not counted', async () => {
   try {
     const chips = [...d.querySelectorAll('#pl-sets .pl-chip')].map(c => ({
       text: text(c),
-      unbekannt: c.classList.contains('unknown'),
+      unknownOne: c.classList.contains('unknown'),
     }));
     assert.deepEqual(chips, [
-      { text: '10294-1 — Titanic', unbekannt: false },
-      { text: '99999-1 — nicht im Katalog', unbekannt: true },
+      { text: '10294-1 — Titanic', unknownOne: false },
+      { text: '99999-1 — nicht im Katalog', unknownOne: true },
     ]);
     assert.equal(
       text(d.getElementById('pl-status')),

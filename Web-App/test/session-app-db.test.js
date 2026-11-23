@@ -59,7 +59,7 @@ test('session periods in the real app', { concurrency: 1 }, async t => {
   assert.equal(r.status, 200, await r.clone().text());
   const setCookie = r.headers.get('set-cookie') ?? '';
   const keks = setCookie.split(';')[0];
-  const wer = async () =>
+  const who = async () =>
     (await (await fetch(`${basis}/api/v2/auth/me`, { headers: { cookie: keks } })).json()).loggedIn;
   const row = () =>
     db.get(
@@ -68,7 +68,7 @@ test('session periods in the real app', { concurrency: 1 }, async t => {
     );
 
   await t.test('the store gets the idle period', async () => {
-    assert.equal(await wer(), true, 'precondition: logged in');
+    assert.equal(await who(), true, 'precondition: logged in');
     const z = await row();
     assert.ok(z, 'no session in user_sessions');
     assert.ok(
@@ -86,6 +86,6 @@ test('session periods in the real app', { concurrency: 1 }, async t => {
     await db.run(`UPDATE user_sessions SET sess = jsonb_set(sess::jsonb, '{angemeldetAm}', '1')::json WHERE sid = $1`, [
       sid,
     ]);
-    assert.equal(await wer(), false);
+    assert.equal(await who(), false);
   });
 });

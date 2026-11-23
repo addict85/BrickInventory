@@ -15,8 +15,8 @@ const path = require('node:path');
 const https = require('node:https');
 const tls = require('node:tls');
 
-const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'setbild-ordner-'));
-process.env.APP_ROOT = wurzel;
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'setbild-ordner-'));
+process.env.APP_ROOT = root;
 const _req = require('./helpers/sources').buildAndRequire();
 const { downloadSetImage } = _req('src/images/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
@@ -33,7 +33,7 @@ const server = https.createServer({ key, cert }, (_q, res) => {
 });
 
 /** Every connection lands at the test server; SNI and certificate check stay real. */
-class Umlenker extends https.Agent {
+class Redirector extends https.Agent {
   createConnection(opt, cb) {
     return tls.connect({ ...opt, host: '127.0.0.1', port, ca: cert, servername: opt.servername || opt.host }, cb);
   }
@@ -46,17 +46,17 @@ test.before(async () => {
 test.after(() => {
   server.closeAllConnections();
   server.close();
-  fs.rmSync(wurzel, { recursive: true, force: true });
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 test('the image lands even if the folder is missing', async t => {
-  const echt = https.globalAgent;
-  https.globalAgent = new Umlenker();
+  const original = https.globalAgent;
+  https.globalAgent = new Redirector();
   t.after(() => {
     https.globalAgent.destroy();
-    https.globalAgent = echt;
+    https.globalAgent = original;
   });
-  assert.ok(SET_IMAGES_DIR.startsWith(wurzel), 'the folder lives in the test directory');
+  assert.ok(SET_IMAGES_DIR.startsWith(root), 'the folder lives in the test directory');
   assert.equal(fs.existsSync(SET_IMAGES_DIR), false, 'the folder is missing before the fetch');
   assert.equal(
     await downloadSetImage('https://cdn.rebrickable.com/media/sets/10001-1.jpg', '10001-1'),

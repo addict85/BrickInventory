@@ -22,37 +22,37 @@ const _req = q.buildAndRequire();
 function holding() {
   const api = _req('routes/api/index.js').buildApiRouter(q.testServices());
   /** @param {any} r */
-  const collect = (r, aus = { routes: [], prefilters: [] }) => {
+  const collect = (r, out = { routes: [], prefilters: [] }) => {
     for (const l of r.stack) {
-      if (l.route) for (const m of Object.keys(l.route.methods)) aus.routes.push({ m, path: l.route.path, l });
-      else if (!l.slash) aus.prefilters.push(l);
-      else if (l.handle?.stack) collect(l.handle, aus);
+      if (l.route) for (const m of Object.keys(l.route.methods)) out.routes.push({ m, path: l.route.path, l });
+      else if (!l.slash) out.prefilters.push(l);
+      else if (l.handle?.stack) collect(l.handle, out);
     }
-    return aus;
+    return out;
   };
   return api.stack.filter((/** @type {any} */ l) => l.handle?.stack).map((/** @type {any} */ l) => collect(l.handle));
 }
 
 /** A path as a client sends it: every placeholder a fixed value. @param {string} p */
-const beispiel = p => p.replace(/:\w+/g, 'x1');
+const example = p => p.replace(/:\w+/g, 'x1');
 
 test('the routers under /api/v1 do not hit each other', () => {
   const router = holding();
   assert.ok(router.length >= 15, `only ${router.length} routers — does the search still match?`);
   assert.ok(router.flatMap(r => r.prefilters).length >= 1, 'no middleware with a path found');
-  const muster = [];
+  const pattern = [];
   const middleware = [];
   router.forEach((r, i) => {
     for (const fremd of router.filter((_, j) => j !== i))
-      for (const ziel of fremd.routes) {
-        for (const eigen of r.routes)
-          if (eigen.m === ziel.m && eigen.l.match(beispiel(ziel.path)))
-            muster.push(`${eigen.m} ${eigen.path} trifft ${ziel.path}`);
+      for (const target of fremd.routes) {
+        for (const own of r.routes)
+          if (own.m === target.m && own.l.match(example(target.path)))
+            pattern.push(`${own.m} ${own.path} trifft ${target.path}`);
         for (const v of r.prefilters)
-          if (v.match(beispiel(ziel.path))) middleware.push(`${v.name} vor ${ziel.m} ${ziel.path}`);
+          if (v.match(example(target.path))) middleware.push(`${v.name} vor ${target.m} ${target.path}`);
       }
   });
-  assert.deepEqual(muster, [], 'no pattern matches a route of another router');
+  assert.deepEqual(pattern, [], 'no pattern matches a route of another router');
   assert.deepEqual(middleware, [], 'no middleware with a path matches a route of another router');
 });
 
@@ -67,20 +67,20 @@ test('the app attaches the error path, once behind all routers', () => {
   });
   /** @type {string[]} */
   const inRouters = [];
-  /** @param {any} r @param {string} wo */
-  const durch = (r, wo) => {
+  /** @param {any} r @param {string} where */
+  const via = (r, where) => {
     for (const l of r.stack) {
       if (l.handle?.stack) {
-        if (l.handle.stack.some((/** @type {any} */ k) => k.handle === errorResponse)) inRouters.push(wo + l.name);
-        durch(l.handle, `${wo + l.name} > `);
+        if (l.handle.stack.some((/** @type {any} */ k) => k.handle === errorResponse)) inRouters.push(where + l.name);
+        via(l.handle, `${where + l.name} > `);
       }
     }
   };
-  const oben = app.router.stack;
-  durch(app.router, '');
-  assert.ok(oben.length > 30, `only ${oben.length} layers — does the search still match?`);
+  const upper = app.router.stack;
+  via(app.router, '');
+  assert.ok(upper.length > 30, `only ${upper.length} layers — does the search still match?`);
   assert.deepEqual(inRouters, [], 'the app attaches the error path, not a router');
-  const errorPaths = oben.filter((/** @type {any} */ l) => l.handle === errorResponse);
+  const errorPaths = upper.filter((/** @type {any} */ l) => l.handle === errorResponse);
   assert.equal(errorPaths.length, 1);
-  assert.equal(oben.at(-1)?.handle, errorResponse, 'the error path comes after all routers');
+  assert.equal(upper.at(-1)?.handle, errorResponse, 'the error path comes after all routers');
 });

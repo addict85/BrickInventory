@@ -25,11 +25,11 @@ async function adminWithFactor(_req, uid) {
  *
  * @param {(path: string) => any} _req
  * @param {{ run: (sql: string, values?: unknown[]) => Promise<unknown> }} db
- * @param {number} ziel
+ * @param {number} target
  * @returns {Promise<number>} how many announcements took effect
  */
-async function takeoverNow(_req, db, ziel) {
-  await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [ziel]);
+async function takeoverNow(_req, db, target) {
+  await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [target]);
   return _req('src/account/adminActions.js').runDueTakeoversFrom();
 }
 

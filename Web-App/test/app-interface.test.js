@@ -16,37 +16,37 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const dok = _req('src/contract/openapi.js').openapi(2);
+const doc = _req('src/contract/openapi.js').openapi(2);
 const app = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'app-interface.json'), 'utf8'));
 
 /** @param {string} p */
 const uniform = p => p.replace(/\{\w+\}/g, '{}');
 /** @param {string} method @param {string} route */
 function operation(method, route) {
-  const treffer = Object.entries(dok.paths).filter(([p]) => uniform(p) === uniform(route));
-  return treffer.length === 1 ? treffer[0][1][method.toLowerCase()] : undefined;
+  const hits = Object.entries(doc.paths).filter(([p]) => uniform(p) === uniform(route));
+  return hits.length === 1 ? hits[0][1][method.toLowerCase()] : undefined;
 }
 
 test('every route of the app is in the contract', () => {
   assert.ok(app.routes.length > 100, `only ${app.routes.length} routes — has the file been generated?`);
-  const ohne = app.routes.filter(r => !operation(r.method, r.path)).map(r => `${r.method} ${r.path}`);
-  assert.deepEqual(ohne, [], 'The app calls these addresses, the server does not have them');
+  const without = app.routes.filter(r => !operation(r.method, r.path)).map(r => `${r.method} ${r.path}`);
+  assert.deepEqual(without, [], 'The app calls these addresses, the server does not have them');
 });
 
 test('every query parameter of the app is in the contract', () => {
-  const fehlt = [];
-  let geprueft = 0;
+  const missing = [];
+  let checked = 0;
   for (const r of app.routes) {
-    const namen = new Set(
+    const names = new Set(
       (operation(r.method, r.path)?.parameters ?? []).filter(p => p.in === 'query').map(p => p.name),
     );
     for (const a of r.query) {
-      geprueft++;
-      if (!namen.has(a.name)) fehlt.push(`${r.method} ${r.path} ?${a.name}`);
+      checked++;
+      if (!names.has(a.name)) missing.push(`${r.method} ${r.path} ?${a.name}`);
     }
   }
-  assert.ok(geprueft >= 50, `nur ${geprueft} Abfrageparameter verglichen`);
-  assert.deepEqual(fehlt, []);
+  assert.ok(checked >= 50, `nur ${checked} Abfrageparameter verglichen`);
+  assert.deepEqual(missing, []);
 });
 
 // Inputs are closed (strictObject): a field the app sends and the contract
@@ -56,20 +56,20 @@ test('every body field of the app is in the contract', () => {
   // one of them.
   const withBody = app.routes.filter(x => x.body_fields.length);
   /** @type {Map<string, Set<string>>} */
-  const jeType = new Map();
+  const perType = new Map();
   for (const r of withBody) {
     const schema = operation(r.method, r.path)?.requestBody?.content?.['application/json']?.schema;
-    const felder = jeType.get(r.body ?? '') ?? new Set();
-    for (const f of Object.keys(schema?.properties ?? {})) felder.add(f);
-    jeType.set(r.body ?? '', felder);
+    const fields = perType.get(r.body ?? '') ?? new Set();
+    for (const f of Object.keys(schema?.properties ?? {})) fields.add(f);
+    perType.set(r.body ?? '', fields);
   }
-  const fehlt = [];
-  let geprueft = 0;
+  const missing = [];
+  let checked = 0;
   for (const r of withBody) {
-    geprueft++;
+    checked++;
     for (const f of r.body_fields)
-      if (!jeType.get(r.body ?? '')?.has(f)) fehlt.push(`${r.method} ${r.path} ${r.body}.${f}`);
+      if (!perType.get(r.body ?? '')?.has(f)) missing.push(`${r.method} ${r.path} ${r.body}.${f}`);
   }
-  assert.ok(geprueft >= 35, `only ${geprueft} bodies compared`);
-  assert.deepEqual(fehlt, []);
+  assert.ok(checked >= 35, `only ${checked} bodies compared`);
+  assert.deepEqual(missing, []);
 });

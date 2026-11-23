@@ -16,13 +16,13 @@ const { deliverFile } = require('./helpers/sources').buildAndRequire()('src/http
 
 const FOLDER = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'punkt-')), '.versteckt', 'daten');
 fs.mkdirSync(FOLDER, { recursive: true });
-const DATEI = path.join(FOLDER, 'gutschein.pdf');
-fs.writeFileSync(DATEI, '%PDF-1.4 probe');
+const FILE = path.join(FOLDER, 'gutschein.pdf');
+fs.writeFileSync(FILE, '%PDF-1.4 probe');
 fs.writeFileSync(path.join(FOLDER, '.geheim'), 'nicht ausliefern');
 
 test('delivery under a dot folder', async t => {
   const app = express();
-  app.get('/datei', (_req, res) => deliverFile(res, DATEI));
+  app.get('/datei', (_req, res) => deliverFile(res, FILE));
   app.get('/punktdatei', (_req, res) => deliverFile(res, path.join(FOLDER, '.geheim')));
   const srv = app.listen(0);
   t.after(() => srv.close());

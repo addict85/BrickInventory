@@ -12,14 +12,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 test('every dialog has a name', async () => {
   const { w, d } = await openUi();
   try {
-    const dialoge = [...d.querySelectorAll('[role="dialog"]')];
-    assert.ok(dialoge.length >= 15, `only ${dialoge.length} dialogs found`);
-    const ohne = dialoge
+    const dialogs = [...d.querySelectorAll('[role="dialog"]')];
+    assert.ok(dialogs.length >= 15, `only ${dialogs.length} dialogs found`);
+    const without = dialogs
       .filter(dl => {
         if ((dl.getAttribute('aria-label') || '').trim()) return false;
         const ids = (dl.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
@@ -31,7 +31,7 @@ test('every dialog has a name', async () => {
         );
       })
       .map(dl => dl.id);
-    assert.deepEqual(ohne, []);
+    assert.deepEqual(without, []);
   } finally {
     w.close();
   }
@@ -48,9 +48,9 @@ test('messages are announced: status politely, errors assertively', async () => 
     assert.equal(d.getElementById('toasts').closest('[aria-live], [role="status"], [role="alert"]'), null);
     // An import without a file reports an error.
     d.getElementById('csv-file').dispatchEvent(new w.Event('change', { bubbles: true }));
-    await warte(() => d.getElementById('toasts').querySelector('.toast.error'));
+    await waitFor(() => d.getElementById('toasts').querySelector('.toast.error'));
     const text = d.getElementById('toasts').querySelector('.toast.error .toast-text').textContent;
-    await warte(() => error.textContent === text);
+    await waitFor(() => error.textContent === text);
     assert.notEqual(status.textContent, text, 'error also read in the polite region');
   } finally {
     w.close();

@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, waitFor, tick } = require('./helpers/ui');
 
 const IMAGE = '/images/sets/10294-1.jpg';
 const SETS = [
@@ -40,7 +40,7 @@ const PARTS = [
     image_local: '/images/parts/3001.png',
   },
 ];
-const FIGUREN = [
+const MINIFIGS = [
   {
     fig_number: 'fig-000123',
     fig_name: 'Chewbacca',
@@ -65,8 +65,8 @@ const RESPONSES = {
   '/v2/sets': { success: true, sets: SETS, total: 1, themes: [] },
   '/v2/parts/manual': { success: true, parts: PARTS },
   '/v2/parts': { success: true, parts: SET_PARTS, total: 1 },
-  '/v2/minifigs/manual': { success: true, figs: FIGUREN },
-  '/v2/minifigs': { success: true, figs: [{ ...FIGUREN[0], source: 'set', total_quantity: 1 }], total: 1 },
+  '/v2/minifigs/manual': { success: true, figs: MINIFIGS },
+  '/v2/minifigs': { success: true, figs: [{ ...MINIFIGS[0], source: 'set', total_quantity: 1 }], total: 1 },
   '/v2/finance/valuation': {
     success: true,
     currency: 'EUR',
@@ -77,23 +77,23 @@ const RESPONSES = {
 };
 
 /** All <img> of an area that come from templates. */
-const bilder = (d, sel) => [...d.querySelectorAll(`${sel} img`)];
+const images = (d, sel) => [...d.querySelectorAll(`${sel} img`)];
 
 test('alt on every image and the placeholder path on every template image', async () => {
   const { w, d } = await openUi(RESPONSES);
   try {
-    const gesehen = [];
-    const pruefe = (name, sel) => {
-      const liste = bilder(d, sel);
-      assert.ok(liste.length > 0, `${name}: no images drawn — checks nothing`);
-      for (const img of liste) {
+    const seen = [];
+    const check = (name, sel) => {
+      const list = images(d, sel);
+      assert.ok(list.length > 0, `${name}: no images drawn — checks nothing`);
+      for (const img of list) {
         assert.ok(img.hasAttribute('alt'), `${name}: <img src="${img.getAttribute('src')}"> without alt`);
         assert.equal(img.dataset.onerror, 'placeholder', `${name}: ${img.getAttribute('src')} without a placeholder`);
       }
-      gesehen.push(name);
+      seen.push(name);
     };
-    await warte(() => d.querySelector('#gallery .sc img'));
-    pruefe('Galerie-Kachel', '#gallery');
+    await waitFor(() => d.querySelector('#gallery .sc img'));
+    check('Galerie-Kachel', '#gallery');
     // The tile is a button and names the set in text; an alt named it twice.
     assert.equal(
       d.querySelector('#gallery .sc img').getAttribute('alt'),
@@ -102,21 +102,21 @@ test('alt on every image and the placeholder path on every template image', asyn
     );
     assert.match(d.querySelector('#gallery .sc').textContent, /Titanic/, 'The tile does not name the set');
     d.getElementById('vl').click();
-    await takt(30);
-    pruefe('Galerie-Tabelle', '#gallery');
+    await tick(30);
+    check('Galerie-Tabelle', '#gallery');
     d.getElementById('vg').click();
-    await takt(30);
+    await tick(30);
 
-    await reiter(w, 'parts');
-    await warte(() => d.querySelector('#parts-main .part-card img') && d.querySelector('#manual-parts-list img'));
-    pruefe('Teile', '#tab-parts');
-    await reiter(w, 'minifigs');
-    await warte(() => d.querySelector('#figs-list img') && d.querySelector('#manual-figs-list img'));
-    pruefe('Minifiguren', '#tab-minifigs');
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#fin-tbl img'));
-    pruefe('Finanzen', '#fin-tbl');
-    assert.equal(gesehen.length, 5);
+    await switchTab(w, 'parts');
+    await waitFor(() => d.querySelector('#parts-main .part-card img') && d.querySelector('#manual-parts-list img'));
+    check('Teile', '#tab-parts');
+    await switchTab(w, 'minifigs');
+    await waitFor(() => d.querySelector('#figs-list img') && d.querySelector('#manual-figs-list img'));
+    check('Minifiguren', '#tab-minifigs');
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#fin-tbl img'));
+    check('Finanzen', '#fin-tbl');
+    assert.equal(seen.length, 5);
   } finally {
     w.close();
   }
@@ -125,13 +125,13 @@ test('alt on every image and the placeholder path on every template image', asyn
 test('gallery: a broken image becomes a placeholder', async () => {
   const { w, d } = await openUi(RESPONSES);
   try {
-    await warte(() => d.querySelector('#gallery .sc img'));
+    await waitFor(() => d.querySelector('#gallery .sc img'));
     const img = d.querySelector('#gallery .sc img');
     const error = () => img.dispatchEvent(new w.Event('error'));
     error(); // 1st attempt: retry in one second
     error(); // 2nd attempt: full resolution (data-orig)
     error(); // 3rd attempt: placeholder
-    await takt(10);
+    await tick(10);
     const sci = d.querySelector('#gallery .sc .sci');
     assert.equal(sci.querySelector('img[data-onerror]'), null, 'The broken image is still there');
     const ph = sci.querySelector('.image-ph');

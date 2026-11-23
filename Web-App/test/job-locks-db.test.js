@@ -56,19 +56,19 @@ test('job locks work across process boundaries', async t => {
   await t.test('the image follow-up run does not start twice', async () => {
     const enrich = _req('src/catalog/partsEnrichment.js');
     // Counter-check: without a foreign lock it runs through (empty catalog → 0 missing).
-    const frei = await enrich.redownloadMissingImages();
-    assert.equal(frei.alreadyRunning, undefined, 'Run was rejected without a foreign lock');
+    const free = await enrich.redownloadMissingImages();
+    assert.equal(free.alreadyRunning, undefined, 'Run was rejected without a foreign lock');
 
-    const freigeben = await holdAs('zweiter Worker', REDOWNLOAD_LOCK);
+    const release = await holdAs('zweiter Worker', REDOWNLOAD_LOCK);
     try {
-      const gesperrt = await enrich.redownloadMissingImages();
+      const locked = await enrich.redownloadMissingImages();
       assert.equal(
-        gesperrt.alreadyRunning,
+        locked.alreadyRunning,
         true,
         'second run started — the same images would be loaded twice from the CDN',
       );
     } finally {
-      await freigeben();
+      await release();
     }
   });
 

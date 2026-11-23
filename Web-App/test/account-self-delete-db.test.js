@@ -51,11 +51,11 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
     }
   }
   const P = process.pid,
-    NAMEN = ['weg', 'zf', 'chef', 'offen_alt', 'offen_neu', 'adresse', 'bestaetigt'].map(n => `ksl_${n}_${P}`);
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
+    NAMES = ['weg', 'zf', 'chef', 'offen_alt', 'offen_neu', 'adresse', 'bestaetigt'].map(n => `ksl_${n}_${P}`);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMES]);
   // Only this administrator: the other accounts of the test DB must not fulfill the condition.
-  await db.run('UPDATE users SET is_active = false WHERE is_admin AND NOT (username = ANY($1))', [NAMEN]);
-  const konto = async (name, admin = false) =>
+  await db.run('UPDATE users SET is_active = false WHERE is_admin AND NOT (username = ANY($1))', [NAMES]);
+  const account = async (name, admin = false) =>
     (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
@@ -65,11 +65,11 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
     ).id;
   const da = async id => !!(await db.get('SELECT 1 FROM users WHERE id = $1', [id]));
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]).catch(() => {});
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMES]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const als = uid => {
-    const { base } = testServer(_req, { sitzung: { userId: uid, destroy: cb => cb() }, t });
+  const as = uid => {
+    const { base } = testServer(_req, { session: { userId: uid, destroy: cb => cb() }, t });
     return async body => {
       const r = await fetch(`${base}/api/v2/auth/account`, {
         method: 'DELETE',
@@ -81,9 +81,9 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
   };
 
   await t.test('without password the account stays, with password it is gone', async () => {
-    const id = await konto(NAMEN[0]);
+    const id = await account(NAMES[0]);
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10294-1')`, [id]);
-    const removeIt = als(id);
+    const removeIt = as(id);
     assert.ok((await removeIt({})).status >= 400);
     assert.ok((await removeIt({ password: 'falsch-falsch-1' })).status >= 400);
     assert.ok(await da(id));
@@ -94,16 +94,16 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
   });
 
   await t.test('with a second factor the password is not enough', async () => {
-    const id = await konto(NAMEN[1]);
+    const id = await account(NAMES[1]);
     await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [id]);
-    const r = await als(id)({ password: PASS });
+    const r = await as(id)({ password: PASS });
     assert.equal(r.body.code, 'second_factor_required', JSON.stringify(r.body));
     assert.ok(await da(id));
   });
 
   await t.test('the last admin stays', async () => {
-    const id = await konto(NAMEN[2], true);
-    const r = await als(id)({ password: PASS });
+    const id = await account(NAMES[2], true);
+    const r = await as(id)({ password: PASS });
     assert.deepEqual([r.status, r.body.code], [409, 'last_admin']);
     assert.ok(await da(id));
   });
@@ -112,25 +112,25 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
   const { verifyEmailToken } = _req('src/account/loginCheck.js');
   const { tokenDigest } = _req('src/account/deviceToken.js');
   const registered = async (name, daysAlt) => {
-    const roh = crypto.randomBytes(16).toString('hex');
+    const raw = crypto.randomBytes(16).toString('hex');
     const id = await K.register({
       username: name,
       email: `${name}@example.org`,
-      passwort: PASS,
-      tokenHash: tokenDigest(roh),
+      password: PASS,
+      tokenHash: tokenDigest(raw),
       bis: new Date(Date.now() + 86_400_000),
     });
     await db.run(`UPDATE users SET created_at = NOW() - make_interval(days => $2) WHERE id = $1`, [id, daysAlt]);
-    return { id, roh };
+    return { id, raw };
   };
 
   await t.test('unconfirmed registrations after seven days', async () => {
-    const alt = await registered(NAMEN[3], 8),
-      neu = await registered(NAMEN[4], 6);
-    const bestaetigt = await registered(NAMEN[6], 8);
-    assert.ok((await verifyEmailToken(bestaetigt.roh)).userId);
+    const alt = await registered(NAMES[3], 8),
+      fresh = await registered(NAMES[4], 6);
+    const confirmed = await registered(NAMES[6], 8);
+    assert.ok((await verifyEmailToken(confirmed.raw)).userId);
     // An old account whose new address is not yet confirmed.
-    const address = await konto(NAMEN[5]);
+    const address = await account(NAMES[5]);
     await db.run(
       `UPDATE users SET email_verified = false, verification_token = 'x', created_at = NOW() - INTERVAL '30 days' WHERE id = $1`,
       [address],
@@ -139,10 +139,10 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
     await _req('src/management/cleanup.js').cleanupDaily();
     const state = {
       alt: await da(alt.id),
-      neu: await da(neu.id),
-      bestaetigt: await da(bestaetigt.id),
+      fresh: await da(fresh.id),
+      confirmed: await da(confirmed.id),
       address: await da(address),
     };
-    assert.deepEqual(state, { alt: false, neu: true, bestaetigt: true, address: true });
+    assert.deepEqual(state, { alt: false, fresh: true, confirmed: true, address: true });
   });
 });

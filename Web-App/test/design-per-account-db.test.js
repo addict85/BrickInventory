@@ -31,27 +31,27 @@ const db = testData();
 test('theme per account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const namen = [`design_a_${process.pid}`, `design_b_${process.pid}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = [`design_a_${process.pid}`, `design_b_${process.pid}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push(
       (await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', true) RETURNING id`, [n]))
         .id,
     );
-  const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
+  const prior = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
   const { setGlobalSetting } = _req('src/settings/settings.js');
   await setGlobalSetting('app_theme', 'noppe');
   _req('src/profile/indexHtml.js').forgetTheme();
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
-    if (vorher === null) await db.run(`DELETE FROM global_settings WHERE key = 'app_theme'`);
-    else await setGlobalSetting('app_theme', vorher);
+    if (prior === null) await db.run(`DELETE FROM global_settings WHERE key = 'app_theme'`);
+    else await setGlobalSetting('app_theme', prior);
     await db.pool.end().catch(() => {});
   });
 
-  const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t });
+  const session = {};
+  const { base } = testServer(_req, { session, t });
   const hole = async (path, o = {}) => (await fetch(base + '/api/v2/settings' + path, o)).json();
   const put = theme =>
     hole('/user/theme', {
@@ -59,18 +59,18 @@ test('theme per account', { concurrency: 1 }, async t => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ theme }),
     });
-  const als = uid => {
-    if (uid) sitzung.userId = uid;
-    else delete sitzung.userId;
+  const as = uid => {
+    if (uid) session.userId = uid;
+    else delete session.userId;
   };
 
   await t.test('without login: the default', async () => {
-    als(null);
+    as(null);
     assert.deepEqual(await hole('/theme'), { success: true, theme: 'noppe', preset: 'noppe', own: null });
   });
 
   await t.test('account with its own theme, the other follows the default', async () => {
-    als(ids[0]);
+    as(ids[0]);
     const r = await put('werkbank');
     assert.equal(r.success, true, JSON.stringify(r));
     assert.deepEqual(await hole('/theme'), { success: true, theme: 'werkbank', preset: 'noppe', own: 'werkbank' });
@@ -79,13 +79,13 @@ test('theme per account', { concurrency: 1 }, async t => {
       'werkbank',
       '/settings/raw does not name the design of the account',
     );
-    als(ids[1]);
+    as(ids[1]);
     assert.equal((await hole('/theme')).theme, 'noppe');
     assert.equal((await hole('/raw')).settings.app_theme, 'noppe');
   });
 
   await t.test('app with token: the same theme as in the browser', async () => {
-    als(null);
+    as(null);
     const token = await _req('src/account/deviceToken.js').createToken(ids[0], 'Prüfung', true);
     const withToken = { headers: { Authorization: `Bearer ${token}` } };
     assert.equal((await hole('/theme', withToken)).theme, 'werkbank');
@@ -93,7 +93,7 @@ test('theme per account', { concurrency: 1 }, async t => {
   });
 
   await t.test('unknown theme rejected', async () => {
-    als(ids[0]);
+    as(ids[0]);
     const r = await put('<b>');
     assert.equal(r.success, false);
     assert.equal((await hole('/theme')).theme, 'werkbank');
@@ -108,7 +108,7 @@ test('theme per account', { concurrency: 1 }, async t => {
   });
 
   await t.test('empty means default — even after a change by the admin', async () => {
-    als(ids[0]);
+    as(ids[0]);
     assert.equal((await put('')).success, true);
     await setGlobalSetting('app_theme', 'brick');
     assert.deepEqual(await hole('/theme'), { success: true, theme: 'brick', preset: 'brick', own: null });

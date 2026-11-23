@@ -19,7 +19,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 const WITHOUT_KEY = {
   '/v2/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
@@ -32,26 +32,26 @@ const WITHOUT_KEY = {
 };
 
 test('without a Rebrickable key: collection with hint banner', async t => {
-  const { w, d, aufrufe } = await openUi(WITHOUT_KEY);
+  const { w, d, calls } = await openUi(WITHOUT_KEY);
   try {
     const band = d.getElementById('rb-hint');
-    await warte(() => !band.hidden, 2000);
+    await waitFor(() => !band.hidden, 2000);
     await t.test('banner appears', () => {
       assert.equal(band.hidden, false);
       assert.match(band.textContent, /Rebrickable/);
     });
     await t.test('collection instead of settings', async () => {
-      await takt(50);
+      await tick(50);
       assert.equal(d.getElementById('tab-gallery').classList.contains('active'), true);
       assert.equal(d.getElementById('tab-settings').classList.contains('active'), false);
       assert.ok(
-        aufrufe.some(a => /\/v2\/sets(\?|$)/.test(a.url)),
+        calls.some(a => /\/v2\/sets(\?|$)/.test(a.url)),
         'collection not loaded',
       );
     });
     await t.test('link leads to the field', async () => {
       band.querySelector('[data-click="openRbHint"]').click();
-      await takt(50);
+      await tick(50);
       assert.equal(d.getElementById('tab-settings').classList.contains('active'), true);
       assert.equal(d.getElementById('settings-rb').classList.contains('settings-active'), true);
       assert.equal(d.activeElement.id, 'rb-key');
@@ -64,48 +64,48 @@ test('without a Rebrickable key: collection with hint banner', async t => {
 
 test('dismissed it stays away — even in a new session', async () => {
   const erst = await openUi(WITHOUT_KEY);
-  let gemerkt;
+  let remembered;
   try {
     const band = erst.d.getElementById('rb-hint');
-    await warte(() => !band.hidden, 2000);
+    await waitFor(() => !band.hidden, 2000);
     band.querySelector('[data-click="dismissRbHint"]').click();
     assert.equal(band.hidden, true);
-    gemerkt = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hint_dismissed:'));
-    assert.ok(gemerkt, 'nothing remembered in localStorage');
+    remembered = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hint_dismissed:'));
+    assert.ok(remembered, 'nothing remembered in localStorage');
   } finally {
     erst.w.close();
   }
-  const zweit = await openUi(WITHOUT_KEY, {
-    before: w => w.localStorage.setItem(gemerkt, '1'),
+  const secondTry = await openUi(WITHOUT_KEY, {
+    before: w => w.localStorage.setItem(remembered, '1'),
   });
   try {
-    assert.ok(await zweit.ruhig());
-    assert.equal(zweit.d.getElementById('rb-hint').hidden, true);
+    assert.ok(await secondTry.settle());
+    assert.equal(secondTry.d.getElementById('rb-hint').hidden, true);
   } finally {
-    zweit.w.close();
+    secondTry.w.close();
   }
 });
 
 test('even after 31 days it stays away, another account sees it again', async t => {
   const erst = await openUi(WITHOUT_KEY);
-  let schluessel;
+  let key;
   try {
-    await warte(() => !erst.d.getElementById('rb-hint').hidden, 2000);
+    await waitFor(() => !erst.d.getElementById('rb-hint').hidden, 2000);
     erst.d.querySelector('#rb-hint [data-click="dismissRbHint"]').click();
-    schluessel = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hint_dismissed:'));
+    key = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hint_dismissed:'));
   } finally {
     erst.w.close();
   }
   await t.test('even after 31 days it stays away', async () => {
     const before31 = Date.now() - 31 * 24 * 3600 * 1000;
-    const { w, d, ruhig } = await openUi(WITHOUT_KEY, {
+    const { w, d, settle } = await openUi(WITHOUT_KEY, {
       before: f => {
-        f.localStorage.setItem(schluessel, String(before31));
+        f.localStorage.setItem(key, String(before31));
         f.Date.now = () => before31 + 62 * 24 * 3600 * 1000;
       },
     });
     try {
-      assert.ok(await ruhig());
+      assert.ok(await settle());
       assert.equal(d.getElementById('rb-hint').hidden, true);
     } finally {
       w.close();
@@ -121,10 +121,10 @@ test('even after 31 days it stays away, another account sees it again', async t 
           user: { id: 2, username: 'bert', is_admin: true, secondFactorRequired: false },
         },
       },
-      { before: f => f.localStorage.setItem(schluessel, '1') },
+      { before: f => f.localStorage.setItem(key, '1') },
     );
     try {
-      await warte(() => !d.getElementById('rb-hint').hidden, 2000);
+      await waitFor(() => !d.getElementById('rb-hint').hidden, 2000);
       assert.equal(d.getElementById('rb-hint').hidden, false);
     } finally {
       w.close();
@@ -133,7 +133,7 @@ test('even after 31 days it stays away, another account sees it again', async t 
 });
 
 test('after “Später” in the wizard the banner appears', async () => {
-  const { w, d, ruhig } = await openUi({
+  const { w, d, settle } = await openUi({
     ...WITHOUT_KEY,
     '/v2/settings/setup': {
       success: true,
@@ -143,11 +143,11 @@ test('after “Später” in the wizard the banner appears', async () => {
     },
   });
   try {
-    await warte(() => d.getElementById('setup-modal').classList.contains('open'));
-    assert.ok(await ruhig());
+    await waitFor(() => d.getElementById('setup-modal').classList.contains('open'));
+    assert.ok(await settle());
     assert.equal(d.getElementById('rb-hint').hidden, true, 'band above the wizard');
     d.querySelector('#setup-modal [data-click="setupLater"]').click();
-    await takt(20);
+    await tick(20);
     assert.equal(d.getElementById('rb-hint').hidden, false);
   } finally {
     w.close();
@@ -155,9 +155,9 @@ test('after “Später” in the wizard the banner appears', async () => {
 });
 
 test('with a key no banner', async () => {
-  const { w, d, ruhig } = await openUi();
+  const { w, d, settle } = await openUi();
   try {
-    assert.ok(await ruhig());
+    assert.ok(await settle());
     assert.equal(d.getElementById('rb-hint').hidden, true);
   } finally {
     w.close();

@@ -60,11 +60,11 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
 
   // Without a session and without a token the app sees exactly what it sees for a
   // request without a valid sign-in. The first case is about that.
-  const ohne = testServer(_req, { sitzung: {}, t });
-  const mit = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const without = testServer(_req, { session: {}, t });
+  const withIt = testServer(_req, { session: { userId: MAIN }, t });
 
   await t.test('1. the PDF download does not respond with the file without a token', async () => {
-    const r = await fetch(`${ohne.base}/api/v2/sets/partslist-pdf/download/irgendwas`);
+    const r = await fetch(`${without.base}/api/v2/sets/partslist-pdf/download/irgendwas`);
     assert.ok(
       r.status === 401 || r.status === 403,
       `Expected 401 or 403, got ${r.status}. Without requireToken this ` +
@@ -75,7 +75,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
 
   await t.test('2. the image proxy fetches nothing from a foreign host', async () => {
     const fremd = encodeURIComponent('https://angreifer.example/x.jpg');
-    const r = await fetch(`${mit.base}/api/v1/img-proxy?url=${fremd}`);
+    const r = await fetch(`${withIt.base}/api/v1/img-proxy?url=${fremd}`);
     assert.equal(
       r.status,
       403,
@@ -87,8 +87,8 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     // Nothing is fetched here (no network in the test) — it is only checked that the
     // response is something OTHER than 403. Without this case the rule would also be
     // satisfied if the proxy rejected everything.
-    const erlaubt = encodeURIComponent('https://cdn.rebrickable.com/media/sets/75192-1.jpg');
-    const r2 = await fetch(`${mit.base}/api/v1/img-proxy?url=${erlaubt}`);
+    const allowed = encodeURIComponent('https://cdn.rebrickable.com/media/sets/75192-1.jpg');
+    const r2 = await fetch(`${withIt.base}/api/v1/img-proxy?url=${allowed}`);
     assert.notEqual(
       r2.status,
       403,
@@ -110,7 +110,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
       if (baseBefore === undefined) environment({ APP_BASE_URL: undefined });
       else environment({ APP_BASE_URL: baseBefore });
     });
-    const r = await fetch(`${mit.base}/api/v2/auth/register`, {
+    const r = await fetch(`${withIt.base}/api/v2/auth/register`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling', email: 'n@example.org', password: '12345678901', language: 'de' }),
@@ -134,7 +134,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
 
     // Opposite direction: twelve characters pass. Without it the rule would also be
     // satisfied if EVERY registration failed.
-    const r2 = await fetch(`${mit.base}/api/v2/auth/register`, {
+    const r2 = await fetch(`${withIt.base}/api/v2/auth/register`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling2', email: 'n2@example.org', password: 'zwoelf12Zchn', language: 'de' }),
@@ -150,21 +150,21 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     const todayDate = new Date().toISOString().slice(0, 10);
     const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
-    await holdsSet(db, MAIN, SN, 1, { preis: 100, am: yesterday });
+    await holdsSet(db, MAIN, SN, 1, { price: 100, am: yesterday });
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                   VALUES ($1,$2,1,100,'N',$3::timestamptz)`,
       [MAIN, SN, todayDate],
     );
-    const zeilen = await db.all(
+    const lines = await db.all(
       `SELECT id, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
         ORDER BY created_at`,
       [MAIN, SN],
     );
-    assert.equal(zeilen.length, 2, 'precondition: two acquisitions on two days');
+    assert.equal(lines.length, 2, 'precondition: two acquisitions on two days');
 
     // Move the OLDER one to the day of the younger one.
-    const r = await fetch(`${mit.base}/api/v2/sets/${SN}/acquisitions/${zeilen[0].id}`, {
+    const r = await fetch(`${withIt.base}/api/v2/sets/${SN}/acquisitions/${lines[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ date: todayDate }),
@@ -186,7 +186,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     // Opposite direction: a FREE day passes. Without it the rule would also be
     // satisfied if every date change were rejected.
     const dayBeforeYesterday = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
-    const r2 = await fetch(`${mit.base}/api/v2/sets/${SN}/acquisitions/${zeilen[0].id}`, {
+    const r2 = await fetch(`${withIt.base}/api/v2/sets/${SN}/acquisitions/${lines[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ date: dayBeforeYesterday }),
@@ -199,7 +199,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
   });
 
   await t.test('5. moving a set without acquisition_ids is rejected', async () => {
-    const r = await fetch(`${mit.base}/api/v2/sets/${SN}/move`, {
+    const r = await fetch(`${withIt.base}/api/v2/sets/${SN}/move`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to_user_id: KIND }),

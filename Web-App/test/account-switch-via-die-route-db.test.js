@@ -54,7 +54,7 @@ async function setup() {
                 ON CONFLICT (fig_number) DO NOTHING`);
 
   // Set with one entry at the main account.
-  await holdsSet(db, MAIN, SN, 2, { preis: 100 });
+  await holdsSet(db, MAIN, SN, 2, { price: 100 });
   // Manual part and manual minifigure, one entry each.
   await db.run(
     `INSERT INTO parts (user_id,part_number,color_id,source)
@@ -89,19 +89,19 @@ test('an acquisition changes the account — all three kinds via their route', {
   }
   await setup();
 
-  const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
-  const put = async (path, koerper) => {
+  const { base } = testServer(_req, { session: { userId: MAIN }, t });
+  const put = async (path, payload) => {
     const r = await fetch(base + path, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(koerper),
+      body: JSON.stringify(payload),
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const entryId = async (tab, field, wert) =>
-    (await db.get(`SELECT id FROM ${tab} WHERE ${field} = $1 ORDER BY id LIMIT 1`, [wert])).id;
-  const besitzer = async (tab, field, wert) =>
-    (await db.all(`SELECT user_id FROM ${tab} WHERE ${field} = $1 ORDER BY user_id`, [wert])).map(r =>
+  const entryId = async (tab, field, value) =>
+    (await db.get(`SELECT id FROM ${tab} WHERE ${field} = $1 ORDER BY id LIMIT 1`, [value])).id;
+  const owner = async (tab, field, value) =>
+    (await db.all(`SELECT user_id FROM ${tab} WHERE ${field} = $1 ORDER BY user_id`, [value])).map(r =>
       Number(r.user_id),
     );
 
@@ -110,27 +110,24 @@ test('an acquisition changes the account — all three kinds via their route', {
     const a = await put(`/api/v2/sets/${SN}/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(
-      await besitzer('set_acquisitions', 'set_number', SN),
+      await owner('set_acquisitions', 'set_number', SN),
       [KIND],
       'The acquisition did not end up at the child',
     );
     assert.ok(
-      (await besitzer('sets', 'set_number', SN)).includes(KIND),
+      (await owner('sets', 'set_number', SN)).includes(KIND),
       'The child got no holding row — the acquisition then hangs in the air',
     );
     // And the sender no longer holds it: it was its only entry.
-    assert.ok(
-      !(await besitzer('sets', 'set_number', SN)).includes(MAIN),
-      'The empty set row stayed behind at the sender',
-    );
+    assert.ok(!(await owner('sets', 'set_number', SN)).includes(MAIN), 'The empty set row stayed behind at the sender');
   });
 
   await t.test('part: the same factory, a different address', async () => {
     const id = await entryId('part_acquisitions', 'part_number', '3001');
     const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [KIND]);
-    assert.deepEqual(await besitzer('parts', 'part_number', '3001'), [KIND], 'The holding row did not move along');
+    assert.deepEqual(await owner('part_acquisitions', 'part_number', '3001'), [KIND]);
+    assert.deepEqual(await owner('parts', 'part_number', '3001'), [KIND], 'The holding row did not move along');
   });
 
   await t.test('figure: the third branch, and it is not executed anywhere else', async () => {
@@ -140,9 +137,9 @@ test('an acquisition changes the account — all three kinds via their route', {
     const id = await entryId('minifig_acquisitions', 'fig_number', 'sw0001');
     const a = await put(`/api/v2/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.deepEqual(await besitzer('minifig_acquisitions', 'fig_number', 'sw0001'), [KIND]);
+    assert.deepEqual(await owner('minifig_acquisitions', 'fig_number', 'sw0001'), [KIND]);
     assert.deepEqual(
-      await besitzer('minifigs', 'fig_number', 'sw0001'),
+      await owner('minifigs', 'fig_number', 'sw0001'),
       [KIND],
       'The holding row of the minifig did not move along',
     );
@@ -165,11 +162,11 @@ test('an acquisition changes the account — all three kinds via their route', {
     // And NOTHING is touched. Without this half the case would also be green
     // if the route first moved and then answered 403.
     assert.deepEqual(
-      await besitzer('part_acquisitions', 'part_number', '3001'),
+      await owner('part_acquisitions', 'part_number', '3001'),
       [MAIN],
       'The acquisition moved despite 403',
     );
-    assert.deepEqual(await besitzer('parts', 'part_number', '3001'), [MAIN], 'The holding row moved despite 403');
+    assert.deepEqual(await owner('parts', 'part_number', '3001'), [MAIN], 'The holding row moved despite 403');
   });
 
   await t.test('the same account means "nothing to do", not "error"', async () => {
@@ -180,6 +177,6 @@ test('an acquisition changes the account — all three kinds via their route', {
     const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(a.body?.unchanged, true, 'A switch to the own account must answer with „unveraendert“');
-    assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [MAIN]);
+    assert.deepEqual(await owner('part_acquisitions', 'part_number', '3001'), [MAIN]);
   });
 });

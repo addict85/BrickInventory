@@ -32,12 +32,12 @@ after(() => db.pool.end().catch(() => {}));
 test('setup state without login', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
-  const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
-  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
+  const key = ['einrichtung_erledigt', 'rebrickable_api_key'];
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [key]);
+  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [key]);
   t.after(async () => {
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
-    for (const z of vorher) {
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [key]);
+    for (const z of prior) {
       await db.run(
         `INSERT INTO global_settings (key, value) VALUES ($1, $2)
                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -55,7 +55,7 @@ test('setup state without login', { concurrency: 1 }, async t => {
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]));
 
-  const srv = testServer(_req, { sitzung: {}, t });
+  const srv = testServer(_req, { session: {}, t });
   const r = await fetch(srv.base + '/api/v2/setup/state');
   assert.equal(r.status, 200);
   const d = await r.json();
@@ -69,11 +69,11 @@ test('setup state without login', { concurrency: 1 }, async t => {
     assert.equal(typeof s.required, 'boolean');
   }
   // An initial password is still set; without an admin „konto“ only means „there is one“.
-  const konto = d.steps.find(s => s.id === 'account');
-  assert.equal(konto.ok, true, 'without an admin the state reveals no start password');
+  const account = d.steps.find(s => s.id === 'account');
+  assert.equal(account.ok, true, 'without an admin the state reveals no start password');
   assert.equal(d.base_url, null, 'without an admin no base URL');
-  const verwalter = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
-  const dv = await (await fetch(verwalter.base + '/api/v2/setup/state')).json();
+  const admin = testServer(_req, { session: { userId: uid, isAdmin: true }, t });
+  const dv = await (await fetch(admin.base + '/api/v2/setup/state')).json();
   assert.equal(
     dv.steps.find(s => s.id === 'account').ok,
     false,
@@ -106,6 +106,6 @@ test('the entry lets only the state through without a session', async t => {
 
   const open = await fetch(base + '/setup/state');
   assert.equal(open.status, 200, 'the state must be reachable before the login');
-  const zu = await fetch(base + '/sets');
-  assert.equal(zu.status, 401, 'everything else stays closed');
+  const closed = await fetch(base + '/sets');
+  assert.equal(closed.status, 401, 'everything else stays closed');
 });

@@ -45,9 +45,9 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 
-const DATEI = 'Set Number,Quantity\n10200-1,1\n10305-1,2\nabc,1\n10312-1,x\n99999-1,1\n,3\n10319-1,-2\n10326-1,1\n';
+const FILE = 'Set Number,Quantity\n10200-1,1\n10305-1,2\nabc,1\n10312-1,x\n99999-1,1\n,3\n10319-1,-2\n10326-1,1\n';
 
 test('CSV import: check, rows and sums', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -55,7 +55,7 @@ test('CSV import: check, rows and sums', { concurrency: 1 }, async t => {
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, '10305-1']);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
     kinds: ['csv_import'],
     tickMs: 50,
@@ -67,16 +67,16 @@ test('CSV import: check, rows and sums', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const sende = async check => {
+  const send = async check => {
     const fd = new FormData();
-    fd.append('file', new Blob([DATEI]), 'import-fehler.csv');
+    fd.append('file', new Blob([FILE]), 'import-fehler.csv');
     const r = await fetch(`${base}/api/v2/sets/import/csv${check ? '?check=1' : ''}`, { method: 'POST', body: fd });
     assert.equal(r.status, 200);
     return r.json();
   };
 
   await t.test('the check names existing sets and starts nothing', async () => {
-    const p = await sende(true);
+    const p = await send(true);
     assert.equal(p.started, false);
     assert.equal(p.total, 8, 'eight data rows read');
     assert.equal(p.existing, 1);
@@ -84,19 +84,19 @@ test('CSV import: check, rows and sums', { concurrency: 1 }, async t => {
     assert.equal(await db.get('SELECT 1 FROM import_status WHERE user_id=$1', [uid]), undefined, 'no run created');
   });
 
-  await sende(false);
+  await send(false);
   let s;
-  await bis(async () => {
+  await until(async () => {
     s = await (await fetch(`${base}/api/v2/sets/import/csv/status`)).json();
     return s.status !== 'running';
   });
 
   await t.test('every row with its result', () => {
     assert.equal(s.status, 'done');
-    const kurz = s.results.map(
+    const short = s.results.map(
       r => `${r.row}:${r.set_number}:${r.success ? (r.catalog_pending ? 'warn' : 'ok') : r.code || 'fehler'}`,
     );
-    assert.deepEqual(kurz, [
+    assert.deepEqual(short, [
       '2:10200-1:ok',
       '3:10305-1:ok',
       '4:abc:fehler',

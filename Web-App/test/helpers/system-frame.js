@@ -9,7 +9,7 @@
 const Module = /** @type {any} */ (require('node:module'));
 const path = require('node:path');
 
-const echt = require('node:test');
+const original = require('node:test');
 // Only on call: at load time dist/ may not be built yet.
 const inSystemContext = (reason, f) =>
   require(path.join(__dirname, '..', '..', 'dist', 'src', 'infra', 'accountContext.js')).inSystemContext(reason, f);
@@ -25,7 +25,7 @@ const inFrame = f =>
         { value: f.length },
       )
     : f;
-const huelle = f => {
+const shell = f => {
   const h = function (...a) {
     return f.apply(this, a.map(inFrame));
   };
@@ -34,15 +34,16 @@ const huelle = f => {
   return h;
 };
 
-const test = /** @type {any} */ (huelle(echt));
-for (const k of Object.keys(echt))
-  if (['it', 'describe', 'suite', 'before', 'after', 'beforeEach', 'afterEach'].includes(k)) test[k] = huelle(echt[k]);
+const test = /** @type {any} */ (shell(original));
+for (const k of Object.keys(original))
+  if (['it', 'describe', 'suite', 'before', 'after', 'beforeEach', 'afterEach'].includes(k))
+    test[k] = shell(original[k]);
   else if (k === 'test') test.test = test;
-  else if (!(k in test)) Object.defineProperty(test, k, { get: () => echt[k], enumerable: true });
+  else if (!(k in test)) Object.defineProperty(test, k, { get: () => original[k], enumerable: true });
 
-// TEST_OHNE_SYSTEMRAHMEN=1 shows which files are already green without the context.
-const laden = Module._load;
-if (process.env.TEST_OHNE_SYSTEMRAHMEN !== '1')
-  Module._load = function (anfrage, ...rest) {
-    return anfrage === 'node:test' || anfrage === 'test' ? test : laden.call(this, anfrage, ...rest);
+// TEST_WITHOUT_SYSTEM_FRAME=1 shows which files are already green without the context.
+const load = Module._load;
+if (process.env.TEST_WITHOUT_SYSTEM_FRAME !== '1')
+  Module._load = function (request, ...rest) {
+    return request === 'node:test' || request === 'test' ? test : load.call(this, request, ...rest);
   };

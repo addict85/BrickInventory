@@ -49,8 +49,8 @@ const db = testData();
 // Rebrickable provided at the wiring (testSources); `fetches` counts what was asked.
 let fetches = [];
 testSources(null, {
-  lookupPart: async (nr, farbe) => {
-    fetches.push(`lookupPart ${nr}/${farbe}`);
+  lookupPart: async (nr, color) => {
+    fetches.push(`lookupPart ${nr}/${color}`);
     return { part_name: 'VON REBRICKABLE', category_name: '42', image_url: 'https://cdn.example/rb.jpg' };
   },
   getMinifigInfo: async nr => {
@@ -113,9 +113,9 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
   /** Create a part and count what went outside in doing so. */
-  const putPart = async (nr, farbe) => {
+  const putPart = async (nr, color) => {
     fetches = [];
-    await addManualPart(UID, { part_number: nr, color_id: farbe, quantity: 1 });
+    await addManualPart(UID, { part_number: nr, color_id: color, quantity: 1 });
     return fetches.filter(a => a.startsWith('lookupPart'));
   };
 

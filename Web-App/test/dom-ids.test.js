@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare } = require('./helpers/sources');
+const { withoutComments } = require('./helpers/sources');
 
 const PUB = path.join(__dirname, '..', 'public');
 // app.bundle.js is a BUILD RESULT (scripts/build-frontend.js concatenates the
@@ -55,7 +55,7 @@ for (const file of JS_FILES) {
     // describes which G('…') stood here before and why it is gone is
     // not a use — without this step the test reports an ID that
     // nobody fetches anymore. The same trap against which helpers/sources.js …
-    const src = ohneKommentare(fs.readFileSync(path.join(PUB, 'js', file), 'utf8'));
+    const src = withoutComments(fs.readFileSync(path.join(PUB, 'js', file), 'utf8'));
     const ids = [...src.matchAll(/G\(\s*'([^'+]+)'\s*\)/g)].map(m => m[1]);
     const missing = [...new Set(ids)].filter(id => !knownIds.has(id) && !ALLOWED_MISSING.has(id));
     assert.deepEqual(missing, [], `Missing IDs: ${missing.join(', ')}`);

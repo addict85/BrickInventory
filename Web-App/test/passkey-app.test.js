@@ -29,10 +29,10 @@ const HASH = Buffer.from('fbff' + '00'.repeat(28) + 'fbff', 'hex');
 const WITH_COLON = HASH.toString('hex').toUpperCase().match(/../g).join(':');
 
 function withEnvironment(t, values) {
-  const vorher = Object.fromEntries(Object.keys(values).map(k => [k, process.env[k]]));
+  const prior = Object.fromEntries(Object.keys(values).map(k => [k, process.env[k]]));
   environment(values);
   t.after(() => {
-    for (const [k, v] of Object.entries(vorher)) {
+    for (const [k, v] of Object.entries(prior)) {
       if (v === undefined) environment({ [k]: undefined });
       else environment({ [k]: v });
     }
@@ -71,10 +71,10 @@ test('the document names package and fingerprint, only for the credentials', asy
 
 test('the origin is base64url of the hash, regardless of the notation it is entered in', t => {
   withEnvironment(t, { PASSKEY_ANDROID_CERTIFICATES: `${WITH_COLON.toLowerCase()}, ${HASH.toString('hex')}` });
-  const erwartet =
+  const expected =
     'android:apk-key-hash:' + HASH.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   assert.match(HASH.toString('base64'), /[+/]/, 'The probe does not cover the replacement');
-  assert.deepEqual(androidOrigins(), [erwartet], 'entered twice counts once');
+  assert.deepEqual(androidOrigins(), [expected], 'entered twice counts once');
 });
 
 test('a wrong fingerprint or package name is a startup error with a name', () => {

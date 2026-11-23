@@ -49,7 +49,7 @@ test('purchase prices in a foreign currency and estimated ones', { concurrency: 
     [uid, SN, GS],
   );
   await db.run(`UPDATE set_acquisitions SET price_estimated = true WHERE user_id=$1 AND set_number=$2`, [uid, GS]);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const hole = async path => (await fetch(`${base}/api/v2/${path}`)).json();
 
   await t.test('sum in the account currency like the finances', async () => {
@@ -62,8 +62,8 @@ test('purchase prices in a foreign currency and estimated ones', { concurrency: 
     assert.equal(usd.account_price, 208.528);
     const v = await hole('finance/valuation');
     const set = v.sets.find(s => s.set_number === SN);
-    const finanzen = set.acquisitions.reduce((s, a) => s + a.purchase_price * a.quantity, 0);
-    assert.equal(Math.round(finanzen * 100) / 100, r.totals.amount, 'same amount as in the finances');
+    const finances = set.acquisitions.reduce((s, a) => s + a.purchase_price * a.quantity, 0);
+    assert.equal(Math.round(finances * 100) / 100, r.totals.amount, 'same amount as in the finances');
   });
 
   await t.test('without a rate not included but counted', async () => {
@@ -80,14 +80,14 @@ test('purchase prices in a foreign currency and estimated ones', { concurrency: 
 
   await t.test('estimated purchase prices are marked', async () => {
     const v = await hole('finance/valuation');
-    const geschaetzt = v.sets.find(s => s.set_number === GS).acquisitions;
+    const estimated = v.sets.find(s => s.set_number === GS).acquisitions;
     assert.deepEqual(
-      geschaetzt.map(a => a.price_estimated),
+      estimated.map(a => a.price_estimated),
       [true],
     );
     assert.ok(v.sets.find(s => s.set_number === SN).acquisitions.every(a => !a.price_estimated));
-    const liste = await hole('sets');
-    assert.equal(liste.sets.find(s => s.set_number === GS).purchase_price_estimated, true);
-    assert.equal(liste.sets.find(s => s.set_number === SN).purchase_price_estimated, false);
+    const list = await hole('sets');
+    assert.equal(list.sets.find(s => s.set_number === GS).purchase_price_estimated, true);
+    assert.equal(list.sets.find(s => s.set_number === SN).purchase_price_estimated, false);
   });
 });

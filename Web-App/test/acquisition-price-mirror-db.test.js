@@ -35,7 +35,7 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid }, t });
 
   // Recreate the starting point fresh every time — including the entries.
   const setUp = async () => {
@@ -50,7 +50,7 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
     return (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])).id;
   };
   // What the tile shows: the aggregate from the entries, not a mirrored column.
-  const kachel = async () =>
+  const tile = async () =>
     (await _req('src/sets/read.js').conditionAggregate(require('./helpers/sources').testContext('sets'), [uid], SN))
       .avg_purchase_price;
 
@@ -67,12 +67,12 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
       });
       assert.equal(r.status, 200, `${name}: the change must be accepted`);
 
-      const erfasst = parseFloat(
+      const recorded = parseFloat(
         (await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [id])).purchase_price,
       );
-      assert.equal(erfasst, 107.0, `${name}: the acquisition must carry the new price`);
+      assert.equal(recorded, 107.0, `${name}: the acquisition must carry the new price`);
       assert.equal(
-        await kachel(),
+        await tile(),
         107.0,
         `${name}: the tile does not take over the new price — gallery, finance overview and ` +
           'detail tile compute from the acquisitions and then show the old value',
@@ -98,7 +98,7 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
     });
     assert.equal(r2.status, 200);
     assert.equal(
-      await kachel(),
+      await tile(),
       125.0,
       'The tile must show the mean over BOTH acquisitions (50 and 200). ' +
         'At 200 only the newest still counts — the rule of the deleted column.',

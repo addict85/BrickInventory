@@ -8,7 +8,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, withoutComments } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { nextRedirect, hostAllowed, REDIRECT_LIMIT, ALLOWED_IMAGE_HOSTS, ALLOWED_DOWNLOAD_HOSTS } = _req(
   'src/infra/foreignAddresses.js',
@@ -44,8 +44,8 @@ test('a downgrade to http is not followed', () => {
   );
   // Checked positively for https, not negatively for http: a deny list
   // forgets a scheme at some point.
-  for (const boese of ['file:///etc/passwd', 'ftp://x.tld/a', 'data:text/plain,x'])
-    assert.equal(nextRedirect('https://rebrickable.com/a', boese, HEADER), null, `${boese} must not be followed`);
+  for (const evil of ['file:///etc/passwd', 'ftp://x.tld/a', 'data:text/plain,x'])
+    assert.equal(nextRedirect('https://rebrickable.com/a', evil, HEADER), null, `${evil} must not be followed`);
 });
 
 test('a relative redirect target is resolved', () => {
@@ -82,13 +82,13 @@ test('the host check does not fall for an appended name', () => {
   // a mere endsWith() without the dot in front.
   assert.ok(hostAllowed('https://cdn.rebrickable.com/x', ALLOWED_IMAGE_HOSTS));
   assert.ok(hostAllowed('https://rebrickable.com/x', ALLOWED_IMAGE_HOSTS));
-  for (const boese of [
+  for (const evil of [
     'https://evil-rebrickable.com/x',
     'https://rebrickable.com.angreifer.tld/x',
     'https://xlego.com/x',
     'https://lego.com.angreifer.tld/x',
   ])
-    assert.ok(!hostAllowed(boese, ALLOWED_DOWNLOAD_HOSTS), `${boese} must not pass`);
+    assert.ok(!hostAllowed(evil, ALLOWED_DOWNLOAD_HOSTS), `${evil} must not pass`);
   // Unparsable means do NOT fetch — and not: throw.
   assert.equal(hostAllowed('kein-url', ALLOWED_IMAGE_HOSTS), false);
 });
@@ -102,19 +102,19 @@ test('the host check does not fall for an appended name', () => {
  *   additionally `u.host.endsWith('.' + h)` (old suffix) → red at „x.bdpinstructions"
  */
 test('host check: only default port, no userinfo, bucket exact', () => {
-  for (const gut of [
+  for (const good of [
     'https://cdn.rebrickable.com/x',
     'https://cdn.rebrickable.com:443/x',
     'https://www.lego.com/cdn/a.pdf',
     'https://assets.lego.com/a.pdf',
   ])
-    assert.ok(hostAllowed(gut, ALLOWED_DOWNLOAD_HOSTS), `${gut} must be allowed`);
-  for (const boese of ['https://cdn.rebrickable.com:22/', 'https://cdn.rebrickable.com:8443/x'])
-    assert.ok(!hostAllowed(boese, ALLOWED_IMAGE_HOSTS), `${boese}: fremder Port`);
-  for (const boese of ['https://evil.com@cdn.rebrickable.com/', 'https://a:b@cdn.rebrickable.com/'])
-    assert.ok(!hostAllowed(boese, ALLOWED_IMAGE_HOSTS), `${boese}: Userinfo`);
-  for (const boese of ['https://x.bdpinstructions.s3.amazonaws.com/a.pdf', 'https://x.cdn.rebrickable.com/a.png'])
-    assert.ok(!hostAllowed(boese, ALLOWED_DOWNLOAD_HOSTS), `${boese}: subdomain`);
+    assert.ok(hostAllowed(good, ALLOWED_DOWNLOAD_HOSTS), `${good} must be allowed`);
+  for (const evil of ['https://cdn.rebrickable.com:22/', 'https://cdn.rebrickable.com:8443/x'])
+    assert.ok(!hostAllowed(evil, ALLOWED_IMAGE_HOSTS), `${evil}: fremder Port`);
+  for (const evil of ['https://evil.com@cdn.rebrickable.com/', 'https://a:b@cdn.rebrickable.com/'])
+    assert.ok(!hostAllowed(evil, ALLOWED_IMAGE_HOSTS), `${evil}: Userinfo`);
+  for (const evil of ['https://x.bdpinstructions.s3.amazonaws.com/a.pdf', 'https://x.cdn.rebrickable.com/a.png'])
+    assert.ok(!hostAllowed(evil, ALLOWED_DOWNLOAD_HOSTS), `${evil}: subdomain`);
 });
 
 /**
@@ -153,37 +153,37 @@ test('outbound requests only go through src/infra/fetch.ts', () => {
   // test/fetch-helper.test.js against a real TLS server. Counter-check
   // (measured 02.11.2026): globalThis.fetch back in gutscheinGuthaben.ts → red.
   const fremd = [];
-  (function lauf(d) {
+  (function run(d) {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) {
-        if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(n)) lauf(p);
+        if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(n)) run(p);
         continue;
       }
       if (!n.endsWith('.ts') || p.endsWith(path.join('src', 'infra', 'fetch.ts'))) continue;
-      if (/\bhttps?\.(get|request)\(|\bfetch\(|\bglobalThis\.fetch\b/.test(ohneKommentare(fs.readFileSync(p, 'utf8'))))
+      if (/\bhttps?\.(get|request)\(|\bfetch\(|\bglobalThis\.fetch\b/.test(withoutComments(fs.readFileSync(p, 'utf8'))))
         fremd.push(path.relative(ROOT, p));
     }
   })(ROOT);
   assert.deepEqual(fremd, [], 'own fetch path bypassing the host list, redirect and size limits');
   assert.match(
-    ohneKommentare(read('src/infra/fetch.ts')),
+    withoutComments(read('src/infra/fetch.ts')),
     /nextRedirect\(u, r\.headers\?\.location, header, o\.hosts\)/,
     'the helper does not check the redirect targets against the host list',
   );
   assert.match(
-    ohneKommentare(read('clients/rebrickable.ts')),
+    withoutComments(read('clients/rebrickable.ts')),
     /hosts: ALLOWED_DOWNLOAD_HOSTS/,
     'downloadFile no longer checks the redirect targets — the file is served',
   );
 
   // ── And the list stands at only ONE place ──────────────────────────
-  const proxy = ohneKommentare(read('src/images/http/imageProxy.ts'));
+  const proxy = withoutComments(read('src/images/http/imageProxy.ts'));
   assert.doesNotMatch(
     proxy,
     /const ALLOWED_IMAGE_HOSTS = \[/,
-    'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach src/infra/foreignAddresses.ts, ' +
-      'weil clients/ sie braucht und ein Client nicht von einer Route abhaengen soll',
+    'The image allowlist is back in the route — it belongs in src/infra/foreignAddresses.ts, ' +
+      'because clients/ needs it and a client should not depend on a route',
   );
   // This is a PATTERN rule: it catches a deleted line. That the
   // path really lives runs in test/wiring-running-db.test.js —
@@ -195,7 +195,7 @@ test('outbound requests only go through src/infra/fetch.ts', () => {
   );
   // Since 05.11.2026 the image diagnosis stands in the admin service.
   assert.match(
-    ohneKommentare(read('src/management/diagnostics.ts')),
+    withoutComments(read('src/management/diagnostics.ts')),
     /hostAllowed\(url, ALLOWED_IMAGE_HOSTS\)/,
     'The image diagnosis no longer checks via the shared rule',
   );

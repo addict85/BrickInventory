@@ -20,12 +20,12 @@ const sharp = require('sharp');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
 const { fitTailoredPreviews, FITTED_MARKER } = _req('src/images/fitPreviews.js');
 
-const jpeg = (datei, width, height) =>
+const jpeg = (file, width, height) =>
   sharp({ create: { width, height, channels: 3, background: '#2a6' } })
     .jpeg()
-    .toFile(datei);
-const masse = async datei => {
-  const m = await sharp(datei).metadata();
+    .toFile(file);
+const measures = async file => {
+  const m = await sharp(file).metadata();
   return [m.width, m.height];
 };
 
@@ -33,17 +33,17 @@ test('cropped previews are refitted once', async t => {
   const sets = path.join(DATA_DIR, 'images', 'sets');
   fs.mkdirSync(sets, { recursive: true });
   const proxy = fs.mkdtempSync(path.join(os.tmpdir(), 'einpassen-proxy-'));
-  const quer = `zz-einpassen-quer-${process.pid}`,
+  const landscape = `zz-einpassen-quer-${process.pid}`,
     quadrat = `zz-einpassen-quadrat-${process.pid}`;
-  const datei = n => path.join(sets, `${n}.jpg`),
+  const file = n => path.join(sets, `${n}.jpg`),
     preview = n => path.join(sets, `${n}_thumb.jpg`);
   t.after(() => {
-    for (const n of [quer, quadrat]) for (const d of [datei(n), preview(n)]) fs.rmSync(d, { force: true });
+    for (const n of [landscape, quadrat]) for (const d of [file(n), preview(n)]) fs.rmSync(d, { force: true });
     fs.rmSync(proxy, { recursive: true, force: true });
   });
-  await jpeg(datei(quer), 400, 200);
-  await jpeg(preview(quer), 200, 200);
-  await jpeg(datei(quadrat), 300, 300);
+  await jpeg(file(landscape), 400, 200);
+  await jpeg(preview(landscape), 200, 200);
+  await jpeg(file(quadrat), 300, 300);
   await jpeg(preview(quadrat), 200, 200);
   const quadratBefore = fs.statSync(preview(quadrat)).mtimeMs;
   await jpeg(path.join(proxy, 'a'.repeat(40)), 400, 300);
@@ -61,11 +61,11 @@ test('cropped previews are refitted once', async t => {
     },
     clock: _req('src/infra/clock.js').systemClock,
   };
-  const lokale = [quer, quadrat].map(n => ({ web: `/images/sets/${n}.jpg`, file: datei(n) }));
+  const local = [landscape, quadrat].map(n => ({ web: `/images/sets/${n}.jpg`, file: file(n) }));
 
   await t.test('replaces only cropped ones', async () => {
-    assert.equal(await fitTailoredPreviews(k, lokale, proxy), 2);
-    assert.deepEqual(await masse(preview(quer)), [200, 100], 'own preview refitted');
+    assert.equal(await fitTailoredPreviews(k, local, proxy), 2);
+    assert.deepEqual(await measures(preview(landscape)), [200, 100], 'own preview refitted');
     assert.equal(fs.statSync(preview(quadrat)).mtimeMs, quadratBefore, 'square image was not left untouched');
     assert.equal(fs.existsSync(path.join(proxy, `${'a'.repeat(40)}_thumb.jpg`)), false, 'proxy preview stays');
     assert.ok(fs.existsSync(path.join(proxy, `${'b'.repeat(40)}_thumb.jpg`)), 'correct proxy preview deleted');
@@ -73,8 +73,8 @@ test('cropped previews are refitted once', async t => {
   });
 
   await t.test('runs only once', async () => {
-    await jpeg(preview(quer), 200, 200);
-    assert.equal(await fitTailoredPreviews(k, lokale, proxy), null);
-    assert.deepEqual(await masse(preview(quer)), [200, 200]);
+    await jpeg(preview(landscape), 200, 200);
+    assert.equal(await fitTailoredPreviews(k, local, proxy), null);
+    assert.deepEqual(await measures(preview(landscape)), [200, 200]);
   });
 });

@@ -26,14 +26,14 @@ test('rule violations of the database become 4xx with a code', async t => {
   const { errorResponse } = _req('src/http/httpResponse.js');
   const app = express();
   // Real errors from PostgreSQL, not rebuilt objects.
-  app.get('/:regel', async req => {
-    await db.run(`DO $$ BEGIN RAISE ${req.params.regel}; END $$`);
+  app.get('/:rule', async req => {
+    await db.run(`DO $$ BEGIN RAISE ${req.params.rule}; END $$`);
   });
   app.use(errorResponse);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const hole = async regel => {
-    const r = await fetch(`http://127.0.0.1:${srv.address().port}/${regel}`);
+  const hole = async rule => {
+    const r = await fetch(`http://127.0.0.1:${srv.address().port}/${rule}`);
     return { status: r.status, code: (await r.json()).code };
   };
   assert.deepEqual(await hole('check_violation'), { status: 400, code: 'value_invalid' }, 'CHECK-Verletzung …');

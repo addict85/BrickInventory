@@ -18,7 +18,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { PassThrough } = require('node:stream');
 const { EventEmitter } = require('node:events');
-const { warte, bis } = require('./helpers/time');
+const { sleep, until } = require('./helpers/time');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -71,7 +71,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
       exchange_rates: {
         run: async () => {
           starts++;
-          await warte(4500);
+          await sleep(4500);
         },
       },
     };
@@ -88,9 +88,9 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     const id = await A.placeJobOne('exchange_rates', {}, { key: `pacht-${process.pid}` });
     const status = async () => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
     w.launch();
-    await bis(async () => (await status()) === 'running');
+    await until(async () => (await status()) === 'running');
     w2.launch();
-    await bis(async () => (await status()) === 'done', 8000);
+    await until(async () => (await status()) === 'done', 8000);
     await w.stop(100);
     await w2.stop(100);
     const z = await db.get('SELECT status, attempts FROM jobs WHERE id = $1', [id]);
@@ -124,9 +124,9 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
       a.release();
     }
     assert.equal(await A.claimJob(['csv_sync'], 60, 'B', ['csv_sync']), null, 'B claims after A has committed');
-    const laufend = await db.all("SELECT locked_by FROM jobs WHERE type = 'csv_sync' AND status = 'running'");
+    const running = await db.all("SELECT locked_by FROM jobs WHERE type = 'csv_sync' AND status = 'running'");
     assert.deepEqual(
-      laufend.map(z => z.locked_by),
+      running.map(z => z.locked_by),
       ['A'],
       'the second connection does not claim a second csv_sync',
     );
@@ -145,12 +145,12 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     downloadRunning = false;
     w.launch();
     t.after(() => w.stop(0));
-    await bis(() => w.running() > 0);
+    await until(() => w.running() > 0);
     assert.equal(w.running(), 1, 'the sync is running');
-    assert.ok(await bis(() => downloadRunning), 'the download has started');
+    assert.ok(await until(() => downloadRunning), 'the download has started');
     const start = Date.now();
     assert.ok(await A.abortJob(id));
-    await bis(() => w.running() === 0);
+    await until(() => w.running() === 0);
     const duration = Date.now() - start;
     assert.ok(duration <= 2000, `Aborting a csv_sync during the download took ${duration} ms`);
     assert.equal((await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status, 'cancelled');

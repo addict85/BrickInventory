@@ -28,22 +28,22 @@ const { sessionMaxDuration } = _req('src/account/sessionDeadline.js');
 const establishSession = (...a) =>
   _req('src/account/http/login.js').establishSession(require('./helpers/sources').testServices().account, ...a);
 
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 
 const LANG = 3_600_000;
 
-function testApp(maxMs, verwalter = {}) {
+function testApp(maxMs, adminUser = {}) {
   const app = express();
   app.use(session({ secret: 'test-geheimnis', resave: false, saveUninitialized: false }));
   app.use(
     sessionMaxDuration({
       maxMs,
-      adminMaxMs: verwalter.maxMs ?? maxMs,
-      adminIdleMs: verwalter.idleMs ?? LANG,
+      adminMaxMs: adminUser.maxMs ?? maxMs,
+      adminIdleMs: adminUser.idleMs ?? LANG,
     }),
   );
   app.post('/anmelden', async (req, res) => {
-    const admin = req.query.verwalter === '1';
+    const admin = req.query.admin === '1';
     await establishSession(req, { userId: admin ? 8 : 7, username: 'x', isAdmin: admin });
     res.json({ am: req.session.angemeldetAm });
   });
@@ -55,36 +55,36 @@ function testApp(maxMs, verwalter = {}) {
 test('maximum duration of the web app session', async t => {
   // Generous period and waits from the measured login time: under
   // load a call takes hundreds of milliseconds, fixed steps then toppled.
-  const FRIST = 3_000;
-  const { srv, base } = testApp(FRIST);
+  const DEADLINE = 3_000;
+  const { srv, base } = testApp(DEADLINE);
   t.after(() => new Promise(r => srv.close(r)));
   const r = await fetch(base + '/anmelden', { method: 'POST' });
-  const anmeldung = await r.json(); // the session only stands in the store after the last byte
+  const login = await r.json(); // the session only stands in the store after the last byte
   const keks = r.headers.get('set-cookie').split(';')[0];
-  const wer = async () => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).userId;
+  const who = async () => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).userId;
 
   await t.test('login sets the timestamp', async () => {
-    const { am } = anmeldung;
+    const { am } = login;
     assert.ok(typeof am === 'number' && Math.abs(Date.now() - am) < 5_000);
   });
 
   await t.test('despite activity the session ends after the maximum duration', async () => {
-    const bis = ms => warte(Math.max(0, anmeldung.am + ms - Date.now()));
-    assert.equal(await wer(), 7);
-    await bis(FRIST / 3);
-    assert.equal(await wer(), 7, 'within the period it is valid');
-    await bis(FRIST + 200);
-    assert.equal(await wer(), null, 'after the period nobody is logged in any more');
-    assert.equal(await wer(), null, 'and the session is deleted, not just skipped');
+    const until = ms => sleep(Math.max(0, login.am + ms - Date.now()));
+    assert.equal(await who(), 7);
+    await until(DEADLINE / 3);
+    assert.equal(await who(), 7, 'within the period it is valid');
+    await until(DEADLINE + 200);
+    assert.equal(await who(), null, 'after the period nobody is logged in any more');
+    assert.equal(await who(), null, 'and the session is deleted, not just skipped');
   });
 });
 
 /** Log in and return a fetcher for „who is logged in“. */
-async function anmelden(base, verwalter) {
-  const r = await fetch(`${base}/anmelden${verwalter ? '?verwalter=1' : ''}`, { method: 'POST' });
+async function signIn(base, adminUser) {
+  const r = await fetch(`${base}/anmelden${adminUser ? '?admin=1' : ''}`, { method: 'POST' });
   const { am } = await r.json();
   const keks = r.headers.get('set-cookie').split(';')[0];
-  return { am, wer: async () => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).userId };
+  return { am, who: async () => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).userId };
 }
 
 test('administrator sessions have shorter periods', async t => {
@@ -92,29 +92,29 @@ test('administrator sessions have shorter periods', async t => {
     const EMPTY = 3_000;
     const { srv, base } = testApp(LANG, { idleMs: EMPTY });
     t.after(() => new Promise(r => srv.close(r)));
-    const chef = await anmelden(base, true);
-    const nutzer = await anmelden(base, false);
+    const chef = await signIn(base, true);
+    const user = await signIn(base, false);
     // Work for longer than the idle time: every request pushes the period.
-    const bis = Date.now() + EMPTY * 1.5;
-    while (Date.now() < bis) {
-      assert.equal(await chef.wer(), 8, 'logged out despite requests');
-      await warte(400);
+    const until = Date.now() + EMPTY * 1.5;
+    while (Date.now() < until) {
+      assert.equal(await chef.who(), 8, 'logged out despite requests');
+      await sleep(400);
     }
-    await warte(EMPTY + 800);
-    assert.equal(await chef.wer(), null, 'still logged in after the idle time');
-    assert.equal(await nutzer.wer(), 7, 'the general period still applies for others');
+    await sleep(EMPTY + 800);
+    assert.equal(await chef.who(), null, 'still logged in after the idle time');
+    assert.equal(await user.who(), 7, 'the general period still applies for others');
   });
 
   await t.test('… and after its shorter maximum duration', async () => {
     const MAX = 2_000;
     const { srv, base } = testApp(LANG, { maxMs: MAX });
     t.after(() => new Promise(r => srv.close(r)));
-    const chef = await anmelden(base, true);
-    const nutzer = await anmelden(base, false);
-    assert.equal(await chef.wer(), 8);
-    await warte(Math.max(0, chef.am + MAX + 300 - Date.now()));
-    assert.equal(await chef.wer(), null);
-    assert.equal(await nutzer.wer(), 7);
+    const chef = await signIn(base, true);
+    const user = await signIn(base, false);
+    assert.equal(await chef.who(), 8);
+    await sleep(Math.max(0, chef.am + MAX + 300 - Date.now()));
+    assert.equal(await chef.who(), null);
+    assert.equal(await user.who(), 7);
   });
 
   await t.test('administrators never longer than all others', () => {

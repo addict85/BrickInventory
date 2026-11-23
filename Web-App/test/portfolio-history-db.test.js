@@ -17,13 +17,13 @@ const db = testData();
 
 /** The same rule straightforwardly: load daily values, group in JS, carry forward. */
 async function comparisonVersion(setNumbers, setQty, currency, condition, dateFilter) {
-  const platzhalter = setNumbers.map((_, i) => `$${i + 3}`).join(',');
+  const placeholder = setNumbers.map((_, i) => `$${i + 3}`).join(',');
   const rows = await db.all(
     `SELECT set_number, qty_avg_price, avg_price,
             to_char(recorded_at,'YYYY-MM-DD') AS day,
             to_char(recorded_at,'YYYY-MM')    AS month
      FROM price_history
-     WHERE currency_code=$1 AND condition IN ('U','N') AND set_number IN (${platzhalter})
+     WHERE currency_code=$1 AND condition IN ('U','N') AND set_number IN (${placeholder})
        AND (qty_avg_price>0 OR avg_price>0)
      ${dateFilter} ORDER BY recorded_at ASC, (condition = $2) ASC`,
     [currency, condition, ...setNumbers],
@@ -43,7 +43,7 @@ async function comparisonVersion(setNumbers, setQty, currency, condition, dateFi
   const carry = {};
   for (const k of Object.keys(buckets).sort().reverse()) Object.assign(carry, buckets[k].sets);
 
-  let punkte = Object.keys(buckets)
+  let points = Object.keys(buckets)
     .sort()
     .map(k => {
       const b = buckets[k];
@@ -55,17 +55,17 @@ async function comparisonVersion(setNumbers, setQty, currency, condition, dateFi
 
   // Condensation as before: only from 120 points on, last point per month, the
   // very first point stays exactly preserved.
-  if (punkte.length > 120) {
+  if (points.length > 120) {
     const byMonth = new Map();
-    for (const p of punkte) byMonth.set(p.month || p.day.slice(0, 7), p);
+    for (const p of points) byMonth.set(p.month || p.day.slice(0, 7), p);
     const monthly = [...byMonth.values()].map(p => ({ ...p, day: p.month || p.day.slice(0, 7) }));
-    const erster = punkte[0];
-    if (monthly.length && monthly[0].fullDay !== erster.fullDay) {
-      monthly[0] = { ...erster, day: erster.month || erster.day.slice(0, 7) };
+    const firstOne = points[0];
+    if (monthly.length && monthly[0].fullDay !== firstOne.fullDay) {
+      monthly[0] = { ...firstOne, day: firstOne.month || firstOne.day.slice(0, 7) };
     }
-    punkte = monthly;
+    points = monthly;
   }
-  return punkte;
+  return points;
 }
 
 test('the portfolio curve computes the same as the reference version', { concurrency: 1 }, async t => {
@@ -170,19 +170,19 @@ test('the portfolio curve computes the same as the reference version', { concurr
   for (const period of ['week', 'month', 'year', 'max']) {
     await t.test(`period ${period}: same points as the reference version`, async () => {
       const alt = await comparisonVersion(setNumbers, setQty, 'CHF', 'N', filter[period]);
-      const neu = await portfolioHistory(u1, [u1, u2], period, db, getSetting);
+      const fresh = await portfolioHistory(u1, [u1, u2], period, db, getSetting);
 
       assert.equal(
-        neu.points.length,
+        fresh.points.length,
         alt.length,
-        `different number of points: ${neu.points.length} instead of ${alt.length}`,
+        `different number of points: ${fresh.points.length} instead of ${alt.length}`,
       );
 
       // The route delivers {x_label, value, y_frac} — compared are the
       // VALUES in their order.
       for (let i = 0; i < alt.length; i++) {
         const a = alt[i],
-          n = neu.points[i];
+          n = fresh.points[i];
         // Rounding: the old version computed in JS floating point, the new one in
         // NUMERIC. One cent of difference is allowed, no more.
         assert.ok(Math.abs(n.value - a.total) <= 0.01, `point ${i} (${a.day}): ${n.value} instead of ${a.total}`);
@@ -238,8 +238,8 @@ test('one price entry per set, condition, currency and day', { concurrency: 1 },
                    VALUES ('88888-1','N','CHF',5,5, NOW() - INTERVAL '4000 days'),
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
     environment({ PRICE_HISTORY_KEEP_DAYS: '1095' });
-    const weg = await deleteOldPrices();
-    assert.ok(weg >= 2, `not everything removed: ${weg}`);
+    const route = await deleteOldPrices();
+    assert.ok(route >= 2, `not everything removed: ${route}`);
     for (const sn of ['88888-1', '__portfolio__1'])
       assert.equal(
         (await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number=$1`, [sn])).c,
@@ -265,8 +265,8 @@ test('mail sending never switches off certificate verification', () => {
   // Behavior: test/smtp-tls-festnageln-db.test.js. Here only the ban in the source text.
   const fs = require('node:fs');
   const path = require('node:path');
-  const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/mail/transport.ts'), 'utf8'));
+  const { ROOT, withoutComments } = require('./helpers/sources');
+  const src = withoutComments(fs.readFileSync(path.join(ROOT, 'src/mail/transport.ts'), 'utf8'));
   assert.doesNotMatch(
     src,
     /rejectUnauthorized:\s*(false|!)/,

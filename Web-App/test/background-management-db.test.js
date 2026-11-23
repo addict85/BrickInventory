@@ -64,10 +64,10 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   await adminWithFactor(_req, uid);
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: true }, t });
-  const callIt = async (methode, path, body) => {
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME, isAdmin: true }, t });
+  const callIt = async (method, path, body) => {
     const r = await fetch(base + '/api/v2' + path, {
-      method: methode,
+      method: method,
       headers: body ? { 'content-type': 'application/json' } : {},
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -89,11 +89,11 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   const aborted = await A.placeJobOne('followup', { schritt: 'vorschauen' });
   await A.abortJob(aborted);
 
-  const wartend = [];
+  const waiting = [];
   for (const sn of ['11111-1', '22222-1'])
-    wartend.push(await A.placeJobOne('instructions', { set_number: sn }, { key: `instructions:${sn}` }));
-  const kaputt = await A.placeJobOne('followup', { schritt: 'katalog' });
-  await db.run(`UPDATE jobs SET status = 'error', error_message = 'Quelle weg' WHERE id = $1`, [kaputt]);
+    waiting.push(await A.placeJobOne('instructions', { set_number: sn }, { key: `instructions:${sn}` }));
+  const broken = await A.placeJobOne('followup', { schritt: 'katalog' });
+  await db.run(`UPDATE jobs SET status = 'error', error_message = 'Quelle weg' WHERE id = $1`, [broken]);
   await db.run(`INSERT INTO run_state (key, value) VALUES ('jobs_lebenszeichen', NOW()::text)
                 ON CONFLICT (key) DO UPDATE SET value = NOW()::text`);
 
@@ -103,7 +103,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const { jobs, summary, job_process } = r.body;
     assert.deepEqual(
-      jobs.filter(a => a.id === kaputt || a.id === aborted),
+      jobs.filter(a => a.id === broken || a.id === aborted),
       [],
       'finished jobs are in the list of single jobs',
     );
@@ -113,7 +113,7 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
     assert.equal(jobs.find(a => a.set_number === '11111-1')?.waiting, false, 'an ordinary waiting one is not');
     assert.ok(summary.some(z => z.type === 'followup' && z.status === 'error' && z.count === 1));
     assert.equal(job_process.running, true);
-    const f = (await callIt('GET', '/admin/job-queue?status=error')).body.jobs.find(a => a.id === kaputt);
+    const f = (await callIt('GET', '/admin/job-queue?status=error')).body.jobs.find(a => a.id === broken);
     assert.deepEqual(
       [f?.status, f?.error_message, f?.waiting],
       ['error', 'Quelle weg', false],
@@ -140,10 +140,10 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   });
 
   await t.test('retry queues a failed one anew', async () => {
-    assert.equal((await callIt('POST', `/admin/job-queue/${kaputt}/retry`)).status, 200);
-    assert.equal((await db.get('SELECT status, attempts FROM jobs WHERE id = $1', [kaputt])).status, 'pending');
+    assert.equal((await callIt('POST', `/admin/job-queue/${broken}/retry`)).status, 200);
+    assert.equal((await db.get('SELECT status, attempts FROM jobs WHERE id = $1', [broken])).status, 'pending');
     assert.equal(
-      (await callIt('POST', `/admin/job-queue/${kaputt}/retry`)).status,
+      (await callIt('POST', `/admin/job-queue/${broken}/retry`)).status,
       409,
       'an open one cannot be retried',
     );
@@ -152,8 +152,8 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
   await t.test('an aborted scheduled run leaves the next appointment', async () => {
     const p = await plan('image_followup');
     assert.equal((await callIt('POST', `/admin/job-queue/${p.id}/cancel`)).status, 200);
-    const neu = await plan('image_followup');
-    assert.ok(neu && neu.id !== p.id, 'no new schedule after the cancellation');
+    const fresh = await plan('image_followup');
+    assert.ok(fresh && fresh.id !== p.id, 'no new schedule after the cancellation');
   });
 
   await t.test('clearing discards waiting ones, not the schedule', async () => {

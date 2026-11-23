@@ -33,9 +33,9 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const SN = `9${process.pid % 10000}-1`;
   const NAME = `kat-name-${process.pid}`;
-  const schluessel = ['rebrickable_api_key', 'brickset_api_key'];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
-  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
+  const keyName = ['rebrickable_api_key', 'brickset_api_key'];
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [keyName]);
+  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [keyName]);
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await catalogSet(db, SN, { name: 'Titanic', year: 2021 });
@@ -74,8 +74,8 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
       );
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);
       const { possibleSetNumber } = _req('src/infra/setNumber.js');
-      for (const gut of ['10294-1', '928-1', 'comcon001-1', 'llca37-1', '5005358-2'])
-        assert.ok(possibleSetNumber(gut), gut);
+      for (const good of ['10294-1', '928-1', 'comcon001-1', 'llca37-1', '5005358-2'])
+        assert.ok(possibleSetNumber(good), good);
       for (const badOne of ['abc-1', '-1', 'x'.repeat(21) + '1-1', '10294'])
         assert.ok(!possibleSetNumber(badOne), badOne);
     });
@@ -83,7 +83,7 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await db.run('DELETE FROM rb_sets WHERE set_num=$1', [SN]);
     await db.run('DELETE FROM catalog_cache WHERE set_number=$1', [SN]);
-    for (const { key, value } of vorher)
+    for (const { key, value } of prior)
       await db.run('INSERT INTO global_settings (key,value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2', [
         key,
         value,

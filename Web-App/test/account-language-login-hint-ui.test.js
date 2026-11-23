@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, waitFor, tick } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
@@ -23,29 +23,29 @@ test('build list in the account language', async () => {
     '/v2/settings/raw': { success: true, settings: { currency: 'EUR', language: 'en', rebrickable_api_key: 'probe' } },
   });
   try {
-    await reiter(w, 'partslist');
-    await warte(() => d.documentElement.lang === 'en');
-    await takt(50);
-    const leer = text(d.querySelector('#pl-sets .empty-state'));
-    assert.doesNotMatch(leer, /Bauliste|Noch keine|Setnummer/, `deutsch: ${leer}`);
-    assert.match(leer, /build list is still empty/i);
+    await switchTab(w, 'partslist');
+    await waitFor(() => d.documentElement.lang === 'en');
+    await tick(50);
+    const empty = text(d.querySelector('#pl-sets .empty-state'));
+    assert.doesNotMatch(empty, /Bauliste|Noch keine|Setnummer/, `deutsch: ${empty}`);
+    assert.match(empty, /build list is still empty/i);
   } finally {
     w.close();
   }
 });
 
-async function anmelden(response) {
+async function signIn(response) {
   const o = await openUi({ '/v2/auth/login': response }, { loggedIn: false });
-  await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
+  await waitFor(() => o.d.getElementById('login-screen').style.display === 'flex');
   o.d.getElementById('lu').value = 'anna';
   o.d.getElementById('lp').value = 'falsch-falsch';
   o.d.getElementById('btn-login').click();
-  await warte(() => text(o.d.getElementById('lerr')) !== '');
+  await waitFor(() => text(o.d.getElementById('lerr')) !== '');
   return o;
 }
 
 test('login: wrong password without confirmation link', async () => {
-  const { w, d } = await anmelden({
+  const { w, d } = await signIn({
     $status: 401,
     success: false,
     code: 'credentials_invalid',
@@ -59,7 +59,7 @@ test('login: wrong password without confirmation link', async () => {
 });
 
 test('login: address not confirmed, with confirmation link', async () => {
-  const { w, d } = await anmelden({
+  const { w, d } = await signIn({
     $status: 403,
     success: false,
     code: 'email_not_confirmed',

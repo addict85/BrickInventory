@@ -70,13 +70,13 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, chef]]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const zaehle = async (tabelle, spalte) =>
-    (await db.get(`SELECT count(*)::int n FROM ${schema}.${tabelle} WHERE ${spalte} = $1`, [uid])).n;
-  assert.equal(await zaehle('users', 'id'), 1, 'Precondition: the account is in the copy');
-  assert.equal(await zaehle('sets', 'user_id'), 1, 'Precondition: its set is in the copy');
+  const count = async (table, column) =>
+    (await db.get(`SELECT count(*)::int n FROM ${schema}.${table} WHERE ${column} = $1`, [uid])).n;
+  assert.equal(await count('users', 'id'), 1, 'Precondition: the account is in the copy');
+  assert.equal(await count('sets', 'user_id'), 1, 'Precondition: its set is in the copy');
 
-  const sitzung = { userId: uid, username: NAME, destroy: fertig => fertig() };
-  const { base } = testServer(_req, { sitzung, t });
+  const session = { userId: uid, username: NAME, destroy: done => done() };
+  const { base } = testServer(_req, { session, t });
   const r = await fetch(`${base}${AUTH}/account`, {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },
@@ -85,8 +85,8 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
   assert.equal(r.status, 200, await r.clone().text());
 
   await t.test('the deleted account is in no copy any more', async () => {
-    assert.equal(await zaehle('users', 'id'), 0);
-    assert.equal(await zaehle('sets', 'user_id'), 0);
+    assert.equal(await count('users', 'id'), 0);
+    assert.equal(await count('sets', 'user_id'), 0);
     assert.ok(
       (await db.get(`SELECT count(*)::int n FROM ${schema}.users WHERE id = $1`, [chef])).n === 1,
       'other accounts stay',
@@ -117,7 +117,7 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
         [chef],
       )
     ).id;
-    const jung = (
+    const young = (
       await db.get(
         `INSERT INTO admin_log (occurred_at, admin_id, target_id, target_name, action)
       VALUES (NOW() - INTERVAL '300 days', $1, $1, 'jung', 'account_created') RETURNING id`,
@@ -125,7 +125,7 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
       )
     ).id;
     await cleanLogOn();
-    const ids = (await db.all('SELECT id FROM admin_log WHERE id = ANY($1)', [[alt, jung]])).map(z => z.id);
-    assert.deepEqual(ids, [jung]);
+    const ids = (await db.all('SELECT id FROM admin_log WHERE id = ANY($1)', [[alt, young]])).map(z => z.id);
+    assert.deepEqual(ids, [young]);
   });
 });

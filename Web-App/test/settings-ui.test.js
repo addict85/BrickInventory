@@ -22,10 +22,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 // anna is the logged-in account: there are no buttons against oneself.
-const NUTZER = {
+const USER = {
   '/v2/auth/users': {
     success: true,
     users: [
@@ -44,9 +44,9 @@ const NUTZER = {
 };
 
 test('save buttons look the same', async () => {
-  const { w, d } = await openUi(NUTZER);
+  const { w, d } = await openUi(USER);
   try {
-    await reiter(w, 'settings');
+    await switchTab(w, 'settings');
     const buttonList = ['btn-sav-bl', 'btn-sav-rb', 'btn-sav-bs', 'btn-sav-smtp', 'btn-sav-prof']
       .map(id => d.getElementById(id))
       .concat([d.querySelector('[data-click="saveVoucher"]')]);
@@ -63,10 +63,10 @@ test('save buttons look the same', async () => {
 });
 
 test('actions of the user table are named', async () => {
-  const { w, d } = await openUi(NUTZER);
+  const { w, d } = await openUi(USER);
   try {
-    await reiter(w, 'settings');
-    await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
+    await switchTab(w, 'settings');
+    await waitFor(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
     assert.equal(
       d.querySelectorAll('#users-tbl tbody tr')[0].querySelectorAll('button').length,
       0,
@@ -87,18 +87,18 @@ test('actions of the user table are named', async () => {
 });
 
 test('revoking admin rights sends is_admin:false', async () => {
-  const { w, d, aufrufe } = await openUi(NUTZER);
+  const { w, d, calls } = await openUi(USER);
   try {
-    await reiter(w, 'settings');
-    await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
+    await switchTab(w, 'settings');
+    await waitFor(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="3"]').click();
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
+    assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
     // Changing foreign accounts requires the own password (admin log).
     assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'The password prompt is missing');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin')));
-    const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'));
+    await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin')));
+    const put = calls.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'));
     assert.ok(put, 'No call for the role change');
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
   } finally {
@@ -107,25 +107,25 @@ test('revoking admin rights sends is_admin:false', async () => {
 });
 
 test('deactivating and activating send is_active with the password', async () => {
-  const { w, d, aufrufe } = await openUi(NUTZER);
+  const { w, d, calls } = await openUi(USER);
   try {
-    await reiter(w, 'settings');
-    await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
+    await switchTab(w, 'settings');
+    await waitFor(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
     const ben = d.querySelectorAll('#users-tbl tbody tr')[1];
     assert.match(ben.textContent, /Deaktiviert/);
-    for (const [id, soll] of [
+    for (const [id, want] of [
       [3, false],
       [2, true],
     ]) {
       d.querySelector(`#users-tbl [data-click="toggleActive"][data-arg="${id}"]`).click();
-      assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
+      assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
       d.getElementById('cd-pw').value = 'mein-passwort';
       d.getElementById('cd-confirm').click();
-      await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`)));
-      await warte(() => d.getElementById('confirm-modal').style.display !== 'flex');
-      const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`));
+      await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`)));
+      await waitFor(() => d.getElementById('confirm-modal').style.display !== 'flex');
+      const put = calls.find(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`));
       assert.ok(put, `No call for account ${id}`);
-      assert.deepEqual(JSON.parse(put.body), { is_active: soll, admin_password: 'mein-passwort' });
+      assert.deepEqual(JSON.parse(put.body), { is_active: want, admin_password: 'mein-passwort' });
     }
   } finally {
     w.close();
@@ -133,7 +133,7 @@ test('deactivating and activating send is_active with the password', async () =>
 });
 
 test('SMTP: hint at the old exception, fingerprint and PEM go along', async () => {
-  const roh = {
+  const raw = {
     success: true,
     settings: {
       language: 'de',
@@ -143,25 +143,25 @@ test('SMTP: hint at the old exception, fingerprint and PEM go along', async () =
       smtp_tls_fingerprint: 'AB:CD',
     },
   };
-  const { w, d, aufrufe } = await openUi({
-    ...NUTZER,
-    '/v2/settings/raw': roh,
+  const { w, d, calls } = await openUi({
+    ...USER,
+    '/v2/settings/raw': raw,
     '/v2/settings': { success: true },
   });
   try {
-    await reiter(w, 'settings');
-    await warte(() => d.getElementById('smtp-host').value === 'mail.example');
+    await switchTab(w, 'settings');
+    await waitFor(() => d.getElementById('smtp-host').value === 'mail.example');
     assert.notEqual(d.getElementById('smtp-tls-legacy').style.display, 'none', 'The hint is missing');
     assert.equal(d.getElementById('smtp-tls-fp').value, 'AB:CD');
     d.getElementById('smtp-tls-ca').value = '-----BEGIN CERTIFICATE-----';
     d.getElementById('btn-sav-smtp').click();
     // The dialog clears the password field when opening: only enter it once it is open.
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'No password dialog');
+    assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'No password dialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
     const isPost = a => a.method === 'POST' && a.url.endsWith('/v2/settings');
-    await warte(() => aufrufe.some(isPost));
-    const post = aufrufe.find(isPost);
+    await waitFor(() => calls.some(isPost));
+    const post = calls.find(isPost);
     assert.ok(post, 'not saved');
     const body = JSON.parse(post.body);
     assert.deepEqual(
@@ -170,7 +170,7 @@ test('SMTP: hint at the old exception, fingerprint and PEM go along', async () =
     );
     // The hint only disappears after the response to saving; under load
     // that takes longer than a fixed beat.
-    await warte(() => d.getElementById('smtp-tls-legacy').style.display === 'none');
+    await waitFor(() => d.getElementById('smtp-tls-legacy').style.display === 'none');
     assert.equal(d.getElementById('smtp-tls-legacy').style.display, 'none');
   } finally {
     w.close();
@@ -178,33 +178,33 @@ test('SMTP: hint at the old exception, fingerprint and PEM go along', async () =
 });
 
 test('key hidden, with a button to show it', async () => {
-  const { w, d } = await openUi(NUTZER);
+  const { w, d } = await openUi(USER);
   try {
-    await reiter(w, 'settings');
-    await warte(() => d.getElementById('rb-key').value === 'probe');
+    await switchTab(w, 'settings');
+    await waitFor(() => d.getElementById('rb-key').value === 'probe');
     for (const id of ['rb-key', 'bs-key', 'bl-cs', 'bl-ts', 'smtp-pass'])
       assert.equal(d.getElementById(id).type, 'password', `${id} is in plain text`);
-    const knopf = d.querySelector('[data-click="toggleSecret"][data-arg="rb-key"]');
-    assert.equal(knopf.getAttribute('aria-label'), 'Anzeigen');
-    knopf.click();
+    const button = d.querySelector('[data-click="toggleSecret"][data-arg="rb-key"]');
+    assert.equal(button.getAttribute('aria-label'), 'Anzeigen');
+    button.click();
     assert.equal(d.getElementById('rb-key').type, 'text');
-    assert.equal(knopf.getAttribute('aria-pressed'), 'true');
-    knopf.click();
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    button.click();
     assert.equal(d.getElementById('rb-key').type, 'password');
-    assert.equal(knopf.getAttribute('aria-pressed'), 'false');
+    assert.equal(button.getAttribute('aria-pressed'), 'false');
   } finally {
     w.close();
   }
 });
 
 test('jump bar to the sections', async () => {
-  const { w, d } = await openUi(NUTZER);
+  const { w, d } = await openUi(USER);
   try {
-    await reiter(w, 'settings');
-    const ziele = [...d.querySelectorAll('#tab-settings .settings-nav a')].map(a => a.getAttribute('href'));
-    assert.ok(ziele.length >= 6, `nur ${ziele.length} Abschnitte`);
-    const fehlt = ziele.filter(z => !d.querySelector(`#global-settings-grid > .ssec${z}`));
-    assert.deepEqual(fehlt, [], 'jump targets without a section in the grid');
+    await switchTab(w, 'settings');
+    const targets = [...d.querySelectorAll('#tab-settings .settings-nav a')].map(a => a.getAttribute('href'));
+    assert.ok(targets.length >= 6, `nur ${targets.length} Abschnitte`);
+    const missing = targets.filter(z => !d.querySelector(`#global-settings-grid > .ssec${z}`));
+    assert.deepEqual(missing, [], 'jump targets without a section in the grid');
     // Subpages: exactly one active, the click switches it and does not jump.
     const active = () => [...d.querySelectorAll('#global-settings-grid > .ssec.settings-active')].map(s => s.id);
     assert.equal(active().length, 1);

@@ -21,7 +21,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, view, waitFor, tick } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
@@ -46,8 +46,8 @@ test('voucher number: separators off first, then groups of four; without a PDF i
     },
   });
   try {
-    await sicht(w, 'vouchers');
-    await warte(() => d.querySelector('.voucher-num'));
+    await view(w, 'vouchers');
+    await waitFor(() => d.querySelector('.voucher-num'));
     assert.equal(text(d.querySelector('.voucher-num')), '6123 4567 8901');
     assert.equal(text(d.querySelector('.voucher-nopdf')), 'kein PDF');
   } finally {
@@ -68,11 +68,11 @@ test('login error is read aloud (role=alert) and stays', async () => {
     { loggedIn: false },
   );
   try {
-    await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
+    await waitFor(() => typeof d.getElementById('btn-login')?.onclick === 'function');
     d.getElementById('lu').value = 'anna';
     d.getElementById('lp').value = 'wrong';
     d.getElementById('btn-login').click();
-    await warte(() => text(d.getElementById('lerr')));
+    await waitFor(() => text(d.getElementById('lerr')));
     assert.equal(d.getElementById('lerr').getAttribute('role'), 'alert');
     assert.equal(text(d.getElementById('lerr')), 'Benutzername oder Passwort falsch');
   } finally {
@@ -93,24 +93,24 @@ test('period and filter of the finances report their state (aria-pressed)', asyn
     },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => !d.querySelector('.period-choice [data-period="week"]').disabled);
-    const knopf = sel => d.querySelector(sel);
-    knopf('.period-choice [data-period="week"]').click();
-    await takt(20);
+    await switchTab(w, 'finance');
+    await waitFor(() => !d.querySelector('.period-choice [data-period="week"]').disabled);
+    const button = sel => d.querySelector(sel);
+    button('.period-choice [data-period="week"]').click();
+    await tick(20);
     assert.deepEqual(
       [...d.querySelectorAll('.period-choice .period-btn')].map(
         b => `${b.dataset.period}:${b.getAttribute('aria-pressed')}`,
       ),
       ['week:true', 'month:false', 'year:false', 'max:false'],
     );
-    knopf('#fin-filter [data-kind="sets"]').click();
-    await takt(20);
+    button('#fin-filter [data-kind="sets"]').click();
+    await tick(20);
     assert.deepEqual(
       [...d.querySelectorAll('#fin-filter button')].map(b => b.getAttribute('aria-pressed')),
       ['false', 'true', 'false', 'false'],
     );
-    await reiter(w, 'parts');
+    await switchTab(w, 'parts');
     assert.deepEqual(
       [...d.querySelectorAll('#tab-parts .collection-choice button')].map(b => b.getAttribute('aria-current')),
       [null, 'page', null],
@@ -139,10 +139,10 @@ test('part count: collection and parts tab show the same sum with breakdown', as
     },
   });
   try {
-    await warte(() => text(d.getElementById('bstat-parts')) === '394');
+    await waitFor(() => text(d.getElementById('bstat-parts')) === '394');
     assert.equal(text(d.getElementById('bstat-parts-sub')), '144 aus Sets · 250 einzeln');
-    await reiter(w, 'parts');
-    await warte(() => text(d.getElementById('ps-total')) !== '—');
+    await switchTab(w, 'parts');
+    await waitFor(() => text(d.getElementById('ps-total')) !== '—');
     assert.equal(text(d.getElementById('ps-total')), '394');
     assert.equal(text(d.getElementById('ps-total-sub')), '144 aus Sets · 250 einzeln');
   } finally {
@@ -151,7 +151,7 @@ test('part count: collection and parts tab show the same sum with breakdown', as
 });
 
 test('price on the tile is labeled, condition and date named (de and en)', async () => {
-  for (const [language, kind, condition, gekauft, unbekannt] of [
+  for (const [language, kind, condition, bought, unknownOne] of [
     ['de', 'Kaufpreis', 'Neuware', 'Gekauft', 'Unbekannt'],
     ['en', 'Purchase price', 'New', 'Bought', 'Unknown'],
   ]) {
@@ -160,12 +160,12 @@ test('price on the tile is labeled, condition and date named (de and en)', async
       { language },
     );
     try {
-      await warte(() => d.querySelector('#gallery .sc'));
-      const kachel = d.querySelector('#gallery .sc');
-      assert.equal(text(kachel.querySelector('.price-badge .price-kind')), kind);
-      assert.match(text(kachel.querySelector('.cond-new')), new RegExp(`: ${condition}$`));
-      assert.match(text(kachel.querySelector('.tile-date')), new RegExp(`^${gekauft} `));
-      assert.equal(text(kachel.querySelector('.sname')), unbekannt);
+      await waitFor(() => d.querySelector('#gallery .sc'));
+      const tile = d.querySelector('#gallery .sc');
+      assert.equal(text(tile.querySelector('.price-badge .price-kind')), kind);
+      assert.match(text(tile.querySelector('.cond-new')), new RegExp(`: ${condition}$`));
+      assert.match(text(tile.querySelector('.tile-date')), new RegExp(`^${bought} `));
+      assert.equal(text(tile.querySelector('.sname')), unknownOne);
     } finally {
       w.close();
     }
@@ -181,9 +181,9 @@ test('offline: the chart says “not available” with reason and button instead
     '/v2/finance/portfolio-history': networkPath,
   });
   try {
-    await reiter(w, 'finance');
+    await switchTab(w, 'finance');
     // Reason and button stand once, since UX check 24 (M2) at the top of the chart box; the list below stays empty.
-    await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
+    await waitFor(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
     assert.match(text(d.getElementById('portfolio-chart')), /Keine Verbindung zum Server.*Erneut versuchen/);
     assert.equal(text(d.getElementById('fin-tbl')), '');
     assert.equal(
@@ -209,8 +209,8 @@ test('offline: the key figure cards of the finances drop, the period buttons are
       '/v2/finance/portfolio-history': networkPath,
     });
     try {
-      await reiter(w, 'finance');
-      await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
+      await switchTab(w, 'finance');
+      await waitFor(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
       assert.equal(d.getElementById('fin-sum').hidden, true, 'cards without a number visible');
       assert.equal(text(d.getElementById('portfolio-current')), '—');
       assert.deepEqual(
@@ -226,8 +226,8 @@ test('offline: the key figure cards of the finances drop, the period buttons are
     '/v2/finance/valuation': { $status: 500, success: false, error: 'kaputt', code: 'intern' },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.getElementById('fin-sum').hidden === true);
+    await switchTab(w, 'finance');
+    await waitFor(() => d.getElementById('fin-sum').hidden === true);
     assert.match(text(d.getElementById('portfolio-chart')), /Erneut versuchen/);
   } finally {
     w.close();
@@ -237,14 +237,14 @@ test('offline: the key figure cards of the finances drop, the period buttons are
 test('parts search without results: “No results for …” with a button that clears the search', async () => {
   const { w, d } = await openUi({});
   try {
-    await reiter(w, 'parts');
+    await switchTab(w, 'parts');
     const field = d.getElementById('parts-search');
     field.value = 'xyz';
     field.dispatchEvent(new w.Event('input', { bubbles: true }));
-    await warte(() => /xyz/.test(text(d.querySelector('#tab-parts .empty-state'))), 3000);
+    await waitFor(() => /xyz/.test(text(d.querySelector('#tab-parts .empty-state'))), 3000);
     assert.equal(text(d.querySelector('#tab-parts .empty-state h2')), 'Keine Treffer für „xyz“');
     d.querySelector('#tab-parts .empty-state [data-click="resetFilter"]').click();
-    await warte(() => text(d.querySelector('#tab-parts .empty-state h2')) === 'Noch keine Teile', 3000);
+    await waitFor(() => text(d.querySelector('#tab-parts .empty-state h2')) === 'Noch keine Teile', 3000);
     assert.equal(field.value, '');
   } finally {
     w.close();
@@ -252,7 +252,7 @@ test('parts search without results: “No results for …” with a button that 
 });
 
 test('background jobs: technical error as a sentence, details expandable', async () => {
-  const roh = 'getaddrinfo ENOTFOUND rebrickable.com';
+  const raw = 'getaddrinfo ENOTFOUND rebrickable.com';
   const { w, d } = await openUi({
     '/v2/admin/job-status': { success: true, job: { running: false } },
     '/v2/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
@@ -268,7 +268,7 @@ test('background jobs: technical error as a sentence, details expandable', async
           type: 'instructions',
           status: 'error',
           set_number: '10294-1',
-          error_message: roh,
+          error_message: raw,
           attempts: 3,
           max_attempts: 3,
         },
@@ -276,29 +276,29 @@ test('background jobs: technical error as a sentence, details expandable', async
     },
   });
   try {
-    await reiter(w, 'monitor');
-    await warte(() => d.querySelector('#jobs-card .error-box'), 3000);
-    const kasten = d.querySelector('#jobs-card .error-box');
-    assert.equal(text(kasten.querySelector('summary')), 'Dienst nicht erreichbar — Netz oder Server gestört.');
-    assert.equal(text(kasten.querySelector('code')), roh);
+    await switchTab(w, 'monitor');
+    await waitFor(() => d.querySelector('#jobs-card .error-box'), 3000);
+    const box = d.querySelector('#jobs-card .error-box');
+    assert.equal(text(box.querySelector('summary')), 'Dienst nicht erreichbar — Netz oder Server gestört.');
+    assert.equal(text(box.querySelector('code')), raw);
   } finally {
     w.close();
   }
 });
 
 test('background jobs: a postponed job waits, an aborted one has not failed', async () => {
-  const bis = new Date(Date.now() + 3 * 3600_000).toISOString();
-  const row = (id, mehr) => ({
+  const until = new Date(Date.now() + 3 * 3600_000).toISOString();
+  const row = (id, more) => ({
     id,
     type: 'price_refresh',
     set_number: null,
     attempts: 3,
     max_attempts: 5,
-    due_at: bis,
+    due_at: until,
     scheduled: false,
     waiting: false,
     progress: null,
-    ...mehr,
+    ...more,
   });
   const { w, d } = await openUi({
     '/v2/admin/job-status': { success: true, job: { running: false } },
@@ -317,13 +317,13 @@ test('background jobs: a postponed job waits, an aborted one has not failed', as
     },
   });
   try {
-    await reiter(w, 'monitor');
-    await warte(() => d.querySelectorAll('#jobs-card .mon-single tbody tr').length === 3, 3000);
-    const [wartend, wieder, ab] = [...d.querySelectorAll('#jobs-card .mon-single tbody tr')];
-    assert.equal(wartend.querySelector('.error-box'), null, `shown as an error: ${text(wartend)}`);
-    assert.match(text(wartend), /wartet bis .*\d{1,2}:\d{2}.*BrickLink-Tageskontingent erschöpft/);
-    assert.doesNotMatch(text(wartend), /Versuch/);
-    assert.ok(wieder.querySelector('.error-box'), 'an error before the next attempt stays visible');
+    await switchTab(w, 'monitor');
+    await waitFor(() => d.querySelectorAll('#jobs-card .mon-single tbody tr').length === 3, 3000);
+    const [waiting, again, ab] = [...d.querySelectorAll('#jobs-card .mon-single tbody tr')];
+    assert.equal(waiting.querySelector('.error-box'), null, `shown as an error: ${text(waiting)}`);
+    assert.match(text(waiting), /wartet bis .*\d{1,2}:\d{2}.*BrickLink-Tageskontingent erschöpft/);
+    assert.doesNotMatch(text(waiting), /Versuch/);
+    assert.ok(again.querySelector('.error-box'), 'an error before the next attempt stays visible');
     assert.equal(ab.querySelector('.error-box'), null, `aborted shown as an error: ${text(ab)}`);
     assert.equal(d.querySelector('[data-click="retryJob"]'), null);
   } finally {

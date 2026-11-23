@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const PARTS = {
   '/v2/parts': {
@@ -52,17 +52,17 @@ const PARTS = {
   },
 };
 
-for (const [language, eins, zwei] of [
+for (const [language, one, two] of [
   ['de', '1 Sorte', '2 Sorten'],
   ['en', '1 kind', '2 kinds'],
 ]) {
   test(`${language}: groups of the parts`, async () => {
     const { w, d } = await openUi(PARTS, { language });
     try {
-      await reiter(w, 'parts');
-      await warte(() => d.querySelectorAll('#parts-main .parts-group').length === 2);
-      const zaehler = [...d.querySelectorAll('#parts-main .parts-group .group-sub')].map(e => e.textContent.trim());
-      assert.deepEqual(zaehler, [eins, zwei]);
+      await switchTab(w, 'parts');
+      await waitFor(() => d.querySelectorAll('#parts-main .parts-group').length === 2);
+      const counter = [...d.querySelectorAll('#parts-main .parts-group .group-sub')].map(e => e.textContent.trim());
+      assert.deepEqual(counter, [one, two]);
     } finally {
       w.close();
     }
@@ -88,8 +88,8 @@ test('finances: a position without a price', async () => {
     },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.getElementById('fin-value').textContent.includes('Marktpreis'));
+    await switchTab(w, 'finance');
+    await waitFor(() => d.getElementById('fin-value').textContent.includes('Marktpreis'));
     assert.equal(d.getElementById('fin-value').textContent.trim(), 'Marktpreis fehlt für 1 Position');
   } finally {
     w.close();

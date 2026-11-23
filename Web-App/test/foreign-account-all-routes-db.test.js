@@ -39,26 +39,26 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
 
-const MARKE = `GEHEIM${process.pid}`;
-const VICTIM = `opfer_${MARKE}`,
+const MARK = `GEHEIM${process.pid}`;
+const VICTIM = `opfer_${MARK}`,
   FREMD = `fremd_${process.pid}`,
   PASS = 'Fremd-Passwort-1!';
 const SET = '99181-1',
   SET2 = '99182-1',
   SET3 = '99183-1',
   PART = '3001fk',
-  FARBE = 5,
+  COLOR = 5,
   FIGURE = 'fk0001';
 const VOUCHER = '5045076374450019876';
 const BEFORE_THE_LOGIN =
   /^(POST|GET) \/api\/v2\/auth\/(login|register|forgot-password|reset-password|verify[\w/-]*|resend-verification|qr-login[\w/-]*|passkey\/anmelden[\w/-]*|name-frei|email-frei)$/;
 
 function pdfWith(rows) {
-  return new Promise(fertig => {
+  return new Promise(done => {
     const doc = new PDFDocument({ compress: false });
-    const stuecke = [];
-    doc.on('data', s => stuecke.push(s));
-    doc.on('end', () => fertig(Buffer.concat(stuecke)));
+    const pieces = [];
+    doc.on('data', s => pieces.push(s));
+    doc.on('end', () => done(Buffer.concat(pieces)));
     for (const z of rows) doc.text(z);
     doc.end();
   });
@@ -72,7 +72,7 @@ test('a foreign account sees and changes no data of another via any route', {
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[VICTIM, FREMD]]);
   const hash = await bcrypt.hash(PASS, 4);
-  const anlegen = async n =>
+  const create = async n =>
     (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
@@ -80,16 +80,16 @@ test('a foreign account sees and changes no data of another via any route', {
         [n, `${n}@example.org`, hash],
       )
     ).id;
-  const opfer = await anlegen(VICTIM),
-    fremd = await anlegen(FREMD);
-  for (const k of [opfer, fremd])
+  const victim = await create(VICTIM),
+    fremd = await create(FREMD);
+  for (const k of [victim, fremd])
     await db.run(
       `INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
                   ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`,
       [k],
     );
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[opfer, fremd]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[victim, fremd]]).catch(() => {});
     for (const tab of ['set_catalog', 'set_parts_catalog', 'set_minifigs_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET2, SET3]]).catch(() => {});
     await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [PART]).catch(() => {});
@@ -108,20 +108,20 @@ test('a foreign account sees and changes no data of another via any route', {
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1, $2, 'Rot', 'C91A09')
                 ON CONFLICT DO NOTHING`,
-    [PART, FARBE],
+    [PART, COLOR],
   );
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1, 'Probefigur') ON CONFLICT DO NOTHING`, [
     FIGURE,
   ]);
 
   // ── Server as in server.ts; the session switches between the accounts ──
-  let als = opfer;
+  let as = victim;
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    const name = als === opfer ? VICTIM : FREMD;
+    const name = as === victim ? VICTIM : FREMD;
     req.session = {
-      userId: als,
+      userId: as,
       username: name,
       isAdmin: false,
       regenerate(cb) {
@@ -134,7 +134,7 @@ test('a foreign account sees and changes no data of another via any route', {
         cb?.();
       },
     };
-    req.apiUser = { user_id: als, username: name, is_admin: 0 };
+    req.apiUser = { user_id: as, username: name, is_admin: 0 };
     next();
   });
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
@@ -152,82 +152,82 @@ test('a foreign account sees and changes no data of another via any route', {
   });
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const callFn = async (methode, weg, body, form) => {
-    const init = { method: methode, signal: AbortSignal.timeout(4000) };
+  const callFn = async (method, routePath, body, form) => {
+    const init = { method: method, signal: AbortSignal.timeout(4000) };
     if (form) init.body = form;
     else if (body !== undefined) {
       init.body = JSON.stringify(body);
       init.headers = { 'content-type': 'application/json' };
     }
     try {
-      const r = await fetch(basis + weg, init);
+      const r = await fetch(basis + routePath, init);
       return { status: r.status, text: Buffer.from(await r.arrayBuffer()).toString('latin1') };
     } catch (e) {
       return { status: 0, text: String(e?.name) };
     }
   };
-  const ok = async (methode, weg, body, form) => {
-    const r = await callFn(methode, weg, body, form);
-    assert.equal(r.status, 200, `${methode} ${weg}: ${r.text.slice(0, 300)}`);
+  const ok = async (method, routePath, body, form) => {
+    const r = await callFn(method, routePath, body, form);
+    assert.equal(r.status, 200, `${method} ${routePath}: ${r.text.slice(0, 300)}`);
     return JSON.parse(r.text);
   };
 
   // ── The victim creates via the API what it owns ─────────────────────────
-  const location = (await ok('POST', '/api/v2/storage/locations', { name: `Ort ${MARKE}` })).location.id;
+  const location = (await ok('POST', '/api/v2/storage/locations', { name: `Ort ${MARK}` })).location.id;
   await ok('POST', '/api/v2/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
-  await ok('PUT', `/api/v2/sets/${SET}/storage`, { storage: `Ort ${MARKE}` });
+  await ok('PUT', `/api/v2/sets/${SET}/storage`, { storage: `Ort ${MARK}` });
   await ok('PUT', `/api/v2/sets/${SET}/alert`, { direction: 'below', threshold: 30, condition: 'N' });
-  const setAcq = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND set_number = $2', [opfer, SET]))
+  const setAcq = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND set_number = $2', [victim, SET]))
     .id;
   const pdf = await pdfWith(['Bauanleitung']);
   const f = new FormData();
   f.append('file', new Blob([pdf], { type: 'application/pdf' }), 'anleitung.pdf');
-  f.append('description', `Anleitung ${MARKE}`);
+  f.append('description', `Anleitung ${MARK}`);
   await ok('POST', `/api/v2/sets/${SET}/instructions/upload`, undefined, f);
-  const anleitung = (await db.get('SELECT id FROM instructions WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [opfer]))
-    .id;
+  const instruction = (
+    await db.get('SELECT id FROM instructions WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [victim])
+  ).id;
   await ok('POST', '/api/v2/parts', {
     part_number: PART,
-    color_id: FARBE,
+    color_id: COLOR,
     color_name: 'Rot',
     quantity: 3,
     unit_price: 0.2,
     condition: 'N',
   });
-  await ok('PUT', `/api/v2/parts/${PART}/${FARBE}/storage`, { storage: `Kiste ${MARKE}` });
-  const teilAcq = (await db.get('SELECT id FROM part_acquisitions WHERE user_id = $1', [opfer])).id;
+  await ok('PUT', `/api/v2/parts/${PART}/${COLOR}/storage`, { storage: `Kiste ${MARK}` });
+  const partAcq = (await db.get('SELECT id FROM part_acquisitions WHERE user_id = $1', [victim])).id;
   await ok('POST', '/api/v2/minifigs', { fig_number: FIGURE, quantity: 1, unit_price: 4, condition: 'N' });
-  const figAcq = (await db.get('SELECT id FROM minifig_acquisitions WHERE user_id = $1', [opfer])).id;
+  const figAcq = (await db.get('SELECT id FROM minifig_acquisitions WHERE user_id = $1', [victim])).id;
   await ok('POST', '/api/v2/wanted', { set_number: SET2, condition: 'N' });
-  const gutschein = (
-    await ok('POST', '/api/v2/vouchers', { number: VOUCHER, pin: '4711', amount: 50, currency: 'CHF' })
-  ).voucher.id;
+  const voucher = (await ok('POST', '/api/v2/vouchers', { number: VOUCHER, pin: '4711', amount: 50, currency: 'CHF' }))
+    .voucher.id;
   await ok('POST', '/api/v2/sets', { set_number: SET3, quantity: 1, condition: 'N' });
   await ok('DELETE', `/api/v2/sets/${SET3}`);
-  const trash = (await db.get('SELECT id FROM trash WHERE user_id = $1', [opfer])).id;
-  const token = await auth.createToken(opfer, `Gerät ${MARKE}`, true);
+  const trash = (await db.get('SELECT id FROM trash WHERE user_id = $1', [victim])).id;
+  const token = await auth.createToken(victim, `Gerät ${MARK}`, true);
   const nonce = `fremd${process.pid}${Date.now()}`;
   const qr = (
     await db.get(
       `INSERT INTO qr_login_tokens (token, user_id, expires_at, pickup_code, code_hash)
     VALUES ($1, $2, NOW() + INTERVAL '5 minutes', 'abh', 'x') RETURNING id`,
-      [auth.tokenDigest(nonce), opfer],
+      [auth.tokenDigest(nonce), victim],
     )
   ).id;
 
   /** What the victim owns, row by row; afterwards none of it may have changed. */
-  const spalten = await db.all(`SELECT table_name, column_name FROM information_schema.columns
+  const columns = await db.all(`SELECT table_name, column_name FROM information_schema.columns
     WHERE table_schema = current_schema() AND column_name IN ('user_id', 'owner_user_id', 'main_user_id', 'sub_user_id')`);
   const holding = async () => {
-    const aus = { users: await db.all('SELECT * FROM users WHERE id = $1', [opfer]) };
-    for (const { table_name: tab, column_name: sp } of spalten) {
-      const rows = await db.all(`SELECT * FROM "${tab}" WHERE "${sp}" = $1`, [opfer]);
-      aus[`${tab}.${sp}`] = rows.map(z => JSON.stringify(z)).sort();
+    const out = { users: await db.all('SELECT * FROM users WHERE id = $1', [victim]) };
+    for (const { table_name: tab, column_name: sp } of columns) {
+      const rows = await db.all(`SELECT * FROM "${tab}" WHERE "${sp}" = $1`, [victim]);
+      out[`${tab}.${sp}`] = rows.map(z => JSON.stringify(z)).sort();
     }
-    return aus;
+    return out;
   };
-  const vorher = await holding();
-  const rowsOfVictim = Object.values(vorher).reduce((n, z) => n + z.length, 0);
+  const prior = await holding();
+  const rowsOfVictim = Object.values(prior).reduce((n, z) => n + z.length, 0);
   assert.ok(rowsOfVictim >= 15, `only ${rowsOfVictim} rows of the victim created`);
 
   // ── Values of the victim for path, query and body ───────────────────────
@@ -237,42 +237,42 @@ test('a foreign account sees and changes no data of another via any route', {
       : p.includes('/trash/')
         ? trash
         : p.includes('/vouchers/')
-          ? gutschein
+          ? voucher
           : p.includes('/qr-pairing/')
             ? qr
             : p.includes('/parts/')
-              ? teilAcq
+              ? partAcq
               : p.includes('/minifigs/')
                 ? figAcq
-                : opfer;
-  const acqFor = p => (p.startsWith('/api/v2/parts') ? teilAcq : p.startsWith('/api/v2/minifigs') ? figAcq : setAcq);
+                : victim;
+  const acqFor = p => (p.startsWith('/api/v2/parts') ? partAcq : p.startsWith('/api/v2/minifigs') ? figAcq : setAcq);
   const pathValue = (p, n) =>
     ({
       setNumber: p.includes('/wanted/') ? SET2 : SET,
       sn: SET,
       partNumber: PART,
-      colorId: FARBE,
+      colorId: COLOR,
       figNumber: FIGURE,
       id: idFor(p),
       acqId: acqFor(p),
-      instrId: anleitung,
+      instrId: instruction,
       tokenId: auth.tokenDigest(token).slice(0, 16),
       jobId: '1700000000000-abcd',
       condition: 'N',
       type: 'instructions',
       barcode: '5702016616354',
     })[n];
-  /** `konto`: the victim (foreign account ID in the field) or the own one — then the request gets past the
+  /** `account`: the victim (foreign account ID in the field) or the own one — then the request gets past the
    * account check and hits the row's ownership check with the victim's identifiers. */
-  const fieldValue = (k, konto) =>
+  const fieldValue = (k, account) =>
     ({
-      accounts: String(konto),
-      owner: String(konto),
-      owner_user_id: konto,
-      from_user_id: konto,
-      sub_user_id: konto,
-      main_user_id: konto,
-      to_user_id: konto,
+      accounts: String(account),
+      owner: String(account),
+      owner_user_id: account,
+      from_user_id: account,
+      sub_user_id: account,
+      main_user_id: account,
+      to_user_id: account,
       new_owner: fremd,
       id: location,
       acquisition_ids: [setAcq],
@@ -280,9 +280,9 @@ test('a foreign account sees and changes no data of another via any route', {
       sets: [SET],
       set_numbers: [SET],
       part_number: PART,
-      color_id: FARBE,
+      color_id: COLOR,
       fig_number: FIGURE,
-      parts: [{ part_number: PART, color_id: FARBE }],
+      parts: [{ part_number: PART, color_id: COLOR }],
       condition: 'N',
       storage: 'Lager des Fremden',
       name: 'Name des Fremden',
@@ -299,54 +299,53 @@ test('a foreign account sees and changes no data of another via any route', {
       date: '2024-01-01',
       acquired_at: '2024-01-01',
     })[k];
-  const queryValue = (k, konto) => {
-    const v = fieldValue(k, konto);
+  const queryValue = (k, account) => {
+    const v = fieldValue(k, account);
     return v === undefined ? undefined : Array.isArray(v) ? v.join(',') : String(v);
   };
 
   // ── The foreign account calls every route with these values ─────────────
-  als = fremd;
+  as = fremd;
   const leaks = [],
-    gerufen = [];
-  for (const [schluessel, route] of Object.entries(CONTRACT)) {
-    if (BEFORE_THE_LOGIN.test(schluessel) || schluessel === 'DELETE /api/v2/auth/account') continue;
-    const [methode, muster] = schluessel.split(' ');
-    const weg = muster.replace(/:(\w+)/g, (_, n) => encodeURIComponent(String(pathValue(muster, n) ?? 'x')));
-    const felder = route.query?.shape ? Object.keys(route.query.shape) : [];
-    for (const konto of [opfer, fremd]) {
-      const w = k => fieldValue(k, konto);
-      const abfrage = new URLSearchParams(
-        felder.map(k => [k, queryValue(k, konto)]).filter(([, v]) => v !== undefined),
+    called = [];
+  for (const [key, route] of Object.entries(CONTRACT)) {
+    if (BEFORE_THE_LOGIN.test(key) || key === 'DELETE /api/v2/auth/account') continue;
+    const [method, pattern] = key.split(' ');
+    const routePath = pattern.replace(/:(\w+)/g, (_, n) => encodeURIComponent(String(pathValue(pattern, n) ?? 'x')));
+    const fields = route.query?.shape ? Object.keys(route.query.shape) : [];
+    for (const account of [victim, fremd]) {
+      const w = k => fieldValue(k, account);
+      const query = new URLSearchParams(
+        fields.map(k => [k, queryValue(k, account)]).filter(([, v]) => v !== undefined),
       ).toString();
       const bodies =
-        methode === 'GET' || route.form ? [undefined] : [example(route.input, w, false), example(route.input, w, true)];
-      for (const rumpf of bodies)
-        for (const q of abfrage ? [abfrage, ''] : ['']) {
-          const r = await callFn(methode, weg + (q ? '?' + q : ''), rumpf);
-          gerufen.push(`${schluessel} ${r.status}`);
-          for (const geheim of [MARKE, VOUCHER])
-            if (r.text.includes(geheim))
-              leaks.push(`${schluessel}${q ? '?' + q : ''} → ${r.status}: enthält ${geheim}`);
+        method === 'GET' || route.form ? [undefined] : [example(route.input, w, false), example(route.input, w, true)];
+      for (const reqBody of bodies)
+        for (const q of query ? [query, ''] : ['']) {
+          const r = await callFn(method, routePath + (q ? '?' + q : ''), reqBody);
+          called.push(`${key} ${r.status}`);
+          for (const secret of [MARK, VOUCHER])
+            if (r.text.includes(secret)) leaks.push(`${key}${q ? '?' + q : ''} → ${r.status}: enthält ${secret}`);
         }
     }
   }
-  als = opfer;
+  as = victim;
 
   await t.test('every route was called', () => {
-    const routen = new Set(gerufen.map(g => g.split(' ').slice(0, 2).join(' ')));
-    assert.ok(routen.size >= 180, `only ${routen.size} routes called`);
+    const routes = new Set(called.map(g => g.split(' ').slice(0, 2).join(' ')));
+    assert.ok(routes.size >= 180, `only ${routes.size} routes called`);
     // Without a reached check the whole thing proves nothing: a good share must get through the input check.
-    const durch = gerufen.filter(g => !/ (400|0)$/.test(g)).length;
-    assert.ok(durch >= gerufen.length / 2, `only ${durch} of ${gerufen.length} calls got past the input validation`);
+    const via = called.filter(g => !/ (400|0)$/.test(g)).length;
+    assert.ok(via >= called.length / 2, `only ${via} of ${called.length} calls got past the input validation`);
   });
 
   await t.test("no response contains the victim's data", () => assert.deepEqual(leaks, []));
 
   await t.test('no row of the victim changes', async () => {
-    const nachher = await holding();
-    const changed = Object.keys(vorher).filter(k => JSON.stringify(vorher[k]) !== JSON.stringify(nachher[k]));
+    const later = await holding();
+    const changed = Object.keys(prior).filter(k => JSON.stringify(prior[k]) !== JSON.stringify(later[k]));
     assert.deepEqual(
-      changed.map(k => [k, vorher[k].length, nachher[k].length]),
+      changed.map(k => [k, prior[k].length, later[k].length]),
       [],
     );
   });

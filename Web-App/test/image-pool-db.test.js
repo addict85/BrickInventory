@@ -19,16 +19,16 @@ const db = testData();
 test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
-  const IM = _req('src/images/imageMisses.js');
+  const MISSES = _req('src/images/imageMisses.js');
   const IQ = _req('src/images/imageDemandRun.js');
-  await IM.setUpImageGaps();
+  await MISSES.setUpImageGaps();
   await IQ.setUpImageDemand();
   const PREFIX = `PL${process.pid}`;
-  const weg = async () => {
+  const route = async () => {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%']).catch(() => {});
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, [PREFIX + '%']).catch(() => {});
   };
-  await weg();
+  await route();
 
   // Count queries along — that is the quantity that matters.
   let queryList = 0;
@@ -40,27 +40,27 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
 
   try {
     await t.test('60 tiles trigger 0 queries', async () => {
-      const vorher = queryList;
+      const prior = queryList;
       for (let i = 1; i <= 60; i++) {
-        IM.isKnownMissing(`${PREFIX}_k${i}`);
+        MISSES.isKnownMissing(`${PREFIX}_k${i}`);
         IQ.rememberUsed(`https://cdn.rebrickable.com/media/sets/${PREFIX}_${i}.jpg`, `${PREFIX}_${i}`);
       }
       assert.equal(
-        queryList - vorher,
+        queryList - prior,
         0,
-        `${queryList - vorher} queries for 60 tiles. Image requests are the ` +
+        `${queryList - prior} queries for 60 tiles. Image requests are the ` +
           'most frequent operation of the application — one query per image drains the ' +
           'connection pool, and OTHER routes run into the timeout.',
       );
     });
 
     await t.test('writing away is batched', async () => {
-      const vorher = queryList;
+      const prior = queryList;
       await IQ._writeBuffer();
       // One statement for all notes; plus the processor job and its NOTIFY.
       assert.ok(
-        queryList - vorher <= 3,
-        `${queryList - vorher} queries to write away 60 notes — that must be ` +
+        queryList - prior <= 3,
+        `${queryList - prior} queries to write away 60 notes — that must be ` +
           'one statement, otherwise the spot is only moved',
       );
       const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%'])).c;
@@ -68,27 +68,27 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
     });
 
     await t.test('negative results likewise', async () => {
-      for (let i = 1; i <= 40; i++) IM.rememberMissing(`${PREFIX}_m${i}`);
-      const vorher = queryList;
-      await IM._writeBuffer();
-      assert.ok(queryList - vorher <= 2, `${queryList - vorher} queries for 40 misses`);
+      for (let i = 1; i <= 40; i++) MISSES.rememberMissing(`${PREFIX}_m${i}`);
+      const prior = queryList;
+      await MISSES._writeBuffer();
+      assert.ok(queryList - prior <= 2, `${queryList - prior} queries for 40 misses`);
     });
 
     await t.test('after a restart the knowledge is still there', async () => {
       // The reason why it belongs in the database at all:
       // the memory of one process does not help the others.
-      IM._emptyForeground();
-      assert.equal(IM.isKnownMissing(`${PREFIX}_m7`), false, 'Precondition: the memory is empty');
-      await IM._refresh();
+      MISSES._emptyForeground();
+      assert.equal(MISSES.isKnownMissing(`${PREFIX}_m7`), false, 'Precondition: the memory is empty');
+      await MISSES._refresh();
       assert.equal(
-        IM.isKnownMissing(`${PREFIX}_m7`),
+        MISSES.isKnownMissing(`${PREFIX}_m7`),
         true,
         'After reloading from the table the miss must be known again',
       );
     });
   } finally {
     db.pool.query = realQuery;
-    await weg();
+    await route();
     // Do NOT close the pool here: the lock test further below still needs it.
     // It closes as the last DB test.
   }
@@ -119,13 +119,13 @@ test('the browser may remember a 404', () => {
   assert.match(
     px,
     /sendPlaceholder[\s\S]{0,600}Cache-Control', 'private, max-age=3600/,
-    'Die Antwort trägt keinen Cache-Hinweis — der Browser fragt jedes Mal neu',
+    'The response carries no cache header — the browser asks again every time',
   );
   // Both paths must use it: the hit in the marker and the refusal from the CDN.
   assert.match(
     px,
     /isKnownMissing\(cacheKey\)\) return sendPlaceholder\(res\)/,
-    'Der Merker-Treffer antwortet ohne Cache-Hinweis',
+    'The marker hit answers without a cache header',
   );
   assert.match(
     px,
@@ -145,7 +145,7 @@ test('the preview lock occupies NO pool connection', { concurrency: 1 }, async t
     noDb(t, e);
     return;
   }
-  const vorher = db.getPoolStats();
+  const prior = db.getPoolStats();
   const c = await db.ownConnection();
   try {
     const r = await c.query('SELECT pg_try_advisory_lock(918273645) AS ok');
@@ -153,8 +153,8 @@ test('the preview lock occupies NO pool connection', { concurrency: 1 }, async t
     const during = db.getPoolStats();
     assert.equal(
       during.active,
-      vorher.active,
-      `The pool has ${during.active} instead of ${vorher.active} active connections — ` +
+      prior.active,
+      `The pool has ${during.active} instead of ${prior.active} active connections — ` +
         'a lock held for seconds must not occupy any of them',
     );
     await c.query('SELECT pg_advisory_unlock(918273645)');
@@ -191,6 +191,6 @@ test('the session lock is released on the same connection', () => {
   assert.match(fn, /db\.ownConnection\(\)/, 'The lock takes a pool connection again');
   assert.doesNotMatch(fn, /db\.pool\.connect\(\)/, 'Pool connection is back');
   // Taking and releasing stand in the repository and get THIS connection.
-  assert.match(fn, /lock\.attemptsLock\(client,/, 'Nehmen nicht auf dem Client');
-  assert.match(fn, /lock\.giveLockFree\(client,/, 'Freigeben nicht auf dem Client');
+  assert.match(fn, /lock\.attemptsLock\(client,/, 'take is not on the client');
+  assert.match(fn, /lock\.giveLockFree\(client,/, 'release is not on the client');
 });

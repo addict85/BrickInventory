@@ -30,7 +30,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet, record, haltRow } = require('./helpers/inventory');
 const db = testData();
 const { reportAndDeliver, logAndContinue } = _req('src/infra/error.js');
-const { attempts: versuche } = _req('src/infra/result.js');
+const { attempts } = _req('src/infra/result.js');
 const { deleteAcquisition } = _req('src/collection/acquisitions.js');
 
 const NAME = `ersatz_tx_${process.pid}`,
@@ -54,7 +54,7 @@ test('no substitute value in a transaction', { concurrency: 1 }, async t => {
       withCode('22012'),
     );
     await assert.rejects(
-      db.transaction(async tx => versuche('probe', tx.get('SELECT 1/0 AS x'))),
+      db.transaction(async tx => attempts('probe', tx.get('SELECT 1/0 AS x'))),
       withCode('22012'),
     );
   });
@@ -73,11 +73,11 @@ test('no substitute value in a transaction', { concurrency: 1 }, async t => {
   await t.test('behind a savepoint the substitute applies', async () => {
     const r = await db.transaction(async tx => {
       // The savepoint via the transaction's access.
-      const ersatz = await tx.db
+      const spare = await tx.db
         .transaction(inner => inner.get('SELECT 1/0 AS x'))
         .catch(reportAndDeliver('probe', 'ersatz'));
       // The outer transaction still accepts commands afterwards.
-      return [ersatz, (await tx.get('SELECT 2 AS z')).z];
+      return [spare, (await tx.get('SELECT 2 AS z')).z];
     });
     assert.deepEqual(r, ['ersatz', 2]);
   });
@@ -95,9 +95,9 @@ test('no substitute value in a transaction', { concurrency: 1 }, async t => {
     await holdsSet(db, uid, SET, 1);
     await record(db, uid, SET, 2_000_000_000, { am: '2026-01-02T12:00:00Z' });
     await record(db, uid, SET, 2_000_000_000, { am: '2026-01-03T12:00:00Z' });
-    const klein = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND quantity = 1', [uid])).id;
+    const small = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND quantity = 1', [uid])).id;
 
-    await assert.rejects(deleteAcquisition('set', uid, klein, [SET]), (/** @type {any} */ e) => {
+    await assert.rejects(deleteAcquisition('set', uid, small, [SET]), (/** @type {any} */ e) => {
       assert.equal(e.code, '22003', `instead of the cause came ${e.code}: ${e.message}`);
       return true;
     });

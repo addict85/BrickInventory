@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, ANMELDUNG, reiter, sicht, warte, takt } = require('./helpers/ui');
+const { openUi, SIGNED_IN, switchTab, view, waitFor, tick } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 /** @param {Document} d */
@@ -26,7 +26,7 @@ const labels = d =>
 const stats = s => ({
   '/v2/stats': {
     success: true,
-    stats: { ...ANMELDUNG['/v2/stats'].stats, ...s },
+    stats: { ...SIGNED_IN['/v2/stats'].stats, ...s },
   },
 });
 
@@ -35,7 +35,7 @@ test('M1 a set without a parts list: singular, explanation below the bar', async
     stats({ total_sets: 1, total_quantity: 1, total_parts: 0, total_minifigs: 1, total_instructions: 1 }),
   );
   try {
-    await warte(() => text(d.getElementById('bstat-sets')) === '1');
+    await waitFor(() => text(d.getElementById('bstat-sets')) === '1');
     assert.deepEqual(labels(d), ['Set', 'Teile', 'Minifigur', 'Anleitung']);
     assert.equal(text(d.getElementById('bstat-hint')), 'Teileliste für das Set fehlt noch');
     assert.equal(d.querySelector('.bstat-erklaert'), null, 'the metric itself is no longer rebuilt');
@@ -49,7 +49,7 @@ test('M1 several sets with parts: plural, no explanation', async () => {
     stats({ total_sets: 3, total_quantity: 4, total_parts: 120, set_parts: 120, total_minifigs: 2 }),
   );
   try {
-    await warte(() => text(d.getElementById('bstat-sets')) === '4');
+    await waitFor(() => text(d.getElementById('bstat-sets')) === '4');
     assert.deepEqual(labels(d), ['Sets', 'Teile', 'Minifiguren', 'Anleitungen']);
     assert.equal(text(d.getElementById('bstat-hint')), '');
   } finally {
@@ -58,7 +58,7 @@ test('M1 several sets with parts: plural, no explanation', async () => {
 });
 
 test('M2 empty code in the second step: message at the field, no second request', async () => {
-  const { w, d, aufrufe } = await openUi(
+  const { w, d, calls } = await openUi(
     {
       '/v2/auth/login': {
         $status: 401,
@@ -71,12 +71,12 @@ test('M2 empty code in the second step: message at the field, no second request'
     { loggedIn: false },
   );
   try {
-    await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
-    const logins = () => aufrufe.filter(a => a.url.includes('/v2/auth/login')).length;
+    await waitFor(() => typeof d.getElementById('btn-login')?.onclick === 'function');
+    const logins = () => calls.filter(a => a.url.includes('/v2/auth/login')).length;
     d.getElementById('lu').value = 'anna';
     d.getElementById('lp').value = 'richtig-Passwort-1';
     d.getElementById('btn-login').click();
-    await warte(() => d.getElementById('lc-row').style.display === '');
+    await waitFor(() => d.getElementById('lc-row').style.display === '');
     assert.equal(logins(), 1);
     const status = d.getElementById('lc-status');
     assert.equal(status.getAttribute('role'), 'status');
@@ -85,7 +85,7 @@ test('M2 empty code in the second step: message at the field, no second request'
     assert.equal(text(d.getElementById('lerr')), '', 'without a code, no combined message yet');
 
     d.getElementById('btn-login').click();
-    await takt(50);
+    await tick(50);
     assert.equal(logins(), 1, 'an empty code went to the server');
     assert.equal(text(d.getElementById('lc-error')), 'Bitte Code eingeben.');
     assert.equal(d.getElementById('lc').getAttribute('aria-invalid'), 'true');
@@ -97,15 +97,15 @@ test('M2 empty code in the second step: message at the field, no second request'
     lc.dispatchEvent(new w.Event('input', { bubbles: true }));
     assert.equal(text(d.getElementById('lc-error')), '');
     d.getElementById('btn-login').click();
-    await warte(() => logins() === 2);
-    assert.equal(JSON.parse(aufrufe.filter(a => a.url.includes('/v2/auth/login'))[1].body).code, '123456');
+    await waitFor(() => logins() === 2);
+    assert.equal(JSON.parse(calls.filter(a => a.url.includes('/v2/auth/login'))[1].body).code, '123456');
   } finally {
     w.close();
   }
 });
 
 test('M2 first step without a code field: the code is not required', async () => {
-  const { w, d, aufrufe } = await openUi(
+  const { w, d, calls } = await openUi(
     {
       '/v2/auth/login': {
         $status: 401,
@@ -117,12 +117,12 @@ test('M2 first step without a code field: the code is not required', async () =>
     { loggedIn: false },
   );
   try {
-    await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
+    await waitFor(() => typeof d.getElementById('btn-login')?.onclick === 'function');
     d.getElementById('lu').value = 'anna';
     d.getElementById('lp').value = 'wrong';
     d.getElementById('btn-login').click();
-    await warte(() => text(d.getElementById('lerr')));
-    assert.equal(aufrufe.filter(a => a.url.includes('/v2/auth/login')).length, 1);
+    await waitFor(() => text(d.getElementById('lerr')));
+    assert.equal(calls.filter(a => a.url.includes('/v2/auth/login')).length, 1);
     assert.equal(text(d.getElementById('lc-error')), '');
   } finally {
     w.close();
@@ -130,15 +130,15 @@ test('M2 first step without a code field: the code is not required', async () =>
 });
 
 test('N6 change password: length and repetition reported at once', async () => {
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
-    await sicht(w, 'profile');
+    await view(w, 'profile');
     d.getElementById('pw-n').value = 'short';
     d.getElementById('pw-r').value = 'anders';
     d.getElementById('btn-sav-pw').click();
-    await takt(30);
+    await tick(30);
     assert.match(text(d.getElementById('pw-n-error')), /mindestens \d+ Zeichen/);
     assert.equal(text(d.getElementById('pw-r-error')), 'Passwörter stimmen nicht überein');
     assert.equal(d.activeElement?.id, 'pw-n');
@@ -147,12 +147,12 @@ test('N6 change password: length and repetition reported at once', async () => {
       false,
       'confirmation prompt despite an error',
     );
-    assert.equal(aufrufe.filter(a => a.url.endsWith('/v2/auth/change-password')).length, 0);
+    assert.equal(calls.filter(a => a.url.endsWith('/v2/auth/change-password')).length, 0);
 
     // Only the repetition wrong: only there a message, the old one at the first field is gone.
     d.getElementById('pw-n').value = 'lang-genug-Passwort-1';
     d.getElementById('btn-sav-pw').click();
-    await takt(30);
+    await tick(30);
     assert.equal(text(d.getElementById('pw-n-error')), '');
     assert.equal(text(d.getElementById('pw-r-error')), 'Passwörter stimmen nicht überein');
     assert.equal(d.activeElement?.id, 'pw-r');
@@ -198,8 +198,8 @@ test('N7 finances: sum per area below the area, at the bottom only the grand tot
     },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#fin-tbl .dt-sum tfoot'));
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#fin-tbl .dt-sum tfoot'));
     assert.equal(d.querySelectorAll('#fin-tbl .dt-sum tbody tr').length, 0, 'section totals twice');
     assert.match(text(d.querySelector('#fin-tbl .dt-sum tfoot')), /^Gesamt/);
     assert.ok(d.querySelector('[data-fin-kind="sets"] tfoot'), 'total below the sets is missing');
@@ -221,7 +221,7 @@ test('N10 without HTTPS: up front only "unencrypted", the operator hint only wit
     { loggedIn: false, url: 'http://192.168.1.20/' },
   );
   try {
-    await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
+    await waitFor(() => typeof d.getElementById('btn-login')?.onclick === 'function');
     const upfront = d.getElementById('login-without-https');
     assert.equal(upfront.hidden, false);
     assert.equal(text(upfront), 'Verbindung unverschlüsselt: Passwort und Sitzung gehen ungeschützt durchs Netz.');
@@ -229,7 +229,7 @@ test('N10 without HTTPS: up front only "unencrypted", the operator hint only wit
     d.getElementById('lu').value = 'anna';
     d.getElementById('lp').value = 'richtig-Passwort-1';
     d.getElementById('btn-login').click();
-    await warte(() => !d.getElementById('login-hint').hidden);
+    await waitFor(() => !d.getElementById('login-hint').hidden);
     assert.match(text(d.getElementById('login-hint')), /COOKIE_SECURE=0/);
   } finally {
     w.close();

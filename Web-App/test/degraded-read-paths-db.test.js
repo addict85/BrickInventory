@@ -44,15 +44,15 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
     PART,
   ]);
   // The table comes back in the finally, even if an assertion fails.
-  const weg = async (/** @type {string} */ tabelle) => {
-    await db.run(`ALTER TABLE ${tabelle} RENAME TO ${tabelle}_weg`);
-    return () => db.run(`ALTER TABLE IF EXISTS ${tabelle}_weg RENAME TO ${tabelle}`);
+  const route = async (/** @type {string} */ table) => {
+    await db.run(`ALTER TABLE ${table} RENAME TO ${table}_weg`);
+    return () => db.run(`ALTER TABLE IF EXISTS ${table}_weg RENAME TO ${table}`);
   };
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const manualOnes = async () => {
     const r = await fetch(`${base}/api/v2/parts/manual`);
     assert.equal(r.status, 200);
@@ -69,7 +69,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
   });
 
   await t.test('without prices the list says why', async () => {
-    const zurueck = await weg('part_price_cache');
+    const back = await route('part_price_cache');
     try {
       const j = await manualOnes();
       assert.deepEqual(
@@ -80,7 +80,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
       assert.equal(j.parts[0].avg_price, null);
       assert.deepEqual(j.degraded, ['marktpreise']);
     } finally {
-      await zurueck();
+      await back();
     }
   });
 
@@ -90,11 +90,11 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
       '24',
       'Precondition: default for „nicht gesetzt“',
     );
-    const zurueck = await weg('global_settings');
+    const back = await route('global_settings');
     try {
       await assert.rejects(getGlobalSetting('price_cache_ttl', '24'), (/** @type {any} */ e) => e.code === '42P01');
     } finally {
-      await zurueck();
+      await back();
     }
   });
 });

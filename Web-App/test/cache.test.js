@@ -14,11 +14,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { Cache: Zwischenspeicher, Compartments: Faecher } = _req('src/infra/cache.js');
+const { Cache: CacheClass, Compartments: CompartmentsClass } = _req('src/infra/cache.js');
 const { createCatalog } = _req('src/catalog/area.js');
 
 test('the oldest gives way when the store is full', () => {
-  const z = new Zwischenspeicher(2);
+  const z = new CacheClass(2);
   z.set('a', 1);
   z.set('b', 2);
   z.set('c', 3);
@@ -30,7 +30,7 @@ test('the oldest gives way when the store is full', () => {
 
 test('forgotten after the deadline, an own deadline only applies to its entry', t => {
   t.mock.timers.enable({ apis: ['Date'], now: 1_000_000 });
-  const z = new Zwischenspeicher(10, 60_000);
+  const z = new CacheClass(10, 60_000);
   z.set('lang', true);
   z.set('kurz', false, 1_000);
   t.mock.timers.tick(5_000);
@@ -41,16 +41,16 @@ test('forgotten after the deadline, an own deadline only applies to its entry', 
 });
 
 test('a compartment stays, own compartments per factory', () => {
-  const f = new Faecher();
-  const a = f.slot('x', () => new Zwischenspeicher(1));
+  const f = new CompartmentsClass();
+  const a = f.slot('x', () => new CacheClass(1));
   assert.equal(
-    f.slot('x', () => new Zwischenspeicher(1)),
+    f.slot('x', () => new CacheClass(1)),
     a,
   );
   /** @type {any[]} */
   const k = [];
   // When built, the catalog listens for the images (atSetImageLoaded); the build needs nothing more.
-  const abh = /** @type {any} */ ({ db: {}, bilder: { atSetImageLoaded() {} } });
+  const abh = /** @type {any} */ ({ db: {}, images: { atSetImageLoaded() {} } });
   createCatalog(abh, x => k.push(x));
   createCatalog(abh, x => k.push(x));
   const [k1, k2] = k;

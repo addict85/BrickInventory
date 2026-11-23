@@ -11,23 +11,23 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/ui');
+const { openUi, switchTab } = require('./helpers/ui');
 const { buildAndRequire } = require('./helpers/sources');
 
 const { DECLARED_KINDS } = buildAndRequire()('startup/wiring.js');
-const ARTEN = Object.keys(DECLARED_KINDS).sort();
+const KINDS = Object.keys(DECLARED_KINDS).sort();
 
 for (const language of ['de', 'en']) {
   test(`every registered job kind has a name (${language})`, async () => {
-    assert.ok(ARTEN.length > 15 && ARTEN.includes('catalog_followup'), `only ${ARTEN.length} kinds`);
-    const { w, d, warte, ruhig } = await openUi(
+    assert.ok(KINDS.length > 15 && KINDS.includes('catalog_followup'), `only ${KINDS.length} kinds`);
+    const { w, d, waitFor, settle } = await openUi(
       {
         '/v2/admin/job-status': { success: true, job: { running: false } },
         '/v2/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
         '/v2/admin/job-queue': {
           success: true,
           jobs: [],
-          summary: ARTEN.map(kind => ({ type: kind, status: 'pending', count: 1 })),
+          summary: KINDS.map(kind => ({ type: kind, status: 'pending', count: 1 })),
           job_process: { running: true },
           image_demand: 0,
           pauses: [],
@@ -36,13 +36,13 @@ for (const language of ['de', 'en']) {
       { language },
     );
     try {
-      await reiter(w, 'monitor');
-      await ruhig();
-      assert.ok(await warte(() => d.querySelectorAll('.mon-kinds tbody tr').length === ARTEN.length), 'Table');
-      const namen = [...d.querySelectorAll('.mon-kinds tbody tr')].map(z => z.cells[0].textContent.trim());
-      const roh = namen.filter(n => /^[a-z_.]+$/.test(n));
-      assert.deepEqual(roh, [], `without names: ${roh.join(', ')}`);
-      assert.equal(new Set(namen).size, ARTEN.length, `duplicate names: ${namen.join(' | ')}`);
+      await switchTab(w, 'monitor');
+      await settle();
+      assert.ok(await waitFor(() => d.querySelectorAll('.mon-kinds tbody tr').length === KINDS.length), 'Table');
+      const names = [...d.querySelectorAll('.mon-kinds tbody tr')].map(z => z.cells[0].textContent.trim());
+      const raw = names.filter(n => /^[a-z_.]+$/.test(n));
+      assert.deepEqual(raw, [], `without names: ${raw.join(', ')}`);
+      assert.equal(new Set(names).size, KINDS.length, `duplicate names: ${names.join(' | ')}`);
     } finally {
       w.close();
     }

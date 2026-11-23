@@ -15,10 +15,10 @@ const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 const { config, readConfigNew, setConfig } = _req('src/infra/config.js');
 
-const vorher = process.env.PORT;
+const prior = process.env.PORT;
 test.after(() => {
-  if (vorher === undefined) delete process.env.PORT;
-  else process.env.PORT = vorher;
+  if (prior === undefined) delete process.env.PORT;
+  else process.env.PORT = prior;
   readConfigNew();
 });
 

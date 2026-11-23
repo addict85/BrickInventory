@@ -19,12 +19,12 @@ const ROOT = path.join(__dirname, '..');
  * and which values their keys carry.
  */
 function readService(yaml, name) {
-  const zeilen = yaml.split('\n');
-  const start = zeilen.findIndex(l => new RegExp(`^  ${name}:\\s*$`).test(l));
+  const lines = yaml.split('\n');
+  const start = lines.findIndex(l => new RegExp(`^  ${name}:\\s*$`).test(l));
   if (start < 0) return null;
   const block = [];
-  for (let i = start + 1; i < zeilen.length; i++) {
-    const l = zeilen[i];
+  for (let i = start + 1; i < lines.length; i++) {
+    const l = lines[i];
     if (/^\s*$/.test(l) || /^\s*#/.test(l)) continue;
     if (/^ {2}\S/.test(l) || /^\S/.test(l)) break; // next service / next section
     block.push(l);
@@ -41,14 +41,14 @@ const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 //   A  cap_drop removed from the service app → red: “app: cap_drop: [ALL] missing”
 //   B  in the entrypoint a target /app/cache added to mkdir → red: “the
 //      entrypoint writes outside the writable places”
-const liste = (block, schluessel) =>
-  (block.match(new RegExp(`^\\s*${schluessel}:\\s*\\[([^\\]]*)\\]`, 'm'))?.[1] ?? '')
+const list = (block, key) =>
+  (block.match(new RegExp(`^\\s*${key}:\\s*\\[([^\\]]*)\\]`, 'm'))?.[1] ?? '')
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
 
 test('no service gains privileges, each has only the necessary capabilities', () => {
-  const erwartet = {
+  const expected = {
     postgres: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID'],
     app: [],
     jobs: [],
@@ -58,18 +58,22 @@ test('no service gains privileges, each has only the necessary capabilities', ()
     caddy: [],
     'caddy-rechte': ['CHOWN', 'DAC_OVERRIDE'],
   };
-  for (const [serviceFn, caps] of Object.entries(erwartet)) {
+  for (const [serviceFn, caps] of Object.entries(expected)) {
     const block = readService(compose, serviceFn);
     assert.match(block, /^\s*-\s*no-new-privileges:true\s*$/m, `${serviceFn}: no-new-privileges is missing`);
-    assert.deepEqual(liste(block, 'cap_drop'), ['ALL'], `${serviceFn}: cap_drop: [ALL] is missing`);
-    assert.deepEqual(liste(block, 'cap_add').sort(), caps, `${serviceFn}: unerwartete Capabilities`);
+    assert.deepEqual(list(block, 'cap_drop'), ['ALL'], `${serviceFn}: cap_drop: [ALL] is missing`);
+    assert.deepEqual(list(block, 'cap_add').sort(), caps, `${serviceFn}: unerwartete Capabilities`);
   }
 });
 
 test('the app only writes to ./data and /tmp — daten-rechte too', () => {
   const block = readService(compose, 'app');
   assert.match(block, /^\s*read_only:\s*true\s*$/m, 'app: read_only is missing');
-  assert.match(block, /^\s*tmpfs:\s*\n\s*-\s*\/tmp:rw,noexec,nosuid,nodev,size=\d+m\s*$/m, 'app: /tmp als tmpfs fehlt');
+  assert.match(
+    block,
+    /^\s*tmpfs:\s*\n\s*-\s*\/tmp:rw,noexec,nosuid,nodev,size=\d+m\s*$/m,
+    'app: /tmp as tmpfs is missing',
+  );
   assert.match(block, /^\s*-\s*\.\/data:\/app\/data\s*$/m, 'app: ./data is not mounted at /app/data');
 
   const ep = fs
@@ -79,11 +83,11 @@ test('the app only writes to ./data and /tmp — daten-rechte too', () => {
     .join('\n');
   // What the entrypoint creates or writes: the mkdir targets and the marker.
   const mkdir = ep.slice(ep.indexOf('mkdir -p'), ep.indexOf('\n\n', ep.indexOf('mkdir -p')));
-  const ziele = [...mkdir.matchAll(/\/\S+/g)].map(m => m[0]);
-  ziele.push(ep.match(/^MARKE=(\S+)/m)?.[1]);
-  assert.ok(ziele.length >= 5 && ziele.every(Boolean), `Targets not found: ${ziele}`);
+  const targets = [...mkdir.matchAll(/\/\S+/g)].map(m => m[0]);
+  targets.push(ep.match(/^MARKE=(\S+)/m)?.[1]);
+  assert.ok(targets.length >= 5 && targets.every(Boolean), `Targets not found: ${targets}`);
   assert.deepEqual(
-    ziele.filter(z => !z.startsWith('/app/data')),
+    targets.filter(z => !z.startsWith('/app/data')),
     [],
     'daten-rechte writes outside the writable places',
   );
@@ -93,25 +97,25 @@ test('the app only writes to ./data and /tmp — daten-rechte too', () => {
   // → red “daten-rechte does not create what the server needs”.
   const location = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'daten-rechte-'));
   try {
-    const daten = path.join(location, 'data'),
+    const data = path.join(location, 'data'),
       bin = path.join(location, 'bin');
-    fs.mkdirSync(daten);
+    fs.mkdirSync(data);
     fs.mkdirSync(bin);
     fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 4242\n', { mode: 0o755 });
     fs.writeFileSync(path.join(bin, 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
     fs.writeFileSync(path.join(bin, 'chown'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
-    const r = require('node:child_process').spawnSync('sh', ['-c', ep.replaceAll('/app/data', daten)], {
+    const r = require('node:child_process').spawnSync('sh', ['-c', ep.replaceAll('/app/data', data)], {
       encoding: 'utf8',
       env: { PATH: `${bin}:/usr/bin:/bin`, BRICKINV_CHOWN: 'always' },
     });
     assert.equal(r.status, 0, r.stderr);
-    const created = fs.readdirSync(daten, { recursive: true }).sort();
+    const created = fs.readdirSync(data, { recursive: true }).sort();
     assert.deepEqual(
       created,
       ['.eigentuemer', 'images', 'images/minifigs', 'images/parts', 'images/sets', 'instructions', 'uploads'],
       'daten-rechte does not create what the server needs',
     );
-    assert.equal(fs.readFileSync(path.join(daten, '.eigentuemer'), 'utf8'), '4242');
+    assert.equal(fs.readFileSync(path.join(data, '.eigentuemer'), 'utf8'), '4242');
   } finally {
     fs.rmSync(location, { recursive: true, force: true });
   }
@@ -145,20 +149,20 @@ test('root sets up ./data only in the service daten-rechte, app and jobs run as 
     return;
   }
   const { services: d } = JSON.parse(r.stdout);
-  const rechte = d['daten-rechte'];
-  assert.ok(rechte, 'Service daten-rechte is missing');
-  assert.equal(rechte.user, 'root');
-  assert.equal(rechte.network_mode, 'none', 'daten-rechte needs no network');
-  assert.equal(rechte.read_only, true);
-  assert.deepEqual(rechte.entrypoint, ['sh', '/app/data-permissions.sh']);
+  const rights = d['daten-rechte'];
+  assert.ok(rights, 'Service daten-rechte is missing');
+  assert.equal(rights.user, 'root');
+  assert.equal(rights.network_mode, 'none', 'daten-rechte needs no network');
+  assert.equal(rights.read_only, true);
+  assert.deepEqual(rights.entrypoint, ['sh', '/app/data-permissions.sh']);
   // Only ./data: a symlink of the service must lead root to nothing else.
   assert.deepEqual(
-    (rechte.volumes || []).map(v => `${path.relative(ROOT, v.source)}:${v.target}`),
+    (rights.volumes || []).map(v => `${path.relative(ROOT, v.source)}:${v.target}`),
     ['data:/app/data'],
     'daten-rechte sees more than ./data',
   );
-  assert.equal(rechte.secrets, undefined, 'daten-rechte sees more than ./data');
-  assert.equal(rechte.image, d.app.image, 'data-permissions.sh comes from the app image');
+  assert.equal(rights.secrets, undefined, 'daten-rechte sees more than ./data');
+  assert.equal(rights.image, d.app.image, 'data-permissions.sh comes from the app image');
   for (const n of ['app', 'jobs']) {
     assert.equal(d[n].user, 'brickinv', `${n} runs as root`);
     assert.equal(
@@ -174,13 +178,13 @@ test('root sets up ./data only in the service daten-rechte, app and jobs run as 
 test('the data key lies outside of ./data for app and jobs', () => {
   for (const serviceFn of ['app', 'jobs']) {
     const block = readService(compose, serviceFn);
-    const datei = block.match(/^\s*DATA_KEY_FILE:\s*(\S+)\s*$/m)?.[1];
-    assert.ok(datei, `${serviceFn}: DATA_KEY_FILE is missing`);
-    const ordner = [...block.matchAll(/^\s*-\s*(\.\/[^:\s]+):(\/[^:\s]+)(:ro)?\s*$/gm)].find(m =>
-      datei.startsWith(m[2] + '/'),
+    const file = block.match(/^\s*DATA_KEY_FILE:\s*(\S+)\s*$/m)?.[1];
+    assert.ok(file, `${serviceFn}: DATA_KEY_FILE is missing`);
+    const dir = [...block.matchAll(/^\s*-\s*(\.\/[^:\s]+):(\/[^:\s]+)(:ro)?\s*$/gm)].find(m =>
+      file.startsWith(m[2] + '/'),
     );
-    assert.ok(ordner, `${serviceFn}: ${datei} is not in any mounted folder`);
-    assert.notEqual(ordner[1], './data', `${serviceFn}: the key is in ./data again`);
+    assert.ok(dir, `${serviceFn}: ${file} is not in any mounted folder`);
+    assert.notEqual(dir[1], './data', `${serviceFn}: the key is in ./data again`);
   }
 });
 
@@ -203,13 +207,13 @@ test('TRUST_PROXY trusts exactly Caddy, the network has a fixed subnet', () => {
   );
   const { proxyTrust } = require('./helpers/sources').buildAndRequire()('src/infra/proxyTrust.js');
   assert.deepEqual(proxyTrust(address), ['172.28.73.10'], 'exactly Caddy is trusted, not a whole network');
-  const netz = compose.slice(compose.indexOf('\nnetworks:'));
-  assert.match(netz, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net has no fixed subnet');
+  const net = compose.slice(compose.indexOf('\nnetworks:'));
+  assert.match(net, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net has no fixed subnet');
   // The DOCKER-USER rule in UPGRADE.md (section 53) names exactly this network.
   const upgrade = fs.readFileSync(path.join(ROOT, 'UPGRADE.md'), 'utf8');
-  const regel = upgrade.slice(upgrade.indexOf('## 53.'));
-  assert.match(regel, /^N=172\.28\.73\.0\/24 /m, 'the LAN block in UPGRADE.md names a different network');
-  assert.match(regel, /iptables -I DOCKER-USER -s "\$N" -j BRICK-LAN/);
+  const rule = upgrade.slice(upgrade.indexOf('## 53.'));
+  assert.match(rule, /^N=172\.28\.73\.0\/24 /m, 'the LAN block in UPGRADE.md names a different network');
+  assert.match(rule, /iptables -I DOCKER-USER -s "\$N" -j BRICK-LAN/);
 });
 
 test('the app is only reachable via Caddy', () => {
@@ -239,9 +243,9 @@ test('the app is only reachable via Caddy', () => {
 // the dependency on caddy-rechte deleted → red “Caddy does not wait …”.
 test('Caddy runs without root, caddy-rechte hands it its folders', () => {
   const caddy = readService(compose, 'caddy');
-  const rechte = readService(compose, 'caddy-rechte');
-  const kennung = caddy.match(/^\s*user:\s*"?(\d+):(\d+)"?\s*$/m);
-  assert.ok(kennung && kennung[1] !== '0' && kennung[2] !== '0', 'Caddy runs as root');
+  const rights = readService(compose, 'caddy-rechte');
+  const tokenId = caddy.match(/^\s*user:\s*"?(\d+):(\d+)"?\s*$/m);
+  assert.ok(tokenId && tokenId[1] !== '0' && tokenId[2] !== '0', 'Caddy runs as root');
   assert.match(
     caddy,
     /^\s*sysctls:\s*\n\s*net\.ipv4\.ip_unprivileged_port_start:\s*0\s*$/m,
@@ -253,36 +257,39 @@ test('Caddy runs without root, caddy-rechte hands it its folders', () => {
     'Caddy does not wait for caddy-rechte',
   );
 
-  assert.match(rechte, /^\s*network_mode:\s*none\s*$/m, 'caddy-rechte needs no network');
-  assert.match(rechte, /^\s*read_only:\s*true\s*$/m);
-  const ziel = `${kennung[1]}:${kennung[2]}`;
-  const chown = [...rechte.matchAll(/chown (?:-R )?(\d+:\d+) ([^;\n]+)/g)];
-  assert.ok(chown.length && chown.every(m => m[1] === ziel), `caddy-rechte hands over to a different ID than ${ziel}`);
+  assert.match(rights, /^\s*network_mode:\s*none\s*$/m, 'caddy-rechte needs no network');
+  assert.match(rights, /^\s*read_only:\s*true\s*$/m);
+  const target = `${tokenId[1]}:${tokenId[2]}`;
+  const chown = [...rights.matchAll(/chown (?:-R )?(\d+:\d+) ([^;\n]+)/g)];
+  assert.ok(
+    chown.length && chown.every(m => m[1] === target),
+    `caddy-rechte hands over to a different ID than ${target}`,
+  );
   const passed = chown.flatMap(m => m[2].trim().split(/\s+/));
   // Every folder Caddy mounts (except the Caddyfile) is mounted there and belongs to it afterwards.
   const mount = block => [...block.matchAll(/^\s*-\s*([^\s:]+):(\/[^:\s]+)(:ro)?\s*$/gm)].map(m => `${m[1]}:${m[2]}`);
-  const ordner = mount(caddy).filter(e => !e.endsWith(':/etc/caddy/Caddyfile'));
-  assert.ok(ordner.length >= 4, `Caddy’s folder not found: ${ordner}`);
-  const fehlt = ordner.filter(e => !mount(rechte).includes(e) || !passed.some(u => e.endsWith(':' + u)));
-  assert.deepEqual(fehlt, [], 'caddy-rechte did not hand over these places');
+  const dir = mount(caddy).filter(e => !e.endsWith(':/etc/caddy/Caddyfile'));
+  assert.ok(dir.length >= 4, `Caddy’s folder not found: ${dir}`);
+  const missing = dir.filter(e => !mount(rights).includes(e) || !passed.some(u => e.endsWith(':' + u)));
+  assert.deepEqual(missing, [], 'caddy-rechte did not hand over these places');
 });
 
 test('Caddy: issuer from the start script, own request identifier, port 80 only redirects', () => {
-  const datei = fs
+  const file = fs
     .readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
     .split('\n')
     .filter(z => !/^\s*#/.test(z))
     .join('\n');
   // Without default: if BRICK_TLS_AUSSTELLER is missing, the Caddyfile is invalid (ca-eigene-wurzel checks that with Caddy).
   assert.match(
-    datei,
+    file,
     /issuer \{\$BRICK_TLS_AUSSTELLER\} \{\s*\{\$BRICK_TLS_OPTIONEN\}\s*\}/,
     'the issuer has a default',
   );
-  assert.match(datei, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
+  assert.match(file, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
   // /ca.crt also only over HTTPS (routes/certificate.ts says 403 over HTTP, tls-wurzel-db).
-  assert.match(datei, /http:\/\/ \{\s*redir \{\$BRICK_BASE_URL\}\{uri\} 308\s*\}/, 'Port 80 does not only redirect');
-  assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
+  assert.match(file, /http:\/\/ \{\s*redir \{\$BRICK_BASE_URL\}\{uri\} 308\s*\}/, 'Port 80 does not only redirect');
+  assert.match(file, /default_sni \{\$BRICK_HOST\}/);
 });
 
 test('no service has a substitute database password', () => {
@@ -302,23 +309,23 @@ test('no service has a substitute database password', () => {
 // runtime service knows the password of the migration role”. (15.11.2026) app again with
 // db_system_password → red “app knows more than the web system role”; for db-rolle
 // DB_SYSTEM_WEB_PASSWORD_FILE deleted → red “db-rolle creates the role system_web …”.
-const geheimnisse = block =>
+const secretsOf = block =>
   (block.match(/^\s*secrets:\s*\[([^\]]*)\]/m)?.[1] ?? '')
     .split(',')
     .map(x => x.trim())
     .filter(Boolean)
     .sort();
 test('only postgres and db-rolle know the superuser, only migration the migration role, app and jobs the runtime role', () => {
-  const dienste = ['postgres', 'db-rolle', 'app', 'jobs'];
-  const withSuperuser = dienste.filter(d => geheimnisse(readService(compose, d)).includes('db_password'));
+  const services = ['postgres', 'db-rolle', 'app', 'jobs'];
+  const withSuperuser = services.filter(d => secretsOf(readService(compose, d)).includes('db_password'));
   assert.deepEqual(withSuperuser, ['postgres', 'db-rolle']);
   assert.deepEqual(
-    geheimnisse(readService(compose, 'app')),
+    secretsOf(readService(compose, 'app')),
     ['db_app_password', 'db_system_web_password', 'session_secret'],
     'app knows more than the web system role',
   );
   assert.deepEqual(
-    geheimnisse(readService(compose, 'jobs')),
+    secretsOf(readService(compose, 'jobs')),
     ['db_app_password', 'db_system_password'],
     'jobs knows the superuser password',
   );
@@ -330,20 +337,20 @@ test('only postgres and db-rolle know the superuser, only migration the migratio
       /^\s*PGPASSWORD_FILE:\s*\/run\/secrets\/db_app_password\s*$/m,
       `${d}: PGPASSWORD_FILE not from db_app_password`,
     );
-    const rolle = d === 'app' ? 'system_web' : 'system';
+    const role = d === 'app' ? 'system_web' : 'system';
     assert.match(
       block,
-      new RegExp(`^\\s*PGSYSTEM_USER:\\s*brickinventory_${rolle}\\s*$`, 'm'),
+      new RegExp(`^\\s*PGSYSTEM_USER:\\s*brickinventory_${role}\\s*$`, 'm'),
       `${d} without a system role`,
     );
-    assert.match(block, new RegExp(`^\\s*PGSYSTEM_PASSWORD_FILE:\\s*/run/secrets/db_${rolle}_password\\s*$`, 'm'));
+    assert.match(block, new RegExp(`^\\s*PGSYSTEM_PASSWORD_FILE:\\s*/run/secrets/db_${role}_password\\s*$`, 'm'));
   }
   for (const d of ['postgres', 'db-rolle'])
-    for (const rolle of ['system', 'system_web'])
+    for (const role of ['system', 'system_web'])
       assert.match(
         readService(compose, d),
-        new RegExp(`^\\s*DB_${rolle.toUpperCase()}_PASSWORD_FILE:\\s*/run/secrets/db_${rolle}_password\\s*$`, 'm'),
-        `${d} creates the role ${rolle} without a password`,
+        new RegExp(`^\\s*DB_${role.toUpperCase()}_PASSWORD_FILE:\\s*/run/secrets/db_${role}_password\\s*$`, 'm'),
+        `${d} creates the role ${role} without a password`,
       );
   assert.match(
     readService(compose, 'db-rolle'),
@@ -360,22 +367,16 @@ test('only postgres and db-rolle know the superuser, only migration the migratio
   assert.equal(image('db-rolle'), image('postgres'), 'db-rolle uses a different Postgres image');
 
   // Only the migration service knows the migration role (owner); app and jobs only start after it.
-  const withMigration = Object.keys({
-    postgres: 1,
-    'db-rolle': 1,
-    migration: 1,
-    app: 1,
-    jobs: 1,
-    schluessel: 1,
-    'daten-rechte': 1,
-  }).filter(d => geheimnisse(readService(compose, d)).includes('db_migration_password'));
+  const withMigration = ['postgres', 'db-rolle', 'migration', 'app', 'jobs', 'schluessel', 'daten-rechte'].filter(d =>
+    secretsOf(readService(compose, d)).includes('db_migration_password'),
+  );
   assert.deepEqual(
     withMigration,
     ['postgres', 'db-rolle', 'migration'],
     'a runtime service knows the password of the migration role',
   );
   const mig = readService(compose, 'migration');
-  assert.deepEqual(geheimnisse(mig), ['db_migration_password']);
+  assert.deepEqual(secretsOf(mig), ['db_migration_password']);
   assert.match(mig, /^\s*PGUSER:\s*brickinventory_migration\s*$/m);
   assert.match(mig, /^\s*PGPASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m);
   assert.match(mig, /^\s*entrypoint: \["node", "dist\/startup\/migrate\.js"\]\s*$/m);
@@ -401,9 +402,9 @@ test('only postgres and db-rolle know the superuser, only migration the migratio
     /^\s*DB_MIGRATION_PASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m,
     'a new database does not get the migration role on creation',
   );
-  const rolle = readService(compose, 'db-rolle');
-  assert.match(rolle, /^\s*entrypoint: \["sh", "\/rolle\/app-role\.sh"\]\s*$/m);
-  assert.match(rolle, /^\s*-\s*\.\/postgres\/app-role\.sh:\/rolle\/app-role\.sh:ro\s*$/m);
+  const role = readService(compose, 'db-rolle');
+  assert.match(role, /^\s*entrypoint: \["sh", "\/rolle\/app-role\.sh"\]\s*$/m);
+  assert.match(role, /^\s*-\s*\.\/postgres\/app-role\.sh:\/rolle\/app-role\.sh:ro\s*$/m);
   assert.match(
     readService(compose, 'postgres'),
     /^\s*-\s*\.\/postgres\/app-role\.sh:\/docker-entrypoint-initdb\.d\/10-app-role\.sh:ro\s*$/m,

@@ -25,7 +25,7 @@ const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 const IQ = _req('src/images/imageDemandRun.js');
-const IM = _req('src/images/imageMisses.js');
+const MISSES = _req('src/images/imageMisses.js');
 
 const enqueue = async sn => {
   await db.run(`DELETE FROM image_wanted WHERE set_number = $1`, [sn]);
@@ -50,11 +50,11 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
   await t.test('404 is remembered, with a reason', async () => {
     const sn = `${P}_404`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
-    IM._emptyForeground();
+    MISSES._emptyForeground();
     responseStatus = 404;
     await enqueue(sn);
     const e = await IQ._workStack();
-    await IM._writeBuffer();
+    await MISSES._writeBuffer();
     assert.equal(e.notLoaded, 1);
     const m = await marker(sn);
     assert.ok(
@@ -69,26 +69,26 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     // Marco's log
     const sn = `${P}_leise`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
-    IM._emptyForeground();
+    MISSES._emptyForeground();
     responseStatus = 404;
     await enqueue(sn);
 
-    const echtErr = console.error,
-      echtWarn = console.warn;
-    const alsError = [],
-      alsWarn = [];
-    console.error = (...a) => alsError.push(a.map(String).join(' '));
-    console.warn = (...a) => alsWarn.push(a.map(String).join(' '));
+    const origErr = console.error,
+      origWarn = console.warn;
+    const asError = [],
+      asWarn = [];
+    console.error = (...a) => asError.push(a.map(String).join(' '));
+    console.warn = (...a) => asWarn.push(a.map(String).join(' '));
     try {
       await IQ._workStack();
     } finally {
-      console.error = echtErr;
-      console.warn = echtWarn;
+      console.error = origErr;
+      console.warn = origWarn;
     }
-    await IM._writeBuffer();
+    await MISSES._writeBuffer();
 
-    const queueErr = alsError.filter(z => z.startsWith('[image-queue]'));
-    const queueWarn = alsWarn.filter(z => z.startsWith('[image-queue]'));
+    const queueErr = asError.filter(z => z.startsWith('[image-queue]'));
+    const queueWarn = asWarn.filter(z => z.startsWith('[image-queue]'));
     assert.deepEqual(queueErr, [], `A pure 404 batch was reported as error: ${queueErr.join(' | ')}`);
     assert.equal(
       queueWarn.length,
@@ -108,29 +108,29 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     // what someone should see.
     const sn = `${P}_laut`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
-    IM._emptyForeground();
+    MISSES._emptyForeground();
     responseStatus = null;
     await enqueue(sn);
 
-    const echtErr = console.error,
-      echtWarn = console.warn;
-    const alsError = [],
-      alsWarn = [];
-    console.error = (...a) => alsError.push(a.map(String).join(' '));
-    console.warn = (...a) => alsWarn.push(a.map(String).join(' '));
+    const origErr = console.error,
+      origWarn = console.warn;
+    const asError = [],
+      asWarn = [];
+    console.error = (...a) => asError.push(a.map(String).join(' '));
+    console.warn = (...a) => asWarn.push(a.map(String).join(' '));
     try {
       await IQ._workStack();
     } finally {
-      console.error = echtErr;
-      console.warn = echtWarn;
+      console.error = origErr;
+      console.warn = origWarn;
     }
 
-    const queueErr = alsError.filter(z => z.startsWith('[image-queue]'));
+    const queueErr = asError.filter(z => z.startsWith('[image-queue]'));
     assert.equal(
       queueErr.length,
       1,
       `A retryable error must be reported as error, got ` +
-        `${queueErr.length} error and ${alsWarn.filter(z => z.startsWith('[image-queue]')).length} warn lines`,
+        `${queueErr.length} error and ${asWarn.filter(z => z.startsWith('[image-queue]')).length} warn lines`,
     );
     assert.match(
       queueErr[0],
@@ -147,11 +147,11 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     // breaks off, the field stays empty.
     const sn = `${P}_timeout`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
-    IM._emptyForeground();
+    MISSES._emptyForeground();
     responseStatus = null;
     await enqueue(sn);
     const e = await IQ._workStack();
-    await IM._writeBuffer();
+    await MISSES._writeBuffer();
     assert.equal(e.notLoaded, 1, 'The failure must still be counted');
     assert.equal(
       await marker(sn),
@@ -168,9 +168,9 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     // both components write into THE SAME table but interpret it differently
     // was the actual bug. The rule is held together here.
     const fs = require('node:fs');
-    const { ohneKommentare } = require('./helpers/sources');
-    const proxy = ohneKommentare(require('./helpers/sources').proxyThumbSource());
-    const job = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/images/imageDemandRun.ts'), 'utf8'));
+    const { withoutComments } = require('./helpers/sources');
+    const proxy = withoutComments(require('./helpers/sources').proxyThumbSource());
+    const job = withoutComments(fs.readFileSync(path.join(ROOT, 'src/images/imageDemandRun.ts'), 'utf8'));
     assert.match(
       proxy,
       /status === 404[\s\S]{0,200}rememberMissing/,
@@ -206,19 +206,19 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
   await emptyQueue(db);
 
   const P = `VG${process.pid}`;
-  const NUTZER = `vg-${process.pid}`;
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  const USER = `vg-${process.pid}`;
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
   await adminWithFactor(_req, uid);
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid, isAdmin: 1 }, t });
 
   try {
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);
-    IM._emptyForeground();
-    IM.rememberMissing(`set:${P}_1`, 'HTTP 404 vom CDN');
-    await IM._writeBuffer();
+    MISSES._emptyForeground();
+    MISSES.rememberMissing(`set:${P}_1`, 'HTTP 404 vom CDN');
+    await MISSES._writeBuffer();
 
     await t.test('image-diag names the flag and the reason', async () => {
       const a = await (await fetch(`${base}/api/v2/admin/image-diag/${P}_1`)).json();
@@ -241,15 +241,15 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
       assert.equal(r.removed, 1);
       assert.equal(await marker(`${P}_1`), undefined, 'The entry is still there');
       assert.equal(
-        IM.isKnownMissing(`set:${P}_1`),
+        MISSES.isKnownMissing(`set:${P}_1`),
         false,
         'In memory the image still counts as missing — then ' + 'nothing changes until the next refresh',
       );
     });
 
     await t.test('preview notes stay untouched', async () => {
-      IM.rememberMissing('thumb:/irgendwo/xyz_thumb.jpg', 'Vorschau konnte nicht erzeugt werden');
-      await IM._writeBuffer();
+      MISSES.rememberMissing('thumb:/irgendwo/xyz_thumb.jpg', 'Vorschau konnte nicht erzeugt werden');
+      await MISSES._writeBuffer();
       await (
         await fetch(`${base}/api/v2/admin/forget-image-misses`, {
           method: 'POST',
@@ -267,7 +267,7 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
     });
   } finally {
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']).catch(() => {});
-    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

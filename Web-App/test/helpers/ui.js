@@ -15,7 +15,7 @@ placeBundleSafe();
 const BUNDLE_PATH = process.env.TEST_BUNDLE || BUNDLE_FILE;
 const BUNDLE = fs.readFileSync(BUNDLE_PATH, 'utf8');
 
-const ANMELDUNG = {
+const SIGNED_IN = {
   '/v2/startup-status': { ready: true, progress: 0, total: 0, step: null, sub: null },
   '/v2/auth/me': {
     success: true,
@@ -141,7 +141,7 @@ const ANMELDUNG = {
 };
 
 const SIGNED_OUT = {
-  '/v2/startup-status': ANMELDUNG['/v2/startup-status'],
+  '/v2/startup-status': SIGNED_IN['/v2/startup-status'],
   '/v2/auth/me': { success: true, loggedIn: false },
 };
 
@@ -153,7 +153,7 @@ process.on('unhandledRejection', e => {
 });
 
 let _contract;
-const vertrag = () => {
+const contract = () => {
   if (!_contract) {
     require('./sources').buildDist();
     _contract = {
@@ -169,73 +169,73 @@ const vertrag = () => {
  * completed by the route's schema (contract-fill.js); a wrong type throws. A deliberately broken response carries
  * `$contractViolating: '<reason>'` and goes out unchanged.
  */
-function checkResponse(methode, url, daten) {
-  if (!daten || typeof daten !== 'object' || daten === UNASSIGNED || daten.$contractViolating) return daten;
+function checkResponse(method, url, data) {
+  if (!data || typeof data !== 'object' || data === UNASSIGNED || data.$contractViolating) return data;
   const path =
     '/api' +
     String(url)
       .replace(/^https?:\/\/[^/]+/, '')
       .replace(/^\/api/, '')
       .split('?')[0];
-  const { routeForRequest, Fehler } = vertrag();
-  const status = daten.$status ?? 200;
-  const schema = status >= 400 ? Fehler : routeForRequest(methode.toUpperCase(), path)?.response;
-  if (!schema) return daten;
-  const rumpf = Array.isArray(daten)
-    ? daten
-    : Object.fromEntries(Object.entries(daten).filter(([k]) => !k.startsWith('$')));
+  const { routeForRequest, Fehler: ErrorSchema } = contract();
+  const status = data.$status ?? 200;
+  const schema = status >= 400 ? ErrorSchema : routeForRequest(method.toUpperCase(), path)?.response;
+  if (!schema) return data;
+  const body = Array.isArray(data)
+    ? data
+    : Object.fromEntries(Object.entries(data).filter(([k]) => !k.startsWith('$')));
   // Error responses are not completed: the test states error and code itself.
-  const wert = status >= 400 ? rumpf : complete(schema, JSON.parse(JSON.stringify(rumpf)));
-  const r = schema.safeParse(wert);
+  const value = status >= 400 ? body : complete(schema, JSON.parse(JSON.stringify(body)));
+  const r = schema.safeParse(value);
   if (!r.success) {
     throw new Error(
-      `Test response violates the contract: ${methode} ${path} (${status}): ` +
+      `Test response violates the contract: ${method} ${path} (${status}): ` +
         r.error.issues
           .slice(0, 6)
           .map(i => `${i.path.join('.') || '$'}: ${i.message}`)
           .join(' | '),
     );
   }
-  return Array.isArray(daten) ? wert : { ...wert, $status: daten.$status };
+  return Array.isArray(data) ? value : { ...value, $status: data.$status };
 }
 
 // Paths not predefined: the test does not rely on them, so no contract check.
 const UNASSIGNED = Object.freeze({ success: true });
 
-function responseFor(antworten, url, o = {}) {
+function responseFor(answers, url, o = {}) {
   const path = String(url)
     .replace(/^https?:\/\/[^/]+/, '')
     .replace(/^\/api/, '')
     .split('?')[0];
-  const a = Object.hasOwn(antworten, path) ? antworten[path] : UNASSIGNED;
+  const a = Object.hasOwn(answers, path) ? answers[path] : UNASSIGNED;
   return typeof a === 'function' ? a(url, o) : a;
 }
 
-const takt = (ms = 0) => new Promise(r => setTimeout(r, ms));
+const tick = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
 /** Waits until `bedingung()` is true (at most `ms`). */
-async function warte(bedingung, ms = 3000) {
-  const ende = Date.now() + ms;
-  while (Date.now() < ende) {
-    if (bedingung()) return true;
-    await takt(10);
+async function waitFor(condition, ms = 3000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    if (condition()) return true;
+    await tick(10);
   }
-  return bedingung();
+  return condition();
 }
 
 /**
- * @param {object} [antworten]  path → response (object or function(url))
+ * @param {object} [answers]  path → response (object or function(url))
  * @param {{ loggedIn?: boolean, language?: string, browserLanguage?: string, before?: (w: any) => void, url?: string }} [opt]
  *   url: address of the page (default http://localhost/), e.g. https:// for a page with TLS.
  */
-async function openUi(antworten = {}, opt = {}) {
+async function openUi(answers = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
-  const alle = { ...(opt.loggedIn === false ? SIGNED_OUT : ANMELDUNG), ...antworten };
+  const all = { ...(opt.loggedIn === false ? SIGNED_OUT : SIGNED_IN), ...answers };
   // The account's language wins over the stored one on loading — so set both.
-  if (opt.language && !antworten['/v2/settings/raw'])
-    alle['/v2/settings/raw'] = {
+  if (opt.language && !answers['/v2/settings/raw'])
+    all['/v2/settings/raw'] = {
       success: true,
-      settings: { ...ANMELDUNG['/v2/settings/raw'].settings, language: opt.language },
+      settings: { ...SIGNED_IN['/v2/settings/raw'].settings, language: opt.language },
     };
   const dom = new jsdom.JSDOM(HTML, {
     runScripts: 'outside-only',
@@ -243,7 +243,7 @@ async function openUi(antworten = {}, opt = {}) {
     pretendToBeVisual: true,
   });
   const w = dom.window;
-  const aufrufe = [];
+  const calls = [];
   try {
     w.localStorage.setItem('bim_lang', opt.language || 'de');
   } catch (_) {
@@ -253,28 +253,28 @@ async function openUi(antworten = {}, opt = {}) {
   // `$status` sets the HTTP status, e.g. { $status: 500, success: false }.
   let open = 0;
   w.fetch = async (url, o = {}) => {
-    aufrufe.push({ url: String(url), method: o.method || 'GET', body: o.body, headers: o.headers || {} });
+    calls.push({ url: String(url), method: o.method || 'GET', body: o.body, headers: o.headers || {} });
     open++;
-    let daten;
+    let data;
     try {
-      daten = await responseFor(alle, url, o);
+      data = await responseFor(all, url, o);
     } finally {
       setTimeout(() => open--, 0);
     }
     // Thrown outside the window: the UI would otherwise catch the error as a network error.
     try {
-      daten = checkResponse(o.method || 'GET', url, daten);
+      data = checkResponse(o.method || 'GET', url, data);
     } catch (e) {
       setImmediate(() => {
         throw e;
       });
     }
-    const status = daten?.$status ?? 200;
+    const status = data?.$status ?? 200;
     return {
       ok: status < 400,
       status,
       headers: { get: () => 'application/json' },
-      json: async () => JSON.parse(JSON.stringify(daten)),
+      json: async () => JSON.parse(JSON.stringify(data)),
     };
   };
   w.console.warn = () => {};
@@ -292,31 +292,31 @@ async function openUi(antworten = {}, opt = {}) {
   new (require('node:vm').Script)(BUNDLE, { filename: BUNDLE_PATH }).runInContext(dom.getInternalVMContext());
   if (w.document.readyState === 'loading') await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
   if (opt.loggedIn !== false)
-    await warte(
+    await waitFor(
       () =>
         w.document.getElementById('app')?.style.display !== 'none' &&
         w.document.getElementById('app')?.style.display !== '',
     );
-  await takt(20);
+  await tick(20);
   /** Until no response is pending anymore and the UI has processed the last one. */
-  const ruhig = async (ms = 3000) => {
-    const ok = await warte(() => open === 0, ms);
-    for (let i = 0; i < 3; i++) await takt(0);
+  const settle = async (ms = 3000) => {
+    const ok = await waitFor(() => open === 0, ms);
+    for (let i = 0; i < 3; i++) await tick(0);
     return ok;
   };
-  return { w, d: w.document, aufrufe, warte, takt, ruhig, error };
+  return { w, d: w.document, calls, waitFor, tick, settle, error };
 }
 
 /** Open a tab, like a click in the bar. */
-async function reiter(w, name) {
+async function switchTab(w, name) {
   w.document.querySelector(`.ntab[data-tab="${name}"]`).click();
-  await takt(50);
+  await tick(50);
 }
 
 /** Open a view from the user menu (account, vouchers, …). */
-async function sicht(w, name) {
+async function view(w, name) {
   w.document.querySelector(`.umenu-item[data-arg="${name}"]`).click();
-  await takt(50);
+  await tick(50);
 }
 
-module.exports = { openUi, reiter, sicht, warte, takt, ANMELDUNG, SIGNED_OUT, checkResponse };
+module.exports = { openUi, switchTab, view, waitFor, tick, SIGNED_IN, SIGNED_OUT, checkResponse };

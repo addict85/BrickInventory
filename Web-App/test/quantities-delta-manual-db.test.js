@@ -50,7 +50,7 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
   });
   const { changeManualPart } = _req('src/parts/manualParts.js');
   const { updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
-  const teil = async () =>
+  const part = async () =>
     Number(
       (
         await db.get(
@@ -59,7 +59,7 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
         )
       ).q,
     );
-  const figur = async () =>
+  const minifig = async () =>
     Number(
       (
         await db.get(
@@ -74,16 +74,16 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
       changeManualPart(uid, PART, 5, { quantity_delta: 1 }),
       changeManualPart(uid, PART, 5, { quantity_delta: 1 }),
     ]);
-    assert.equal(await teil(), 4);
+    assert.equal(await part(), 4);
     await Promise.all([
       updateManualMinifig(uid, FIGURE, { quantity_delta: 1 }),
       updateManualMinifig(uid, FIGURE, { quantity_delta: 1 }),
     ]);
-    assert.equal(await figur(), 3);
+    assert.equal(await minifig(), 3);
   });
 
   await t.test('via the route: step down, response with the quantity afterwards', async () => {
-    const { base } = testServer(_req, { t, sitzung: { userId: uid } });
+    const { base } = testServer(_req, { t, session: { userId: uid } });
     const put = (path, body) =>
       fetch(`${base}/api/v2/${path}`, {
         method: 'PUT',
@@ -99,11 +99,11 @@ test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, asyn
       body: { success: true, quantity: 1 },
     });
     assert.equal((await put(`parts/${PART}/5`, { quantity_delta: 1.5 })).status, 400);
-    assert.equal(await teil(), 3);
+    assert.equal(await part(), 3);
   });
 
   await t.test('a step below 1 stays at 1 — deleting only via delete', async () => {
     assert.deepEqual(await changeManualPart(uid, PART, 5, { quantity_delta: -10 }), { quantity: 1 });
-    assert.equal(await teil(), 1);
+    assert.equal(await part(), 1);
   });
 });

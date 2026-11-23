@@ -40,13 +40,13 @@ test('POST /api/v2/auth/serverbeweis no longer exists', { concurrency: 1 }, asyn
   app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const frage = (kopf = {}) =>
+  const question = (head = {}) =>
     fetch(`http://127.0.0.1:${srv.address().port}/api/v2/auth/serverbeweis`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', ...kopf },
-      body: JSON.stringify({ kennung: '0123456789abcdef', nonce: 'ab'.repeat(16) }),
+      headers: { 'content-type': 'application/json', ...head },
+      body: JSON.stringify({ tokenId: '0123456789abcdef', nonce: 'ab'.repeat(16) }),
     }).then(r => r.status);
 
-  await t.test('without login 401', async () => assert.equal(await frage(), 401));
-  await t.test('logged in 404', async () => assert.equal(await frage({ 'x-probe-angemeldet': '1' }), 404));
+  await t.test('without login 401', async () => assert.equal(await question(), 401));
+  await t.test('logged in 404', async () => assert.equal(await question({ 'x-probe-angemeldet': '1' }), 404));
 });

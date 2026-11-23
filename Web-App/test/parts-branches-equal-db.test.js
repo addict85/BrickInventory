@@ -36,7 +36,7 @@ test('both paths of the parts list deliver the same types', async t => {
     return t.skip('no test database reachable');
   }
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const tab of ['parts', 'sets', 'parts_summary', 'parts_summary_state'])
       await db.run(`DELETE FROM ${tab} WHERE user_id=$1`, [U]).catch(() => {});
     // The catalog rows hang on no account and would otherwise remain.
@@ -44,7 +44,7 @@ test('both paths of the parts list deliver the same types', async t => {
   };
 
   try {
-    await aufraeumen();
+    await cleanUp();
     await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,'zweige','x') ON CONFLICT (id) DO NOTHING", [
       U,
     ]);
@@ -67,37 +67,37 @@ test('both paths of the parts list deliver the same types', async t => {
     await holdsPart(db, U, '3001', { setNumber: 'Z-1', quantity: 3, colorId: 5 });
     await holdsPart(db, U, '3002', { setNumber: 'Z-1', quantity: 1, colorId: 1 });
 
-    const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
+    const query = { exclude_manual: '1', page: 1, page_size: 50 };
 
     // ── Path 1: the live query (no summary yet) ───────────────
-    const live = await H.partsQuery(U, abfrage);
+    const live = await H.partsQuery(U, query);
     assert.equal(live.source, 'db', 'without a summary the live query must answer');
 
     // ── Path 2: the summary ─────────────────────────────────────────
     await PS.rebuildNow(U);
-    const zsf = await H.partsQuery(U, abfrage);
-    assert.equal(zsf.source, 'summary', 'after building, the summary must answer');
+    const summary = await H.partsQuery(U, query);
+    assert.equal(summary.source, 'summary', 'after building, the summary must answer');
 
     // ── The rule: same fields, same types ───────────────────────────
-    const typ = v => (v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v);
-    const nach = liste => new Map(liste.map(p => [`${p.part_number}|${p.color_id}`, p]));
+    const kind = v => (v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v);
+    const nach = list => new Map(list.map(p => [`${p.part_number}|${p.color_id}`, p]));
     const a = nach(live.parts),
-      b = nach(zsf.parts);
+      b = nach(summary.parts);
 
     assert.ok(a.size > 0, 'the live query returned no parts — then the comparison checks nothing');
     assert.deepEqual([...a.keys()].sort(), [...b.keys()].sort(), 'both paths must return the same parts');
 
     const deviations = [];
-    for (const [schluessel, links] of a) {
-      const rechts = b.get(schluessel);
+    for (const [key, links] of a) {
+      const right = b.get(key);
       for (const field of Object.keys(links)) {
-        if (!(field in rechts)) continue; // only fields that BOTH carry
+        if (!(field in right)) continue; // only fields that BOTH carry
         // null on one side is not a type conflict: a field may be empty.
-        if (links[field] === null || rechts[field] === null) continue;
-        if (typ(links[field]) !== typ(rechts[field]))
+        if (links[field] === null || right[field] === null) continue;
+        if (kind(links[field]) !== kind(right[field]))
           deviations.push(
-            `${schluessel} ${field}: live=${typ(links[field])} (${JSON.stringify(links[field])}), ` +
-              `Zusammenfassung=${typ(rechts[field])} (${JSON.stringify(rechts[field])})`,
+            `${key} ${field}: live=${kind(links[field])} (${JSON.stringify(links[field])}), ` +
+              `Zusammenfassung=${kind(right[field])} (${JSON.stringify(right[field])})`,
           );
       }
     }
@@ -113,11 +113,11 @@ test('both paths of the parts list deliver the same types', async t => {
     // ── And is_spare in particular ─────────────────────────────────────────
     // The rule above would also be fulfilled if BOTH paths delivered a number —
     // the Android app would still need a boolean then.
-    for (const [name, liste] of [
+    for (const [name, list] of [
       ['Live-Abfrage', live.parts],
-      ['Zusammenfassung', zsf.parts],
+      ['Zusammenfassung', summary.parts],
     ])
-      for (const p of liste)
+      for (const p of list)
         assert.equal(
           typeof p.is_spare,
           'boolean',
@@ -129,7 +129,7 @@ test('both paths of the parts list deliver the same types', async t => {
     assert.equal(b.get('3002|1').is_spare, true, 'the spare part must come out as true');
     assert.equal(b.get('3001|5').is_spare, false, 'the ordinary part must come out as false');
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.run('DELETE FROM users WHERE id=$1', [U]).catch(() => {});
     await db.pool.end().catch(() => {});
   }

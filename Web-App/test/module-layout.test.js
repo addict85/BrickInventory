@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { ohneKommentare } = require('./helpers/sources');
+const { withoutComments } = require('./helpers/sources');
 
 /** All server sources (without tests, node_modules, dist). */
 /**
@@ -24,30 +24,30 @@ function srcDirs() {
 }
 
 function sources() {
-  const raus = [];
+  const result = [];
   for (const dir of srcDirs()) {
     const abs = path.join(ROOT, dir);
     if (!fs.existsSync(abs)) continue;
-    const stapel = [abs];
-    while (stapel.length) {
-      const d = stapel.pop();
+    const stack = [abs];
+    while (stack.length) {
+      const d = stack.pop();
       for (const e of fs.readdirSync(d, { withFileTypes: true })) {
         const p = path.join(d, e.name);
-        if (e.isDirectory()) stapel.push(p);
-        else if (e.name.endsWith('.ts')) raus.push(p);
+        if (e.isDirectory()) stack.push(p);
+        else if (e.name.endsWith('.ts')) result.push(p);
       }
     }
   }
-  raus.push(path.join(ROOT, 'server.ts'));
-  return raus;
+  result.push(path.join(ROOT, 'server.ts'));
+  return result;
 }
 
 test('the API quotas are named after the API, not after a path', () => {
   // The keys stand in rate_limits/global_settings. A path in them
   // means: a second, empty count next to the real one.
-  const treffer = [];
-  for (const datei of sources()) {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  const hits = [];
+  for (const file of sources()) {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const fn of [
       'zaehleKontingent',
       'quotaStatus',
@@ -59,18 +59,18 @@ test('the API quotas are named after the API, not after a path', () => {
       const re = new RegExp(`${fn}\\(\\s*'([^']+)'`, 'g');
       for (const m of src.matchAll(re)) {
         if (m[1].includes('/') || m[1].includes('.')) {
-          treffer.push(`${path.relative(ROOT, datei)}: ${fn}('${m[1]}')`);
+          hits.push(`${path.relative(ROOT, file)}: ${fn}('${m[1]}')`);
         }
       }
     }
   }
   assert.deepEqual(
-    treffer,
+    hits,
     [],
     'A quota key contains a path. That is almost certainly a ' +
       'botched replacement — the count would continue at zero under a new name ' +
       'without anything crashing:\n  ' +
-      treffer.join('\n  '),
+      hits.join('\n  '),
   );
 });
 
@@ -78,7 +78,7 @@ test('no module is fetched under a bare name', () => {
   // The opposite direction: when reverting the error above I shortened three
   // real require('../clients/rebrickable') to require('rebrickable').
   // Node then searches in node_modules — 500s at runtime.
-  const eigene = new Set([
+  const owned = new Set([
     'rebrickable',
     'brickset',
     'sets',
@@ -91,19 +91,19 @@ test('no module is fetched under a bare name', () => {
     'financeCalc',
     'database',
   ]);
-  const treffer = [];
-  for (const datei of sources()) {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  const hits = [];
+  for (const file of sources()) {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const m of src.matchAll(/(?:require\(|from )\s*'([^'./][^']*)'/g)) {
-      if (eigene.has(m[1])) treffer.push(`${path.relative(ROOT, datei)}: '${m[1]}'`);
+      if (owned.has(m[1])) hits.push(`${path.relative(ROOT, file)}: '${m[1]}'`);
     }
   }
   assert.deepEqual(
-    treffer,
+    hits,
     [],
     'A project module is required without a path — Node then looks for it in ' +
       'node_modules and throws at runtime:\n  ' +
-      treffer.join('\n  '),
+      hits.join('\n  '),
   );
 });
 
@@ -112,11 +112,11 @@ test('clients/ contains no routes and is built anyway', () => {
   // gets into either of them, the file belongs back in routes/.
   for (const f of fs.readdirSync(path.join(ROOT, 'clients'))) {
     if (!f.endsWith('.ts')) continue;
-    const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients', f), 'utf8'));
+    const src = withoutComments(fs.readFileSync(path.join(ROOT, 'clients', f), 'utf8'));
     assert.doesNotMatch(
       src,
       /^\s*router\.(get|post|put|delete|patch|endpoint)\(/m,
-      `clients/${f} hat eine Route — dann ist es ein Router und gehört nach routes/`,
+      `clients/${f} has a route — then it is a router and belongs in routes/`,
     );
   }
 
@@ -132,51 +132,51 @@ test('clients/ contains no routes and is built anyway', () => {
 test('no cycles via real import statements', () => {
   // Why this deserves its own check
   const graph = new Map();
-  const dateien = sources();
-  const kennt = new Set(dateien.map(d => path.resolve(d)));
+  const files = sources();
+  const knows = new Set(files.map(d => path.resolve(d)));
 
-  const resolveIt = (von, rel) => {
-    const basis = path.resolve(path.dirname(von), rel);
+  const resolveIt = (from, rel) => {
+    const basis = path.resolve(path.dirname(from), rel);
     for (const k of [basis + '.ts', path.join(basis, 'index.ts')]) {
-      if (kennt.has(k)) return k;
+      if (knows.has(k)) return k;
     }
     return null;
   };
 
-  for (const datei of dateien) {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    const ziele = new Set();
+  for (const file of files) {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
+    const targets = new Set();
     // `import type` disappears when compiling and loads nothing at runtime.
     for (const m of src.matchAll(/^import (?!type\b)[^;]*from\s*'(\.[^']+)'/gm)) {
-      const z = resolveIt(datei, m[1]);
-      if (z && z !== path.resolve(datei)) ziele.add(z);
+      const z = resolveIt(file, m[1]);
+      if (z && z !== path.resolve(file)) targets.add(z);
     }
-    graph.set(path.resolve(datei), ziele);
+    graph.set(path.resolve(file), targets);
   }
 
   const found = [];
-  const stapel = [];
-  const fertig = new Set();
-  const lauf = u => {
-    stapel.push(u);
+  const stack = [];
+  const done = new Set();
+  const run = u => {
+    stack.push(u);
     for (const v of graph.get(u) || []) {
-      const i = stapel.indexOf(v);
+      const i = stack.indexOf(v);
       if (i >= 0) {
         found.push(
-          stapel
+          stack
             .slice(i)
             .concat(v)
             .map(x => path.relative(ROOT, x))
             .join(' → '),
         );
-      } else if (!fertig.has(v)) {
-        fertig.add(v);
-        lauf(v);
+      } else if (!done.has(v)) {
+        done.add(v);
+        run(v);
       }
     }
-    stapel.pop();
+    stack.pop();
   };
-  for (const n of graph.keys()) lauf(n);
+  for (const n of graph.keys()) run(n);
 
   assert.deepEqual(
     [...new Set(found)],
@@ -199,10 +199,10 @@ test('every source folder also arrives in the container', () => {
     .filter(z => !/^\s*#/.test(z))
     .join('\n');
   const dirs = srcDirs();
-  const bau = dockerfile.slice(0, dockerfile.lastIndexOf('\nFROM '));
-  const kopie = bau.search(/^COPY \. \.\s*$/m),
-    translate = bau.indexOf('scripts/build-ts.js');
-  assert.ok(kopie > 0 && kopie < translate, 'The build stage does not copy the whole context before compiling');
+  const buildDir = dockerfile.slice(0, dockerfile.lastIndexOf('\nFROM '));
+  const copy = buildDir.search(/^COPY \. \.\s*$/m),
+    translate = buildDir.indexOf('scripts/build-ts.js');
+  assert.ok(copy > 0 && copy < translate, 'The build stage does not copy the whole context before compiling');
   const excluded = fs
     .readFileSync(path.join(ROOT, '.dockerignore'), 'utf8')
     .split('\n')
@@ -210,11 +210,11 @@ test('every source folder also arrives in the container', () => {
     .filter(z => z && !z.startsWith('#'))
     .map(z => z.replace(/^\/|\/$/g, ''));
   assert.ok(excluded.includes('node_modules') && excluded.length >= 5, '.dockerignore not read');
-  for (const ziel of [...dirs, 'server.ts', 'package.json', 'scripts', 'public']) {
-    const treffer = excluded.filter(
-      m => !m.startsWith('!') && (path.matchesGlob(ziel, m) || path.matchesGlob(`${ziel}/x.ts`, m)),
+  for (const target of [...dirs, 'server.ts', 'package.json', 'scripts', 'public']) {
+    const hits = excluded.filter(
+      m => !m.startsWith('!') && (path.matchesGlob(target, m) || path.matchesGlob(`${target}/x.ts`, m)),
     );
-    assert.deepEqual(treffer, [], `${ziel} is excluded by .dockerignore — it is missing in the container`);
+    assert.deepEqual(hits, [], `${target} is excluded by .dockerignore — it is missing in the container`);
   }
 
   // All folders with .ts files on the top level must stand in SRC_DIRS.
@@ -224,8 +224,8 @@ test('every source folder also arrives in the container', () => {
     // Only files from which a runtime module arises. Pure
     // type declarations (.d.ts, e.g. types/augmentations.d.ts) produce no
     // .js and therefore need no SRC_DIRS.
-    const hatTs = fs.readdirSync(path.join(ROOT, e.name)).some(f => f.endsWith('.ts') && !f.endsWith('.d.ts'));
-    if (!hatTs) continue;
+    const hasTs = fs.readdirSync(path.join(ROOT, e.name)).some(f => f.endsWith('.ts') && !f.endsWith('.d.ts'));
+    if (!hasTs) continue;
     assert.ok(
       dirs.includes(e.name),
       `${e.name}/ contains TypeScript but is not in SRC_DIRS — no ` +
@@ -239,22 +239,18 @@ test('the base schema is looked for where it lies at runtime', () => {
   // the runtime image only contains dist/. The .sql files end up there because
   // scripts/build-ts.js explicitly copies them along (ASSET_EXT); they must therefore
   // be looked for next to the compiled module, i.e. via __dirname.
-  const dbSrc = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db/schemaStart.ts'), 'utf8'));
-  const laden = dbSrc.slice(
+  const dbSrc = withoutComments(fs.readFileSync(path.join(ROOT, 'db/schemaStart.ts'), 'utf8'));
+  const load = dbSrc.slice(
     dbSrc.indexOf('async function initSchema'),
     dbSrc.indexOf('async function initSchema') + 1200,
   );
   assert.match(
-    laden,
+    load,
     /path\.join\(__dirname, 'base\.sql'\)/,
     'initSchema() does not look for db/base.sql via __dirname — in the container the file is in ' +
       'dist/db/, and there is no source tree there',
   );
-  assert.doesNotMatch(
-    laden,
-    /APP_ROOT/,
-    'APP_ROOT points to the source tree, which the runtime image does not contain',
-  );
+  assert.doesNotMatch(load, /APP_ROOT/, 'APP_ROOT points to the source tree, which the runtime image does not contain');
 
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
   assert.match(
@@ -267,21 +263,21 @@ test('the base schema is looked for where it lies at runtime', () => {
 
 test('every late require() points to a file that exists', () => {
   // A real runtime error during the move
-  const treffer = [];
-  for (const datei of sources()) {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  const hits = [];
+  for (const file of sources()) {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const m of src.matchAll(/require\(\s*'(\.[^']+)'\s*\)/g)) {
-      const basis = path.resolve(path.dirname(datei), m[1]);
+      const basis = path.resolve(path.dirname(file), m[1]);
       const da = ['.ts', '.js', '/index.ts', '/index.js', ''].some(e => fs.existsSync(basis + e));
-      if (!da) treffer.push(`${path.relative(ROOT, datei)}: require('${m[1]}') zeigt ins Leere`);
+      if (!da) hits.push(`${path.relative(ROOT, file)}: require('${m[1]}') zeigt ins Leere`);
     }
   }
   assert.deepEqual(
-    treffer,
+    hits,
     [],
     'A late require() points to a file that does not exist. That only shows ' +
       'at runtime — and if the call sits in a setImmediate, ' +
       'even outside any catch:\n  ' +
-      treffer.join('\n  '),
+      hits.join('\n  '),
   );
 });

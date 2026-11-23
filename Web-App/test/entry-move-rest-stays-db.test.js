@@ -84,7 +84,7 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     ).map(r => ({ id: r.id, quantity: Number(r.quantity) }));
   };
 
-  const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const { base } = testServer(_req, { session: { userId: MAIN }, t });
   const move = async (entryId, afterAccount) => {
     const r = await fetch(`${base}/api/v2/parts/3001/4/acquisitions/${entryId}`, {
       method: 'PUT',
@@ -93,11 +93,11 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     });
     return { status: r.status, body: await r.json() };
   };
-  const zaehle = async uid => ({
+  const count = async uid => ({
     acquisitions: (
       await db.all(`SELECT quantity FROM part_acquisitions WHERE user_id=$1 ORDER BY quantity`, [uid])
     ).map(r => Number(r.quantity)),
-    zeilen: (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='3001'`, [uid])).c,
+    lines: (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='3001'`, [uid])).c,
   });
 
   await t.test('the second acquisition moves, the first stays', async () => {
@@ -105,7 +105,7 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     const a = await move(erf[0].id, KIND); // the one with quantity 2
     assert.equal(a.status, 200, JSON.stringify(a.body));
 
-    const sender = await zaehle(MAIN);
+    const sender = await count(MAIN);
     assert.deepEqual(
       sender.acquisitions,
       [3],
@@ -113,16 +113,16 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
         'expected 1 with quantity 3. If it is 0, the move deleted ALL of them — ' +
         'exactly the bug this is about.',
     );
-    assert.equal(sender.zeilen, 1, 'The holding row of the sender is gone although it still has 3 pieces');
+    assert.equal(sender.lines, 1, 'The holding row of the sender is gone although it still has 3 pieces');
     assert.equal(
       a.body.source_emptied,
       false,
       'The response says source_emptied=true although something stays at the sender',
     );
 
-    const ziel = await zaehle(KIND);
-    assert.deepEqual(ziel.acquisitions, [2], `The target has ${ziel.acquisitions} instead of [2]`);
-    assert.equal(ziel.zeilen, 1, 'The target got no holding row');
+    const target = await count(KIND);
+    assert.deepEqual(target.acquisitions, [2], `The target has ${target.acquisitions} instead of [2]`);
+    assert.equal(target.lines, 1, 'The target got no holding row');
   });
 
   await t.test('if the LAST acquisition moves, the row disappears after all', async () => {
@@ -131,9 +131,9 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     // ballast, not stock.
     const erf = await setup();
     assert.equal((await move(erf[0].id, KIND)).status, 200);
-    const zweite = (await db.all(`SELECT id FROM part_acquisitions WHERE user_id=$1`, [MAIN])).map(r => r.id);
-    assert.equal(zweite.length, 1, 'Precondition: exactly one must be left at the sender');
-    const b = await move(zweite[0], KIND);
+    const second = (await db.all(`SELECT id FROM part_acquisitions WHERE user_id=$1`, [MAIN])).map(r => r.id);
+    assert.equal(second.length, 1, 'Precondition: exactly one must be left at the sender');
+    const b = await move(second[0], KIND);
     assert.equal(b.status, 200, JSON.stringify(b.body));
     assert.equal(
       b.body.source_emptied,
@@ -141,20 +141,20 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
       'The response must report source_emptied=true when nothing stays at the sender',
     );
 
-    const sender = await zaehle(MAIN);
+    const sender = await count(MAIN);
     assert.deepEqual(sender.acquisitions, [], 'No acquisition may stay at the sender');
     assert.equal(
-      sender.zeilen,
+      sender.lines,
       0,
       'The empty holding row of the sender must be gone — a manual row ' +
         'without an acquisition is ballast, not stock',
     );
 
-    const ziel = await zaehle(KIND);
+    const target = await count(KIND);
     assert.deepEqual(
-      ziel.acquisitions,
+      target.acquisitions,
       [2, 3],
-      `The target must hold both quantities, has ${JSON.stringify(ziel.acquisitions)}`,
+      `The target must hold both quantities, has ${JSON.stringify(target.acquisitions)}`,
     );
   });
 });

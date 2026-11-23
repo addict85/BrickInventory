@@ -18,9 +18,9 @@ const { spawnSync } = require('node:child_process');
 const { FILES } = require('../scripts/copy-qrcode');
 
 const ROOT = path.join(__dirname, '..');
-const paket = require('../package.json');
-const variant = paket.devDependencies.qrcodejs;
-const installiert = path.join(ROOT, 'node_modules', 'qrcodejs');
+const pkg = require('../package.json');
+const variant = pkg.devDependencies.qrcodejs;
+const installed = path.join(ROOT, 'node_modules', 'qrcodejs');
 
 test('exact version in package.json and lockfile', () => {
   assert.match(String(variant), /^\d+\.\d+\.\d+$/, `qrcodejs „${variant}“ is not an exact version`);
@@ -29,27 +29,27 @@ test('exact version in package.json and lockfile', () => {
 });
 
 test('the script produces exactly the shipped files', () => {
-  assert.ok(fs.existsSync(installiert), 'qrcodejs not installed (npm ci)');
-  const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'qrcode-'));
+  assert.ok(fs.existsSync(installed), 'qrcodejs not installed (npm ci)');
+  const target = fs.mkdtempSync(path.join(os.tmpdir(), 'qrcode-'));
   try {
-    const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'copy-qrcode.js'), ziel], {
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'copy-qrcode.js'), target], {
       encoding: 'utf8',
     });
     assert.match(r.stdout, new RegExp(`qrcodejs ${variant.replace(/\./g, '\\.')} → public/vendor/qrcode/`));
-    const kopie = path.join(ziel, 'public', 'vendor', 'qrcode');
-    assert.deepEqual(fs.readdirSync(kopie).sort(), [...FILES].sort());
+    const copy = path.join(target, 'public', 'vendor', 'qrcode');
+    assert.deepEqual(fs.readdirSync(copy).sort(), [...FILES].sort());
     // The paths literally: eigenbruecken.test.js no longer lets paths with a variable segment pass.
     assert.deepEqual(FILES, ['qrcode.min.js', 'LICENSE']);
-    const gleich = (a, b) => fs.readFileSync(a).equals(fs.readFileSync(b));
+    const same = (a, b) => fs.readFileSync(a).equals(fs.readFileSync(b));
     assert.ok(
-      gleich(path.join(ROOT, 'public/vendor/qrcode/qrcode.min.js'), path.join(kopie, 'qrcode.min.js')),
+      same(path.join(ROOT, 'public/vendor/qrcode/qrcode.min.js'), path.join(copy, 'qrcode.min.js')),
       `qrcode.min.js weicht von qrcodejs ${variant} ab`,
     );
     assert.ok(
-      gleich(path.join(ROOT, 'public/vendor/qrcode/LICENSE'), path.join(kopie, 'LICENSE')),
+      same(path.join(ROOT, 'public/vendor/qrcode/LICENSE'), path.join(copy, 'LICENSE')),
       `LICENSE weicht von qrcodejs ${variant} ab`,
     );
   } finally {
-    fs.rmSync(ziel, { recursive: true, force: true });
+    fs.rmSync(target, { recursive: true, force: true });
   }
 });

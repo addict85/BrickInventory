@@ -42,13 +42,13 @@ const PL = require('@cantoo/pdf-lib');
 const TTF = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
 
 /** A voucher PDF as LEGO writes it: the sentence, the number, the PIN. */
-function buildVoucher(amountText, number, pin, schrift) {
-  return new Promise(fertig => {
+function buildVoucher(amountText, number, pin, font) {
+  return new Promise(done => {
     const d = new PDFKit({ size: 'A4' });
-    const stuecke = [];
-    d.on('data', c => stuecke.push(c));
-    d.on('end', () => fertig(Buffer.concat(stuecke)));
-    if (schrift) d.font(schrift);
+    const pieces = [];
+    d.on('data', c => pieces.push(c));
+    d.on('end', () => done(Buffer.concat(pieces)));
+    if (font) d.font(font);
     d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${amountText} CHF:`, 60, 100);
     d.fontSize(12).text(number, 60, 140).text(`PIN: ${pin}`, 60, 170);
     d.end();
@@ -62,7 +62,7 @@ function buildVoucher(amountText, number, pin, schrift) {
  */
 async function buildWithEncoding(uncertain) {
   const doc = await PL.PDFDocument.create();
-  const seite = doc.addPage([595, 842]);
+  const page = doc.addPage([595, 842]);
   const ctx = doc.context;
   const amountFont = ctx.obj({
     Type: 'Font',
@@ -85,18 +85,18 @@ async function buildWithEncoding(uncertain) {
     BaseFont: 'Helvetica',
     Encoding: 'WinAnsiEncoding',
   });
-  seite.node.set(
+  page.node.set(
     PL.PDFName.of('Resources'),
     ctx.obj({
       Font: ctx.obj({ F9: ctx.register(amountFont), F1: ctx.register(safeFont) }),
     }),
   );
-  const inhalt =
+  const content =
     'BT /F9 14 Tf 60 740 Td (Ihre LEGO-Geschenkkarte im Wert von 400 CHF:) Tj ET\n' +
     'BT /F1 12 Tf 60 700 Td (5045076374450011166) Tj ET\n' +
     'BT /F1 12 Tf 60 680 Td (PIN: 5225) Tj ET\n';
-  const stream = PL.PDFRawStream.of(ctx.obj({ Length: inhalt.length }), Buffer.from(inhalt, 'latin1'));
-  seite.node.set(PL.PDFName.of('Contents'), ctx.register(stream));
+  const stream = PL.PDFRawStream.of(ctx.obj({ Length: content.length }), Buffer.from(content, 'latin1'));
+  page.node.set(PL.PDFName.of('Contents'), ctx.register(stream));
   return Buffer.from(await doc.save());
 }
 
@@ -106,19 +106,19 @@ test('1. the amount is replaced in the original — three notations', async () =
   // Three notations, because the PDF holds the NOTATION and not the number:
   // „400", „1'250" (Swiss thousands separator), „49.90" (cents). A
   // replacement that only knows the whole number would never find the other two.
-  for (const [geschrieben, neu] of [
+  for (const [written, fresh] of [
     ['400', 250],
     ["1'250", 300],
     ['49.90', 12.5],
   ]) {
-    const original = await buildVoucher(geschrieben, NR, '5225', null);
-    const vorher = valuesFromPdf(original);
-    const r = await replaceAmount(original, neu);
-    assert.ok(r.data, `„${geschrieben}" → ${neu} was rejected: ${r.reason}`);
-    const nachher = valuesFromPdf(r.data);
-    assert.equal(nachher.amount, neu, `„${geschrieben}" became ${nachher.amount} instead of ${neu}`);
-    assert.equal(nachher.number, vorher.number, 'The card number changed');
-    assert.equal(nachher.pin, vorher.pin, 'The PIN changed');
+    const original = await buildVoucher(written, NR, '5225', null);
+    const prior = valuesFromPdf(original);
+    const r = await replaceAmount(original, fresh);
+    assert.ok(r.data, `„${written}" → ${fresh} was rejected: ${r.reason}`);
+    const later = valuesFromPdf(r.data);
+    assert.equal(later.amount, fresh, `„${written}" became ${later.amount} instead of ${fresh}`);
+    assert.equal(later.number, prior.number, 'The card number changed');
+    assert.equal(later.pin, prior.pin, 'The PIN changed');
   }
 });
 
@@ -185,10 +185,10 @@ test('5. three vouchers become ONE PDF and all come back', async () => {
   assert.ok(results[1].reason, 'No reason is given for the unchanged voucher');
 
   // ── The round trip ───────────────────────────────────────────────────────
-  const zurueck = await readPageByPage(pdf);
-  assert.equal(zurueck.length, 3, `${zurueck.length} vouchers read instead of 3`);
+  const back = await readPageByPage(pdf);
+  assert.equal(back.length, 3, `${back.length} vouchers read instead of 3`);
   for (const x of g) {
-    const w = zurueck.find(z => z.number === x.number);
+    const w = back.find(z => z.number === x.number);
     assert.ok(w, `${x.number} did not come back`);
     // The APP amount, not the printed one. For voucher 2 the
     // replacement FAILED — and still 150 comes back, because the marker
@@ -236,37 +236,37 @@ test('7. a foreign PDF without a marker is guessed page by page', async () => {
   // split: if one reads the whole stack as one text, the longest
   // digit sequence of the whole heap wins, and ONE voucher would come out
   // instead of two.
-  const ziel = await PL.PDFDocument.create();
-  for (const [betrag, nr, pin] of [
+  const target = await PL.PDFDocument.create();
+  for (const [amount, nr, pin] of [
     ['400', NR, '5225'],
     ['150', '5045076374450022277', '1234'],
   ]) {
-    const doc = await PL.PDFDocument.load(await buildVoucher(betrag, nr, pin, null));
-    for (const s of await ziel.copyPages(doc, doc.getPageIndices())) ziel.addPage(s);
+    const doc = await PL.PDFDocument.load(await buildVoucher(amount, nr, pin, null));
+    for (const s of await target.copyPages(doc, doc.getPageIndices())) target.addPage(s);
   }
-  const stapel = Buffer.from(await ziel.save());
-  assert.equal((await PL.PDFDocument.load(stapel)).getPageCount(), 2);
+  const stack = Buffer.from(await target.save());
+  assert.equal((await PL.PDFDocument.load(stack)).getPageCount(), 2);
 
-  const zurueck = await readPageByPage(stapel);
-  assert.equal(zurueck.length, 2, `${zurueck.length} vouchers from two pages — without splitting it would be one`);
-  assert.deepEqual(zurueck.map(w => w.number).sort(), [NR, '5045076374450022277'].sort());
+  const back = await readPageByPage(stack);
+  assert.equal(back.length, 2, `${back.length} vouchers from two pages — without splitting it would be one`);
+  assert.deepEqual(back.map(w => w.number).sort(), [NR, '5045076374450022277'].sort());
   assert.deepEqual(
-    zurueck.map(w => w.amount).sort((a, b) => a - b),
+    back.map(w => w.amount).sort((a, b) => a - b),
     [150, 400],
   );
 });
 
 test('8. the same card twice in the batch yields ONE entry', async () => {
-  const ziel = await PL.PDFDocument.create();
+  const target = await PL.PDFDocument.create();
   for (let i = 0; i < 2; i++) {
     const doc = await PL.PDFDocument.load(await buildVoucher('400', NR, '5225', null));
-    for (const s of await ziel.copyPages(doc, doc.getPageIndices())) ziel.addPage(s);
+    for (const s of await target.copyPages(doc, doc.getPageIndices())) target.addPage(s);
   }
-  const zurueck = await readPageByPage(Buffer.from(await ziel.save()));
+  const back = await readPageByPage(Buffer.from(await target.save()));
   assert.equal(
-    zurueck.length,
+    back.length,
     1,
-    `${zurueck.length} entries for the same card — a batch with a duplicate ` + 'should not yield a second entry',
+    `${back.length} entries for the same card — a batch with a duplicate ` + 'should not yield a second entry',
   );
 });
 
@@ -274,21 +274,21 @@ test('9. the verification catches a replacement that hits the card number', asyn
   // Where this case comes from (counter-check)
   const numberWith400 = '5045076374400011166';
   const original = await buildVoucher('400', numberWith400, '5225', null);
-  const vorher = valuesFromPdf(original);
-  assert.equal(vorher.number, numberWith400, 'precondition: the number is read');
+  const prior = valuesFromPdf(original);
+  assert.equal(prior.number, numberWith400, 'precondition: the number is read');
   assert.ok(numberWith400.includes('400'), 'precondition: the amount appears as a substring of the number');
 
   const r = await replaceAmount(original, 250);
   if (r.data) {
     // Replacing IS allowed — but then the number must be intact. Both
     // together is the statement, not „it was rejected".
-    const nachher = valuesFromPdf(r.data);
+    const later = valuesFromPdf(r.data);
     assert.equal(
-      nachher.number,
-      vorher.number,
-      `The card number was changed to ${nachher.number}, and the PDF came ` + 'back anyway. The re-check did not work.',
+      later.number,
+      prior.number,
+      `The card number was changed to ${later.number}, and the PDF came ` + 'back anyway. The re-check did not work.',
     );
-    assert.equal(nachher.amount, 250);
+    assert.equal(later.amount, 250);
   } else {
     assert.match(
       String(r.reason),

@@ -28,10 +28,10 @@ const { contractRouter: contractRouterFn } = _req('src/http/contractRouter.js');
 const { setConfig } = _req('src/infra/config.js');
 
 /** A router with real contract keys that answers whatever the test wants. */
-function server(t, antworten) {
+function server(t, answers) {
   const router = contractRouterFn('/api/v2/auth');
   router.endpoint('GET /api/v2/auth/registration-status', (_req, res) =>
-    res.status(antworten.status ?? 200).json(antworten.rumpf),
+    res.status(answers.status ?? 200).json(answers.body),
   );
   router.endpoint('PUT /api/v2/auth/users/:id/admin', (_req, res) => res.json({ success: true }));
   const app = express();
@@ -44,7 +44,7 @@ function server(t, antworten) {
 }
 
 test('a deviating response becomes a 500', async t => {
-  const basis = server(t, { rumpf: { enabled: 'ja' } });
+  const basis = server(t, { body: { enabled: 'ja' } });
   const r = await fetch(`${basis}/registration-status`);
   assert.equal(r.status, 500);
   const j = await r.json();
@@ -53,18 +53,18 @@ test('a deviating response becomes a 500', async t => {
 });
 
 test('a response matching the contract goes out unchanged', async t => {
-  const basis = server(t, { rumpf: { enabled: true } });
+  const basis = server(t, { body: { enabled: true } });
   const r = await fetch(`${basis}/registration-status`);
   assert.deepEqual([r.status, await r.json()], [200, { enabled: true }]);
 });
 
 test('an input violating the contract does not reach the route', async t => {
   const basis = server(t, {});
-  const sendIt = rumpf =>
+  const sendIt = body =>
     fetch(`${basis}/users/7/admin`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(rumpf),
+      body: JSON.stringify(body),
     });
   assert.equal((await sendIt({ is_admin: true })).status, 200);
   const r = await sendIt({ is_admin: 'vielleicht' });
@@ -73,12 +73,12 @@ test('an input violating the contract does not reach the route', async t => {
 });
 
 test('an error response is not checked against the success schema', async t => {
-  const basis = server(t, { status: 404, rumpf: { success: false, error: 'weg', code: 'x' } });
+  const basis = server(t, { status: 404, body: { success: false, error: 'weg', code: 'x' } });
   assert.equal((await fetch(`${basis}/registration-status`)).status, 404);
 });
 
 test('an error response without a code becomes a 500', async t => {
-  const basis = server(t, { status: 404, rumpf: { success: false, error: 'Endpoint nicht gefunden' } });
+  const basis = server(t, { status: 404, body: { success: false, error: 'Endpoint nicht gefunden' } });
   const r = await fetch(`${basis}/registration-status`);
   assert.equal(r.status, 500);
   assert.match((await r.json()).deviations.join(), /Fehlerantwort code/);
@@ -87,13 +87,13 @@ test('an error response without a code becomes a 500', async t => {
 test('in production the response goes out unchecked', async t => {
   setConfig({ checkContract: false });
   t.after(() => setConfig(null));
-  const basis = server(t, { rumpf: { enabled: 'ja' } });
+  const basis = server(t, { body: { enabled: 'ja' } });
   const r = await fetch(`${basis}/registration-status`);
   assert.deepEqual([r.status, await r.json()], [200, { enabled: 'ja' }]);
 });
 
 test('the check is decided when the router is built', async t => {
-  const basis = server(t, { rumpf: { enabled: 'ja' } });
+  const basis = server(t, { body: { enabled: 'ja' } });
   setConfig({ checkContract: false });
   t.after(() => setConfig(null));
   assert.equal((await fetch(`${basis}/registration-status`)).status, 500);

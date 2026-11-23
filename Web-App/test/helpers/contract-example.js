@@ -5,11 +5,11 @@
  * value of its type. With `alle` optional fields are filled too.
  */
 
-/** A sample value for a zod schema; `name` is the field name, `wert` delivers the victim's values. */
-function beispiel(schema, name, wert, alle) {
+/** A sample value for a zod schema; `name` is the field name, `value` delivers the victim's values. */
+function sample(schema, name, value, all) {
   const d = schema?._zod?.def;
   if (!d) return undefined;
-  if (name && wert(name) !== undefined) return wert(name);
+  if (name && value(name) !== undefined) return value(name);
   switch (d.type) {
     case 'optional':
     case 'nullable':
@@ -17,12 +17,12 @@ function beispiel(schema, name, wert, alle) {
     case 'prefault':
     case 'readonly':
     case 'catch':
-      return beispiel(d.innerType, name, wert, alle);
+      return sample(d.innerType, name, value, all);
     case 'pipe':
-      return beispiel(d.in, name, wert, alle);
+      return sample(d.in, name, value, all);
     case 'union':
       for (const o of d.options) {
-        const v = beispiel(o, name, wert, alle);
+        const v = sample(o, name, value, all);
         if (v !== undefined) return v;
       }
       return undefined;
@@ -38,20 +38,20 @@ function beispiel(schema, name, wert, alle) {
     case 'boolean':
       return true;
     case 'array': {
-      const e = beispiel(d.element, null, wert, alle);
+      const e = sample(d.element, null, value, all);
       return e === undefined ? [] : [e];
     }
     case 'record':
       return {};
     case 'object': {
-      const aus = {};
+      const out = {};
       for (const [k, s] of Object.entries(d.shape)) {
         const optional = ['optional', 'default', 'prefault'].includes(s?._zod?.def?.type);
-        if (optional && !alle && wert(k) === undefined) continue;
-        const v = beispiel(s, k, wert, alle);
-        if (v !== undefined) aus[k] = v;
+        if (optional && !all && value(k) === undefined) continue;
+        const v = sample(s, k, value, all);
+        if (v !== undefined) out[k] = v;
       }
-      return aus;
+      return out;
     }
     default:
       return undefined;
@@ -60,9 +60,9 @@ function beispiel(schema, name, wert, alle) {
 
 /**
  * @param {any} schema
- * @param {(name: string) => unknown} wert
- * @param {boolean} [alle]
+ * @param {(name: string) => unknown} value
+ * @param {boolean} [all]
  */
-const example = (schema, wert, alle = false) => beispiel(schema, null, wert, alle);
+const example = (schema, value, all = false) => sample(schema, null, value, all);
 
 module.exports = { example };

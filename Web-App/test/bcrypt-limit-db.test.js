@@ -46,9 +46,9 @@ test.after(async () => {
 test('the limit lets n run, m wait and rejects the rest', async () => {
   const s = newLimit(2, 1, 200);
   const open = [];
-  const blockiert = () => new Promise(r => open.push(r));
-  const a = s.run(blockiert),
-    b = s.run(blockiert);
+  const blocked = () => new Promise(r => open.push(r));
+  const a = s.run(blocked),
+    b = s.run(blocked);
   const c = s.run(async () => 'c');
   await assert.rejects(
     s.run(async () => 'd'),
@@ -62,8 +62,8 @@ test('the limit lets n run, m wait and rejects the rest', async () => {
   await b;
   assert.deepEqual(s.state(), { running: 0, waiting: 0 });
   // Deadline: whoever waits too long is rejected and frees their place in the queue.
-  const x = s.run(blockiert),
-    y = s.run(blockiert);
+  const x = s.run(blocked),
+    y = s.run(blocked);
   await assert.rejects(
     s.run(async () => 'z'),
     BcryptOverload,
@@ -121,10 +121,10 @@ test('with a full limit, login and password confirmation answer 503', { concurre
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
 
-  const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t });
-  const post = async (weg, body) => {
-    const r = await fetch(`${base}/api/v2/auth${weg}`, {
+  const session = {};
+  const { base } = testServer(_req, { session, t });
+  const post = async (route, body) => {
+    const r = await fetch(`${base}/api/v2/auth${route}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -133,50 +133,50 @@ test('with a full limit, login and password confirmation answer 503', { concurre
   };
 
   // Occupy all slots and the whole queue.
-  const kerne = Math.max(2, os.availableParallelism());
+  const cores = Math.max(2, os.availableParallelism());
   const open = [];
-  const belegt = [];
-  for (let i = 0; i < kerne * 9; i++) belegt.push(bcryptGate.run(() => new Promise(r => open.push(r))));
-  assert.deepEqual(bcryptGate.state(), { running: kerne, waiting: kerne * 8 });
+  const occupied = [];
+  for (let i = 0; i < cores * 9; i++) occupied.push(bcryptGate.run(() => new Promise(r => open.push(r))));
+  assert.deepEqual(bcryptGate.state(), { running: cores, waiting: cores * 8 });
   try {
-    const anmeldung = await post('/login', { username: NAME, password: PASS });
-    assert.deepEqual([anmeldung.status, anmeldung.body.code], [503, 'server_busy'], JSON.stringify(anmeldung.body));
-    sitzung.userId = uid;
-    sitzung.username = NAME;
-    const bestaetigung = await post('/qr-token', { password: PASS });
+    const login = await post('/login', { username: NAME, password: PASS });
+    assert.deepEqual([login.status, login.body.code], [503, 'server_busy'], JSON.stringify(login.body));
+    session.userId = uid;
+    session.username = NAME;
+    const confirmation = await post('/qr-token', { password: PASS });
     assert.deepEqual(
-      [bestaetigung.status, bestaetigung.body.code],
+      [confirmation.status, confirmation.body.code],
       [503, 'server_busy'],
-      JSON.stringify(bestaetigung.body),
+      JSON.stringify(confirmation.body),
     );
   } finally {
     while (open.length || bcryptGate.state().running) {
       for (const r of open.splice(0)) r();
       await new Promise(r => setImmediate(r));
     }
-    await Promise.all(belegt);
+    await Promise.all(occupied);
   }
-  delete sitzung.userId;
-  const danach = await post('/login', { username: NAME, password: PASS });
-  assert.equal(danach.status, 200, JSON.stringify(danach.body));
+  delete session.userId;
+  const afterwards = await post('/login', { username: NAME, password: PASS });
+  assert.equal(afterwards.status, 200, JSON.stringify(afterwards.body));
 
   // Now the login from here is known: it waits at the front, a foreign one is rejected.
-  for (let i = 0; i < kerne * 9; i++) belegt.push(bcryptGate.run(() => new Promise(r => open.push(r))));
+  for (let i = 0; i < cores * 9; i++) occupied.push(bcryptGate.run(() => new Promise(r => open.push(r))));
   try {
-    delete sitzung.userId;
-    const bekannt = post('/login', { username: NAME, password: PASS });
+    delete session.userId;
+    const known = post('/login', { username: NAME, password: PASS });
     const fremd = await post('/login', { username: `${NAME}_x`, password: PASS });
     assert.deepEqual([fremd.status, fremd.body.code], [503, 'server_busy']);
-    for (let i = 0; i < 200 && bcryptGate.state().waiting <= kerne * 8; i++) await new Promise(r => setTimeout(r, 10));
-    assert.equal(bcryptGate.state().waiting, kerne * 8 + 1, 'the known sign-in does not wait');
+    for (let i = 0; i < 200 && bcryptGate.state().waiting <= cores * 8; i++) await new Promise(r => setTimeout(r, 10));
+    assert.equal(bcryptGate.state().waiting, cores * 8 + 1, 'the known sign-in does not wait');
     open.shift()();
-    const r = await bekannt;
+    const r = await known;
     assert.equal(r.status, 200, JSON.stringify(r.body));
   } finally {
     while (open.length || bcryptGate.state().running) {
       for (const r of open.splice(0)) r();
       await new Promise(r => setImmediate(r));
     }
-    await Promise.all(belegt);
+    await Promise.all(occupied);
   }
 });

@@ -23,22 +23,22 @@ test('English UI without reloading', { timeout: 120_000 }, async t => {
   }
   // Like a visitor with a German browser: log out, remember German, reload
   // (the page then only brings the German dictionary) and log in again.
-  const { b, bis } = app;
-  await b.auswerten(`document.getElementById('btn-logout').click(); true`);
-  await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'abgemeldet');
-  await b.auswerten(`localStorage.setItem('bim_lang', 'de'); location.reload(); true`);
-  await app.warte(500);
-  await bis(
+  const { b, until } = app;
+  await b.evaluate(`document.getElementById('btn-logout').click(); true`);
+  await until(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'abgemeldet');
+  await b.evaluate(`localStorage.setItem('bim_lang', 'de'); location.reload(); true`);
+  await app.sleep(500);
+  await until(
     `typeof document.getElementById('btn-login')?.onclick === 'function' && !window.I18N_EN`,
     'Anmeldemaske nur deutsch',
   );
-  await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(`sprache_${process.pid}`)};
+  await b.evaluate(`document.getElementById('lu').value = ${JSON.stringify(`sprache_${process.pid}`)};
     document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('btn-login').click(); true`);
-  await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'loggedIn', 300);
-  await app.warte(1500);
+  await until(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'loggedIn', 300);
+  await app.sleep(1500);
   assert.equal(
-    await app.b.auswerten(`document.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim()`),
+    await app.b.evaluate(`document.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim()`),
     'Build list',
   );
-  assert.equal(await app.b.auswerten(`document.documentElement.lang`), 'en');
+  assert.equal(await app.b.evaluate(`document.documentElement.lang`), 'en');
 });

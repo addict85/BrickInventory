@@ -15,11 +15,11 @@ const uniform = p => p.replace(/\{\w+\}|:\w+/g, '{}');
  */
 function contractTo(_req, method, path) {
   const { CONTRACT } = _req('src/contract/index.js');
-  const treffer = Object.entries(CONTRACT).filter(([k]) => {
+  const hits = Object.entries(CONTRACT).filter(([k]) => {
     const [m, p] = k.split(' ');
     return m === method && uniform(p) === uniform(path);
   });
-  return treffer.length === 1 ? treffer[0][1] : undefined;
+  return hits.length === 1 ? hits[0][1] : undefined;
 }
 
 /**

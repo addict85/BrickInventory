@@ -35,7 +35,7 @@ test('import, storage locations, foreign currency and catalog on the server', {
   const NAME = `r16s_${process.pid}`,
     KIND = `${NAME}_kind`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, KIND]]);
-  const neu = async n =>
+  const fresh = async n =>
     (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_active, email_verified)
@@ -43,15 +43,15 @@ test('import, storage locations, foreign currency and catalog on the server', {
         [n, `${n}@example.org`],
       )
     ).id;
-  const uid = await neu(NAME),
-    kid = await neu(KIND);
+  const uid = await fresh(NAME),
+    kid = await fresh(KIND);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, kid]);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, kid]]).catch(() => {});
     await db.run(`DELETE FROM rb_sets WHERE set_num = '99161-1'`).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME }, t });
   const hole = async (path, o = {}) => {
     const r = await fetch(`${base}/api/v2${path}`, {
       ...o,
@@ -92,14 +92,14 @@ test('import, storage locations, foreign currency and catalog on the server', {
   });
 
   await t.test('storage locations: stock with empty places, filter only occupied ones', async () => {
-    const leer = (
+    const empty = (
       await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Dachboden Kiste 3') RETURNING id`, [uid])
     ).id;
-    const belegt = (
+    const occupied = (
       await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Keller Regal A') RETURNING id`, [uid])
     ).id;
-    await holdsSet(db, uid, '10294-1', 1, { preis: 100 });
-    await db.run('UPDATE sets SET storage_id = $2 WHERE user_id = $1', [uid, belegt]);
+    await holdsSet(db, uid, '10294-1', 1, { price: 100 });
+    await db.run('UPDATE sets SET storage_id = $2 WHERE user_id = $1', [uid, occupied]);
     const stockList = await hole('/storage/locations');
     assert.deepEqual(stockList.body.locations.map(o => o.name).sort(), ['Dachboden Kiste 3', 'Keller Regal A']);
     const filter = await hole('/storage');
@@ -107,7 +107,7 @@ test('import, storage locations, foreign currency and catalog on the server', {
       filter.body.locations.map(o => o.location),
       ['Keller Regal A'],
     );
-    assert.ok(leer > 0);
+    assert.ok(empty > 0);
   });
 
   await t.test('foreign currency: amount and currency are shown', async () => {

@@ -30,7 +30,7 @@ test('esc() neutralizes all HTML metacharacters incl. apostrophe', async () => {
 // Counter-check (08.11.2026): “\\” and control characters removed from the regex of safeUrl() → red: “/\\host” got through.
 test('safeUrl() only lets same origin, http(s) and image data through', async () => {
   const { safeUrl } = await loadHelpers();
-  for (const gut of [
+  for (const good of [
     '/img/a.png',
     '/',
     'https://cdn.example/a.png',
@@ -38,7 +38,7 @@ test('safeUrl() only lets same origin, http(s) and image data through', async ()
     'data:image/png;base64,AAAA',
     ' /pfad ',
   ])
-    assert.equal(safeUrl(gut), gut.trim(), `„${gut}“ wrongly rejected`);
+    assert.equal(safeUrl(good), good.trim(), `„${good}“ wrongly rejected`);
   for (const badOne of [
     '//evil.example/x',
     '/\\evil.example/x',
@@ -61,7 +61,7 @@ test('escJs() does not break out of onclick="fn(\'…\')"', async () => {
   // The classic breakout: an apostrophe closes the JS string, code afterwards.
   const payload = "');alert(1);//";
   const out = escJs(payload);
-  assert.ok(!/(^|[^\\])'/.test(out), `Apostroph nicht escaped: ${out}`);
+  assert.ok(!/(^|[^\\])'/.test(out), `apostrophe not escaped: ${out}`);
   assert.ok(!out.includes('<'), 'Angle bracket not escaped');
   // A backslash must be doubled, otherwise it neutralizes the following \'
   assert.equal(escJs('a\\'), 'a\\\\');
@@ -126,14 +126,14 @@ test('esc/escJs/escUrl/escHex are defined exactly once', () => {
   // All escapers live in escaping.js (DOM-free, the BrickLink export also
   // loads it). Two versions of the same escaper drifted apart once already.
   const home = { esc: 'escaping.js', escJs: 'escaping.js', escUrl: 'escaping.js', escHex: 'escaping.js' };
-  for (const [name, datei] of Object.entries(home)) {
+  for (const [name, file] of Object.entries(home)) {
     const defs = FILES.filter(f =>
       new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')),
     );
     assert.deepEqual(
       defs,
-      [datei],
-      `${name}() must be declared exactly once (in ${datei}) — otherwise ` +
+      [file],
+      `${name}() must be declared exactly once (in ${file}) — otherwise ` +
         'escaping depends on the load order, and two versions drift ' +
         'apart. Exactly that was reported by test/wish-list-xml.test.js ' +
         'once before: the app escaped, the web app did not.',
@@ -186,12 +186,12 @@ test('server-side error messages go through esc() in the HTML context', () => {
         if (src.slice(ago - 4, ago) === 'html' && !/rawHtml\(/.test(m[1])) continue;
         // Remove string literals so that translation keys
         // ('…error') do not count as a data field.
-        const ausdruck = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");
-        for (const treffer of ausdruck.matchAll(FIELD)) {
-          const danach = ausdruck.slice(treffer.index + treffer[0].length).trimStart();
-          if (danach.startsWith('?')) continue; // Bedingungsstellung
-          const davor = ausdruck.slice(0, treffer.index);
-          if (/\besc\s*\($/.test(davor)) continue; // already escaped
+        const expression = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");
+        for (const hits of expression.matchAll(FIELD)) {
+          const afterwards = expression.slice(hits.index + hits[0].length).trimStart();
+          if (afterwards.startsWith('?')) continue; // Bedingungsstellung
+          const before = expression.slice(0, hits.index);
+          if (/\besc\s*\($/.test(before)) continue; // already escaped
           bad.push(`${f}:${i + 1}: \${${m[1]}}`);
         }
       }

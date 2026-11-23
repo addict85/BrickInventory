@@ -43,11 +43,11 @@ test('account switches go out as true/false', async t => {
     await db.pool.end();
   });
   await adminWithFactor(_req, chef);
-  let als = chef;
-  const sitzung = {};
-  Object.defineProperty(sitzung, 'userId', { get: () => als, enumerable: true });
-  Object.defineProperty(sitzung, 'isAdmin', { get: () => als === chef, enumerable: true });
-  const { base } = testServer(_req, { sitzung, t });
+  let as = chef;
+  const session = {};
+  Object.defineProperty(session, 'userId', { get: () => as, enumerable: true });
+  Object.defineProperty(session, 'isAdmin', { get: () => as === chef, enumerable: true });
+  const { base } = testServer(_req, { session, t });
   const hole = async path => {
     const r = await fetch(base + path);
     assert.equal(r.status, 200, await r.clone().text());
@@ -55,10 +55,10 @@ test('account switches go out as true/false', async t => {
   };
 
   await t.test('the admin account list', async () => {
-    als = chef;
-    const liste = (await hole('/api/v2/auth/users')).users.filter(k => k.id === chef || k.id === gast);
+    as = chef;
+    const list = (await hole('/api/v2/auth/users')).users.filter(k => k.id === chef || k.id === gast);
     assert.deepEqual(
-      liste.map(k => [k.id, k.is_admin]),
+      list.map(k => [k.id, k.is_admin]),
       [
         [chef, true],
         [gast, false],
@@ -66,9 +66,9 @@ test('account switches go out as true/false', async t => {
     );
   });
   await t.test('the own profile', async () => {
-    als = chef;
+    as = chef;
     assert.equal((await hole('/api/v2/auth/profile')).user.email_verified, true);
-    als = gast;
+    as = gast;
     assert.equal((await hole('/api/v2/auth/profile')).user.email_verified, false);
   });
 });

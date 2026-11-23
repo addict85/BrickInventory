@@ -67,8 +67,8 @@ test('storage location default against a real database', async t => {
   });
 
   await t.test('the star sets the default and it reads back', async () => {
-    const gesetzt = await L.setDefault(U.ich, estrich.id);
-    assert.equal(gesetzt.name, 'Estrich');
+    const isSet = await L.setDefault(U.ich, estrich.id);
+    assert.equal(isSet.name, 'Estrich');
     const parsed = await L.defaultOf(U.ich);
     assert.equal(parsed?.id, estrich.id);
     assert.equal(parsed?.name, 'Estrich');
@@ -118,10 +118,10 @@ test('storage location default against a real database', async t => {
   await t.test('DELETE: the default is gone, not broken', async () => {
     // The second statement. A place can only be deleted when nothing lies
     // in it (loescheOrt) — hence an own, empty place for this probe.
-    const kiste = (await L.createStorage(U.ich, 'Kiste 7')).location;
-    await L.setDefault(U.ich, kiste.id);
+    const crate = (await L.createStorage(U.ich, 'Kiste 7')).location;
+    await L.setDefault(U.ich, crate.id);
     assert.equal((await L.defaultOf(U.ich))?.name, 'Kiste 7');
-    await L.deleteStorage(U.ich, kiste.id);
+    await L.deleteStorage(U.ich, crate.id);
     assert.equal(
       await L.defaultOf(U.ich),
       null,
@@ -136,7 +136,7 @@ test('storage location default against a real database', async t => {
       ?.value;
     assert.equal(
       rest,
-      String(kiste.id),
+      String(crate.id),
       'Expected was the silent, orphaned row — if something else is there, ' +
         'the reasoning in src/inventory/storageLocation.ts is no longer correct',
     );

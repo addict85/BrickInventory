@@ -13,13 +13,13 @@ const { csvReadIn } = require('./helpers/sources').buildAndRequire()('src/infra/
 const readIn = (/** @type {string} */ csv) => csvReadIn(csv).records;
 
 test('a column __proto__ does not end up in the prototype chain', () => {
-  const vorher = /** @type {any} */ (Object.prototype).polluted;
+  const prior = /** @type {any} */ (Object.prototype).polluted;
   const records = readIn('set_number,__proto__\n10497-1,{"polluted":true}\n');
   assert.equal(records.length, 1);
   assert.equal(records[0].set_number, '10497-1', 'The real column gets lost — the filter reaches too far');
   assert.equal(
     /** @type {any} */ (Object.prototype).polluted,
-    vorher,
+    prior,
     'Object.prototype was changed — the header row hit the chain',
   );
   assert.ok(!Object.hasOwn(records[0], '__proto__'), 'The record carries a __proto__ key');

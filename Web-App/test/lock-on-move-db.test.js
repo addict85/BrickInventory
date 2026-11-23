@@ -45,7 +45,7 @@ const SN_A = '75192-1',
  */
 const LOCK_SQL = 'SELECT pg_advisory_xact_lock($1, hashtext($2))';
 const { LOCKS } = _req('src/infra/lockNamespaces.js');
-const schluessel = (userId, scopeKey) => [LOCKS.INVENTORY, `${userId}|${scopeKey}`];
+const key = (userId, scopeKey) => [LOCKS.INVENTORY, `${userId}|${scopeKey}`];
 
 async function lockRows(userId, scopeKey, granted) {
   const z = await db.get(
@@ -56,7 +56,7 @@ async function lockRows(userId, scopeKey, granted) {
         -- pg_locks gilt für den ganzen Server; parallele Testdateien halten in
         -- ihrer eigenen Datenbank dieselben Schlüssel.
         AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
-    [...schluessel(userId, scopeKey), granted],
+    [...key(userId, scopeKey), granted],
   );
   return Number(z.c);
 }
@@ -66,30 +66,30 @@ async function lockRows(userId, scopeKey, granted) {
  * route is done.
  */
 async function findingWarter(userId, scopeKey, isDone, limitMs = 5000) {
-  const bis = Date.now() + limitMs;
+  const until = Date.now() + limitMs;
   for (;;) {
     if (isDone()) return 'fertig';
     if ((await lockRows(userId, scopeKey, false)) > 0) return 'wartet';
-    if (Date.now() > bis) return 'nichts';
+    if (Date.now() > until) return 'nichts';
     await new Promise(r => setTimeout(r, 20));
   }
 }
 
 /** The move, with a limit, so that a hang becomes a message. */
 function move(base, sn, acqIds, limitMs = 10000) {
-  const lauf = fetch(`${base}/api/v2/sets/${sn}/move`, {
+  const run = fetch(`${base}/api/v2/sets/${sn}/move`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ to_user_id: KIND, acquisition_ids: acqIds }),
   });
-  const condition = { fertig: false };
-  const tracked = lauf.then(
+  const condition = { done: false };
+  const tracked = run.then(
     r => {
-      condition.fertig = true;
+      condition.done = true;
       return r;
     },
     e => {
-      condition.fertig = true;
+      condition.done = true;
       throw e;
     },
   );
@@ -141,7 +141,7 @@ async function setup() {
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [MAIN, KIND]);
   for (const sn of [SN_A, SN_B, SN_C]) {
     await catalogSet(db, sn, { name: sn });
-    await holdsSet(db, MAIN, sn, 1, { preis: 100 });
+    await holdsSet(db, MAIN, sn, 1, { price: 100 });
   }
 }
 
@@ -154,7 +154,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
   }
   await setup();
 
-  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const srv = testServer(_req, { session: { userId: MAIN }, t });
 
   /**
    * Takes the lock on an own connection, runs `fn`, releases it.
@@ -168,7 +168,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
     const halter = await db.pool.connect();
     try {
       await halter.query('BEGIN');
-      await halter.query(LOCK_SQL, schluessel(userId, scopeKey));
+      await halter.query(LOCK_SQL, key(userId, scopeKey));
       assert.equal(
         await lockRows(userId, scopeKey, true),
         1,
@@ -189,15 +189,15 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
     const acq = await acquisitionIds(MAIN, SN_A);
     assert.equal(acq.length, 1, `Precondition: an acquisition for ${SN_A}`);
 
-    await withLock(MAIN, SN_A, async freigeben => {
+    await withLock(MAIN, SN_A, async release => {
       const v = move(srv.base, SN_A, acq);
-      const finding = await findingWarter(MAIN, SN_A, () => v.fertig);
+      const finding = await findingWarter(MAIN, SN_A, () => v.done);
 
       assert.equal(
         finding,
         'wartet',
         {
-          fertig:
+          done:
             `Die Verschiebung lief DURCH, während die Sperre auf (${MAIN}, ${SN_A}) ` +
             'gehalten wurde. Dann nimmt die Route die Sperre nicht — zwei gleichzeitige ' +
             'Verschiebungen desselben Sets lesen denselben Stand, und die zweite ' +
@@ -213,7 +213,7 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
       //
       // Without this part „waits" would also be fulfilled by a route that
       // hangs permanently. A lock that never opens is no progress.
-      await freigeben();
+      await release();
       const r = await v.withLimit;
       assert.equal(
         r.status,

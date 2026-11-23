@@ -19,10 +19,10 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
 /** Replace a built module in the require cache before the services pull it out. */
-function replace(rel, felder) {
+function replace(rel, fields) {
   const p = require.resolve(path.join(ROOT, 'dist', rel));
-  const echt = require(p);
-  require.cache[p].exports = Object.assign({}, echt, felder);
+  const original = require(p);
+  require.cache[p].exports = Object.assign({}, original, fields);
 }
 let rebrickable = 'gestoert';
 const outage = async () => {
@@ -43,9 +43,9 @@ replace('src/catalog/partsEnrichment.js', {
 });
 
 test('result: value, substitute and reported failure', async () => {
-  const { attempts: versuche, valueOr } = _req('src/infra/result.js');
-  assert.deepEqual(await versuche('probe', Promise.resolve([])), { ok: true, value: [] });
-  const r = await versuche('probe', async () => {
+  const { attempts, valueOr } = _req('src/infra/result.js');
+  assert.deepEqual(await attempts('probe', Promise.resolve([])), { ok: true, value: [] });
+  const r = await attempts('probe', async () => {
     throw new Error('weg');
   });
   assert.deepEqual(r, { ok: false, error: { context: 'probe', reason: 'weg' } });
@@ -66,9 +66,9 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
     assert.equal(r.source, 'quelle_gestoert');
     assert.match(r.error, /Rebrickable antwortet nicht/);
     rebrickable = 'leer';
-    const leer = await partListOfSets(require('./helpers/sources').testContext('sets'), SN, async () => {});
-    assert.equal(leer.source, 'not_found');
-    assert.equal(leer.error, undefined);
+    const empty = await partListOfSets(require('./helpers/sources').testContext('sets'), SN, async () => {});
+    assert.equal(empty.source, 'not_found');
+    assert.equal(empty.error, undefined);
   });
 
   await t.test('… also for the minifigures', async () => {
@@ -83,14 +83,14 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
     rebrickable = 'gestoert';
     const states = [];
     // Via the registered kind, as the worker executes it.
-    const nacharbeit = require('./helpers/sources')
+    const rework = require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
       .find(a => a.kind === 'rework');
     // With catalog and image: the follow-up work then asks no network for the master, only the steps after it.
     await require('./helpers/inventory').catalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
     try {
-      await nacharbeit.run(
+      await rework.run(
         { set_number: SN, user_id: 0, kind: 'zweit' },
         {
           progress: async f => {

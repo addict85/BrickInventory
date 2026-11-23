@@ -24,21 +24,21 @@ const FLAG = '^(is|has|must|never)_|_verified$';
 
 /** Flag columns that are not BOOLEAN, and constraints on 0/1 — in the schema `schema`. */
 async function numbersFlags(db, schema) {
-  const spalten = await db.all(
+  const columns = await db.all(
     `SELECT table_name || '.' || column_name || ': ' || data_type AS z FROM information_schema.columns
       WHERE table_schema = $1 AND column_name ~ $2 AND data_type <> 'boolean'
         AND table_name IN (SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_type = 'BASE TABLE')
       ORDER BY 1`,
     [schema, FLAG],
   );
-  const schranken = await db.all(
+  const limits = await db.all(
     `SELECT conname AS z FROM pg_constraint
       WHERE connamespace = $1::regnamespace AND contype = 'c'
         AND pg_get_constraintdef(oid) ~ 'ARRAY\\[0, 1\\]|IN \\(0, ?1\\)'
       ORDER BY 1`,
     [schema],
   );
-  return [...spalten, ...schranken].map(r => r.z);
+  return [...columns, ...limits].map(r => r.z);
 }
 
 test('no yes/no column carries 0/1', async t => {

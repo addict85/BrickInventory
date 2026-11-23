@@ -27,15 +27,15 @@ const { contractRouter: contractRouterFn } = _req('src/http/contractRouter.js');
 const { CONTRACT } = _req('src/contract/index.js');
 
 test('checked input and query', { concurrency: 1 }, async t => {
-  let aufrufe = 0;
+  let calls = 0;
   const router = contractRouterFn('/api/v2');
   // Past res.json: the response check (test mode) applies to the real body.
-  const zeige = (req, res) => {
-    aufrufe++;
+  const show = (req, res) => {
+    calls++;
     res.type('json').send(JSON.stringify({ input: req.input, query: req.queryArgs }));
   };
-  router.endpoint('POST /api/v2/sets', zeige);
-  router.endpoint('GET /api/v2/catalog/sets', zeige);
+  router.endpoint('POST /api/v2/sets', show);
+  router.endpoint('GET /api/v2/catalog/sets', show);
   const app = express();
   app.use(express.json());
   app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
@@ -43,44 +43,44 @@ test('checked input and query', { concurrency: 1 }, async t => {
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${portOf(srv)}/api/v2`;
-  const sende = async (path, rumpf) => {
+  const send = async (path, body) => {
     const r = await fetch(
       basis + path,
-      rumpf === undefined
+      body === undefined
         ? {}
-        : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(rumpf) },
+        : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) },
     );
     return { status: r.status, body: await r.json() };
   };
 
   await t.test('the route sees the converted body', async () => {
-    const r = await sende('/sets', { set_number: '10179-1', quantity: '3', purchase_price: '12,50', condition: 'U' });
+    const r = await send('/sets', { set_number: '10179-1', quantity: '3', purchase_price: '12,50', condition: 'U' });
     assert.equal(r.status, 200);
     assert.deepEqual(r.body.input, { set_number: '10179-1', quantity: 3, purchase_price: 12.5, condition: 'U' });
   });
 
   await t.test('an unknown field is 400', async () => {
-    const vorher = aufrufe;
-    const r = await sende('/sets', { set_number: '10179-1', purchasePrice: 12 });
+    const prior = calls;
+    const r = await send('/sets', { set_number: '10179-1', purchasePrice: 12 });
     assert.deepEqual([r.status, r.body.code], [400, 'field_unknown']);
     assert.match(r.body.error, /purchasePrice/);
-    assert.equal(aufrufe, vorher, 'the route ran anyway');
+    assert.equal(calls, prior, 'the route ran anyway');
   });
 
   await t.test('the route sees the converted query', async () => {
-    const r = await sende('/catalog/sets?page=2&theme_id=&q=Haus');
+    const r = await send('/catalog/sets?page=2&theme_id=&q=Haus');
     assert.equal(r.status, 200);
     assert.deepEqual(r.body.query, { page: 2, theme_id: null, q: 'Haus' });
   });
 
   await t.test('a wrong query is 400', async () => {
-    const vorher = aufrufe;
-    const zahl = await sende('/catalog/sets?page=zwei');
-    assert.deepEqual([zahl.status, zahl.body.code], [400, 'input_invalid']);
-    assert.match(zahl.body.error, /page/);
-    const fremd = await sende('/catalog/sets?seite=2');
+    const prior = calls;
+    const num = await send('/catalog/sets?page=zwei');
+    assert.deepEqual([num.status, num.body.code], [400, 'input_invalid']);
+    assert.match(num.body.error, /page/);
+    const fremd = await send('/catalog/sets?seite=2');
     assert.deepEqual([fremd.status, fremd.body.code], [400, 'field_unknown']);
-    assert.equal(aufrufe, vorher);
+    assert.equal(calls, prior);
   });
 });
 
@@ -99,9 +99,9 @@ test('every input and query is closed', () => {
 });
 
 test('the query is in the OpenAPI description', () => {
-  const dok = _req('src/contract/openapi.js').openapi(2);
-  const abfrage = dok.paths['/api/v2/sets'].get.parameters.filter(p => p.in === 'query');
-  assert.deepEqual(abfrage.map(p => p.name).sort(), [
+  const doc = _req('src/contract/openapi.js').openapi(2);
+  const query = doc.paths['/api/v2/sets'].get.parameters.filter(p => p.in === 'query');
+  assert.deepEqual(query.map(p => p.name).sort(), [
     'accounts',
     'page',
     'page_size',
@@ -110,10 +110,10 @@ test('the query is in the OpenAPI description', () => {
     'storage',
     'theme',
   ]);
-  assert.equal(abfrage.find(p => p.name === 'page').schema.type, 'string');
-  const alle = Object.values(dok.paths)
+  assert.equal(query.find(p => p.name === 'page').schema.type, 'string');
+  const all = Object.values(doc.paths)
     .flatMap(o => Object.values(o))
     .flatMap(op => op.parameters ?? [])
     .filter(p => p.in === 'query');
-  assert.ok(alle.length >= 80, `only ${alle.length} query parameters in the OpenAPI description`);
+  assert.ok(all.length >= 80, `only ${all.length} query parameters in the OpenAPI description`);
 });

@@ -24,14 +24,14 @@ test('metrics on the phone are text without surface and border', t => {
     t.skip('no Chrome found');
     return;
   }
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kennzahlen-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kennzahlen-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const css = ['tokens.css', 'styles.css', 'themes/brick.css', 'themes/farbfaecher.css', 'mobile.css']
     .map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`)
     .join('');
   const stat = (k, z, l) =>
     `<div class="bstat ${k}"><div class="bstat-l">${l}</div><div class="bstat-v">${z}</div><div class="bstat-s"></div></div>`;
-  const faelle = DESIGNS.map(
+  const cases = DESIGNS.map(
     d =>
       `<div data-theme="${d}" data-fall="${d}"><div class="brick-stats">${stat(
         'bstat-slate',
@@ -39,13 +39,13 @@ test('metrics on the phone are text without surface and border', t => {
         'Sets',
       )}${stat('bstat-petrol', 394, 'Teile')}${stat('bstat-light', 3, 'Minifiguren')}</div></div>`,
   ).join('');
-  const seite = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${css}</head>
-<body style="margin:0">${faelle}<pre id="e"></pre><script>addEventListener('load',()=>{
-const aus=[...document.querySelectorAll('[data-fall]')].map(f=>{const s=getComputedStyle(f.querySelector('.bstat'));
-return {d:f.dataset.fall,bg:s.backgroundColor,rand:['Top','Right','Bottom','Left'].map(k=>s['border'+k+'Width']).join(' '),schatten:s.boxShadow};});
-document.getElementById('e').textContent='ERGEBNIS'+JSON.stringify(aus)+'ENDE';});</script></body></html>`;
-  const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, seite);
+  const page = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${css}</head>
+<body style="margin:0">${cases}<pre id="e"></pre><script>addEventListener('load',()=>{
+const out=[...document.querySelectorAll('[data-fall]')].map(f=>{const s=getComputedStyle(f.querySelector('.bstat'));
+return {d:f.dataset.fall,bg:s.backgroundColor,rand:['Top','Right','Bottom','Left'].map(k=>s['border'+k+'Width']).join(' '),shadow:s.boxShadow};});
+document.getElementById('e').textContent='ERGEBNIS'+JSON.stringify(out)+'ENDE';});</script></body></html>`;
+  const file = path.join(dir, 'seite.html');
+  fs.writeFileSync(file, page);
   const dom = execFileSync(
     bin,
     [
@@ -56,17 +56,17 @@ document.getElementById('e').textContent='ERGEBNIS'+JSON.stringify(aus)+'ENDE';}
       '--window-size=390,844',
       '--virtual-time-budget=3000',
       '--dump-dom',
-      `file://${datei}`,
+      `file://${file}`,
     ],
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'The test page wrote no result');
-  const ergebnis = JSON.parse(m[1].replace(/&quot;/g, '"'));
-  assert.equal(ergebnis.length, DESIGNS.length);
-  for (const e of ergebnis) {
+  const outcome = JSON.parse(m[1].replace(/&quot;/g, '"'));
+  assert.equal(outcome.length, DESIGNS.length);
+  for (const e of outcome) {
     assert.equal(e.bg, 'rgba(0, 0, 0, 0)', `${e.d}: metric has background ${e.bg}`);
     assert.equal(e.rand, '0px 0px 0px 0px', `${e.d}: metric has border ${e.rand}`);
-    assert.equal(e.schatten, 'none', `${e.d}: metric has a shadow`);
+    assert.equal(e.shadow, 'none', `${e.d}: metric has a shadow`);
   }
 });

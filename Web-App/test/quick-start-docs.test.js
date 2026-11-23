@@ -30,8 +30,8 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const DOCS = [
-  { datei: path.join(ROOT, '..', 'README.md'), abschnitt: '## Schnellstart' },
-  { datei: path.join(ROOT, 'README.md'), abschnitt: '## Docker (empfohlen)' },
+  { file: path.join(ROOT, '..', 'README.md'), section: '## Schnellstart' },
+  { file: path.join(ROOT, 'README.md'), section: '## Docker (empfohlen)' },
 ];
 const DIGEST = 'sha256:' + '5'.repeat(64);
 const PUBLISHED = fs
@@ -39,12 +39,12 @@ const PUBLISHED = fs
   .match(/^\s*IMAGE:\s*(\S+)/m)?.[1];
 
 /** The lines of the first ```bash block in the section, without comments. */
-function quickStart(datei, abschnitt) {
-  const text = fs.readFileSync(datei, 'utf8');
-  const ab = text.indexOf(`\n${abschnitt}\n`);
-  assert.ok(ab >= 0, `${path.basename(datei)}: section „${abschnitt}“ is missing`);
+function quickStart(file, section) {
+  const text = fs.readFileSync(file, 'utf8');
+  const ab = text.indexOf(`\n${section}\n`);
+  assert.ok(ab >= 0, `${path.basename(file)}: section „${section}“ is missing`);
   const block = text.slice(ab).match(/```bash\n([\s\S]*?)```/)?.[1];
-  assert.ok(block, `${path.basename(datei)}: no bash block in the quick start`);
+  assert.ok(block, `${path.basename(file)}: no bash block in the quick start`);
   return block
     .split('\n')
     .map(z => z.replace(/\s+#.*$/, '').trim())
@@ -80,8 +80,8 @@ function compose(location, ...args) {
   });
 }
 
-for (const { datei, abschnitt } of DOCS) {
-  const name = path.relative(path.join(ROOT, '..'), datei);
+for (const { file, section } of DOCS) {
+  const name = path.relative(path.join(ROOT, '..'), file);
   test(`${name}: the quick start matches compose.yaml`, t => {
     const probe = compose(path.join(ROOT), 'version');
     if (probe.error || probe.status !== 0) {
@@ -91,7 +91,7 @@ for (const { datei, abschnitt } of DOCS) {
     }
     assert.ok(PUBLISHED, 'IMAGE not found in docker-publish.yml');
     const location = sandbox(t);
-    const steps = quickStart(datei, abschnitt);
+    const steps = quickStart(file, section);
     const dockerRows = [];
     for (const row of steps) {
       if (/^(git|cd)\s/.test(row)) continue;
@@ -127,7 +127,7 @@ for (const { datei, abschnitt } of DOCS) {
     const k = compose(location, 'config', '--format', 'json');
     assert.equal(k.status, 0, `docker compose config: ${k.stderr}`);
     const j = JSON.parse(k.stdout);
-    const dienste = Object.keys(j.services);
+    const services = Object.keys(j.services);
 
     // Every service named by a docker command of the quick start exists.
     for (const z of dockerRows) {
@@ -139,7 +139,7 @@ for (const { datei, abschnitt } of DOCS) {
         .filter(w => w && !w.startsWith('-'));
       // With exec and run the command in the container follows the service.
       for (const d of ['exec', 'run'].includes(command) ? words.slice(0, 1) : words)
-        assert.ok(dienste.includes(d), `unknown service ${d} in „${z}“`);
+        assert.ok(services.includes(d), `unknown service ${d} in „${z}“`);
     }
 
     // The steps have created every file that compose mounts as a secret.
@@ -187,8 +187,8 @@ for (const { datei, abschnitt } of DOCS) {
         `${PUBLISHED}-caddy@${DIGEST}`,
         `${d} pulls the signed Caddy image as a verified digest`,
       );
-    const gebaut = dienste.filter(d => j.services[d].build?.dockerfile === 'Dockerfile');
-    assert.deepEqual(gebaut, ['app'], 'exactly one service builds the Dockerfile');
+    const built = services.filter(d => j.services[d].build?.dockerfile === 'Dockerfile');
+    assert.deepEqual(built, ['app'], 'exactly one service builds the Dockerfile');
   });
 }
 
@@ -201,24 +201,24 @@ const ROOT_DOCS = path.join(__dirname, '..', '..');
 const TEXT = fs.readFileSync(path.join(ROOT_DOCS, 'docs', 'SICHERHEIT.md'), 'utf8');
 
 function allFiles() {
-  const raus = [];
-  (function lauf(d) {
+  const result = [];
+  (function run(d) {
     for (const n of fs.readdirSync(d)) {
       if (['node_modules', 'dist', '.git', 'build', '.gradle'].includes(n)) continue;
       const p = path.join(d, n);
-      if (fs.statSync(p).isDirectory()) lauf(p);
-      else raus.push(path.relative(ROOT_DOCS, p).split(path.sep).join('/'));
+      if (fs.statSync(p).isDirectory()) run(p);
+      else result.push(path.relative(ROOT_DOCS, p).split(path.sep).join('/'));
     }
   })(ROOT_DOCS);
-  return raus;
+  return result;
 }
 
 test('every named path to .ts, .sh, .yml and .yaml exists', () => {
-  const dateien = allFiles();
-  const pfade = [...TEXT.matchAll(/[\w./-]+\.(?:ts|sh|ya?ml)\b/g)].map(m => m[0].replace(/^\.\//, ''));
-  assert.ok(pfade.length > 40, `only ${pfade.length} paths found — does the search still work?`);
-  const fehlt = pfade.filter(p => !dateien.some(d => d === p || d.endsWith('/' + p)));
-  assert.deepEqual([...new Set(fehlt)], []);
+  const files = allFiles();
+  const paths = [...TEXT.matchAll(/[\w./-]+\.(?:ts|sh|ya?ml)\b/g)].map(m => m[0].replace(/^\.\//, ''));
+  assert.ok(paths.length > 40, `only ${paths.length} paths found — does the search still work?`);
+  const missing = paths.filter(p => !files.some(d => d === p || d.endsWith('/' + p)));
+  assert.deepEqual([...new Set(missing)], []);
 });
 
 test('no Renovate: Dependabot proposes new versions', () => {

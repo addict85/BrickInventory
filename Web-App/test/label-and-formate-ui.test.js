@@ -40,7 +40,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, warte, takt, reiter } = require('./helpers/ui');
+const { openUi, waitFor, tick, switchTab } = require('./helpers/ui');
 
 test('metrics with separators, complete in English too', async () => {
   const stats = {
@@ -52,7 +52,7 @@ test('metrics with separators, complete in English too', async () => {
   const de = await openUi(stats, { browserLanguage: 'de-DE' });
   try {
     assert.ok(
-      await warte(() => /1\.565 verschiedene/.test(de.d.getElementById('tab-gallery').textContent)),
+      await waitFor(() => /1\.565 verschiedene/.test(de.d.getElementById('tab-gallery').textContent)),
       de.d.querySelector('#bstat-sets')?.parentElement?.textContent,
     );
   } finally {
@@ -60,7 +60,7 @@ test('metrics with separators, complete in English too', async () => {
   }
   const en = await openUi(stats, { language: 'en', browserLanguage: 'en-US' });
   try {
-    assert.ok(await warte(() => en.d.getElementById('bstat-parts').textContent !== '—'));
+    assert.ok(await waitFor(() => en.d.getElementById('bstat-parts').textContent !== '—'));
     assert.equal(en.d.getElementById('bstat-parts').textContent, '10,828');
   } finally {
     en.w.close();
@@ -89,8 +89,8 @@ test('title without soft hyphens', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    await reiter(o.w, 'monitor');
-    assert.ok(await warte(() => /Hintergrund/.test(o.d.title), 2000), o.d.title);
+    await switchTab(o.w, 'monitor');
+    assert.ok(await waitFor(() => /Hintergrund/.test(o.d.title), 2000), o.d.title);
     assert.doesNotMatch(o.d.title, /­/);
   } finally {
     o.w.close();
@@ -108,7 +108,7 @@ test('admin without (Administrator)', async () => {
       language === 'en' ? { language: 'en', browserLanguage: 'en-US' } : {},
     );
     try {
-      assert.ok(await warte(() => o.d.getElementById('ubadge').textContent.trim()));
+      assert.ok(await waitFor(() => o.d.getElementById('ubadge').textContent.trim()));
       assert.equal(o.d.getElementById('ubadge').textContent, username, language);
     } finally {
       o.w.close();
@@ -124,7 +124,7 @@ test('log with fmtDate', async () => {
         entries: [
           {
             occurred_at: '2026-11-05T17:29:38Z',
-            verwalter_name: 'anna',
+            admin_name: 'anna',
             action: 'account_created',
             target_name: 'bert',
           },
@@ -134,8 +134,8 @@ test('log with fmtDate', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    await reiter(o.w, 'settings');
-    assert.ok(await warte(() => o.d.querySelector('#vw-log tbody td')));
+    await switchTab(o.w, 'settings');
+    assert.ok(await waitFor(() => o.d.querySelector('#vw-log tbody td')));
     assert.match(o.d.querySelector('#vw-log tbody td').textContent, /^\d{2}\.\d{2}\.\d{4}/);
   } finally {
     o.w.close();
@@ -149,7 +149,7 @@ test('empty credentials report "access removed"', async () => {
     o.d.getElementById('btn-sav-rb').click();
     // Confirmation happens at the button (reportAtField), not in the toast.
     const state = () => o.d.querySelector('#settings-rb .field-status')?.textContent || '';
-    assert.ok(await warte(() => /Zugang entfernt/.test(state()), 2000), state());
+    assert.ok(await waitFor(() => /Zugang entfernt/.test(state()), 2000), state());
     assert.doesNotMatch(state() + o.d.getElementById('toasts').textContent, /gespeichert/i);
   } finally {
     o.w.close();
@@ -167,20 +167,20 @@ test('recovery codes: saved and as a file', async () => {
     const field = o.d.createElement('input');
     field.id = 'sf-code';
     field.value = '123456';
-    const knopf = o.d.createElement('button');
-    knopf.dataset.click = 'confirmSecondFactor';
-    o.d.getElementById('zf-bereich')?.append(field, knopf) ?? o.d.body.append(field, knopf);
-    knopf.click();
-    assert.ok(await warte(() => o.d.getElementById('sf-saved')));
+    const button = o.d.createElement('button');
+    button.dataset.click = 'confirmSecondFactor';
+    o.d.getElementById('zf-bereich')?.append(field, button) ?? o.d.body.append(field, button);
+    button.click();
+    assert.ok(await waitFor(() => o.d.getElementById('sf-saved')));
     assert.match(o.d.getElementById('sf-saved').textContent, /gesichert/);
-    const datei = o.d.querySelector('[data-click="saveRecoveryCodes"]');
-    assert.ok(datei, 'no button „Als Datei speichern“');
-    let geladen = '';
+    const file = o.d.querySelector('[data-click="saveRecoveryCodes"]');
+    assert.ok(file, 'no button „Als Datei speichern“');
+    let loaded = '';
     o.w.HTMLAnchorElement.prototype.click = function () {
-      geladen = this.download;
+      loaded = this.download;
     };
-    datei.click();
-    assert.match(geladen, /\.txt$/);
+    file.click();
+    assert.match(loaded, /\.txt$/);
   } finally {
     o.w.close();
   }
@@ -206,10 +206,12 @@ test('minifigures: bought on and total first', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    await reiter(o.w, 'minifigs');
-    const erste = o.d.querySelector('#tab-minifigs .brick-stats .bstat .bstat-l');
-    assert.equal(erste.textContent.trim(), 'Figuren gesamt');
-    assert.ok(await warte(() => /Gekauft am 04\.03\.2026/.test(o.d.getElementById('tab-minifigs').textContent), 2000));
+    await switchTab(o.w, 'minifigs');
+    const first = o.d.querySelector('#tab-minifigs .brick-stats .bstat .bstat-l');
+    assert.equal(first.textContent.trim(), 'Figuren gesamt');
+    assert.ok(
+      await waitFor(() => /Gekauft am 04\.03\.2026/.test(o.d.getElementById('tab-minifigs').textContent), 2000),
+    );
   } finally {
     o.w.close();
   }
@@ -222,10 +224,10 @@ test('a button "open set" for an existing set', async () => {
   );
   try {
     o.d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
-    await takt(10);
+    await tick(10);
     o.d.getElementById('add-num').value = '10305-1';
     o.d.getElementById('btn-add').click();
-    assert.ok(await warte(() => !o.d.getElementById('add-unknown').hidden));
+    assert.ok(await waitFor(() => !o.d.getElementById('add-unknown').hidden));
     const buttonList = [...o.d.querySelectorAll('#add-set-modal button')].filter(b => /Set öffnen/.test(b.textContent));
     assert.equal(buttonList.length, 1);
   } finally {
@@ -244,12 +246,12 @@ test('remember names the collection', async () => {
   );
   try {
     o.d.getElementById('mk-num').value = '10305-1';
-    const knopf = o.d.createElement('button');
-    knopf.dataset.click = 'addWantedItem';
-    o.d.body.append(knopf);
-    knopf.click();
+    const button = o.d.createElement('button');
+    button.dataset.click = 'addWantedItem';
+    o.d.body.append(button);
+    button.click();
     assert.ok(
-      await warte(() => /Sammlung \(×3\)/.test(o.d.getElementById('toasts').textContent), 2000),
+      await waitFor(() => /Sammlung \(×3\)/.test(o.d.getElementById('toasts').textContent), 2000),
       o.d.getElementById('toasts').textContent,
     );
   } finally {
@@ -271,17 +273,17 @@ test('household in the subtitle', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    assert.ok(await warte(() => o.d.getElementById('scope-gallery').style.display !== 'none'));
+    assert.ok(await waitFor(() => o.d.getElementById('scope-gallery').style.display !== 'none'));
     o.w.eval('document.querySelector(\'.ntab[data-tab="gallery"]\').click()');
     assert.ok(
-      await warte(() => /im Haushalt/.test(o.d.getElementById('gallery-sub').textContent), 2000),
+      await waitFor(() => /im Haushalt/.test(o.d.getElementById('gallery-sub').textContent), 2000),
       o.d.getElementById('gallery-sub').textContent,
     );
-    const wahl = o.d.getElementById('scope-gallery');
-    wahl.value = 'own';
-    wahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    const choice = o.d.getElementById('scope-gallery');
+    choice.value = 'own';
+    choice.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     assert.ok(
-      await warte(() => /^Alle Sets deiner Sammlung/.test(o.d.getElementById('gallery-sub').textContent), 2000),
+      await waitFor(() => /^Alle Sets deiner Sammlung/.test(o.d.getElementById('gallery-sub').textContent), 2000),
     );
   } finally {
     o.w.close();

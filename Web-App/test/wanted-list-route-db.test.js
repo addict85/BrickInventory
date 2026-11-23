@@ -49,41 +49,41 @@ test.after(async () => {
 
 let MAIN = 0;
 
-function item(typ, id, farbe, quantity = 1) {
+function item(kind, id, color, quantity = 1) {
   return (
-    `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
-    (farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`) +
+    `<ITEM>\n<ITEMTYPE>${kind}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
+    (color === null ? '' : `<COLOR>${color}</COLOR>\n`) +
     `<MAXPRICE>-1.0000</MAXPRICE>\n<MINQTY>${quantity}</MINQTY>\n` +
     `<CONDITION>X</CONDITION>\n<NOTIFY>N</NOTIFY>\n</ITEM>`
   );
 }
-const liste = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${i.join('\n')}\n</INVENTORY>\n`;
+const list = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${i.join('\n')}\n</INVENTORY>\n`;
 
 /** The test's file: two resolvable parts, one open. */
-const XML = liste(
+const XML = list(
   item('P', '3001', 5, 3), // bl_mapping: NULL registration → stage 2
   item('P', '4162', 1, 2), // bl_mapping: deviating number → stage 1
   item('P', '99999', 5, 1), // nothing → open
 );
 
-async function uploadIt(base, xml, abfrage = '') {
+async function uploadIt(base, xml, query = '') {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  const r = await fetch(`${base}/api/v2/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
+  const r = await fetch(`${base}/api/v2/wanted-list/import/xml${query}`, { method: 'POST', body: fd });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
 /** The same address, but the response read LINE BY LINE (NDJSON). */
-async function uploadStream(base, xml, abfrage) {
+async function uploadStream(base, xml, query) {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  const r = await fetch(`${base}/api/v2/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
-  const roh = await r.text();
-  const zeilen = roh
+  const r = await fetch(`${base}/api/v2/wanted-list/import/xml${query}`, { method: 'POST', body: fd });
+  const raw = await r.text();
+  const lines = raw
     .split('\n')
     .filter(z => z.trim())
     .map(z => JSON.parse(z));
-  return { status: r.status, typ: r.headers.get('content-type') || '', zeilen };
+  return { status: r.status, kind: r.headers.get('content-type') || '', lines };
 }
 
 async function setup() {
@@ -118,7 +118,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   await setup();
 
   importWorker(t, _req);
-  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const srv = testServer(_req, { session: { userId: MAIN }, t });
 
   await t.test('1. a file without <INVENTORY> is rejected beforehand', async () => {
     const { status, body } = await uploadIt(srv.base, '<?xml version="1.0"?>\n<FOO/>\n');
@@ -134,7 +134,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   await t.test('2. the preview writes NOTHING', async () => {
     const { status, body } = await uploadIt(srv.base, XML);
     assert.equal(status, 200, `expected 200, got ${status}: ${JSON.stringify(body)}`);
-    assert.equal(body.preview, true, 'Without schreiben=1 this is not a preview');
+    assert.equal(body.preview, true, 'Without write=1 this is not a preview');
     assert.equal(body.parsed, 3, `${body.parsed} items read instead of 3`);
     assert.equal(body.created, 0, `${body.created} created — the preview does not write`);
 
@@ -166,7 +166,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     assert.equal(body.rebrickable, undefined, 'Rebrickable was asked although rebrickable=1 was missing');
   });
 
-  await t.test('4. with schreiben=1 manual parts are created — with quantity and color', async () => {
+  await t.test('4. with write=1 manual parts are created — with quantity and color', async () => {
     const { body } = await uploadIt(srv.base, XML, '?write=1');
     assert.equal(body.preview, false);
     assert.equal(body.created, 2, `${body.created} created instead of 2: ${JSON.stringify(body.items)}`);
@@ -209,9 +209,9 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     // even a real value must not end up as purchase price — otherwise the
     // finance view would show an amount nobody spent.
     // The column is called `unit_price`, not `price` — looked up after my …
-    const preise = await db.all('SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [MAIN]);
-    assert.ok(preise.length > 0, 'precondition: there are acquisitions');
-    for (const p of preise) {
+    const prices = await db.all('SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [MAIN]);
+    assert.ok(prices.length > 0, 'precondition: there are acquisitions');
+    for (const p of prices) {
       assert.ok(
         p.unit_price === null || Number(p.unit_price) >= 0,
         `A purchase price of ${p.unit_price} came from MAXPRICE — MAXPRICE is ` + 'a search limit, not a price paid',
@@ -220,8 +220,8 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   });
 
   await t.test('6. foreign kinds are in the report', async () => {
-    const mit = liste(item('P', '3001', 5), item('B', '5002', null), item('G', '6001', null));
-    const { body } = await uploadIt(srv.base, mit);
+    const withIt = list(item('P', '3001', 5), item('B', '5002', null), item('G', '6001', null));
+    const { body } = await uploadIt(srv.base, withIt);
     assert.deepEqual(
       body.foreignTypes,
       { B: 1, G: 1 },
@@ -231,37 +231,37 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
 
   // The progress
 
-  await t.test('7. with strom=1 progress lines come, finally the report', async () => {
-    const { status, typ, zeilen } = await uploadStream(srv.base, XML, '?write=1&stream=1');
+  await t.test('7. with stream=1 progress lines come, finally the report', async () => {
+    const { status, kind, lines } = await uploadStream(srv.base, XML, '?write=1&stream=1');
     assert.equal(status, 200);
     assert.match(
-      typ,
+      kind,
       /ndjson/,
-      `Content-Type „${typ}" — a line-based response must not be served as application/json, ` +
+      `Content-Type „${kind}" — a line-based response must not be served as application/json, ` +
         'otherwise the browser tries to read it as ONE document',
     );
 
     // The import runs as a job; the request reads its state at intervals,
     // so intermediate states can coincide. The last one always arrives.
-    const melde = zeilen.filter(z => z.progress);
-    assert.ok(melde.length >= 1, 'no progress line');
-    const fertig = melde.map(z => z.progress.done);
+    const notify = lines.filter(z => z.progress);
+    assert.ok(notify.length >= 1, 'no progress line');
+    const done = notify.map(z => z.progress.done);
     assert.deepEqual(
-      fertig,
-      [...fertig].sort((a, b) => a - b),
+      done,
+      [...done].sort((a, b) => a - b),
       'The count must ascend',
     );
-    assert.equal(fertig.at(-1), 3, 'The last state names all items (otherwise the bar would stop before the end)');
-    for (const z of melde) {
+    assert.equal(done.at(-1), 3, 'The last state names all items (otherwise the bar would stop before the end)');
+    for (const z of notify) {
       assert.equal(z.progress.total, 3, 'The denominator is the number of items');
       assert.equal(z.progress.phase, 'write');
     }
 
-    const letzte = zeilen[zeilen.length - 1];
-    assert.equal(letzte.success, true, 'The last line is the report');
-    assert.equal(letzte.preview, false, 'with schreiben=1 it is not a dry run');
-    assert.equal(letzte.parsed, 3);
-    assert.ok(!letzte.fortschritt, 'The report is not a progress line');
+    const last = lines[lines.length - 1];
+    assert.equal(last.success, true, 'The last line is the report');
+    assert.equal(last.preview, false, 'with write=1 it is not a dry run');
+    assert.equal(last.parsed, 3);
+    assert.ok(!last.progress, 'The report is not a progress line');
   });
 
   // The same bar as for the set import
@@ -360,7 +360,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
   });
 
-  await t.test('8. without strom=1 the address responds unchanged as JSON', async () => {
+  await t.test('8. without stream=1 the address responds unchanged as JSON', async () => {
     // The path of the Android app and all other checks. It must NOT have
     // changed because of the stream.
     const r = await (async () => {
@@ -369,9 +369,9 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
       return fetch(`${srv.base}/api/v2/wanted-list/import/xml`, { method: 'POST', body: fd });
     })();
     assert.match(r.headers.get('content-type') || '', /application\/json/);
-    const roh = await r.text();
-    assert.ok(!roh.includes('"progress"'), 'Without strom=1 no progress line may be in the response');
-    const body = JSON.parse(roh);
+    const raw = await r.text();
+    assert.ok(!raw.includes('"progress"'), 'Without stream=1 no progress line may be in the response');
+    const body = JSON.parse(raw);
     assert.equal(body.success, true);
     assert.equal(body.parsed, 3);
   });
@@ -379,17 +379,17 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   await t.test('9. a set goes through acquireSet: created, then topped up, with follow-up work', async () => {
     const SN = '76001-1';
     await catalogSet(db, SN, { name: 'Wanted-Set', minifigs: 0 });
-    const datei = liste(item('S', SN, null, 2));
-    const erst = (await uploadIt(srv.base, datei, '?write=1')).body;
+    const file = list(item('S', SN, null, 2));
+    const erst = (await uploadIt(srv.base, file, '?write=1')).body;
     assert.equal(erst.created, 1, JSON.stringify(erst));
-    const dann = (await uploadIt(srv.base, datei, '?write=1')).body;
-    assert.equal(dann.topped_up, 1, JSON.stringify(dann));
+    const then = (await uploadIt(srv.base, file, '?write=1')).body;
+    assert.equal(then.topped_up, 1, JSON.stringify(then));
     const quantity = await db.get(
       'SELECT SUM(quantity)::int AS n FROM set_acquisitions WHERE user_id = $1 AND set_number = $2',
       [MAIN, SN],
     );
     assert.equal(quantity.n, 4);
-    const nacharbeit = await db.all("SELECT 1 FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1", [SN]);
-    assert.ok(nacharbeit.length >= 1, 'without follow-up work the set would stay without a catalogue');
+    const rework = await db.all("SELECT 1 FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1", [SN]);
+    assert.ok(rework.length >= 1, 'without follow-up work the set would stay without a catalogue');
   });
 });

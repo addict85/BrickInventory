@@ -27,7 +27,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startApp, warte } = require('./helpers/app-browser');
+const { startApp, sleep } = require('./helpers/app-browser');
 const { patternHousehold, holdsPart } = require('./helpers/inventory');
 const { buildAndRequire } = require('./helpers/sources');
 
@@ -65,62 +65,62 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     t.skip(app.reason);
     return;
   }
-  const { b, bis, db, port, uid, ruhig } = app;
+  const { b, until, db, port, uid, settle } = app;
   // The startup loads settings and prices afterwards; only then is the state fixed.
-  await ruhig();
+  await settle();
   const smtpBefore = await db.all(
     "SELECT key, value FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')",
   );
   await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')");
   const geh = async path => {
-    await b.auswerten(`location.hash = '#/${path}'; true`);
-    await warte(400);
+    await b.evaluate(`location.hash = '#/${path}'; true`);
+    await sleep(400);
   };
-  const zu = async () => {
-    await b.auswerten(klick('#cd-cancel'));
-    await bis(`!(${open})`, 'Dialog zu');
+  const closed = async () => {
+    await b.evaluate(klick('#cd-cancel'));
+    await until(`!(${open})`, 'Dialog zu');
   };
-  const telefon = (breite, hoehe) =>
-    b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 1, mobile: true });
-  const schrift = percentValue => b.auswerten(`document.documentElement.style.fontSize = '${percentValue}'; true`);
+  const phone = (width, height) =>
+    b.tab('Emulation.setDeviceMetricsOverride', { width: width, height: height, deviceScaleFactor: 1, mobile: true });
+  const font = percentValue => b.evaluate(`document.documentElement.style.fontSize = '${percentValue}'; true`);
 
-  await telefon(390, 844);
+  await phone(390, 844);
 
   await t.test('wishlist: error 500 above the fold', async () => {
-    await b.auswerten(`(() => { const echt = window.fetch; window.__echtFetch = echt;
-      window.fetch = (u, o) => String(u).includes('/api/v2/wanted?') ? Promise.resolve(new Response('{"success":false,"error":"kaputt"}', { status: 500, headers: { 'Content-Type': 'application/json' } })) : echt(u, o);
+    await b.evaluate(`(() => { const original = window.fetch; window.__echtFetch = original;
+      window.fetch = (u, o) => String(u).includes('/api/v2/wanted?') ? Promise.resolve(new Response('{"success":false,"error":"kaputt"}', { status: 500, headers: { 'Content-Type': 'application/json' } })) : original(u, o);
       return true; })()`);
     try {
       await geh('merkliste');
-      await bis(`!!document.querySelector('#mk-list .error-state')`, 'Fehlerzustand');
+      await until(`!!document.querySelector('#mk-list .error-state')`, 'Fehlerzustand');
       const z =
-        await b.auswerten(`(() => { const f = document.querySelector('#mk-list .error-state').getBoundingClientRect();
-        return { kasten: document.getElementById('mk-box').open, belowBar: f.top > document.querySelector('nav:not(.settings-nav)').getBoundingClientRect().top - 40 }; })()`);
-      assert.deepEqual(z, { kasten: false, belowBar: false });
+        await b.evaluate(`(() => { const f = document.querySelector('#mk-list .error-state').getBoundingClientRect();
+        return { box: document.getElementById('mk-box').open, belowBar: f.top > document.querySelector('nav:not(.settings-nav)').getBoundingClientRect().top - 40 }; })()`);
+      assert.deepEqual(z, { box: false, belowBar: false });
     } finally {
-      await b.auswerten(`window.fetch = window.__echtFetch; true`);
+      await b.evaluate(`window.fetch = window.__echtFetch; true`);
     }
   });
 
   await t.test('voucher card calm', async () => {
     await geh('gutscheine');
-    await bis(`!!document.querySelector('.voucher-row .voucher-actions')`, 'Gutscheine');
-    const z = await b.auswerten(`(() => { const w = (e) => Math.round(e.getBoundingClientRect().width);
-      const knopf = [...document.querySelectorAll('.voucher-row .v-btn')].map(w);
+    await until(`!!document.querySelector('.voucher-row .voucher-actions')`, 'Gutscheine');
+    const z = await b.evaluate(`(() => { const w = (e) => Math.round(e.getBoundingClientRect().width);
+      const button = [...document.querySelectorAll('.voucher-row .v-btn')].map(w);
       const [a, m] = [document.querySelector('.voucher-actions > .btn'), document.querySelector('.voucher-actions > .more-menu > summary')].map(e => e.getBoundingClientRect());
-      const unten = ['queryAllBalances', 'exportVouchers'].map(k => w(document.querySelector('[data-click="' + k + '"]')));
-      return { knopf: [...new Set(knopf)], nebeneinander: Math.round(a.top) === Math.round(m.top), gleich: Math.abs(a.width - m.width) < 2, unten: unten[0] === unten[1] }; })()`);
-    assert.deepEqual(z, { knopf: [44], nebeneinander: true, gleich: true, unten: true });
+      const lower = ['queryAllBalances', 'exportVouchers'].map(k => w(document.querySelector('[data-click="' + k + '"]')));
+      return { button: [...new Set(button)], nebeneinander: Math.round(a.top) === Math.round(m.top), same: Math.abs(a.width - m.width) < 2, lower: lower[0] === lower[1] }; })()`);
+    assert.deepEqual(z, { button: [44], nebeneinander: true, same: true, lower: true });
   });
 
   await t.test('floating button at 200 %', async () => {
     await geh('sammlung');
-    await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
-    await schrift('200%');
+    await until(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
+    await font('200%');
     try {
-      await b.auswerten(`scrollTo(0, 0); true`);
-      await warte(300);
-      const knopf = await b.auswerten(rect('#tab-gallery .button-floating'));
+      await b.evaluate(`scrollTo(0, 0); true`);
+      await sleep(300);
+      const button = await b.evaluate(rect('#tab-gallery .button-floating'));
       for (const sel of [
         '#gs',
         '#tab-gallery .brick-stats',
@@ -128,9 +128,9 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
         // On the phone the toggle is the visible heading (UX check 19 M4).
         '#tab-gallery .collection-choice',
       ])
-        assert.equal(cut(knopf, await b.auswerten(rect(sel))), false, `over ${sel}`);
+        assert.equal(cut(button, await b.evaluate(rect(sel))), false, `over ${sel}`);
     } finally {
-      await schrift('');
+      await font('');
     }
   });
 
@@ -142,8 +142,8 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       uploadThroughput: -1,
     });
     try {
-      await bis(`!document.getElementById('offline-band').hidden`, 'Band');
-      assert.match(await b.auswerten(text('#offline-band')), /seit heute, \d\d:\d\d\./);
+      await until(`!document.getElementById('offline-band').hidden`, 'Band');
+      assert.match(await b.evaluate(text('#offline-band')), /seit heute, \d\d:\d\d\./);
     } finally {
       await b.tab('Network.emulateNetworkConditions', {
         offline: false,
@@ -151,105 +151,105 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
         downloadThroughput: -1,
         uploadThroughput: -1,
       });
-      await b.auswerten(`dispatchEvent(new Event('online')); true`);
+      await b.evaluate(`dispatchEvent(new Event('online')); true`);
     }
-    await bis(`document.getElementById('offline-band').hidden`, 'wieder online', 100);
+    await until(`document.getElementById('offline-band').hidden`, 'wieder online', 100);
   });
 
-  await telefon(320, 640);
-  await schrift('200%');
+  await phone(320, 640);
+  await font('200%');
 
   await t.test('more actions at 320 px and 200 %', async () => {
     await geh('sammlung/set/10294-1');
-    await bis(
+    await until(
       `document.getElementById('set-modal').classList.contains('open') && !document.querySelector('#set-modal .skeleton-row')`,
       'Set-Dialog',
     );
-    await b.auswerten(klick('#set-modal .v-more > summary'));
-    await bis(`document.querySelector('#set-modal .v-more').open`, 'Menü offen');
-    const r = await b.auswerten(rect('#set-modal .v-more > .more-list'));
+    await b.evaluate(klick('#set-modal .v-more > summary'));
+    await until(`document.querySelector('#set-modal .v-more').open`, 'Menü offen');
+    const r = await b.evaluate(rect('#set-modal .v-more > .more-list'));
     assert.ok(r.l >= 0 && r.r <= 320, `menu from ${r.l} to ${r.r}`);
-    await b.auswerten(`document.querySelector('#set-modal .v-more').open = false; true`);
+    await b.evaluate(`document.querySelector('#set-modal .v-more').open = false; true`);
   });
 
   await t.test('focus after Esc on direct call', async () => {
     for (const type of ['rawKeyDown', 'keyUp'])
       await b.tab('Input.dispatchKeyEvent', { type, key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
-    await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'Dialog zu');
+    await until(`!document.getElementById('set-modal').classList.contains('open')`, 'Dialog zu');
     assert.equal(
-      await b.auswerten(`document.activeElement?.closest('h1')?.dataset.tabTitle ?? document.activeElement?.tagName`),
+      await b.evaluate(`document.activeElement?.closest('h1')?.dataset.tabTitle ?? document.activeElement?.tagName`),
       'gallery',
     );
   });
 
-  await schrift('');
+  await font('');
   await b.tab('Emulation.clearDeviceMetricsOverride');
-  await ruhig();
+  await settle();
 
   await t.test('unlink names the account', async () => {
     await geh('haushalt');
-    await bis(`!!document.querySelector('[data-click="unlinkHousehold"]')`, 'Haushalt');
-    await b.auswerten(klick('[data-click="unlinkHousehold"]'));
-    await bis(open, 'Dialog');
-    assert.equal(await b.auswerten(text('#cd-title')), `Verknüpfung mit „${KIND}“ lösen?`);
+    await until(`!!document.querySelector('[data-click="unlinkHousehold"]')`, 'Haushalt');
+    await b.evaluate(klick('[data-click="unlinkHousehold"]'));
+    await until(open, 'Dialog');
+    assert.equal(await b.evaluate(text('#cd-title')), `Verknüpfung mit „${KIND}“ lösen?`);
     assert.match(
-      await b.auswerten(text('#cd-msg')),
+      await b.evaluate(text('#cd-msg')),
       new RegExp(`Sammlung von „${KIND}“ danach nicht mehr.*zwischen den Konten verschoben habt`),
     );
-    await zu();
+    await closed();
   });
 
   await t.test('administration: waiting account, switch without mail', async () => {
     await geh('einstellungen/benutzer');
-    await bis(
+    await until(
       `!!document.querySelector('#users-tbl tbody tr') && !document.getElementById('reg-mail-hint').hidden`,
       'Benutzerliste',
     );
     const z =
-      await b.auswerten(`(() => { const zeile = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WAITING)}));
-      const tabelle = document.getElementById('users-tbl').innerText;
-      return { wartet: /wartet auf Bestätigung/.test(zeile.textContent), knopf: !!zeile.querySelector('[data-click="unlockAccount"]'),
-        verwalter: /Administrator/.test(tabelle), admin: /\\bAdmin\\b/.test(tabelle), schalter: document.getElementById('reg-enabled').disabled,
+      await b.evaluate(`(() => { const line = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WAITING)}));
+      const table = document.getElementById('users-tbl').innerText;
+      return { waits: /wartet auf Bestätigung/.test(line.textContent), button: !!line.querySelector('[data-click="unlockAccount"]'),
+        administrator: /Administrator/.test(table), admin: /\\bAdmin\\b/.test(table), toggle: document.getElementById('reg-enabled').disabled,
         hint: document.getElementById('reg-mail-hint').textContent }; })()`);
     assert.deepEqual(
       { ...z, hint: /E-Mail-Versand/.test(z.hint) },
-      { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hint: true },
+      { waits: true, button: true, administrator: true, admin: false, toggle: true, hint: true },
     );
-    assert.match(await b.auswerten(text('#ubadge')), new RegExp(`${NAME} \\(Administrator\\)`));
-    await b.auswerten(
+    assert.match(await b.evaluate(text('#ubadge')), new RegExp(`${NAME} \\(Administrator\\)`));
+    await b.evaluate(
       `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WAITING)})).querySelector('[data-click="unlockAccount"]').click(); true`,
     );
-    await bis(open, 'Dialog');
-    assert.equal(await b.auswerten(text('#cd-title')), `Konto „${WAITING}“ freischalten?`);
-    await zu();
+    await until(open, 'Dialog');
+    assert.equal(await b.evaluate(text('#cd-title')), `Konto „${WAITING}“ freischalten?`);
+    await closed();
   });
 
   await t.test('category in table and filter', async () => {
     await geh('teile');
-    await b.auswerten(klick('[data-click="chooseView"][data-arg="parts-view"][data-arg2="table"]'));
-    await bis(
+    await b.evaluate(klick('[data-click="chooseView"][data-arg="parts-view"][data-arg2="table"]'));
+    await until(
       `[...document.querySelectorAll('#parts-main tbody.parts-body tr')].some(r => r.textContent.includes('99901'))`,
       'Teiletabelle',
     );
-    const categoryList = `(() => { const zelle = (nr) => [...document.querySelectorAll('#parts-main tbody.parts-body tr')].find(r => r.children[1]?.textContent.trim() === nr)?.children[4]?.textContent.trim();
-      return { b99902: zelle('99902'), b99901: zelle('99901'), filter: [...document.querySelectorAll('#parts-cat option')].map(o => o.textContent).slice(1).sort() }; })()`;
-    assert.deepEqual(await b.auswerten(categoryList), {
+    const categoryList = `(() => { const cell = (nr) => [...document.querySelectorAll('#parts-main tbody.parts-body tr')].find(r => r.children[1]?.textContent.trim() === nr)?.children[4]?.textContent.trim();
+      return { b99902: cell('99902'), b99901: cell('99901'), filter: [...document.querySelectorAll('#parts-cat option')].map(o => o.textContent).slice(1).sort() }; })()`;
+    assert.deepEqual(await b.evaluate(categoryList), {
       b99902: 'Bricks',
       b99901: 'Unbekannt',
       filter: ['Bricks', 'Unbekannt'],
     });
-    await b.auswerten(
+    await b.evaluate(
       `(() => { const s = document.getElementById('lang-select'); s.value = 'en'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
     );
     try {
-      await bis(
+      await until(
         `[...document.querySelectorAll('#parts-cat option')].some(o => o.textContent === 'Unknown')`,
         'englisch',
         50,
       );
-      assert.equal(await b.auswerten(text('#link-register')), 'Register');
+      assert.equal(await b.evaluate(text('#link-register')), 'Register');
     } finally {
-      await b.auswerten(
+      await b.evaluate(
         `(() => { const s = document.getElementById('lang-select'); s.value = 'de'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
       );
     }
@@ -257,55 +257,55 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
 
   await t.test('background jobs: instructions', async () => {
     await geh('hintergrund');
-    await bis(`document.querySelectorAll('.mon-services .mon-name').length >= 6`, 'Dienste');
-    const namen = await b.auswerten(
+    await until(`document.querySelectorAll('.mon-services .mon-name').length >= 6`, 'Dienste');
+    const names = await b.evaluate(
       `[...document.querySelectorAll('.mon-services .mon-name')].map(n => n.textContent.trim()).join(' | ')`,
     );
-    assert.match(namen, /Anleitungen herunterladen/);
-    assert.doesNotMatch(namen, /Handbücher/);
+    assert.match(names, /Anleitungen herunterladen/);
+    assert.doesNotMatch(names, /Handbücher/);
   });
 
   await t.test('confirmation logged in', async () => {
     const { tokenDigest } = buildAndRequire()('src/account/deviceToken.js');
-    const NEU = `${NAME}-neu@example.org`,
+    const NEW = `${NAME}-neu@example.org`,
       TOKEN = `r14-${process.pid}-${Date.now()}`;
     await db.run(
       `UPDATE users SET new_email = $2, new_email_token = $3, new_email_until = NOW() + INTERVAL '1 hour' WHERE id = $1`,
-      [uid, NEU, tokenDigest(TOKEN)],
+      [uid, NEW, tokenDigest(TOKEN)],
     );
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${TOKEN}` });
-    await bis(
-      `(document.getElementById('verify-target')?.textContent || '').includes(${JSON.stringify(NEU)})`,
+    await until(
+      `(document.getElementById('verify-target')?.textContent || '').includes(${JSON.stringify(NEW)})`,
       'Ziel genannt',
     );
     const z =
-      await b.auswerten(`({ haupt: document.getElementById('btn-verify').classList.contains('bp'), zurueck: ${text('#link-verify-to-login')},
-      formular: { titel: ${text('#panel-register h1')}, required: ['reg-user', 'reg-email', 'reg-pass', 'reg-pass2'].every(id => document.getElementById(id).required && document.getElementById(id).getAttribute('aria-required') === 'true'),
-        regel: document.getElementById(document.getElementById('reg-pass').getAttribute('aria-describedby'))?.textContent } })`);
+      await b.evaluate(`({ main: document.getElementById('btn-verify').classList.contains('bp'), back: ${text('#link-verify-to-login')},
+      formular: { title: ${text('#panel-register h1')}, required: ['reg-user', 'reg-email', 'reg-pass', 'reg-pass2'].every(id => document.getElementById(id).required && document.getElementById(id).getAttribute('aria-required') === 'true'),
+        rule: document.getElementById(document.getElementById('reg-pass').getAttribute('aria-describedby'))?.textContent } })`);
     assert.deepEqual(z, {
-      haupt: true,
-      zurueck: '← Zurück zur Sammlung',
+      main: true,
+      back: '← Zurück zur Sammlung',
       formular: {
-        titel: 'Registrieren',
+        title: 'Registrieren',
         required: true,
-        regel: 'Mindestens 12 Zeichen, kein häufig verwendetes Passwort.',
+        rule: 'Mindestens 12 Zeichen, kein häufig verwendetes Passwort.',
       },
     });
-    await b.auswerten(klick('#btn-verify'));
-    await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'App offen');
-    await bis(
-      `[...document.querySelectorAll('#toasts .toast')].some(x => x.textContent.includes(${JSON.stringify(`Neue Adresse ${NEU} bestätigt.`)}))`,
+    await b.evaluate(klick('#btn-verify'));
+    await until(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'App offen');
+    await until(
+      `[...document.querySelectorAll('#toasts .toast')].some(x => x.textContent.includes(${JSON.stringify(`Neue Adresse ${NEW} bestätigt.`)}))`,
       'Toast',
     );
-    assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, NEU);
+    assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, NEW);
     // Nothing pending: confirming is no longer the suggested step.
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=veraltet` });
-    await bis(
+    await until(
       `/wartet keine neue Adresse/.test(document.getElementById('verify-target')?.textContent || '')`,
       'nichts ausstehend',
     );
     assert.deepEqual(
-      await b.auswerten(`[...document.getElementById('btn-verify').classList].filter(k => k === 'bp' || k === 'bs')`),
+      await b.evaluate(`[...document.getElementById('btn-verify').classList].filter(k => k === 'bp' || k === 'bs')`),
       ['bs'],
     );
   });

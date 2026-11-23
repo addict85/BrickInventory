@@ -50,12 +50,12 @@ test('confirm password', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const withSession = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const withoutSession = testServer(_req, { sitzung: {}, t });
-  const post = async (srv, path, body, kopf = {}) => {
+  const withSession = testServer(_req, { session: { userId: uid, username: NAME }, t });
+  const withoutSession = testServer(_req, { session: {}, t });
+  const post = async (srv, path, body, head = {}) => {
     const r = await fetch(`${srv.base}${AUTH}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...kopf },
+      headers: { 'Content-Type': 'application/json', ...head },
       body: JSON.stringify(body),
     });
     return { status: r.status, body: await r.json() };

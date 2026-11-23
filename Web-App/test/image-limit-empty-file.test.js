@@ -20,15 +20,15 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { readableImage } = _req('src/images/imageGuard.js');
 
 /** A file with exactly this content, in its own directory. */
-function datei(name, inhalt) {
+function file(name, content) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bildschranke-'));
   const p = path.join(dir, name);
-  fs.writeFileSync(p, inhalt);
+  fs.writeFileSync(p, content);
   return p;
 }
 
 test('an EMPTY file is rejected', async () => {
-  const p = datei('leer.jpg', Buffer.alloc(0));
+  const p = file('leer.jpg', Buffer.alloc(0));
   assert.equal(
     await readableImage(p),
     false,
@@ -41,7 +41,7 @@ test('an EMPTY file is rejected', async () => {
 test('a TRUNCATED file is rejected', async () => {
   // The first three bytes of a JPEG, then nothing more: exactly the picture of an
   // aborted download.
-  const p = datei('halb.jpg', Buffer.from([0xff, 0xd8, 0xff]));
+  const p = file('halb.jpg', Buffer.from([0xff, 0xd8, 0xff]));
   assert.equal(await readableImage(p), false, 'A partial JPEG got through — the decoder cannot do anything with it');
 });
 
@@ -53,7 +53,7 @@ test('a REAL small image still goes through', async () => {
   // down, and at 35 bytes clearly above the barrier of 10.
   const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
   assert.equal(gif.length, 42, `The sample is ${gif.length} bytes — expected 42`);
-  const p = datei('eins.gif', gif);
+  const p = file('eins.gif', gif);
   assert.equal(
     await readableImage(p),
     true,

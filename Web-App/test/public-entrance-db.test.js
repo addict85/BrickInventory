@@ -62,8 +62,8 @@ test("the app's sign-in screen calls only open routes, and every open route is n
   const screen = signInScreenRoutes();
   assert.ok(screen.size >= 8, `only ${screen.size} addresses of the login — does the search still work?`);
   assert.ok(screen.has('POST /auth/qr-login/discard'), "the app's refusal is missing in the detection");
-  const geschlossen = [...screen].filter(r => !isPublicRoute(...r.split(' ')));
-  assert.deepEqual(geschlossen, [], "the app's login calls these without a token");
+  const closed = [...screen].filter(r => !isPublicRoute(...r.split(' ')));
+  assert.deepEqual(closed, [], "the app's login calls these without a token");
   assert.deepEqual(
     [...PUBLIC_ROUTES].sort(),
     [...new Set([...screen, ...Object.keys(EXCEPTIONS)])].sort(),
@@ -73,22 +73,22 @@ test("the app's sign-in screen calls only open routes, and every open route is n
   const app = new Set(
     APP.routes.map((/** @type {{ method: string, path: string }} */ r) => withoutPrefix(`${r.method} ${r.path}`)),
   );
-  for (const [r, wer] of Object.entries(EXCEPTIONS))
-    if (wer === 'app') assert.ok(app.has(r), `the app does not call ${r}`);
+  for (const [r, who] of Object.entries(EXCEPTIONS))
+    if (who === 'app') assert.ok(app.has(r), `the app does not call ${r}`);
 });
 
 test('Caddy buffers every open POST as a sign-in path', () => {
   const caddy = fs.readFileSync(path.join(WEB, 'Caddyfile'), 'utf8');
   const block = caddy.match(/@anmeldung \{([\s\S]*?)\n\t\}/)?.[1] ?? '';
-  const pfade = (block.match(/^\s*path (.+)$/m)?.[1] ?? '').trim().split(/\s+/);
-  assert.ok(/method POST/.test(block) && pfade.length > 5, 'block @anmeldung not found');
+  const paths = (block.match(/^\s*path (.+)$/m)?.[1] ?? '').trim().split(/\s+/);
+  assert.ok(/method POST/.test(block) && paths.length > 5, 'Caddy block „@anmeldung“ not found');
   // App versions before v2 still post to the v1 alias until the sunset, so Caddy buffers both.
   const { v1Key } = _req('src/contract/v1Routes.js');
   const open = PUBLIC_ROUTES.filter(r => r.startsWith('POST ')).flatMap(r => [
     `/api/v2${r.slice(5)}`,
     v1Key(`POST /api/v2${r.slice(5)}`).slice(5),
   ]);
-  assert.deepEqual([...pfade].sort(), [...open].sort());
+  assert.deepEqual([...paths].sort(), [...open].sort());
 });
 
 test("the app's No without session is stored", { concurrency: 1, timeout: 60_000 }, async t => {
@@ -108,12 +108,12 @@ test("the app's No without session is stored", { concurrency: 1, timeout: 60_000
     await db.pool.end().catch(() => {});
   });
   /** The browser has the session, the app has none: the same server, the session switched per call. */
-  const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t });
+  const session = {};
+  const { base } = testServer(_req, { session, t });
   const address = base.replace('localhost', '127.0.0.1');
   const callFn = async (/** @type {boolean} */ browser, /** @type {string} */ path, /** @type {object} */ body) => {
-    for (const k of Object.keys(sitzung)) delete sitzung[k];
-    if (browser) Object.assign(sitzung, { userId: uid, username: NAME });
+    for (const k of Object.keys(session)) delete session[k];
+    if (browser) Object.assign(session, { userId: uid, username: NAME });
     const r = await fetch(`${address}/api/v2/auth${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -126,8 +126,8 @@ test("the app's No without session is stored", { concurrency: 1, timeout: 60_000
   const m = await callFn(false, '/qr-login', { token: qr.body.token, label: 'Pixel Nein' });
   assert.equal(m.status, 200, JSON.stringify(m.body));
 
-  const nein = await callFn(false, '/qr-login/discard', { pickup: m.body.pickup });
-  assert.equal(nein.status, 200, JSON.stringify(nein.body));
+  const no = await callFn(false, '/qr-login/discard', { pickup: m.body.pickup });
+  assert.equal(no.status, 200, JSON.stringify(no.body));
   const row = await db.get('SELECT rejected_at FROM qr_login_tokens WHERE user_id = $1', [uid]);
   assert.ok(row?.rejected_at, 'the rejection is in the database');
   // The web session confirms afterwards: the app still gets no token.

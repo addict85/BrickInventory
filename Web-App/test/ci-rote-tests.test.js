@@ -24,13 +24,13 @@ const ROOT = path.join(__dirname, '..');
 const AWK = path.join(ROOT, '..', '.github', 'rote-tests.awk');
 
 /** Apply the extraction tool to a log. */
-function annotationList(protokoll) {
-  const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bi-rot-')), 'test.log');
-  fs.writeFileSync(datei, protokoll);
+function annotationList(logText) {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bi-rot-')), 'test.log');
+  fs.writeFileSync(file, logText);
   try {
-    return execFileSync('awk', ['-f', AWK, datei], { encoding: 'utf8' }).split('\n').filter(Boolean);
+    return execFileSync('awk', ['-f', AWK, file], { encoding: 'utf8' }).split('\n').filter(Boolean);
   } finally {
-    fs.rmSync(path.dirname(datei), { recursive: true, force: true });
+    fs.rmSync(path.dirname(file), { recursive: true, force: true });
   }
 }
 
@@ -102,16 +102,16 @@ test('annotations for red tests', async t => {
       `GitHub shows at most ten annotations per job and step; there are ${a.length}. ` +
         `With more the summary message would be the invisible one.`,
     );
-    const einzeln = a.filter(z => z.startsWith('::error title=Roter Test::'));
-    assert.equal(einzeln.length, 9);
+    const single = a.filter(z => z.startsWith('::error title=Roter Test::'));
+    assert.equal(single.length, 9);
     assert.match(
       a[9],
       /^::error title=Weitere rote Tests::2 weitere/,
       `the summary message is missing or counts wrongly: ${a[9]}`,
     );
     // And they must not all say the same.
-    assert.match(einzeln[0], /Begruendung 1/);
-    assert.match(einzeln[8], /Begruendung 9/);
+    assert.match(single[0], /Begruendung 1/);
+    assert.match(single[8], /Begruendung 9/);
   });
 
   await t.test('the heading of the spec reporter is skipped', () => {

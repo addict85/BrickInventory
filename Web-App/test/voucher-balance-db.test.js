@@ -28,7 +28,7 @@ const NUMBER = '5045076374450011166';
 const PIN = '5225';
 
 // ── The replacement for fetch ───────────────────────────────────────────────────
-const protokoll = [];
+const log = [];
 /** What the next balance query should answer. */
 let nextResponse = null;
 
@@ -43,16 +43,16 @@ function response({ status = 200, json = {}, text = '', cookies = [] } = {}) {
 }
 
 function jwt(seconds) {
-  const kopf = Buffer.from('{"alg":"none"}').toString('base64url');
+  const head = Buffer.from('{"alg":"none"}').toString('base64url');
   const useIt = Buffer.from(
     JSON.stringify({
       exp: Math.floor(Date.now() / 1000) + seconds,
     }),
   ).toString('base64url');
-  return `${kopf}.${useIt}.x`;
+  return `${head}.${useIt}.x`;
 }
 
-function guthaben(cent, currency = 'CHF', text = null) {
+function balance(cent, currency = 'CHF', text = null) {
   return response({
     json: {
       data: {
@@ -72,15 +72,15 @@ function guthaben(cent, currency = 'CHF', text = null) {
 testSources(null, {
   legoFetch: async url => {
     const s = String(url);
-    protokoll.push(s);
+    log.push(s);
     if (s.includes('/gift-cards/balance')) return response({ text: '<html></html>' });
     if (s.includes('/Login')) return response({ cookies: [`gqauth=${jwt(3600)}; Path=/`] });
-    return nextResponse ?? guthaben(25000);
+    return nextResponse ?? balance(25000);
   },
 });
 
 /** The number of queries to the balance endpoint (not page/login). */
-const queryList = () => protokoll.filter(u => u.includes('giftCardBalanceQuery')).length;
+const queryList = () => log.filter(u => u.includes('giftCardBalanceQuery')).length;
 
 async function setup() {
   await db.run('DROP SCHEMA public CASCADE');
@@ -137,22 +137,22 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   }
   await setup();
 
-  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
-  const fremdSrv = testServer(_req, { sitzung: { userId: FREMD }, t });
+  const srv = testServer(_req, { session: { userId: MAIN }, t });
+  const fremdSrv = testServer(_req, { session: { userId: FREMD }, t });
 
-  const abfrage = (basis, id) => fetch(`${basis}/api/v2/vouchers/${id}/balance`, { method: 'POST' });
+  const query = (basis, id) => fetch(`${basis}/api/v2/vouchers/${id}/balance`, { method: 'POST' });
 
   await t.test('1. the queried amount lands in the amount field', async () => {
     await limitFree();
-    nextResponse = guthaben(25000, 'CHF', 'CHF 250.00');
-    const r = await abfrage(srv.base, WITH_PIN);
+    nextResponse = balance(25000, 'CHF', 'CHF 250.00');
+    const r = await query(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 200, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(
       d.voucher.amount,
       250,
-      'What Marco asked for: „Der Zurückgemeldete Betrag soll im Feld Betrag ' +
-        'gespeichert werden." 25000 Rappen are 250.',
+      'What Marco asked for: „Der Zurückgemeldete Betrag soll im Feld Betrag gespeichert werden.“ ' +
+        '25000 centimes are 250.',
     );
     assert.equal(
       d.displayed,
@@ -178,8 +178,8 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   });
 
   await t.test('2. the second query bounces off the barrier — without a call', async () => {
-    const vorher = queryList();
-    const r = await abfrage(srv.base, WITH_PIN);
+    const prior = queryList();
+    const r = await query(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 429, `response ${r.status} instead of 429: ${JSON.stringify(d)}`);
     assert.equal(d.reason, 'abstand');
@@ -190,7 +190,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.ok(/30/.test(d.error), `The sentence does not name the limit: ${d.error}`);
     assert.equal(
       queryList(),
-      vorher,
+      prior,
       'A call went out although the gate was closed. That is exactly ' +
         'what Marco asked for: „maximal 1 Request pro 30sek".',
     );
@@ -199,8 +199,8 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   await t.test('3. the limit applies ACROSS ALL USERS', async () => {
     // Marco's addendum: „(über alle Benutzer)". A counter per account or per
     // worker process would be green here and in truth N times as high.
-    const vorher = queryList();
-    const r = await abfrage(fremdSrv.base, FOREIGN);
+    const prior = queryList();
+    const r = await query(fremdSrv.base, FOREIGN);
     const d = await r.json();
     assert.equal(
       r.status,
@@ -209,13 +209,13 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
         'with two accounts that would be two calls in 30 seconds, with ten ten.',
     );
     assert.equal(d.reason, 'abstand');
-    assert.equal(queryList(), vorher, 'And nothing went out in the process');
+    assert.equal(queryList(), prior, 'And nothing went out in the process');
   });
 
   await t.test('4. after 31 seconds the slot is free again', async () => {
     await lastFetchBefore(31);
-    nextResponse = guthaben(12345);
-    const r = await abfrage(srv.base, WITH_PIN);
+    nextResponse = balance(12345);
+    const r = await query(srv.base, WITH_PIN);
     assert.equal(r.status, 200, `response ${r.status} — the slot should be free`);
     assert.equal(
       Number((await db.get('SELECT amount FROM vouchers WHERE id=$1', [WITH_PIN])).amount),
@@ -226,16 +226,16 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
 
   await t.test('5. without a PIN nothing is asked at all — and the slot stays free', async () => {
     await limitFree();
-    const vorher = queryList();
-    const r = await abfrage(srv.base, WITHOUT_PIN);
+    const prior = queryList();
+    const r = await query(srv.base, WITHOUT_PIN);
     const d = await r.json();
     assert.equal(r.status, 400, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'balance_pin_missing');
-    assert.equal(queryList(), vorher, 'Without a PIN LEGO has nothing to answer');
+    assert.equal(queryList(), prior, 'Without a PIN LEGO has nothing to answer');
     // And now the actual point: the refusal must NOT have used up the one slot per
     // 30 seconds.
-    nextResponse = guthaben(777);
-    const r2 = await abfrage(srv.base, WITH_PIN);
+    nextResponse = balance(777);
+    const r2 = await query(srv.base, WITH_PIN);
     assert.equal(
       r2.status,
       200,
@@ -246,15 +246,15 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
 
   await t.test('6. a foreign voucher is not reachable', async () => {
     await limitFree();
-    const vorher = queryList();
-    const r = await abfrage(srv.base, FOREIGN);
+    const prior = queryList();
+    const r = await query(srv.base, FOREIGN);
     assert.equal(
       r.status,
       404,
       `response ${r.status}. A voucher carries number and PIN — foreign access ` +
         'would be handing over a means of payment.',
     );
-    assert.equal(queryList(), vorher);
+    assert.equal(queryList(), prior);
   });
 
   await t.test('7. an unknown issuing country stops the query', async () => {
@@ -263,14 +263,14 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       `INSERT INTO global_settings (key,value) VALUES ('voucher_country','de-XX')
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     );
-    const vorher = queryList();
-    const r = await abfrage(srv.base, WITH_PIN);
+    const prior = queryList();
+    const r = await query(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 400, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'balance_country_invalid');
     assert.equal(
       queryList(),
-      vorher,
+      prior,
       'A query was made with a country that does not exist — the address for it ' +
         'does not exist at LEGO, and the refusal belongs BEFORE the call.',
     );
@@ -283,14 +283,14 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       `INSERT INTO global_settings (key,value) VALUES ('voucher_country','de-DE')
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     );
-    protokoll.length = 0;
-    nextResponse = guthaben(5000, 'EUR');
-    const r = await abfrage(srv.base, WITH_PIN);
+    log.length = 0;
+    nextResponse = balance(5000, 'EUR');
+    const r = await query(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 200, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.ok(
-      protokoll.some(u => u.includes('/de-de/gift-cards/balance')),
-      `The balance page was not loaded for de-DE: ${JSON.stringify(protokoll)}. ` +
+      log.some(u => u.includes('/de-de/gift-cards/balance')),
+      `The balance page was not loaded for de-DE: ${JSON.stringify(log)}. ` +
         'A card is only valid in the shop of its issuing country — the country is not decoration.',
     );
     // And the currency of the other side wins, but not silently.
@@ -303,7 +303,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   await t.test('9. bot protection: the query rests afterwards — for other accounts too', async () => {
     await limitFree();
     nextResponse = response({ status: 403, text: 'Attention Required! Cloudflare' });
-    const r = await abfrage(srv.base, WITH_PIN);
+    const r = await query(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 429, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.reason, 'botschutz');
@@ -313,25 +313,25 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     // The slot is still closed after 31 seconds: the LOCK applies, not the
     // distance. Exactly that is Marco's „dass nicht mehr Aufrufe generiert werden".
     await lastFetchBefore(31);
-    const vorher = queryList();
-    nextResponse = guthaben(25000);
-    const r2 = await abfrage(srv.base, WITH_PIN);
+    const prior = queryList();
+    nextResponse = balance(25000);
+    const r2 = await query(srv.base, WITH_PIN);
     const d2 = await r2.json();
     assert.equal(r2.status, 429, `response ${r2.status}: ${JSON.stringify(d2)}`);
     assert.equal(d2.reason, 'botschutz', 'After a bot protection hit the pause applies');
-    assert.equal(queryList(), vorher, 'And nothing goes out in the process');
+    assert.equal(queryList(), prior, 'And nothing goes out in the process');
 
     // The same for the foreign account — the lock is installation-wide.
-    const r3 = await abfrage(fremdSrv.base, FOREIGN);
+    const r3 = await query(fremdSrv.base, FOREIGN);
     assert.equal(r3.status, 429);
     assert.equal((await r3.json()).reason, 'botschutz');
-    assert.equal(queryList(), vorher);
+    assert.equal(queryList(), prior);
   });
 
   await t.test('10. an exhausted card: 0 is saved and stays editable', async () => {
     await limitFree();
-    nextResponse = guthaben(0);
-    const r = await abfrage(srv.base, WITH_PIN);
+    nextResponse = balance(0);
+    const r = await query(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 200, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(
@@ -356,11 +356,11 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
         'down to zero could then no longer be edited.',
     );
     assert.equal(pd.voucher.pin, '•••', 'only the mask to the outside');
-    const gespeichert = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [WITH_PIN]);
+    const saved = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [WITH_PIN]);
     assert.equal(
       _req('src/infra/secret.js').decrypt(
-        gespeichert.pin,
-        _req('src/vouchers/repository/vouchers.js').pinContext(gespeichert.user_id, WITH_PIN),
+        saved.pin,
+        _req('src/vouchers/repository/vouchers.js').pinContext(saved.user_id, WITH_PIN),
       ),
       '9999',
     );
@@ -391,7 +391,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       _req('src/vouchers/repository/vouchers.js').pinContext(pinRow.user_id, WITH_PIN),
     );
     nextResponse = response({ status: 500, text: `kaputt für ${NUMBER} mit ${pinNow}` });
-    const r = await abfrage(srv.base, WITH_PIN);
+    const r = await query(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 502, `response ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'balance_failed');
@@ -400,15 +400,15 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.ok(d.error.includes('1166'), 'The last four digits may stay — otherwise nobody knows which card');
 
     // The slot IS used up: the request was sent.
-    const vorher = queryList();
-    const r2 = await abfrage(srv.base, WITH_PIN);
+    const prior = queryList();
+    const r2 = await query(srv.base, WITH_PIN);
     assert.equal(
       r2.status,
       429,
       'A failed call must use up the slot — otherwise ' +
         'the limit could be bypassed any number of times by failing repeatedly.',
     );
-    assert.equal(queryList(), vorher);
+    assert.equal(queryList(), prior);
   });
 
   // Counter-checks (measured 02.11.2026): the check kontoStand() removed from claimSlot()
@@ -416,13 +416,13 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   // counts for its account”); the account check put AFTER the lock → red (grund
   // „botschutz“ instead of „konto“).
   await t.test('12. the per-account limit applies before the one for all and before bot protection', async () => {
-    const zaehler = async uid =>
+    const counter = async uid =>
       (await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`guthaben-konto|${uid}`]))?.count ?? 0;
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'guthaben-konto|%'");
     await limitFree();
-    nextResponse = guthaben(1000);
-    assert.equal((await abfrage(srv.base, WITH_PIN)).status, 200);
-    assert.equal(await zaehler(MAIN), 1, 'a query counts for its account');
+    nextResponse = balance(1000);
+    assert.equal((await query(srv.base, WITH_PIN)).status, 200);
+    assert.equal(await counter(MAIN), 1, 'a query counts for its account');
 
     await db.run('UPDATE rate_limit_attempts SET count = $2 WHERE key = $1', [
       `guthaben-konto|${MAIN}`,
@@ -430,26 +430,26 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     ]);
     await limitFree();
     await db.run(`UPDATE voucher_balance_throttle SET locked_until = NOW() + INTERVAL '10 minutes' WHERE id = 1`);
-    const vorher = queryList();
-    const r = await abfrage(srv.base, WITH_PIN);
+    const prior = queryList();
+    const r = await query(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 429, JSON.stringify(d));
     assert.equal(d.reason, 'konto');
     assert.equal(d.code, 'too_many_requests');
     assert.ok(d.waitSeconds > 0 && d.waitSeconds <= 3600, String(d.waitSeconds));
-    assert.equal(queryList(), vorher, 'despite the limit a query went out');
+    assert.equal(queryList(), prior, 'despite the limit a query went out');
 
     await limitFree();
     nextResponse = response({ status: 403, text: 'Bot' });
-    assert.equal((await abfrage(srv.base, WITH_PIN)).status, 429);
+    assert.equal((await query(srv.base, WITH_PIN)).status, 429);
     const s = await db.get('SELECT last_checked_at, locked_until FROM voucher_balance_throttle WHERE id = 1');
     assert.deepEqual(
       s,
       { last_checked_at: null, locked_until: null },
       'the locked account takes the slot or triggers the pause',
     );
-    nextResponse = guthaben(9900);
-    const fremd = await abfrage(fremdSrv.base, FOREIGN);
+    nextResponse = balance(9900);
+    const fremd = await query(fremdSrv.base, FOREIGN);
     assert.equal(fremd.status, 200, 'another account is held up by the limit of the first');
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'guthaben-konto|%'");
   });

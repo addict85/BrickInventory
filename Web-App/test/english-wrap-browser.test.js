@@ -15,27 +15,27 @@ const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textConten
 
 /** An own account in English: the title breaks on the first build in the narrow width. */
 async function english(e) {
-  const { b, bis, ruhig } = e;
-  await ruhig();
+  const { b, until, settle } = e;
+  await settle();
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 320, height: 760, deviceScaleFactor: 1, mobile: true });
-  await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
-  await b.auswerten(`document.getElementById('ntab-monitor').click(); true`);
-  await bis(`document.querySelector('.ptitle[data-tab-title="monitor"]')?.checkVisibility()`, 'Title');
-  await ruhig();
+  await b.evaluate(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
+  await b.evaluate(`document.getElementById('ntab-monitor').click(); true`);
+  await until(`document.querySelector('.ptitle[data-tab-title="monitor"]')?.checkVisibility()`, 'Title');
+  await settle();
   const breaks =
-    await b.auswerten(`(() => { const h = document.querySelector('.ptitle[data-tab-title="monitor"] span:not(.ptitle-icon)');
-    const n = h.firstChild, r = document.createRange(), out = []; let oben = null;
+    await b.evaluate(`(() => { const h = document.querySelector('.ptitle[data-tab-title="monitor"] span:not(.ptitle-icon)');
+    const n = h.firstChild, r = document.createRange(), out = []; let upper = null;
     for (let i = 0; i < n.length; i++) { r.setStart(n, i); r.setEnd(n, i + 1); const q = r.getClientRects()[0];
       if (!q || q.width === 0) continue;
-      if (oben !== null && q.top > oben + 2) out.push(n.data.slice(0, i)); oben = q.top; }
+      if (upper !== null && q.top > upper + 2) out.push(n.data.slice(0, i)); upper = q.top; }
     return { text: n.data, out }; })()`);
   assert.ok(breaks.out.length > 0, `Test setup: „${breaks.text}“ does not wrap`);
   for (const ago of breaks.out) assert.ok(/[ \u00ad]$/.test(ago), `Break after „${ago}“ without a hyphen`);
-  const american = await b.auswerten(`[...document.querySelectorAll('[data-i18n]')].map(e => e.textContent)
+  const american = await b.evaluate(`[...document.querySelectorAll('[data-i18n]')].map(e => e.textContent)
     .concat([...document.querySelectorAll('[aria-label], [title]')].map(e => e.getAttribute('aria-label') + ' ' + e.getAttribute('title')))
     .filter(t => /\\bcolors?\\b|\\bcolorful\\b/i.test(t))`);
   assert.deepEqual(american, [], 'amerikanische Schreibung');
-  assert.equal(await b.auswerten(text('[data-i18n="parts.stat.colors"]')), 'Colours');
+  assert.equal(await b.evaluate(text('[data-i18n="parts.stat.colors"]')), 'Colours');
 }
 
 test('English UI: wrapping and terms', { timeout: 120_000 }, async t => {

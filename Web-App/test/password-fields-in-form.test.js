@@ -24,13 +24,13 @@ const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
  * and that is intended: then the listener has been rebuilt.
  */
 function listenerCode() {
-  const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
-  const von = roh.indexOf("  document.addEventListener('submit'");
-  assert.ok(von > 0, 'The submit listener is no longer in js/actions.js');
-  const bis = roh.indexOf('});', roh.indexOf('button.click()', von)) + 3;
-  const stueck = roh.slice(von, bis);
-  assert.match(stueck, /preventDefault/, 'The cut-out block is not the right one');
-  return stueck;
+  const raw = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
+  const from = raw.indexOf("  document.addEventListener('submit'");
+  assert.ok(from > 0, 'The submit listener is no longer in js/actions.js');
+  const until = raw.indexOf('});', raw.indexOf('button.click()', from)) + 3;
+  const piece = raw.slice(from, until);
+  assert.match(piece, /preventDefault/, 'The cut-out block is not the right one');
+  return piece;
 }
 
 /** The real index.html in jsdom, with the listener in front. */
@@ -42,18 +42,18 @@ function stage() {
 
 test('every password field of a HUMAN lies in a form', () => {
   const d = new JSDOM(HTML).window.document;
-  const felder = [...d.querySelectorAll('input[type=password]')];
-  assert.ok(felder.length >= 13, `Only ${felder.length} password fields found — is the path right?`);
+  const fields = [...d.querySelectorAll('input[type=password]')];
+  assert.ok(fields.length >= 13, `Only ${fields.length} password fields found — is the path right?`);
 
-  const ohne = felder
+  const without = fields
     .filter(i => !i.closest('form'))
     .map(i => i.id)
     .sort();
   assert.deepEqual(
-    ohne,
+    without,
     ['bl-cs', 'bl-ts', 'bs-key', 'rb-key', 'smtp-pass'],
     'These password fields are in no form: ' +
-      ohne.join(', ') +
+      without.join(', ') +
       '\nAllowed are exactly the five interface secrets (BrickLink, Rebrickable, Brickset, SMTP) — ' +
       'see the head of this file. If a field of a HUMAN is listed here, the ' +
       'password manager no longer offers to save there.',
@@ -61,7 +61,7 @@ test('every password field of a HUMAN lies in a form', () => {
 
   // And the opposite direction: the five must not have an `autocomplete` either
   // that marks them as login data after all.
-  for (const id of ohne) {
+  for (const id of without) {
     const ac = d.getElementById(id).getAttribute('autocomplete');
     assert.equal(
       ac,
@@ -80,13 +80,13 @@ test('submitting does NOT reload the page but presses the button', () => {
 
   for (const f of forms) {
     const id = f.getAttribute('data-submit');
-    const knopf = d.getElementById(id);
-    assert.ok(knopf, `data-submit="${id}" points to no button`);
-    assert.ok(f.contains(knopf), `The button ${id} is not inside its form at all`);
+    const button = d.getElementById(id);
+    assert.ok(button, `data-submit="${id}" points to no button`);
+    assert.ok(f.contains(button), `The button ${id} is not inside its form at all`);
 
-    let gedrueckt = 0;
-    knopf.addEventListener('click', () => {
-      gedrueckt++;
+    let pressed = 0;
+    button.addEventListener('click', () => {
+      pressed++;
     });
     const ev = new dom.window.Event('submit', { bubbles: true, cancelable: true });
     f.dispatchEvent(ev);
@@ -98,9 +98,9 @@ test('submitting does NOT reload the page but presses the button', () => {
         'and the logged-in state would be gone',
     );
     assert.equal(
-      gedrueckt,
+      pressed,
       1,
-      `The button ${id} was pressed ${gedrueckt} times instead of exactly once. Zero means: ` +
+      `The button ${id} was pressed ${pressed} times instead of exactly once. Zero means: ` +
         'the Enter key does nothing. More than once means: it goes round in circles.',
     );
   }
@@ -112,17 +112,17 @@ test('the submit buttons carry type="button"', () => {
   // submit again, and so it goes on until the counter above counts more than one
   // or the browser aborts.
   const d = new JSDOM(HTML).window.document;
-  const falsch = [];
+  const wrong = [];
   for (const f of d.querySelectorAll('form')) {
     for (const b of f.querySelectorAll('button')) {
-      if (b.getAttribute('type') !== 'button') falsch.push(b.id || b.textContent.trim().slice(0, 20));
+      if (b.getAttribute('type') !== 'button') wrong.push(b.id || b.textContent.trim().slice(0, 20));
     }
   }
   assert.deepEqual(
-    falsch,
+    wrong,
     [],
     'These buttons in a form are submit buttons: ' +
-      falsch.join(', ') +
+      wrong.join(', ') +
       '\nWithout type="button" their click triggers a submit again.',
   );
 });

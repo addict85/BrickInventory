@@ -40,12 +40,12 @@ function probeTree() {
   return { repo, web };
 }
 
-const lauf = (/** @type {string} */ web) => spawnSync(process.execPath, [SCRIPT, web], { encoding: 'utf8' });
+const run = (/** @type {string} */ web) => spawnSync(process.execPath, [SCRIPT, web], { encoding: 'utf8' });
 
 test('in the sample tree the script reports exactly the dead references in comments and docs', t => {
   const { repo, web } = probeTree();
   t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
-  const r = lauf(web);
+  const r = run(web);
   assert.equal(r.status, 1, r.stderr);
   assert.deepEqual(r.stdout.trim().split('\n').sort(), [
     'README.md:1 docs/plan.md',
@@ -57,9 +57,9 @@ test('in the sample tree the script reports exactly the dead references in comme
 });
 
 test('the codebase has no dead references', () => {
-  const r = lauf(path.join(__dirname, '..'));
-  const gesehen = Number(/(\d+) Pfadverweise/.exec(r.stderr)?.[1]);
-  assert.ok(gesehen > 200, `only ${gesehen} references found — does the search still work?\n${r.stderr}`);
+  const r = run(path.join(__dirname, '..'));
+  const seen = Number(/(\d+) Pfadverweise/.exec(r.stderr)?.[1]);
+  assert.ok(seen > 200, `only ${seen} references found — does the search still work?\n${r.stderr}`);
   assert.equal(r.stdout, '', 'Change the path to the current file; history belongs in the commit');
   assert.equal(r.status, 0);
 });

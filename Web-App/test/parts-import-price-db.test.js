@@ -32,7 +32,7 @@ test('import without a price leaves the same as capturing without a price', { co
   );
   const uid = u.id;
 
-  const { base, schliessen } = testServer(_req, { sitzung: { userId: uid } });
+  const { base, close } = testServer(_req, { session: { userId: uid } });
 
   try {
     // part_name stands in the file so that no Rebrickable lookup is
@@ -41,9 +41,9 @@ test('import without a price leaves the same as capturing without a price', { co
     const fd = new FormData();
     fd.append('file', new Blob([csv], { type: 'text/csv' }), 'teile.csv');
     const response = await fetch(`${base}/api/v2/parts/import/csv`, { method: 'POST', body: fd });
-    const ergebnis = await response.json();
-    assert.equal(ergebnis.success, true, `import failed: ${JSON.stringify(ergebnis)}`);
-    assert.equal(ergebnis.added, 1, `nothing was created: ${JSON.stringify(ergebnis)}`);
+    const outcome = await response.json();
+    assert.equal(outcome.success, true, `import failed: ${JSON.stringify(outcome)}`);
+    assert.equal(outcome.added, 1, `nothing was created: ${JSON.stringify(outcome)}`);
 
     // The same case by hand, via the same route as the web app.
     const { addManualPart } = _req('src/parts/manualParts.js');
@@ -52,12 +52,12 @@ test('import without a price leaves the same as capturing without a price', { co
     );
 
     // Read from the ACQUISITION
-    const spalten = 'unit_price, condition, quantity';
-    const imp = await db.get(`SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
+    const columns = 'unit_price, condition, quantity';
+    const imp = await db.get(`SELECT ${columns} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
       uid,
       IMPORTED,
     ]);
-    const hand = await db.get(`SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
+    const hand = await db.get(`SELECT ${columns} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
       uid,
       OF_HAND,
     ]);
@@ -83,7 +83,7 @@ test('import without a price leaves the same as capturing without a price', { co
         'differ, one of the two computes on its own again.',
     );
   } finally {
-    await schliessen();
+    await close();
     await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM parts WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM users WHERE id=$1`, [uid]).catch(() => {});

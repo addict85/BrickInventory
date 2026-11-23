@@ -31,14 +31,14 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
 test('cents only at the end, currencies honest', { concurrency: 1 }, async t => {
-  const geld = _req('src/infra/money.js');
+  const money = _req('src/infra/money.js');
   await t.test('120.3333 × 2 is 240.67, and 1.005 rounds to 1.01', () => {
-    assert.equal(geld.rowValue(120.3333, 2), 240.67);
-    assert.equal(geld.rowValue('120.3333', 2), 240.67);
-    assert.equal(geld.asText(1.005), '1.01');
-    assert.equal(geld.toCents(-12345), -1.23);
+    assert.equal(money.rowValue(120.3333, 2), 240.67);
+    assert.equal(money.rowValue('120.3333', 2), 240.67);
+    assert.equal(money.asText(1.005), '1.01');
+    assert.equal(money.toCents(-12345), -1.23);
     assert.equal(
-      geld.sumFrom([
+      money.sumFrom([
         { price: 0.07, quantity: 1000 },
         { price: null, quantity: 5 },
       ]),
@@ -55,17 +55,18 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
   const NAME = `geld-${process.pid}`,
     SN = `GW${process.pid}-1`;
   const PART_EUR = `gwe${process.pid}`,
-    TEIL_CHF = `gwc${process.pid}`,
+    PART_CHF = `gwc${process.pid}`,
     FIG = `gwf${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NAME + '-2']]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const ohne = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME + '-2']))
-    .id;
+  const without = (
+    await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME + '-2'])
+  ).id;
   const globalBefore = await db.get(`SELECT value FROM global_settings WHERE key='currency'`);
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, ohne]]);
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, without]]);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [[PART_EUR, TEIL_CHF]]);
+    await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [[PART_EUR, PART_CHF]]);
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number=$1', [FIG]);
     if (globalBefore) await db.run(`UPDATE global_settings SET value=$1 WHERE key='currency'`, [globalBefore.value]);
     else await db.run(`DELETE FROM global_settings WHERE key='currency'`);
@@ -112,12 +113,12 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
 
   await t.test('only a purchase price in EUR: no P&L instead of thousands of percent', async () => {
     const { holdsPart, holdsMinifig } = require('./helpers/inventory');
-    await holdsPart(db, uid, PART_EUR, { colorId: 5, preis: 1 });
-    await holdsPart(db, uid, TEIL_CHF, { colorId: 5, preis: 0.1 });
-    await holdsMinifig(db, uid, FIG, { preis: 3 });
+    await holdsPart(db, uid, PART_EUR, { colorId: 5, price: 1 });
+    await holdsPart(db, uid, PART_CHF, { colorId: 5, price: 0.1 });
+    await holdsMinifig(db, uid, FIG, { price: 3 });
     await db.run(`UPDATE part_acquisitions SET currency='EUR' WHERE user_id=$1 AND part_number=$2`, [uid, PART_EUR]);
     await db.run(`UPDATE minifig_acquisitions SET currency='EUR' WHERE user_id=$1 AND fig_number=$2`, [uid, FIG]);
-    for (const nr of [PART_EUR, TEIL_CHF])
+    for (const nr of [PART_EUR, PART_CHF])
       await db.run(
         `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
                     VALUES ($1,5,'N','CHF',2.1,2.1)`,
@@ -130,12 +131,12 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
     const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
     const parts = await valueParts(uid, [uid]);
     const minifigs = await valueMinifigs(uid, [uid]);
-    const sicht = z => z && { market: z.avg_price, purchase: z.purchase_price, pnl: z.pnl_percent };
+    const view = z => z && { market: z.avg_price, purchase: z.purchase_price, pnl: z.pnl_percent };
     assert.deepEqual(
       {
-        eur: sicht(parts.parts.find(z => z.part_number === PART_EUR)),
-        chf: sicht(parts.parts.find(z => z.part_number === TEIL_CHF)),
-        figur: sicht(minifigs.figs.find(z => z.fig_number === FIG)),
+        eur: view(parts.parts.find(z => z.part_number === PART_EUR)),
+        chf: view(parts.parts.find(z => z.part_number === PART_CHF)),
+        figur: view(minifigs.figs.find(z => z.fig_number === FIG)),
         fremd: [parts.foreign_currency_purchases, minifigs.foreign_currency_purchases],
       },
       {
@@ -185,13 +186,15 @@ test('cents only at the end, currencies honest', { concurrency: 1 }, async t => 
   await t.test("without an account currency the installation's applies — for acquisitions and vouchers", async () => {
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('currency','GBP')
                   ON CONFLICT (key) DO UPDATE SET value='GBP'`);
-    await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [ohne, SN]);
-    await db.run('INSERT INTO set_acquisitions (user_id, set_number, quantity) VALUES ($1,$2,1)', [ohne, SN]);
-    assert.equal((await db.get('SELECT currency FROM set_acquisitions WHERE user_id=$1', [ohne])).currency, 'GBP');
+    await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [without, SN]);
+    await db.run('INSERT INTO set_acquisitions (user_id, set_number, quantity) VALUES ($1,$2,1)', [without, SN]);
+    assert.equal((await db.get('SELECT currency FROM set_acquisitions WHERE user_id=$1', [without])).currency, 'GBP');
     const { createVoucher } = require('./helpers/sources').testArea('vouchers').vouchers;
-    await createVoucher(ohne, { number: '1234567', pin: null, amount: 10, currency: null });
+    await createVoucher(without, { number: '1234567', pin: null, amount: 10, currency: null });
     await createVoucher(uid, { number: '7654321', pin: null, amount: 10, currency: null });
-    const g = await db.all('SELECT user_id, currency FROM vouchers WHERE user_id = ANY($1) ORDER BY id', [[uid, ohne]]);
+    const g = await db.all('SELECT user_id, currency FROM vouchers WHERE user_id = ANY($1) ORDER BY id', [
+      [uid, without],
+    ]);
     assert.deepEqual(
       g.map(z => z.currency),
       ['GBP', 'CHF'],

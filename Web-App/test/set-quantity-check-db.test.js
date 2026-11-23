@@ -29,9 +29,9 @@ test('quantity change on the set: validation and trash', { concurrency: 1 }, asy
     SN = `31150-${process.pid % 1000}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  await holdsSet(db, uid, SN, 2, { preis: 40 });
+  await holdsSet(db, uid, SN, 2, { price: 40 });
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const put = quantity =>
     fetch(`${base}/api/v2/sets/${SN}`, {
       method: 'PUT',
@@ -41,9 +41,9 @@ test('quantity change on the set: validation and trash', { concurrency: 1 }, asy
 
   try {
     await t.test('a broken quantity is rejected', async () => {
-      for (const kaputt of [{ a: 1 }, 'abc', -1, 1.5]) {
-        const r = await put(kaputt);
-        assert.equal(r.status, 400, JSON.stringify(kaputt));
+      for (const broken of [{ a: 1 }, 'abc', -1, 1.5]) {
+        const r = await put(broken);
+        assert.equal(r.status, 400, JSON.stringify(broken));
       }
       assert.equal(await quantityOf(db, uid, SN), 2, 'the stock is unchanged');
     });

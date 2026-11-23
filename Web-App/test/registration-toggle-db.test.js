@@ -43,11 +43,11 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
 
   const CHEF = `reg_chef_${process.pid}`,
     PASS = 'Chef-Passwort-1',
-    NEU = `reg_neu_${process.pid}`;
-  const vorher = await db.all(
+    NEW = `reg_neu_${process.pid}`;
+  const prior = await db.all(
     "SELECT key, value FROM global_settings WHERE key IN ('registration_enabled', 'smtp_secure', 'smtp_host', 'smtp_user')",
   );
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NEU]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NEW]]);
   const uid = (
     await db.get(
       `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
@@ -60,43 +60,43 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     await db.run(
       "DELETE FROM global_settings WHERE key IN ('registration_enabled', 'smtp_secure', 'smtp_host', 'smtp_user')",
     );
-    for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NEU]]);
+    for (const z of prior) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NEW]]);
     await db.pool.end().catch(() => {});
   });
 
   const { base } = routerServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
+    session: { userId: uid, isAdmin: true },
     t,
-    routen: { '/api/v2/auth': 'routes/auth.js', '/api/v2': 'routes/api/settings.js' },
+    routes: { '/api/v2/auth': 'routes/auth.js', '/api/v2': 'routes/api/settings.js' },
   });
-  const callIt = (methode, path, body) =>
+  const callIt = (method, path, body) =>
     fetch(`${base}/api/v2${path}`, {
-      method: methode,
+      method: method,
       headers: { 'content-type': 'application/json' },
       body: body && JSON.stringify(body),
     }).then(async r => ({ status: r.status, body: await r.json() }));
-  const put = async wert => {
+  const put = async value => {
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
-    if (wert !== null)
-      await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [wert]);
+    if (value !== null)
+      await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [value]);
   };
   const register = () =>
-    callIt('POST', '/auth/register', { username: NEU, email: `${NEU}@example.org`, password: 'Neues-Passwort-1' });
-  const gespeichert = async key => (await db.get('SELECT value FROM global_settings WHERE key = $1', [key]))?.value;
+    callIt('POST', '/auth/register', { username: NEW, email: `${NEW}@example.org`, password: 'Neues-Passwort-1' });
+  const saved = async key => (await db.get('SELECT value FROM global_settings WHERE key = $1', [key]))?.value;
 
-  for (const [fall, wert] of [
+  for (const [fall, value] of [
     ['ohne Zeile bleibt sie zu', null],
     ['"false" ist zu', 'false'],
     ['"0" ist zu', '0'],
   ]) {
     await t.test(fall, async () => {
-      await put(wert);
+      await put(value);
       assert.equal((await callIt('GET', '/auth/registration-status')).body.enabled, false);
       const r = await register();
       assert.equal(r.status, 403, JSON.stringify(r.body));
       assert.equal(r.body.code, 'registration_disabled');
-      assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEU]), undefined);
+      assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEW]), undefined);
     });
   }
 
@@ -128,7 +128,7 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     assert.equal((await callIt('GET', '/auth/registration-status')).body.enabled, true);
     const r = await register();
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.ok(await db.get('SELECT id FROM users WHERE username = $1', [NEU]));
+    assert.ok(await db.get('SELECT id FROM users WHERE username = $1', [NEW]));
   });
 
   await t.test('without mail sending it stays closed and cannot be switched on', async () => {
@@ -137,15 +137,15 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     const s = (await callIt('GET', '/auth/registration-status')).body;
     assert.deepEqual([s.enabled, s.mail_delivery], [false, false], 'despite "1"');
     const r = await callIt('POST', '/auth/register', {
-      username: `${NEU}_x`,
-      email: `${NEU}_x@example.org`,
+      username: `${NEW}_x`,
+      email: `${NEW}_x@example.org`,
       password: 'Neues-Passwort-1',
     });
     assert.deepEqual([r.status, r.body.code], [403, 'registration_disabled']);
     await put('0');
-    const ein = await callIt('POST', '/settings', { registration_enabled: '1', admin_password: PASS });
-    assert.deepEqual([ein.status, ein.body.code], [400, 'registration_needs_mail']);
-    assert.equal(await gespeichert('registration_enabled'), '0');
+    const on = await callIt('POST', '/settings', { registration_enabled: '1', admin_password: PASS });
+    assert.deepEqual([on.status, on.body.code], [400, 'registration_needs_mail']);
+    assert.equal(await saved('registration_enabled'), '0');
     const withMail = await callIt('POST', '/settings', {
       registration_enabled: '1',
       smtp_host: 'mail.example.org',
@@ -153,46 +153,46 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
       admin_password: PASS,
     });
     assert.equal(withMail.status, 200, JSON.stringify(withMail.body));
-    assert.equal(await gespeichert('registration_enabled'), '1');
+    assert.equal(await saved('registration_enabled'), '1');
   });
 
   await t.test('the administrator approves an open registration', async () => {
     const { assertLoginAllowed } = _req('src/account/loginCheck.js');
-    const neu = (await db.get('SELECT id FROM users WHERE username = $1', [NEU])).id;
-    const row = () => db.get('SELECT * FROM users WHERE id = $1', [neu]);
-    const inList = async () => (await callIt('GET', '/auth/users')).body.users.find(u => u.id === neu);
+    const fresh = (await db.get('SELECT id FROM users WHERE username = $1', [NEW])).id;
+    const row = () => db.get('SELECT * FROM users WHERE id = $1', [fresh]);
+    const inList = async () => (await callIt('GET', '/auth/users')).body.users.find(u => u.id === fresh);
     assert.equal((await inList()).awaiting_confirmation, true);
     assert.equal(assertLoginAllowed(await row())?.code, 'email_not_confirmed');
-    assert.equal((await callIt('PUT', `/auth/users/${neu}/approve`, {})).status, 400, 'without a password');
-    const r = await callIt('PUT', `/auth/users/${neu}/approve`, { admin_password: PASS });
+    assert.equal((await callIt('PUT', `/auth/users/${fresh}/approve`, {})).status, 400, 'without a password');
+    const r = await callIt('PUT', `/auth/users/${fresh}/approve`, { admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const z = await row();
     assert.deepEqual(
       [z.email, z.email_verified, z.registration_pending, z.new_email],
-      [`${NEU}@example.org`, true, false, null],
+      [`${NEW}@example.org`, true, false, null],
     );
     assert.equal(assertLoginAllowed(z), null);
     assert.equal((await inList()).awaiting_confirmation, false);
     assert.equal(
-      (await db.get('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id DESC LIMIT 1', [neu])).action,
+      (await db.get('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id DESC LIMIT 1', [fresh])).action,
       'account_unlocked',
     );
-    const nochmal = await callIt('PUT', `/auth/users/${neu}/approve`, { admin_password: PASS });
-    assert.deepEqual([nochmal.status, nochmal.body.code], [409, 'account_not_pending']);
+    const again = await callIt('PUT', `/auth/users/${fresh}/approve`, { admin_password: PASS });
+    assert.deepEqual([again.status, again.body.code], [409, 'account_not_pending']);
   });
 
   await t.test('the form only takes 0 or 1', async () => {
-    for (const falsch of ['false', 'true', 'ja', '']) {
-      const r = await callIt('POST', '/settings', { registration_enabled: falsch });
-      assert.equal(r.status, 400, `${falsch}: ${JSON.stringify(r.body)}`);
+    for (const wrong of ['false', 'true', 'ja', '']) {
+      const r = await callIt('POST', '/settings', { registration_enabled: wrong });
+      assert.equal(r.status, 400, `${wrong}: ${JSON.stringify(r.body)}`);
       assert.equal(r.body.code, 'value_invalid');
     }
-    const smtpBefore = await gespeichert('smtp_secure');
+    const smtpBefore = await saved('smtp_secure');
     assert.equal((await callIt('POST', '/settings', { smtp_secure: 'yes', admin_password: PASS })).status, 400);
-    assert.equal(await gespeichert('registration_enabled'), '1');
-    assert.equal(await gespeichert('smtp_secure'), smtpBefore);
+    assert.equal(await saved('registration_enabled'), '1');
+    assert.equal(await saved('smtp_secure'), smtpBefore);
     assert.equal((await callIt('POST', '/settings', { registration_enabled: '0', admin_password: PASS })).status, 200);
-    assert.equal(await gespeichert('registration_enabled'), '0');
+    assert.equal(await saved('registration_enabled'), '0');
   });
 
   await t.test('the import skips the registration', async () => {
@@ -207,7 +207,7 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
       body: await x.json(),
     }));
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(await gespeichert('registration_enabled'), '0', 'the import opened the registration');
+    assert.equal(await saved('registration_enabled'), '0', 'the import opened the registration');
     assert.deepEqual(r.body.smtp_skipped, ['registration_enabled']);
   });
 });

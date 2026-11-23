@@ -24,10 +24,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 const ROOT = path.join(__dirname, '..');
-const NUTZER = {
+const USER = {
   success: true,
   users: [
     { id: 1, username: 'anna', is_admin: true, created_at: '2026-10-01T00:00:00Z' },
@@ -35,9 +35,9 @@ const NUTZER = {
   ],
 };
 
-async function oberflaeche() {
+async function ui() {
   const o = await openUi({
-    '/v2/auth/users': NUTZER,
+    '/v2/auth/users': USER,
     '/v2/settings/tokens': { success: true, tokens: [{ token_id: 't1', label: 'Telefon', current: false }] },
   });
   o.inject = html => {
@@ -51,42 +51,42 @@ async function oberflaeche() {
 }
 
 test('injected markup triggers no dangerous action', async () => {
-  const { w, d, aufrufe, inject, openPwDialog } = await oberflaeche();
+  const { w, d, calls, inject, openPwDialog } = await ui();
   try {
     inject('<button id="x1" data-click="openRpw" data-arg="2">x</button>');
     d.getElementById('x1').click();
-    await takt(20);
+    await tick(20);
     assert.equal(openPwDialog(), false, 'injected button opens the password dialog');
 
-    const vorher = aufrufe.length;
+    const prior = calls.length;
     inject('<button id="x2" data-click="revokeOtherTokens">x</button>');
     d.getElementById('x2').click();
-    await takt(50);
+    await tick(50);
     assert.deepEqual(
-      aufrufe.slice(vorher).filter(a => a.url.includes('/tokens')),
+      calls.slice(prior).filter(a => a.url.includes('/tokens')),
       [],
       'injected button fetches the token list',
     );
 
     // loadGallery is harmless and registered: only the event matters here.
-    const galleryFetches = ab => aufrufe.slice(ab).filter(a => /\/v2\/sets(\?|$)/.test(a.url.replace(/^.*\/api/, '')));
-    let ab = aufrufe.length;
+    const galleryFetches = ab => calls.slice(ab).filter(a => /\/v2\/sets(\?|$)/.test(a.url.replace(/^.*\/api/, '')));
+    let ab = calls.length;
     inject('<div id="x3" data-mouseenter="loadGallery">x</div>');
     d.getElementById('x3').dispatchEvent(new w.MouseEvent('mouseenter'));
-    await takt(50);
+    await tick(50);
     assert.deepEqual(galleryFetches(ab), [], 'hovering triggers');
 
-    ab = aufrufe.length;
+    ab = calls.length;
     inject('<input id="x4" data-change="loadGallery">');
     d.getElementById('x4').dispatchEvent(new w.Event('change', { bubbles: true }));
-    await takt(50);
+    await tick(50);
     assert.deepEqual(galleryFetches(ab), [], 'change with a foreign handler');
 
     // Control: the same handler via click runs — otherwise the two above prove nothing.
-    ab = aufrufe.length;
+    ab = calls.length;
     inject('<button id="x6" data-click="loadGallery">x</button>');
     d.getElementById('x6').click();
-    await takt(50);
+    await tick(50);
     assert.ok(galleryFetches(ab).length > 0, 'Kontrolle: loadGallery per Klick ruft /v2/sets ab');
 
     let opened = 0;
@@ -96,7 +96,7 @@ test('injected markup triggers no dangerous action', async () => {
     };
     inject('<button id="x5" data-click="open" data-arg="https://example.org/">x</button>');
     d.getElementById('x5').click();
-    await takt(20);
+    await tick(20);
     assert.equal(opened, 0, 'window.open reachable via data-click');
   } finally {
     w.close();
@@ -104,21 +104,21 @@ test('injected markup triggers no dangerous action', async () => {
 });
 
 test('real buttons from template and markup keep working', async () => {
-  const { w, d, aufrufe, openPwDialog } = await oberflaeche();
+  const { w, d, calls, openPwDialog } = await ui();
   try {
     d.querySelector('.umenu-item[data-arg="settings"]').click();
-    const knopf = () => d.querySelector('#users-tbl [data-click="openRpw"][data-arg="2"]');
-    assert.ok(await warte(() => knopf()), 'user list not drawn');
-    knopf().click();
-    await takt(20);
+    const button = () => d.querySelector('#users-tbl [data-click="openRpw"][data-arg="2"]');
+    assert.ok(await waitFor(() => button()), 'user list not drawn');
+    button().click();
+    await tick(20);
     assert.equal(openPwDialog(), true, 'real button of the user list works');
     assert.equal(d.getElementById('rpw-uid').value, '2');
 
-    const vorher = aufrufe.length;
+    const prior = calls.length;
     d.querySelector('[data-click="revokeOtherTokens"]').click();
-    await takt(50);
+    await tick(50);
     assert.ok(
-      aufrufe.slice(vorher).some(a => a.url.includes('/tokens')),
+      calls.slice(prior).some(a => a.url.includes('/tokens')),
       'static button from index.html works',
     );
   } finally {
@@ -130,12 +130,12 @@ test('every handler in the markup is in the list of its event', () => {
   // Structure: the lists in aktionen.js must cover the markup, otherwise
   // a real field would be dead. The test above checks the opposite direction.
   const source = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
-  const liste = typ => {
-    const m = source.match(new RegExp(`\\b${typ}: new Set\\(\\[([^\\]]*)\\]`));
-    assert.ok(m, `List for ${typ} not found`);
+  const list = kind => {
+    const m = source.match(new RegExp(`\\b${kind}: new Set\\(\\[([^\\]]*)\\]`));
+    assert.ok(m, `List for ${kind} not found`);
     return new Set([...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]));
   };
-  const dateien = [
+  const files = [
     path.join(ROOT, 'public', 'index.html'),
     ...fs
       .readdirSync(path.join(ROOT, 'public', 'js'))
@@ -144,18 +144,18 @@ test('every handler in the markup is in the list of its event', () => {
   ];
   // The log window (monitor.js) is a separate popup with its own resolution.
   const LOG_WINDOW = new Set(['loadLogs', 'renderLogs']);
-  const fehlt = [];
-  let gesehen = 0;
-  for (const typ of ['change', 'input', 'blur', 'keydown']) {
-    const erlaubt = liste(typ);
-    for (const f of dateien)
-      for (const m of fs.readFileSync(f, 'utf8').matchAll(new RegExp(`data-${typ}="([^"$]+)"`, 'g'))) {
-        gesehen++;
-        if (!erlaubt.has(m[1]) && !LOG_WINDOW.has(m[1])) fehlt.push(`${path.basename(f)}: data-${typ}="${m[1]}"`);
+  const missing = [];
+  let seen = 0;
+  for (const kind of ['change', 'input', 'blur', 'keydown']) {
+    const allowed = list(kind);
+    for (const f of files)
+      for (const m of fs.readFileSync(f, 'utf8').matchAll(new RegExp(`data-${kind}="([^"$]+)"`, 'g'))) {
+        seen++;
+        if (!allowed.has(m[1]) && !LOG_WINDOW.has(m[1])) missing.push(`${path.basename(f)}: data-${kind}="${m[1]}"`);
       }
   }
-  assert.ok(gesehen > 40, `only ${gesehen} matches — does the search still match?`);
-  assert.deepEqual(fehlt, []);
+  assert.ok(seen > 40, `only ${seen} matches — does the search still match?`);
+  assert.deepEqual(missing, []);
 });
 
 test('every template with a dangerous action carries genuine()', () => {
@@ -164,16 +164,16 @@ test('every template with a dangerous action carries genuine()', () => {
   const dangerous = new Set(
     [...source.match(/DANGEROUS = new Set\(\[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(x => x[1]),
   );
-  const ohne = [];
-  let gesehen = 0;
+  const without = [];
+  let seen = 0;
   for (const f of fs.readdirSync(path.join(ROOT, 'public', 'js')).filter(f => isAppModule(f)))
     for (const m of fs
       .readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8')
       .matchAll(/data-click="([^"$]+)"(\$\{genuine\(\)\})?/g))
       if (dangerous.has(m[1])) {
-        gesehen++;
-        if (!m[2]) ohne.push(`${f}: ${m[1]}`);
+        seen++;
+        if (!m[2]) without.push(`${f}: ${m[1]}`);
       }
-  assert.ok(gesehen > 15, `only ${gesehen} matches — does the search still match?`);
-  assert.deepEqual(ohne, []);
+  assert.ok(seen > 15, `only ${seen} matches — does the search still match?`);
+  assert.deepEqual(without, []);
 });

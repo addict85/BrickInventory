@@ -16,7 +16,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { ANMELDUNG, SIGNED_OUT, checkResponse, openUi } = require('./helpers/ui');
+const { SIGNED_IN, SIGNED_OUT, checkResponse, openUi } = require('./helpers/ui');
 const { buildDist } = require('./helpers/sources');
 
 buildDist();
@@ -24,19 +24,19 @@ const { routeForRequest } = require(path.join(__dirname, '..', 'dist/src/contrac
 
 test('default responses fulfill the contract without additions', () => {
   const deviations = [];
-  let geprueft = 0;
-  for (const [path, response] of [...Object.entries(ANMELDUNG), ...Object.entries(SIGNED_OUT)]) {
+  let checked = 0;
+  for (const [path, response] of [...Object.entries(SIGNED_IN), ...Object.entries(SIGNED_OUT)]) {
     const schema = routeForRequest('GET', '/api' + path)?.response;
     if (!schema) {
       deviations.push(`${path}: keine Route mit Vertrag`);
       continue;
     }
-    geprueft++;
+    checked++;
     const r = schema.safeParse(JSON.parse(JSON.stringify(response)));
     if (!r.success)
       deviations.push(`${path}: ${r.error.issues.map(i => i.path.join('.') + ' ' + i.message).join(', ')}`);
   }
-  assert.ok(geprueft >= 22, `only ${geprueft} standard responses checked`);
+  assert.ok(checked >= 22, `only ${checked} standard responses checked`);
   assert.deepEqual(deviations, []);
 });
 
@@ -50,8 +50,8 @@ test('checkResponse adds required fields and throws on the wrong type', () => {
     /violates the contract: GET \/api\/v2\/sets \(200\): count/,
   );
   // Deliberately broken, with a reason: goes out unchanged.
-  const kaputt = { success: true, count: 'x', $contractViolating: 'Fehlerpfad der Oberfläche' };
-  assert.equal(checkResponse('GET', '/api/v2/sets', kaputt), kaputt);
+  const broken = { success: true, count: 'x', $contractViolating: 'Fehlerpfad der Oberfläche' };
+  assert.equal(checkResponse('GET', '/api/v2/sets', broken), broken);
 });
 
 test('error response without code violates the contract', () => {
@@ -80,25 +80,25 @@ test("the UI's fetch delivers the completed response", async () => {
 
 test('a wrong test response makes the test red', () => {
   // In its own run: the error should make a test red there, not this one.
-  const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'vertrag-')), 'probe.test.js');
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'vertrag-')), 'probe.test.js');
   fs.writeFileSync(
-    datei,
+    file,
     `
     const test = require('node:test');
     const { openUi } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'ui.js'))});
     test('probe', async () => {
-      const { w, warte } = await openUi({ '/v2/sets': { success: true, sets: [], count: 'drei' } });
+      const { w, waitFor } = await openUi({ '/v2/sets': { success: true, sets: [], count: 'drei' } });
       await w.fetch('/api/v2/sets');
-      await warte(() => false, 200);
+      await waitFor(() => false, 200);
       w.close();
     });`,
   );
-  const r = spawnSync(process.execPath, ['--test', '--test-reporter=tap', datei], {
+  const r = spawnSync(process.execPath, ['--test', '--test-reporter=tap', file], {
     encoding: 'utf8',
     timeout: 60_000,
     env: { ...process.env, NODE_TEST_CONTEXT: undefined },
   });
-  fs.rmSync(path.dirname(datei), { recursive: true, force: true });
+  fs.rmSync(path.dirname(file), { recursive: true, force: true });
   assert.notEqual(r.status, 0, r.stdout);
   assert.match(r.stdout, /Test response violates the contract: GET \/api\/v2\/sets \(200\): count/);
 });

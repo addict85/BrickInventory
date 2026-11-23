@@ -41,33 +41,33 @@ const gr = {
   ..._req('src/vouchers/repository/vouchers.js'),
   ...require('./helpers/sources').testArea('vouchers').vouchers,
 };
-const dateien = _req('src/vouchers/voucherFiles.js');
+const files = _req('src/vouchers/voucherFiles.js');
 const zf = _req('src/factors/secondFactor.js');
 const settings = _req('src/settings/settings.js');
 const idem = _req('src/idempotency/service.js');
 
 /** The format before the context: AES-GCM with the raw key, without AAD. */
-function roh1(daten) {
+function roh1(data) {
   const iv = crypto.randomBytes(12),
     c = crypto.createCipheriv('aes-256-gcm', Buffer.from(process.env.DATA_KEY, 'base64'), iv);
-  const d = Buffer.concat([c.update(daten), c.final()]);
+  const d = Buffer.concat([c.update(data), c.final()]);
   return Buffer.concat([iv, c.getAuthTag(), d]);
 }
-const alsV1 = klar => 'v1:' + roh1(Buffer.from(klar, 'utf8')).toString('base64');
+const asV1 = plain => 'v1:' + roh1(Buffer.from(plain, 'utf8')).toString('base64');
 const PDF = Buffer.from('%PDF-1.4\nGutschein 5045076374450099999 PIN 4711\n%%EOF\n');
 
 test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const namen = [`kontext_a_${process.pid}`, `kontext_b_${process.pid}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = [`kontext_a_${process.pid}`, `kontext_b_${process.pid}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [n])).id);
-  const SCHLUESSEL = ['smtp_pass', 'brickset_api_key'];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
+  const KEY = ['smtp_pass', 'brickset_api_key'];
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [KEY]);
   t.after(async () => {
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-    for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [KEY]);
+    for (const z of prior) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
     fs.rmSync(SANDBOX, { recursive: true, force: true });
     await db.pool.end().catch(() => {});
@@ -154,33 +154,33 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.equal((await stumm(() => idem.begin(b, 'k-1', 'abdruck'))).kind, 'not_replayable');
 
     // Voucher PDF of a into the folder of b.
-    const da = path.join(dateien.VOUCHER_DIR, String(a), `${ga.id}.pdf`),
-      db_ = path.join(dateien.VOUCHER_DIR, String(b), `${gb.id}.pdf`);
-    await dateien.writeVoucherPdf(da, PDF);
-    assert.ok((await dateien.readVoucherPdf(da)).equals(PDF), 'precondition: readable at its own place');
+    const da = path.join(files.VOUCHER_DIR, String(a), `${ga.id}.pdf`),
+      db_ = path.join(files.VOUCHER_DIR, String(b), `${gb.id}.pdf`);
+    await files.writeVoucherPdf(da, PDF);
+    assert.ok((await files.readVoucherPdf(da)).equals(PDF), 'precondition: readable at its own place');
     fs.mkdirSync(path.dirname(db_), { recursive: true });
     fs.copyFileSync(da, db_);
-    assert.equal(await stumm(() => dateien.readVoucherPdf(db_)), null, 'PDF readable at a foreign place');
+    assert.equal(await stumm(() => files.readVoucherPdf(db_)), null, 'PDF readable at a foreign place');
   });
 
   await t.test('plain text and v1 are rejected on read', async () => {
     const k = g.context('probe', 1);
     assert.equal(await stumm(() => g.decrypt('klartext', k)), null);
-    assert.equal(await stumm(() => g.decrypt(alsV1('alt'), k)), null);
-    assert.equal(g.readOldValue(alsV1('alt'), k), 'alt', 'only the re-keying reads v1');
+    assert.equal(await stumm(() => g.decrypt(asV1('alt'), k)), null);
+    assert.equal(g.readOldValue(asV1('alt'), k), 'alt', 'only the re-keying reads v1');
     await db.run("UPDATE global_settings SET value = 'eingeschleust' WHERE key = 'smtp_pass'");
     assert.equal(await stumm(() => settings.getGlobalSetting('smtp_pass')), null);
-    const pdf = path.join(dateien.VOUCHER_DIR, String(a), 'klartext.pdf');
+    const pdf = path.join(files.VOUCHER_DIR, String(a), 'klartext.pdf');
     fs.mkdirSync(path.dirname(pdf), { recursive: true });
     fs.writeFileSync(pdf, PDF);
-    assert.equal(await stumm(() => dateien.readVoucherPdf(pdf)), null);
+    assert.equal(await stumm(() => files.readVoucherPdf(pdf)), null);
     fs.rmSync(pdf);
   });
 
   await t.test('a v1 legacy stock is re-encrypted at startup', async () => {
     await db.run('DELETE FROM vouchers WHERE user_id = ANY($1)', [ids]);
     await db.run('DELETE FROM second_factor WHERE user_id = ANY($1)', [ids]);
-    fs.rmSync(dateien.VOUCHER_DIR, { recursive: true, force: true });
+    fs.rmSync(files.VOUCHER_DIR, { recursive: true, force: true });
     // Number and PIN v1, as before the context; the CHECK of the table now requires v2.
     await db.run('ALTER TABLE vouchers DROP CONSTRAINT vouchers_number_encrypted');
     const nr = '5045076374450044444';
@@ -188,20 +188,20 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
       await db.get(
         `INSERT INTO vouchers (user_id, number, number_search, pin, amount, currency)
       VALUES ($1, $2, $3, $4, 5, 'CHF') RETURNING id`,
-        [a, alsV1(nr), gr.numberSearch(a, nr), alsV1('4444')],
+        [a, asV1(nr), gr.numberSearch(a, nr), asV1('4444')],
       )
     ).id;
     await db.run(`ALTER TABLE vouchers ADD CONSTRAINT vouchers_number_encrypted
       CHECK (number LIKE 'v2:%' AND number_search IS NOT NULL) NOT VALID`);
-    await db.run("UPDATE global_settings SET value = $1 WHERE key = 'smtp_pass'", [alsV1('Smtp-Alt-2')]);
+    await db.run("UPDATE global_settings SET value = $1 WHERE key = 'smtp_pass'", [asV1('Smtp-Alt-2')]);
     const totp = zf.base32(crypto.randomBytes(20));
-    await db.run('INSERT INTO second_factor (user_id, secret, active) VALUES ($1, $2, true)', [b, alsV1(totp)]);
-    const abdruck = idem.fingerprint('PUT', '/api/v2/x', { alt: true });
+    await db.run('INSERT INTO second_factor (user_id, secret, active) VALUES ($1, $2, true)', [b, asV1(totp)]);
+    const fingerprint = idem.fingerprint('PUT', '/api/v2/x', { alt: true });
     await db.run(
       `INSERT INTO idempotency (user_id, key, request, status, response) VALUES ($1, 'alt-1', $2, 200, $3)`,
-      [a, abdruck, alsV1('{"alt":true}')],
+      [a, fingerprint, asV1('{"alt":true}')],
     );
-    const pdf = path.join(dateien.VOUCHER_DIR, String(a), `${id}.pdf`);
+    const pdf = path.join(files.VOUCHER_DIR, String(a), `${id}.pdf`);
     fs.mkdirSync(path.dirname(pdf), { recursive: true });
     fs.writeFileSync(pdf, Buffer.concat([Buffer.from('BIENC1\n'), roh1(PDF)]));
 
@@ -216,12 +216,12 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.equal(await settings.getGlobalSetting('smtp_pass'), 'Smtp-Alt-2');
     assert.match((await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [b])).secret, /^v2:/);
     assert.equal(await zf.checkCode(b, zf.hotp(zf.fromBase32(totp), zf.timeStep())), 'totp');
-    assert.deepEqual(await idem.begin(a, 'alt-1', abdruck), {
+    assert.deepEqual(await idem.begin(a, 'alt-1', fingerprint), {
       kind: 'replay',
       status: 200,
       response: '{"alt":true}',
     });
     assert.equal(fs.readFileSync(pdf).subarray(0, 7).toString('latin1'), 'BIENC2\n');
-    assert.ok((await dateien.readVoucherPdf(pdf)).equals(PDF));
+    assert.ok((await files.readVoucherPdf(pdf)).equals(PDF));
   });
 });

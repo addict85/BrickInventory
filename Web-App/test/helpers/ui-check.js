@@ -51,21 +51,21 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startApp, warte } = require('./app-browser');
+const { startApp, sleep } = require('./app-browser');
 const { patternHousehold } = require('./inventory');
-const { AXE_LAUF, LAYOUT, tabCheck } = require('./layout-measurement');
+const { AXE_RUN, LAYOUT, tabCheck } = require('./layout-measurement');
 
-const DEVICES = { rechner: [1280, 900, false], telefon: [390, 844, true] };
+const DEVICES = { calculator: [1280, 900, false], phone: [390, 844, true] };
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 /** Put a file into a hidden file field and trigger `change`. */
-const datei = (
+const file = (
   sel,
   name,
-  typ,
-  inhalt,
+  kind,
+  content,
 ) => `(() => { const f = document.querySelector(${JSON.stringify(sel)}); if (!f) return true;
-  const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(inhalt)}], ${JSON.stringify(name)}, { type: ${JSON.stringify(typ)} }));
+  const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(content)}], ${JSON.stringify(name)}, { type: ${JSON.stringify(kind)} }));
   f.files = dt.files; f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`;
 const WANTED_XML = `<INVENTORY>
 <ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>11</COLOR><MINQTY>4</MINQTY><MAXPRICE>0.25</MAXPRICE></ITEM>
@@ -76,68 +76,71 @@ const WANTED_XML = `<INVENTORY>
 const PDF =
   '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +
   '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
-const reiter = r => klick(`.ntab[data-tab="${r}"]`);
+const switchTab = r => klick(`.ntab[data-tab="${r}"]`);
 /** @type {[string, string[]][]} */
 const VIEWS = [
-  ['Sammlung', [reiter('gallery')]],
-  ['Teile', [reiter('parts')]],
-  ['Minifiguren', [reiter('minifigs')]],
-  ['Teileliste', [reiter('partslist')]],
-  ['Finanzen', [reiter('finance')]],
-  ['Merkliste', [reiter('wanted')]],
-  ['Katalog', [reiter('catalog')]],
-  ['Hintergrundarbeiten', [reiter('monitor')]],
+  ['Sammlung', [switchTab('gallery')]],
+  ['Teile', [switchTab('parts')]],
+  ['Minifiguren', [switchTab('minifigs')]],
+  ['Teileliste', [switchTab('partslist')]],
+  ['Finanzen', [switchTab('finance')]],
+  ['Merkliste', [switchTab('wanted')]],
+  ['Katalog', [switchTab('catalog')]],
+  ['Hintergrundarbeiten', [switchTab('monitor')]],
   // All sections at once: otherwise they stand alone, the same is measured.
   [
     'Einstellungen',
     [
-      reiter('settings'),
+      switchTab('settings'),
       `document.querySelectorAll('#global-settings-grid > .ssec').forEach(a => a.classList.add('settings-active')); true`,
     ],
   ],
   ...['profile', 'vouchers', 'alerts', 'locations', 'household', 'data', 'app'].map(
     s => /** @type {[string, string[]]} */ ([`Sicht ${s}`, [klick(`.umenu-item[data-arg="${s}"]`)]]),
   ),
-  ['Benutzermenü', [reiter('gallery'), klick('#btn-umenu')]],
-  ['Import-Menü', [reiter('gallery'), `document.querySelector('#tab-gallery details.import-menu').open = true; true`]],
-  ['Set hinzufügen', [reiter('gallery'), klick('button[data-click="openCapture"][data-arg="set"]')]],
-  ['Set-Detail', [reiter('gallery'), klick('#gallery [data-click="openModal"]')]],
+  ['Benutzermenü', [switchTab('gallery'), klick('#btn-umenu')]],
+  [
+    'Import-Menü',
+    [switchTab('gallery'), `document.querySelector('#tab-gallery details.import-menu').open = true; true`],
+  ],
+  ['Set hinzufügen', [switchTab('gallery'), klick('button[data-click="openCapture"][data-arg="set"]')]],
+  ['Set-Detail', [switchTab('gallery'), klick('#gallery [data-click="openModal"]')]],
   [
     'Kaufpreise',
-    [reiter('gallery'), klick('#gallery [data-click="openModal"]'), klick('#set-modal [data-click="openAcqModal"]')],
+    [switchTab('gallery'), klick('#gallery [data-click="openModal"]'), klick('#set-modal [data-click="openAcqModal"]')],
   ],
-  ['Teil hinzufügen', [reiter('parts'), klick('button[data-click="openCapture"][data-arg="part"]')]],
-  ['Minifigur hinzufügen', [reiter('minifigs'), klick('button[data-click="openCapture"][data-arg="fig"]')]],
-  ['Teil-Detail', [reiter('parts'), klick('.man-tile[data-click="openManDetail"]')]],
-  ['Teil aus Set', [reiter('parts'), klick('.part-card[data-click="openSetItemDetail"]')]],
-  ['Merkposten-Detail', [reiter('wanted'), klick('.mk-row[data-click="openWantedDetail"]')]],
+  ['Teil hinzufügen', [switchTab('parts'), klick('button[data-click="openCapture"][data-arg="part"]')]],
+  ['Minifigur hinzufügen', [switchTab('minifigs'), klick('button[data-click="openCapture"][data-arg="fig"]')]],
+  ['Teil-Detail', [switchTab('parts'), klick('.man-tile[data-click="openManDetail"]')]],
+  ['Teil aus Set', [switchTab('parts'), klick('.part-card[data-click="openSetItemDetail"]')]],
+  ['Merkposten-Detail', [switchTab('wanted'), klick('.mk-row[data-click="openWantedDetail"]')]],
   [
     'Löschen bestätigen',
     [
-      reiter('gallery'),
+      switchTab('gallery'),
       klick('#gallery [data-click="openModal"]'),
       klick('#set-modal [data-click="openAcqModal"]'),
       klick('#acq-modal [data-click="acqDelete"]'),
     ],
   ],
   // A toast with a button and the build list with chips, among them one the catalog does not know.
-  ['Toast mit Aktion', [reiter('gallery'), `location.hash = '#/sammlung/set/99999-9'; true`]],
+  ['Toast mit Aktion', [switchTab('gallery'), `location.hash = '#/sammlung/set/99999-9'; true`]],
   [
     'Bauliste mit Sets',
     [
-      reiter('partslist'),
+      switchTab('partslist'),
       `(() => { document.getElementById('pl-setnr').value = '10294-1, 99999-1';
     document.querySelector('[data-click="plAddSet"]').click(); return true; })()`,
       klick('#btn-pl-gen'),
     ],
   ],
   // File dialogs without a file on disk: DataTransfer slips it to the field, like a choice in the dialog.
-  ['Wanted-XML', [reiter('parts'), datei('#wanted-xml-part', 'wanted.xml', 'text/xml', WANTED_XML)]],
+  ['Wanted-XML', [switchTab('parts'), file('#wanted-xml-part', 'wanted.xml', 'text/xml', WANTED_XML)]],
   [
     'CSV-Fortschritt',
     [
-      reiter('gallery'),
-      datei('#csv-file', 'sets.csv', 'text/csv', 'set_number,quantity\n75192-1,1\n99999-1,abc\n'),
+      switchTab('gallery'),
+      file('#csv-file', 'sets.csv', 'text/csv', 'set_number,quantity\n75192-1,1\n99999-1,abc\n'),
       `new Promise(r => { const t0 = Date.now(); (function w() { const c = document.getElementById('confirm-modal');
       if (c && c.style.display === 'flex') { document.getElementById('cd-confirm').click(); r(true); }
       else if (document.getElementById('progress-overlay').classList.contains('open') || Date.now() - t0 > 5000) r(true); else setTimeout(w, 100); })(); })`,
@@ -148,10 +151,10 @@ const VIEWS = [
   [
     'PDF-Betrachter',
     [
-      reiter('gallery'),
+      switchTab('gallery'),
       klick('#gallery [data-click="openModal"]'),
       `document.getElementById('instr-file') ? true : new Promise(r => setTimeout(() => r(true), 800))`,
-      datei('#instr-file', 'anleitung.pdf', 'application/pdf', PDF),
+      file('#instr-file', 'anleitung.pdf', 'application/pdf', PDF),
       `new Promise(r => { const t0 = Date.now(); (function w() { if (document.querySelector('#set-modal [data-click="openPdfViewerLink"]') || Date.now() - t0 > 8000) r(true); else setTimeout(w, 200); })(); })`,
       klick('#set-modal [data-click="openPdfViewerLink"]'),
       `new Promise(r => { const t0 = Date.now(); (function w() { if (document.querySelector('#pdf-viewer-pages [role="img"]') || Date.now() - t0 > 8000) r(true); else setTimeout(w, 200); })(); })`,
@@ -189,43 +192,43 @@ function checkUi(design, device) {
       mobile: mobileView,
     });
     // Without a Rebrickable key the setup wizard opens after startup.
-    await warte(1000);
-    await b.auswerten(klick('#setup-modal.open [data-click="setupLater"]'));
+    await sleep(1000);
+    await b.evaluate(klick('#setup-modal.open [data-click="setupLater"]'));
     const image = () =>
-      b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
+      b.evaluate(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
     // Instead of fixed pauses: wait until no request runs anymore, then two frames.
-    await b.auswerten(`(() => { if (window.__offen === undefined) { window.__offen = 0; const f = window.fetch;
+    await b.evaluate(`(() => { if (window.__offen === undefined) { window.__offen = 0; const f = window.fetch;
       window.fetch = (...a) => { window.__offen++; return f(...a).finally(() => setTimeout(() => window.__offen--, 60)); }; } return true; })()`);
-    const ruhig = async () => {
-      await warte(60);
-      await app.bis('window.__offen === 0', 'Anfragen fertig', 60);
+    const settle = async () => {
+      await sleep(60);
+      await app.until('window.__offen === 0', 'Anfragen fertig', 60);
       await image();
     };
 
-    for (const [ansicht, steps] of VIEWS) {
-      const funde = [];
+    for (const [viewName, steps] of VIEWS) {
+      const findings = [];
       // If the login mask is shown, the rest only measures it; then better name the cause.
-      if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
-        assert.fail(`session lost before „${ansicht}“; 401 on: ${app.rejected.join(', ') || 'none'}`);
-      await b.auswerten(CLOSE);
-      await b.auswerten(
+      if (await b.evaluate(`getComputedStyle(document.getElementById('app')).display === 'none'`))
+        assert.fail(`session lost before „${viewName}“; 401 on: ${app.rejected.join(', ') || 'none'}`);
+      await b.evaluate(CLOSE);
+      await b.evaluate(
         `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.removeAttribute('data-dark'); true`,
       );
       for (const s of steps) {
-        await b.auswerten(s);
-        await ruhig();
+        await b.evaluate(s);
+        await settle();
       }
-      for (const dunkel of [false, true]) {
-        await b.auswerten(`document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`);
+      for (const dark of [false, true]) {
+        await b.evaluate(`document.documentElement.toggleAttribute('data-dark', ${dark}); true`);
         await image();
-        const wo = dunkel ? 'dark' : 'hell';
-        for (const f of await b.auswerten(LAYOUT(mobileView))) funde.push(`${wo}: ${f}`);
-        for (const f of await b.auswerten(AXE_LAUF)) funde.push(`${wo}: axe ${f}`);
+        const where = dark ? 'dark' : 'hell';
+        for (const f of await b.evaluate(LAYOUT(mobileView))) findings.push(`${where}: ${f}`);
+        for (const f of await b.evaluate(AXE_RUN)) findings.push(`${where}: axe ${f}`);
       }
-      for (const f of await tabCheck(b)) funde.push(`Tastatur: ${f}`);
-      await t.test(ansicht, () => assert.deepEqual(funde, []));
+      for (const f of await tabCheck(b)) findings.push(`Tastatur: ${f}`);
+      await t.test(viewName, () => assert.deepEqual(findings, []));
     }
-    await b.auswerten(CLOSE);
+    await b.evaluate(CLOSE);
   });
 }
 
@@ -241,13 +244,13 @@ const BAR = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisi
  * (Page.setFontSizes), 'seite' sets the page's base font to 200 %,
  * 'schmal' measures 320 px at normal font in English.
  */
-function checkLargeFont(modus, breite = 320) {
-  test(`UI ${breite} px (${modus}): all views`, { concurrency: 1, timeout: 300_000 }, async t => {
+function checkLargeFont(mode, width = 320) {
+  test(`UI ${width} px (${mode}): all views`, { concurrency: 1, timeout: 300_000 }, async t => {
     // Narrow in English: the longer labels are the tight case there.
     const app = await startApp(t, {
-      name: `ofl_gross_${modus}_${process.pid}`,
+      name: `ofl_gross_${mode}_${process.pid}`,
       holding: patternHousehold,
-      language: modus === 'schmal' ? 'en' : 'de',
+      language: mode === 'schmal' ? 'en' : 'de',
       allDesigns: true,
     });
     if (app.reason) {
@@ -255,49 +258,49 @@ function checkLargeFont(modus, breite = 320) {
       return;
     }
     const { b } = app;
-    const mobileView = breite <= 640;
+    const mobileView = width <= 640;
     await b.tab('Emulation.setDeviceMetricsOverride', {
-      width: breite,
+      width: width,
       height: mobileView ? 640 : 900,
       deviceScaleFactor: 1,
       mobile: mobileView,
     });
-    await warte(1000);
-    await b.auswerten(klick('#setup-modal.open [data-click="setupLater"]'));
-    if (modus === 'browser') await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
-    else if (modus === 'page')
-      await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
+    await sleep(1000);
+    await b.evaluate(klick('#setup-modal.open [data-click="setupLater"]'));
+    if (mode === 'browser') await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
+    else if (mode === 'page')
+      await b.evaluate(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
     const designs =
-      modus === 'browser'
+      mode === 'browser'
         ? ['classic', 'brick', 'noppe', 'werkbank', 'farbfaecher', 'hochglanz']
-        : modus === 'schmal'
+        : mode === 'schmal'
           ? ['classic', 'noppe']
           : ['classic'];
-    for (const [ansicht, steps] of VIEWS) {
-      const funde = [];
-      await b.auswerten(CLOSE);
+    for (const [viewName, steps] of VIEWS) {
+      const findings = [];
+      await b.evaluate(CLOSE);
       for (const s of steps) {
-        await b.auswerten(s);
-        await warte(250);
+        await b.evaluate(s);
+        await sleep(250);
       }
-      await warte(400);
+      await sleep(400);
       // What is measured is the loaded content, not the skeleton before it (market price in the set dialog).
       await app
-        .bis(`!document.querySelector('.ovl.open .skeleton-row, .tab.active .skeleton-row')`, 'Inhalt geladen', 40)
+        .until(`!document.querySelector('.ovl.open .skeleton-row, .tab.active .skeleton-row')`, 'Inhalt geladen', 40)
         .catch(() => {});
       for (const design of designs)
-        for (const dunkel of [false, true]) {
-          await b.auswerten(
-            `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dark', ${dunkel}); true`,
+        for (const dark of [false, true]) {
+          await b.evaluate(
+            `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dark', ${dark}); true`,
           );
-          await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
-          const wo = `${design} ${dunkel ? 'dark' : 'hell'}`;
-          for (const f of [...(await b.auswerten(LAYOUT(mobileView))), ...(await b.auswerten(BAR))])
-            if (GROSS.test(f) || (modus === 'schmal' && f.startsWith('Auswahl'))) funde.push(`${wo}: ${f}`);
+          await b.evaluate(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
+          const where = `${design} ${dark ? 'dark' : 'hell'}`;
+          for (const f of [...(await b.evaluate(LAYOUT(mobileView))), ...(await b.evaluate(BAR))])
+            if (GROSS.test(f) || (mode === 'schmal' && f.startsWith('Auswahl'))) findings.push(`${where}: ${f}`);
         }
-      await t.test(ansicht, () => assert.deepEqual(funde, []));
+      await t.test(viewName, () => assert.deepEqual(findings, []));
     }
-    await b.auswerten(CLOSE);
+    await b.evaluate(CLOSE);
   });
 }
 

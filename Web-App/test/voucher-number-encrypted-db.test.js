@@ -47,10 +47,10 @@ const gr = {
   ...require('./helpers/sources').testArea('vouchers').vouchers,
 };
 /** The format before the context: v1, AES-GCM with the raw key, without AAD. */
-function alsV1(klar) {
+function asV1(plain) {
   const iv = crypto.randomBytes(12),
     c = crypto.createCipheriv('aes-256-gcm', Buffer.from(process.env.DATA_KEY, 'base64'), iv);
-  const d = Buffer.concat([c.update(klar, 'utf8'), c.final()]);
+  const d = Buffer.concat([c.update(plain, 'utf8'), c.final()]);
   return 'v1:' + Buffer.concat([iv, c.getAuthTag(), d]).toString('base64');
 }
 const g = _req('src/infra/secret.js');
@@ -60,13 +60,13 @@ const NR1 = '5045076374451234567',
   NR2 = '5045076374459876543',
   NR3 = '5045076374450246802';
 
-function buildVoucher(number, pin, betrag) {
-  return new Promise(fertig => {
+function buildVoucher(number, pin, amount) {
+  return new Promise(done => {
     const d = new PDFKit({ size: 'A4' });
     const s = [];
     d.on('data', c => s.push(c));
-    d.on('end', () => fertig(Buffer.concat(s)));
-    d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${betrag} CHF:`, 60, 100);
+    d.on('end', () => done(Buffer.concat(s)));
+    d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${amount} CHF:`, 60, 100);
     d.fontSize(12).text(number, 60, 140).text(`PIN: ${pin}`, 60, 170);
     d.end();
   });
@@ -99,17 +99,17 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     fs.rmSync(SANDBOX, { recursive: true, force: true });
   });
 
-  const haupt = testServer(_req, { sitzung: { userId: MAIN }, t });
-  const fremd = testServer(_req, { sitzung: { userId: FREMD }, t });
-  const callFn = async (srv, methode, weg, body) => {
-    const r = await fetch(`${srv.base}/api/v2${weg}`, {
-      method: methode,
+  const main = testServer(_req, { session: { userId: MAIN }, t });
+  const fremd = testServer(_req, { session: { userId: FREMD }, t });
+  const callFn = async (srv, method, route, body) => {
+    const r = await fetch(`${srv.base}/api/v2${route}`, {
+      method: method,
       ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
     });
     return { status: r.status, body: await r.json() };
   };
   /** Number and PIN via the confirmed path; the list only shows the mask. */
-  const klartext = async (srv, id) => {
+  const plaintext = async (srv, id) => {
     const k = await callFn(srv, 'POST', `/vouchers/${id}/plaintext`, { password: PASS });
     assert.equal(k.status, 200, JSON.stringify(k.body));
     return [k.body.number, k.body.pin];
@@ -117,43 +117,43 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
   let id1;
 
   await t.test('after creation the number is in no column in plain text', async () => {
-    const r = await callFn(haupt, 'POST', '/vouchers', { number: NR1, pin: '2468', amount: 50, currency: 'CHF' });
+    const r = await callFn(main, 'POST', '/vouchers', { number: NR1, pin: '2468', amount: 50, currency: 'CHF' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.voucher.number, '…' + NR1.slice(-4), 'only the end to the outside');
     id1 = r.body.voucher.id;
-    assert.deepEqual(await klartext(haupt, id1), [NR1, '2468'], 'the owner reads the number confirmed');
+    assert.deepEqual(await plaintext(main, id1), [NR1, '2468'], 'the owner reads the number confirmed');
     const row = await rowAsText(id1);
     assert.ok(!row.includes(NR1) && !row.includes(NR1.slice(-6)), row);
-    const roh = await db.get('SELECT number, number_search FROM vouchers WHERE id = $1', [id1]);
-    assert.ok(roh.number.startsWith('v2:'), roh.number);
-    assert.match(roh.number_search, /^[0-9a-f]{64}$/);
+    const raw = await db.get('SELECT number, number_search FROM vouchers WHERE id = $1', [id1]);
+    assert.ok(raw.number.startsWith('v2:'), raw.number);
+    assert.match(raw.number_search, /^[0-9a-f]{64}$/);
   });
 
   await t.test('read and change', async () => {
-    const liste = await callFn(haupt, 'GET', '/vouchers');
+    const list = await callFn(main, 'GET', '/vouchers');
     assert.deepEqual(
-      liste.body.vouchers.map(v => [v.id, v.number, v.pin]),
+      list.body.vouchers.map(v => [v.id, v.number, v.pin]),
       [[id1, '…' + NR1.slice(-4), '•••']],
     );
-    const suche = (await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search;
-    const r = await callFn(haupt, 'PUT', `/vouchers/${id1}`, { number: NR2 });
+    const search = (await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search;
+    const r = await callFn(main, 'PUT', `/vouchers/${id1}`, { number: NR2 });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal((await klartext(haupt, id1))[0], NR2);
+    assert.equal((await plaintext(main, id1))[0], NR2);
     const row = await rowAsText(id1);
     assert.ok(!row.includes(NR2) && !row.includes(NR1), row);
-    assert.notEqual((await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search, suche);
+    assert.notEqual((await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search, search);
     // Only the amount: the number comes decrypted from the row and goes back encrypted.
-    const b = await callFn(haupt, 'PUT', `/vouchers/${id1}`, { amount: 40 });
-    assert.deepEqual([b.status, (await klartext(haupt, id1))[0], b.body.voucher.amount], [200, NR2, 40]);
+    const b = await callFn(main, 'PUT', `/vouchers/${id1}`, { amount: 40 });
+    assert.deepEqual([b.status, (await plaintext(main, id1))[0], b.body.voucher.amount], [200, NR2, 40]);
     assert.ok(!(await rowAsText(id1)).includes(NR2));
   });
 
   await t.test('duplicates are detected, per account', async () => {
-    const doppelt = await callFn(haupt, 'POST', '/vouchers', { number: NR2, amount: 10 });
-    assert.deepEqual([doppelt.status, doppelt.body.code], [409, 'voucher_exists']);
-    const zweiter = await callFn(haupt, 'POST', '/vouchers', { number: NR3, amount: 10 });
-    assert.equal(zweiter.status, 200);
-    const renamedOne = await callFn(haupt, 'PUT', `/vouchers/${zweiter.body.voucher.id}`, { number: NR2 });
+    const twice = await callFn(main, 'POST', '/vouchers', { number: NR2, amount: 10 });
+    assert.deepEqual([twice.status, twice.body.code], [409, 'voucher_exists']);
+    const secondOne = await callFn(main, 'POST', '/vouchers', { number: NR3, amount: 10 });
+    assert.equal(secondOne.status, 200);
+    const renamedOne = await callFn(main, 'PUT', `/vouchers/${secondOne.body.voucher.id}`, { number: NR2 });
     assert.deepEqual([renamedOne.status, renamedOne.body.code], [409, 'voucher_exists']);
     const otherAccount = await callFn(fremd, 'POST', '/vouchers', { number: NR2, amount: 10 });
     assert.equal(otherAccount.status, 200, 'the same card in another account is allowed');
@@ -170,24 +170,24 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
   await t.test('PDF, export and import carry the number', async () => {
     const fd = new FormData();
     fd.append('file', new Blob([await buildVoucher(NR1, '1357', '25')], { type: 'application/pdf' }), 'g.pdf');
-    const r = await fetch(`${haupt.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
+    const r = await fetch(`${main.base}/api/v2/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
-    assert.deepEqual([(await klartext(haupt, b.voucher.id))[0], b.voucher.has_pdf], [NR1, true]);
+    assert.deepEqual([(await plaintext(main, b.voucher.id))[0], b.voucher.has_pdf], [NR1, true]);
     assert.ok(!(await rowAsText(b.voucher.id)).includes(NR1));
-    const ticket = async weg => (await callFn(haupt, 'POST', weg, { password: PASS })).body.ticket;
-    const datei = await fetch(
-      `${haupt.base}/api/v2/vouchers/${b.voucher.id}/pdf?download=1&ticket=${await ticket(`/vouchers/${b.voucher.id}/pdf-grant`)}`,
+    const ticket = async route => (await callFn(main, 'POST', route, { password: PASS })).body.ticket;
+    const file = await fetch(
+      `${main.base}/api/v2/vouchers/${b.voucher.id}/pdf?download=1&ticket=${await ticket(`/vouchers/${b.voucher.id}/pdf-grant`)}`,
     );
-    await datei.arrayBuffer();
+    await file.arrayBuffer();
     assert.equal(
-      datei.headers.get('content-disposition'),
+      file.headers.get('content-disposition'),
       `attachment; filename="gutschein-${b.voucher.id}.pdf"`,
       'the number is not in the file name',
     );
 
     const ex = await fetch(
-      `${haupt.base}/api/v2/vouchers/export/pdf?ticket=${await ticket('/vouchers/export/pdf-grant')}`,
+      `${main.base}/api/v2/vouchers/export/pdf?ticket=${await ticket('/vouchers/export/pdf-grant')}`,
     );
     assert.equal(ex.status, 200);
     const pdf = Buffer.from(await ex.arrayBuffer());
@@ -195,20 +195,20 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     assert.deepEqual((await readPageByPage(pdf)).map(w => w.number).sort(), [NR1, NR2, NR3].sort());
 
     await db.run('DELETE FROM vouchers WHERE user_id = $1', [MAIN]);
-    const im = new FormData();
-    im.append('file', new Blob([pdf], { type: 'application/pdf' }), 'alle.pdf');
-    const imp = await (await fetch(`${haupt.base}/api/v2/vouchers/pdf`, { method: 'POST', body: im })).json();
+    const within = new FormData();
+    within.append('file', new Blob([pdf], { type: 'application/pdf' }), 'alle.pdf');
+    const imp = await (await fetch(`${main.base}/api/v2/vouchers/pdf`, { method: 'POST', body: within })).json();
     assert.deepEqual([imp.multiple.added, imp.multiple.errors], [3, 0], JSON.stringify(imp));
-    const liste = await callFn(haupt, 'GET', '/vouchers');
-    const nummern = [];
-    for (const v of liste.body.vouchers) nummern.push((await klartext(haupt, v.id))[0]);
-    assert.deepEqual(nummern.sort(), [NR1, NR2, NR3].sort());
-    for (const v of liste.body.vouchers) assert.ok(!(await rowAsText(v.id)).includes((await klartext(haupt, v.id))[0]));
-    const nochmal = new FormData();
-    nochmal.append('file', new Blob([pdf], { type: 'application/pdf' }), 'alle.pdf');
-    const zweit = await (await fetch(`${haupt.base}/api/v2/vouchers/pdf`, { method: 'POST', body: nochmal })).json();
+    const list = await callFn(main, 'GET', '/vouchers');
+    const numbers = [];
+    for (const v of list.body.vouchers) numbers.push((await plaintext(main, v.id))[0]);
+    assert.deepEqual(numbers.sort(), [NR1, NR2, NR3].sort());
+    for (const v of list.body.vouchers) assert.ok(!(await rowAsText(v.id)).includes((await plaintext(main, v.id))[0]));
+    const again = new FormData();
+    again.append('file', new Blob([pdf], { type: 'application/pdf' }), 'alle.pdf');
+    const secondTry = await (await fetch(`${main.base}/api/v2/vouchers/pdf`, { method: 'POST', body: again })).json();
     assert.deepEqual(
-      [zweit.multiple.added, zweit.multiple.updated],
+      [secondTry.multiple.added, secondTry.multiple.updated],
       [0, 3],
       'the second import recognises the cards again',
     );
@@ -226,7 +226,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     const alt = [
       [MAIN, NR1, '1357'],
       [FREMD, NR1, null],
-      [MAIN, NR3, alsV1('8642')],
+      [MAIN, NR3, asV1('8642')],
     ];
     const ids = [];
     for (const [uid, nr, pin] of alt)
@@ -248,22 +248,22 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     await _req('startup/database.js').legacyStockUpgrade(require('./helpers/sources').testServices());
 
     assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name = '0087-gutscheinnummer-verschluesselt.sql'`));
-    const zeilen = await db.all(
+    const lines = await db.all(
       'SELECT id, user_id, number, number_search FROM vouchers WHERE id = ANY($1) ORDER BY id',
       [ids],
     );
     assert.deepEqual(
-      zeilen.map(z => g.decrypt(z.number, gr.numberContext(z.user_id, z.id))),
+      lines.map(z => g.decrypt(z.number, gr.numberContext(z.user_id, z.id))),
       [NR1, NR1, NR3],
     );
-    for (const z of zeilen) {
+    for (const z of lines) {
       assert.ok(z.number.startsWith('v2:') && z.number_search, JSON.stringify(z));
       assert.ok(!(await rowAsText(z.id)).includes(NR1.slice(-6)) && !(await rowAsText(z.id)).includes(NR3.slice(-6)));
     }
-    assert.notEqual(zeilen[0].number_search, zeilen[1].number_search);
-    const liste = await callFn(haupt, 'GET', '/vouchers');
+    assert.notEqual(lines[0].number_search, lines[1].number_search);
+    const list = await callFn(main, 'GET', '/vouchers');
     const values = [];
-    for (const v of liste.body.vouchers) values.push(await klartext(haupt, v.id));
+    for (const v of list.body.vouchers) values.push(await plaintext(main, v.id));
     assert.deepEqual(
       values.sort(),
       [
@@ -272,27 +272,27 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
       ].sort(),
     );
     assert.equal(
-      (await callFn(haupt, 'POST', '/vouchers', { number: NR1, amount: 5 })).status,
+      (await callFn(main, 'POST', '/vouchers', { number: NR1, amount: 5 })).status,
       409,
       'a re-keyed number counts for the duplicate check',
     );
-    const klar = await db
+    const plain = await db
       .run(`INSERT INTO vouchers (user_id, number, amount, currency) VALUES ($1, '123456789', 1, 'CHF')`, [MAIN])
       .then(
         () => null,
         e => e.code,
       );
-    assert.equal(klar, '23514', 'the database no longer accepts a number in plain text');
+    assert.equal(plain, '23514', 'the database no longer accepts a number in plain text');
 
-    const kopie = (
+    const copy = (
       await db.get(`SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_[0-9]+$'
       ORDER BY nspname DESC LIMIT 1`)
     ).nspname;
     const secured = await db.all(
-      `SELECT id, user_id, number, pin FROM ${kopie}.vouchers WHERE id = ANY($1) ORDER BY id`,
+      `SELECT id, user_id, number, pin FROM ${copy}.vouchers WHERE id = ANY($1) ORDER BY id`,
       [ids],
     );
-    assert.equal(secured.length, 3, `the copy ${kopie} does not have the vouchers`);
+    assert.equal(secured.length, 3, `the copy ${copy} does not have the vouchers`);
     for (const z of secured)
       assert.ok(z.number.startsWith('v2:') && (z.pin === null || z.pin.startsWith('v2:')), JSON.stringify(z));
     assert.deepEqual(

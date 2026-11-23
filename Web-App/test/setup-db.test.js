@@ -29,7 +29,7 @@ const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 
-const SCHLUESSEL = [
+const KEY = [
   'rebrickable_api_key',
   'brickset_api_key',
   'bricklink_consumer_key',
@@ -41,8 +41,8 @@ const SCHLUESSEL = [
 
 test('setup wizard', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [KEY]);
+  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [KEY]);
 
   const name = `ew_${process.pid}`;
   const uid = (
@@ -52,11 +52,11 @@ test('setup wizard', { concurrency: 1 }, async t => {
     )
   ).id;
   await adminWithFactor(_req, uid);
-  const verwalter = { userId: uid, isAdmin: true };
-  const V = testServer(_req, { sitzung: verwalter, t });
-  const N = testServer(_req, { sitzung: { userId: uid, isAdmin: false }, t });
-  const callFn = async (srv, weg, body) => {
-    const r = await fetch(srv.base + '/api/v2/settings' + weg, {
+  const admin = { userId: uid, isAdmin: true };
+  const V = testServer(_req, { session: admin, t });
+  const N = testServer(_req, { session: { userId: uid, isAdmin: false }, t });
+  const callFn = async (srv, route, body) => {
+    const r = await fetch(srv.base + '/api/v2/settings' + route, {
       method: body ? 'POST' : 'GET',
       headers: { 'content-type': 'application/json' },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -79,7 +79,7 @@ test('setup wizard', { concurrency: 1 }, async t => {
     await t.test('fresh installation after the mandatory change: open, without password step', async () => {
       // Like POST /auth/change-password: account and session forget the obligation.
       await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
-      delete verwalter.mustChangePassword;
+      delete admin.mustChangePassword;
       const r = await callFn(V, '/setup');
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.open, true);
@@ -123,8 +123,8 @@ test('setup wizard', { concurrency: 1 }, async t => {
       assert.equal((await callFn(N, '/test-source', { source: 'brickset' })).status, 403);
     });
   } finally {
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]).catch(() => {});
-    for (const z of vorher) await put(z.key, z.value).catch(() => {});
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [KEY]).catch(() => {});
+    for (const z of prior) await put(z.key, z.value).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   }

@@ -30,7 +30,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { adminWithFactor, takeoverNow } = require('./helpers/admin');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
@@ -47,9 +47,9 @@ test('passwords assigned by an admin only apply until the first change', {
   const P = process.pid,
     CHEF = `vpe_chef_${P}`,
     ALT = `vpe_alt_${P}`,
-    NEU = `vpe_neu_${P}`;
+    NEW = `vpe_neu_${P}`;
   const CHEF_PW = 'Verwalter-Passwort-17x';
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ALT, NEU]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ALT, NEW]]);
   const put = async (name, admin) =>
     (
       await db.get(
@@ -62,7 +62,7 @@ test('passwords assigned by an admin only apply until the first change', {
     alt = await put(ALT, false);
   const codes = await adminWithFactor(_req, chef);
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ALT, NEU]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ALT, NEW]]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -88,12 +88,12 @@ test('passwords assigned by an admin only apply until the first change', {
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    await bis(() => srv.exitCode !== null || srv.signalCode !== null, 4000);
+    await until(() => srv.exitCode !== null || srv.signalCode !== null, 4000);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
   assert.ok(
-    await bis(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) !== null, 60_000),
+    await until(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) !== null, 60_000),
     `the server does not start:\n${log.slice(-2000)}`,
   );
 
@@ -102,27 +102,27 @@ test('passwords assigned by an admin only apply until the first change', {
       ...o,
       headers: { 'content-type': 'application/json', origin: basis, ...(keks ? { cookie: keks } : {}) },
     });
-  const anmelden = async (name, passwort, code) => {
+  const signIn = async (name, password, code) => {
     const r = await callFn(null, '/api/v2/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username: name, password: passwort, without_token: true, ...(code ? { code } : {}) }),
+      body: JSON.stringify({ username: name, password: password, without_token: true, ...(code ? { code } : {}) }),
     });
     const body = await r.json();
     assert.equal(r.status, 200, `${name}: ${JSON.stringify(body)}\n${log.slice(-800)}`);
     return { keks: r.headers.get('set-cookie').split(';')[0], user: body.user };
   };
-  const chefKeks = (await anmelden(CHEF, CHEF_PW, codes[0])).keks;
+  const chefKeks = (await signIn(CHEF, CHEF_PW, codes[0])).keks;
 
   /** Log in, locked until the change, open after the change. */
-  async function onlyUntilToSwitch(name, vergeben) {
-    const a = await anmelden(name, vergeben);
+  async function onlyUntilToSwitch(name, taken) {
+    const a = await signIn(name, taken);
     assert.equal(a.user.mustChangePassword, true, 'the sign-in reports the mandatory change');
-    const gesperrt = await callFn(a.keks, '/api/v2/stats');
-    assert.equal(gesperrt.status, 403);
-    assert.equal((await gesperrt.json()).code, 'password_change_required');
+    const locked = await callFn(a.keks, '/api/v2/stats');
+    assert.equal(locked.status, 403);
+    assert.equal((await locked.json()).code, 'password_change_required');
     const w = await callFn(a.keks, '/api/v2/auth/change-password', {
       method: 'POST',
-      body: JSON.stringify({ current: vergeben, newPassword: `Eigenes-Passwort-${P}-neu` }),
+      body: JSON.stringify({ current: taken, newPassword: `Eigenes-Passwort-${P}-neu` }),
     });
     assert.equal(w.status, 200, await w.clone().text());
     const keks = w.headers.get('set-cookie').split(';')[0];
@@ -130,24 +130,24 @@ test('passwords assigned by an admin only apply until the first change', {
   }
 
   await t.test('an account created by an admin', async () => {
-    const vergeben = 'Vom-Verwalter-vergeben-1';
+    const taken = 'Vom-Verwalter-vergeben-1';
     const r = await callFn(chefKeks, '/api/v2/auth/users', {
       method: 'POST',
-      body: JSON.stringify({ username: NEU, password: vergeben, admin_password: CHEF_PW, code: codes[1] }),
+      body: JSON.stringify({ username: NEW, password: taken, admin_password: CHEF_PW, code: codes[1] }),
     });
     assert.equal(r.status, 200, await r.clone().text());
-    await onlyUntilToSwitch(NEU, vergeben);
+    await onlyUntilToSwitch(NEW, taken);
   });
 
   await t.test('a password set by an admin', async () => {
-    const vergeben = 'Vom-Verwalter-gesetzt-2';
+    const taken = 'Vom-Verwalter-gesetzt-2';
     const r = await callFn(chefKeks, `/api/v2/auth/users/${alt}/password`, {
       method: 'PUT',
-      body: JSON.stringify({ password: vergeben, admin_password: CHEF_PW, code: codes[2] }),
+      body: JSON.stringify({ password: taken, admin_password: CHEF_PW, code: codes[2] }),
     });
     assert.equal(r.status, 200, await r.clone().text());
     // Announced like every takeover; here only what applies after the deadline counts.
     assert.equal(await takeoverNow(_req, db, alt), 1);
-    await onlyUntilToSwitch(ALT, vergeben);
+    await onlyUntilToSwitch(ALT, taken);
   });
 });

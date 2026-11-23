@@ -59,7 +59,7 @@ const EXTRA = {
   'POST /api/v2/settings/smtp-test': { to: 'fremd@bv.example' },
 };
 /** Mint new accesses, remove protection, delete everything (report M1) — and the emergency brake. */
-const PFLICHT = [
+const REQUIRED = [
   'POST /api/v2/auth/token-create',
   'POST /api/v2/auth/qr-token',
   'POST /api/v2/auth/users',
@@ -89,7 +89,7 @@ const PFLICHT = [
 const PUBLIC = ['POST /api/v2/auth/login', 'POST /api/v2/auth/register', 'POST /api/v2/auth/reset-password'];
 const PASSWORD_FIELDS = ['password', 'admin_password', 'current', 'password_current'];
 
-async function konto(name, admin) {
+async function account(name, admin) {
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   return (
     await db.get(
@@ -113,15 +113,15 @@ async function withFactor(uid) {
 test('one single confirmation path', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const CHEF = `bv_chef_${process.pid}`,
-    ZIEL = `bv_ziel_${process.pid}`,
-    OHNE = `bv_ohne_${process.pid}`;
-  const chef = await konto(CHEF, true),
-    ziel = await konto(ZIEL, false),
-    ohne = await konto(OHNE, false);
+    TARGET = `bv_ziel_${process.pid}`,
+    WITHOUT = `bv_ohne_${process.pid}`;
+  const chef = await account(CHEF, true),
+    target = await account(TARGET, false),
+    without = await account(WITHOUT, false);
   t.after(async () => {
     await db
       .run('DELETE FROM users WHERE id = ANY($1) OR username = $2', [
-        [chef, ziel, ohne],
+        [chef, target, without],
         EXTRA['POST /api/v2/auth/users'].username,
       ])
       .catch(() => {});
@@ -129,29 +129,29 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     await db
       .run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key LIKE $3', [
         `%-bestaetigen|${chef}|%`,
-        `%-bestaetigen|${ohne}|%`,
+        `%-bestaetigen|${without}|%`,
         `%-bestaetigen-konto|${chef}`,
       ])
       .catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const codes = await withFactor(chef);
-  await withFactor(ziel);
-  const basis = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true }, t }).base;
-  const callFn = async (b, schluessel, body) => {
-    const [methode, muster] = schluessel.split(' ');
-    const r = await fetch(b + muster.replace(':id', String(ziel)).replace(':tokenId', '0123456789abcdef'), {
-      method: methode,
+  await withFactor(target);
+  const basis = testServer(_req, { session: { userId: chef, username: CHEF, isAdmin: true }, t }).base;
+  const callFn = async (b, key, body) => {
+    const [method, pattern] = key.split(' ');
+    const r = await fetch(b + pattern.replace(':id', String(target)).replace(':tokenId', '0123456789abcdef'), {
+      method: method,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
     return { status: r.status, body: await r.json().catch(() => ({})) };
   };
-  const markiert = Object.entries(CONTRACT).filter(([, r]) => r.confirmation);
+  const marked = Object.entries(CONTRACT).filter(([, r]) => r.confirmation);
 
   await t.test('the mandatory routes carry the brand', () => {
-    const fehlt = PFLICHT.filter(k => !CONTRACT[k]?.confirmation);
-    assert.deepEqual(fehlt, []);
+    const missing = REQUIRED.filter(k => !CONTRACT[k]?.confirmation);
+    assert.deepEqual(missing, []);
   });
 
   await t.test('every password input carries the brand', () => {
@@ -167,30 +167,26 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     assert.deepEqual(withoutBrand, []);
   });
 
-  for (const [schluessel, route] of markiert) {
-    await t.test(`${schluessel}: password alone is not enough`, async () => {
+  for (const [key, route] of marked) {
+    await t.test(`${key}: password alone is not enough`, async () => {
       // The account brake too (20 a day): here one session deliberately guesses wrong on every route.
       await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [
         `%-bestaetigen|${chef}|%`,
         `%-bestaetigen-konto|${chef}`,
       ]);
-      const { password: passwort, code } = route.confirmation;
-      const rumpf = { ...EXTRA[schluessel], [passwort]: PASS };
-      const withoutCode = await callFn(basis, schluessel, rumpf);
+      const { password, code } = route.confirmation;
+      const reqBody = { ...EXTRA[key], [password]: PASS };
+      const withoutCode = await callFn(basis, key, reqBody);
       assert.deepEqual(
         [withoutCode.status, withoutCode.body.code],
         [400, 'second_factor_required'],
-        `${schluessel} without a code`,
+        `${key} without a code`,
       );
-      const falsch = await callFn(basis, schluessel, { ...rumpf, [code]: '000000' });
-      assert.deepEqual(
-        [falsch.status, falsch.body.code],
-        [400, 'second_factor_wrong'],
-        `${schluessel} with a wrong code`,
-      );
+      const wrong = await callFn(basis, key, { ...reqBody, [code]: '000000' });
+      assert.deepEqual([wrong.status, wrong.body.code], [400, 'second_factor_wrong'], `${key} with a wrong code`);
     });
   }
-  assert.ok(markiert.length >= PFLICHT.length, `only ${markiert.length} marked routes`);
+  assert.ok(marked.length >= REQUIRED.length, `only ${marked.length} marked routes`);
 
   await t.test('with code it works, without a factor as before', async () => {
     const r = await callFn(basis, 'DELETE /api/v2/auth/users/:id/second-factor', {
@@ -199,46 +195,46 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
     });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(r.body.effective_at, 'announced, not immediate');
-    assert.equal(await require('./helpers/admin').takeoverNow(_req, db, ziel), 1);
-    assert.equal(await zf.isActive(ziel), false);
-    const withoutFactor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
+    assert.equal(await require('./helpers/admin').takeoverNow(_req, db, target), 1);
+    assert.equal(await zf.isActive(target), false);
+    const withoutFactor = testServer(_req, { session: { userId: without, username: WITHOUT }, t }).base;
     const tok = await callFn(withoutFactor, 'POST /api/v2/auth/token-create', { password: PASS });
     assert.equal(tok.status, 200, JSON.stringify(tok.body));
   });
 
   await t.test('no second path to the password comparison', () => {
     const fs = require('node:fs');
-    const { ohneKommentare } = require('./helpers/sources');
-    const ordner = [path.join(ROOT, 'routes'), path.join(ROOT, 'src'), path.join(ROOT, 'jobs')];
-    const dateien = ordner
+    const { withoutComments } = require('./helpers/sources');
+    const dir = [path.join(ROOT, 'routes'), path.join(ROOT, 'src'), path.join(ROOT, 'jobs')];
+    const files = dir
       .flatMap(o => fs.readdirSync(o, { recursive: true }).map(f => path.resolve(o, String(f))))
       .filter(f => f.endsWith('.ts'))
       .concat(path.join(ROOT, 'server.ts'));
-    const treffer = dateien
-      .filter(f => /\bbcrypt\.compare\(/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
+    const hits = files
+      .filter(f => /\bbcrypt\.compare\(/.test(withoutComments(fs.readFileSync(f, 'utf8'))))
       .map(f => path.relative(ROOT, f).replace(/\\/g, '/'))
       .sort();
     assert.deepEqual(
-      treffer,
+      hits,
       ['src/account/bcryptPool.ts'],
       'only the fallback of the pool; all others via passwordFits()',
     );
     // argon2 verify() would likewise bypass login and confirmation.
-    const argon2 = dateien
-      .filter(f => /['"]@node-rs\/argon2['"]/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
+    const argon2 = files
+      .filter(f => /['"]@node-rs\/argon2['"]/.test(withoutComments(fs.readFileSync(f, 'utf8'))))
       .map(f => path.relative(ROOT, f).replace(/\\/g, '/'));
     assert.deepEqual(argon2, ['src/account/passwordHash.ts'], 'argon2 only via passwordFits()/hashPassword()');
   });
 
   await t.test('no confirmation without the brand', async () => {
     const route = CONTRACT['DELETE /api/v2/inventory'];
-    const marke = route.confirmation;
+    const mark = route.confirmation;
     delete route.confirmation;
     try {
       const r = await callFn(basis, 'DELETE /api/v2/inventory', { password: PASS, code: codes[1] });
       assert.equal(r.status, 500, `no confirmation without a marker: ${JSON.stringify(r.body)}`);
     } finally {
-      route.confirmation = marke;
+      route.confirmation = mark;
     }
   });
 });

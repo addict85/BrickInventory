@@ -42,21 +42,21 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Record sent hints before routes/auth binds the mail functions.
-const gesendet = [];
-const bestaetigt = [];
-const versuche = [];
+const sent = [];
+const confirmed = [];
+const attempts = [];
 require('./helpers/sources').replaceServices('mail', {
-  mailEmailChanged: async (an, name, neu) => {
-    gesendet.push({ an, name, neu });
+  mailEmailChanged: async (an, name, fresh) => {
+    sent.push({ an, name, fresh });
     return { success: true };
   },
   mailVerification: async (an, _token, basis) => {
-    bestaetigt.push(basis);
-    versuche.push({ an, kind: 'link' });
+    confirmed.push(basis);
+    attempts.push({ an, kind: 'link' });
     return { success: true };
   },
   mailRegistrationAttempt: async (an, _language, reason) => {
-    versuche.push({ an, kind: reason });
+    attempts.push({ an, kind: reason });
     return { success: true };
   },
 });
@@ -70,7 +70,7 @@ test('change email', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_b`]]);
-  const anderes = (
+  const another = (
     await db.get(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, 'x') RETURNING id`, [
       `${NAME}_b`,
       `${NAME}@belegt.example`,
@@ -84,11 +84,11 @@ test('change email', { concurrency: 1 }, async t => {
     )
   ).id;
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, anderes]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, another]]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME }, t });
   const profileData = async body => {
     const r = await fetch(`${base}/api/v2/auth/profile`, {
       method: 'PUT',
@@ -119,21 +119,21 @@ test('change email', { concurrency: 1 }, async t => {
     assert.equal(r.body.emailChanged, true);
     assert.equal(await address(), `${NAME}@alt.example`, 'the new one only applies after the link (email-neu-db)');
     assert.deepEqual(
-      gesendet,
-      [{ an: `${NAME}@alt.example`, name: NAME, neu: `${NAME}@neu.example` }],
+      sent,
+      [{ an: `${NAME}@alt.example`, name: NAME, fresh: `${NAME}@neu.example` }],
       'The previous address must learn that the account has a new one',
     );
   });
 
   await t.test('even without a new address only with password', async () => {
-    const ohne = await profileData({ email: `${NAME}@neu.example`, first_name: 'Neu' });
-    assert.deepEqual([ohne.status, ohne.body.code], [400, 'current_password_required']);
+    const without = await profileData({ email: `${NAME}@neu.example`, first_name: 'Neu' });
+    assert.deepEqual([without.status, without.body.code], [400, 'current_password_required']);
     assert.equal(
       (await profileData({ first_name: 'Neu', password_current: 'falsch-falsch' })).body.code,
       'current_password_wrong',
     );
-    const mit = await profileData({ email: `${NAME}@neu.example`, first_name: 'Neu', password_current: PASS });
-    assert.equal(mit.status, 200, JSON.stringify(mit.body));
+    const withIt = await profileData({ email: `${NAME}@neu.example`, first_name: 'Neu', password_current: PASS });
+    assert.equal(withIt.status, 200, JSON.stringify(withIt.body));
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Neu');
   });
 
@@ -146,43 +146,43 @@ test('change email', { concurrency: 1 }, async t => {
   });
 
   await t.test('in production without APP_BASE_URL no link from the Host header', async () => {
-    const vorher = { env: process.env.NODE_ENV, basis: process.env.APP_BASE_URL };
+    const prior = { env: process.env.NODE_ENV, basis: process.env.APP_BASE_URL };
     environment({ NODE_ENV: 'production' });
     environment({ APP_BASE_URL: undefined });
     try {
-      bestaetigt.length = 0;
+      confirmed.length = 0;
       const r = await profileData({ email: `${NAME}@drei.example`, password_current: PASS });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.emailSent, false);
-      assert.deepEqual(bestaetigt, [], 'without a fixed address no link may be sent');
+      assert.deepEqual(confirmed, [], 'without a fixed address no link may be sent');
       environment({ APP_BASE_URL: 'https://lego.example.org/' });
       await profileData({ email: `${NAME}@vier.example`, password_current: PASS });
-      assert.deepEqual(bestaetigt, ['https://lego.example.org']);
+      assert.deepEqual(confirmed, ['https://lego.example.org']);
     } finally {
-      environment({ NODE_ENV: vorher.env });
-      if (vorher.basis === undefined) environment({ APP_BASE_URL: undefined });
-      else environment({ APP_BASE_URL: vorher.basis });
+      environment({ NODE_ENV: prior.env });
+      if (prior.basis === undefined) environment({ APP_BASE_URL: undefined });
+      else environment({ APP_BASE_URL: prior.basis });
     }
   });
 
   await t.test('a taken address answers like a free one', async () => {
-    const belegt = `${NAME}@belegt.example`;
-    assert.equal((await profileData({ email: belegt })).body.code, 'current_password_required');
+    const occupied = `${NAME}@belegt.example`;
+    assert.equal((await profileData({ email: occupied })).body.code, 'current_password_required');
     assert.equal(
-      (await profileData({ email: belegt, password_current: 'falsch-falsch' })).body.code,
+      (await profileData({ email: occupied, password_current: 'falsch-falsch' })).body.code,
       'current_password_wrong',
     );
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     try {
-      versuche.length = 0;
-      const frei = await profileData({ email: `${NAME}@frei.example`, password_current: PASS });
-      const vergeben = await profileData({ email: belegt.toUpperCase(), password_current: PASS });
-      assert.deepEqual(vergeben, frei, 'Status and fields equal');
-      assert.deepEqual(frei, { status: 200, body: { success: true, emailChanged: true, emailSent: true } });
+      attempts.length = 0;
+      const free = await profileData({ email: `${NAME}@frei.example`, password_current: PASS });
+      const taken = await profileData({ email: occupied.toUpperCase(), password_current: PASS });
+      assert.deepEqual(taken, free, 'Status and fields equal');
+      assert.deepEqual(free, { status: 200, body: { success: true, emailChanged: true, emailSent: true } });
       // The owner of the taken address gets a hint instead of a link.
-      assert.deepEqual(versuche, [
+      assert.deepEqual(attempts, [
         { an: `${NAME}@frei.example`, kind: 'link' },
-        { an: belegt, kind: 'adresse' },
+        { an: occupied, kind: 'adresse' },
       ]);
       assert.equal(await address(), `${NAME}@alt.example`);
     } finally {
@@ -204,10 +204,10 @@ test('change email', { concurrency: 1 }, async t => {
   });
 
   await t.test('password only via change-password', async () => {
-    const vorher = (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
+    const prior = (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
     const r = await profileData({ password: 'GanzNeuesPasswort1', password_current: PASS });
     assert.equal(r.status, 400);
     assert.equal(r.body.code, 'password_via_change_password');
-    assert.equal((await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash, vorher);
+    assert.equal((await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash, prior);
   });
 });

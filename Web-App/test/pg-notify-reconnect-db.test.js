@@ -32,22 +32,22 @@ process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
 const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
 const db     = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 const notify = db.notification;
-const { bis } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'time.js'))});
+const { until } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'time.js'))});
 const LISTEN = \`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND query LIKE 'LISTEN "reconnect_probe"%'\`;
 let empfangen = 0;
 process.on('uncaughtException', e => { console.log('CRASH:' + e.message); process.exit(7); });
 (async () => {
   notify.listen('reconnect_probe', () => { empfangen++; });
-  await bis(async () => (await db.pool.query(LISTEN)).rows.length > 0);
+  await until(async () => (await db.pool.query(LISTEN)).rows.length > 0);
   const alt = (await db.pool.query(LISTEN)).rows.map(z => z.pid);
   // Abriss serverseitig erzwingen — der reale Fall (Postgres-Neustart, Proxy).
   await db.run(\`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
                 WHERE datname = current_database() AND query LIKE 'LISTEN "reconnect_probe"%' AND pid <> pg_backend_pid()\`);
   // Ohne funktionierenden Wiederaufbau (erster Versuch nach ~1 s) kommt keine
   // neue Verbindung mit LISTEN; die alte zählt nicht.
-  const neu = async () => (await db.pool.query(LISTEN)).rows.filter(z => !alt.includes(z.pid)).length;
-  await bis(async () => await neu() > 0, 10_000);
-  const n = await neu();
+  const fresh = async () => (await db.pool.query(LISTEN)).rows.filter(z => !alt.includes(z.pid)).length;
+  await until(async () => await fresh() > 0, 10_000);
+  const n = await fresh();
   console.log('LISTEN_WIEDER_DA:' + n);
   await notify.close();
   await db.pool.end();

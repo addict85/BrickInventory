@@ -21,7 +21,7 @@ const SERVER = ['startup/app.ts', 'routes/pages.ts', 'src/images/http/imageDeliv
 /**
  * Comments gone — the explanatory text above names express.static itself.
  */
-function ohneKommentare(src) {
+function withoutComments(src) {
   let out = '',
     i = 0,
     str = null;
@@ -49,9 +49,9 @@ function ohneKommentare(src) {
     if (c === '/' && n === '*') {
       // block comment
       const e = src.indexOf('*/', i + 2);
-      const bis = e < 0 ? src.length : e + 2;
-      for (const ch of src.slice(i, bis)) if (ch === '\n') out += '\n'; // keep lines
-      i = bis;
+      const until = e < 0 ? src.length : e + 2;
+      for (const ch of src.slice(i, until)) if (ch === '\n') out += '\n'; // keep lines
+      i = until;
       continue;
     }
     if (c === '/' && n === '/') {
@@ -65,7 +65,7 @@ function ohneKommentare(src) {
   }
   return out;
 }
-const CODE = ohneKommentare(SERVER);
+const CODE = withoutComments(SERVER);
 
 test('no static mount delivers files from the data directory', () => {
   // express.static knows no login check. For PUBLIC_DIR that is right

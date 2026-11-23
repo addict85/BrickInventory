@@ -31,7 +31,7 @@ const db = testData();
 const auth = _req('src/account/deviceToken.js');
 const tokenCache = _req('src/account/tokenCache.js');
 const pgNotify = testAccess().notification;
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 
 test('token revocation applies immediately', { concurrency: 1 }, async t => {
   try {
@@ -55,7 +55,7 @@ test('token revocation applies immediately', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   tokenCache.listenOnTokenRevocation();
-  assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen')), 'the listen connection did not come about');
+  assert.ok(await until(() => pgNotify.listensTo('token_widerrufen')), 'the listen connection did not come about');
   /** A token that stands in the cache; afterwards its row is silently deleted. */
   const inCacheWithoutRow = async () => {
     const token = await auth.createToken(uid, 'Test');
@@ -98,8 +98,8 @@ test('token revocation applies immediately', { concurrency: 1 }, async t => {
     // reconnecting (1 s) a revocation from another process would not arrive.
     await db.run(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
       WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE 'LISTEN "token_widerrufen"%'`);
-    assert.ok(await bis(() => !pgNotify.listensTo('token_widerrufen'), 2000), 'the teardown did not arrive');
+    assert.ok(await until(() => !pgNotify.listensTo('token_widerrufen'), 2000), 'the teardown did not arrive');
     assert.equal(await auth.userForToken(token), null);
-    assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen'), 5000), 'the connection did not come back');
+    assert.ok(await until(() => pgNotify.listensTo('token_widerrufen'), 5000), 'the connection did not come back');
   });
 });

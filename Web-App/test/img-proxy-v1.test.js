@@ -25,19 +25,19 @@ test.after(() =>
     .pool.end()
     .catch(() => {}),
 );
-const NEU = '/api/v1/img-proxy';
+const NEW = '/api/v1/img-proxy';
 const ALT = '/api/img-proxy';
 
-const ohneKommentare = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(\/\/|--|\*).*$/gm, '');
+const withoutComments = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(\/\/|--|\*).*$/gm, '');
 
-const lies = (...p) => fs.readFileSync(path.join(...p), 'utf8');
+const read = (...p) => fs.readFileSync(path.join(...p), 'utf8');
 
 test('built addresses take the new form, the old one is still recognized', () => {
   const { proxyImageUrl, isProxyPath } = _req('src/images/images.js');
   const cdn = 'https://cdn.rebrickable.com/media/sets/10305-1.jpg';
-  assert.equal(proxyImageUrl(cdn), `${NEU}?url=${encodeURIComponent(cdn)}`);
+  assert.equal(proxyImageUrl(cdn), `${NEW}?url=${encodeURIComponent(cdn)}`);
   assert.equal(isProxyPath(`${ALT}?url=x`), true, 'stored old addresses no longer count as proxy');
-  assert.equal(isProxyPath(`${NEU}?url=x`), true);
+  assert.equal(isProxyPath(`${NEW}?url=x`), true);
 });
 
 test('the server serves both addresses', async t => {
@@ -56,56 +56,56 @@ test('the server serves both addresses', async t => {
       r => r.status,
     );
   // Both answer like the proxy (rejected without a valid account), an unknown address with 404.
-  const [neu, alt, fremd] = [await status(NEU), await status(ALT), await status('/api/v2/img-proxy')];
+  const [fresh, alt, fremd] = [await status(NEW), await status(ALT), await status('/api/v2/img-proxy')];
   assert.equal(fremd, 404);
-  assert.notEqual(neu, 404, 'the new address is not registered');
-  assert.equal(alt, neu, 'the old address answers differently than the new one');
+  assert.notEqual(fresh, 404, 'the new address is not registered');
+  assert.equal(alt, fresh, 'the old address answers differently than the new one');
 });
 
 test('only the new address is built', () => {
   // The old path may ONLY occur as a constant definition — nowhere as a
   // composed address. Checked in the server tree AND in the browser tree.
-  const dateien = [];
-  const lauf = (d, extension) => {
+  const files = [];
+  const run = (d, extension) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) {
-        if (!/node_modules|locales/.test(p)) lauf(p, extension);
+        if (!/node_modules|locales/.test(p)) run(p, extension);
         continue;
       }
       if (e.name.endsWith(extension) && e.name !== 'app.bundle.js')
-        dateien.push([path.relative(ROOT, p), ohneKommentare(fs.readFileSync(p, 'utf8'))]);
+        files.push([path.relative(ROOT, p), withoutComments(fs.readFileSync(p, 'utf8'))]);
     }
   };
-  for (const ordner of ['routes', 'src', 'jobs']) lauf(path.join(ROOT, ordner), '.ts');
-  lauf(path.join(ROOT, 'public', 'js'), '.js');
-  dateien.push(['server.ts', ohneKommentare(lies(ROOT, 'server.ts'))]);
-  assert.ok(dateien.length >= 30, `Only ${dateien.length} source files found`);
+  for (const dir of ['routes', 'src', 'jobs']) run(path.join(ROOT, dir), '.ts');
+  run(path.join(ROOT, 'public', 'js'), '.js');
+  files.push(['server.ts', withoutComments(read(ROOT, 'server.ts'))]);
+  assert.ok(files.length >= 30, `Only ${files.length} source files found`);
 
-  const gebaut = [];
-  for (const [rel, src] of dateien)
+  const built = [];
+  for (const [rel, src] of files)
     for (const m of src.matchAll(new RegExp(`['"\`]${ALT}[^'"\`]*['"\`]`, 'g'))) {
       // The two definitions of the phase-out constant are the one allowed place.
-      const zeile = src.slice(0, m.index).split('\n').pop();
-      if (/IMG_PROXY_(PATH_)?LEGACY\s*=/.test(zeile)) continue;
-      gebaut.push(`${rel}: ${m[0]}`);
+      const line = src.slice(0, m.index).split('\n').pop();
+      if (/IMG_PROXY_(PATH_)?LEGACY\s*=/.test(line)) continue;
+      built.push(`${rel}: ${m[0]}`);
     }
   assert.deepEqual(
-    gebaut.sort(),
+    built.sort(),
     [],
-    `These places still build the old proxy address:\n  ${gebaut.join('\n  ')}\n${NEU} is built; the old one is only RECOGNIZED (isProxyPath) and still served by the server.`,
+    `These places still build the old proxy address:\n  ${built.join('\n  ')}\n${NEW} is built; the old one is only RECOGNIZED (isProxyPath) and still served by the server.`,
   );
 });
 
 /** The app need not recognize the old one: a stored path is only completed with the server address. */
 test('the app builds the new address and nowhere the old one', () => {
   // Addresses built by hand by the app (shared/app-interface.json, generated from its source text).
-  const { addresses: adressen } = require('./helpers/contract').appInterface();
-  assert.ok(adressen.includes(NEU), `The app does not build ${NEU} (found: ${adressen.join(', ')})`);
+  const { addresses } = require('./helpers/contract').appInterface();
+  assert.ok(addresses.includes(NEW), `The app does not build ${NEW} (found: ${addresses.join(', ')})`);
   assert.deepEqual(
-    adressen.filter(a => a === ALT || a.startsWith(`${ALT}?`)),
+    addresses.filter(a => a === ALT || a.startsWith(`${ALT}?`)),
     [],
-    `${NEU} is built; the server still serves an installed older version.`,
+    `${NEW} is built; the server still serves an installed older version.`,
   );
 });
 
@@ -114,7 +114,7 @@ test('the migration covers EVERY table with image_url', () => {
   // eighth table with image_url should stand out, not slip through.
   // The tables with image_url that existed BEFORE 0014 — read from the
   // schema before db/base.sql. 0014 is …
-  const tabellen = [
+  const tables = [
     'sets',
     'set_catalog',
     'set_parts_catalog',
@@ -124,13 +124,13 @@ test('the migration covers EVERY table with image_url', () => {
     'minifigs',
   ];
   // MEASURED there are seven.
-  assert.ok(tabellen.length >= 5, `Only ${tabellen.length} tables with image_url found — pattern outdated?`);
+  assert.ok(tables.length >= 5, `Only ${tables.length} tables with image_url found — pattern outdated?`);
 
   // Without comments: the explanatory text of this migration NAMES the pattern
   // `LIKE '%…%'` it decides against — and the check below
   // promptly tripped over it. The same trap helpers/sources.js warns about.
-  const mig = ohneKommentare(lies(ROOT, 'db/migrations/0014-img-proxy-nach-v1.sql'));
-  const absent = tabellen.filter(t => !new RegExp(`UPDATE\\s+${t}\\s`).test(mig)).sort();
+  const mig = withoutComments(read(ROOT, 'db/migrations/0014-img-proxy-nach-v1.sql'));
+  const absent = tables.filter(t => !new RegExp(`UPDATE\\s+${t}\\s`).test(mig)).sort();
   assert.deepEqual(
     absent,
     [],
@@ -144,13 +144,13 @@ test('the migration covers EVERY table with image_url', () => {
   assert.ok(rewritten.length >= 5, `Only ${rewritten.length} UPDATE targets found in 0014 — pattern outdated?`);
 
   const migDir = path.join(ROOT, 'db/migrations');
-  const spaeter = fs
+  const subsequent = fs
     .readdirSync(migDir)
     .filter(f => f.endsWith('.sql') && f > '0014')
     .sort();
   const stragglers = [];
-  for (const f of spaeter) {
-    const txt = ohneKommentare(lies(ROOT, 'db/migrations', f));
+  for (const f of subsequent) {
+    const txt = withoutComments(read(ROOT, 'db/migrations', f));
     for (const m of txt.matchAll(/CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)\s*\(([^;]*?)\)\s*;/gs)) {
       if (/^\s*image_url\s/m.test(m[2])) stragglers.push([m[1], f, txt]);
     }
@@ -162,8 +162,8 @@ test('the migration covers EVERY table with image_url', () => {
   );
 
   // A valid source is also a later table that itself reads from such a one.
-  const quellen = new Set(rewritten);
-  const liestAusQuelle = (tab, txt) => {
+  const sources = new Set(rewritten);
+  const readsFromSource = (tab, txt) => {
     // The INSERT that fills this table, and what it reads from.
     const blockList = [
       ...txt.matchAll(
@@ -173,18 +173,18 @@ test('the migration covers EVERY table with image_url', () => {
         ),
       ),
     ];
-    return blockList.some(b => [...quellen].some(q => new RegExp(`FROM\\s+${q}\\b`, 'i').test(b[1])));
+    return blockList.some(b => [...sources].some(q => new RegExp(`FROM\\s+${q}\\b`, 'i').test(b[1])));
   };
-  for (let neu = true; neu; ) {
-    neu = false;
+  for (let fresh = true; fresh; ) {
+    fresh = false;
     for (const [tab, , txt] of stragglers)
-      if (!quellen.has(tab) && liestAusQuelle(tab, txt)) {
-        quellen.add(tab);
-        neu = true;
+      if (!sources.has(tab) && readsFromSource(tab, txt)) {
+        sources.add(tab);
+        fresh = true;
       }
   }
   const withoutOrigin = stragglers
-    .filter(([tab]) => !quellen.has(tab))
+    .filter(([tab]) => !sources.has(tab))
     .map(([tab, f]) => `${tab} (${f})`)
     .sort();
   assert.deepEqual(
@@ -208,6 +208,6 @@ test('the migration covers EVERY table with image_url', () => {
   assert.doesNotMatch(
     mig,
     /LIKE\s+'%/,
-    'Ein Muster mit führendem % trifft auch Adressen, die die Zeichenkette ' + 'nur im Abfrageteil enthalten',
+    'A pattern with a leading % also matches addresses that contain the string ' + 'only in the query part',
   );
 });

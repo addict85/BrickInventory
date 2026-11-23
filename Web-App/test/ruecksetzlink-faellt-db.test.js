@@ -28,15 +28,15 @@ const { tokenDigest } = _req('src/account/deviceToken.js');
 
 test('reset links fall with password and address change', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const namen = [];
+  const names = [];
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { t });
   /** An account with an open link; the change runs, then the link is redeemed. */
-  const afterSwitch = async (name, wechsel) => {
-    namen.push(name);
+  const afterSwitch = async (name, change) => {
+    names.push(name);
     await db.run('DELETE FROM users WHERE username = $1', [name]);
     const uid = (
       await db.get(
@@ -47,7 +47,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
     ).id;
     const token = crypto.randomBytes(32).toString('hex');
     assert.ok(await K.setResetTokenIfFree(uid, tokenDigest(token), 60, 15));
-    await wechsel(uid);
+    await change(uid);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
     const r = await fetch(`${base}/api/v2/auth/reset-password`, {
       method: 'POST',
@@ -88,7 +88,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
 
   await t.test('two concurrent requests with the same link: only one sets its password', async () => {
     const name = `link_doppelt_${p}`;
-    namen.push(name);
+    names.push(name);
     await db.run('DELETE FROM users WHERE username = $1', [name]);
     const uid = (
       await db.get(
@@ -106,9 +106,9 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token, password }),
       }).then(async r => [r.status, (await r.json()).code ?? null, password]);
-    const antworten = await Promise.all([put('Erstes-Neu-2026x'), put('Zweites-Neu-2026x')]);
-    assert.deepEqual(antworten.map(a => a[0]).sort(), [200, 400], JSON.stringify(antworten));
-    const sieger = antworten.find(a => a[0] === 200)[2];
+    const answers = await Promise.all([put('Erstes-Neu-2026x'), put('Zweites-Neu-2026x')]);
+    assert.deepEqual(answers.map(a => a[0]).sort(), [200, 400], JSON.stringify(answers));
+    const sieger = answers.find(a => a[0] === 200)[2];
     const { password_hash } = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
     assert.ok(
       await _req('src/account/passwordHash.js').passwordFits(sieger, password_hash),

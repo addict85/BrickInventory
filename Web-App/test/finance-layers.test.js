@@ -13,7 +13,7 @@ const FOLDER = path.join(__dirname, '..', 'src/finances/calculation');
  */
 
 /** The order — whoever stands further down may fetch nothing from further up. */
-const SCHICHTEN = ['condition', 'queries', 'prices', 'valuation', 'profitLoss'];
+const LAYERS = ['condition', 'queries', 'prices', 'valuation', 'profitLoss'];
 
 function importsOf(name) {
   const s = fs.readFileSync(path.join(FOLDER, `${name}.ts`), 'utf8');
@@ -30,7 +30,7 @@ test('the layers are complete', () => {
     .sort();
   assert.deepEqual(
     da,
-    [...SCHICHTEN].sort(),
+    [...LAYERS].sort(),
     'The files under src/finances/calculation/ no longer match the layering. ' +
       'If one is added, it belongs in its place in „SCHICHTEN“ — ' +
       'otherwise nobody checks its direction here.',
@@ -40,13 +40,13 @@ test('the layers are complete', () => {
 test('no layer reaches upwards', () => {
   const error = [];
   let kanten = 0;
-  SCHICHTEN.forEach((name, hoehe) => {
-    for (const ziel of importsOf(name)) {
-      const targetHeight = SCHICHTEN.indexOf(ziel);
+  LAYERS.forEach((name, height) => {
+    for (const target of importsOf(name)) {
+      const targetHeight = LAYERS.indexOf(target);
       if (targetHeight < 0) continue; // not a sibling of the layer
       kanten++;
-      if (targetHeight >= hoehe) {
-        error.push(`${name}.ts holt ${ziel}.ts — das steht gleich hoch oder hoeher`);
+      if (targetHeight >= height) {
+        error.push(`${name}.ts holt ${target}.ts — das steht gleich hoch oder hoeher`);
       }
     }
   });
@@ -72,8 +72,8 @@ test('the facade only passes through', () => {
     .filter(z => !/^\s*\/\//.test(z))
     .join('\n')
     .trim();
-  const zeilen = withoutComment.split('\n').filter(z => z.trim()).length;
-  assert.ok(zeilen <= 29, `The facade has ${zeilen} lines of code. It should only pass things on.`);
+  const lines = withoutComment.split('\n').filter(z => z.trim()).length;
+  assert.ok(lines <= 29, `The facade has ${lines} lines of code. It should only pass things on.`);
   assert.ok(
     !/\bfunction\b|\bdb\./.test(withoutComment),
     'There is logic in the facade again. It belongs in the layer it ' +
@@ -83,24 +83,24 @@ test('the facade only passes through', () => {
 
 test('scope is explained in one place', () => {
   // One name, two meanings
-  const wurzel = path.join(__dirname, '..');
-  const treffer = [];
-  (function lauf(d) {
+  const root = path.join(__dirname, '..');
+  const hits = [];
+  (function run(d) {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) {
         if (['node_modules', 'dist', '.git', 'test'].includes(n)) continue;
-        lauf(p);
+        run(p);
       } else if (n.endsWith('.ts')) {
         const s = fs.readFileSync(p, 'utf8');
         if (/^\s*(export )?type Scope\w* =/m.test(s)) {
-          treffer.push(path.relative(wurzel, p).split(path.sep).join('/'));
+          hits.push(path.relative(root, p).split(path.sep).join('/'));
         }
       }
     }
-  })(wurzel);
+  })(root);
   assert.deepEqual(
-    treffer,
+    hits,
     ['src/household/rules.ts'],
     'The type Scope is declared in more than one place. It belongs ' +
       'where asIds() is — otherwise the versions drift apart, and a ' +

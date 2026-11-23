@@ -34,19 +34,19 @@ test('a signed GET returns `data`; the signature checks out', async t => {
   assert.equal(c.host, 'api.bricklink.com');
   assert.equal(c.path, `/api/store/v1${PRICE}?currency_code=CHF&new_or_used=N`);
   // Recomputed from the header and the known secrets, as BrickLink does it.
-  const felder = Object.fromEntries(
+  const fields = Object.fromEntries(
     [...String(c.headers.authorization).matchAll(/(\w+)="([^"]*)"/g)].map(m => [m[1], decodeURIComponent(m[2])]),
   );
-  const { oauth_signature: sig, realm: _realm, ...ohne } = felder;
-  const alle = { ...ohne, currency_code: 'CHF', new_or_used: 'N' };
-  const params = Object.keys(alle)
+  const { oauth_signature: sig, realm: _realm, ...without } = fields;
+  const all = { ...without, currency_code: 'CHF', new_or_used: 'N' };
+  const params = Object.keys(all)
     .sort()
-    .map(k => `${pct(k)}=${pct(alle[k])}`)
+    .map(k => `${pct(k)}=${pct(all[k])}`)
     .join('&');
   const basis = `GET&${pct(`https://api.bricklink.com/api/store/v1${PRICE}`)}&${pct(params)}`;
   assert.equal(sig, crypto.createHmac('sha1', 'cs&ts').update(basis).digest('base64'));
-  assert.equal(felder.oauth_consumer_key, 'ck');
-  assert.equal(felder.oauth_token, 'tk');
+  assert.equal(fields.oauth_consumer_key, 'ck');
+  assert.equal(fields.oauth_token, 'tk');
 });
 
 test('without all four credentials nothing is asked', async t => {
@@ -86,12 +86,12 @@ test('an API error in `meta` is an error with the response attached', async t =>
 });
 
 test('429 and 5xx with a JSON body are errors too', async t => {
-  const antworten = [
+  const answers = [
     [429, { meta: { code: 429, message: 'TOO_MANY_REQUESTS' } }],
     [503, { meta: { code: 503, message: 'SERVICE_UNAVAILABLE' } }],
   ];
   await httpsStub(t, (_c, res) =>
-    reply(res, .../** @type {[number, any, Record<string, string>?]} */ (antworten.shift())),
+    reply(res, .../** @type {[number, any, Record<string, string>?]} */ (answers.shift())),
   );
   const bl = createBricklink(clientsAccess());
   await assert.rejects(bl.bricklinkRequest('GET', PRICE), /API Error 429: TOO_MANY_REQUESTS/);
@@ -111,9 +111,9 @@ test('a hanging BrickLink ends at the deadline', async t => {
   const stub = await httpsStub(t, () => {});
   mock.timers.enable({ apis: ['setTimeout'] });
   t.after(() => mock.timers.reset());
-  const lauf = createBricklink(clientsAccess()).checkBricklinkAccess();
+  const run = createBricklink(clientsAccess()).checkBricklinkAccess();
   const call = await stub.nextCall();
   assert.equal(call.path, '/api/store/v1/colors/1');
   mock.timers.tick(20_000);
-  await assert.rejects(lauf, /Zeitlimit 20000 ms/);
+  await assert.rejects(run, /Zeitlimit 20000 ms/);
 });

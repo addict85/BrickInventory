@@ -17,12 +17,12 @@ const _req = require('./helpers/sources').buildAndRequire();
 test('previewFrom() actually creates a smaller file', async () => {
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
-  const ordner = path.join(DATA_DIR, 'images', 'sets');
-  fs.mkdirSync(ordner, { recursive: true });
+  const dir = path.join(DATA_DIR, 'images', 'sets');
+  fs.mkdirSync(dir, { recursive: true });
 
   const name = `zz-thumbtest-${process.pid}`;
-  const original = path.join(ordner, `${name}.jpg`);
-  const preview = path.join(ordner, `${name}_thumb.jpg`);
+  const original = path.join(dir, `${name}.jpg`);
+  const preview = path.join(dir, `${name}_thumb.jpg`);
   fs.rmSync(preview, { force: true });
 
   // A real JPEG — Jimp must be able to read it; a buffer full of zeros does not suffice.
@@ -44,7 +44,7 @@ test('previewFrom() actually creates a smaller file', async () => {
       'the preview must be SMALLER than the original — otherwise it would be useless',
     );
     assert.ok(
-      fs.readdirSync(ordner).filter(f => f.startsWith(name) && f.includes('.tmp')).length === 0,
+      fs.readdirSync(dir).filter(f => f.startsWith(name) && f.includes('.tmp')).length === 0,
       'no temporary file may be left behind',
     );
   } finally {

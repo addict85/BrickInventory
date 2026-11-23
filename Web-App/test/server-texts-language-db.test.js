@@ -43,7 +43,7 @@ test('server texts in the language of the request', { concurrency: 1 }, async t 
     [uid],
   );
   await adminWithFactor(_req, uid);
-  const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
+  const { base } = testServer(_req, { session: { userId: uid, isAdmin: 1 }, t });
   const hole = async (path, language) =>
     (await fetch(`${base}/api/v2/${path}`, { headers: { 'Accept-Language': language } })).json();
 

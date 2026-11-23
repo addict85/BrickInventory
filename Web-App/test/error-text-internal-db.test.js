@@ -27,18 +27,18 @@ const { dataOrSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/jobs');
 const { testServer } = require('./helpers/server');
 
-const GEHEIM = 'relation "geheime_tabelle" does not exist';
-const replace = (rel, zusatz) => {
+const SECRET = 'relation "geheime_tabelle" does not exist';
+const replace = (rel, extra) => {
   const file = require.resolve(path.join(sources.DIST, rel));
   _req(rel);
-  require.cache[file].exports = Object.assign({}, require.cache[file].exports, zusatz);
+  require.cache[file].exports = Object.assign({}, require.cache[file].exports, extra);
 };
 const { fileError, errorText } = _req('src/infra/errorTexts.js');
 // Before loading the routes: the services throw what would come from the database in production.
 // The wishlist one level deeper: the import runs as a job and calls the service internally.
 replace('src/wanted/repository/wanted.js', {
   markSetWanted: async () => {
-    throw new Error(GEHEIM);
+    throw new Error(SECRET);
   },
 });
 // Creation happens without network; afterwards only the completion in the open stream can fail.
@@ -56,7 +56,7 @@ Object.assign(require('./helpers/sources').testArea('sets'), {
     };
   },
   setSupplement: async () => {
-    throw new Error(GEHEIM);
+    throw new Error(SECRET);
   },
 });
 
@@ -75,7 +75,7 @@ test('no internal error text to the client', { concurrency: 1 }, async t => {
   });
 
   importWorker(t, _req);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
   const stream = async (setNumber, language = 'de') => {
     const r = await fetch(`${base}/api/v2/sets/add-stream`, {
       method: 'POST',

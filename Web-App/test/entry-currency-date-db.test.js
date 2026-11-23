@@ -46,16 +46,16 @@ test('acquisitions: account currency and CSV date', { concurrency: 1 }, async t 
 
   try {
     await t.test('the quantity increase takes the price in the account currency', async () => {
-      await holdsSet(db, uid, SN, 1, { preis: 700, am: '2026-09-01T10:00:00Z' });
+      await holdsSet(db, uid, SN, 1, { price: 700, am: '2026-09-01T10:00:00Z' });
       await changeSet(uid, SN, { quantity: 2 });
-      const neu = await db.get(
+      const fresh = await db.get(
         `SELECT purchase_price, currency, price_estimated FROM set_acquisitions
           WHERE user_id=$1 AND set_number=$2 ORDER BY id DESC LIMIT 1`,
         [uid, SN],
       );
-      assert.equal(Number(neu.purchase_price), 800);
-      assert.equal(neu.currency, 'CHF');
-      assert.equal(neu.price_estimated, true);
+      assert.equal(Number(fresh.purchase_price), 800);
+      assert.equal(fresh.currency, 'CHF');
+      assert.equal(fresh.price_estimated, true);
     });
 
     await t.test('the CSV date only affects the new acquisition', async () => {
@@ -74,16 +74,16 @@ test('acquisitions: account currency and CSV date', { concurrency: 1 }, async t 
         recordedAt: '2020-05-05',
         ifPresent: 'aufstocken',
       });
-      const zeilen = await db.all(
-        `SELECT quantity, purchase_price::float AS preis, (created_at AT TIME ZONE 'UTC')::date::text AS tag
+      const lines = await db.all(
+        `SELECT quantity, purchase_price::float AS price, (created_at AT TIME ZONE 'UTC')::date::text AS tag
            FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY tag`,
         [uid, SN],
       );
       const todayDate = new Date().toISOString().slice(0, 10);
-      assert.deepEqual(zeilen, [
-        { quantity: 1, preis: 100, tag: '2020-05-05' },
-        { quantity: 1, preis: 50, tag: '2026-10-01' },
-        { quantity: 1, preis: 100, tag: todayDate },
+      assert.deepEqual(lines, [
+        { quantity: 1, price: 100, tag: '2020-05-05' },
+        { quantity: 1, price: 50, tag: '2026-10-01' },
+        { quantity: 1, price: 100, tag: todayDate },
       ]);
     });
   } finally {

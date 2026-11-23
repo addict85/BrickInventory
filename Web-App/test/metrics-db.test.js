@@ -164,10 +164,10 @@ test('metrics', { concurrency: 1 }, async t => {
     assert.equal(r.status, 401);
     assert.equal(r.headers.get('x-request-id'), 'abc-123');
     assert.equal((await r.json()).request_id, 'abc-123');
-    const eigen = await fetch(`${base}/api/gibt-es-nicht`, { headers: { 'X-Request-Id': 'zwei zeilen' } });
-    assert.equal(eigen.status, 404);
-    const rid = eigen.headers.get('x-request-id');
+    const own = await fetch(`${base}/api/gibt-es-nicht`, { headers: { 'X-Request-Id': 'zwei zeilen' } });
+    assert.equal(own.status, 404);
+    const rid = own.headers.get('x-request-id');
     assert.match(rid ?? '', /^[0-9a-z]{4}$/, 'an identifier with spaces is replaced');
-    assert.equal((await eigen.json()).request_id, rid);
+    assert.equal((await own.json()).request_id, rid);
   });
 });

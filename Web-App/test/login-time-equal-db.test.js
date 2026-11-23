@@ -26,9 +26,9 @@ const { checkCredentials } = _req('src/account/loginCheck.js');
 const { hashPassword } = _req('src/account/passwordHash.js');
 
 /** Minimal request: checkCredentials only needs the IP of it (counter). */
-const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
+const request = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
 /** Costs of an argon2 hash: everything before the salt. */
-const kosten = (/** @type {string} */ hash) => hash.split('$').slice(0, 4).join('$');
+const cost = (/** @type {string} */ hash) => hash.split('$').slice(0, 4).join('$');
 
 test('an unknown login name computes the same hash as a wrong password', async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -43,25 +43,25 @@ test('an unknown login name computes the same hash as a wrong password', async t
 
   try {
     /** @type {string[]} */
-    let gerechnet = [];
-    const echt = argon2.verify;
+    let computed = [];
+    const original = argon2.verify;
     t.mock.method(argon2, 'verify', (/** @type {string} */ h, /** @type {any[]} */ ...rest) => {
-      gerechnet.push(h);
-      return /** @type {any} */ (echt)(h, ...rest);
+      computed.push(h);
+      return /** @type {any} */ (original)(h, ...rest);
     });
 
     // One attempt each with its own name and own IP: a second one would at some point run into the brake.
-    for (const [was, wer, ip] of /** @type {const} */ ([
+    for (const [was, who, ip] of /** @type {const} */ ([
       ['bekannt', name, 10],
       ['unbekannt', 'zeit_gibtsnicht', 20],
     ])) {
-      gerechnet = [];
-      const r = await checkCredentials(anfrage(ip), wer, 'falschesPasswort1');
+      computed = [];
+      const r = await checkCredentials(request(ip), who, 'falschesPasswort1');
       // Precondition: really rejected, with 401 — not 429 (lock) or 400 (form error).
       assert.equal(r.ok, false, `${was}: should have been rejected`);
       assert.equal(r.refusal.kind, 'not_signed_in', `${was}: expected not_signed_in (${r.refusal.error})`);
-      assert.equal(gerechnet.length, 1, `${was}: exactly one hash`);
-      assert.equal(kosten(gerechnet[0]), kosten(hash), `${was}: the same cost as a real account`);
+      assert.equal(computed.length, 1, `${was}: exactly one hash`);
+      assert.equal(cost(computed[0]), cost(hash), `${was}: the same cost as a real account`);
     }
   } finally {
     await db.run('DELETE FROM users WHERE username = $1', [name]).catch(() => {});

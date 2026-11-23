@@ -30,18 +30,18 @@ test('image proxy reserves set images for images/sets', async t => {
   const { proxyAddress, proxyCacheKey } = _req('src/images/images.js');
   const { DATA_DIR, SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
-  const { notes, ende } = require('./helpers/sources').imageNotes();
+  const { notes, end } = require('./helpers/sources').imageNotes();
 
   const cacheDir = path.join(DATA_DIR, 'img_proxy_cache');
   fs.mkdirSync(cacheDir, { recursive: true });
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const created = [];
-  const put = (datei, inhalt = Buffer.alloc(300, 1)) => {
-    fs.writeFileSync(datei, inhalt);
-    created.push(datei);
+  const put = (file, content = Buffer.alloc(300, 1)) => {
+    fs.writeFileSync(file, content);
+    created.push(file);
   };
   /** A cache hit: the proxy then does not ask the CDN. */
-  const imCache = url => {
+  const inCache = url => {
     const f = path.join(cacheDir, proxyCacheKey(proxyAddress(url) ?? url));
     put(f);
     put(`${f}.ct`, Buffer.from('image/jpeg'));
@@ -55,7 +55,7 @@ test('image proxy reserves set images for images/sets', async t => {
   const server = app.listen(0);
   t.after(() => {
     server.close();
-    ende();
+    end();
     for (const f of created) fs.rmSync(f, { force: true });
   });
   const hole = async url => {
@@ -67,53 +67,53 @@ test('image proxy reserves set images for images/sets', async t => {
     return r.status;
   };
 
-  const fehlt = `9${process.pid}-1`,
-    liegt = `8${process.pid}-1`;
-  const missingUrl = `https://cdn.rebrickable.com/media/sets/${fehlt}.jpg`;
-  const liesUrl = `https://cdn.rebrickable.com/media/sets/${liegt}.jpg`;
-  const teilUrl = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
-  for (const u of [missingUrl, liesUrl, teilUrl]) imCache(u);
-  put(path.join(SET_IMAGES_DIR, `${liegt}.jpg`));
-  put(path.join(SET_IMAGES_DIR, `${liegt}_thumb.jpg`));
+  const missing = `9${process.pid}-1`,
+    located = `8${process.pid}-1`;
+  const missingUrl = `https://cdn.rebrickable.com/media/sets/${missing}.jpg`;
+  const readUrl = `https://cdn.rebrickable.com/media/sets/${located}.jpg`;
+  const partUrl = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
+  for (const u of [missingUrl, readUrl, partUrl]) inCache(u);
+  put(path.join(SET_IMAGES_DIR, `${located}.jpg`));
+  put(path.join(SET_IMAGES_DIR, `${located}_thumb.jpg`));
 
   await t.test('a missing set image is reserved', async () => {
     assert.equal(await hole(missingUrl), 200);
-    assert.deepEqual(notes, [[missingUrl, fehlt]]);
+    assert.deepEqual(notes, [[missingUrl, missing]]);
   });
   await t.test('what the proxy has lies under images/sets afterwards', async () => {
-    const abgelegt = path.join(SET_IMAGES_DIR, `${fehlt}.jpg`);
-    created.push(abgelegt);
+    const stored = path.join(SET_IMAGES_DIR, `${missing}.jpg`);
+    created.push(stored);
     assert.equal(await hole(missingUrl), 200);
     assert.deepEqual(
-      fs.readFileSync(abgelegt),
+      fs.readFileSync(stored),
       Buffer.alloc(300, 1),
       'what the proxy has is under images/sets afterwards',
     );
     assert.deepEqual(
-      fs.readdirSync(SET_IMAGES_DIR).filter(n => n.startsWith(fehlt) && n.endsWith('.part')),
+      fs.readdirSync(SET_IMAGES_DIR).filter(n => n.startsWith(missing) && n.endsWith('.part')),
       [],
       'no half file is left behind',
     );
   });
   await t.test('if image and preview already lie in images/sets, there is no note', async () => {
-    assert.equal(await hole(liesUrl), 200);
+    assert.equal(await hole(readUrl), 200);
     assert.deepEqual(notes, []);
   });
   await t.test('a part image is not a set image', async () => {
-    assert.equal(await hole(teilUrl), 200);
+    assert.equal(await hole(partUrl), 200);
     assert.deepEqual(notes, []);
   });
   await t.test('one note per set', async () => {
-    const neu = `7${process.pid}-1`;
-    const url = `https://cdn.rebrickable.com/media/sets/${neu}.jpg`;
-    imCache(url);
-    created.push(path.join(SET_IMAGES_DIR, `${neu}.jpg`));
-    const alle = [];
+    const fresh = `7${process.pid}-1`;
+    const url = `https://cdn.rebrickable.com/media/sets/${fresh}.jpg`;
+    inCache(url);
+    created.push(path.join(SET_IMAGES_DIR, `${fresh}.jpg`));
+    const all = [];
     for (let i = 0; i < 3; i++) {
       assert.equal(await hole(url), 200);
-      alle.push(...notes);
+      all.push(...notes);
     }
-    assert.deepEqual(alle, [[url, neu]]);
+    assert.deepEqual(all, [[url, fresh]]);
   });
   await t.test('above the throttle there is no note', async () => {
     const url = `https://cdn.rebrickable.com/media/sets/6${process.pid}-1.jpg`;

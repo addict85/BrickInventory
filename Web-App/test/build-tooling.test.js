@@ -21,7 +21,7 @@ test('the build scripts prefer the locally installed esbuild', () => {
     assert.match(
       src,
       /node_modules', '\.bin'/,
-      `${f}: nutzt nicht das lokale esbuild — npx kostet pro Aufruf Startzeit`,
+      `${f}: does not use the local esbuild — npx costs start-up time per call`,
     );
   }
 });
@@ -33,7 +33,7 @@ test('build-ts.js starts esbuild exactly once, not per file', () => {
   assert.doesNotMatch(
     src,
     /for \(const tsFile of files\) \{[\s\S]{0,400}execFileSync/,
-    'esbuild darf nicht je Datei gestartet werden',
+    'esbuild must not be started per file',
   );
 });
 
@@ -141,8 +141,8 @@ test('no build artifacts next to the TypeScript sources', () => {
  */
 test('@types/* describe the same major version as the package itself', () => {
   const pkg = JSON.parse(read('package.json'));
-  const alle = { ...pkg.dependencies, ...pkg.devDependencies };
-  const haupt = s => {
+  const all = { ...pkg.dependencies, ...pkg.devDependencies };
+  const main = s => {
     const m = String(s).match(/(\d+)\./);
     return m ? m[1] : null;
   };
@@ -157,24 +157,24 @@ test('@types/* describe the same major version as the package itself', () => {
   };
 
   const deviating = [];
-  let geprueft = 0;
-  for (const [name, span] of Object.entries(alle)) {
+  let checked = 0;
+  for (const [name, span] of Object.entries(all)) {
     if (!name.startsWith('@types/')) continue;
-    const ziel = name.slice('@types/'.length).replace('__', '/');
-    if (!(ziel in alle)) continue; // @types/node and the like have no counterpart
-    geprueft++;
-    if (ziel in carteBlanche) continue;
-    const a = haupt(alle[ziel]),
-      b = haupt(span);
-    if (a && b && a !== b) deviating.push(`${ziel} ${alle[ziel]} ↔ ${name} ${span}`);
+    const target = name.slice('@types/'.length).replace('__', '/');
+    if (!(target in all)) continue; // @types/node and the like have no counterpart
+    checked++;
+    if (target in carteBlanche) continue;
+    const a = main(all[target]),
+      b = main(span);
+    if (a && b && a !== b) deviating.push(`${target} ${all[target]} ↔ ${name} ${span}`);
   }
 
   // An exemption for a package that no longer exists hides the real question
   // next time.
-  const verwaist = Object.keys(carteBlanche).filter(z => !(z in alle));
-  assert.deepEqual(verwaist, [], `Exemption without a package — remove the entry: ${verwaist.join(', ')}`);
+  const orphaned = Object.keys(carteBlanche).filter(z => !(z in all));
+  assert.deepEqual(orphaned, [], `Exemption without a package — remove the entry: ${orphaned.join(', ')}`);
 
-  assert.ok(geprueft >= 5, `Only ${geprueft} pairs found — are the type packages still called @types/<package>?`);
+  assert.ok(checked >= 5, `Only ${checked} pairs found — are the type packages still called @types/<package>?`);
   assert.deepEqual(deviating, [], 'Type package and package in different major versions:\n  ' + deviating.join('\n  '));
 });
 
@@ -183,8 +183,8 @@ test('tsconfig has strictNullChecks on, and the CI checks the types as a step of
   // The tsc run itself is done by CI (step “type check”); run here twice
   // it cost every test run about 15 s (review report arch17-web-b, N7).
   // Counter-check (05.11.2026): the step `npx tsc --noEmit` removed from web-ci.yml → red.
-  const roh = read('tsconfig.json').replace(/^\s*\/\/[^\n]*$/gm, '');
-  const cfg = JSON.parse(roh);
+  const raw = read('tsconfig.json').replace(/^\s*\/\/[^\n]*$/gm, '');
+  const cfg = JSON.parse(raw);
   assert.equal(cfg.compilerOptions.strictNullChecks, true, 'strictNullChecks was switched off again in the tsconfig');
   const ci = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
   assert.match(ci, /^\s+run: npx tsc --noEmit\s*$/m, 'the CI no longer checks the server types');
@@ -197,12 +197,12 @@ test('tsconfig has strictNullChecks on, and the CI checks the types as a step of
  * BEFORE searching — otherwise the rule would report its own explanatory text.
  */
 test('the address of the test database has a fallback value everywhere', () => {
-  const { ohneKommentare } = require('./helpers/sources');
-  const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.js'));
+  const { withoutComments } = require('./helpers/sources');
+  const files = fs.readdirSync(__dirname).filter(f => f.endsWith('.js'));
   let parsed = 0;
   const withoutFallback = [];
-  for (const f of dateien) {
-    const src = ohneKommentare(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+  for (const f of files) {
+    const src = withoutComments(fs.readFileSync(path.join(__dirname, f), 'utf8'));
     for (const m of src.matchAll(/process\.env\.TEST_DATABASE_URL\s*(\|\|)?/g)) {
       parsed++;
       if (!m[1]) withoutFallback.push(`${f}:${src.slice(0, m.index).split('\n').length}`);
@@ -246,7 +246,7 @@ test('the pg client in CI follows the version of the service', () => {
   assert.match(
     yml,
     /postgresql-client-\$\{haupt\}|postgresql-client-\$\{\{?\s*haupt/,
-    'Der Schritt installiert keinen Klienten, dessen Version aus dem Dienst stammt',
+    'The step installs no client whose version comes from the service',
   );
 
   // Also LOOK: without a PATH entry the preinstalled client wins.
@@ -259,35 +259,35 @@ test('the pg client in CI follows the version of the service', () => {
 
 test('both workflows report what was red', () => {
   const wf = path.join(ROOT, '..', '.github', 'workflows');
-  for (const datei of ['web-ci.yml', 'android.yml']) {
-    const yml = fs.readFileSync(path.join(wf, datei), 'utf8');
+  for (const file of ['web-ci.yml', 'android.yml']) {
+    const yml = fs.readFileSync(path.join(wf, file), 'utf8');
     assert.match(
       yml,
       /set -o pipefail/,
-      `${datei}: Without pipefail tee determines the exit code — a red run would pass as a success`,
+      `${file}: Without pipefail tee determines the exit code — a red run would pass as a success`,
     );
-    assert.match(yml, /tee "\$RUNNER_TEMP\/test\.log"/, `${datei}: no capture of the test log`);
-    assert.match(yml, /if:\s*failure\(\)/, `${datei}: no step that runs on failure`);
+    assert.match(yml, /tee "\$RUNNER_TEMP\/test\.log"/, `${file}: no capture of the test log`);
+    assert.match(yml, /if:\s*failure\(\)/, `${file}: no step that runs on failure`);
     // Both exits: something is red, or it is red without a test being red
     // (compile error, module does not load) — otherwise the diagnosis is silent exactly then.
     const error = [...yml.matchAll(/::error title=/g)].length;
-    assert.ok(error >= 2, `${datei}: only ${error} error annotation(s) — both outcomes must be reported`);
+    assert.ok(error >= 2, `${file}: only ${error} error annotation(s) — both outcomes must be reported`);
     // And the reporter that the configured Node version really takes
-    if (datei === 'web-ci.yml') {
+    if (file === 'web-ci.yml') {
       const assignment = (yml.match(/^\s*ROT_MUSTER=.*$/m) || [''])[0];
-      assert.ok(assignment, `${datei}: no ROT_MUSTER defined`);
-      assert.match(assignment, /not ok/, `${datei}: ROT_MUSTER does not know the TAP reporter`);
+      assert.ok(assignment, `${file}: no ROT_MUSTER defined`);
+      assert.match(assignment, /not ok/, `${file}: ROT_MUSTER does not know the TAP reporter`);
       assert.match(
         assignment,
         /✖/,
-        `${datei}: ROT_MUSTER does not know the spec reporter (Node 26) — ` +
+        `${file}: ROT_MUSTER does not know the spec reporter (Node 26) — ` +
           'measured on run 15: four red tests, not a single one reported',
       );
     }
     assert.match(
       yml,
       /::notice title=Testsumme::/,
-      `${datei}: no summary line — then nothing tells whether anything ran at all`,
+      `${file}: no summary line — then nothing tells whether anything ran at all`,
     );
   }
 });
@@ -303,8 +303,8 @@ function stepBody(yml, partName) {
   assert.ok(headers.length >= 8, `Only ${headers.length} steps recognized — the splitting no longer works`);
   for (let i = 0; i < headers.length; i++) {
     if (!headers[i][1].includes(partName)) continue;
-    const ende = i + 1 < headers.length ? headers[i + 1].index : yml.length;
-    return yml.slice(headers[i].index, ende);
+    const end = i + 1 < headers.length ? headers[i + 1].index : yml.length;
+    return yml.slice(headers[i].index, end);
   }
   return null;
 }
@@ -312,26 +312,22 @@ function stepBody(yml, partName) {
 test('the security check says what it found', () => {
   // The finding
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
-  const rumpf = stepBody(yml, 'Sicherheitsprüfung');
-  assert.ok(rumpf, 'The step has a different name — this rule then checks nothing anymore');
+  const body = stepBody(yml, 'Sicherheitsprüfung');
+  assert.ok(body, 'The step has a different name — this rule then checks nothing anymore');
 
-  assert.match(rumpf, /--json/, 'The step only looks at the exit code. That does not say WHAT was wrong');
+  assert.match(body, /--json/, 'The step only looks at the exit code. That does not say WHAT was wrong');
   // Both exits: a finding AND no evaluable response.
-  const error = [...rumpf.matchAll(/::error title=/g)].length;
+  const error = [...body.matchAll(/::error title=/g)].length;
   assert.ok(error >= 2, `only ${error} error annotation(s) — both outcomes must be reported`);
   // And the silent exit: “no gap" is a result too.
   assert.match(
-    rumpf,
+    body,
     /::notice title=npm audit::/,
     'Without a message on success nothing tells whether the check ran at all',
   );
   // npm's default for --fetch-timeout is 300000 ms — exactly the five
   // minutes from run 33867656667.
-  assert.match(
-    rumpf,
-    /--fetch-timeout=/,
-    'Without its own time limit a silent registry hangs five minutes per attempt',
-  );
+  assert.match(body, /--fetch-timeout=/, 'Without its own time limit a silent registry hangs five minutes per attempt');
 });
 
 // The evaluation from the workflow really runs here, with a rebuilt
@@ -339,18 +335,18 @@ test('the security check says what it found', () => {
 // → red “a finding “moderate” makes the run red”.
 test('npm audit: a finding from "moderate" makes the run red', t => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
-  const rumpf = stepBody(yml, 'Sicherheitsprüfung');
-  const stuecke = [...rumpf.matchAll(/node -e '\n([\s\S]*?)\n\s*'/g)].map(m => m[1]);
-  const evaluation = stuecke.find(s => s.includes('process.env.BERICHT'));
+  const body = stepBody(yml, 'Sicherheitsprüfung');
+  const pieces = [...body.matchAll(/node -e '\n([\s\S]*?)\n\s*'/g)].map(m => m[1]);
+  const evaluation = pieces.find(s => s.includes('process.env.BERICHT'));
   assert.ok(evaluation, 'the evaluation of the report cannot be found');
   const location = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-'));
   t.after(() => fs.rmSync(location, { recursive: true, force: true }));
-  const lauf = stufe => {
+  const run = level => {
     const m = { info: 0, low: 0, moderate: 0, high: 0, critical: 0 };
     const vulnerabilities = {};
-    if (stufe) {
-      m[stufe] = 1;
-      vulnerabilities.probe = { severity: stufe, via: ['GHSA-probe'] };
+    if (level) {
+      m[level] = 1;
+      vulnerabilities.probe = { severity: level, via: ['GHSA-probe'] };
     }
     fs.writeFileSync(
       path.join(location, 'audit.json'),
@@ -361,12 +357,12 @@ test('npm audit: a finding from "moderate" makes the run red', t => {
       env: { ...process.env, BERICHT: path.join(location, 'audit.json') },
     });
   };
-  assert.equal(lauf(null).status, 0, 'red without a finding');
-  assert.equal(lauf('low').status, 0, '„low“ makes the run red');
-  const mittel = lauf('moderate');
-  assert.notEqual(mittel.status, 0, 'a finding „moderate“ makes the run red');
-  assert.match(mittel.stdout, /::error title=Schwachstelle \(moderate\)::probe/);
-  assert.notEqual(lauf('critical').status, 0);
+  assert.equal(run(null).status, 0, 'red without a finding');
+  assert.equal(run('low').status, 0, '„low“ makes the run red');
+  const mean = run('moderate');
+  assert.notEqual(mean.status, 0, 'a finding „moderate“ makes the run red');
+  assert.match(mean.stdout, /::error title=Schwachstelle \(moderate\)::probe/);
+  assert.notEqual(run('critical').status, 0);
 });
 
 test('the CI workflow checks what it is supposed to check', () => {
@@ -398,7 +394,7 @@ test('the CI workflow checks what it is supposed to check', () => {
     .split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');
-  for (const [muster, warum] of /** @type {[RegExp, string][]} */ ([
+  for (const [pattern, why] of /** @type {[RegExp, string][]} */ ([
     [/\bnpm ci\b/, 'npm install würde ein abweichendes Lockfile stillschweigend hinnehmen'],
     [/\bnpx tsc --noEmit/, 'ohne Typprüfung sagt der Lauf nichts über strictNullChecks'],
     [/\bnpm run build\b/, 'ohne frischen Build prüft CI womöglich ein altes dist/'],
@@ -406,7 +402,7 @@ test('the CI workflow checks what it is supposed to check', () => {
     [/\bnpm run typecheck:strict/, 'die gestaffelte noImplicitAny-Prüfung fehlt'],
     [/\bnpm run typecheck:frontend/, 'die Typprüfung der Oberfläche fehlt'],
   ])) {
-    assert.match(code, muster, `CI-Workflow: ${warum}`);
+    assert.match(code, pattern, `CI-Workflow: ${why}`);
   }
   // Counter-check of the comment rule: `npm install` stands ONLY in the prose of the
   // rationale. If it remained after cutting, the function would cut
@@ -422,28 +418,28 @@ test('a pipe in the workflow does not lose the failure', () => {
   // measured, not assumed
   const PASS_THROUGH = /\|\s*(tee|head|tail|cat)\b/;
   const wf = path.join(ROOT, '..', '.github', 'workflows');
-  let geprueft = 0;
-  for (const datei of fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f))) {
-    const roh = fs.readFileSync(path.join(wf, datei), 'utf8');
-    for (const block of roh.split(/^ {6}- /m).slice(1)) {
-      const rumpf = block
+  let checked = 0;
+  for (const file of fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f))) {
+    const raw = fs.readFileSync(path.join(wf, file), 'utf8');
+    for (const block of raw.split(/^ {6}- /m).slice(1)) {
+      const body = block
         .split('\n')
         .filter(z => !z.trimStart().startsWith('#'))
         .join('\n');
-      if (!/\brun:/.test(rumpf) || !PASS_THROUGH.test(rumpf)) continue;
-      geprueft++;
+      if (!/\brun:/.test(body) || !PASS_THROUGH.test(body)) continue;
+      checked++;
       assert.match(
-        rumpf,
+        body,
         /set -o pipefail|set -[a-z]*o[a-z]* pipefail/,
-        `${datei}: A run block pipes into a pass-through (tee/head/tail/cat) ` +
+        `${file}: A run block pipes into a pass-through (tee/head/tail/cat) ` +
           'without "set -o pipefail". The exit code is then its own — a ' +
-          `failure before it gets lost. Block:\n${rumpf.slice(0, 300)}`,
+          `failure before it gets lost. Block:\n${body.slice(0, 300)}`,
       );
     }
   }
   // Self-proof: if the search finds not a single such block, the
   // loop checks nothing and would still be green.
-  assert.ok(geprueft >= 1, 'No run block with a pass-through found — pattern outdated?');
+  assert.ok(checked >= 1, 'No run block with a pass-through found — pattern outdated?');
 });
 
 test('the noImplicitAny exception list is still correct', () => {
@@ -488,12 +484,12 @@ test('Dockerfile and CI run on the same, supported Node version', () => {
     `Build and runtime stage run on different Node versions: ${inImage.join(', ')}`,
   );
 
-  const imCi = (ci.match(/node-version:\s*'(\d+)'/) || [])[1];
-  assert.ok(imCi, 'The CI workflow does not pin a Node version');
+  const inCi = (ci.match(/node-version:\s*'(\d+)'/) || [])[1];
+  assert.ok(inCi, 'The CI workflow does not pin a Node version');
   assert.equal(
-    imCi,
+    inCi,
     inImage[0],
-    `CI checks on Node ${imCi}, Node ${inImage[0]} is shipped — ` + 'then a green run says nothing about the image',
+    `CI checks on Node ${inCi}, Node ${inImage[0]} is shipped — ` + 'then a green run says nothing about the image',
   );
   // .nvmrc for local development (`nvm use`). Counter-check (04.11.2026):
   // .nvmrc to 24 → red “.nvmrc names Node 24”.
@@ -501,7 +497,7 @@ test('Dockerfile and CI run on the same, supported Node version', () => {
   assert.equal(nvmrc, inImage[0], `.nvmrc names Node ${nvmrc}, Node ${inImage[0]} is shipped`);
 
   // Expired lines. When adding, please write the date with it.
-  const abgelaufen = {
+  const expired = {
     14: '30.04.2023',
     16: '11.09.2023',
     18: '30.04.2025',
@@ -513,8 +509,8 @@ test('Dockerfile and CI run on the same, supported Node version', () => {
     25: 'nie LTS',
   };
   assert.ok(
-    !(inImage[0] in abgelaufen),
-    `Node ${inImage[0]} has received no security patches since ${abgelaufen[inImage[0]]} — ` +
+    !(inImage[0] in expired),
+    `Node ${inImage[0]} has received no security patches since ${expired[inImage[0]]} — ` +
       'that is not an old version but an unpatched runtime',
   );
 });
@@ -528,13 +524,13 @@ test('Dockerfile and CI run on the same, supported Node version', () => {
  */
 test('@types/node matches the Node version from the Dockerfile', () => {
   const inImage = (read('Dockerfile').match(/^FROM node:(\d+)-/m) || [])[1];
-  const typen = (JSON.parse(read('package.json')).devDependencies['@types/node'] || '').match(/(\d+)\./);
+  const types = (JSON.parse(read('package.json')).devDependencies['@types/node'] || '').match(/(\d+)\./);
   assert.ok(inImage, 'No Node version found in the Dockerfile');
-  assert.ok(typen, '@types/node is missing in the devDependencies');
+  assert.ok(types, '@types/node is missing in the devDependencies');
   assert.equal(
-    typen[1],
+    types[1],
     inImage,
-    `Node ${inImage} is shipped, type checking runs against @types/node ${typen[1]} — ` +
+    `Node ${inImage} is shipped, type checking runs against @types/node ${types[1]} — ` +
       'then the compiler describes a different standard library than the running one',
   );
 });
@@ -544,15 +540,15 @@ test('@types/node matches the Node version from the Dockerfile', () => {
  * in dist/ after the build.
  */
 test('orphaned .sql files disappear on the next build', async t => {
-  const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bau-'));
-  t.after(() => fs.rmSync(ziel, { recursive: true, force: true }));
+  const target = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bau-'));
+  t.after(() => fs.rmSync(target, { recursive: true, force: true }));
 
   // The path is written literally here and not in a variable: eigenbruecken.test.js
   // counts paths with a variable segment and does not let the number grow. The
   // ratchet is justified — a composed path is exactly the one where
   // nobody notices that the file no longer exists.
   const build = () =>
-    execFileSync(process.execPath, [path.join(ROOT, 'scripts/build-ts.js'), '--outdir', ziel], {
+    execFileSync(process.execPath, [path.join(ROOT, 'scripts/build-ts.js'), '--outdir', target], {
       cwd: ROOT,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -566,21 +562,21 @@ test('orphaned .sql files disappear on the next build', async t => {
           .sort()
       : [];
   const source = path.join(ROOT, 'db/migrations');
-  const gebaut = path.join(ziel, 'db/migrations');
+  const built = path.join(target, 'db/migrations');
 
   build();
-  const erwartet = sql(source);
+  const expected = sql(source);
   assert.ok(
-    erwartet.length >= 20,
-    `Only ${erwartet.length} migrations found in the source — too few; is the path still right? ` +
+    expected.length >= 20,
+    `Only ${expected.length} migrations found in the source — too few; is the path still right? ` +
       `Without them this case checks nothing.`,
   );
-  assert.deepEqual(sql(gebaut), erwartet, 'The build does not carry exactly the migrations of the source.');
+  assert.deepEqual(sql(built), expected, 'The build does not carry exactly the migrations of the source.');
 
   // Set up the case: a migration that exists only in the target.
-  const fremd = path.join(gebaut, '9999-verwaist-aus-anderem-zweig.sql');
+  const fremd = path.join(built, '9999-verwaist-aus-anderem-zweig.sql');
   fs.writeFileSync(fremd, '-- aus einem anderen Zweig zurueckgeblieben\nSELECT 1;\n');
-  const jsBefore = countJs(ziel);
+  const jsBefore = countJs(target);
 
   build();
   assert.ok(
@@ -588,24 +584,24 @@ test('orphaned .sql files disappear on the next build', async t => {
     'The orphaned migration is still in dist/ after the build. db/migrate.ts reads ' +
       'this directory and runs it as if it were part of the schema.',
   );
-  assert.deepEqual(sql(gebaut), erwartet, 'More than the orphaned file disappeared during the cleanup.');
+  assert.deepEqual(sql(built), expected, 'More than the orphaned file disappeared during the cleanup.');
   assert.equal(
-    countJs(ziel),
+    countJs(target),
     jsBefore,
     'The cleanup touched .js files. It may only remove sourceless ' + 'non-TS copies.',
   );
 
   // Two independent proofs that removeOrphaned() took the file: the build names it,
   // and a file with a foreign extension stays (otherwise something cleaned up wholesale).
-  const fremdTxt = path.join(gebaut, 'nicht-mitkopiert.md');
+  const fremdTxt = path.join(built, 'nicht-mitkopiert.md');
   fs.writeFileSync(fremd, '-- zweiter Versuch\nSELECT 1;\n');
   fs.writeFileSync(fremdTxt, 'keine mitkopierte Endung — darf liegen bleiben\n');
 
-  const protokoll = build();
+  const log = build();
   assert.match(
-    protokoll,
+    log,
     /verwaiste Datei\(en\) entfernt:.*9999-verwaist-aus-anderem-zweig\.sql/,
-    `The build does not name the removed file in the log. Then it is unclear whether it fell victim to removeOrphaned() or is missing for another reason — and whoever later looks for why a file is gone finds no trace.\n${protokoll}`,
+    `The build does not name the removed file in the log. Then it is unclear whether it fell victim to removeOrphaned() or is missing for another reason — and whoever later looks for why a file is gone finds no trace.\n${log}`,
   );
   assert.ok(!fs.existsSync(fremd), 'The orphaned .sql is still there.');
   assert.ok(
@@ -615,11 +611,11 @@ test('orphaned .sql files disappear on the next build', async t => {
   );
 });
 
-/** @param {string} wurzel @returns {number} number of .js files below */
-function countJs(wurzel) {
+/** @param {string} root @returns {number} number of .js files below */
+function countJs(root) {
   let n = 0;
-  for (const e of fs.readdirSync(wurzel, { withFileTypes: true })) {
-    const abs = path.join(wurzel, e.name);
+  for (const e of fs.readdirSync(root, { withFileTypes: true })) {
+    const abs = path.join(root, e.name);
     if (e.isDirectory()) n += countJs(abs);
     else if (e.name.endsWith('.js')) n++;
   }

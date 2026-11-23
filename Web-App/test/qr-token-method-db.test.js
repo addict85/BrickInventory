@@ -78,11 +78,11 @@ test('QR nonce only via POST', async t => {
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 
-  const callFn = async methode => {
+  const callFn = async method => {
     const r = await fetch(`${_base}${AUTH}/qr-token`, {
-      method: methode,
+      method: method,
       redirect: 'manual',
-      ...(methode === 'POST'
+      ...(method === 'POST'
         ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'qr-passwort-1' }) }
         : {}),
     });
@@ -92,16 +92,16 @@ test('QR nonce only via POST', async t => {
     Number((await db.get('SELECT COUNT(*)::int AS n FROM qr_login_tokens').catch(() => ({ n: 0 }))).n);
 
   await t.test('via POST a nonce is created', async () => {
-    const vorher = await nonces();
+    const prior = await nonces();
     const r = await callFn('POST');
     assert.equal(r.status, 200, `expected 200, got ${r.status}`);
     assert.equal(r.body?.success, true);
     assert.match(String(r.body?.token), /^bim:/, 'The token does not carry the expected prefix');
-    assert.equal(await nonces(), vorher + 1, 'No nonce was created');
+    assert.equal(await nonces(), prior + 1, 'No nonce was created');
   });
 
   await t.test('via GET the route no longer exists', async () => {
-    const vorher = await nonces();
+    const prior = await nonces();
     const r = await callFn('GET');
     assert.notEqual(
       r.status,
@@ -112,7 +112,7 @@ test('QR nonce only via POST', async t => {
         'SameSite=lax gap from an earlier round: a navigation from a ' +
         'foreign page then creates a login nonce again.',
     );
-    assert.equal(await nonces(), vorher, 'A GET created something anyway');
+    assert.equal(await nonces(), prior, 'A GET created something anyway');
   });
 
   _srv?.close();

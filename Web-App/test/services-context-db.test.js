@@ -23,38 +23,41 @@ test.after(() => testAccess().pool.end());
 
 /** An access that counts its queries; otherwise the same as the test's. */
 function counting(z) {
-  const zaehler = { n: 0 };
-  const mit =
+  const counter = { n: 0 };
+  const withIt =
     f =>
     (...a) => {
-      zaehler.n++;
+      counter.n++;
       return f(...a);
     };
-  return { zaehler, zugang: { ...z, all: mit(z.all), get: mit(z.get), run: mit(z.run), exec: mit(z.exec) } };
+  return {
+    counter,
+    zugang: { ...z, all: withIt(z.all), get: withIt(z.get), run: withIt(z.run), exec: withIt(z.exec) },
+  };
 }
 
 test('services take the access from their context, not from the process', async t => {
   if (!(await accessOrSkip(t, _req))) return;
   const { buildServices } = _req('startup/wiring.js');
   // Test data as the owner role (bypassing row security), the service asks as the runtime role.
-  const eigen = sources.testData();
+  const own = sources.testData();
   const { asRequest } = _req('src/infra/accountContext.js');
   const db = testAccess();
   const name = `kontext_${process.pid}`;
-  await eigen.run('DELETE FROM users WHERE username = $1', [name]);
+  await own.run('DELETE FROM users WHERE username = $1', [name]);
   const uid = (
-    await eigen.get("INSERT INTO users (username, password_hash, email_verified) VALUES ($1, 'x', true) RETURNING id", [
+    await own.get("INSERT INTO users (username, password_hash, email_verified) VALUES ($1, 'x', true) RETURNING id", [
       name,
     ])
   ).id;
-  t.after(() => eigen.run('DELETE FROM users WHERE id = $1', [uid]));
-  await holdsPart(eigen, uid, '3001', { quantity: 4 });
+  t.after(() => own.run('DELETE FROM users WHERE id = $1', [uid]));
+  await holdsPart(own, uid, '3001', { quantity: 4 });
 
-  const { zaehler, zugang } = counting(db);
-  const d = buildServices(zugang);
+  const { counter, zugang: access } = counting(db);
+  const d = buildServices(access);
   const stats = await asRequest({ session: { userId: uid } }, () => d.parts.partStats(uid));
   assert.equal(Number(stats.unique_parts), 1, 'the created part arrives');
-  assert.ok(zaehler.n > 0, 'partStatsQuery queries via the passed access');
+  assert.ok(counter.n > 0, 'partStatsQuery queries via the passed access');
 });
 
 test('k.transact: what is written via t applies together or not at all', async t => {

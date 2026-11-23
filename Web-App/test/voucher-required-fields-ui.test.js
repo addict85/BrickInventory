@@ -10,25 +10,25 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, sicht, warte } = require('./helpers/ui');
+const { openUi, view, waitFor } = require('./helpers/ui');
 
 test('voucher: both gaps at once, required marked', async () => {
-  const { w, d, aufrufe } = await openUi({ '/v2/vouchers': { success: true, vouchers: [] } });
+  const { w, d, calls } = await openUi({ '/v2/vouchers': { success: true, vouchers: [] } });
   try {
-    await sicht(w, 'vouchers');
+    await view(w, 'vouchers');
     for (const id of ['v-number', 'v-amount']) {
       assert.match(d.querySelector(`label[for="${id}"]`).textContent, /\*$/, `${id} without an asterisk`);
       assert.equal(d.getElementById(id).getAttribute('aria-required'), 'true');
     }
     d.querySelector('[data-click="saveVoucher"]').click();
-    await warte(() => d.getElementById('v-amount-error'));
+    await waitFor(() => d.getElementById('v-amount-error'));
     for (const id of ['v-number', 'v-amount']) {
       const f = d.getElementById(`${id}-error`);
       assert.ok(f && !f.hidden && /ausfüllen/.test(f.textContent), `${id}: no message`);
     }
     assert.equal(d.activeElement?.id, 'v-number', 'focus not in the first empty field');
     assert.equal(
-      aufrufe.some(a => a.method === 'POST' && a.url.includes('/v2/vouchers')),
+      calls.some(a => a.method === 'POST' && a.url.includes('/v2/vouchers')),
       false,
       'empty form went to the server',
     );

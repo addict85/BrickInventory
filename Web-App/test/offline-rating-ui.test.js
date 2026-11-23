@@ -34,7 +34,7 @@ const JS = path.join(ROOT, 'public', 'js');
 function buildBundle() {
   const esbuild = require(path.join(ROOT, 'node_modules', 'esbuild'));
   const { allowedStyles } = require(path.join(ROOT, 'scripts', 'build-frontend.js'));
-  const ziel = path.join(os.tmpdir(), `offline-einstufung-${process.pid}.js`);
+  const target = path.join(os.tmpdir(), `offline-einstufung-${process.pid}.js`);
   esbuild.buildSync({
     stdin: {
       contents:
@@ -48,25 +48,25 @@ function buildBundle() {
     bundle: true,
     format: 'iife',
     charset: 'utf8',
-    outfile: ziel,
+    outfile: target,
     logLevel: 'error',
     define: { __ALLOWED_STYLES__: JSON.stringify(allowedStyles()) },
   });
-  return ziel;
+  return target;
 }
 
 const BUNDLE_FILE = buildBundle();
 process.env.TEST_BUNDLE = BUNDLE_FILE;
-const { openUi, reiter, sicht, warte } = require('./helpers/ui');
+const { openUi, switchTab, view, waitFor } = require('./helpers/ui');
 test.after(() => fs.rmSync(BUNDLE_FILE, { force: true }));
 
 const SERVED = 'button, input[type=file], .import-menu > summary';
-const gesperrt = k => k.dataset.offlineLocked === '1';
+const locked = k => k.dataset.offlineLocked === '1';
 
 async function offline(w) {
   Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });
   w.dispatchEvent(new w.Event('offline'));
-  await warte(() => w.document.documentElement.hasAttribute('data-offline'));
+  await waitFor(() => w.document.documentElement.hasAttribute('data-offline'));
 }
 
 const TIME = '2026-11-01T10:00:00Z';
@@ -98,11 +98,11 @@ const DATA = {
         id: 4,
         kind: 'set',
         number: '42143-1',
-        farbe_id: null,
-        bezeichnung: 'Ferrari',
+        color_id_old: null,
+        designation: 'Ferrari',
         count: 1,
         user_id: 1,
-        geloescht_am: TIME,
+        removed_at: TIME,
         purge_at: TIME,
       },
     ],
@@ -133,15 +133,15 @@ test('every registered action is classified exactly once', async () => {
   const { w } = await openUi();
   try {
     const { actionNames, WRITING_ACTIONS: s, READING_ACTIONS: l } = w.__rating;
-    const namen = Array.from(actionNames());
-    assert.ok(namen.length > 150, `only ${namen.length} handlers registered — does the registry still work?`);
+    const names = Array.from(actionNames());
+    assert.ok(names.length > 150, `only ${names.length} handlers registered — does the registry still work?`);
     assert.deepEqual(
-      namen.filter(n => !s.has(n) && !l.has(n)),
+      names.filter(n => !s.has(n) && !l.has(n)),
       [],
-      'not classified: add it in verbindung.js',
+      'not classified: add it in connection.js',
     );
     assert.deepEqual(
-      [...s, ...l].filter(n => !namen.includes(n)),
+      [...s, ...l].filter(n => !names.includes(n)),
       [],
       'classified but not registered',
     );
@@ -159,20 +159,20 @@ test('one button per action: exactly the writing ones are locked offline', async
   const { w, d } = await openUi();
   try {
     const { actionNames, WRITING_ACTIONS: s } = w.__rating;
-    const kasten = d.createElement('div');
+    const box = d.createElement('div');
     for (const n of actionNames()) {
       const k = d.createElement('button');
       k.setAttribute('data-click', n);
-      kasten.appendChild(k);
+      box.appendChild(k);
     }
-    d.getElementById('app').appendChild(kasten);
+    d.getElementById('app').appendChild(box);
     await offline(w);
-    const falsch = [...kasten.children]
-      .filter(k => gesperrt(k) !== s.has(k.getAttribute('data-click')))
-      .map(k => `${k.getAttribute('data-click')}: ${gesperrt(k) ? 'gesperrt' : 'free'}`);
-    assert.deepEqual(falsch, []);
+    const wrong = [...box.children]
+      .filter(k => locked(k) !== s.has(k.getAttribute('data-click')))
+      .map(k => `${k.getAttribute('data-click')}: ${locked(k) ? 'gesperrt' : 'free'}`);
+    assert.deepEqual(wrong, []);
     // The actions the old name rule missed, and reading that must stay free.
-    const knopf = n => kasten.querySelector(`[data-click="${n}"]`);
+    const button = n => box.querySelector(`[data-click="${n}"]`);
     for (const n of [
       'createLocation',
       'createHouseholdInvite',
@@ -190,41 +190,41 @@ test('one button per action: exactly the writing ones are locked offline', async
       'openRpw',
       'openCapture',
     ])
-      assert.equal(knopf(n).disabled, true, n);
+      assert.equal(button(n).disabled, true, n);
     for (const n of ['openTab', 'toggleFilter', 'closeModal', 'openRbHint', 'copyVoucher', 'loadGallery', 'plGenerate'])
-      assert.equal(knopf(n).disabled, false, n);
+      assert.equal(button(n).disabled, false, n);
   } finally {
     w.close();
   }
 });
 
 test('index.html and templates: exactly the writing ones locked offline', async () => {
-  const { w, d, aufrufe, ruhig } = await openUi(DATA);
+  const { w, d, calls, settle } = await openUi(DATA);
   try {
     const { WRITING_ACTIONS: s } = w.__rating;
-    await warte(() => d.querySelector('#gallery .sc'));
-    await reiter(w, 'wanted');
-    await warte(() => d.querySelector('.mk-row'));
-    for (const [name, zeichen] of [
+    await waitFor(() => d.querySelector('#gallery .sc'));
+    await switchTab(w, 'wanted');
+    await waitFor(() => d.querySelector('.mk-row'));
+    for (const [name, chars] of [
       ['household', '[data-click="unlinkFromParent"]'],
       ['data', '[data-click="deleteFromTrashPermanently"]'],
       ['app', '[data-click="revokeToken"]'],
       ['vouchers', '[data-click="deleteVoucher"]'],
       ['locations', '[data-click="deleteLocation"]'],
     ]) {
-      await sicht(w, name);
-      assert.ok(await warte(() => d.querySelector(zeichen)), `${name}: ${zeichen} not marked`);
+      await view(w, name);
+      assert.ok(await waitFor(() => d.querySelector(chars)), `${name}: ${chars} not marked`);
     }
-    const vorher = new Set([...d.querySelectorAll(SERVED)].filter(k => k.disabled));
+    const prior = new Set([...d.querySelectorAll(SERVED)].filter(k => k.disabled));
     await offline(w);
     // What is drawn afterwards is locked by the observer.
-    await sicht(w, 'alerts');
-    assert.ok(await warte(() => d.querySelector('#alerts-list [data-click="deleteAlert"]')), 'alarms not marked');
+    await view(w, 'alerts');
+    assert.ok(await waitFor(() => d.querySelector('#alerts-list [data-click="deleteAlert"]')), 'alarms not marked');
 
     const buttonList = [...d.querySelectorAll('[data-click]')].filter(
-      k => !vorher.has(k) && !k.closest('#login-screen, .toast'),
+      k => !prior.has(k) && !k.closest('#login-screen, .toast'),
     );
-    const namen = new Set(buttonList.map(k => k.getAttribute('data-click')));
+    const names = new Set(buttonList.map(k => k.getAttribute('data-click')));
     for (const n of [
       'createLocation',
       'createHouseholdInvite',
@@ -241,34 +241,34 @@ test('index.html and templates: exactly the writing ones locked offline', async 
       'delSetStop',
       'stopDeleteWantedItem',
     ])
-      assert.ok(namen.has(n), `${n} does not occur among the marked buttons`);
-    assert.ok([...namen].filter(n => !s.has(n)).length > 40, 'too few reading buttons marked');
+      assert.ok(names.has(n), `${n} does not occur among the marked buttons`);
+    assert.ok([...names].filter(n => !s.has(n)).length > 40, 'too few reading buttons marked');
     // A field that saves on change counts like a writing button, whatever its data-click does.
     const writes = k => ['data-click', 'data-change', 'data-input'].some(a => s.has(k.getAttribute(a)));
-    const falsch = buttonList
-      .filter(k => gesperrt(k) !== writes(k))
-      .map(k => `${k.getAttribute('data-click')}${k.id ? '#' + k.id : ''}: ${gesperrt(k) ? 'gesperrt' : 'free'}`);
-    assert.deepEqual(falsch, []);
+    const wrong = buttonList
+      .filter(k => locked(k) !== writes(k))
+      .map(k => `${k.getAttribute('data-click')}${k.id ? '#' + k.id : ''}: ${locked(k) ? 'gesperrt' : 'free'}`);
+    assert.deepEqual(wrong, []);
     // Autosave fields (alert threshold and the like) are locked as well, reading filters stay free.
-    const felder = [
+    const fields = [
       ...d.querySelectorAll('input:not([type=file])[data-change], select[data-change], input[data-input]'),
-    ].filter(k => !vorher.has(k) && !k.closest('#login-screen'));
-    const writers = felder.filter(k => s.has(k.getAttribute('data-change') || k.getAttribute('data-input')));
+    ].filter(k => !prior.has(k) && !k.closest('#login-screen'));
+    const writers = fields.filter(k => s.has(k.getAttribute('data-change') || k.getAttribute('data-input')));
     assert.ok(writers.length > 0, 'no saving field marked');
     assert.deepEqual(
-      felder
+      fields
         .filter(k => k.disabled !== writers.includes(k))
         .map(k => `${k.id || k.getAttribute('data-change')}: ${k.disabled ? 'gesperrt' : 'free'}`),
       [],
     );
     // The delete cross of the tile is a <span> without disabled: the click must trigger nothing.
-    const beforeCalls = aufrufe.length;
-    await reiter(w, 'gallery');
+    const beforeCalls = calls.length;
+    await switchTab(w, 'gallery');
     d.querySelector('#gallery .delbtn[data-click="delSetStop"]').click();
-    await ruhig();
+    await settle();
     assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'delete prompt opened');
     assert.deepEqual(
-      aufrufe.slice(beforeCalls).filter(a => a.method !== 'GET'),
+      calls.slice(beforeCalls).filter(a => a.method !== 'GET'),
       [],
       'written while offline',
     );

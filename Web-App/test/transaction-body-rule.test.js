@@ -40,18 +40,18 @@ export async function b() {
 declare const fn: any;
 `;
 
-/** @returns {{ datei: string, row: number }[]} */
-function funde(/** @type {string} */ wurzel, /** @type {string[]} */ pfade) {
-  const r = spawnSync(process.execPath, [BIOME, 'lint', '--reporter=json', '--max-diagnostics=none', ...pfade], {
-    cwd: wurzel,
+/** @returns {{ file: string, row: number }[]} */
+function findings(/** @type {string} */ root, /** @type {string[]} */ paths) {
+  const r = spawnSync(process.execPath, [BIOME, 'lint', '--reporter=json', '--max-diagnostics=none', ...paths], {
+    cwd: root,
     encoding: 'utf8',
     timeout: 120_000,
   });
   /** @type {{ diagnostics: { category: string, location: { path: string, start?: { line: number } } }[] }} */
-  const bericht = JSON.parse(r.stdout);
-  return bericht.diagnostics
+  const report = JSON.parse(r.stdout);
+  return report.diagnostics
     .filter(d => d.category === 'plugin')
-    .map(d => ({ datei: d.location.path, row: d.location.start?.line ?? 0 }));
+    .map(d => ({ file: d.location.path, row: d.location.start?.line ?? 0 }));
 }
 
 function probeTree() {
@@ -69,15 +69,15 @@ function probeTree() {
 test('the rule finds every outer access in the body, allows the parameter and does not apply to tests', t => {
   const d = probeTree();
   t.after(() => fs.rmSync(d, { recursive: true, force: true }));
-  const f = funde(d, ['src', 'test']);
-  assert.equal(f.filter(x => x.datei.endsWith('verboten.ts')).length, 5, JSON.stringify(f));
+  const f = findings(d, ['src', 'test']);
+  assert.equal(f.filter(x => x.file.endsWith('verboten.ts')).length, 5, JSON.stringify(f));
   assert.deepEqual(
-    f.filter(x => !x.datei.endsWith('verboten.ts')),
+    f.filter(x => !x.file.endsWith('verboten.ts')),
     [],
     'allows the parameter, fields of the same name and bodies without an arrow',
   );
 });
 
 test('the stock does not query via the outer access in any transaction body', () => {
-  assert.deepEqual(funde(ROOT, ['server.ts', 'src', 'jobs', 'routes', 'db', 'startup', 'clients']), []);
+  assert.deepEqual(findings(ROOT, ['server.ts', 'src', 'jobs', 'routes', 'db', 'startup', 'clients']), []);
 });

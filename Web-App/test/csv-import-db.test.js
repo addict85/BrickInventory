@@ -37,7 +37,7 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ROOT, buildAndRequire, ohneKommentare, testData } = require('./helpers/sources');
+const { ROOT, buildAndRequire, withoutComments, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { noDb } = require('./helpers/db');
 const db = testData();
@@ -79,8 +79,8 @@ test('catalog import swaps instead of clearing', async t => {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 
   /** Create a CSV file as the download leaves it unpacked. */
-  function writeCsv(name, zeilen) {
-    fs.writeFileSync(path.join(DATA_DIR, name), zeilen.join('\n') + '\n', 'utf8');
+  function writeCsv(name, lines) {
+    fs.writeFileSync(path.join(DATA_DIR, name), lines.join('\n') + '\n', 'utf8');
   }
 
   await t.test('during the import a second reader sees data throughout', async () => {
@@ -151,9 +151,9 @@ test('catalog import swaps instead of clearing', async t => {
     await db.run('DELETE FROM rb_colors');
     await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans) VALUES (1,'bestand','FFFFFF','f')`);
     // Row 15000 does not fit INTEGER: the 150th chunk into the shadow fails, 149 are already in.
-    const zeilen = Array.from({ length: 20000 }, (_, i) => `${i + 1},neu-${i + 1},C91A09,f`);
-    zeilen[14999] = '99999999999,zu-gross,C91A09,f';
-    writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans'].concat(zeilen));
+    const lines = Array.from({ length: 20000 }, (_, i) => `${i + 1},neu-${i + 1},C91A09,f`);
+    lines[14999] = '99999999999,zu-gross,C91A09,f';
+    writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans'].concat(lines));
     const worker = _req('jobs/csvImportWorker.js');
     await assert.rejects(() => worker.TASKS.colors(), /out of range/);
     assert.deepEqual(
@@ -171,9 +171,9 @@ test('catalog import swaps instead of clearing', async t => {
     writeCsv('inventories.csv.tmp', ['id,version,set_num', '1,1,75192-1', '2,1,llca8', '3,2,fig-000001']);
     const worker = _req('jobs/csvImportWorker.js');
     assert.equal(await worker.TASKS.inventories(), 3);
-    const zeilen = await db.all('SELECT id, set_num FROM rb_inventories ORDER BY id');
+    const lines = await db.all('SELECT id, set_num FROM rb_inventories ORDER BY id');
     assert.deepEqual(
-      zeilen.map(z => z.set_num),
+      lines.map(z => z.set_num),
       ['75192-1', 'llca8-1', 'fig-000001'],
     );
   });
@@ -207,7 +207,7 @@ test('catalog import swaps instead of clearing', async t => {
     ]);
     const worker = _req('jobs/csvImportWorker.js');
     assert.equal(await worker.TASKS.sets(), 3);
-    const zeilen = Object.fromEntries(
+    const lines = Object.fromEntries(
       (
         await db.all(
           `SELECT r.set_num, r.name, r.theme_id, r.num_parts, r.set_img_url, r.source, (c.set_number IS NOT NULL) AS katalog
@@ -216,21 +216,21 @@ test('catalog import swaps instead of clearing', async t => {
       ).map(z => [z.set_num, z]),
     );
     assert.deepEqual(
-      zeilen['7-1'] && [zeilen['7-1'].source, zeilen['7-1'].katalog],
+      lines['7-1'] && [lines['7-1'].source, lines['7-1'].katalog],
       ['csv', true],
       'new: inserted, with set_catalog',
     );
     assert.deepEqual(
-      ['1-1', '2-1'].map(n => zeilen[n] && [zeilen[n].name, zeilen[n].theme_id, zeilen[n].num_parts, zeilen[n].source]),
+      ['1-1', '2-1'].map(n => lines[n] && [lines[n].name, lines[n].theme_id, lines[n].num_parts, lines[n].source]),
       [
         ['A neu', 2, 11, 'csv'],
         ['B echt', 3, 99, 'csv'],
       ],
       'changed: updated, an api row becomes csv',
     );
-    assert.equal(zeilen['1-1'].set_img_url, 'https://cdn/1.jpg');
+    assert.equal(lines['1-1'].set_img_url, 'https://cdn/1.jpg');
     assert.deepEqual(
-      ['3-1', '5-1'].map(n => zeilen[n] && [zeilen[n].source, zeilen[n].katalog]),
+      ['3-1', '5-1'].map(n => lines[n] && [lines[n].source, lines[n].katalog]),
       [
         ['api', true],
         ['api', true],
@@ -238,7 +238,7 @@ test('catalog import swaps instead of clearing', async t => {
       'with a reference (holding, wishlist): stays as api',
     );
     assert.deepEqual(
-      ['4-1', '6-1'].filter(n => zeilen[n]),
+      ['4-1', '6-1'].filter(n => lines[n]),
       [],
       'without a reference: removed',
     );
@@ -266,28 +266,28 @@ test('catalog import swaps instead of clearing', async t => {
 // Counter-check (15.11.2026): in createImportAccess() `pool: { max: 2 }` deleted → red:
 // statement_timeout '30s' instead of '0' (the requests' deadlines would hit the swap).
 test("the import process builds its access via createDb, without the requests' deadlines", async t => {
-  const zugang = _req('src/catalog/index.js').createImportAccess();
-  t.after(() => zugang.pool.end());
+  const access = _req('src/catalog/index.js').createImportAccess();
+  t.after(() => access.pool.end());
   let row;
   try {
-    row = (await zugang.systemPool.query('SHOW statement_timeout')).rows[0];
+    row = (await access.systemPool.query('SHOW statement_timeout')).rows[0];
   } catch (e) {
     noDb(t, e);
     return;
   }
-  assert.notEqual(zugang.systemPool, zugang.pool, 'the swap needs its own pool');
+  assert.notEqual(access.systemPool, access.pool, 'the swap needs its own pool');
   assert.equal(row.statement_timeout, '0');
 });
 
 test('the CSV download goes via abruf.ts, with deadline, cap and host list', () => {
   // Source text instead of behavior: deadline and cap themselves are checked by test/fetch-helper.test.js
   // on abruf.ts; here only that the download takes this path.
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));
+  const src = withoutComments(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));
   const call = src.slice(src.indexOf('await openHttps('), src.indexOf('});', src.indexOf('await openHttps(')));
   for (const field of ['hosts:', 'maxBytes:', 'timeoutMs:', 'signal'])
     assert.ok(call.includes(field), `the download calls openHttps without ${field}`);
   assert.doesNotMatch(
-    ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/catalog/csvSync.ts'), 'utf8')),
+    withoutComments(fs.readFileSync(path.join(ROOT, 'src/catalog/csvSync.ts'), 'utf8')),
     /from 'https'/,
     'the job no longer downloads by itself',
   );

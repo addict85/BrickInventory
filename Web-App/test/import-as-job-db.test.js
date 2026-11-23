@@ -52,7 +52,7 @@ test('import as a job', { concurrency: 1 }, async t => {
   // Like the route: in the request's account; it reads its own job under row security.
   const { runImport: asJob } = _req('src/collection/importJobs.js');
   const importAsTask = (...a) => asAccount(uid, () => asJob(...a));
-  const csv = teil => `part_number,color_id,quantity\n${teil},0,2\n`;
+  const csv = part => `part_number,color_id,quantity\n${part},0,2\n`;
 
   await t.test('without a worker the job stays open', async () => {
     await assert.rejects(

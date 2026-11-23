@@ -201,40 +201,40 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
 
     await t.test('the parts list is checked before a job arises', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
-      const starte = rumpf =>
+      const launch = reqBody =>
         fetch(`${basis}/api/v2/sets/partslist-pdf`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
-          body: JSON.stringify(rumpf),
+          body: JSON.stringify(reqBody),
         }).then(async r => ({ status: r.status, body: await r.json() }));
-      const teil = (mehr = {}) => ({ part_number: '3001', quantity: 2, color_id: 5, color_hex: 'C91A09', ...mehr });
-      const falsch = {
-        'zu viele Posten': { parts: Array.from({ length: 5001 }, () => teil()) },
-        'Menge 0': { parts: [teil({ quantity: 0 })] },
-        'Menge 10000': { parts: [teil({ quantity: 10000 })] },
-        'Menge als Unsinn': { parts: [teil({ quantity: '2; DROP' })] },
-        'zu lange Teilenummer': { parts: [teil({ part_number: 'x'.repeat(65) })] },
-        'zu langer Name': { parts: [teil({ part_name: 'n'.repeat(501) })] },
-        'Farbe als Text': { parts: [teil({ color_hex: 'red);evil' })] },
+      const part = (more = {}) => ({ part_number: '3001', quantity: 2, color_id: 5, color_hex: 'C91A09', ...more });
+      const wrong = {
+        'zu viele Posten': { parts: Array.from({ length: 5001 }, () => part()) },
+        'Menge 0': { parts: [part({ quantity: 0 })] },
+        'Menge 10000': { parts: [part({ quantity: 10000 })] },
+        'Menge als Unsinn': { parts: [part({ quantity: '2; DROP' })] },
+        'zu lange Teilenummer': { parts: [part({ part_number: 'x'.repeat(65) })] },
+        'zu langer Name': { parts: [part({ part_name: 'n'.repeat(501) })] },
+        'Farbe als Text': { parts: [part({ color_hex: 'red);evil' })] },
         'parts kein Array': { parts: 'alles' },
         'Teil ohne Nummer': { parts: [{ quantity: 1 }] },
       };
-      for (const [fall, rumpf] of Object.entries(falsch)) {
-        const r = await starte(rumpf);
+      for (const [fall, reqBody] of Object.entries(wrong)) {
+        const r = await launch(reqBody);
         assert.equal(r.status, 400, `${fall}: ${JSON.stringify(r.body).slice(0, 200)}`);
         assert.equal(r.body.code, 'input_invalid', fall);
       }
       assert.equal((await db.get(`SELECT count(*)::int n FROM jobs WHERE type = 'pdf'`)).n, 0, 'a job despite 400');
 
-      const ok = await starte({
+      const ok = await launch({
         sets: [{ set_number: '10001-1', name: 'Probe' }],
-        parts: [teil({ quantity: '12', boese: 'x'.repeat(10000) }), ...Array.from({ length: 4999 }, () => teil())],
+        parts: [part({ quantity: '12', evil: 'x'.repeat(10000) }), ...Array.from({ length: 4999 }, () => part())],
       });
       assert.equal(ok.status, 200, JSON.stringify(ok.body));
       const payload = (await db.get(`SELECT payload FROM jobs WHERE type = 'pdf'`)).payload;
       assert.equal(payload.parts.length, 5000);
       assert.equal(payload.parts[0].quantity, '12');
-      assert.ok(!('boese' in payload.parts[0]), 'unknown fields go into the job');
+      assert.ok(!('evil' in payload.parts[0]), 'unknown fields go into the job');
     });
 
     await t.test('the job identifier comes from cryptographic randomness', () => {

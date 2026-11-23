@@ -13,7 +13,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, withoutComments } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { PASSWORD_MIN_CHARS, passwordToShort } = _req('src/account/loginCheck.js');
 
@@ -37,7 +37,7 @@ test('the rule itself also holds for what is not a string', () => {
 });
 
 test('server and web app name the same number', () => {
-  const web = ohneKommentare(read('public/js/form.js'));
+  const web = withoutComments(read('public/js/form.js'));
   const webNumber = /export const PASSWORD_MIN_CHARS = (\d+)/.exec(web);
   assert.ok(webNumber, 'The web app no longer keeps a constant — then the number is scattered again');
   assert.equal(Number(webNumber[1]), PASSWORD_MIN_CHARS, 'Web app and server demand different lengths');
@@ -50,9 +50,9 @@ test('the error message names the same number as the rule', () => {
   for (const language of ['de', 'en'])
     assert.match(errorText('password_too_short', language), new RegExp(`\\b${PASSWORD_MIN_CHARS}\\b`), language);
   // The web app fills in the number at runtime: there a placeholder, no number.
-  const texte = require('./helpers/sources').loadTranslations();
+  const texts = require('./helpers/sources').loadTranslations();
   for (const language of ['de', 'en']) {
-    const text = texte[language]['settings.password.too_short'];
+    const text = texts[language]['settings.password.too_short'];
     assert.ok(text, `settings.password.too_short is missing in ${language}.js`);
     assert.ok(text.includes('{n}'), `${language}.js spells out the number instead of using {n}`);
   }
@@ -63,7 +63,7 @@ test('the web app checks before submitting', async () => {
   // Counter-checks (22.11.2026, each alone): the passwordRuleText check removed from btn-sav-pw
   // (settings.js), btn-cu or btn-rpw (user-management.js), btn-register, btn-reset or btn-required
   // (session.js) → red with the name of that form (rule not named, asked or sent anyway).
-  const { openUi, takt } = require('./helpers/ui');
+  const { openUi, tick } = require('./helpers/ui');
   const SHORT = 'kurz-1';
   const { de } = require('./helpers/sources').loadTranslations();
   const rule = de['settings.password.too_short'].replace('{n}', String(PASSWORD_MIN_CHARS));
@@ -90,10 +90,10 @@ test('the web app checks before submitting', async () => {
     },
   };
   for (const [name, f] of Object.entries(forms)) {
-    const { w, d, aufrufe, ruhig } = await openUi({}, { loggedIn: !f.signedOut });
+    const { w, d, calls, settle } = await openUi({}, { loggedIn: !f.signedOut });
     try {
-      await ruhig();
-      const before = aufrufe.length;
+      await settle();
+      const before = calls.length;
       for (const [id, v] of Object.entries(f.fields)) {
         const el = d.getElementById(id);
         assert.ok(el, `${name}: field #${id} is missing`);
@@ -101,8 +101,8 @@ test('the web app checks before submitting', async () => {
       }
       assert.ok(d.getElementById(f.button), `${name}: button #${f.button} is missing`);
       d.getElementById(f.button).click();
-      await takt(50);
-      const sent = aufrufe.slice(before).filter(a => a.method !== 'GET');
+      await tick(50);
+      const sent = calls.slice(before).filter(a => a.method !== 'GET');
       assert.deepEqual(
         sent.map(a => a.url),
         [],

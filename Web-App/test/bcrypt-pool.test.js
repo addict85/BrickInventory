@@ -58,10 +58,10 @@ test('the main thread stays responsive', async t => {
   await pool.compare('aufwaermen', hash);
   const vier = f => Promise.all([1, 2, 3, 4].map(() => f('Geheim-2026', hash)));
   const inMainThread = await longestDelay(() => vier(bcrypt.compare));
-  const imPool = await longestDelay(() => vier(pool.compare));
-  console.log(`  ℹ longest event loop delay: main thread ${inMainThread.toFixed(0)} ms, pool ${imPool.toFixed(0)} ms`);
+  const inPool = await longestDelay(() => vier(pool.compare));
+  console.log(`  ℹ longest event loop delay: main thread ${inMainThread.toFixed(0)} ms, pool ${inPool.toFixed(0)} ms`);
   assert.ok(inMainThread >= 50, `Precondition: bcryptjs blocks the main thread (${inMainThread} ms)`);
-  assert.ok(imPool < inMainThread / 2, `the main thread stays responsive: ${imPool} ms versus ${inMainThread} ms`);
+  assert.ok(inPool < inMainThread / 2, `the main thread stays responsive: ${inPool} ms versus ${inMainThread} ms`);
 });
 
 test('without a worker file the main thread computes', async () => {
@@ -107,23 +107,23 @@ test('the number of workers is capped', () => {
   assert.equal(loadConfig({}).bcryptWorker, null);
   assert.throws(() => loadConfig({ BCRYPT_WORKERS: '0' }), /BCRYPT_WORKERS="0"/, 'an invalid value stops the startup');
 
-  const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'cgroup-'));
-  const t = (f, inhalt) => {
-    fs.mkdirSync(path.dirname(path.join(wurzel, f)), { recursive: true });
-    fs.writeFileSync(path.join(wurzel, f), inhalt);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cgroup-'));
+  const t = (f, content) => {
+    fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true });
+    fs.writeFileSync(path.join(root, f), content);
   };
   try {
-    assert.equal(quotaCores(wurzel), null, 'no quota without files');
+    assert.equal(quotaCores(root), null, 'no quota without files');
     t('cpu/cpu.cfs_quota_us', '50000\n');
     t('cpu/cpu.cfs_period_us', '100000\n');
-    assert.equal(quotaCores(wurzel), 1, 'cgroup v1: halber Kern');
+    assert.equal(quotaCores(root), 1, 'cgroup v1: halber Kern');
     t('cpu/cpu.cfs_quota_us', '-1\n');
-    assert.equal(quotaCores(wurzel), null, 'cgroup v1 without a quota');
+    assert.equal(quotaCores(root), null, 'cgroup v1 without a quota');
     t('cpu.max', '150000 100000\n');
-    assert.equal(quotaCores(wurzel), 2, 'cgroup v2: 1.5 cores');
+    assert.equal(quotaCores(root), 2, 'cgroup v2: 1.5 cores');
     t('cpu.max', 'max 100000\n');
-    assert.equal(quotaCores(wurzel), null, 'cgroup v2 without a quota');
+    assert.equal(quotaCores(root), null, 'cgroup v2 without a quota');
   } finally {
-    fs.rmSync(wurzel, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });

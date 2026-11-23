@@ -37,7 +37,7 @@ const { buildAndRequire, testData, testAccess, asAccount } = require('./helpers/
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { warte, bis } = require('./helpers/time');
+const { sleep, until } = require('./helpers/time');
 
 test('job table', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -48,7 +48,7 @@ test('job table', { concurrency: 1 }, async t => {
   const { createWorker } = _req('jobs/jobWorker.js');
   // Only rows of this test: an own kind that no other worker knows.
   const KIND = `test-${process.pid}`;
-  const MARKE = `test-${process.pid}`;
+  const MARK = `test-${process.pid}`;
   // A test kind needs a schema for its payload like any other.
   // … and a row in job_types (0109).
   for (const type of [KIND, `${KIND}-ex`]) {
@@ -57,14 +57,14 @@ test('job table', { concurrency: 1 }, async t => {
       .jobQueue.registerKind({ kind: type, payload: require('zod').looseObject({}), run: async () => {} });
     await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [type]);
   }
-  const leeren = () => db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]);
+  const clear = () => db.run(`DELETE FROM jobs WHERE payload->>'mark' = $1`, [MARK]);
   const row = id =>
-    db.get('SELECT status, attempts, error_message, due_at > NOW() AS spaeter FROM jobs WHERE id=$1', [id]);
-  await leeren();
+    db.get('SELECT status, attempts, error_message, due_at > NOW() AS subsequent FROM jobs WHERE id=$1', [id]);
+  await clear();
 
   try {
     await t.test('an orphaned job is settled after its deadline', async () => {
-      const id = await A.placeJobOne(KIND, { marke: MARKE, n: 1 });
+      const id = await A.placeJobOne(KIND, { mark: MARK, n: 1 });
       // A process occupies it with a deadline of one second and then ends.
       const tot = await A.claimJob([KIND], 1);
       assert.equal(tot.id, id);
@@ -82,14 +82,14 @@ test('job table', { concurrency: 1 }, async t => {
       );
       assert.equal(await w.processOne(), false, 'before the deadline expires it still belongs to the other one');
       // The dead process's deadline expires; then the second one takes it.
-      assert.ok(await bis(() => w.processOne(), 5000), 'after the deadline expires the worker takes over');
+      assert.ok(await until(() => w.processOne(), 5000), 'after the deadline expires the worker takes over');
       assert.deepEqual(done, [1]);
       assert.equal((await row(id)).status, 'done');
       assert.equal((await row(id)).attempts, 2);
     });
 
     await t.test('an error is retried and ends after the last attempt', async () => {
-      await leeren();
+      await clear();
       let mal = 0;
       const abandoned = [];
       const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
@@ -103,18 +103,18 @@ test('job table', { concurrency: 1 }, async t => {
           },
         },
       });
-      const id = await A.placeJobOne(KIND, { marke: MARKE }, { maxAttempts: 3 });
+      const id = await A.placeJobOne(KIND, { mark: MARK }, { maxAttempts: 3 });
       assert.equal(await w.processOne(), true);
       const afterError = await row(id);
       assert.equal(afterError.status, 'pending', 'an error is retried');
       assert.equal(afterError.error_message, 'Quelle weg');
-      assert.equal(afterError.spaeter, true, 'with a waiting time, not immediately');
+      assert.equal(afterError.subsequent, true, 'with a waiting time, not immediately');
       assert.equal(await w.processOne(), false);
       await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id]);
       assert.equal(await w.processOne(), true);
       assert.equal((await row(id)).status, 'done');
 
-      const id2 = await A.placeJobOne(KIND, { marke: MARKE, immer: true }, { maxAttempts: 2 });
+      const id2 = await A.placeJobOne(KIND, { mark: MARK, immer: true }, { maxAttempts: 2 });
       await w.processOne();
       await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id2]);
       await w.processOne();
@@ -123,23 +123,23 @@ test('job table', { concurrency: 1 }, async t => {
     });
 
     await t.test('the same key is open only once', async () => {
-      await leeren();
-      const a = await A.placeJobOne(KIND, { marke: MARKE }, { key: `${MARKE}:s` });
-      const b = await A.placeJobOne(KIND, { marke: MARKE }, { key: `${MARKE}:s` });
+      await clear();
+      const a = await A.placeJobOne(KIND, { mark: MARK }, { key: `${MARK}:s` });
+      const b = await A.placeJobOne(KIND, { mark: MARK }, { key: `${MARK}:s` });
       assert.ok(a);
       assert.equal(b, null);
     });
 
     await t.test('two workers, every job exactly once', async () => {
-      await leeren();
+      await clear();
       const N = 40;
-      for (let i = 0; i < N; i++) await A.placeJobOne(KIND, { marke: MARKE, n: i });
+      for (let i = 0; i < N; i++) await A.placeJobOne(KIND, { mark: MARK, n: i });
       const runs = [];
       const editor = {
         [KIND]: {
           run: async n => {
             runs.push(n.n);
-            await warte(15);
+            await sleep(15);
           },
         },
       };
@@ -155,36 +155,36 @@ test('job table', { concurrency: 1 }, async t => {
       w2.launch();
       for (let i = 0; i < 200; i++) {
         const open = await db.get(
-          `SELECT COUNT(*)::int AS n FROM jobs WHERE payload->>'marke' = $1 AND status <> 'done'`,
-          [MARKE],
+          `SELECT COUNT(*)::int AS n FROM jobs WHERE payload->>'mark' = $1 AND status <> 'done'`,
+          [MARK],
         );
         if (open.n === 0 && w1.running() === 0 && w2.running() === 0) break;
-        await warte(25);
+        await sleep(25);
       }
       await w1.stop(0);
       await w2.stop(0);
-      const doppelt = runs.filter((n, i) => runs.indexOf(n) !== i);
-      assert.deepEqual(doppelt, [], 'Jobs executed twice');
+      const twice = runs.filter((n, i) => runs.indexOf(n) !== i);
+      assert.deepEqual(twice, [], 'Jobs executed twice');
       assert.equal(new Set(runs).size, N);
     });
     await t.test('a paused kind waits, an exclusive one runs alone', async () => {
-      await leeren();
+      await clear();
       const EX = `${KIND}-ex`;
-      for (let i = 0; i < 3; i++) await A.placeJobOne(EX, { marke: MARKE, n: i });
+      for (let i = 0; i < 3; i++) await A.placeJobOne(EX, { mark: MARK, n: i });
       await db.run('DELETE FROM job_pauses WHERE type = $1', [EX]);
       await A.pauseKind(EX, new Date(Date.now() + 60_000), 'Test');
       assert.equal(await A.claimJob([EX], 60, 'x', [EX]), null, 'claimed despite the pause');
       await A.endPause(EX);
       let simultaneous = 0,
-        hoechstens = 0;
+        atMost = 0;
       const w = createWorker(
         require('./helpers/sources').testServices().jobQueue,
         {
           [EX]: {
             exclusive: true,
             run: async () => {
-              hoechstens = Math.max(hoechstens, ++simultaneous);
-              await warte(60);
+              atMost = Math.max(atMost, ++simultaneous);
+              await sleep(60);
               simultaneous--;
             },
           },
@@ -195,15 +195,15 @@ test('job table', { concurrency: 1 }, async t => {
       for (let i = 0; i < 100; i++) {
         const open = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE type = $1 AND status <> 'done'`, [EX]);
         if (open.n === 0 && w.running() === 0) break;
-        await warte(25);
+        await sleep(25);
       }
       await w.stop(0);
-      assert.equal(hoechstens, 1, `${hoechstens} exclusive jobs ran at the same time`);
+      assert.equal(atMost, 1, `${atMost} exclusive jobs ran at the same time`);
       await db.run('DELETE FROM jobs WHERE type = $1', [EX]);
     });
 
     await t.test('postponing only counts when it should', async () => {
-      await leeren();
+      await clear();
       const { JobMove } = _req('jobs/jobWorker.js');
       let counted = false;
       const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
@@ -213,10 +213,10 @@ test('job table', { concurrency: 1 }, async t => {
           },
         },
       });
-      const id = await A.placeJobOne(KIND, { marke: MARKE }, { maxAttempts: 2 });
+      const id = await A.placeJobOne(KIND, { mark: MARK }, { maxAttempts: 2 });
       await w.processOne();
       let z = await row(id);
-      assert.deepEqual([z.status, z.attempts, z.error_message, z.spaeter], ['pending', 0, 'gedrosselt', true]);
+      assert.deepEqual([z.status, z.attempts, z.error_message, z.subsequent], ['pending', 0, 'gedrosselt', true]);
       counted = true;
       for (let i = 0; i < 2; i++) {
         await db.run('UPDATE jobs SET due_at = NOW() WHERE id=$1', [id]);
@@ -227,8 +227,8 @@ test('job table', { concurrency: 1 }, async t => {
     });
 
     await t.test('an aborted job stays aborted', async () => {
-      await leeren();
-      let lebt = null;
+      await clear();
+      let alive = null;
       // Without fixed waits: the handler reports that it is running, and
       // only asks for its heartbeat after the abort.
       let running = () => {},
@@ -244,17 +244,17 @@ test('job table', { concurrency: 1 }, async t => {
           run: async (_n, k) => {
             running();
             await afterAbort;
-            lebt = await k.heartbeat();
+            alive = await k.heartbeat();
           },
         },
       });
-      const id = await A.placeJobOne(KIND, { marke: MARKE });
-      const lauf = w.processOne();
+      const id = await A.placeJobOne(KIND, { mark: MARK });
+      const run = w.processOne();
       await started_at;
       assert.ok(await A.abortJob(id), 'a running job can be cancelled');
       aborted();
-      await lauf;
-      assert.equal(lebt, false, 'the handler learns about the cancellation');
+      await run;
+      assert.equal(alive, false, 'the handler learns about the cancellation');
       assert.equal((await row(id)).status, 'cancelled');
       assert.equal(await A.repeat(id), true);
       assert.equal((await row(id)).status, 'pending', 'retrying schedules it anew');
@@ -279,13 +279,13 @@ test('job table', { concurrency: 1 }, async t => {
       });
       assert.equal(await w.processOne(), true);
       assert.equal(lief, 1);
-      const danach = await db.all(`SELECT status, due_at FROM jobs WHERE dedupe_key = 'plan:cleanup' ORDER BY id`);
+      const afterwards = await db.all(`SELECT status, due_at FROM jobs WHERE dedupe_key = 'plan:cleanup' ORDER BY id`);
       assert.deepEqual(
-        danach.map(z => z.status),
+        afterwards.map(z => z.status),
         ['done', 'pending'],
         'no follow-up schedule entered',
       );
-      assert.ok(new Date(danach[1].due_at) > new Date(Date.now() + 55 * 60_000));
+      assert.ok(new Date(afterwards[1].due_at) > new Date(Date.now() + 55 * 60_000));
       await db.run(`DELETE FROM jobs WHERE type = 'cleanup'`);
     });
 
@@ -315,19 +315,19 @@ test('job table', { concurrency: 1 }, async t => {
           // Like the route: in the request's account, under row security.
           state = await asAccount(uid, () => pdfA.readJob(jobId, uid));
           if (state?.status !== 'running') break;
-          await warte(25);
+          await sleep(25);
         }
         assert.equal(state?.status, 'done', JSON.stringify(state));
-        const datei = pdfA.pdfFilePath(jobId);
-        assert.equal(require('node:fs').readFileSync(datei).subarray(0, 5).toString(), '%PDF-');
-        require('node:fs').rmSync(datei, { force: true });
+        const file = pdfA.pdfFilePath(jobId);
+        assert.equal(require('node:fs').readFileSync(file).subarray(0, 5).toString(), '%PDF-');
+        require('node:fs').rmSync(file, { force: true });
       } finally {
         await worker.stop();
         await db.run('DELETE FROM users WHERE id=$1', [uid]);
       }
     });
   } finally {
-    await leeren();
+    await clear();
     await testAccess().notification.close();
     await db.pool.end().catch(() => {});
   }

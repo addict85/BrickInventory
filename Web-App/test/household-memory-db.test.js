@@ -18,22 +18,22 @@ const hh = {
 };
 
 const MAIN = 990501,
-  UNTER = 990502;
+  SUB = 990502;
 
-const gesehen = [];
+const seen = [];
 let count = false;
 const altQuery = db.pool.query.bind(db.pool);
 db.pool.query = (text, ...rest) => {
-  if (count) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
+  if (count) seen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
   return altQuery(text, ...rest);
 };
-const linkQueries = () => gesehen.filter(q => /account_links/.test(q)).length;
+const linkQueries = () => seen.filter(q => /account_links/.test(q)).length;
 
-async function aufraeumen() {
+async function cleanUp() {
   await db
-    .run('DELETE FROM account_links WHERE main_user_id = ANY($1) OR sub_user_id = ANY($1)', [[MAIN, UNTER]])
+    .run('DELETE FROM account_links WHERE main_user_id = ANY($1) OR sub_user_id = ANY($1)', [[MAIN, SUB]])
     .catch(() => {});
-  await db.run('DELETE FROM users WHERE id = ANY($1)', [[MAIN, UNTER]]).catch(() => {});
+  await db.run('DELETE FROM users WHERE id = ANY($1)', [[MAIN, SUB]]).catch(() => {});
 }
 
 test('scope: remembered, and forgotten immediately on a change', async t => {
@@ -45,16 +45,16 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
 
   let listener = null;
   try {
-    await aufraeumen();
+    await cleanUp();
     await db.run("INSERT INTO users (id, username, password_hash) VALUES ($1,'hh_haupt','x'), ($2,'hh_unter','x')", [
       MAIN,
-      UNTER,
+      SUB,
     ]);
-    await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [MAIN, UNTER]);
+    await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [MAIN, SUB]);
     hh.reportHouseholdChange();
 
     // ── 1. Remembered: the second and every further call no longer asks ────
-    gesehen.length = 0;
+    seen.length = 0;
     count = true;
     const erst = await hh.householdOf(MAIN);
     const afterFirst = linkQueries();
@@ -66,25 +66,21 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
       2,
       `21 calls resulted in ${linkQueries()} queries on account_links — expected 2 (only the first)`,
     );
-    assert.deepEqual(erst.memberIds, [MAIN, UNTER], 'the sub-account belongs in the view');
+    assert.deepEqual(erst.memberIds, [MAIN, SUB], 'the sub-account belongs in the view');
 
     // ── 2. The member list is a fresh list ─────────────────────────────────
     const a = await hh.householdOf(MAIN);
     a.memberIds.push(999999);
     const b = await hh.householdOf(MAIN);
-    assert.deepEqual(
-      b.memberIds,
-      [MAIN, UNTER],
-      'whoever touches the member list must not change the remembered state',
-    );
+    assert.deepEqual(b.memberIds, [MAIN, SUB], 'whoever touches the member list must not change the remembered state');
 
     // ── 3. After unlinking the view is small again immediately ─────────────
     // Via unlinkAccounts(), not via a DELETE by hand: exactly this path must
     // empty the memory, and only this way is it checked.
-    await hh.unlinkAccounts(MAIN, UNTER);
-    const nachher = await hh.householdOf(MAIN);
+    await hh.unlinkAccounts(MAIN, SUB);
+    const later = await hh.householdOf(MAIN);
     assert.deepEqual(
-      nachher.memberIds,
+      later.memberIds,
       [MAIN],
       'after unlinkAccounts() the unlinked sub-account is still in the remembered view',
     );
@@ -95,7 +91,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     // other depending on the worker.
     listener = await db.ownConnection();
     await listener.query(`LISTEN ${hh.HOUSEHOLD_CHANNEL}`);
-    const angekommen = new Promise((auf, ab) => {
+    const arrived = new Promise((opened, ab) => {
       const clock = setTimeout(
         () =>
           ab(new Error(`no NOTIFY on channel "${hh.HOUSEHOLD_CHANNEL}" within 3 s — the other workers learn nothing`)),
@@ -104,13 +100,13 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
       listener.on('notification', m => {
         if (m.channel === hh.HOUSEHOLD_CHANNEL) {
           clearTimeout(clock);
-          auf(m);
+          opened(m);
         }
       });
     });
     hh.reportHouseholdChange();
-    const meldung = await angekommen;
-    assert.equal(meldung.channel, hh.HOUSEHOLD_CHANNEL);
+    const message = await arrived;
+    assert.equal(message.channel, hh.HOUSEHOLD_CHANNEL);
 
     // That every worker listens on the channel is checked by
     // signale-zwei-worker-db.test.js on the real cluster.
@@ -119,7 +115,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     // Does the counter see the queries at all? After clearing, the
     // next call must make both again — otherwise assertion 1 checks nothing.
     hh.reportHouseholdChange();
-    gesehen.length = 0;
+    seen.length = 0;
     count = true;
     await hh.householdOf(MAIN);
     count = false;
@@ -131,7 +127,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
   } finally {
     db.pool.query = altQuery;
     if (listener) await listener.end().catch(() => {});
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end().catch(() => {});
   }
 });

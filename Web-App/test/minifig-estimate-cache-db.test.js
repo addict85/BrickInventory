@@ -38,11 +38,11 @@ test('a fresh cache entry replaces the recomputation', async t => {
   );
 
   const t0 = Date.now();
-  const wert = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
+  const value = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
   const duration = Date.now() - t0;
 
   assert.equal(
-    wert,
+    value,
     3.5,
     'The cached value is not used — the estimate recomputes ' + 'everything again, with one price query per part.',
   );
@@ -80,9 +80,9 @@ test('an outdated entry is skipped', async t => {
 
   // Without a network the recalculation delivers null — what matters is THAT it
   // takes place instead of returning the old value.
-  const wert = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
+  const value = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
   assert.equal(
-    wert,
+    value,
     null,
     'A 48-hour-old entry was used — then the market price ages ' +
       'without bound and the history never gets a new point.',

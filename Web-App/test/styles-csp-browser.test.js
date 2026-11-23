@@ -39,7 +39,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `stile_${process.pid}`,
   PASS = 'stile-Passwort-1';
 
-const { chrome, warte } = require('./helpers/app-browser');
+const { chrome, sleep } = require('./helpers/app-browser');
 const { portOf } = require('./helpers/server');
 
 const freePort = () =>
@@ -51,7 +51,7 @@ const freePort = () =>
   });
 
 /** A process that is surely gone again at the end of the test. */
-function starte(t, bin, args, opt) {
+function start(t, bin, args, opt) {
   const p = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], ...opt });
   let log = '';
   p.stdout.on('data', d => {
@@ -62,7 +62,7 @@ function starte(t, bin, args, opt) {
   });
   t.after(async () => {
     p.kill('SIGTERM');
-    for (let i = 0; i < 40 && p.exitCode === null && p.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && p.exitCode === null && p.signalCode === null; i++) await sleep(100);
     if (p.exitCode === null && p.signalCode === null) p.kill('SIGKILL');
   });
   return { p, log: () => log };
@@ -95,12 +95,12 @@ async function cdp(wsUrl) {
   const { targetId } = await sendIt('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await sendIt('Target.attachToTarget', { targetId, flatten: true });
   const tab = (m, p) => sendIt(m, p, sessionId);
-  const auswerten = async expression => {
+  const evaluate = async expression => {
     const r = await tab('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
     return r.result.value;
   };
-  return { tab, auswerten, eventList, schliessen: () => ws.close() };
+  return { tab, evaluate, eventList, close: () => ws.close() };
 }
 
 test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 180_000 }, async t => {
@@ -118,8 +118,8 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
       [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)],
     )
   ).id;
-  await holdsSet(db, uid, '10300-1', 1, { preis: 199 });
-  const [wiederherstellung] = await require('./helpers/admin').adminWithFactor(_req, uid);
+  await holdsSet(db, uid, '10300-1', 1, { price: 199 });
+  const [restore] = await require('./helpers/admin').adminWithFactor(_req, uid);
   // With today's stamps the start does not download the Rebrickable catalog.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
@@ -133,7 +133,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
   });
 
   const port = await freePort();
-  const server = starte(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
+  const server = start(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     env: {
       ...process.env,
@@ -143,9 +143,9 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
       TRUST_PROXY: 'false',
     },
   });
-  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await warte(250);
+  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await sleep(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/`).catch(() => null)) === null; i++)
-    await warte(250);
+    await sleep(250);
   const csp = (await fetch(`http://127.0.0.1:${port}/`)).headers.get('content-security-policy') || '';
   // Inline only the one block of the start skeleton, via its hash — no 'unsafe-inline'.
   assert.match(csp, /style-src 'self'( 'sha256-[A-Za-z0-9+/]+=*')?(;|$)/, `The CSP allows inline styles: ${csp}`);
@@ -160,7 +160,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
       /* the system cleans up tmp */
     }
   });
-  const browser = starte(
+  const browser = start(
     t,
     bin,
     [
@@ -177,11 +177,11 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
   let wsUrl = null;
   for (let i = 0; i < 100 && !wsUrl; i++) {
     wsUrl = /DevTools listening on (ws:\/\/\S+)/.exec(browser.log())?.[1];
-    await warte(100);
+    await sleep(100);
   }
   assert.ok(wsUrl, 'Chrome meldet keinen DevTools-Zugang');
   const b = await cdp(wsUrl);
-  t.after(() => b.schliessen());
+  t.after(() => b.close());
 
   await b.tab('Runtime.enable');
   await b.tab('Page.enable');
@@ -192,40 +192,40 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
       window.__verstoesse.push(e.violatedDirective + ' ' + (e.sample || '') + ' @' + e.sourceFile + ':' + e.lineNumber));`,
   });
   await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
-  const bis = async (ausdruck, was) => {
+  const until = async (expr, was) => {
     for (let i = 0; i < 100; i++) {
-      if (await b.auswerten(ausdruck).catch(() => false)) return;
-      await warte(100);
+      if (await b.evaluate(expr).catch(() => false)) return;
+      await sleep(100);
     }
     const condition = await b
-      .auswerten(`JSON.stringify({ v: window.__verstoesse,
+      .evaluate(`JSON.stringify({ v: window.__verstoesse,
       lerr: document.getElementById('lerr')?.textContent, text: document.body.innerText.slice(0, 300) })`)
       .catch(e => e.message);
     assert.fail(`timeout: ${was} — ${condition}`);
   };
   // Only click once the bundle has wired up the button — under load the
   // form already stands there before the script at the end of the page has run.
-  await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
-  await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
+  await until(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
+  await b.evaluate(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
-    document.getElementById('lc').value = ${JSON.stringify(wiederherstellung)};
+    document.getElementById('lc').value = ${JSON.stringify(restore)};
     document.getElementById('btn-login').click(); true`);
-  await bis(`/${NAME} \\(Administrator\\)/.test(document.body.innerText)`, 'angemeldet als Verwalter');
-  const reiter = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
-  assert.ok(reiter.length >= 8, `nur ${reiter.length} Reiter`);
-  for (const r of reiter) {
-    await b.auswerten(`document.querySelector('.ntab[data-tab="${r}"]').click(); true`);
-    await warte(700);
+  await until(`/${NAME} \\(Administrator\\)/.test(document.body.innerText)`, 'angemeldet als Verwalter');
+  const tabs = await b.evaluate(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
+  assert.ok(tabs.length >= 8, `nur ${tabs.length} Reiter`);
+  for (const r of tabs) {
+    await b.evaluate(`document.querySelector('.ntab[data-tab="${r}"]').click(); true`);
+    await sleep(700);
   }
   // The set view builds the most markup at runtime.
-  await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-  await bis(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');
-  await b.auswerten(`document.querySelector('[data-click="openModal"]').click(); true`);
-  await bis(`document.getElementById('m-tit').textContent.length > 0`, 'Set-Ansicht offen');
-  await warte(800);
-  const s = await b.auswerten(`({
+  await b.evaluate(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
+  await until(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');
+  await b.evaluate(`document.querySelector('[data-click="openModal"]').click(); true`);
+  await until(`document.getElementById('m-tit').textContent.length > 0`, 'Set-Ansicht offen');
+  await sleep(800);
+  const s = await b.evaluate(`({
     violations: window.__verstoesse,
-    uebrig: [...document.querySelectorAll('[data-style]')].map(e => e.getAttribute('data-style')).slice(0, 5),
+    remaining: [...document.querySelectorAll('[data-style]')].map(e => e.getAttribute('data-style')).slice(0, 5),
     styleSet: document.querySelectorAll('[style]').length,
   })`);
   const warnings = b.eventList
@@ -235,7 +235,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
 
   await t.test('no CSP violations', () => assert.deepEqual(s.violations, []));
   await t.test('every data-style is applied', () => {
-    assert.deepEqual(s.uebrig, []);
+    assert.deepEqual(s.remaining, []);
     assert.ok(s.styleSet > 50, `only ${s.styleSet} elements with a style`);
   });
   await t.test('only approved values', () => assert.deepEqual(warnings, []));
@@ -244,13 +244,13 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
   await t.test('form-action, base-uri and object-src take effect', async () => {
     assert.match(csp, /form-action 'self'/);
     // A form of the app (submit via Enter) and a download stay without a violation.
-    await b.auswerten(`document.querySelector('form[data-submit="btn-gen-qr"]')?.requestSubmit(); true`);
-    await b.auswerten(`document.getElementById('btn-cfg-export')?.click(); true`);
-    await warte(800);
-    assert.deepEqual(await b.auswerten('window.__verstoesse'), [], 'form or download of the app violates the CSP');
-    const verletzt = await b.auswerten(`new Promise(fertig => {
-      const gesehen = new Set();
-      document.addEventListener('securitypolicyviolation', e => gesehen.add(e.effectiveDirective));
+    await b.evaluate(`document.querySelector('form[data-submit="btn-gen-qr"]')?.requestSubmit(); true`);
+    await b.evaluate(`document.getElementById('btn-cfg-export')?.click(); true`);
+    await sleep(800);
+    assert.deepEqual(await b.evaluate('window.__verstoesse'), [], 'form or download of the app violates the CSP');
+    const verletzt = await b.evaluate(`new Promise(done => {
+      const seen = new Set();
+      document.addEventListener('securitypolicyviolation', e => seen.add(e.effectiveDirective));
       const basis = document.createElement('base'); basis.href = 'https://fremd.invalid/';
       document.head.appendChild(basis);
       // Trusted Types lassen als Skript-Adresse nur eigene Pfade zu; object-src 'none' sperrt auch sie.
@@ -258,7 +258,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
       document.body.appendChild(obj);
       const f = document.createElement('form'); f.action = 'https://fremd.invalid/'; f.method = 'post';
       document.body.appendChild(f); f.submit();
-      setTimeout(() => fertig([...gesehen].sort()), 1500);
+      setTimeout(() => done([...seen].sort()), 1500);
     })`);
     assert.deepEqual(verletzt, ['base-uri', 'form-action', 'object-src']);
   });

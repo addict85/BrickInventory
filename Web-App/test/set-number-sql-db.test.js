@@ -28,23 +28,23 @@ const CORPUS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shar
 const RAND = ['10179-1', '10179-12', '10179-', '10179-1b', 'a-b', 'comcon001', 'sw0001a', '6', '-1', '--2', ''];
 
 function inputs() {
-  const kandidaten = CORPUS.faelle.flatMap(f => setNumberCandidates(f.text, 2026));
-  return [...new Set([...kandidaten, ...kandidaten.map(k => `${k}-2`), ...RAND])];
+  const candidates = CORPUS.faelle.flatMap(f => setNumberCandidates(f.text, 2026));
+  return [...new Set([...candidates, ...candidates.map(k => `${k}-2`), ...RAND])];
 }
 
 test('both versions attach the same', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const alle = inputs();
+  const all = inputs();
   // Self-proof: the corpus delivers candidates, and both branches of the rule occur.
-  assert.ok(alle.length >= 40, `only ${alle.length} inputs — does the test still read the corpus?`);
-  assert.ok(alle.some(x => withVersion(x) === x) && alle.some(x => withVersion(x) !== x), 'both branches');
-  const zeilen = await db.all(
-    'SELECT e AS ein, set_number_with_version(e) AS aus FROM unnest($1::text[]) WITH ORDINALITY AS u(e, i) ORDER BY i',
-    [alle],
+  assert.ok(all.length >= 40, `only ${all.length} inputs — does the test still read the corpus?`);
+  assert.ok(all.some(x => withVersion(x) === x) && all.some(x => withVersion(x) !== x), 'both branches');
+  const lines = await db.all(
+    'SELECT e AS "on", set_number_with_version(e) AS "out" FROM unnest($1::text[]) WITH ORDINALITY AS u(e, i) ORDER BY i',
+    [all],
   );
-  assert.equal(zeilen.length, alle.length);
-  const deviating = zeilen.filter(z => z.aus !== withVersion(z.ein)).map(z => `${z.ein}: SQL ${z.aus}`);
+  assert.equal(lines.length, all.length);
+  const deviating = lines.filter(z => z.out !== withVersion(z.on)).map(z => `${z.on}: SQL ${z.out}`);
   assert.deepEqual(deviating, []);
 });

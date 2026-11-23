@@ -42,9 +42,9 @@ test('after the stream no step of the progress dialog hangs on active', { concur
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: name }, t });
+  const { base } = testServer(_req, { session: { userId: uid, username: name }, t });
   const events = [];
-  const { openUi, warte } = require('./helpers/ui');
+  const { openUi, waitFor } = require('./helpers/ui');
   const { w, d } = await openUi(
     {
       [`/v2/sets/${SN}`]: { success: false, error: 'nicht gefunden', code: 'set_not_found', $status: 404 },
@@ -72,8 +72,8 @@ test('after the stream no step of the progress dialog hangs on active', { concur
   try {
     d.getElementById('add-num').value = SN;
     d.getElementById('btn-add').click();
-    assert.ok(await warte(() => events.includes('done'), 10000), `the stream did not finish: ${events.join(', ')}`);
-    await warte(() => false, 50);
+    assert.ok(await waitFor(() => events.includes('done'), 10000), `the stream did not finish: ${events.join(', ')}`);
+    await waitFor(() => false, 50);
     const steps = [...d.querySelectorAll('.prog-step')];
     assert.ok(steps.length >= 2, 'the dialog has no steps');
     const state = steps.map(s => [s.id, ['active', 'done', 'err'].find(c => s.classList.contains(c)) ?? 'untouched']);

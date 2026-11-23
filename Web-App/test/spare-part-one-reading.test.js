@@ -9,7 +9,7 @@ const { after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare, testData } = require('./helpers/sources');
+const { withoutComments, testData } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -23,33 +23,33 @@ after(() => db.pool.end().catch(() => {}));
 /** All .ts files of the server folders. */
 function serverFiles() {
   const out = [];
-  const lauf = d => {
+  const run = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) lauf(p);
+      if (e.isDirectory()) run(p);
       else if (e.name.endsWith('.ts')) out.push(p);
     }
   };
   for (const d of ['routes', 'src', 'jobs', 'clients']) {
     const abs = path.join(ROOT, d);
-    if (fs.existsSync(abs)) lauf(abs);
+    if (fs.existsSync(abs)) run(abs);
   }
   return out;
 }
 
 test('the spellings are enumerated in only one place', () => {
-  const dateien = serverFiles();
-  assert.ok(dateien.length >= 40, `Only ${dateien.length} server files found — path outdated?`);
+  const files = serverFiles();
+  assert.ok(files.length >= 40, `Only ${files.length} server files found — path outdated?`);
 
   // Two forms, both WITHOUT a window — a window of 200 characters caught, on the
   // first attempt, the FILTER parameter across the line break
   // (`spare === '1'`), and three of four hits were wrong.
   const suspicious = [/\bis_spare\s*===?\s*'(?:t|true|True|1)'/, /===?\s*'True'/];
   const found = [];
-  for (const datei of dateien) {
-    const rel = path.relative(ROOT, datei).split(path.sep).join('/');
+  for (const file of files) {
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
     if (rel === 'src/infra/validate.ts') continue; // THE one place
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     if (suspicious.some(r => r.test(src))) found.push(rel);
   }
   assert.deepEqual(
@@ -68,8 +68,8 @@ test('the spellings are enumerated in only one place', () => {
   // isSparePart() reads with isYes(), the reading of all yes/no values from outside.
   const i = helper.indexOf('export function isYes(');
   assert.ok(i > 0, 'isYes() is missing');
-  const rumpf = helper.slice(i, helper.indexOf('\n}', i));
-  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `isYes() does not know ${form}`);
+  const body = helper.slice(i, helper.indexOf('\n}', i));
+  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(body.includes(form), `isYes() does not know ${form}`);
 });
 
 test('the response carries a real boolean', async t => {

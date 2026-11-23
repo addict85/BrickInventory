@@ -27,13 +27,13 @@ const DATA = {
 
 /** Collect console.warn instead of littering the test run. */
 async function warningsOf(fn) {
-  const echt = console.warn;
+  const original = console.warn;
   const collected = [];
   console.warn = (...a) => collected.push(a.join(' '));
   try {
     await fn();
   } finally {
-    console.warn = echt;
+    console.warn = original;
   }
   return collected;
 }
@@ -42,7 +42,7 @@ test('price alert mail: the button and its absence', async t => {
   // Load fresh so that the “once per process" flag belongs to this check
   // and not to an earlier test.
   const mailer = _req('src/mail/mailer.js');
-  const vorher = process.env.APP_BASE_URL;
+  const prior = process.env.APP_BASE_URL;
 
   await t.test('1. with APP_BASE_URL the mail carries the link', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.test/' });
@@ -92,8 +92,8 @@ test('price alert mail: the button and its absence', async t => {
     const collected = await warningsOf(async () => {
       for (let i = 0; i < 3; i++) await mailer.buildAlertMail(DATA);
     });
-    const treffer = collected.filter(z => z.includes('APP_BASE_URL')).length;
-    assert.equal(treffer, 0, `The hint repeats (${treffer} times for three mails).`);
+    const hits = collected.filter(z => z.includes('APP_BASE_URL')).length;
+    assert.equal(hits, 0, `The hint repeats (${hits} times for three mails).`);
   });
 
   // Marco's finding from 25.09.: the tiles bumped into each other
@@ -105,18 +105,18 @@ test('price alert mail: the button and its absence', async t => {
   await t.test('4. the two tiles leave room in the middle', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     const m = await mailer.buildAlertMail(DATA);
-    const breiten = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));
-    assert.equal(breiten.length, 3, `Expected: two tiles and a gap, all in percent. Found: ${breiten.length}.`);
-    const [links, center, rechts] = breiten;
+    const widths = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));
+    assert.equal(widths.length, 3, `Expected: two tiles and a gap, all in percent. Found: ${widths.length}.`);
+    const [links, center, right] = widths;
     assert.equal(
-      links + center + rechts,
+      links + center + right,
       100,
-      `The widths add up to ${links + center + rechts} % — the client then has to squeeze something.`,
+      `The widths add up to ${links + center + right} % — the client then has to squeeze something.`,
     );
-    assert.equal(links, rechts, 'The two tiles have different widths.');
+    assert.equal(links, right, 'The two tiles have different widths.');
     assert.ok(center > 0, 'There is no gap in the middle.');
   });
 
-  if (vorher === undefined) environment({ APP_BASE_URL: undefined });
-  else environment({ APP_BASE_URL: vorher });
+  if (prior === undefined) environment({ APP_BASE_URL: undefined });
+  else environment({ APP_BASE_URL: prior });
 });

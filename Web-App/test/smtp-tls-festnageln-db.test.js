@@ -36,7 +36,7 @@ const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 /** Self-signed, with the given subjectAltName. */
-function zertifikat(dir, name, san) {
+function certificate(dir, name, san) {
   const key = path.join(dir, `${name}.key`),
     crt = path.join(dir, `${name}.crt`);
   execFileSync(
@@ -70,28 +70,28 @@ function zertifikat(dir, name, san) {
 function smtpServer(z) {
   const post = [];
   const srv = tls.createServer({ key: z.key, cert: z.pem }, s => {
-    let puffer = '',
-      daten = null;
+    let buffer = '',
+      data = null;
     s.on('error', () => {});
     s.write('220 test ESMTP\r\n');
     s.on('data', b => {
-      puffer += b.toString('latin1');
-      for (let i = puffer.indexOf('\r\n'); i >= 0; i = puffer.indexOf('\r\n')) {
-        const row = puffer.slice(0, i);
-        puffer = puffer.slice(i + 2);
-        if (daten !== null) {
+      buffer += b.toString('latin1');
+      for (let i = buffer.indexOf('\r\n'); i >= 0; i = buffer.indexOf('\r\n')) {
+        const row = buffer.slice(0, i);
+        buffer = buffer.slice(i + 2);
+        if (data !== null) {
           if (row === '.') {
-            post.push(daten);
-            daten = null;
+            post.push(data);
+            data = null;
             s.write('250 angenommen\r\n');
-          } else daten += row + '\n';
+          } else data += row + '\n';
           continue;
         }
         const command = row.slice(0, 4).toUpperCase();
         if (command === 'EHLO') s.write('250-test\r\n250 AUTH PLAIN\r\n');
         else if (command === 'AUTH') s.write('235 ok\r\n');
         else if (command === 'DATA') {
-          daten = '';
+          data = '';
           s.write('354 weiter\r\n');
         } else if (command === 'QUIT') s.end('221 bye\r\n');
         else s.write('250 ok\r\n');
@@ -105,7 +105,7 @@ function smtpServer(z) {
 test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const SCHLUESSEL = [
+  const KEY = [
     'smtp_host',
     'smtp_port',
     'smtp_user',
@@ -116,7 +116,7 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
     'smtp_tls_fingerprint',
     'smtp_insecure_tls',
   ];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [KEY]);
   const CHEF = `smtp_tls_${process.pid}`,
     PASS = 'Smtp-Tls-Pruefung-1';
   await db.run('DELETE FROM users WHERE username = $1', [CHEF]);
@@ -128,23 +128,23 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
     )
   ).id;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smtp-tls-'));
-  const richtig = zertifikat(dir, 'localhost', 'IP:127.0.0.1,DNS:localhost');
-  const fremd = zertifikat(dir, 'mail.intern', 'DNS:mail.intern');
-  const a = await smtpServer(richtig),
+  const right = certificate(dir, 'localhost', 'IP:127.0.0.1,DNS:localhost');
+  const fremd = certificate(dir, 'mail.intern', 'DNS:mail.intern');
+  const a = await smtpServer(right),
     b = await smtpServer(fremd);
   t.after(async () => {
     a.srv.close();
     b.srv.close();
     fs.rmSync(dir, { recursive: true, force: true });
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-    for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [KEY]);
+    for (const z of prior) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
 
   const put = async values => {
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-    const alle = {
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [KEY]);
+    const all = {
       smtp_host: '127.0.0.1',
       smtp_user: 'u',
       smtp_pass: 'p',
@@ -152,12 +152,12 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
       smtp_from: 'test@example.org',
       ...values,
     };
-    for (const [k, v] of Object.entries(alle))
+    for (const [k, v] of Object.entries(all))
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
     await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
   };
   let nr = 0;
-  const sende = async server => {
+  const send = async server => {
     const mailSubject = `Probe ${++nr}`,
       beforeNumber = server.post.length;
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: mailSubject, text: 'Hallo' });
@@ -167,7 +167,7 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
 
   await t.test('without PEM nothing is delivered, not even with the legacy setting', async () => {
     await put({ smtp_port: a.port, smtp_insecure_tls: '1' });
-    const r = await sende(a);
+    const r = await send(a);
     assert.equal(r.delivered, false);
     assert.match(r.error, /Zertifikat \(PEM\) oder seinen SHA-256-Fingerabdruck/);
     assert.equal(await mailer.reportSmtpLegacySetting(), true);
@@ -175,35 +175,35 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
   });
 
   await t.test('with PEM it is delivered, with the right fingerprint too', async () => {
-    await put({ smtp_port: a.port, smtp_tls_ca: richtig.pem });
-    assert.deepEqual(await sende(a), { delivered: true, error: null });
+    await put({ smtp_port: a.port, smtp_tls_ca: right.pem });
+    assert.deepEqual(await send(a), { delivered: true, error: null });
     await put({
       smtp_port: a.port,
-      smtp_tls_ca: richtig.pem,
-      smtp_tls_fingerprint: richtig.fp.replace(/:/g, '').toLowerCase(),
+      smtp_tls_ca: right.pem,
+      smtp_tls_fingerprint: right.fp.replace(/:/g, '').toLowerCase(),
     });
-    assert.deepEqual(await sende(a), { delivered: true, error: null });
+    assert.deepEqual(await send(a), { delivered: true, error: null });
   });
 
   await t.test('a wrong fingerprint aborts', async () => {
-    await put({ smtp_port: a.port, smtp_tls_ca: richtig.pem, smtp_tls_fingerprint: fremd.fp });
-    const r = await sende(a);
+    await put({ smtp_port: a.port, smtp_tls_ca: right.pem, smtp_tls_fingerprint: fremd.fp });
+    const r = await send(a);
     assert.equal(r.delivered, false);
     assert.match(r.error, /Fingerabdruck/);
   });
 
   await t.test('without a fingerprint the hostname applies, with it exactly the certificate', async () => {
     await put({ smtp_port: b.port, smtp_tls_ca: fremd.pem });
-    assert.equal((await sende(b)).delivered, false);
+    assert.equal((await send(b)).delivered, false);
     await put({ smtp_port: b.port, smtp_tls_ca: fremd.pem, smtp_tls_fingerprint: fremd.fp });
-    assert.deepEqual(await sende(b), { delivered: true, error: null });
+    assert.deepEqual(await send(b), { delivered: true, error: null });
   });
 
   await t.test('the form only takes readable values and clears the legacy setting', async () => {
     await put({ smtp_port: a.port, smtp_insecure_tls: '1' });
     const { base } = routerServer(_req, {
-      sitzung: { userId: uid, isAdmin: true },
-      routen: { '/api/v2': 'routes/api/settings.js' },
+      session: { userId: uid, isAdmin: true },
+      routes: { '/api/v2': 'routes/api/settings.js' },
       t,
     });
     const storeIt = body =>
@@ -214,17 +214,14 @@ test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout
       }).then(async r => ({ status: r.status, body: await r.json() }));
     assert.equal((await storeIt({ smtp_tls_fingerprint: 'AB:CD' })).status, 400);
     assert.equal((await storeIt({ smtp_tls_ca: 'kein Zertifikat' })).status, 400);
-    const r = await storeIt({ smtp_tls_fingerprint: richtig.fp, smtp_tls_ca: richtig.pem });
+    const r = await storeIt({ smtp_tls_fingerprint: right.fp, smtp_tls_ca: right.pem });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const gespeichert = Object.fromEntries(
-      (await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL])).map(z => [
-        z.key,
-        z.value,
-      ]),
+    const saved = Object.fromEntries(
+      (await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [KEY])).map(z => [z.key, z.value]),
     );
-    assert.equal(gespeichert.smtp_tls_fingerprint, richtig.fp);
-    assert.equal(gespeichert.smtp_insecure_tls, undefined);
+    assert.equal(saved.smtp_tls_fingerprint, right.fp);
+    assert.equal(saved.smtp_insecure_tls, undefined);
     assert.equal(await mailer.reportSmtpLegacySetting(), false);
-    assert.deepEqual(await sende(a), { delivered: true, error: null });
+    assert.deepEqual(await send(a), { delivered: true, error: null });
   });
 });

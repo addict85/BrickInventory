@@ -11,20 +11,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('4. and the web app redeems it', async () => {
-  const { openUi, warte } = require('./helpers/ui');
-  const { w, d, aufrufe } = await openUi(
+  const { openUi, waitFor } = require('./helpers/ui');
+  const { w, d, calls } = await openUi(
     {
       '/v2/sets/10294-1': { success: true, set: { set_number: '10294-1', name: 'Titanic', quantity: 1 } },
     },
-    { before: fenster => fenster.history.replaceState({}, '', '/?set=10294-1') },
+    { before: win => win.history.replaceState({}, '', '/?set=10294-1') },
   );
   try {
     assert.ok(
-      await warte(() => aufrufe.some(a => a.url.includes('/v2/sets/10294-1'))),
+      await waitFor(() => calls.some(a => a.url.includes('/v2/sets/10294-1'))),
       'The web app does not read ?set= — the button in the mail only opens the start page.',
     );
     assert.ok(
-      await warte(
+      await waitFor(
         () =>
           d.getElementById('set-modal').classList.contains('open') &&
           d.getElementById('m-tit').textContent.includes('Titanic'),

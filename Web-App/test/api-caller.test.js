@@ -14,12 +14,12 @@ const ROOT = path.join(__dirname, '..');
 const { appRoutes, appAddresses } = require('./helpers/contract');
 const _req = require('./helpers/sources').buildAndRequire();
 
-function ohneKommentare(src) {
+function withoutComments(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 }
 
-function routesFrom(datei, mount) {
-  const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+function routesFrom(file, mount) {
+  const src = withoutComments(fs.readFileSync(file, 'utf8'));
   const out = [];
   for (const m of require('./helpers/sources').routesFromSource(src, mount))
     out.push([m[1].toUpperCase(), (mount + '/' + m[2].replace(/^\//, '')).replace(/\/+$/, '')]);
@@ -30,7 +30,7 @@ function allRoutes() {
   const out = [];
   // Mount points READ from server.ts instead of copied: a
   // copied list silently goes stale. See routerEinhaengungen().
-  for (const r of routerMounts()) out.push(...routesFrom(r.datei, r.mount));
+  for (const r of routerMounts()) out.push(...routesFrom(r.file, r.mount));
   const v1 = path.join(ROOT, 'routes/api');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
@@ -41,7 +41,7 @@ function allRoutes() {
 
 /** Browser code and templates; the app's calls are in shared/app-interface.json. */
 function clientSources() {
-  const dateien = [];
+  const files = [];
   const collect = (dir, extensions) => {
     if (!fs.existsSync(dir)) return;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -54,12 +54,12 @@ function clientSources() {
       // would mean seeing every call twice, and a call that existed only in the
       // product would be a bug and not evidence.
       if (e.name === 'app.bundle.js') continue;
-      if (extensions.some(x => e.name.endsWith(x))) dateien.push(p);
+      if (extensions.some(x => e.name.endsWith(x))) files.push(p);
     }
   };
   collect(path.join(ROOT, 'public'), ['.js', '.html']);
   collect(path.join(ROOT, 'views'), ['.js', '.html', '.ejs']);
-  return dateien;
+  return files;
 }
 
 /**
@@ -111,7 +111,7 @@ const WITHOUT_CALLER = new Map([
 ]);
 
 test('every route has a caller or a registered reason', () => {
-  const routen = allRoutes();
+  const routes = allRoutes();
   const sources = clientSources();
   assert.ok(sources.length >= 20, `Only ${sources.length} client files found — paths outdated?`);
   const text = [
@@ -121,20 +121,20 @@ test('every route has a caller or a registered reason', () => {
     ...appAddresses(),
   ].join('\n');
 
-  assert.ok(routen.length >= 120, `Only ${routen.length} routes found — pattern outdated?`);
+  assert.ok(routes.length >= 120, `Only ${routes.length} routes found — pattern outdated?`);
 
-  const ohne = [];
+  const without = [];
   let withCaller = 0;
-  for (const [verb, path] of routen) {
+  for (const [verb, path] of routes) {
     // Search up to the first placeholder: the client assembles the rest.
-    const stamm = path.split('/:')[0].replace(/\/+$/, '');
-    if (!stamm) continue;
-    const shapes = [stamm, stamm.slice(1), stamm.slice('/api'.length)].filter(Boolean);
+    const stem = path.split('/:')[0].replace(/\/+$/, '');
+    if (!stem) continue;
+    const shapes = [stem, stem.slice(1), stem.slice('/api'.length)].filter(Boolean);
     if (shapes.some(f => text.includes(f))) {
       withCaller++;
       continue;
     }
-    ohne.push(`${verb} ${path}`);
+    without.push(`${verb} ${path}`);
   }
 
   // Self-proof: if the pattern found nothing at all, `ohne` would be the whole list
@@ -143,12 +143,12 @@ test('every route has a caller or a registered reason', () => {
   // having checked anything. Hence pin down both sides.
   assert.ok(withCaller >= 100, `Only ${withCaller} routes with a caller — does the search still find what it should?`);
   assert.ok(
-    ohne.length > 0,
+    without.length > 0,
     'Not a single route without a caller — that would be nice, but it is ' +
       'suspicious: the search then probably matches everything.',
   );
 
-  const unexplained = ohne.filter(r => !WITHOUT_CALLER.has(r)).sort();
+  const unexplained = without.filter(r => !WITHOUT_CALLER.has(r)).sort();
   assert.deepEqual(
     unexplained,
     [],
@@ -161,10 +161,10 @@ test('every route has a caller or a registered reason', () => {
 
   // A line that nobody needs anymore is a permission that nobody
   // checks — the same rule as in scripts/check-global-settings.js.
-  const veraltet = [...WITHOUT_CALLER.keys()].filter(r => !ohne.includes(r)).sort();
+  const stale = [...WITHOUT_CALLER.keys()].filter(r => !without.includes(r)).sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
-    `These entries no longer describe a route without a caller — either it was deleted or it now has a caller. Remove the line:\n  ${veraltet.join('\n  ')}`,
+    `These entries no longer describe a route without a caller — either it was deleted or it now has a caller. Remove the line:\n  ${stale.join('\n  ')}`,
   );
 });

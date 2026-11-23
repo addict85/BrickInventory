@@ -27,7 +27,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 // Since the split the dictionaries live in public/locales/{de,en}.js —
 // index.html only loads the active language, loadLang() fetches the rest.
@@ -88,7 +88,7 @@ test('no text stands untranslated in both languages', () => {
     'monitor.api.rebrickable',
     // PIN is PIN in both languages — a term, not a sentence.
     'vouchers.pin',
-    // The feedback of the balance query: “{nummer}: {betrag}" — a pure
+    // The feedback of the balance query: “{number}: {amount}" — a pure
     // frame of two placeholders without a word of its own. Nothing in it is
     // translated; the amount comes formatted from LEGO.
     'vouchers.balance_done',
@@ -110,8 +110,8 @@ test('no text stands untranslated in both languages', () => {
   const { de, en } = loadTranslations();
   assert.ok(Object.keys(en).length > 400, `Too few texts loaded (${Object.keys(en).length}) — helper broken?`);
 
-  const gleich = Object.keys(en).filter(k => k in de && de[k] === en[k]);
-  const untranslated = gleich.filter(k => !intendedEqual.has(k)).sort();
+  const same = Object.keys(en).filter(k => k in de && de[k] === en[k]);
+  const untranslated = same.filter(k => !intendedEqual.has(k)).sort();
   assert.deepEqual(
     untranslated,
     [],
@@ -121,11 +121,11 @@ test('no text stands untranslated in both languages', () => {
       '\nIf it really is the same in both languages, it belongs in `gewolltGleich`.',
   );
 
-  const veraltet = [...intendedEqual].filter(k => !gleich.includes(k)).sort();
+  const stale = [...intendedEqual].filter(k => !same.includes(k)).sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
-    `These entries in \`gewolltGleich\` are no longer correct: ${veraltet.join(', ')} — remove them.`,
+    `These entries in \`gewolltGleich\` are no longer correct: ${stale.join(', ')} — remove them.`,
   );
   checkTerms(de, en);
 });
@@ -185,7 +185,7 @@ test('the trash in the brick theme has a white background from the start, not on
   assert.match(
     fn,
     /\[data-theme="brick"\] \.sc \.delbtn\{\s*background:#fff;/,
-    'Der Ruhezustand muss bereits voll weiss hinterlegt sein',
+    'The resting state must already have a fully white background',
   );
 });
 
@@ -215,30 +215,30 @@ const COLORS = {
 };
 
 test('color names: displayed in German, stored and filtered in English', async () => {
-  for (const [language, sichtbar] of [
+  for (const [language, visible] of [
     ['de', 'Dunkelbläulichgrau'],
     ['en', GRAY],
   ]) {
     const { w, d } = await openUi(COLORS, { language });
     try {
-      await reiter(w, 'parts');
+      await switchTab(w, 'parts');
       assert.ok(
-        await warte(
+        await waitFor(
           () => d.querySelector('#ap-color-select option[data-name]') && d.querySelector('#parts-main .group-title'),
         ),
       );
       const option = d.querySelector('#ap-color-select option[data-name]');
       // data-name goes to the backend and to BrickLink on saving: English.
-      assert.deepEqual([option.textContent.trim(), option.dataset.name], [sichtbar, GRAY], language);
+      assert.deepEqual([option.textContent.trim(), option.dataset.name], [visible, GRAY], language);
       assert.equal(
         d.querySelector('#parts-main .group-title').textContent.trim(),
-        sichtbar,
+        visible,
         `${language}: group heading`,
       );
-      assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(sichtbar), `${language}: tile`);
+      assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(visible), `${language}: tile`);
       const filter = [...d.querySelectorAll('#parts-color option')].find(o => o.value === GRAY);
       assert.ok(filter, 'The filter value stays English');
-      assert.match(filter.textContent, new RegExp(`^${sichtbar} `), `${language}: Filterbeschriftung`);
+      assert.match(filter.textContent, new RegExp(`^${visible} `), `${language}: Filterbeschriftung`);
     } finally {
       w.close();
     }
@@ -265,10 +265,10 @@ test('the purchase price detail dialog loads the part image in full size via the
     },
   });
   try {
-    await reiter(w, 'parts');
-    assert.ok(await warte(() => d.querySelector('#manual-parts-list [data-click="openManDetail"]')));
+    await switchTab(w, 'parts');
+    assert.ok(await waitFor(() => d.querySelector('#manual-parts-list [data-click="openManDetail"]')));
     d.querySelector('#manual-parts-list [data-click="openManDetail"]').click();
-    assert.ok(await warte(() => d.getElementById('man-detail-img').getAttribute('src')));
+    assert.ok(await waitFor(() => d.getElementById('man-detail-img').getAttribute('src')));
     assert.equal(
       d.getElementById('man-detail-img').getAttribute('src'),
       `/api/v1/img-proxy?url=${encodeURIComponent(CDN)}`,

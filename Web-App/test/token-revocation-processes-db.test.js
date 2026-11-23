@@ -40,44 +40,44 @@ test('token revocation across all processes', { concurrency: 1 }, async t => {
     )
   ).id;
   // The „other process“: an own connection that deletes, notifies and listens along.
-  const anderer = new Client({ connectionString: process.env.DATABASE_URL });
-  await anderer.connect();
+  const otherOne = new Client({ connectionString: process.env.DATABASE_URL });
+  await otherOne.connect();
   t.after(async () => {
     await pgNotify.close();
-    await anderer.end().catch(() => {});
+    await otherOne.end().catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
   tokenCache.listenOnTokenRevocation();
   // Once the listen connection stands, it clears the store once; that must not
   // fall into the middle of the first case. An own listener reports when that is the case.
-  let bereit = false;
-  const fertig = () => {
-    bereit = true;
+  let ready = false;
+  const done = () => {
+    ready = true;
   };
-  pgNotify.listen('token_widerrufen', fertig);
-  for (let i = 0; i < 200 && !bereit; i++) await new Promise(r => setTimeout(r, 25));
-  pgNotify.unlisten('token_widerrufen', fertig);
-  assert.ok(bereit, 'the listen connection did not come about');
+  pgNotify.listen('token_widerrufen', done);
+  for (let i = 0; i < 200 && !ready; i++) await new Promise(r => setTimeout(r, 25));
+  pgNotify.unlisten('token_widerrufen', done);
+  assert.ok(ready, 'the listen connection did not come about');
 
   await t.test('a revocation from another process applies immediately', async () => {
     const token = await auth.createToken(uid, 'Probe', true);
     assert.ok((await auth.checkToken(token)).user, 'precondition: the token is valid');
-    await anderer.query('DELETE FROM api_tokens WHERE token = $1', [auth.tokenDigest(token)]);
+    await otherOne.query('DELETE FROM api_tokens WHERE token = $1', [auth.tokenDigest(token)]);
     assert.ok((await auth.checkToken(token)).user, 'precondition: the cache still holds it');
-    let gilt = true;
-    for (let i = 0; i < 40 && gilt; i++) {
-      await anderer.query("SELECT pg_notify('token_widerrufen', '')");
+    let applies = true;
+    for (let i = 0; i < 40 && applies; i++) {
+      await otherOne.query("SELECT pg_notify('token_widerrufen', '')");
       await new Promise(r => setTimeout(r, 50));
-      gilt = !!(await auth.checkToken(token)).user;
+      applies = !!(await auth.checkToken(token)).user;
     }
-    assert.equal(gilt, false, 'the revoked token stays valid in the cache');
+    assert.equal(applies, false, 'the revoked token stays valid in the cache');
   });
 
   await t.test('a revocation here notifies the others', async () => {
     const belongsTo = [];
-    anderer.on('notification', m => belongsTo.push(m.channel));
-    await anderer.query('LISTEN token_widerrufen');
+    otherOne.on('notification', m => belongsTo.push(m.channel));
+    await otherOne.query('LISTEN token_widerrufen');
     await auth.revokeAllTokens(uid);
     for (let i = 0; i < 40 && !belongsTo.length; i++) await new Promise(r => setTimeout(r, 25));
     assert.deepEqual(belongsTo.slice(0, 1), ['token_widerrufen']);

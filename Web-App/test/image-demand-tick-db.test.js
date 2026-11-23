@@ -15,7 +15,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testServices, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 
 test('a web worker writes its image notes away on its own', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
@@ -32,6 +32,6 @@ test('a web worker writes its image notes away on its own', { concurrency: 1 }, 
   testServices().images.rememberUsed(`https://cdn.rebrickable.com/media/sets/${SN}.jpg`, SN);
   t.mock.timers.tick(10_000);
   const count = async () => (await db.get('SELECT COUNT(*)::int AS n FROM image_wanted WHERE set_number = $1', [SN])).n;
-  await bis(async () => (await count()) > 0, 3000);
+  await until(async () => (await count()) > 0, 3000);
   assert.equal(await count(), 1);
 });

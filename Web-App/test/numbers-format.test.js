@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const response = currency => ({
   '/v2/settings/raw': { success: true, settings: { currency: currency, language: 'de', rebrickable_api_key: 'probe' } },
@@ -42,8 +42,8 @@ const response = currency => ({
 async function entryPrice(browserLanguage, currency = 'EUR') {
   const o = await openUi(response(currency), { browserLanguage });
   try {
-    await reiter(o.w, 'finance');
-    await warte(() => o.d.getElementById('fin-cost-basis').textContent.includes('1'));
+    await switchTab(o.w, 'finance');
+    await waitFor(() => o.d.getElementById('fin-cost-basis').textContent.includes('1'));
     return o.d.getElementById('fin-cost-basis').textContent.replace(/ /g, ' ');
   } finally {
     o.w.close();

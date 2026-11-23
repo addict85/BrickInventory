@@ -16,35 +16,35 @@ const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
 test('key banner on the phone', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await startApp(t, { name: `rbband_${process.pid}`, telefon: true });
+  const app = await startApp(t, { name: `rbband_${process.pid}`, phone: true });
   if (app.reason) {
     t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
-  await ruhig();
-  await bis(`document.getElementById('rb-hint') && !document.getElementById('rb-hint').hidden`, 'Band');
+  const { b, until, settle } = app;
+  await settle();
+  await until(`document.getElementById('rb-hint') && !document.getElementById('rb-hint').hidden`, 'Band');
 
   await t.test('banner is slim', async () => {
-    for (const breite of [390, 320]) {
+    for (const width of [390, 320]) {
       await b.tab('Emulation.setDeviceMetricsOverride', {
-        width: breite,
+        width: width,
         height: 844,
         deviceScaleFactor: 2,
         mobile: true,
       });
-      await ruhig();
-      const h = await b.auswerten(`Math.round(document.getElementById('rb-hint').getBoundingClientRect().height)`);
-      assert.ok(h <= 56, `band at ${breite} px is ${h} px high`);
-      const overflow = await b.auswerten(`document.documentElement.scrollWidth > innerWidth`);
-      assert.equal(overflow, false, `band pushes the page wider at ${breite} px`);
+      await settle();
+      const h = await b.evaluate(`Math.round(document.getElementById('rb-hint').getBoundingClientRect().height)`);
+      assert.ok(h <= 56, `band at ${width} px is ${h} px high`);
+      const overflow = await b.evaluate(`document.documentElement.scrollWidth > innerWidth`);
+      assert.equal(overflow, false, `band pushes the page wider at ${width} px`);
     }
   });
 
   await t.test('button keeps its name', async () => {
-    const m = await b.auswerten(`(() => { const k = document.querySelector('#rb-hint [data-click="openRbHint"]');
-      return { name: k.getAttribute('aria-label'), sichtbar: [...k.querySelectorAll('span')].filter(s => s.checkVisibility()).map(s => s.textContent.trim()) }; })()`);
+    const m = await b.evaluate(`(() => { const k = document.querySelector('#rb-hint [data-click="openRbHint"]');
+      return { name: k.getAttribute('aria-label'), visible: [...k.querySelectorAll('span')].filter(s => s.checkVisibility()).map(s => s.textContent.trim()) }; })()`);
     assert.equal(m.name, 'Schlüssel eintragen');
-    assert.deepEqual(m.sichtbar, ['Eintragen']);
+    assert.deepEqual(m.visible, ['Eintragen']);
   });
 });

@@ -31,36 +31,36 @@ const DUMP = path.join(tmp, 'db.sql.gz');
 fs.writeFileSync(DUMP, zlib.gzipSync('SELECT 1;\n--\n-- PostgreSQL database dump complete\n--\n'));
 
 /** Build an archive from a working folder; `bauen(ordner)` creates the content. */
-function archive(name, bauen, tarArgs = ['data']) {
-  const ordner = path.join(tmp, `quelle-${name}`);
-  fs.mkdirSync(path.join(ordner, 'data'), { recursive: true });
-  fs.writeFileSync(path.join(ordner, 'data', 'bild.jpg'), 'x');
-  bauen(ordner);
-  const ziel = path.join(tmp, `${name}.tar.gz`);
-  execFileSync('tar', ['czf', ziel, '-C', ordner, ...tarArgs]);
-  return ziel;
+function archive(name, build, tarArgs = ['data']) {
+  const dir = path.join(tmp, `quelle-${name}`);
+  fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'data', 'bild.jpg'), 'x');
+  build(dir);
+  const target = path.join(tmp, `${name}.tar.gz`);
+  execFileSync('tar', ['czf', target, '-C', dir, ...tarArgs]);
+  return target;
 }
 
 /** restore.sh in the empty folder, input „nein": it never gets further than the prompt. */
 function restore(tar) {
-  const lauf = path.join(tmp, `lauf-${path.basename(tar)}`);
-  fs.mkdirSync(lauf, { recursive: true });
+  const run = path.join(tmp, `lauf-${path.basename(tar)}`);
+  fs.mkdirSync(run, { recursive: true });
   const r = spawnSync('sh', [RESTORE, DUMP, tar], {
-    cwd: lauf,
+    cwd: run,
     input: 'nein\n',
     encoding: 'utf8',
     env: { ...process.env, PATH: '/usr/bin:/bin' },
   });
-  return { status: r.status, aus: r.stdout + r.stderr };
+  return { status: r.status, out: r.stdout + r.stderr };
 }
 
 test('a good archive gets as far as the confirmation prompt', () => {
   const r = restore(archive('gut', o => fs.mkdirSync(path.join(o, 'data', 'anleitungen'))));
-  assert.match(r.aus, /Archiv geprüft/, r.aus);
-  assert.match(r.aus, /Abgebrochen/, r.aus);
+  assert.match(r.out, /Archiv geprüft/, r.out);
+  assert.match(r.out, /Abgebrochen/, r.out);
 });
 
-const BOESE = {
+const EVIL = {
   'Verknüpfung nach aussen': () => archive('link', o => fs.symlinkSync('/etc', path.join(o, 'data', 'aussen'))),
   'harter Link': () =>
     archive('hart', o => fs.linkSync(path.join(o, 'data', 'bild.jpg'), path.join(o, 'data', 'zwilling.jpg'))),
@@ -82,28 +82,28 @@ const BOESE = {
 // Counter-check (measured 02.11.2026): one of the two calls of db-rolle
 // removed → red. (11.11.2026) the run of migration removed → red.
 test('after restoring db-rolle adjusts the roles, migration runs, then app and jobs start', () => {
-  const lauf = path.join(tmp, 'lauf-rolle');
-  fs.mkdirSync(path.join(lauf, 'schluessel'), { recursive: true });
-  fs.writeFileSync(path.join(lauf, 'schluessel', 'datenschluessel'), 'k');
+  const run = path.join(tmp, 'lauf-rolle');
+  fs.mkdirSync(path.join(run, 'schluessel'), { recursive: true });
+  fs.writeFileSync(path.join(run, 'schluessel', 'datenschluessel'), 'k');
   const bin = path.join(tmp, 'bin-rolle');
   fs.mkdirSync(bin);
-  const protokoll = path.join(tmp, 'docker.log');
-  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "$*" >> '${protokoll}'\ncat > /dev/null\n`, {
+  const log = path.join(tmp, 'docker.log');
+  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "$*" >> '${log}'\ncat > /dev/null\n`, {
     mode: 0o755,
   });
   const r = spawnSync('sh', [RESTORE, DUMP], {
-    cwd: lauf,
+    cwd: run,
     input: 'ja\n',
     encoding: 'utf8',
     env: { ...process.env, PATH: `${bin}:/usr/bin:/bin` },
   });
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  const aufrufe = fs
-    .readFileSync(protokoll, 'utf8')
+  const calls = fs
+    .readFileSync(log, 'utf8')
     .trim()
     .split('\n')
     .map(z => z.split(' ').slice(0, 4).join(' '));
-  assert.deepEqual(aufrufe, [
+  assert.deepEqual(calls, [
     'compose run --rm db-rolle',
     'compose exec -T postgres',
     'compose run --rm db-rolle',
@@ -112,16 +112,16 @@ test('after restoring db-rolle adjusts the roles, migration runs, then app and j
   ]);
 });
 
-for (const [fall, bauen] of Object.entries(BOESE)) {
+for (const [fall, build] of Object.entries(EVIL)) {
   test(`rejected: ${fall}`, () => {
-    const tar = bauen();
+    const tar = build();
     const r = restore(tar);
     assert.notEqual(r.status, 0);
     assert.match(
-      r.aus,
+      r.out,
       /FEHLER: .*Abbruch, nichts verändert/,
-      `${fall}: erreicht die Rückfrage nicht — Ausgabe: ${r.aus}`,
+      `${fall}: does not reach the confirmation prompt — output: ${r.out}`,
     );
-    assert.doesNotMatch(r.aus, /Fortfahren\?/, `${fall}: does not reach the confirmation prompt`);
+    assert.doesNotMatch(r.out, /Fortfahren\?/, `${fall}: does not reach the confirmation prompt`);
   });
 }

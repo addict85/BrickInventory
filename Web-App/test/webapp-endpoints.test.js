@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare, routerMounts, pathForm, readLiteral } = require('./helpers/sources');
+const { withoutComments, routerMounts, pathForm, readLiteral } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
@@ -26,52 +26,52 @@ function form(p) {
 /**
  * Resolve template expressions, then cut off the query part.
  */
-function pathFormV1(roh) {
-  return form(pathForm(roh));
+function pathFormV1(raw) {
+  return form(pathForm(raw));
 }
 
 function serverRoutes() {
-  const alle = new Set();
-  const collect = (datei, mount) => {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  const all = new Set();
+  const collect = (file, mount) => {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const m of require('./helpers/sources').routesFromSource(src, mount))
-      alle.add(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
+      all.add(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
   };
   // Mount points READ from server.ts instead of copied: a
   // copied list silently goes stale. See routerEinhaengungen().
-  for (const r of routerMounts()) collect(r.datei, r.mount);
+  for (const r of routerMounts()) collect(r.file, r.mount);
   const v1 = path.join(ROOT, 'routes/api');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     collect(path.join(v1, f), '/api/v2');
   }
   // And the three that hang directly in server.ts.
-  const srv = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+  const srv = withoutComments(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   for (const m of srv.matchAll(/app\.(get|post|put|delete)\(\s*'(\/api\/[^']+)'/g))
-    alle.add(`${m[1].toUpperCase()} ${form(m[2])}`);
-  return alle;
+    all.add(`${m[1].toUpperCase()} ${form(m[2])}`);
+  return all;
 }
 
 /** All calls of the web app: api('VERB', pfad) and fetch(pfad, { method }). */
 function webCalls() {
   const out = [];
-  for (const datei of fs.readdirSync(JS)) {
-    if (!datei.endsWith('.js') || datei === 'app.bundle.js') continue;
-    const src = ohneKommentare(fs.readFileSync(path.join(JS, datei), 'utf8'));
+  for (const file of fs.readdirSync(JS)) {
+    if (!file.endsWith('.js') || file === 'app.bundle.js') continue;
+    const src = withoutComments(fs.readFileSync(path.join(JS, file), 'utf8'));
     const rowOf = i => src.slice(0, i).split('\n').length;
 
     for (const m of src.matchAll(/\bapi(?:Roh|Raw)?\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
       const lit = readLiteral(src, m.index + m[0].length);
       if (!lit?.text.startsWith('/')) continue;
-      out.push({ datei, row: rowOf(m.index), verb: m[1], path: pathFormV1('/api' + lit.text) });
+      out.push({ file, row: rowOf(m.index), verb: m[1], path: pathFormV1('/api' + lit.text) });
     }
     for (const m of src.matchAll(/fetch\(\s*/g)) {
       const lit = readLiteral(src, m.index + m[0].length);
       if (!lit?.text.startsWith('/api/')) continue;
       // The method is in the second argument; without it, it is GET.
-      const rest = src.slice(lit.ende, lit.ende + 300);
+      const rest = src.slice(lit.end, lit.end + 300);
       const verb = (rest.match(/method\s*:\s*['"`](\w+)['"`]/)?.[1] ?? 'GET').toUpperCase();
-      out.push({ datei, row: rowOf(m.index), verb, path: pathFormV1(lit.text) });
+      out.push({ file, row: rowOf(m.index), verb, path: pathFormV1(lit.text) });
     }
   }
   return out;
@@ -79,16 +79,16 @@ function webCalls() {
 
 test('every address of the web app exists on the server', () => {
   const server = serverRoutes();
-  const aufrufe = webCalls();
+  const calls = webCalls();
 
   // Self-proof in both directions: if one of the patterns finds nothing, the
   // error list would be empty and the test green without having checked anything.
   assert.ok(server.size >= 120, `Only ${server.size} server routes found — pattern outdated?`);
-  assert.ok(aufrufe.length >= 100, `Only ${aufrufe.length} web app calls found — pattern outdated?`);
+  assert.ok(calls.length >= 100, `Only ${calls.length} web app calls found — pattern outdated?`);
 
   const absent = [
     ...new Set(
-      aufrufe.filter(a => !server.has(`${a.verb} ${a.path}`)).map(a => `${a.datei}:${a.row}  ${a.verb} ${a.path}`),
+      calls.filter(a => !server.has(`${a.verb} ${a.path}`)).map(a => `${a.file}:${a.row}  ${a.verb} ${a.path}`),
     ),
   ].sort();
 
@@ -125,7 +125,7 @@ const EVERYTHING_DELETE =
   'Telefon gibt es den Knopf absichtlich nicht — ein Fehlgriff dort träfe die ' +
   'ganze Sammlung; einzelne Elemente löscht die App wie bisher.';
 
-const NUR_WEB = new Map([
+const WEB_ONLY = new Map([
   [
     '/api/v2/auth/cancel-takeover',
     'Der Link steht in einer Mail und öffnet die Webseite; die App hat dafür keinen eigenen Weg nötig.',
@@ -327,9 +327,9 @@ test('what only the web app can do has a reason', () => {
   // MEASURED, there are 68.
   assert.ok(webPaths.size >= 50, `Only ${webPaths.size} web app addresses — pattern outdated?`);
 
-  const nurWeb = [...webPaths].filter(p => !appPaths.has(p)).sort();
+  const webOnly = [...webPaths].filter(p => !appPaths.has(p)).sort();
 
-  const unjustified = nurWeb.filter(p => !NUR_WEB.has(p));
+  const unjustified = webOnly.filter(p => !WEB_ONLY.has(p));
   assert.deepEqual(
     unjustified,
     [],
@@ -344,12 +344,12 @@ test('what only the web app can do has a reason', () => {
   // that no longer describes anything looks like a decision and is merely
   // a guess. If the app catches up with one of these addresses, the entry
   // must become ROUTE — otherwise it silently covers the next gap as well.
-  const veraltet = [...NUR_WEB.keys()].filter(p => !nurWeb.includes(p)).sort();
+  const stale = [...WEB_ONLY.keys()].filter(p => !webOnly.includes(p)).sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
     'These entries in NUR_WEB no longer describe anything:\n  ' +
-      veraltet.join('\n  ') +
+      stale.join('\n  ') +
       '\nEither the app now calls the address too (then remove the ' +
       'entry), or the web app no longer calls it (then likewise).',
   );

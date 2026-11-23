@@ -14,7 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const STYLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
 const withStyle = w =>
@@ -23,26 +23,26 @@ const withStyle = w =>
     s.textContent = STYLE;
     w.document.head.append(s);
   });
-const MERK = {
+const WISH = {
   success: true,
   item: [{ id: 1, set_number: '10497-1', name: 'Galaxie-Forscher', condition: 'N', quantity: 1 }],
 };
 
-function netz(w, an) {
+function net(w, an) {
   Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => an });
   w.dispatchEvent(new w.Event(an ? 'online' : 'offline'));
 }
 
 test('wishlist: last state instead of an error, even after reloading the page', async () => {
   // First visit with network; the second (as after F5) without, with the storage of this tab.
-  const erst = await openUi({ '/v2/wanted': MERK });
-  await reiter(erst.w, 'wanted');
-  await warte(() => erst.d.querySelector('#mk-list .mk-row'));
-  const speicher = Object.fromEntries(
+  const erst = await openUi({ '/v2/wanted': WISH });
+  await switchTab(erst.w, 'wanted');
+  await waitFor(() => erst.d.querySelector('#mk-list .mk-row'));
+  const storage = Object.fromEntries(
     Object.keys(erst.w.sessionStorage).map(k => [k, erst.w.sessionStorage.getItem(k)]),
   );
   erst.w.close();
-  const { w, d, ruhig } = await openUi(
+  const { w, d, settle } = await openUi(
     {
       '/v2/wanted': () => {
         throw new TypeError('Failed to fetch');
@@ -50,14 +50,14 @@ test('wishlist: last state instead of an error, even after reloading the page', 
     },
     {
       before: w2 => {
-        for (const [k, v] of Object.entries(speicher)) w2.sessionStorage.setItem(k, v);
+        for (const [k, v] of Object.entries(storage)) w2.sessionStorage.setItem(k, v);
       },
     },
   );
   try {
-    netz(w, false);
-    await reiter(w, 'wanted');
-    await ruhig();
+    net(w, false);
+    await switchTab(w, 'wanted');
+    await settle();
     assert.equal(d.querySelector('#mk-list .error-state'), null, 'wanted list: last state');
     assert.match(d.getElementById('mk-list').textContent, /Galaxie-Forscher/);
     assert.match(d.getElementById('offline-band').textContent, /^Keine Verbindung/);
@@ -72,15 +72,15 @@ test('never loaded: "no connection", try again stays operable and loads by itsel
     {
       '/v2/wanted': () => {
         if (offline) throw new TypeError('Failed to fetch');
-        return MERK;
+        return WISH;
       },
     },
     { before: withStyle },
   );
   try {
-    netz(w, false);
-    await reiter(w, 'wanted');
-    await warte(() => d.querySelector('#mk-list .error-state'));
+    net(w, false);
+    await switchTab(w, 'wanted');
+    await waitFor(() => d.querySelector('#mk-list .error-state'));
     const box = d.querySelector('#mk-list .error-state');
     await t.test('Text', () => assert.match(box.textContent, /Keine Verbindung zum Server/));
     await t.test('try again stays operable', () =>
@@ -92,8 +92,8 @@ test('never loaded: "no connection", try again stays operable and loads by itsel
       assert.equal(w.getComputedStyle(label).pointerEvents, 'none');
     });
     offline = false;
-    netz(w, true);
-    await warte(() => d.querySelector('#mk-list .mk-row'));
+    net(w, true);
+    await waitFor(() => d.querySelector('#mk-list .mk-row'));
     await t.test('loads by itself', () => assert.ok(d.querySelector('#mk-list .mk-row')));
   } finally {
     w.close();

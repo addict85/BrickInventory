@@ -34,12 +34,12 @@ test('the follow-up run creates missing previews — also for set images', { con
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
-  const ordner = path.join(DATA_DIR, 'images', 'sets');
-  fs.mkdirSync(ordner, { recursive: true });
+  const folder = path.join(DATA_DIR, 'images', 'sets');
+  fs.mkdirSync(folder, { recursive: true });
 
   const name = `zz-redl-${process.pid}`;
-  const original = path.join(ordner, `${name}.jpg`);
-  const preview = path.join(ordner, `${name}_thumb.jpg`);
+  const original = path.join(folder, `${name}.jpg`);
+  const preview = path.join(folder, `${name}_thumb.jpg`);
   await new Jimp({ width: 600, height: 400, color: 0x00ff00ff }).write(original);
   fs.rmSync(preview, { force: true });
 

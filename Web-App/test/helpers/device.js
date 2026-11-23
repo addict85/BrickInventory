@@ -18,30 +18,30 @@ const signIt = (privateKey, text) =>
 
 /**
  * Fetch nonce, build a chain with it as challenge, store it. [o] goes to attestation.kette().
- * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} callFn  calls /api/v1 + weg
+ * @param {(route: string, opt: object) => Promise<{status: number, body: any}>} callFn  calls /api/v1 + weg
  * @param {string} token
  */
 async function deposit(callFn, token, o = {}) {
   const n = await callFn('/device/key/nonce', { method: 'POST', token, body: {} });
-  if (n.status !== 200) return { response: n, schluessel: null };
+  if (n.status !== 200) return { response: n, key: null };
   const k = attestation.chain({ challenge: Buffer.from(n.body.nonce, 'base64url'), ...o });
   const response = await callFn('/device/key', { method: 'POST', token, body: { chain: k.chain } });
-  return { response, schluessel: { privateKey: k.privateKey, public_key: k.public_key }, nonce: n.body.nonce };
+  return { response, key: { privateKey: k.privateKey, public_key: k.public_key }, nonce: n.body.nonce };
 }
 
 /**
- * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} callFn  calls /api/v1 + weg
+ * @param {(route: string, opt: object) => Promise<{status: number, body: any}>} callFn  calls /api/v1 + weg
  * @param {string} token
  * @param {string} action
- * @param {{ privateKey: import('node:crypto').KeyObject }} [schluessel]  if missing, one is created and stored
+ * @param {{ privateKey: import('node:crypto').KeyObject }} [key]  if missing, one is created and stored
  */
-async function releaseDevice(callFn, token, action, schluessel) {
-  let s = schluessel;
+async function releaseDevice(callFn, token, action, key) {
+  let s = key;
   if (!s) {
     const h = await deposit(callFn, token);
     const r = h.response;
-    if (r.status !== 200 || !h.schluessel) throw new Error(`Key not stored: ${r.status} ${JSON.stringify(r.body)}`);
-    s = h.schluessel;
+    if (r.status !== 200 || !h.key) throw new Error(`Key not stored: ${r.status} ${JSON.stringify(r.body)}`);
+    s = h.key;
   }
   const c = await callFn('/device/step/challenge', { method: 'POST', token, body: { action } });
   if (c.status !== 200) throw new Error(`no challenge: ${c.status} ${JSON.stringify(c.body)}`);

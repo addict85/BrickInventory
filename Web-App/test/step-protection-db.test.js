@@ -55,7 +55,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const auth = _req('src/account/deviceToken.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const { adminWithFactor } = require('./helpers/admin');
 const { deviceKeys, signIt, releaseDevice, deposit } = require('./helpers/device');
 const attestation = require('./helpers/attestation');
@@ -75,7 +75,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     CHEF = `schrittchef_${process.pid}`,
     PASS = 'Schritt-Schutz-7x';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, CHEF]]);
-  const anlegen = async (name, admin) =>
+  const create = async (name, admin) =>
     (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
@@ -83,8 +83,8 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
         [name, `${name}@example.org`, bcrypt.hashSync(PASS, 4), admin],
       )
     ).id;
-  const uid = await anlegen(NAME, false),
-    chefId = await anlegen(CHEF, true);
+  const uid = await create(NAME, false),
+    chefId = await create(CHEF, true);
   const codes = await adminWithFactor(_req, chefId);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, chefId]]);
@@ -103,7 +103,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       TRUST_PROXY: 'false',
       ROLE: 'web',
       APP_BASE_URL: `http://127.0.0.1:${port}`,
-      ...attestation.UMGEBUNG,
+      ...attestation.ENVIRONMENT,
     },
   });
   let log = '';
@@ -115,14 +115,14 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    await bis(() => srv.exitCode !== null || srv.signalCode !== null, 4000);
+    await until(() => srv.exitCode !== null || srv.signalCode !== null, 4000);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
-  await bis(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) !== null, 60_000);
+  await until(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) !== null, 60_000);
 
-  const callFn = async (weg, o = {}) => {
-    const r = await fetch(basis + '/api/v2' + weg, {
+  const callFn = async (route, o = {}) => {
+    const r = await fetch(basis + '/api/v2' + route, {
       method: o.method || 'GET',
       headers: {
         'content-type': 'application/json',
@@ -131,9 +131,9 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       },
       ...(o.body ? { body: JSON.stringify(o.body) } : {}),
     });
-    return { status: r.status, kopf: r.headers, body: await r.json().catch(() => null) };
+    return { status: r.status, head: r.headers, body: await r.json().catch(() => null) };
   };
-  const anmelden = async (name, extra = {}) => {
+  const signIn = async (name, extra = {}) => {
     const a = await callFn('/auth/login', {
       method: 'POST',
       body: { username: name, password: PASS, never_expires: true, ...extra },
@@ -141,19 +141,19 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     assert.equal(a.status, 200, `${JSON.stringify(a.body)}\n${log}`);
     return a;
   };
-  const token = (await anmelden(NAME)).body.token;
-  const neu = await callFn('/vouchers', {
+  const token = (await signIn(NAME)).body.token;
+  const fresh = await callFn('/vouchers', {
     method: 'POST',
     token,
     body: { number: '6006491234567890', pin: '4321', amount: 25, currency: 'CHF' },
   });
-  assert.equal(neu.status, 200, JSON.stringify(neu.body));
-  const gid = neu.body.voucher?.id ?? (await db.get('SELECT id FROM vouchers WHERE user_id = $1', [uid])).id;
-  const klartext = o => callFn(`/vouchers/${gid}/plaintext`, { method: 'POST', body: { password: PASS }, ...o });
+  assert.equal(fresh.status, 200, JSON.stringify(fresh.body));
+  const gid = fresh.body.voucher?.id ?? (await db.get('SELECT id FROM vouchers WHERE user_id = $1', [uid])).id;
+  const plaintext = o => callFn(`/vouchers/${gid}/plaintext`, { method: 'POST', body: { password: PASS }, ...o });
   let device;
 
   await t.test('without a device key an app token does not get to the PIN', async () => {
-    const r = await klartext({ token });
+    const r = await plaintext({ token });
     assert.deepEqual([r.status, r.body.code], [403, 'device_key_missing']);
     const c = await callFn('/device/step/challenge', { method: 'POST', token, body: { action: 'voucher' } });
     assert.deepEqual([c.status, c.body.code], [403, 'device_key_missing']);
@@ -163,7 +163,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     'even written differently an app token without approval does not get to PIN, deletion or codes',
     async () => {
       const open = [];
-      for (const [method, weg] of [
+      for (const [method, route] of [
         ['POST', `/vouchers/${gid}/plaintext`],
         ['POST', `/vouchers/${gid}/pdf-grant`],
         ['POST', '/vouchers/export/pdf-grant'],
@@ -171,10 +171,10 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
         ['POST', '/auth/second-factor/codes'],
         ['POST', '/auth/second-factor/setup'],
       ]) {
-        const genau = await callFn(weg, { method, token, body: { password: PASS, code: '123456' } });
-        assert.deepEqual([genau.status, genau.body.code], [403, 'device_key_missing'], `${method} ${weg}`);
-        const gross = weg.replace(/[a-z-]+$/, x => x.toUpperCase());
-        for (const anders of [`${weg}/`, `${weg}//`, `${weg}%2F`, gross]) {
+        const exact = await callFn(route, { method, token, body: { password: PASS, code: '123456' } });
+        assert.deepEqual([exact.status, exact.body.code], [403, 'device_key_missing'], `${method} ${route}`);
+        const gross = route.replace(/[a-z-]+$/, x => x.toUpperCase());
+        for (const anders of [`${route}/`, `${route}//`, `${route}%2F`, gross]) {
           const r = await callFn(anders, { method, token, body: { password: PASS, code: '123456' } });
           if (r.status < 400 || ![403, 404, 400].includes(r.status)) open.push(`${method} ${anders} → ${r.status}`);
         }
@@ -185,29 +185,29 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
   );
 
   await t.test('without a fresh revocation list or with a revoked chain the server accepts no key', async () => {
-    const versuch = async reason => {
-      const h = await deposit(callFn, (await anmelden(NAME)).body.token);
+    const attempt = async reason => {
+      const h = await deposit(callFn, (await signIn(NAME)).body.token);
       assert.deepEqual([h.response.status, h.response.body.code], [400, 'device_key_attestation'], reason);
-      await bis(() => log.includes(`abgewiesen: ${reason}`), 5000);
+      await until(() => log.includes(`abgewiesen: ${reason}`), 5000);
       assert.match(log, new RegExp(`abgewiesen: ${reason}`));
       log = '';
     };
     await db.run("DELETE FROM run_state WHERE key = 'attestation_widerruf'");
-    await versuch('widerrufsliste_fehlt');
+    await attempt('widerrufsliste_fehlt');
     await attestation.storeRevocationList(db, [], new Date(Date.now() - 8 * 86_400_000));
-    await versuch('widerrufsliste_fehlt');
-    const wurzel = new X509Certificate(attestation.WURZEL.der);
-    await attestation.storeRevocationList(db, ['1', wurzel.serialNumber.toLowerCase().replace(/^0+/, '')]);
-    await versuch('widerrufen');
+    await attempt('widerrufsliste_fehlt');
+    const root = new X509Certificate(attestation.ROOT_CERT.certBytes);
+    await attestation.storeRevocationList(db, ['1', root.serialNumber.toLowerCase().replace(/^0+/, '')]);
+    await attempt('widerrufen');
     await attestation.storeRevocationList(db, ['1']);
   });
 
   await t.test('the key applies once per access; another one is not pushed in later', async () => {
     const h = await deposit(callFn, token);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
-    device = h.schluessel;
-    const anderer = await deposit(callFn, token);
-    assert.deepEqual([anderer.response.status, anderer.response.body.code], [409, 'device_key_exists']);
+    device = h.key;
+    const otherOne = await deposit(callFn, token);
+    assert.deepEqual([otherOne.response.status, otherOne.response.body.code], [409, 'device_key_exists']);
     const withoutChain = await callFn('/device/key', {
       method: 'POST',
       token,
@@ -221,27 +221,27 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
   });
 
   await t.test('a chain with a foreign or used challenge, from software or a foreign root is rejected', async () => {
-    const neu = (await anmelden(NAME)).body.token;
-    const sendIt = chain => callFn('/device/key', { method: 'POST', token: neu, body: { chain } });
+    const fresh = (await signIn(NAME)).body.token;
+    const sendIt = chain => callFn('/device/key', { method: 'POST', token: fresh, body: { chain } });
     const foreignChallenge = attestation.chain({ challenge: Buffer.alloc(32, 1) });
     assert.deepEqual([(await sendIt(foreignChallenge.chain)).body.code], ['device_key_attestation']);
-    for (const o of [{ confidence: 0 }, { wurzel: attestation.newRoot('Fremd') }, { paket: 'com.boese.app' }]) {
-      const n = (await callFn('/device/key/nonce', { method: 'POST', token: neu, body: {} })).body.nonce;
+    for (const o of [{ confidence: 0 }, { root: attestation.newRoot('Fremd') }, { pkg: 'com.boese.app' }]) {
+      const n = (await callFn('/device/key/nonce', { method: 'POST', token: fresh, body: {} })).body.nonce;
       const r = await sendIt(attestation.chain({ challenge: Buffer.from(n, 'base64url'), ...o }).chain);
       assert.deepEqual([r.status, r.body.code], [400, 'device_key_attestation'], JSON.stringify(o));
     }
-    const ok = await deposit(callFn, neu);
+    const ok = await deposit(callFn, fresh);
     assert.equal(ok.response.status, 200, JSON.stringify(ok.response.body));
-    const zweimal = await callFn('/device/key', {
+    const twice = await callFn('/device/key', {
       method: 'POST',
-      token: (await anmelden(NAME)).body.token,
+      token: (await signIn(NAME)).body.token,
       body: { chain: attestation.chain({ challenge: Buffer.from(ok.nonce, 'base64url') }).chain },
     });
-    assert.equal(zweimal.body.code, 'device_key_attestation', 'The nonce is valid once and only for its family');
+    assert.equal(twice.body.code, 'device_key_attestation', 'The nonce is valid once and only for its family');
   });
 
   await t.test('a key without attestation applies until the cutoff date and gives way to an attested one', async () => {
-    const alt = (await anmelden(NAME)).body.token;
+    const alt = (await signIn(NAME)).body.token;
     const z = await db.get(
       `SELECT user_id AS uid, date_trunc('milliseconds', created_at) AS since FROM api_tokens
       WHERE token = $1`,
@@ -254,23 +254,23 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       deviceKeys().public_key,
     ]);
     assert.equal(
-      (await klartext({ token: alt })).body.code,
+      (await plaintext({ token: alt })).body.code,
       'step_approval_required',
       'before the cut-off date it is valid',
     );
     assert.equal(await repo.keyThe(f, new Date(Date.now() - 1000)), null, 'after the cut-off date no longer');
     const h = await deposit(callFn, alt);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
-    assert.deepEqual(await repo.entryThe(f), { public_key: h.schluessel.public_key, attested: true });
-    assert.equal(await repo.keyThe(f, new Date(0)), h.schluessel.public_key);
+    assert.deepEqual(await repo.entryThe(f), { public_key: h.key.public_key, attested: true });
+    assert.equal(await repo.keyThe(f, new Date(0)), h.key.public_key);
   });
 
   await t.test('an access from QR pairing only stores with the nonce of its collection', async () => {
-    const sitzung = (await anmelden(NAME, { without_token: true })).kopf.get('set-cookie').split(';')[0];
-    const qr = await callFn('/auth/qr-token', { method: 'POST', cookie: sitzung, body: { password: PASS } });
+    const session = (await signIn(NAME, { without_token: true })).head.get('set-cookie').split(';')[0];
+    const qr = await callFn('/auth/qr-token', { method: 'POST', cookie: session, body: { password: PASS } });
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
-    const post = (p, body, kopf) => callFn('/auth' + p, { method: 'POST', body, cookie: kopf.cookie });
-    const a = await pairQr(post, qr.body, { cookie: sitzung });
+    const post = (p, body, head) => callFn('/auth' + p, { method: 'POST', body, cookie: head.cookie });
+    const a = await pairQr(post, qr.body, { cookie: session });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.match(a.body.key_nonce, /^[\w-]{43}$/);
     for (let i = 0; i < 2; i++) {
@@ -282,7 +282,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
   });
 
   await t.test('with a key but without approval: still closed', async () => {
-    const r = await klartext({ token });
+    const r = await plaintext({ token });
     assert.deepEqual([r.status, r.body.code], [403, 'step_approval_required']);
   });
 
@@ -295,13 +295,13 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       body: { challenge: c.body.challenge, signature: signIt(deviceKeys().privateKey, c.body.message) },
     });
     assert.deepEqual([fremd.status, fremd.body.code], [400, 'step_signature_invalid']);
-    const spaeter = await callFn('/device/step/approval', {
+    const subsequent = await callFn('/device/step/approval', {
       method: 'POST',
       token,
       body: { challenge: c.body.challenge, signature: signIt(device.privateKey, c.body.message) },
     });
-    assert.equal(spaeter.status, 400, 'A challenge is valid exactly once');
-    assert.equal((await klartext({ token })).status, 403);
+    assert.equal(subsequent.status, 400, 'A challenge is valid exactly once');
+    assert.equal((await plaintext({ token })).status, 403);
   });
 
   await t.test('a challenge is only good for its action', async () => {
@@ -316,26 +316,26 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     assert.equal(r.status, 400);
     // Correctly signed it opens the administration, not the vouchers.
     await releaseDevice(callFn, token, 'admin', device);
-    assert.equal((await klartext({ token })).status, 403);
+    assert.equal((await plaintext({ token })).status, 403);
   });
 
   await t.test('after approval the PIN; expired closed again; another access has its own', async () => {
     await releaseDevice(callFn, token, 'voucher', device);
-    const r = await klartext({ token });
+    const r = await plaintext({ token });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.pin, '4321');
-    const zweiter = (await anmelden(NAME)).body.token;
+    const secondOne = (await signIn(NAME)).body.token;
     assert.equal(
-      (await klartext({ token: zweiter })).body.code,
+      (await plaintext({ token: secondOne })).body.code,
       'device_key_missing',
       'The approval applies to the token family, not the account',
     );
     await db.run(`UPDATE step_up_approvals SET until_at = NOW() - INTERVAL '1 second' WHERE user_id = $1`, [uid]);
-    assert.equal((await klartext({ token })).body.code, 'step_approval_required');
+    assert.equal((await plaintext({ token })).body.code, 'step_approval_required');
   });
 
   await t.test('an old access can no longer store a key', async () => {
-    const alt = (await anmelden(NAME)).body.token;
+    const alt = (await signIn(NAME)).body.token;
     await db.run(`UPDATE api_tokens SET created_at = NOW() - INTERVAL '1 hour' WHERE token = $1`, [
       auth.tokenDigest(alt),
     ]);
@@ -357,83 +357,87 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
   });
 
   await t.test('the browser session stays with the password', async () => {
-    const a = await anmelden(NAME, { without_token: true });
-    const keks = a.kopf.get('set-cookie').split(';')[0];
-    const r = await klartext({ cookie: keks });
+    const a = await signIn(NAME, { without_token: true });
+    const keks = a.head.get('set-cookie').split(';')[0];
+    const r = await plaintext({ cookie: keks });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const c = await callFn('/device/step/challenge', { method: 'POST', cookie: keks, body: { action: 'voucher' } });
     assert.deepEqual([c.status, c.body.code], [403, 'app_token_only']);
   });
 
   await t.test('administrator routes of an app token only after the approval “verwaltung”', async () => {
-    const voll = (await anmelden(CHEF, { scope: 'voll', code: codes.shift() })).body.token;
-    const vorher = await callFn('/admin/cache-ttl', { token: voll });
-    assert.deepEqual([vorher.status, vorher.body.code], [403, 'device_key_missing']);
-    const h = await deposit(callFn, voll);
+    const full = (await signIn(CHEF, { scope: 'voll', code: codes.shift() })).body.token;
+    const prior = await callFn('/admin/cache-ttl', { token: full });
+    assert.deepEqual([prior.status, prior.body.code], [403, 'device_key_missing']);
+    const h = await deposit(callFn, full);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
-    const s = h.schluessel;
-    assert.equal((await callFn('/auth/users', { token: voll })).body.code, 'step_approval_required');
-    await releaseDevice(callFn, voll, 'voucher', s);
+    const s = h.key;
+    assert.equal((await callFn('/auth/users', { token: full })).body.code, 'step_approval_required');
+    await releaseDevice(callFn, full, 'voucher', s);
     assert.equal(
-      (await callFn('/admin/cache-ttl', { token: voll })).status,
+      (await callFn('/admin/cache-ttl', { token: full })).status,
       403,
       'Approving the vouchers opens no administration',
     );
-    await releaseDevice(callFn, voll, 'admin', s);
-    assert.equal((await callFn('/admin/cache-ttl', { token: voll })).status, 200);
-    assert.equal((await callFn('/auth/users', { token: voll })).status, 200);
+    await releaseDevice(callFn, full, 'admin', s);
+    assert.equal((await callFn('/admin/cache-ttl', { token: full })).status, 200);
+    assert.equal((await callFn('/auth/users', { token: full })).status, 200);
   });
 
   await t.test('every administrator path in settings and instructions requires the approval “verwaltung”', async () => {
-    const voll = (await anmelden(CHEF, { scope: 'voll', code: codes.shift() })).body.token;
+    const full = (await signIn(CHEF, { scope: 'voll', code: codes.shift() })).body.token;
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.schritt.example')
       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
     await db.run(`DELETE FROM global_settings WHERE key IN ('einrichtung_erledigt', 'default_price_condition')`);
     const restoreIt = async () => {
       const form = new FormData();
-      const datei = JSON.stringify({ version: '3.0', global: { default_price_condition: 'U' }, user_settings: {} });
-      form.append('file', new Blob([datei], { type: 'application/json' }), 'k.json');
+      const file = JSON.stringify({ version: '3.0', global: { default_price_condition: 'U' }, user_settings: {} });
+      form.append('file', new Blob([file], { type: 'application/json' }), 'k.json');
       const r = await fetch(`${basis}/api/v2/settings/import`, {
         method: 'POST',
-        headers: { authorization: `Bearer ${voll}` },
+        headers: { authorization: `Bearer ${full}` },
         body: form,
       });
       return { status: r.status, body: await r.json().catch(() => null) };
     };
     const pathList = {
       'POST /settings': () =>
-        callFn('/settings', { method: 'POST', token: voll, body: { default_price_condition: 'N' } }),
+        callFn('/settings', { method: 'POST', token: full, body: { default_price_condition: 'N' } }),
       'POST /settings/import': restoreIt,
-      'POST /settings/smtp-test': () => callFn('/settings/smtp-test', { method: 'POST', token: voll, body: {} }),
-      'GET /settings/setup': () => callFn('/settings/setup', { token: voll }),
+      'POST /settings/smtp-test': () => callFn('/settings/smtp-test', { method: 'POST', token: full, body: {} }),
+      'GET /settings/setup': () => callFn('/settings/setup', { token: full }),
       'POST /settings/setup/complete': () =>
-        callFn('/settings/setup/complete', { method: 'POST', token: voll, body: {} }),
+        callFn('/settings/setup/complete', { method: 'POST', token: full, body: {} }),
       'POST /settings/test-source': () =>
-        callFn('/settings/test-source', { method: 'POST', token: voll, body: { source: 'keine' } }),
+        callFn('/settings/test-source', { method: 'POST', token: full, body: { source: 'keine' } }),
       'POST /sets/:setNumber/instructions': () =>
-        callFn('/sets/10001-1/instructions', { method: 'POST', token: voll, body: {} }),
+        callFn('/sets/10001-1/instructions', { method: 'POST', token: full, body: {} }),
     };
     // Since the attestation the app stores the key with a chain (helpers/device.js).
-    const h = await deposit(callFn, voll);
+    const h = await deposit(callFn, full);
     assert.equal(h.response.status, 200, JSON.stringify(h.response.body));
-    const s = h.schluessel;
-    for (const [weg, callIt] of Object.entries(pathList)) {
+    const s = h.key;
+    for (const [route, callIt] of Object.entries(pathList)) {
       const r = await callIt();
-      assert.deepEqual([r.status, r.body?.code], [403, 'step_approval_required'], `${weg} without approval`);
+      assert.deepEqual([r.status, r.body?.code], [403, 'step_approval_required'], `${route} without approval`);
     }
     assert.equal(
       (await db.get(`SELECT value FROM global_settings WHERE key = 'default_price_condition'`))?.value,
       undefined,
       'without approval nothing is written',
     );
-    const ohne = await callFn('/settings/raw', { token: voll });
-    assert.equal(ohne.status, 200);
-    assert.equal(ohne.body.settings.smtp_host, undefined, 'without approval /settings/raw only shows account values');
-    const eigene = await callFn('/settings', { method: 'POST', token: voll, body: { language: 'de' } });
-    assert.equal(eigene.status, 200, 'the own values need no approval');
+    const without = await callFn('/settings/raw', { token: full });
+    assert.equal(without.status, 200);
+    assert.equal(
+      without.body.settings.smtp_host,
+      undefined,
+      'without approval /settings/raw only shows account values',
+    );
+    const owned = await callFn('/settings', { method: 'POST', token: full, body: { language: 'de' } });
+    assert.equal(owned.status, 200, 'the own values need no approval');
 
-    await releaseDevice(callFn, voll, 'admin', s);
-    const erwartet = {
+    await releaseDevice(callFn, full, 'admin', s);
+    const expected = {
       'POST /settings': [200, undefined],
       'POST /settings/import': [200, undefined],
       'POST /settings/smtp-test': [400, 'smtp_not_configured'],
@@ -442,11 +446,11 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       'POST /settings/test-source': [400, 'source_unknown'],
       'POST /sets/:setNumber/instructions': [202, undefined],
     };
-    for (const [weg, callIt] of Object.entries(pathList)) {
+    for (const [route, callIt] of Object.entries(pathList)) {
       const r = await callIt();
-      assert.deepEqual([r.status, r.body?.code], erwartet[weg], `${weg} with approval: ${JSON.stringify(r.body)}`);
+      assert.deepEqual([r.status, r.body?.code], expected[route], `${route} with approval: ${JSON.stringify(r.body)}`);
     }
     assert.equal((await db.get(`SELECT value FROM global_settings WHERE key = 'einrichtung_erledigt'`))?.value, '1');
-    assert.equal((await callFn('/settings/raw', { token: voll })).body.settings.smtp_host, 'mail.schritt.example');
+    assert.equal((await callFn('/settings/raw', { token: full })).body.settings.smtp_host, 'mail.schritt.example');
   });
 });

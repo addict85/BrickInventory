@@ -28,19 +28,19 @@ test('admin pages and unknown paths for normal accounts', { concurrency: 1, time
     t.skip(app.reason);
     return;
   }
-  const { b, ruhig } = app;
-  await ruhig();
-  const toasts = () => b.auswerten(`[...document.querySelectorAll('#toasts .toast')].map(x => x.textContent)`);
-  const leeren = () => b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
+  const { b, settle } = app;
+  await settle();
+  const toasts = () => b.evaluate(`[...document.querySelectorAll('#toasts .toast')].map(x => x.textContent)`);
+  const clear = () => b.evaluate(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
 
   await t.test('admin page: address and hint', async () => {
-    await leeren();
-    await b.auswerten(`location.hash = '#/einstellungen'; true`);
-    await ruhig();
+    await clear();
+    await b.evaluate(`location.hash = '#/einstellungen'; true`);
+    await settle();
     const z =
-      await b.auswerten(`({ hash: location.hash, sammlung: document.getElementById('tab-gallery')?.classList.contains('active'),
-      einst: document.getElementById('tab-settings')?.classList.contains('active') })`);
-    assert.deepEqual(z, { hash: '#/sammlung', sammlung: true, einst: false });
+      await b.evaluate(`({ hash: location.hash, sammlung: document.getElementById('tab-gallery')?.classList.contains('active'),
+      settings: document.getElementById('tab-settings')?.classList.contains('active') })`);
+    assert.deepEqual(z, { hash: '#/sammlung', sammlung: true, settings: false });
     assert.ok(
       (await toasts()).some(x => /nur für Administratoren/.test(x)),
       JSON.stringify(await toasts()),
@@ -48,10 +48,10 @@ test('admin pages and unknown paths for normal accounts', { concurrency: 1, time
   });
 
   await t.test('unknown path: hint', async () => {
-    await leeren();
-    await b.auswerten(`location.hash = '#/gibt-es-nicht'; true`);
-    await ruhig();
-    assert.equal(await b.auswerten(`location.hash`), '#/sammlung');
+    await clear();
+    await b.evaluate(`location.hash = '#/gibt-es-nicht'; true`);
+    await settle();
+    assert.equal(await b.evaluate(`location.hash`), '#/sammlung');
     assert.ok(
       (await toasts()).some(x => /gibt es nicht/.test(x)),
       JSON.stringify(await toasts()),
@@ -59,9 +59,9 @@ test('admin pages and unknown paths for normal accounts', { concurrency: 1, time
   });
 
   await t.test('skip link stays silent', async () => {
-    await leeren();
-    await b.auswerten(`location.hash = '#content'; true`);
-    await ruhig();
+    await clear();
+    await b.evaluate(`location.hash = '#content'; true`);
+    await settle();
     assert.deepEqual(await toasts(), []);
   });
 });

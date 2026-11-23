@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, sicht, warte } = require('./helpers/ui');
+const { openUi, view, waitFor } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const SET = {
@@ -36,7 +36,7 @@ const entryRow = (id, user_id, count) => ({
   purge_at: '2026-12-15T10:00:00Z',
 });
 
-function antworten() {
+function answers() {
   const basket = [entryRow(7, 1, 1), entryRow(8, 2, 2)];
   return {
     '/v2/sets/household-members': {
@@ -58,37 +58,37 @@ function antworten() {
 }
 
 test('account and quantity distinguish equal entries', async () => {
-  const { w, d } = await openUi(antworten());
+  const { w, d } = await openUi(answers());
   try {
-    await sicht(w, 'data');
-    await warte(() => d.querySelectorAll('#trash-list .pk-row').length === 2);
-    const zeilen = [...d.querySelectorAll('#trash-list .pk-row')];
-    assert.match(text(zeilen[0]), /Menge 1 · anna \(ich\)/);
-    assert.match(text(zeilen[1]), /Menge 2 · lena/);
-    assert.match(text(zeilen[0].querySelector('.pk-deadline')), /^wird am .+ endgültig gelöscht$/);
-    const namen = zeilen.map(z => z.querySelector('[data-click="restoreFromTrash"]').getAttribute('aria-label'));
-    assert.equal(new Set(namen).size, 2, `buttons named alike: ${namen.join(' | ')}`);
-    assert.match(namen[1], /^Wiederherstellen: 21318-1 · Tree House · Menge 2 · lena$/);
+    await view(w, 'data');
+    await waitFor(() => d.querySelectorAll('#trash-list .pk-row').length === 2);
+    const lines = [...d.querySelectorAll('#trash-list .pk-row')];
+    assert.match(text(lines[0]), /Menge 1 · anna \(ich\)/);
+    assert.match(text(lines[1]), /Menge 2 · lena/);
+    assert.match(text(lines[0].querySelector('.pk-deadline')), /^wird am .+ endgültig gelöscht$/);
+    const names = lines.map(z => z.querySelector('[data-click="restoreFromTrash"]').getAttribute('aria-label'));
+    assert.equal(new Set(names).size, 2, `buttons named alike: ${names.join(' | ')}`);
+    assert.match(names[1], /^Wiederherstellen: 21318-1 · Tree House · Menge 2 · lena$/);
   } finally {
     w.close();
   }
 });
 
 test('focus and toast after restoring in the trash', async () => {
-  const { w, d, aufrufe } = await openUi(antworten());
+  const { w, d, calls } = await openUi(answers());
   try {
-    await warte(() => d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn'));
+    await waitFor(() => d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn'));
     d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn').click();
-    assert.ok(await warte(() => d.querySelector('#toasts [data-trash="7"] .toast-action')), 'undo');
-    await sicht(w, 'data');
-    await warte(() => d.querySelectorAll('#trash-list .pk-row').length === 2);
-    const knopf = d.querySelector('[data-click="restoreFromTrash"][data-arg="7"]');
-    knopf.focus();
-    knopf.click();
-    await warte(() => aufrufe.some(a => a.url.endsWith('/v2/trash/7/restore')));
-    await warte(() => d.querySelectorAll('#trash-list .pk-row').length === 1);
+    assert.ok(await waitFor(() => d.querySelector('#toasts [data-trash="7"] .toast-action')), 'undo');
+    await view(w, 'data');
+    await waitFor(() => d.querySelectorAll('#trash-list .pk-row').length === 2);
+    const button = d.querySelector('[data-click="restoreFromTrash"][data-arg="7"]');
+    button.focus();
+    button.click();
+    await waitFor(() => calls.some(a => a.url.endsWith('/v2/trash/7/restore')));
+    await waitFor(() => d.querySelectorAll('#trash-list .pk-row').length === 1);
     assert.ok(
-      await warte(() => d.activeElement?.getAttribute('data-arg') === '8'),
+      await waitFor(() => d.activeElement?.getAttribute('data-arg') === '8'),
       `focus on ${d.activeElement?.outerHTML?.slice(0, 80) ?? d.activeElement?.tagName}`,
     );
     assert.equal(d.querySelector('#toasts [data-trash]'), null, 'undo is still there');

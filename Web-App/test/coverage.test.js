@@ -21,9 +21,9 @@ const ROOT = path.join(__dirname, '..');
 
 test('a run over dist/ yields lcov and areas', async () => {
   buildDist();
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'abdeckung-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'abdeckung-'));
   try {
-    const v8 = path.join(ordner, 'v8');
+    const v8 = path.join(dir, 'v8');
     // A small real run: load a module from dist/ and call a function.
     const r = spawnSync(
       process.execPath,
@@ -31,21 +31,21 @@ test('a run over dist/ yields lcov and areas', async () => {
       { cwd: ROOT, env: { ...process.env, NODE_V8_COVERAGE: v8 }, encoding: 'utf8' },
     );
     assert.equal(r.status, 0, r.stderr);
-    const areaList = await report(v8, ordner);
+    const areaList = await report(v8, dir);
     assert.ok(areaList.server > 0, JSON.stringify(areaList));
     assert.equal(areaList.ui, 0);
-    const lcov = fs.readFileSync(path.join(ordner, 'lcov.info'), 'utf8');
+    const lcov = fs.readFileSync(path.join(dir, 'lcov.info'), 'utf8');
     assert.match(lcov, /^SF:.*dist\/src\/infra\/errorTexts\.js$/m);
     assert.doesNotMatch(lcov, /node_modules/);
   } finally {
-    fs.rmSync(ordner, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test('below the limit is red, above it is not', () => {
-  const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'schranke-')), 's.json');
-  fs.writeFileSync(datei, JSON.stringify({ total: 80, ui: 50 }));
-  assert.deepEqual(check({ total: 85, ui: 50 }, datei), []);
-  assert.deepEqual(check({ total: 79.9, ui: 60 }, datei), ['total: 79.9 % < 80 %']);
-  assert.deepEqual(check({ total: 90 }, datei), ['ui: undefined % < 50 %']);
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'schranke-')), 's.json');
+  fs.writeFileSync(file, JSON.stringify({ total: 80, ui: 50 }));
+  assert.deepEqual(check({ total: 85, ui: 50 }, file), []);
+  assert.deepEqual(check({ total: 79.9, ui: 60 }, file), ['total: 79.9 % < 80 %']);
+  assert.deepEqual(check({ total: 90 }, file), ['ui: undefined % < 50 %']);
 });

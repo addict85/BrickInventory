@@ -33,7 +33,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
   new Promise(r => {
@@ -73,47 +73,47 @@ async function startServer(t, env) {
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 240 && (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) === null; i++)
-    await warte(250);
+    await sleep(250);
   return { basis, log: () => log };
 }
 
 /** Log in, ask with the cookie who one is, log out. */
-async function pass(server, kopf) {
+async function pass(server, head) {
   const login = await fetch(`${server.basis}/api/v2/auth/login`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...kopf },
+    headers: { 'content-type': 'application/json', ...head },
     body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
   });
-  const roh = await login.text();
-  assert.equal(login.status, 200, `${roh}\n${server.log()}`);
-  const setzen = login.headers.get('set-cookie');
-  const cookie = setzen.split(';')[0];
-  const ich = async () => (await fetch(`${server.basis}/api/v2/auth/me`, { headers: { cookie, ...kopf } })).json();
-  const angemeldet = await ich();
+  const raw = await login.text();
+  assert.equal(login.status, 200, `${raw}\n${server.log()}`);
+  const put = login.headers.get('set-cookie');
+  const cookie = put.split(';')[0];
+  const ich = async () => (await fetch(`${server.basis}/api/v2/auth/me`, { headers: { cookie, ...head } })).json();
+  const signedIn = await ich();
   // A bearer header next to it must not switch off the origin check.
   const fremd = await fetch(`${server.basis}/api/v2/auth/logout`, {
     method: 'POST',
-    headers: { cookie, ...kopf, authorization: 'Bearer x', 'sec-fetch-site': 'cross-site' },
+    headers: { cookie, ...head, authorization: 'Bearer x', 'sec-fetch-site': 'cross-site' },
   });
   await fremd.arrayBuffer();
   const ab = await fetch(`${server.basis}/api/v2/auth/logout`, {
     method: 'POST',
-    headers: { cookie, ...kopf, 'sec-fetch-site': 'same-origin' },
+    headers: { cookie, ...head, 'sec-fetch-site': 'same-origin' },
   });
   await ab.arrayBuffer();
   return {
-    response: JSON.parse(roh),
-    setzen,
+    response: JSON.parse(raw),
+    put,
     cookie,
-    angemeldet,
+    signedIn,
     fremd: fremd.status,
-    loeschen: ab.headers.get('set-cookie'),
-    danach: await ich(),
+    remove: ab.headers.get('set-cookie'),
+    afterwards: await ich(),
   };
 }
 
@@ -134,38 +134,38 @@ test('session cookie with and without TLS', { concurrency: 1, timeout: 240_000 }
   await t.test('with TLS: __Host-bim.sid, Secure, Path=/, without Domain', async st => {
     const server = await startServer(st, {});
     const d = await pass(server, { 'x-forwarded-proto': 'https' });
-    assert.match(d.setzen, /^__Host-bim\.sid=/, d.setzen);
-    assert.match(d.setzen, /; Path=\/(;|$)/, d.setzen);
-    assert.match(d.setzen, /; Secure(;|$)/, d.setzen);
-    assert.doesNotMatch(d.setzen, /Domain=/i, d.setzen);
-    assert.equal(d.angemeldet.loggedIn, true, 'the login carries');
-    assert.equal(d.angemeldet.user.username, NAME);
+    assert.match(d.put, /^__Host-bim\.sid=/, d.put);
+    assert.match(d.put, /; Path=\/(;|$)/, d.put);
+    assert.match(d.put, /; Secure(;|$)/, d.put);
+    assert.doesNotMatch(d.put, /Domain=/i, d.put);
+    assert.equal(d.signedIn.loggedIn, true, 'the login carries');
+    assert.equal(d.signedIn.user.username, NAME);
     assert.equal(d.fremd, 403, 'the origin check recognises the cookie');
-    assert.match(d.loeschen ?? '', /^__Host-bim\.sid=;.*Path=\/.*Expires=Thu, 01 Jan 1970/, `Abmelden: ${d.loeschen}`);
-    assert.match(d.loeschen, /; Secure(;|$)/, 'without Secure the browser discards the delete command');
-    assert.equal(d.danach.loggedIn, false);
+    assert.match(d.remove ?? '', /^__Host-bim\.sid=;.*Path=\/.*Expires=Thu, 01 Jan 1970/, `sign-out: ${d.remove}`);
+    assert.match(d.remove, /; Secure(;|$)/, 'without Secure the browser discards the delete command');
+    assert.equal(d.afterwards.loggedIn, false);
     assert.equal(d.response.cookie_missing, false, 'no hint over https');
     // The same login via http: express-session does not set the Secure cookie, the response says so.
-    const ohne = await fetch(`${server.basis}/api/v2/auth/login`, {
+    const without = await fetch(`${server.basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
     });
-    const a = await ohne.json();
-    assert.equal(ohne.status, 200, JSON.stringify(a));
-    assert.equal(ohne.headers.get('set-cookie'), null, 'cookie set over http');
+    const a = await without.json();
+    assert.equal(without.status, 200, JSON.stringify(a));
+    assert.equal(without.headers.get('set-cookie'), null, 'cookie set over http');
     assert.equal(a.cookie_missing, true, 'over http: keks_fehlt');
   });
 
   await t.test('without TLS: bim.sid without prefix and without Secure', async st => {
     const server = await startServer(st, { COOKIE_SECURE: '0' });
     const d = await pass(server, {});
-    assert.match(d.setzen, /^bim\.sid=/, d.setzen);
-    assert.doesNotMatch(d.setzen, /Secure/i, d.setzen);
-    assert.equal(d.angemeldet.loggedIn, true, 'the login carries');
+    assert.match(d.put, /^bim\.sid=/, d.put);
+    assert.doesNotMatch(d.put, /Secure/i, d.put);
+    assert.equal(d.signedIn.loggedIn, true, 'the login carries');
     assert.equal(d.fremd, 403, 'the origin check recognises the cookie');
-    assert.match(d.loeschen ?? '', /^bim\.sid=;/, `logout: ${d.loeschen}`);
-    assert.equal(d.danach.loggedIn, false);
+    assert.match(d.remove ?? '', /^bim\.sid=;/, `logout: ${d.remove}`);
+    assert.equal(d.afterwards.loggedIn, false);
     assert.equal(d.response.cookie_missing, false, 'COOKIE_SECURE=0: the cookie went out over http');
   });
 });

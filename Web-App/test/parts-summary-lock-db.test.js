@@ -32,7 +32,7 @@ test('rebuild gives way to a held account lock', async t => {
     await db.get(`INSERT INTO users (username, password_hash) VALUES ('sperre_'||floor(random()*1e9),'x') RETURNING id`)
   ).id;
   const state = async () => ({
-    zeilen: (await db.get('SELECT COUNT(*)::int AS n FROM parts_summary WHERE user_id = $1', [u])).n,
+    lines: (await db.get('SELECT COUNT(*)::int AS n FROM parts_summary WHERE user_id = $1', [u])).n,
     version:
       (await db.get('SELECT built_version::int AS built_version FROM parts_summary_state WHERE user_id = $1', [u]))
         ?.built_version ?? null,
@@ -45,11 +45,11 @@ test('rebuild gives way to a held account lock', async t => {
     await halter.query('BEGIN');
     await halter.query('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.PARTS_SUMMARY, u]);
     await PS.rebuildSummary(u, { v: 7 });
-    assert.deepEqual(await state(), { zeilen: 1, version: null }, 'While the lock is held nothing may be written');
+    assert.deepEqual(await state(), { lines: 1, version: null }, 'While the lock is held nothing may be written');
     await halter.query('COMMIT');
 
     await PS.rebuildSummary(u, { v: 7 });
-    assert.deepEqual(await state(), { zeilen: 0, version: 7 }, 'Without a lock rebuild builds anew');
+    assert.deepEqual(await state(), { lines: 0, version: 7 }, 'Without a lock rebuild builds anew');
   } finally {
     await halter.query('ROLLBACK').catch(() => {});
     halter.release();

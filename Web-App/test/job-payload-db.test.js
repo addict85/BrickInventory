@@ -47,35 +47,35 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
     await db.run(`INSERT INTO jobs (type, payload, max_attempts) VALUES ('brickset', $1, 3)`, [
       JSON.stringify({ set_number: '10179-1', versuch: 2, legacyField: 'x' }),
     ]);
-    const gesehen = [];
+    const seen = [];
     const w = createWorker(
       require('./helpers/sources').testServices().jobQueue,
       {
         brickset: {
           run: async n => {
-            gesehen.push(n);
+            seen.push(n);
           },
         },
       },
       { deadlineSec: 60 },
     );
     assert.equal(await w.processOne(), true);
-    assert.deepEqual(gesehen, [{ set_number: '10179-1', versuch: 2 }]);
+    assert.deepEqual(seen, [{ set_number: '10179-1', versuch: 2 }]);
   });
 
   await t.test('an old payload fails immediately and permanently', async () => {
     const { id } = await db.get(
       `INSERT INTO jobs (type, payload, max_attempts) VALUES ('brickset', $1, 3) RETURNING id`,
-      [JSON.stringify({ setnummer: '10179-1' })],
+      [JSON.stringify({ setNumber: '10179-1' })],
     );
-    let gelaufen = 0,
+    let ran = 0,
       abandoned = 0;
     const w = createWorker(
       require('./helpers/sources').testServices().jobQueue,
       {
         brickset: {
           run: async () => {
-            gelaufen++;
+            ran++;
           },
           givenUp: async () => {
             abandoned++;
@@ -86,7 +86,7 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
     );
     assert.equal(await w.processOne(), true);
     const z = await db.get('SELECT status, attempts, error_message FROM jobs WHERE id = $1', [id]);
-    assert.equal(gelaufen, 0, 'the handler ran with an invalid payload');
+    assert.equal(ran, 0, 'the handler ran with an invalid payload');
     assert.equal(abandoned, 0);
     assert.equal(z.status, 'error');
     assert.equal(z.attempts, 1);

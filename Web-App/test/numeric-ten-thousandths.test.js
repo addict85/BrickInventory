@@ -16,13 +16,13 @@ const { inTenThousandths } = require(path.join(ROOT, 'dist/src/infra/money.js'))
 
 test('NUMERIC(12,4) stays exact in ten-thousandths', () => {
   /** @type {[string, number][]} */
-  const faelle = [
+  const cases = [
     ['99999999.9999', 999999999999],
     ['-12345678.0001', -123456780001],
     ['0.0001', 1],
     ['1.005', 10050],
   ];
-  for (const [roh, z] of faelle) assert.equal(inTenThousandths(numericAsNumber(roh)), z, roh);
+  for (const [raw, z] of cases) assert.equal(inTenThousandths(numericAsNumber(raw)), z, raw);
   assert.equal(numericAsNumber(null), null);
 });
 
