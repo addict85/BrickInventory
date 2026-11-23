@@ -30,7 +30,7 @@ const { kotlinFehlercodes, apiRouten, schreibRouten } = require('./kotlin-contra
 const { ANDROID, API } = require('./app-interface.js');
 // Generator and name mapping of the Kotlin types live with the contract (Web-App/scripts).
 const SKRIPTE = path.join(ANDROID, '..', 'Web-App', 'scripts');
-const { className: klassenname, ZIEL } = require(path.join(SKRIPTE, 'contract-kotlin-dtos.js'));
+const { className: klassenname, TARGET_FILE } = require(path.join(SKRIPTE, 'contract-kotlin-dtos.js'));
 const Z = require(path.join(SKRIPTE, 'contract-kotlin-mapping.js'));
 // The contract as the server publishes it (npm run contract:openapi).
 const dok = JSON.parse(fs.readFileSync(path.join(ANDROID, '..', 'Web-App', 'docs', 'openapi-v2.json'), 'utf8'));
@@ -44,7 +44,7 @@ const routen = [
   })),
   ...schreibRouten(API),
 ];
-const erzeugt = new Set([...fs.readFileSync(ZIEL, 'utf8').matchAll(/^(?:data |enum )?class (\w+)/gm)].map(m => m[1]));
+const erzeugt = new Set([...fs.readFileSync(TARGET_FILE, 'utf8').matchAll(/^(?:data |enum )?class (\w+)/gm)].map(m => m[1]));
 /** @param {string} p */
 const gleichfoermig = p => p.replace(/\{\w+\}/g, '{}');
 /** Path of the app → operation in the contract. @param {string} methode @param {string} pfad */
@@ -55,7 +55,7 @@ function operation(methode, pfad) {
 /** The Kotlin name the generator gives a schema. @param {string} ref */
 const kotlinName = ref => {
   const n = klassenname(ref.split('/').pop() ?? '');
-  return /** @type {Record<string, string>} */ (Z.NAMEN)[n] ?? n;
+  return /** @type {Record<string, string>} */ (Z.NAMES)[n] ?? n;
 };
 
 // Responses without a JSON type: files and empty bodies.
@@ -89,7 +89,7 @@ test('the app reads every response with the generated type of its schema', () =>
 });
 
 test('every body of the app is the generated body of its route', () => {
-  const anfragen = Object.entries(/** @type {Record<string, string>} */ (Z.ANFRAGEN));
+  const anfragen = Object.entries(/** @type {Record<string, string>} */ (Z.REQUESTS));
   const falsch = [];
   let geprueft = 0;
   for (const r of routen.filter(x => x.rumpf && !FREIE_RUEMPFE.has(x.rumpf))) {
@@ -104,7 +104,7 @@ test('every body of the app is the generated body of its route', () => {
   }
   assert.deepEqual(falsch, []);
   assert.ok(geprueft >= 40, `nur ${geprueft} Rümpfe verglichen`);
-  const tot = Object.keys(Z.ANFRAGEN).filter(k => {
+  const tot = Object.keys(Z.REQUESTS).filter(k => {
     const [m, p] = k.split(' ');
     return !routen.some(r => r.methode === m && gleichfoermig(r.pfad) === gleichfoermig(p ?? ''));
   });

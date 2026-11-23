@@ -3254,7 +3254,6 @@
     "GenericResponse": {
       "fields": [
         "success",
-        "trash",
         "new_quantity",
         "from_user_id",
         "to_user_id",
@@ -3268,6 +3267,7 @@
         "source_emptied",
         "quantity",
         "degraded",
+        "trash",
         "linked_to",
         "removed",
         "instruction",
