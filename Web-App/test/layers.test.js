@@ -499,6 +499,7 @@ const DB_OUTSIDE = new Set([
   'databaseResponds',
   'getPoolStats',
   'asSuperuserConnected',
+  'escapesRowSecurity',
   'initSchemaOnce',
   'DbInterface',
   'Db',

@@ -96,6 +96,11 @@
  *   AK in app-role.sh the REVOKE on admin_log only for the runtime role → red:
  *      “… and after every run …” (the system role deletes log lines)
  *
+ *   Runtime role may not itself bypass row security (23.11.2026, measured):
+ *   AL warnAtRowSecurityBypass() deleted from startup/database.ts → red:
+ *      “the runtime role itself may not bypass row security …” (TypeError:
+ *      warnAtRowSecurityBypass is not a function)
+ *
  * Prerequisite: TEST_DATABASE_URL with superuser (creates databases and a
  * role) and psql from version 15 (\getenv).
  */
@@ -881,6 +886,33 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     });
     await as(fresh, SYS, SYS_PW, async s => assert.equal(await count(s), 1, 'the system role sees all rows'));
     await as(fresh, READ, READ_PW, async l => assert.equal(await count(l), 1, 'pgweb sees all rows'));
+  });
+
+  await t.test('the runtime role itself may not bypass row security, neither as owner nor with BYPASSRLS', async () => {
+    const warning = (dbUrl, env = {}) =>
+      spawnSync(
+        process.execPath,
+        [
+          '-e',
+          "const m = require('./dist/db/database.js'); const db = m.createDb(m.dbConfigFromEnvironment()); require('./dist/startup/database.js').warnAtRowSecurityBypass(db).then(w => { console.log('WARNUNG=' + w); return db.pool.end(); })",
+        ],
+        { cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: dbUrl, ...env } },
+      );
+    assert.match(
+      warning(url(fresh, ROLE, PASSWORD)).stdout,
+      /WARNUNG=false/,
+      'the separated runtime role triggers no warning',
+    );
+    const asOwner = warning(url(fresh, MIG, MIG_PW));
+    assert.equal(asOwner.status, 1, `owner as runtime role: ${asOwner.stdout}`);
+    assert.match(asOwner.stderr, /gehört den Tabellen oder hat BYPASSRLS.*Start verweigert.*DB_SUPERUSER_ALLOWED=1/s);
+    const asSys = warning(url(fresh, SYS, SYS_PW));
+    assert.equal(asSys.status, 1, `system role as runtime role: ${asSys.stdout}`);
+    assert.match(
+      warning(url(fresh, MIG, MIG_PW), { DB_SUPERUSER_ALLOWED: '1' }).stdout,
+      /WARNUNG=true/,
+      'with the explicit escape it starts anyway, only with a warning',
+    );
   });
 
   await t.test('new columns and tables stay unreadable until the allowlist names them', async () => {
