@@ -21,8 +21,7 @@ test('no expression stands twice on both sides', () => {
     execFileSync(process.execPath, [script], { encoding: 'utf8', stdio: 'pipe' });
   } catch (e) {
     assert.fail(
-      `${e.stdout || ''}${e.stderr || ''}`.trim() ||
-        'check-duplicate-operands.js ist fehlgeschlagen, ohne etwas zu melden',
+      `${e.stdout || ''}${e.stderr || ''}`.trim() || 'check-duplicate-operands.js failed without reporting anything',
     );
   }
 });

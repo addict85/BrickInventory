@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { PDF_JOB_DIR } from '../../infra/appPaths';
 import { reportError, withoutMissingFile } from '../../infra/error';
-import { Fachfehler, fachfehler, notFound } from '../../infra/errorTexts';
+import { DomainError, failDomain, notFound } from '../../infra/errorTexts';
 import type { PayloadInput } from '../../jobQueue';
 import { withVersion } from '../../infra/setNumber';
 import type { CatalogContext } from '../context';
@@ -23,7 +23,7 @@ export function pdfFilePath(id: string): string | null {
   return validJobId(id) ? path.join(PDF_JOB_DIR, `${id}.pdf`) : null;
 }
 
-export type PdfAuftrag = {
+export type PdfJob = {
   status: 'running' | 'done' | 'error';
   error: string | null;
   user_id: number;
@@ -31,19 +31,19 @@ export type PdfAuftrag = {
   etaSeconds?: number | null;
 };
 
-const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft: 'running', erledigt: 'done' };
+const STATUS: Record<string, PdfJob['status']> = { pending: 'running', running: 'running', done: 'done' };
 
 /** Under row security and filtered by account: a foreign job is no job. */
-export async function readJob(k: CatalogContext, id: string, uid: number): Promise<PdfAuftrag | null> {
+export async function readJob(k: CatalogContext, id: string, uid: number): Promise<PdfJob | null> {
   const z = await k.jobQueue.ownJob('pdf', pdfKey(id), uid);
-  const { fehlendeBilder, etaSekunden } = z?.progress ?? {};
+  const { missingImages, etaSeconds } = z?.progress ?? {};
   return z
     ? {
         status: STATUS[z.status] ?? 'error',
-        error: z.status === 'erledigt' ? null : (z.error_message ?? null),
+        error: z.status === 'done' ? null : (z.error_message ?? null),
         user_id: Number(z.user_id),
-        missingImages: typeof fehlendeBilder === 'number' ? fehlendeBilder : null,
-        etaSeconds: typeof etaSekunden === 'number' ? etaSekunden : null,
+        missingImages: typeof missingImages === 'number' ? missingImages : null,
+        etaSeconds: typeof etaSeconds === 'number' ? etaSeconds : null,
       }
     : null;
 }
@@ -51,11 +51,11 @@ export async function readJob(k: CatalogContext, id: string, uid: number): Promi
 /** `status` shows the UI how far a not-yet-finished job has progressed. */
 export async function finishedFile(k: CatalogContext, id: string, uid: number): Promise<string> {
   const job = await readJob(k, id, uid);
-  if (!job) notFound('job_nicht_gefunden');
-  if (job.status !== 'done') throw new Fachfehler('konflikt', 'pdf_nicht_fertig', undefined, { status: job.status });
-  const datei = pdfFilePath(id);
-  if (!datei || !fs.existsSync(datei)) fachfehler('nicht_mehr_da', 'pdf_nicht_verfuegbar');
-  return datei;
+  if (!job) notFound('job_not_found');
+  if (job.status !== 'done') throw new DomainError('conflict', 'pdf_not_ready', undefined, { status: job.status });
+  const file = pdfFilePath(id);
+  if (!file || !fs.existsSync(file)) failDomain('gone', 'pdf_not_available');
+  return file;
 }
 
 export async function deleteJob(k: CatalogContext, id: string, uid: number): Promise<void> {
@@ -64,17 +64,17 @@ export async function deleteJob(k: CatalogContext, id: string, uid: number): Pro
 
 export const PDF_JOB_TTL = 10 * 60 * 1000;
 /** Per user: one job loads hundreds of images. */
-export const MAX_JOBS_PRO_USER = 2;
+export const MAX_JOBS_PER_USER = 2;
 
 /** Not guessable, but sortable. */
-export function newJobId(jetzt: number): string {
-  return `${jetzt}-${crypto.randomBytes(6).toString('hex')}`;
+export function newJobId(now: number): string {
+  return `${now}-${crypto.randomBytes(6).toString('hex')}`;
 }
 
 export async function cleanOldPdfJobs(k: CatalogContext) {
-  for (const schluessel of await k.jobQueue.deleteEnded('pdf', PDF_JOB_TTL / 1000)) {
-    const datei = pdfFilePath(schluessel.slice('pdf:'.length));
-    if (datei) await fsp.unlink(datei).catch(withoutMissingFile('pdf:datei loeschen'));
+  for (const key of await k.jobQueue.deleteEnded('pdf', PDF_JOB_TTL / 1000)) {
+    const file = pdfFilePath(key.slice('pdf:'.length));
+    if (file) await fsp.unlink(file).catch(withoutMissingFile('pdf:datei loeschen'));
   }
   const files = await fsp.readdir(PDF_JOB_DIR).catch((e: unknown) => {
     withoutMissingFile('pdf:ordner lesen')(e);
@@ -83,56 +83,56 @@ export async function cleanOldPdfJobs(k: CatalogContext) {
   for (const f of files) {
     const fp = path.join(PDF_JOB_DIR, f);
     const st = await fsp.stat(fp).catch(withoutMissingFile('pdf:datei pruefen'));
-    if (st && k.uhr.jetzt() - st.mtimeMs > PDF_JOB_TTL)
+    if (st && k.clock.now() - st.mtimeMs > PDF_JOB_TTL)
       await fsp.unlink(fp).catch(withoutMissingFile('pdf:datei loeschen'));
   }
 }
 
 /** The waiting time depends on this (about one image per second). */
-async function fehlendeBilder(
+async function countMissingImages(
   k: CatalogContext,
   sets: Array<{ set_number?: unknown }>,
   parts: Array<{ image_local?: string | null | undefined; image_url?: string | null | undefined }>,
 ) {
-  let fehlend = parts.filter(p => !p.image_local && p.image_url).length;
-  const nummern = new Set<string>();
+  let absent = parts.filter(p => !p.image_local && p.image_url).length;
+  const numbers = new Set<string>();
   for (const s of sets || []) {
     const raw = String(s?.set_number || '').trim();
     if (!raw) continue;
-    nummern.add(withVersion(raw));
+    numbers.add(withVersion(raw));
   }
-  if (!nummern.size) return fehlend;
+  if (!numbers.size) return absent;
   try {
-    const r = await k.bildlage.missingCatalogImages([...nummern]);
+    const r = await k.imageState.missingCatalogImages([...numbers]);
     const c = Number(r?.c);
-    if (Number.isFinite(c)) fehlend = c;
+    if (Number.isFinite(c)) absent = c;
   } catch (e) {
     reportError('pdf:wartezeit schaetzen', e);
   }
-  return fehlend;
+  return absent;
 }
 
-/** If MAX_JOBS_PRO_USER are already running, there is no identifier but their count. */
+/** If MAX_JOBS_PER_USER are already running, there is no identifier but their count. */
 export async function startPdfJob(
   k: CatalogContext,
   uid: number,
   sets: PayloadInput<'pdf'>['sets'],
   parts: PayloadInput<'pdf'>['parts'],
-): Promise<{ jobId: string } | { laufend: number }> {
-  const laufend = await k.jobQueue.countRunning('pdf', uid, PDF_JOB_TTL / 1000);
-  if (laufend >= MAX_JOBS_PRO_USER) return { laufend };
-  const jobId = newJobId(k.uhr.jetzt());
+): Promise<{ jobId: string } | { running: number }> {
+  const runningJobs = await k.jobQueue.countRunning('pdf', uid, PDF_JOB_TTL / 1000);
+  if (runningJobs >= MAX_JOBS_PER_USER) return { running: runningJobs };
+  const jobId = newJobId(k.clock.now());
   // The client's image details do not go into the job: the images come from the catalog.
   const withoutImages = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));
-  const missingImages = await fehlendeBilder(k, sets, parts);
+  const missingImages = await countMissingImages(k, sets, parts);
   await k.jobQueue.placeJobOne(
     'pdf',
     { job_id: jobId, user_id: uid, sets, parts: withoutImages },
     {
       userId: uid,
       maxAttempts: 2,
-      schluessel: pdfKey(jobId),
-      fortschritt: { fehlendeBilder: missingImages, etaSekunden: Math.max(3, Math.round(missingImages) + 3) },
+      key: pdfKey(jobId),
+      progress: { missingImages, etaSeconds: Math.max(3, Math.round(missingImages) + 3) },
     },
   );
   return { jobId };

@@ -1,0 +1,15 @@
+Gegenprobe: Ein Gutschein-PDF im Betrachter setzt keinen Sichtschutz
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherPrivacyScreenDisplayTest
+Rot: a voucher PDF is protected, a building instruction is not
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherPdfProtection.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherPdfProtection.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherPdfProtection.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherPdfProtection.kt
+@@ -7,5 +7,5 @@
+ /** A voucher PDF carries number and PIN: no screenshot while it is being shown. */
+ @Composable
+ internal fun VoucherPdfProtection(pdfUrl: String) {
+-    if (showsVouchers(pdfUrl)) PrivacyShield()
++    if (showsVouchers(pdfUrl)) Unit
+ }

@@ -8,7 +8,7 @@
  *   B  masked again only with NODE_ENV=production → red: „ohne NODE_ENV ohne Token"
  * Counter-checks (measured on 29.10.2026, switch instead of NODE_ENV):
  *   C  the replacement removed → red: “without switch …”, “NODE_ENV …” and
- *      “with MAIL_KONSOLE_MIT_TOKEN=1 …” (the value „ja“)
+ *      “with MAIL_CONSOLE_WITH_TOKEN=1 …” (the value „ja“)
  *   D  again NODE_ENV=development/test as an exception → red: “NODE_ENV opens nothing”
  * Counter-check (measured 13.11.2026):
  *   E  in linkForConsole `#` deleted from `[?&#]token=` → red: “without
@@ -39,9 +39,9 @@ test('without switch without token', () => {
 test('NODE_ENV opens nothing — not even development', () => {
   const alt = process.env.NODE_ENV;
   try {
-    for (const art of ['development', 'test', 'production']) {
-      environment({ NODE_ENV: art });
-      assert.equal(linkForConsole(TEXT), 'https://lego.example.org/reset?token=…', art);
+    for (const kind of ['development', 'test', 'production']) {
+      environment({ NODE_ENV: kind });
+      assert.equal(linkForConsole(TEXT), 'https://lego.example.org/reset?token=…', kind);
     }
   } finally {
     if (alt === undefined) environment({ NODE_ENV: undefined });
@@ -49,7 +49,7 @@ test('NODE_ENV opens nothing — not even development', () => {
   }
 });
 
-test('with MAIL_KONSOLE_MIT_TOKEN=1 complete — then the console is the outbox', () => {
+test('with MAIL_CONSOLE_WITH_TOKEN=1 complete — then the console is the outbox', () => {
   assert.equal(linkForConsole(TEXT, '1'), 'https://lego.example.org/reset?token=abcdef0123456789');
   assert.equal(linkForConsole(TEXT, 'ja'), 'https://lego.example.org/reset?token=…', 'nur „1" schaltet');
 });

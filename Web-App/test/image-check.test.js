@@ -1,5 +1,5 @@
 /**
- * scripts/image-pruefen.sh takes over app and Caddy image only after a passed
+ * scripts/check-image.sh takes over app and Caddy image only after a passed
  * signature check and only as a digest; compose.yaml does not start without them.
  * The real script runs in a sandbox, `cosign` and `docker` are substitutes.
  *
@@ -16,7 +16,7 @@
  *      check of the Caddy image fails …”
  *   F  (11.11.2026) for caddy again `brickinventory-caddy:2.11.8` with
  *      `pull_policy: build` → red: “without BRICK_IMAGE and CADDY_IMAGE …”
- *   G  (13.11.2026) the call of geheimnisse-einrichten.sh deleted → red:
+ *   G  (13.11.2026) the call of setup-secrets.sh deleted → red:
  *      “an update creates the new secret of the system role …”
  *   H  (15.11.2026) in the script only db_system_password checked → red:
  *      “… also that of the web system role …”
@@ -33,59 +33,61 @@ const D1 = 'sha256:' + '1'.repeat(64),
   D2 = 'sha256:' + '2'.repeat(64);
 
 /** cosignResponse: lines on stdout; cosignCode: end of the substitute; caddy…: the same for the Caddy image. */
-function lauf(
+function run(
   t,
   {
     env = 'BRICK_HOST=nas.lan\nBRICK_TAG=sha-1a2b3c4\nBRICK_IMAGE=alt\n',
     cosignResponse = '',
     cosignCode = 0,
-    caddyResponse = signatur(D2),
+    caddyResponse = signature(D2),
     caddyCode = 0,
-    geheim = null,
+    secret = null,
   } = {},
 ) {
-  const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'image-pruefen-'));
-  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
-  const bin = path.join(ort, 'bin');
+  const location = fs.mkdtempSync(path.join(os.tmpdir(), 'image-pruefen-'));
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
+  const bin = path.join(location, 'bin');
   fs.mkdirSync(bin);
-  fs.writeFileSync(path.join(ort, '.env'), env, { mode: 0o600 });
-  if (geheim) {
-    fs.mkdirSync(path.join(ort, 'geheimnisse'), { mode: 0o700 });
-    for (const [n, w] of Object.entries(geheim)) fs.writeFileSync(path.join(ort, 'geheimnisse', n), w);
+  fs.writeFileSync(path.join(location, '.env'), env, { mode: 0o600 });
+  if (secret) {
+    fs.mkdirSync(path.join(location, 'geheimnisse'), { mode: 0o700 });
+    for (const [n, w] of Object.entries(secret)) fs.writeFileSync(path.join(location, 'geheimnisse', n), w);
   }
   fs.writeFileSync(
     path.join(bin, 'cosign'),
-    `#!/bin/sh\necho "$*" >> "${ort}/cosign.args"
+    `#!/bin/sh\necho "$*" >> "${location}/cosign.args"
 case "$2" in
   addict85/brickinventory-caddy:*) cat <<'X'\n${caddyResponse}\nX\n    exit ${caddyCode} ;;
 esac
 cat <<'X'\n${cosignResponse}\nX\nexit ${cosignCode}\n`,
     { mode: 0o755 },
   );
-  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "docker $*" >> "${ort}/docker.log"\n`, { mode: 0o755 });
-  const r = spawnSync('sh', [path.join(ROOT, 'scripts', 'image-pruefen.sh')], {
-    cwd: ort,
+  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "docker $*" >> "${location}/docker.log"\n`, {
+    mode: 0o755,
+  });
+  const r = spawnSync('sh', [path.join(ROOT, 'scripts', 'check-image.sh')], {
+    cwd: location,
     encoding: 'utf8',
     env: { PATH: `${bin}:/usr/bin:/bin` },
   });
-  const lies = n => (fs.existsSync(path.join(ort, n)) ? fs.readFileSync(path.join(ort, n), 'utf8') : '');
+  const read = n => (fs.existsSync(path.join(location, n)) ? fs.readFileSync(path.join(location, n), 'utf8') : '');
   return {
     code: r.status,
     log: r.stdout + r.stderr,
-    env: lies('.env'),
-    cosign: lies('cosign.args'),
-    docker: lies('docker.log'),
-    rechte: fs.statSync(path.join(ort, '.env')).mode & 0o777,
-    geheim: n => lies(path.join('geheimnisse', n)),
-    hatSecrets: fs.existsSync(path.join(ort, 'geheimnisse')),
+    env: read('.env'),
+    cosign: read('cosign.args'),
+    docker: read('docker.log'),
+    rights: fs.statSync(path.join(location, '.env')).mode & 0o777,
+    secret: n => read(path.join('geheimnisse', n)),
+    hasSecrets: fs.existsSync(path.join(location, 'geheimnisse')),
   };
 }
-function signatur(d) {
+function signature(d) {
   return JSON.stringify([{ critical: { image: { 'docker-manifest-digest': d } } }]);
 }
 
 test('checking happens against docker-publish.yml on main, the digest ends up in .env', t => {
-  const r = lauf(t, { cosignResponse: signatur(D1) });
+  const r = run(t, { cosignResponse: signature(D1) });
   assert.equal(r.code, 0, r.log);
   const check = repo =>
     `verify ${repo}:sha-1a2b3c4 --certificate-identity ` +
@@ -100,31 +102,31 @@ test('checking happens against docker-publish.yml on main, the digest ends up in
     `BRICK_HOST=nas.lan\nBRICK_TAG=sha-1a2b3c4\nBRICK_IMAGE=addict85/brickinventory@${D1}\n` +
       `CADDY_IMAGE=addict85/brickinventory-caddy@${D2}\n`,
   );
-  assert.equal(r.rechte, 0o600, '.env behält ihre Rechte');
+  assert.equal(r.rights, 0o600, '.env keeps its permissions');
   assert.match(r.docker, /^docker compose pull schluessel daten-rechte migration app jobs caddy-rechte caddy$/m);
 });
 
 test('if the check of the Caddy image fails, BRICK_IMAGE does not change either', t => {
-  const vorher = 'BRICK_HOST=nas.lan\nBRICK_IMAGE=alt\nCADDY_IMAGE=altcaddy\n';
-  const r = lauf(t, { env: vorher, cosignResponse: signatur(D1), caddyCode: 1 });
+  const prior = 'BRICK_HOST=nas.lan\nBRICK_IMAGE=alt\nCADDY_IMAGE=altcaddy\n';
+  const r = run(t, { env: prior, cosignResponse: signature(D1), caddyCode: 1 });
   assert.equal(r.code, 1);
   assert.match(r.log, /Signaturprüfung für addict85\/brickinventory-caddy:latest fehlgeschlagen — nichts geändert/);
-  assert.equal(r.env, vorher);
-  assert.equal(r.docker, '', 'kein pull');
+  assert.equal(r.env, prior);
+  assert.equal(r.docker, '', 'no pull');
 });
 
 test('a failed check changes nothing', t => {
-  const vorher = 'BRICK_HOST=nas.lan\nBRICK_IMAGE=alt\n';
-  const r = lauf(t, { env: vorher, cosignResponse: signatur(D1), cosignCode: 1 });
+  const prior = 'BRICK_HOST=nas.lan\nBRICK_IMAGE=alt\n';
+  const r = run(t, { env: prior, cosignResponse: signature(D1), cosignCode: 1 });
   assert.equal(r.code, 1);
   assert.match(r.log, /Signaturprüfung für addict85\/brickinventory:latest fehlgeschlagen — nichts geändert/);
-  assert.equal(r.env, vorher);
-  assert.equal(r.docker, '', 'kein pull');
+  assert.equal(r.env, prior);
+  assert.equal(r.docker, '', 'no pull');
 });
 
 test('two different digests or none: abort', t => {
-  for (const antwort of [`${signatur(D1)}\n${signatur(D2)}`, '[]']) {
-    const r = lauf(t, { cosignResponse: antwort });
+  for (const response of [`${signature(D1)}\n${signature(D2)}`, '[]']) {
+    const r = run(t, { cosignResponse: response });
     assert.equal(r.code, 1, r.log);
     assert.match(r.log, /genau ein geprüfter Digest/);
     assert.match(r.env, /^BRICK_IMAGE=alt$/m);
@@ -132,15 +134,15 @@ test('two different digests or none: abort', t => {
 });
 
 test('without cosign: abort with a hint', t => {
-  const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'image-pruefen-'));
-  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
+  const location = fs.mkdtempSync(path.join(os.tmpdir(), 'image-pruefen-'));
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
   // Only the tools up to the query, so that an installed cosign does not count.
-  const bin = path.join(ort, 'bin');
+  const bin = path.join(location, 'bin');
   fs.mkdirSync(bin);
   for (const w of ['sed', 'tail'])
     fs.symlinkSync(spawnSync('sh', ['-c', `command -v ${w}`], { encoding: 'utf8' }).stdout.trim(), path.join(bin, w));
-  const r = spawnSync('/bin/sh', [path.join(ROOT, 'scripts', 'image-pruefen.sh')], {
-    cwd: ort,
+  const r = spawnSync('/bin/sh', [path.join(ROOT, 'scripts', 'check-image.sh')], {
+    cwd: location,
     encoding: 'utf8',
     env: { PATH: bin },
   });
@@ -162,23 +164,23 @@ test('without BRICK_IMAGE and CADDY_IMAGE compose does not start, with digest ev
     });
   const probe = call({ BRICK_IMAGE: 'x', CADDY_IMAGE: 'y' });
   if (probe.error || (probe.status !== 0 && !/_IMAGE/.test(probe.stderr))) {
-    if (process.env.CI) assert.fail(`docker compose im CI-Lauf: ${probe.error?.message || probe.stderr}`);
+    if (process.env.CI) assert.fail(`docker compose in the CI run: ${probe.error?.message || probe.stderr}`);
     t.skip('no docker compose');
     return;
   }
-  const ohne = call({ CADDY_IMAGE: 'y' });
-  assert.notEqual(ohne.status, 0);
-  assert.match(ohne.stderr, /BRICK_IMAGE fehlt in \.env - einmal sh scripts\/image-pruefen\.sh ausfuehren/);
+  const without = call({ CADDY_IMAGE: 'y' });
+  assert.notEqual(without.status, 0);
+  assert.match(without.stderr, /BRICK_IMAGE fehlt in \.env - einmal sh scripts\/check-image\.sh ausfuehren/);
   const withoutCaddy = call({ BRICK_IMAGE: 'x' });
   assert.notEqual(withoutCaddy.status, 0);
-  assert.match(withoutCaddy.stderr, /CADDY_IMAGE fehlt in \.env - einmal sh scripts\/image-pruefen\.sh ausfuehren/);
-  const mit = JSON.parse(
+  assert.match(withoutCaddy.stderr, /CADDY_IMAGE fehlt in \.env - einmal sh scripts\/check-image\.sh ausfuehren/);
+  const withIt = JSON.parse(
     call({ BRICK_IMAGE: `addict85/brickinventory@${D1}`, CADDY_IMAGE: `addict85/brickinventory-caddy@${D2}` }).stdout,
   );
   // Only what is signed is pulled; self-built only with `--build` and an own name.
-  const ziehen = Object.entries(mit.services).filter(([, d]) => !/^postgres:/.test(d.image));
+  const pull = Object.entries(withIt.services).filter(([, d]) => !/^postgres:/.test(d.image));
   assert.deepEqual(
-    ziehen.map(([n, d]) => `${n} ${d.image} ${d.pull_policy}`).sort(),
+    pull.map(([n, d]) => `${n} ${d.image} ${d.pull_policy}`).sort(),
     [
       ...['app', 'daten-rechte', 'jobs', 'migration', 'schluessel'].map(
         n => `${n} addict85/brickinventory@${D1} missing`,
@@ -195,13 +197,13 @@ test('an update creates the new secret of the system role, the others stay', t =
     db_migration_password: 'mig',
     session_secret: 's'.repeat(48),
   };
-  const r = lauf(t, { cosignResponse: signatur(D1), geheim: alt });
+  const r = run(t, { cosignResponse: signature(D1), secret: alt });
   assert.equal(r.code, 0, r.log);
-  assert.match(r.geheim('db_system_password'), /^[0-9a-f]{48}$/);
-  for (const [n, w] of Object.entries(alt)) assert.equal(r.geheim(n), w, `${n} verändert`);
-  const ohne = lauf(t, { cosignResponse: signatur(D1) });
-  assert.equal(ohne.code, 0, ohne.log);
-  assert.equal(ohne.hatSecrets, false, 'ohne ./geheimnisse legt das Update keine an');
+  assert.match(r.secret('db_system_password'), /^[0-9a-f]{48}$/);
+  for (const [n, w] of Object.entries(alt)) assert.equal(r.secret(n), w, `${n} changed`);
+  const without = run(t, { cosignResponse: signature(D1) });
+  assert.equal(without.code, 0, without.log);
+  assert.equal(without.hasSecrets, false, 'without „./geheimnisse“ the update creates none');
 });
 
 test('… also that of the web system role, if only it is missing', t => {
@@ -212,8 +214,8 @@ test('… also that of the web system role, if only it is missing', t => {
     db_system_password: 'sys',
     session_secret: 's'.repeat(48),
   };
-  const r = lauf(t, { cosignResponse: signatur(D1), geheim: alt });
+  const r = run(t, { cosignResponse: signature(D1), secret: alt });
   assert.equal(r.code, 0, r.log);
-  assert.match(r.geheim('db_system_web_password'), /^[0-9a-f]{48}$/);
-  for (const [n, w] of Object.entries(alt)) assert.equal(r.geheim(n), w, `${n} verändert`);
+  assert.match(r.secret('db_system_web_password'), /^[0-9a-f]{48}$/);
+  for (const [n, w] of Object.entries(alt)) assert.equal(r.secret(n), w, `${n} changed`);
 });

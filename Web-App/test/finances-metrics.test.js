@@ -19,20 +19,20 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 // Both notations: de-DE (1.097,93) and de-CH (1’097.93).
-const zahl = s =>
+const num = s =>
   s
     .replace(/[’'’\s]/g, '')
     .replace(/\.(?=\d{3}\b)/g, '')
     .replace(',', '.');
 
-function antworten({ withPrice }) {
+function answers({ withPrice }) {
   const setPrice = withPrice ? 700 : 0;
   return {
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       totals: { min: withPrice ? '650' : '0', avg: String(setPrice), max: withPrice ? '760' : '0' },
@@ -44,7 +44,7 @@ function antworten({ withPrice }) {
           purchase_price: 629,
           avg_price: setPrice,
           total_avg: String(setPrice),
-          wert_gesamt: setPrice,
+          value_total: setPrice,
           acquisitions: [
             {
               id: 1,
@@ -52,7 +52,7 @@ function antworten({ withPrice }) {
               quantity: 1,
               purchase_price: 629,
               avg_price: setPrice || null,
-              wert_gesamt: setPrice,
+              value_total: setPrice,
             },
           ],
           ...(withPrice ? {} : { error: '10294-1 — kein BrickLink-Preis gefunden' }),
@@ -64,13 +64,13 @@ function antworten({ withPrice }) {
           purchase_price: 399,
           avg_price: 0,
           total_avg: '0',
-          wert_gesamt: 0,
-          acquisitions: [{ id: 2, condition: 'N', quantity: 1, purchase_price: 399, wert_gesamt: 0 }],
+          value_total: 0,
+          acquisitions: [{ id: 2, condition: 'N', quantity: 1, purchase_price: 399, value_total: 0 }],
           error: 'kein Preis',
         },
       ],
     },
-    '/v1/finance/parts-valuation': {
+    '/v2/finance/parts-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '0',
@@ -86,13 +86,13 @@ function antworten({ withPrice }) {
         },
       ],
     },
-    '/v1/finance/minifigs-valuation': {
+    '/v2/finance/minifigs-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '0',
       figs: [{ fig_number: 'fig-1', fig_name: 'Chewbacca', quantity: 1, avg_price: 0, acquisitions: [] }],
     },
-    '/v1/finance/pnl': {
+    '/v2/finance/pnl': {
       success: true,
       currency: 'EUR',
       sets: [],
@@ -103,61 +103,61 @@ function antworten({ withPrice }) {
         figs_purchase: '0.00',
         grand_total: String(setPrice),
         pnl_pct: withPrice ? '11.3' : null,
-        pnl_prozent: withPrice ? 11.3 : null,
+        pnl_percent: withPrice ? 11.3 : null,
         pnl_purchase: withPrice ? '629.00' : '0.00',
         pnl_current: withPrice ? '700.00' : '0.00',
-        positionen: 4,
-        positionen_bewertet: withPrice ? 1 : 0,
-        positionen_ohne_marktpreis: withPrice ? 3 : 4,
-        positionen_ohne_kaufpreis: 0,
-        basis_einstand: withPrice ? '629.00' : '0.00',
-        basis_marktwert: withPrice ? '700.00' : '0.00',
-        basis_guv_betrag: withPrice ? '71.00' : '0.00',
-        ohne_marktpreis_einstand: withPrice ? '468.93' : '1097.93',
-        ohne_kaufpreis_marktwert: '0.00',
+        positions: 4,
+        positions_valued: withPrice ? 1 : 0,
+        positions_without_market_price: withPrice ? 3 : 4,
+        positions_without_purchase_price: 0,
+        baseline_cost: withPrice ? '629.00' : '0.00',
+        baseline_market_value: withPrice ? '700.00' : '0.00',
+        baseline_pnl_amount: withPrice ? '71.00' : '0.00',
+        cost_without_market_price: withPrice ? '468.93' : '1097.93',
+        market_value_without_purchase_price: '0.00',
       },
     },
   };
 }
 
-async function finanzen(opt) {
-  const o = await openUi(antworten(opt));
-  await reiter(o.w, 'finance');
-  await warte(() => o.d.querySelector('#fin-tbl tfoot'));
+async function finances(opt) {
+  const o = await openUi(answers(opt));
+  await switchTab(o.w, 'finance');
+  await waitFor(() => o.d.querySelector('#fin-tbl tfoot'));
   return o;
 }
 
 test('without market prices: cost basis at the top and in the sums, a hint instead of "—"', async () => {
-  const { w, d } = await finanzen({ withPrice: false });
+  const { w, d } = await finances({ withPrice: false });
   try {
-    assert.match(zahl(text(d.getElementById('fin-einstand'))), /1097\.93/, 'Einstand fehlt oben');
-    assert.equal(text(d.getElementById('fin-wert')), 'Marktpreis fehlt für 4 Positionen');
+    assert.match(num(text(d.getElementById('fin-cost-basis'))), /1097\.93/, 'Cost basis missing at the top');
+    assert.equal(text(d.getElementById('fin-value')), 'Marktpreis fehlt für 4 Positionen');
     // The G&L tile stays (the row does not jump) and says what is missing.
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none', 'G&V-Kachel verschwindet');
     assert.equal(text(d.getElementById('fin-total-pnl')), '—');
     assert.equal(text(d.getElementById('fin-pnl-sub')), 'Braucht Kauf- und Marktpreise');
-    const setsFuss = d.querySelector('[data-fin-art="sets"] tfoot');
-    assert.match(zahl(text(setsFuss)), /1028\.00/, 'Die Summenzeile der Sets zeigt den Einstand nicht');
-    const summe = d.querySelector('.dt-summe tfoot');
-    assert.match(zahl(text(summe)), /1097\.93/, 'Die Gesamtsumme zeigt den Einstand nicht');
+    const setsFuss = d.querySelector('[data-fin-kind="sets"] tfoot');
+    assert.match(num(text(setsFuss)), /1028\.00/, 'The totals row of the sets does not show the cost basis');
+    const sum = d.querySelector('.dt-sum tfoot');
+    assert.match(num(text(sum)), /1097\.93/, 'The grand total does not show the cost basis');
   } finally {
     w.close();
   }
 });
 
 test('with market prices: total value and P&L', async () => {
-  const { w, d } = await finanzen({ withPrice: true });
+  const { w, d } = await finances({ withPrice: true });
   try {
-    assert.match(zahl(text(d.getElementById('fin-wert'))), /700\.00/);
+    assert.match(num(text(d.getElementById('fin-value'))), /700\.00/);
     assert.match(text(d.getElementById('fin-basis')), /3 Positionen ohne Marktpreis nicht gerechnet/);
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none');
     assert.match(text(d.getElementById('fin-total-pnl')), /11[.,]3/);
     // Amount from the same items as the percentage: 700 − 629, not 700 − 1097.93.
     // Behind it stands what it is computed against; the percent in the chart computes against the period.
     assert.match(
-      zahl(text(d.getElementById('fin-pnl-sub'))),
+      num(text(d.getElementById('fin-pnl-sub'))),
       /^\+[^0-9]*71\.00[^0-9]*$/,
-      `Betrag passt nicht zur Prozentzahl: ${text(d.getElementById('fin-pnl-sub'))}`,
+      `Amount does not match the percentage: ${text(d.getElementById('fin-pnl-sub'))}`,
     );
     assert.match(text(d.getElementById('fin-pnl-sub')), /zum Kaufpreis/);
   } finally {
@@ -168,11 +168,11 @@ test('with market prices: total value and P&L', async () => {
 test('nothing captured: one empty state, no "price missing"', async () => {
   const o = await openUi({});
   try {
-    await reiter(o.w, 'finance');
-    await warte(() => o.d.querySelector('#fin-tbl .leer'));
-    const finanzen = text(o.d.getElementById('tab-finance'));
-    assert.equal((finanzen.match(/fehlt/gi) || []).length, 0, `meldet „fehlt“: ${finanzen.slice(0, 300)}`);
-    assert.match(text(o.d.querySelector('#fin-tbl .leer')), /Noch nichts zu bewerten/);
+    await switchTab(o.w, 'finance');
+    await waitFor(() => o.d.querySelector('#fin-tbl .empty-state'));
+    const finances = text(o.d.getElementById('tab-finance'));
+    assert.equal((finances.match(/fehlt/gi) || []).length, 0, `meldet „fehlt“: ${finances.slice(0, 300)}`);
+    assert.match(text(o.d.querySelector('#fin-tbl .empty-state')), /Noch nichts zu bewerten/);
   } finally {
     o.w.close();
   }

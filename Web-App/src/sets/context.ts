@@ -1,4 +1,4 @@
-import type { Konfig } from '../infra/config';
+import type { AppConfig } from '../infra/config';
 import type { Db } from '../../db/database';
 import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
@@ -9,14 +9,14 @@ import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../catalog';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../account';
-import type { Kontext } from '../infra/area';
-import type { Uhr } from '../infra/clock';
+import type { Context } from '../infra/area';
+import type { Clock } from '../infra/clock';
 
 /** What the area gets from outside, so that a test can give it its own access; that
  * all areas use the same one is ensured by buildServices (startup/wiring.ts). */
 export interface SetsDependencies {
-  uhr: Uhr;
-  konfig: Readonly<Konfig>;
+  clock: Clock;
+  config: Readonly<AppConfig>;
   db: Db;
   externalSources: ForeignSourcesServices;
   images: ImagesServices;
@@ -25,7 +25,7 @@ export interface SetsDependencies {
   household: HouseholdServices;
   jobQueue: JobsServices;
   inventory: InventoryServices;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   account: AccountServices;
 }
-export type SetsContext = Kontext<SetsDependencies, object>;
+export type SetsContext = Context<SetsDependencies, object>;

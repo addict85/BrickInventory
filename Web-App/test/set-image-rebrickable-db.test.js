@@ -34,9 +34,9 @@ const MIGRATION = fs.readFileSync(
 const SCHEMA = `probe0101_${process.pid}`;
 
 test('the proxy stores the fallback address locally', () => {
-  const adresse = rebrickableSetImage('75192');
-  assert.equal(adresse, 'https://cdn.rebrickable.com/media/sets/75192-1.jpg');
-  assert.equal(setNumberFromImageAddress(adresse), '75192-1', 'der Proxy legt die Rückfall-Adresse lokal ab');
+  const address = rebrickableSetImage('75192');
+  assert.equal(address, 'https://cdn.rebrickable.com/media/sets/75192-1.jpg');
+  assert.equal(setNumberFromImageAddress(address), '75192-1', 'the proxy stores the fallback address locally');
 });
 
 test('only the main image is stored locally, no additional image and nothing foreign', () => {
@@ -51,7 +51,7 @@ test('only the main image is stored locally, no additional image and nothing for
 });
 
 test('migration 0101: set images from Rebrickable', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});
@@ -70,25 +70,21 @@ test('migration 0101: set images from Rebrickable', { concurrency: 1 }, async t 
     ('5-1', NULL, NULL)`);
   await c.query(MIGRATION);
 
-  const zeilen = (await c.query('SELECT set_number, image_url, image_local FROM set_catalog ORDER BY 1')).rows;
+  const lines = (await c.query('SELECT set_number, image_url, image_local FROM set_catalog ORDER BY 1')).rows;
   assert.deepEqual(
-    zeilen.slice(0, 2).map(z => z.image_url),
+    lines.slice(0, 2).map(z => z.image_url),
     ['https://cdn.rebrickable.com/media/sets/1-1.jpg', 'https://cdn.rebrickable.com/media/sets/2-1.jpg'],
-    'BrickLink und Brickset zeigen danach auf Rebrickable',
+    'BrickLink and Brickset point to Rebrickable afterwards',
   );
-  assert.equal(
-    zeilen[2].image_url,
-    'https://cdn.rebrickable.com/media/sets/3-1/1234.jpg',
-    'Rebrickable bleibt, wie es ist',
-  );
+  assert.equal(lines[2].image_url, 'https://cdn.rebrickable.com/media/sets/3-1/1234.jpg', 'Rebrickable stays as it is');
   assert.deepEqual(
-    zeilen[3],
+    lines[3],
     {
       set_number: '4-1',
       image_url: 'https://cdn.rebrickable.com/media/sets/4-1.jpg',
       image_local: '/images/sets/4-1.jpg',
     },
-    'ein lokales Bild bleibt liegen',
+    'a local image stays',
   );
-  assert.equal(zeilen[4].image_url, null, 'ohne Adresse bleibt ohne Adresse');
+  assert.equal(lines[4].image_url, null, 'without an address stays without an address');
 });

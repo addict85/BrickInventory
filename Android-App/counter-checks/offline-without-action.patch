@@ -1,0 +1,17 @@
+Gegenprobe: Der Offline-Hinweis bietet keine Handlung an
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: offline hint offers to fetch the list again
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt
+@@ -65,7 +65,7 @@
+             fmtStatus(state, appNumberLocale(), twentyFour = twentyFourHours())),
+         text = if (open > 0) pluralStringResource(R.plurals.offline_wait, open, open) else null,
+         modifier = modifier,
+-        action = onAgain?.let { stringResource(R.string.common_retry) to it },
++
+     )
+ }
+ 

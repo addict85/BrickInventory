@@ -3,13 +3,13 @@
  * leaves no heartbeat: the health check must not consider a process without a
  * worker healthy.
  *
- * Checked on the real server (ROLLE=jobs). A preloaded module makes
- * planeAll() throw, as a missing table or connection would.
+ * Checked on the real server (ROLE=jobs). A preloaded module makes
+ * planAll() throw, as a missing table or connection would.
  *
  * Counter-checks (measured 05.11.2026):
  *   A  in server.ts again `void starte();` → red: “the process ends with
  *      exit code 1” (it kept running until the test aborted it after 20 s)
- *   B  in startJobs() the heartbeat again before planeAll() → red:
+ *   B  in startJobs() the heartbeat again before planAll() → red:
  *      “no heartbeat without a worker”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -30,31 +30,31 @@ const { dataOrSkip } = require('./helpers/db');
 
 const PRELOAD = `
 const Module = require('node:module');
-const echt = Module.prototype.require;
+const original = Module.prototype.require;
 Module.prototype.require = function (name) {
-  const m = echt.apply(this, arguments);
+  const m = original.apply(this, arguments);
   if (typeof name === 'string' && /(?:jobQueue[/\\\\]|^\\.\\/)schedule(\\.js)?$/.test(name))
-    return { ...m, planeAll: async () => { throw new Error('Testfehler: planeAll'); } };
+    return { ...m, planAll: async () => { throw new Error('Testfehler: planAll'); } };
   return m;
 };`;
 
 test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_000 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+  const { readState, deleteState } = require('./helpers/sources').testArea('jobQueue').runState;
   const { HEARTBEAT_KEY } = _req('startup/jobsProcess.js');
   await deleteState(HEARTBEAT_KEY);
   t.after(() => db.pool.end().catch(() => {}));
 
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'jobs-startfehler-'));
-  const vorladen = path.join(ordner, 'planeAll-wirft.js');
-  fs.writeFileSync(vorladen, PRELOAD);
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jobs-startfehler-'));
+  const preload = path.join(dir, 'planAll-wirft.js');
+  fs.writeFileSync(preload, PRELOAD);
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-  const srv = spawn(process.execPath, ['--require', vorladen, path.join(ROOT, 'dist', 'server.js')], {
+  const srv = spawn(process.execPath, ['--require', preload, path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, DATABASE_URL: URL_DB, ROLLE: 'jobs' },
+    env: { ...process.env, DATABASE_URL: URL_DB, ROLE: 'jobs' },
   });
   let log = '';
   srv.stdout.on('data', d => {
@@ -63,23 +63,23 @@ test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_
   srv.stderr.on('data', d => {
     log += d;
   });
-  const ende = await new Promise(fertig => {
-    const frist = setTimeout(() => {
+  const end = await new Promise(done => {
+    const deadline = setTimeout(() => {
       srv.kill('SIGKILL');
-      fertig('lief weiter');
+      done('lief weiter');
     }, 20_000);
     srv.on('exit', code => {
-      clearTimeout(frist);
-      fertig(code);
+      clearTimeout(deadline);
+      done(code);
     });
   });
 
   await t.test('the process ends with exit code 1', () => {
-    assert.equal(ende, 1, log.slice(-1500));
-    assert.match(log, /Start gescheitert: .*Testfehler: planeAll/);
+    assert.equal(end, 1, log.slice(-1500));
+    assert.match(log, /Start gescheitert: .*Testfehler: planAll/);
   });
 
   await t.test('no sign of life without a worker', async () => {
-    assert.equal(await liesZustand(HEARTBEAT_KEY), null);
+    assert.equal(await readState(HEARTBEAT_KEY), null);
   });
 });

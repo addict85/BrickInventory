@@ -1,7 +1,7 @@
 import * as repo from './repository/shared';
-import * as kaeufe from './repository/purchases';
-import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
-import { asIds, type Sicht } from '../household';
+import * as purchases from './repository/purchases';
+import { isSparePart, NO_COLOR } from '../infra/validate';
+import { asIds, type Viewer } from '../household';
 import type { InventoryContext } from './context';
 
 // What sets, parts and figures need in common.
@@ -20,11 +20,11 @@ export function clampPageSize(value: unknown, fallback: number): number {
 }
 
 /** COUNT(*) is bigint and comes from the driver as a string. */
-type Zaehlwert = number | string | null | undefined;
+type CountValue = number | string | null | undefined;
 
 /** THE condition rule for sets, manual parts and figures: one used
  * acquisition makes the entry used. */
-export function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
+export function conditionFromAcquisitions(acqCount: CountValue, usedCount: CountValue) {
   // COUNT(*) comes as text ("2").
   const acq = parseInt(String(acqCount ?? ''), 10) || 0;
   const used = parseInt(String(usedCount ?? ''), 10) || 0;
@@ -34,7 +34,7 @@ export function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlw
 }
 
 /** For the badges: whoever has new and used should see both. */
-export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): ('N' | 'U')[] {
+export function conditionsFromAcquisitions(acqCount: CountValue, usedCount: CountValue): ('N' | 'U')[] {
   const acq = parseInt(String(acqCount ?? ''), 10) || 0;
   const used = parseInt(String(usedCount ?? ''), 10) || 0;
   // Without acquisitions the one badge "new".
@@ -46,8 +46,8 @@ export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehl
 }
 
 // As for sets: one used acquisition makes the entry used; one query per page.
-type Schluessel = { part_number?: string; color_id?: number | null; fig_number?: string };
-export async function manuellenZustandSetzen<R extends Schluessel>(
+type Key = { part_number?: string; color_id?: number | null; fig_number?: string };
+export async function setManualCondition<R extends Key>(
   k: InventoryContext,
   userId: number | number[],
   rows: R[],
@@ -58,9 +58,9 @@ export async function manuellenZustandSetzen<R extends Schluessel>(
   if (!rows?.length) return rows;
 
   const isPart = kind === 'part';
-  const keyOf = (r: Schluessel) => (isPart ? `${r.part_number}|${r.color_id ?? KEINE_FARBE}` : String(r.fig_number));
+  const keyOf = (r: Key) => (isPart ? `${r.part_number}|${r.color_id ?? NO_COLOR}` : String(r.fig_number));
 
-  const acq = await k.gemeinsam.entryMetrics(isPart ? 'part' : 'fig', uids);
+  const acq = await k.shared.entryMetrics(isPart ? 'part' : 'fig', uids);
 
   const byKey = new Map(acq.map(a => [keyOf(a), a]));
 
@@ -81,7 +81,7 @@ export async function manuellenZustandSetzen<R extends Schluessel>(
 }
 
 // One function for parts and figures: only table and key change.
-export interface VerwendendesSet {
+export interface UsingSet {
   set_number: string;
   set_name: string | null;
   quantity: number;
@@ -90,8 +90,8 @@ export interface VerwendendesSet {
   owner_user_id: number;
 }
 
-export interface BestandteilKopf {
-  nummer: string;
+export interface ComponentHeader {
+  number: string;
   name: string | null;
   color_id: number | null;
   color_name: string | null;
@@ -108,20 +108,20 @@ export interface BestandteilKopf {
 }
 
 export interface ComponentResponse {
-  item: BestandteilKopf | null;
-  sets: VerwendendesSet[];
+  item: ComponentHeader | null;
+  sets: UsingSet[];
 }
 
 export async function usingSets(
   k: InventoryContext,
-  uidsChoice: Sicht | number[],
-  tabelle: 'parts' | 'minifigs',
-  schluessel: Record<string, string | number>,
+  uidsChoice: Viewer | number[],
+  table: 'parts' | 'minifigs',
+  key: Record<string, string | number>,
 ): Promise<ComponentResponse> {
   const uids = await k.household.scopeFrom(uidsChoice);
-  const rows = await k.gemeinsam.setsWithComponent(uids, tabelle, schluessel);
+  const rows = await k.shared.setsWithComponent(uids, table, key);
 
-  const sets: VerwendendesSet[] = rows.map(r => ({
+  const sets: UsingSet[] = rows.map(r => ({
     set_number: String(r.set_number),
     set_name: r.set_name ?? null,
     quantity: parseInt(String(r.quantity), 10) || 0,
@@ -131,21 +131,21 @@ export async function usingSets(
   }));
 
   // The header from the same rows as the list; the image from the first one with an image.
-  const erste = rows[0];
-  const withImage = rows.find(r => r.teil_image_local || r.teil_image_url);
-  const item: BestandteilKopf | null = erste
+  const first = rows[0];
+  const withImage = rows.find(r => r.part_image_local || r.part_image_url);
+  const item: ComponentHeader | null = first
     ? {
-        nummer: String(erste.nummer),
-        name: erste.name ?? null,
-        color_id: erste.color_id == null ? null : parseInt(String(erste.color_id), 10),
-        color_name: erste.color_name ?? null,
-        color_hex: erste.color_hex ?? null,
-        category_name: erste.category_name ?? null,
-        image_local: withImage?.teil_image_local ?? null,
-        image_url: withImage?.teil_image_url ?? null,
+        number: String(first.number),
+        name: first.name ?? null,
+        color_id: first.color_id == null ? null : parseInt(String(first.color_id), 10),
+        color_name: first.color_name ?? null,
+        color_hex: first.color_hex ?? null,
+        category_name: first.category_name ?? null,
+        image_local: withImage?.part_image_local ?? null,
+        image_url: withImage?.part_image_url ?? null,
         // istErsatzteil(): aggregates come as strings, and "0" is truthy.
-        is_spare: istErsatzteil(erste.is_spare),
-        storage: erste.storage ?? null,
+        is_spare: isSparePart(first.is_spare),
+        storage: first.storage ?? null,
         owner_ids: [...new Set(sets.map(s => s.owner_user_id))].filter(Number.isFinite),
         total_quantity: sets.reduce((n, s) => n + s.quantity, 0),
       }
@@ -158,17 +158,17 @@ export async function usingSets(
 /** The row and, if it existed, its purchases: the finance sums would otherwise keep counting the part. */
 export async function deleteManual(
   k: InventoryContext,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   ownerId: number,
-  schluessel: (string | number)[],
+  key: (string | number)[],
 ) {
-  const [nummer = '', farbe = 0] = schluessel;
+  const [number = '', color = 0] = key;
   const r =
-    art === 'part'
-      ? await repo.loescheTeilZeile(k.db, ownerId, String(nummer), Number(farbe))
-      : await repo.deleteMinifigRow(k.db, ownerId, String(nummer));
+    kind === 'part'
+      ? await repo.deletePartRow(k.db, ownerId, String(number), Number(color))
+      : await repo.deleteMinifigRow(k.db, ownerId, String(number));
   if (!r.changes) return r;
-  if (art === 'part') await kaeufe.deletePartEntries(k.db, ownerId, String(nummer), Number(farbe) || 0);
-  else await kaeufe.deleteMinifigEntries(k.db, ownerId, String(nummer));
+  if (kind === 'part') await purchases.deletePartEntries(k.db, ownerId, String(number), Number(color) || 0);
+  else await purchases.deleteMinifigEntries(k.db, ownerId, String(number));
   return r;
 }

@@ -19,6 +19,8 @@
  *      a sandbox” (both paths, header missing)
  *   F  (08.11.) seesAccount reads via scopeIds (memory) again → red:
  *      “an unlinked sub-account is no longer readable immediately” (200 instead of 404)
+ *   G  (22.11.) no-store set inside the handler again (after the guards) → red:
+ *      “without login, and no answer goes into a cache” (the 401 without the header)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
@@ -29,9 +31,9 @@ const os = require('node:os');
 const path = require('node:path');
 
 // An own data directory before appPaths is loaded.
-const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'daten-dateien-'));
-fs.writeFileSync(path.join(WURZEL, 'package.json'), '{}');
-process.env.APP_ROOT = WURZEL;
+const ROOT_CERT = fs.mkdtempSync(path.join(os.tmpdir(), 'daten-dateien-'));
+fs.writeFileSync(path.join(ROOT_CERT, 'package.json'), '{}');
+process.env.APP_ROOT = ROOT_CERT;
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
@@ -40,14 +42,14 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-const NAMEN = ['dd_haupt', 'dd_unter', 'dd_fremd'].map(n => `${n}_${process.pid}`);
+const NAMES = ['dd_haupt', 'dd_unter', 'dd_fremd'].map(n => `${n}_${process.pid}`);
 
 test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMES]);
   const ids = [];
-  for (const n of NAMEN)
+  for (const n of NAMES)
     ids.push(
       (
         await db.get(
@@ -60,28 +62,28 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
   const [H, U, F] = ids;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [H, U]);
   for (const id of [H, U]) {
-    fs.mkdirSync(path.join(WURZEL, 'data', 'uploads', String(id)), { recursive: true });
-    fs.writeFileSync(path.join(WURZEL, 'data', 'uploads', String(id), 'a.pdf'), `pdf von ${id}`);
+    fs.mkdirSync(path.join(ROOT_CERT, 'data', 'uploads', String(id)), { recursive: true });
+    fs.writeFileSync(path.join(ROOT_CERT, 'data', 'uploads', String(id), 'a.pdf'), `pdf von ${id}`);
   }
-  fs.writeFileSync(path.join(WURZEL, 'data', 'uploads', 'lose.pdf'), 'ohne Benutzerordner');
+  fs.writeFileSync(path.join(ROOT_CERT, 'data', 'uploads', 'lose.pdf'), 'ohne Benutzerordner');
   const SN = `7${process.pid % 100000}-1`;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [H, SN]);
-  fs.mkdirSync(path.join(WURZEL, 'data', 'instructions'), { recursive: true });
-  fs.writeFileSync(path.join(WURZEL, 'data', 'instructions', `${SN}_1.pdf`), '%PDF-1.4\n<html><script>x</script>');
+  fs.mkdirSync(path.join(ROOT_CERT, 'data', 'instructions'), { recursive: true });
+  fs.writeFileSync(path.join(ROOT_CERT, 'data', 'instructions', `${SN}_1.pdf`), '%PDF-1.4\n<html><script>x</script>');
 
-  const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t });
-  const hole = async (als, weg, verwalter = false) => {
-    sitzung.userId = als;
-    sitzung.isAdmin = verwalter;
-    const r = await fetch(base + weg);
-    return { status: r.status, text: await r.text(), kopf: r.headers };
+  const session = {};
+  const { base } = testServer(_req, { session, t });
+  const hole = async (as, route, admin = false) => {
+    session.userId = as;
+    session.isAdmin = admin;
+    const r = await fetch(base + route);
+    return { status: r.status, text: await r.text(), head: r.headers };
   };
 
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
-    fs.rmSync(WURZEL, { recursive: true, force: true });
+    fs.rmSync(ROOT_CERT, { recursive: true, force: true });
   });
 
   await t.test('the own file', async () => {
@@ -92,7 +94,7 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
 
   await t.test('main account reads sub-account', async () => {
     const r = await hole(H, `/data/uploads/${U}/a.pdf`);
-    assert.equal(r.status, 200, 'Das Hauptkonto sieht die Anleitung des Unterkontos und muss sie öffnen können');
+    assert.equal(r.status, 200, 'The main account sees the instruction of the sub-account and must be able to open it');
   });
 
   await t.test('sub-account does not read main account', async () => {
@@ -104,21 +106,21 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
   });
 
   await t.test('foreign and missing answer the same', async () => {
-    const withoutHeader = ({ kopf, ...r }) => {
-      void kopf;
+    const withoutHeader = ({ head, ...r }) => {
+      void head;
       return r;
     };
     const fremd = await hole(F, `/data/uploads/${H}/a.pdf`);
-    const fehlt = await hole(F, `/data/uploads/${F}/gibt-es-nicht.pdf`);
-    assert.deepEqual(withoutHeader(fremd), withoutHeader(fehlt));
+    const missing = await hole(F, `/data/uploads/${F}/gibt-es-nicht.pdf`);
+    assert.deepEqual(withoutHeader(fremd), withoutHeader(missing));
   });
 
   await t.test('as an attachment in a sandbox', async () => {
-    for (const weg of [`/data/uploads/${U}/a.pdf`, `/data/instructions/${SN}_1.pdf`]) {
-      const r = await hole(H, weg);
-      assert.equal(r.status, 200, `${weg}: ${r.text}`);
-      assert.match(r.kopf.get('content-security-policy') ?? '', /^sandbox\b.*default-src 'none'/, weg);
-      assert.match(r.kopf.get('content-disposition') ?? '', /^attachment; filename="[^"]+\.pdf"$/, weg);
+    for (const route of [`/data/uploads/${U}/a.pdf`, `/data/instructions/${SN}_1.pdf`]) {
+      const r = await hole(H, route);
+      assert.equal(r.status, 200, `${route}: ${r.text}`);
+      assert.match(r.head.get('content-security-policy') ?? '', /^sandbox\b.*default-src 'none'/, route);
+      assert.match(r.head.get('content-disposition') ?? '', /^attachment; filename="[^"]+\.pdf"$/, route);
     }
   });
 
@@ -128,19 +130,19 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
     assert.equal(
       (await hole(F, `/data/uploads/${H}/a.pdf`, true)).status,
       404,
-      'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an',
+      'Invoices and vouchers of others are none of the account management’s business',
     );
   });
 
   await t.test('%2F in the segment', async () => {
-    for (const weg of [
+    for (const route of [
       `/data/uploads/x%2F..%2F${H}/a.pdf`,
       `/data/uploads/${F}%2F..%2F${H}/a.pdf`,
       `/data/uploads/..%2F${H}%2Fa.pdf`,
       `/data/uploads/${H}%5Ca.pdf`,
     ]) {
-      const r = await hole(F, weg);
-      assert.equal(r.status, 404, `${weg} → ${r.status}: ${r.text}`);
+      const r = await hole(F, route);
+      assert.equal(r.status, 404, `${route} → ${r.status}: ${r.text}`);
     }
   });
 
@@ -155,7 +157,10 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
     assert.equal((await hole(H, `/data/uploads/${U}/a.pdf`)).status, 404);
   });
 
-  await t.test('without login', async () => {
-    assert.equal((await hole(undefined, `/data/uploads/${H}/a.pdf`)).status, 401);
+  await t.test('without login, and no answer goes into a cache', async () => {
+    const without = await hole(undefined, `/data/uploads/${H}/a.pdf`);
+    assert.equal(without.status, 401);
+    for (const r of [without, await hole(F, `/data/uploads/${H}/a.pdf`), await hole(H, `/data/uploads/${H}/a.pdf`)])
+      assert.equal(r.head.get('cache-control'), 'private, no-store', `${r.status}`);
   });
 });

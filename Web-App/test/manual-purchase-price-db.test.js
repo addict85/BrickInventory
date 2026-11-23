@@ -1,5 +1,7 @@
 /**
  * Part and minifigure without a market price leave behind THE SAME.
+ *
+ * Counter-check: in src/parts/repository/partsList.ts unit_price read as COALESCE(…, 0) → red “without market price: display value 0, acquisition NULL — for part AND figure”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -16,7 +18,7 @@ test('without market price: display value 0, acquisition NULL — for part AND f
   if (!(await dataOrSkip(t, _req))) return;
 
   const name = `mkp_${process.pid}`;
-  const TEIL = `mkpP${String(process.pid).slice(-5)}`;
+  const PART = `mkpP${String(process.pid).slice(-5)}`;
   const FIG = `mkpF${String(process.pid).slice(-5)}`;
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ($1,'x')
@@ -31,7 +33,7 @@ test('without market price: display value 0, acquisition NULL — for part AND f
 
     // Pass names along so that no Rebrickable lookup is needed. NO price
     // — that is what this is about.
-    await addManualPart(uid, { part_number: TEIL, part_name: 'Testteil', color_id: 0, quantity: 2 });
+    await addManualPart(uid, { part_number: PART, part_name: 'Testteil', color_id: 0, quantity: 2 });
     await addManualMinifig(uid, { fig_number: FIG, fig_name: 'Testfigur', quantity: 2 });
 
     // Read via the lists that the UIs use too — the
@@ -40,29 +42,29 @@ test('without market price: display value 0, acquisition NULL — for part AND f
     const { readManualMinifigs } = _req('src/minifigs/queries.js');
     const partsList = await manualPartsList([uid], uid);
     const figList = await readManualMinifigs([uid], uid);
-    const teil = (Array.isArray(partsList) ? partsList : []).find(p => p.part_number === TEIL);
-    const figur = (Array.isArray(figList) ? figList : []).find(f => f.fig_number === FIG);
-    assert.ok(teil, 'Das Teil steht nicht in der Liste');
-    assert.ok(figur, 'Die Figur steht nicht in der Liste');
+    const part = (Array.isArray(partsList) ? partsList : []).find(p => p.part_number === PART);
+    const minifig = (Array.isArray(figList) ? figList : []).find(f => f.fig_number === FIG);
+    assert.ok(part, 'The part is not in the list');
+    assert.ok(minifig, 'The figure is not in the list');
 
     // Without input nothing stands in „Preis/Stk" — for both.
-    assert.equal(teil.unit_price, null, 'Das Teil behauptet eine Preiseingabe');
-    assert.equal(figur.unit_price, null, 'Die Figur behauptet eine Preiseingabe');
+    assert.equal(part.unit_price, null, 'The part claims a price input');
+    assert.equal(minifig.unit_price, null, 'The figure claims a price input');
 
     // The actual finding: the display value carries 0, not NULL — and that
     // equally for both.
-    assert.equal(Number(teil.purchase_price), 0, `Das Teil hat ${teil.purchase_price} statt 0 im Kaufpreis`);
+    assert.equal(Number(part.purchase_price), 0, `The part has ${part.purchase_price} instead of 0 as purchase price`);
     assert.equal(
-      Number(figur.purchase_price),
+      Number(minifig.purchase_price),
       0,
-      `Die Figur hat ${figur.purchase_price} statt 0 im Kaufpreis. src/finances/financeCalc.ts ` +
-        'liest NULL als „kein Kaufpreis erfasst" und 0 als „0 erfasst" — die Figur ' +
-        'verhielte sich damit anders als das Teil daneben.',
+      `The figure has ${minifig.purchase_price} instead of 0 as purchase price. src/finances/financeCalc.ts ` +
+        'reads NULL as „no purchase price recorded" and 0 as „0 recorded" — the figure ' +
+        'would thus behave differently from the part next to it.',
     );
     assert.equal(
-      figur.purchase_price === null,
-      teil.purchase_price === null,
-      'Teil und Figur sind sich uneins, ob ein unbekannter Marktpreis NULL oder 0 ist',
+      minifig.purchase_price === null,
+      part.purchase_price === null,
+      'Part and figure disagree whether an unknown market price is NULL or 0',
     );
 
     // And the finer half: the ACQUISITION holds NULL, not 0.
@@ -70,26 +72,26 @@ test('without market price: display value 0, acquisition NULL — for part AND f
     // `purchase_price` — looked up, not assumed (\d part_acquisitions).
     // It carries the PRICE OF THIS ACQUISITION; the display value next to it is
     // formed when reading.
-    const teilErf = await db.get('SELECT unit_price FROM part_acquisitions WHERE user_id=$1 AND part_number=$2', [
+    const partAcq2 = await db.get('SELECT unit_price FROM part_acquisitions WHERE user_id=$1 AND part_number=$2', [
       uid,
-      TEIL,
+      PART,
     ]);
     const figErf = await db.get('SELECT unit_price FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [
       uid,
       FIG,
     ]);
-    assert.ok(teilErf, 'Zum Teil wurde keine Erfassung angelegt');
-    assert.ok(figErf, 'Zur Figur wurde keine Erfassung angelegt');
+    assert.ok(partAcq2, 'No acquisition was created for the part');
+    assert.ok(figErf, 'No acquisition was created for the figure');
     assert.equal(
-      teilErf.unit_price,
+      partAcq2.unit_price,
       null,
-      `Die Teil-Erfassung trägt ${teilErf.unit_price}; die 0 ist ein Anzeigewert ` + 'und gehört hier nicht hin',
+      `The part acquisition carries ${partAcq2.unit_price}; the 0 is a display value ` + 'and does not belong here',
     );
     assert.equal(
       figErf.unit_price,
       null,
-      `Die Figuren-Erfassung trägt ${figErf.unit_price} statt NULL — die Umwandlung ` +
-        'stand in routes/minifigs.ts an einer von drei Schreibstellen',
+      `The figure acquisition carries ${figErf.unit_price} instead of NULL — the conversion ` +
+        'was in routes/minifigs.ts at one of three write sites',
     );
   } finally {
     await db.run('DELETE FROM part_acquisitions WHERE user_id=$1', [uid]).catch(() => {});

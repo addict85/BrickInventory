@@ -12,7 +12,7 @@ import java.io.File
  *
  * The same question — "which number in this text is the set number?" — is
  * answered twice: here in Kotlin for text recognition (offline, in the
- * camera loop) and in Web-App/utils/produkttitel.ts for dealer titles. A
+ * camera loop) and in `Web-App/utils/produkttitel.ts` for dealer titles. A
  * shared call is not possible; a shared TEST CORPUS is.
  *
  * MEASURED, before it existed:
@@ -38,7 +38,7 @@ import java.io.File
 class SetNumberCorpusTest {
 
     /** Path relative to the module directory `Android-App/app` — as in ApkNameTest. */
-    private val korpus by lazy {
+    private val corpus by lazy {
         JSONObject(File("../../shared/setnummer-korpus.json").readText())
             .getJSONArray("faelle")
     }
@@ -48,31 +48,31 @@ class SetNumberCorpusTest {
         var withExpectation = 0
         var withoutCandidate = 0
         var threeDigit = 0
-        for (i in 0 until korpus.length()) {
-            val fall = korpus.getJSONObject(i)
+        for (i in 0 until corpus.length()) {
+            val fall = corpus.getJSONObject(i)
             val text = fall.getString("text")
-            val erwartet = if (fall.isNull("erwartet")) null else fall.getString("erwartet")
-            val warum = fall.getString("warum")
+            val expected = if (fall.isNull("erwartet")) null else fall.getString("erwartet")
+            val why = fall.getString("warum")
             val k = setNumberCandidates(text)
-            val ist = k.firstOrNull()
-            assert(ist == erwartet) {
+            val actual = k.firstOrNull()
+            assert(actual == expected) {
                 "Korpusfall $i: ${text.replace("\n", "\\n")}\n" +
-                "  erwartet: $erwartet\n  bekommen: $ist  (alle: $k)\n  warum: $warum"
+                "  expected: $expected\n  got: $actual  (all: $k)\n  why: $why"
             }
-            if (erwartet == null) withoutCandidate++ else withExpectation++
-            if (erwartet != null && erwartet.length == 3) threeDigit++
+            if (expected == null) withoutCandidate++ else withExpectation++
+            if (expected != null && expected.length == 3) threeDigit++
         }
 
         // Self-proof 1: the corpus was really read and is not empty.
-        assert(korpus.length() >= 15) {
-            "Nur ${korpus.length()} Faelle im Korpus — Datei geschrumpft oder falscher Pfad?"
+        assert(corpus.length() >= 15) {
+            "Only ${corpus.length()} cases in the corpus — file shrunk or wrong path?"
         }
         // Self-proof 2: both directions are represented. Without this the
         // corpus could degrade into nothing but misses and still be green.
-        assert(withExpectation >= 10) { "nur $withExpectation Faelle mit erwarteter Nummer" }
-        assert(withoutCandidate >= 2) { "nur $withoutCandidate Faelle, die gar nichts liefern duerfen" }
+        assert(withExpectation >= 10) { "only $withExpectation cases with an expected number" }
+        assert(withoutCandidate >= 2) { "only $withoutCandidate cases that must deliver nothing at all" }
         // Self-proof 3: the occasion for this round — three-digit legacy sets — is
         // covered. If support drops out again, it turns red.
-        assert(threeDigit >= 2) { "nur $threeDigit dreistellige Setnummern im Korpus" }
+        assert(threeDigit >= 2) { "only $threeDigit three-digit set numbers in the corpus" }
     }
 }

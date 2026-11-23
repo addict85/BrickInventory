@@ -1,0 +1,24 @@
+Gegenprobe: folgeStrom fängt wieder jede Exception und schluckt so das Abbrechen
+Modul: core-services
+Test: ch.brickinventoryapp.services.CsvStreamAbortTest
+Rot: followStream passes the cancellation on, a network error means fallback level
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvStream.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvStream.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvStream.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvStream.kt
+@@ -16,13 +16,13 @@
+     next: (CsvImportStatusView) -> Boolean,
+ ): Boolean {
+     var failed = false
+-    catchUnlessCancelled {
++    try {
+         stream.takeWhile { ev ->
+             when (ev) {
+                 is CsvImportSseClient.Event.Status -> next(ev.status)
+                 is CsvImportSseClient.Event.Failed -> { failed = true; false }
+             }
+         }.collect { }
+-    }.onFailure { failed = true }
++    } catch (_: Exception) { failed = true }
+     return !failed
+ }

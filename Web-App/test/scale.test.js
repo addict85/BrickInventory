@@ -17,7 +17,7 @@ const path = require('node:path');
 
 const PUB = path.join(__dirname, '..', 'public');
 
-function dateien() {
+function files() {
   const js = path.join(PUB, 'js');
   return [
     path.join(PUB, 'styles.css'),
@@ -32,22 +32,19 @@ function dateien() {
 
 test('every font size takes a step of the scale', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-  const stufen = new Set([...css.matchAll(/--fs-(\d+):/g)].map(m => m[1]));
-  assert.ok(stufen.size >= 8, `Nur ${stufen.size} Stufen in styles.css gefunden — greift die Suche noch?`);
-  const frei = [],
-    fehlt = [];
-  for (const f of dateien()) {
-    const zeilen = fs.readFileSync(f, 'utf8').split('\n');
-    zeilen.forEach((z, i) => {
-      const ort = `${path.relative(PUB, f)}:${i + 1}`;
-      for (const m of z.matchAll(/font-size:\s*[0-9]*\.?[0-9]+rem/g)) frei.push(`${ort}  ${m[0]}`);
-      for (const m of z.matchAll(/var\(--fs-(\d+)\)/g)) if (!stufen.has(m[1])) fehlt.push(`${ort}  --fs-${m[1]}`);
+  const levels = new Set([...css.matchAll(/--fs-(\d+):/g)].map(m => m[1]));
+  assert.ok(levels.size >= 8, `Only ${levels.size} levels found in styles.css — does the search still work?`);
+  const free = [],
+    missing = [];
+  for (const f of files()) {
+    const lines = fs.readFileSync(f, 'utf8').split('\n');
+    lines.forEach((z, i) => {
+      const location = `${path.relative(PUB, f)}:${i + 1}`;
+      for (const m of z.matchAll(/font-size:\s*[0-9]*\.?[0-9]+rem/g)) free.push(`${location}  ${m[0]}`);
+      for (const m of z.matchAll(/var\(--fs-(\d+)\)/g))
+        if (!levels.has(m[1])) missing.push(`${location}  --fs-${m[1]}`);
     });
   }
-  assert.deepEqual(
-    frei,
-    [],
-    'Schriftgrössen ausserhalb der Skala — bitte var(--fs-0 … 8) nehmen:\n  ' + frei.join('\n  '),
-  );
-  assert.deepEqual(fehlt, [], 'Stufe fehlt in styles.css:\n  ' + fehlt.join('\n  '));
+  assert.deepEqual(free, [], 'Font sizes outside the scale — please use var(--fs-0 … 8):\n  ' + free.join('\n  '));
+  assert.deepEqual(missing, [], 'level missing in styles.css:\n  ' + missing.join('\n  '));
 });

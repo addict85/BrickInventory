@@ -1,0 +1,17 @@
+Gegenprobe: Weicht der Server vom Code ab, fragt die App wie bei einem geänderten Schlüssel nach
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
+Rot: a code with its own CA aborts on a foreign public chain instead of asking
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -277,7 +277,7 @@
+         if (!publicPin && fitsToPin(chain, pin)) return
+         val situation = situation(chain, with)
+         if (carriesPin(situation, pin, publicPin, fromCode)) return if (publicPin) checkSheet(chain[0], key, fromCode) else Unit
+-        val kind = if (fromCode) CertificateUnresolved.Kind.CODE_MISMATCH else CertificateUnresolved.Kind.CHANGED
++        val kind = CertificateUnresolved.Kind.CHANGED
+         throw reported(CertificateUnresolved(key, situation.fingerprint, kind, expected = pin, sheet = spkiFingerprint(chain[0])))
+     }
+ 

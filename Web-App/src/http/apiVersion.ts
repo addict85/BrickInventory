@@ -6,10 +6,10 @@ export { API_VERSION, API_MIN_APP } from '../contract/version';
 /** Rejected before the app misreads responses. Without the header
  * (browsers, scripts) none of this applies. */
 export function checkAppVersion(req: Request, res: Response, next: NextFunction): void {
-  const roh = req.get('X-App-Api');
-  const fassung = roh === undefined ? NaN : Number(roh);
-  if (Number.isInteger(fassung) && fassung < API_MIN_APP) {
-    sendError(req, res, 'zu_alt', 'app_zu_alt', { min: API_MIN_APP });
+  const raw = req.get('X-App-Api');
+  const version = raw === undefined ? NaN : Number(raw);
+  if (Number.isInteger(version) && version < API_MIN_APP) {
+    sendError(req, res, 'upgrade_required', 'app_too_old', { min: API_MIN_APP });
     return;
   }
   next();

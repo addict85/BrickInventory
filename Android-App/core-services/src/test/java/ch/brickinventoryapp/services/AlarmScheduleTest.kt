@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.services
 
 import android.content.ContextWrapper
-import ch.brickinventoryapp.services.alarm.PreisalarmWorker
+import ch.brickinventoryapp.services.alarm.PriceAlarmWorker
 import ch.brickinventoryapp.services.alarm.WorkManagerAlarmPlanner
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -17,9 +17,9 @@ import kotlin.coroutines.CoroutineContext
  * WorkManager.getInstance() throws; that the ViewModel reports the error is checked by
  * DevicesSettingsViewModelTest.
  *
- * Counter-checks (patches under gegenproben/, measured by CI):
- *   einplanen-wirft         einplanen() passes the error on (getOrThrow) → red „einplanen meldet …“
- *   planer-im-aufrufer      WorkManagerAlarmPlanner without withContext(io) → red „der Planer wechselt …“
+ * Counter-checks (patches under counter-checks/, measured by CI):
+ *   schedule-throws         schedule() passes the error on (getOrThrow) → red „einplanen meldet …“
+ *   scheduler-in-caller      WorkManagerAlarmPlanner without withContext(io) → red „der Planer wechselt …“
  */
 class AlarmScheduleTest {
 
@@ -37,15 +37,15 @@ class AlarmScheduleTest {
 
     @Test
     fun `scheduling reports an error of the WorkManager instead of throwing`() {
-        assertNotNull("WorkManager ohne Konfiguration und trotzdem kein Fehler?", PreisalarmWorker.einplanen(withoutApp, an = true))
-        assertNotNull(PreisalarmWorker.einplanen(withoutApp, an = false))
+        assertNotNull("WorkManager without configuration and still no error?", PriceAlarmWorker.schedule(withoutApp, an = true))
+        assertNotNull(PriceAlarmWorker.schedule(withoutApp, an = false))
     }
 
     @Test
     fun `the scheduler switches to its dispatcher for WorkManager`() = runBlocking {
         val io = CountingDispatcher()
-        val fehler = WorkManagerAlarmPlanner(withoutApp, io).einplanen(true)
-        assertNotNull(fehler)
-        assertTrue("WorkManager lief auf dem Thread des Aufrufers (am Schalter: dem Hauptthread)", io.switch > 0)
+        val error = WorkManagerAlarmPlanner(withoutApp, io).schedule(true)
+        assertNotNull(error)
+        assertTrue("WorkManager ran on the caller's thread (at the switch: the main thread)", io.switch > 0)
     }
 }

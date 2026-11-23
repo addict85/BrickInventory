@@ -6,7 +6,7 @@
  * Counter-checks (measured 13.11.2026, each reverted):
  *   A  marketPriceFrom() (src/catalog/bricklinkPrices.ts) only avg_price → red:
  *      “valuation” (unit price 0 instead of 37.5), “G&V”, “price history”; Wertkurve green
- *   B  marktpreisSql() (db/geldSql.ts) only avg_price → red: „Wertkurve“
+ *   B  marketPriceSql() (db/moneySql.ts) only avg_price → red: „Wertkurve“
  *      (60, the purchase price as starting point, instead of 75) and “price history”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -23,9 +23,9 @@ const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inv
 
 const NAME = `mengenschnitt_${process.pid}`;
 const SET = `7${process.pid}2-1`,
-  TEIL = `mt${process.pid}`,
-  FARBE = 11,
-  FIGUR = `mf${process.pid}`;
+  PART = `mt${process.pid}`,
+  COLOR = 11,
+  FIGURE = `mf${process.pid}`;
 const SET_PRICE = 37.5,
   PART_PRICE = 0.25,
   MINIFIG_PRICE = 8;
@@ -39,8 +39,8 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SET]);
     await db.run('DELETE FROM price_history WHERE set_number = $1', [SET]);
-    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TEIL]);
-    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIGUR]);
+    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [PART]);
+    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIGURE]);
     await db.pool.end().catch(() => {});
   });
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
@@ -58,16 +58,16 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
   await db.run(
     `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
      VALUES ($1, $2, 'N', 'CHF', 0, $3, NOW())`,
-    [TEIL, FARBE, PART_PRICE],
+    [PART, COLOR, PART_PRICE],
   );
   await db.run(
     `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at)
      VALUES ($1, 'N', 'CHF', 0, $2, NOW())`,
-    [FIGUR, MINIFIG_PRICE],
+    [FIGURE, MINIFIG_PRICE],
   );
-  await holdsSet(db, uid, SET, 2, { preis: 30 });
-  await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 4, preis: 0.2 });
-  await holdsMinifig(db, uid, FIGUR, { menge: 1, preis: 5 });
+  await holdsSet(db, uid, SET, 2, { price: 30 });
+  await holdsPart(db, uid, PART, { colorId: COLOR, quantity: 4, price: 0.2 });
+  await holdsMinifig(db, uid, FIGURE, { quantity: 1, price: 5 });
 
   const f = _req('src/finances/financeCalc.js');
 
@@ -75,13 +75,13 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
     const sets = await f.valueSets(uid, [uid]);
     const s = sets.sets.find(z => z.set_number === SET);
     assert.equal(s.avg_price, SET_PRICE);
-    assert.equal(s.wert_gesamt, 75);
-    const teile = await f.valueParts(uid, [uid]);
-    assert.equal(teile.parts.find(z => z.part_number === TEIL).avg_price, PART_PRICE);
-    assert.equal(teile.wert_gesamt, 1);
-    const figuren = await f.valueMinifigs(uid, [uid]);
-    assert.equal(figuren.figs.find(z => z.fig_number === FIGUR).avg_price, MINIFIG_PRICE);
-    assert.equal(figuren.wert_gesamt, MINIFIG_PRICE);
+    assert.equal(s.value_total, 75);
+    const parts = await f.valueParts(uid, [uid]);
+    assert.equal(parts.parts.find(z => z.part_number === PART).avg_price, PART_PRICE);
+    assert.equal(parts.value_total, 1);
+    const minifigs = await f.valueMinifigs(uid, [uid]);
+    assert.equal(minifigs.figs.find(z => z.fig_number === FIGURE).avg_price, MINIFIG_PRICE);
+    assert.equal(minifigs.value_total, MINIFIG_PRICE);
   });
 
   await t.test('G&V', async () => {
@@ -92,16 +92,16 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
   });
 
   await t.test('Wertkurve', async () => {
-    const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
-    const kurve = await portfolioVerlauf(uid, [uid], 'month');
-    assert.ok(kurve.points.length > 0, 'keine Punkte');
-    assert.equal(kurve.points.at(-1).value, 75);
+    const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
+    const curve = await portfolioHistory(uid, [uid], 'month');
+    assert.ok(curve.points.length > 0, 'no points');
+    assert.equal(curve.points.at(-1).value, 75);
   });
 
   await t.test('price history', async () => {
     const pv = _req('src/finances/priceHistory.js');
     assert.equal((await pv.priceHistorySet([uid], SET, 'CHF')).by_condition.N.market_price, SET_PRICE);
-    assert.equal((await pv.priceHistoryPart([uid], TEIL, FARBE, 'CHF')).by_condition.N.market_price, PART_PRICE);
-    assert.equal((await pv.priceHistoryMinifig([uid], FIGUR, 'CHF')).by_condition.N.market_price, MINIFIG_PRICE);
+    assert.equal((await pv.priceHistoryPart([uid], PART, COLOR, 'CHF')).by_condition.N.market_price, PART_PRICE);
+    assert.equal((await pv.priceHistoryMinifig([uid], FIGURE, 'CHF')).by_condition.N.market_price, MINIFIG_PRICE);
   });
 });

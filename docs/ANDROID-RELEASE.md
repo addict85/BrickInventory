@@ -12,6 +12,16 @@ Schlüssel heran.
 Diese Einstellungen kann nur ein Administrator des Repositorys setzen. Der
 Workflow prüft sie über die API und signiert nicht, wenn eine fehlt.
 
+**Kurz: Was nur der Inhaber tun kann**
+
+| Schritt | Was | Wo |
+| --- | --- | --- |
+| 1, 2 | *Prevent self-review* in `release` und `release-beschreibung` einschalten; dafür braucht es eine zweite Person als Pflichtprüfer | Settings → Environments |
+| 3, 4 | Bypass-Listen leeren (main: niemand; Etiketten: nur *Repository admin*) | Settings → Rules → Rulesets |
+| 6 | Lesetoken `REGELN_LESETOKEN` für die Bypass-Prüfung anlegen | Developer settings, Environment `release` |
+| 7 | Offline signieren einrichten (`ANDROID_SIGNIERWEG=offline`), danach die Signier-Secrets löschen | Settings → Variables, Environment `release` |
+| 8 | Eigenen Upload-Schlüssel für das App-Bundle erzeugen und bei Google Play registrieren | lokal, Play Console |
+
 ## 1. Environment `release` auf `main` beschränken
 
 *Settings → Environments → release*
@@ -21,12 +31,13 @@ Workflow prüft sie über die API und signiert nicht, wenn eine fehlt.
 3. *Add deployment branch or tag rule* → *Ref type: Branch* → `main`.
    Danach steht dort genau eine Regel: Zweig `main`.
 4. *Required reviewers*: mindestens eine Person (wie bisher).
-5. *Prevent self-review*: **an**, sobald zwei Personen prüfen (bis dahin nur eine
-   Warnung im Lauf).
+5. *Prevent self-review*: **an**. Seit dem 22.11.2026 ein Fehler, keine Warnung mehr:
+   Wer das Etikett setzt, darf den eigenen Lauf nicht freigeben. Dafür braucht es eine
+   zweite Person unter *Required reviewers* (Vier-Augen-Prinzip).
 6. *Allow administrators to bypass configured protection rules*: **aus**.
-7. Unter *Environment secrets* bleiben `KEYSTORE_BASE64`, `KEYSTORE_PASSWORT`,
-   `KEY_ALIAS`, `KEY_PASSWORT`. Das Secret `BESCHREIBUNG_SCHLUESSEL` hier
-   **löschen**, sobald Schritt 2 erledigt ist.
+7. Unter *Environment secrets* liegen bis zur Umstellung auf das Offline-Signieren
+   (Schritt 7) `KEYSTORE_BASE64`, `KEYSTORE_PASSWORT`, `KEY_ALIAS`, `KEY_PASSWORT`.
+   Das Secret `BESCHREIBUNG_SCHLUESSEL` hier **löschen**, sobald Schritt 2 erledigt ist.
 
 ## 2. Neue Environment `release-beschreibung` mit eigener Passphrase
 
@@ -45,7 +56,7 @@ eigenen Job und verschlüsselt mit einer eigenen Passphrase.
 3. *Deployment branches and tags*: **Selected branches and tags**, eine Regel:
    Zweig `main`.
 4. *Required reviewers*: mindestens eine Person; *Allow administrators to bypass*
-   **aus**; *Prevent self-review* wie oben.
+   **aus**; *Prevent self-review* **an** (Pflicht wie oben).
 5. *Environment secrets*:
    - `BESCHREIBUNG_SCHLUESSEL`: der Inhalt von `beschreibung-verschluesselt.pem`
    - `BESCHREIBUNG_PASS`: die Passphrase aus Schritt 1
@@ -66,8 +77,10 @@ denselben Commit), sonst meldet die App „veraltet oder manipuliert“.
 *Settings → Rules → Rulesets → New ruleset → New tag ruleset*
 
 1. Name: `Android-Etiketten`, *Enforcement status*: **Active**.
-2. *Target tags → Add target → Include by pattern*: `android-v*` und `apk-neuste`.
-3. *Bypass list*: nur die Rolle **Repository admin** (wer Fassungen veröffentlicht).
+2. *Target tags → Add target → Include by pattern*: `android-v*`, `signiert-*` und `apk-neuste`.
+3. *Bypass list*: nur die Rolle **Repository admin** (wer Fassungen veröffentlicht), kein
+   anderer Akteur. Ohne sie könnte niemand ein Etikett anlegen; jeder weitere Eintrag
+   (eine App, ein Team) lässt den Lauf abbrechen (Schritt *Rulesets ohne Umgehung*).
 4. Regeln: **Restrict creations**, **Restrict updates**, **Restrict deletions**.
 
 Damit setzt nur ein Administrator ein Etikett, und keines lässt sich auf einen
@@ -88,7 +101,9 @@ der Umstellung installierte App braucht das Update einmal von Hand.
 ## 4. Was bleibt wie bisher
 
 - Ruleset für `main`: *Require a pull request*, *Require status checks*
-  (Android-App, Sicherheit), *Block force pushes*.
+  (Android-App, Sicherheit), *Block force pushes*. Die *Bypass list* ist **leer**, auch
+  ohne Administratoren: Sonst ginge ein Push an Review und CI vorbei. Der Lauf bricht ab,
+  sobald ein Ruleset für `main` einen Bypass-Akteur hat.
 - *Settings → General → Releases → Immutable releases*: an.
 - Repository-Secrets mit den Namen der Environment-Secrets: keine (löschen, falls
   noch vorhanden).
@@ -125,6 +140,83 @@ Der Workflow ist heute auf das Token eingerichtet.
      bleiben bei dir.
    - *Environment secrets → Add secret*: Name `ETIKETT_TOKEN`, Wert das Token.
 3. Läuft das Token ab, ein neues anlegen und das Secret ersetzen.
+
+## 6. Lesetoken für die Bypass-Prüfung (`REGELN_LESETOKEN`)
+
+Die Bypass-Liste eines Rulesets zeigt die API nur, wer Rulesets bearbeiten darf; das
+eingebaute `GITHUB_TOKEN` sieht sie nicht. Der Lauf bricht dann ab („Umgehung nicht lesbar“),
+statt eine unsichtbare Liste für leer zu halten.
+
+1. *Developer settings → Fine-grained tokens → Generate new token*: Name
+   `BrickInventory Regeln lesen`, nur dieses Repository, *Repository permissions →
+   Administration*: **Read-only** (sonst nichts), *Expiration* höchstens 90 Tage.
+2. In der Environment `release` als Secret `REGELN_LESETOKEN` ablegen.
+3. Läuft es ab, bricht der nächste Release-Lauf mit „Umgehung nicht lesbar“ ab: neues Token
+   anlegen und das Secret ersetzen.
+
+## 7. Offline signieren (`ANDROID_SIGNIERWEG=offline`)
+
+Der Release-Schlüssel gehört nicht als Secret zu GitHub: Wer die Environment `release` oder
+einen Runner kompromittiert, signierte sonst Updates für jede installierte App. Offline
+signiert der Inhaber auf dem eigenen Rechner (am besten mit dem Schlüssel auf einem
+Hardware-Token), und der Lauf **prüft** nur: dass APK und Bundle genau die gebauten Dateien
+sind (gleiche Einträge, gleiche Bytes), dass das APK das Zertifikat aus
+`Android-App/tools/release-certificate.sha256` trägt und das Bundle den Upload-Schlüssel.
+
+Einrichten: *Settings → Secrets and variables → Actions → Variables → New repository
+variable* `ANDROID_SIGNIERWEG` = `offline`. Danach in der Environment `release` die Secrets
+`KEYSTORE_BASE64`, `KEYSTORE_PASSWORT`, `KEY_ALIAS`, `KEY_PASSWORT` (und gegebenenfalls
+`UPLOAD_*`) **löschen**. Ohne die Variable gilt im Übergang weiter `secret` (mit Warnung).
+
+Je Release, nachdem *Android-Release* mit „Offline-Signatur fehlt“ abbricht (die
+Zusammenfassung des Laufs nennt Baulauf und Prüfsummen):
+
+```
+gh run download <BAULAUF> -n apk-unsigniert -D unsigniert
+sha256sum unsigniert/apk/release/app-release-unsigned.apk unsigniert/bundle/release/app-release.aab
+# beide Werte mit der Zusammenfassung vergleichen; weichen sie ab: aufhören
+
+# build-tools 37.0.0
+zipalign -f -P 16 4 unsigniert/apk/release/app-release-unsigned.apk ausgerichtet.apk
+apksigner sign --ks release.jks --ks-key-alias <alias> \
+  --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true \
+  --out BrickInventory.apk ausgerichtet.apk
+apksigner verify --print-certs BrickInventory.apk   # SHA-256 wie in tools/release-certificate.sha256
+
+cp unsigniert/bundle/release/app-release.aab app-release.aab
+jarsigner -keystore upload.jks app-release.aab <upload-alias>
+
+gh release create signiert-android-v2026.11.22 BrickInventory.apk app-release.aab \
+  --target main --prerelease --latest=false --title "Signiert: android-v2026.11.22" \
+  --notes "Offline signiert; nur Eingang für Android-Release, nicht installieren."
+```
+
+Dann *Actions → Android-Release → Run workflow* (Zweig `main`, das Etikett) und wie gewohnt
+freigeben. Die Vorab-Release ist unveränderlich; ein zweiter Versuch heisst
+`signiert-<Etikett>-2` (die neueste zählt). Ein Signierdienst in der Cloud (etwa Google Cloud
+KMS über OIDC) ist nicht eingerichtet: Er erzeugt ein eigenes Zertifikat, und ein APK mit
+anderem Zertifikat nehmen die installierten Apps nicht als Update an. Das ginge nur mit einer
+Schlüsselrotation (APK Signature Scheme v3, `apksigner rotate`), die der Inhaber einmal offline
+ausführen müsste.
+
+Der Beschreibungsschlüssel (Schritt 2, eigene Environment) und die Herkunftsbescheinigung
+(`android-bescheinigung.yml`, schlüssellos über Sigstore) bleiben davon getrennt.
+
+## 8. Upload-Schlüssel für das App-Bundle (`ANDROID_AAB_SCHLUESSEL=upload`)
+
+Google Play signiert die App mit dem eigenen App-Signaturschlüssel neu und kennt vom
+Entwickler nur den **Upload-Schlüssel**. Ein eigener Upload-Schlüssel heisst: Geht er verloren
+oder wird er gestohlen, setzt Google ihn zurück, und der App-Schlüssel bleibt unberührt.
+
+1. Lokal erzeugen: `keytool -genkeypair -keystore upload.jks -alias upload -keyalg RSA -keysize 4096 -validity 10000`.
+2. In der Play Console unter *App-Integrität → App-Signatur* als Upload-Schlüssel registrieren
+   (`keytool -export -rfc -keystore upload.jks -alias upload -file upload.pem`).
+3. Variable `ANDROID_AAB_SCHLUESSEL` = `upload`; Variable `ANDROID_UPLOAD_ZERT_SHA256` = der
+   SHA-256-Fingerabdruck des Zertifikats (`keytool -list -v -keystore upload.jks`). Der Lauf
+   prüft das Bundle dagegen und bricht ab, wenn es den App-Schlüssel trägt.
+4. Offline signiert der Inhaber das Bundle selbst damit (Schritt 7). Nur im Übergang
+   (`secret`) liegen `UPLOAD_KEYSTORE_BASE64`, `UPLOAD_KEYSTORE_PASSWORT`, `UPLOAD_KEY_ALIAS`,
+   `UPLOAD_KEY_PASSWORT` in der Environment `release`.
 
 ## Ablauf eines Release
 

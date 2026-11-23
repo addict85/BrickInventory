@@ -31,6 +31,6 @@ test('test-run.js survives frames with non-ASCII text behind them', () => {
   // The frames of the dummy follow the format of Node 22; newer runners (CI:
   // Node 26) do not read them as frames. There only counts that the run stays intact.
   if (Number(process.versions.node.split('.')[0]) <= 22) {
-    assert.equal((output.match(/^(# |ℹ )rahmen$/gm) || []).length, 300, 'nicht alle Rahmen kamen an');
+    assert.equal((output.match(/^(# |ℹ )rahmen$/gm) || []).length, 300, 'not all frames arrived');
   }
 });

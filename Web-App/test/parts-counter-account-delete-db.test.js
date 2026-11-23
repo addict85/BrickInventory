@@ -23,18 +23,18 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { holdsPart } = require('./helpers/inventory');
 
-const ALT = (name, quelle) => `
+const ALT = (name, source) => `
   CREATE OR REPLACE FUNCTION ${name}() RETURNS trigger AS $$
   BEGIN
     INSERT INTO parts_version_user (user_id, v)
-    SELECT DISTINCT user_id, 1 FROM ${quelle} WHERE user_id IS NOT NULL
+    SELECT DISTINCT user_id, 1 FROM ${source} WHERE user_id IS NOT NULL
     ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
     RETURN NULL;
   END $$ LANGUAGE plpgsql`;
 
 test('parts counter and account deletion', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
-  const migriere = async () => {
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
+  const migrateIt = async () => {
     const c = await db.pool.connect();
     try {
       await _req('db/migrate.js').runMigrations(c);
@@ -42,18 +42,18 @@ test('parts counter and account deletion', { concurrency: 1 }, async t => {
       c.release();
     }
   };
-  await migriere();
+  await migrateIt();
 
   // The state of a database before this update.
   await db.run(ALT('bump_parts_version_ins', 'neu'));
   await db.run(ALT('bump_parts_version_del', 'alt'));
   await db.run(`DELETE FROM schema_migrations WHERE name = '0050-teilezaehler-nur-bestehende-konten.sql'`);
-  await migriere();
+  await migrateIt();
 
   const NAME = `zaehler-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  await holdsPart(db, uid, '3001', { menge: 2, colorId: 4 });
+  await holdsPart(db, uid, '3001', { quantity: 2, colorId: 4 });
 
   try {
     await t.test('deleting an account with parts succeeds', async () => {

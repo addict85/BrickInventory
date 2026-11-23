@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.update
 
-import ch.brickinventoryapp.update.util.Signatur
-import ch.brickinventoryapp.update.util.liesBelow
+import ch.brickinventoryapp.update.util.Signature
+import ch.brickinventoryapp.update.util.isBelow
 import ch.brickinventoryapp.update.util.signatureFollows
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -13,14 +13,12 @@ import org.junit.Test
  * replace the running one (even after a key rotation)?
  *
  * Counter-checks:
- *   A  the host comparison removed from liesBelow() → red „nur Adressen in
- *      der Release-Ablage“ (foreign host with the same path)
- *   B  `ziel.pathSegments.size == folder.size + 1` removed from liesBelow() →
+ *   A  the host comparison removed from isBelow() → red „nur Adressen in der Release-Ablage“ (foreign host with the same path)
+ *   B  `target.pathSegments.size == folder.size + 1` removed from isBelow() →
  *      red „only addresses in the release store“ (subfolder)
- *   C  signatureFollows() as `alt.aktuell == neu.aktuell` → red „ein rotierter
- *      Schluessel mit dem laufenden in der Ahnenreihe passt“
+ *   C  signatureFollows() as `old.current == newValue.current` → red „ein rotierter Schluessel mit dem laufenden in der Ahnenreihe passt“
  *   D  in the single-signer branch the OLD one's ancestry checked
- *      (`neu.aktuell.single() in alt.ancestors`) → red „ein Rueckschritt …“
+ *      (`newValue.current.single() in old.ancestors`) → red „ein Rueckschritt …“
  */
 class UpdateCheckTest {
 
@@ -28,8 +26,8 @@ class UpdateCheckTest {
 
     @Test
     fun `only addresses in the release store`() {
-        assertTrue(liesBelow("$basis/BrickInventory.apk", basis))
-        for (fremd in listOf(
+        assertTrue(isBelow("$basis/BrickInventory.apk", basis))
+        for (foreign in listOf(
             "$basis.angreifer.tld/x.apk",
             "https://angreifer.tld/addict85/BrickInventory/releases/latest/download/BrickInventory.apk",
             "http://github.com/addict85/BrickInventory/releases/latest/download/BrickInventory.apk",
@@ -42,30 +40,30 @@ class UpdateCheckTest {
             "$basis/BrickInventory.apk?x=1",
             "$basis/BrickInventory.apk#x",
             "kein url",
-        )) assertFalse(fremd, liesBelow(fremd, basis))
+        )) assertFalse(foreign, isBelow(foreign, basis))
     }
 
     @Test
     fun `the same key matches, a foreign one does not`() {
-        assertTrue(signatureFollows(Signatur(setOf("k1"), listOf("k1")), Signatur(setOf("k1"), listOf("k1"))))
-        assertFalse(signatureFollows(Signatur(setOf("k1"), listOf("k1")), Signatur(setOf("x"), listOf("x"))))
-        assertFalse("Unbekannt ist nie passend", signatureFollows(Signatur(emptySet(), emptyList()), Signatur(emptySet(), emptyList())))
+        assertTrue(signatureFollows(Signature(setOf("k1"), listOf("k1")), Signature(setOf("k1"), listOf("k1"))))
+        assertFalse(signatureFollows(Signature(setOf("k1"), listOf("k1")), Signature(setOf("x"), listOf("x"))))
+        assertFalse("unknown never matches", signatureFollows(Signature(emptySet(), emptyList()), Signature(emptySet(), emptyList())))
     }
 
     @Test
     fun `a rotated key with the running one in the lineage matches`() {
-        assertTrue(signatureFollows(Signatur(setOf("k1"), listOf("k1")), Signatur(setOf("k2"), listOf("k1", "k2"))))
-        assertFalse("Fremde Ahnenreihe", signatureFollows(Signatur(setOf("k1"), listOf("k1")), Signatur(setOf("k2"), listOf("x", "k2"))))
+        assertTrue(signatureFollows(Signature(setOf("k1"), listOf("k1")), Signature(setOf("k2"), listOf("k1", "k2"))))
+        assertFalse("foreign lineage", signatureFollows(Signature(setOf("k1"), listOf("k1")), Signature(setOf("k2"), listOf("x", "k2"))))
     }
 
     @Test
     fun `a step back to the old key does not match`() {
-        assertFalse(signatureFollows(Signatur(setOf("k2"), listOf("k1", "k2")), Signatur(setOf("k1"), listOf("k1"))))
+        assertFalse(signatureFollows(Signature(setOf("k2"), listOf("k1", "k2")), Signature(setOf("k1"), listOf("k1"))))
     }
 
     @Test
     fun `several signers must match exactly`() {
-        assertTrue(signatureFollows(Signatur(setOf("a", "b"), listOf("a", "b")), Signatur(setOf("b", "a"), listOf("b", "a"))))
-        assertFalse(signatureFollows(Signatur(setOf("a", "b"), listOf("a", "b")), Signatur(setOf("a"), listOf("a", "b"))))
+        assertTrue(signatureFollows(Signature(setOf("a", "b"), listOf("a", "b")), Signature(setOf("b", "a"), listOf("b", "a"))))
+        assertFalse(signatureFollows(Signature(setOf("a", "b"), listOf("a", "b")), Signature(setOf("a"), listOf("a", "b"))))
     }
 }

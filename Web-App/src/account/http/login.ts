@@ -3,57 +3,57 @@
 import type { Request, Response, NextFunction } from 'express';
 import { rotationDue, type TokenCheck } from '../deviceToken';
 import type { LoginResult } from '../loginCheck';
-import type { ConfirmationRejection, Faktor } from '../passwordConfirmation';
+import type { ConfirmationRejection, Factor } from '../passwordConfirmation';
 import { createHash } from 'node:crypto';
-import { routeZu } from '../../contract';
+import { routeFor } from '../../contract';
 import { errorText, responseLanguage } from '../../infra/errorTexts';
 import { reportAndDeliver } from '../../infra/error';
-import { nutzerId, signedInUserId } from '../../http/userId';
+import { userId, signedInUserId } from '../../http/userId';
 import { sendError } from '../../http/httpResponse';
 import { STATUS_THE_KIND } from '../../http/errorKind';
-import { versuche } from '../../infra/result';
+import { attempts } from '../../infra/result';
 import type { AccountServices } from '../area';
 
 /** Until the factor is set up only this works (loginAtInbox); the rule lives in openFactorRequired. */
-export async function zweiterFaktorPflicht(konto: AccountServices, req: Request): Promise<boolean> {
-  const uid = nutzerId(req);
-  const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
-  return uid !== null && (await konto.openFactorRequired(uid, verwalter));
+export async function secondFactorRequired(account: AccountServices, req: Request): Promise<boolean> {
+  const uid = userId(req);
+  const admin = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
+  return uid !== null && (await account.openFactorRequired(uid, admin));
 }
 
 /** req.ip instead of X-Forwarded-For: Express only evaluates the header when it comes from
  * a trusted proxy. */
-export function adresse(req: Request): string {
+export function address(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
 
-export function anmelden(
-  konto: AccountServices,
+export function login(
+  account: AccountServices,
   req: Request,
   username: string | null | undefined,
   password: string | null | undefined,
   code?: string | number | null | undefined,
   passkeyResponse?: unknown,
 ): Promise<LoginResult> {
-  return konto.checkCredentials({ ip: adresse(req) }, username, password, code, passkeyResponse);
+  return account.checkCredentials({ ip: address(req) }, username, password, code, passkeyResponse);
 }
 
 /** New session id against session fixation; save immediately so the next
  * request already knows the new id. */
 export async function establishSession(
-  konto: AccountServices,
+  account: AccountServices,
   req: Request,
   data: {
     userId: number;
     username: string;
     isAdmin: boolean;
-    mussPasswortAendern?: boolean;
+    mustChangePassword?: boolean;
     passwordConfirmedAt?: number;
   },
 ): Promise<void> {
   // Without an answer 0: when in doubt, the comparison signs out the next request.
   const sitzungsVersion =
-    (await konto.sitzungen
+    (await account.sessions
       .versionFromDb(data.userId)
       .catch(reportAndDeliver<number | null>('anmeldung:sitzungsVersion', 0))) ?? 0;
   return new Promise((resolve, reject) => {
@@ -72,7 +72,7 @@ export async function establishSession(
       req.session.save((e2?: Error) =>
         e2
           ? reject(e2)
-          : versuche('anmeldung:sitzungen-begrenzen', konto.sitzungen.limit(data.userId, req.sessionID)).then(() =>
+          : attempts('anmeldung:sitzungen-begrenzen', account.sessions.limit(data.userId, req.sessionID)).then(() =>
               resolve(undefined),
             ),
       );
@@ -96,16 +96,16 @@ export function consumeGracePeriod(req: Request): boolean {
 
 /** The whole user, not only the id: otherwise a handler would not know whether
  * it is an administrator. ?token= does not count, only the Authorization header. */
-export async function userIdTheRequest(konto: AccountServices, req: Request): Promise<number | null> {
+export async function userIdTheRequest(account: AccountServices, req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
-  const check = await konto
-    .pruefeToken(token, { ip: req.ip })
-    .catch(reportAndDeliver<TokenCheck>('auth:nutzerZumToken', { nutzer: null }));
-  const user = check.nutzer;
-  if (check.grund) req.tokenRejection = check.grund;
+  const check = await account
+    .checkToken(token, { ip: req.ip })
+    .catch(reportAndDeliver<TokenCheck>('auth:nutzerZumToken', { user: null }));
+  const user = check.user;
+  if (check.reason) req.tokenRejection = check.reason;
   // The notice travels with every response; the app then swaps by itself.
   if (user && rotationDue(user)) req.res?.setHeader('X-Token-Rotation', 'faellig');
   if (user) req.apiUser = { ...user, is_admin: !!user.is_admin };
@@ -114,23 +114,23 @@ export async function userIdTheRequest(konto: AccountServices, req: Request): Pr
 
 /** 429 instead of 401: on 401 the app may discard the access, and it may still be valid. */
 export function sendTokenRejection(req: Request, res: Response): void {
-  if (req.tokenRejection === 'zu_viele_anfragen') sendError(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: 1 });
-  else sendError(req, res, 'nicht_angemeldet', req.tokenRejection ?? 'nicht_angemeldet');
+  if (req.tokenRejection === 'too_many_requests') sendError(req, res, 'too_many', 'too_many_requests', { minutes: 1 });
+  else sendError(req, res, 'not_signed_in', req.tokenRejection ?? 'not_signed_in');
 }
 
 /** @param opts.timeoutMs Answers with 503 after this time: the progress
  *   channel should not pile up when the database is full. */
-export function loginOrTokenGuard(konto: AccountServices, opts: { timeoutMs?: number } = {}) {
+export function loginOrTokenGuard(account: AccountServices, opts: { timeoutMs?: number } = {}) {
   return async function requireLoginOrToken(req: Request, res: Response, next: NextFunction) {
     if (req.session?.userId || req.tokenUserId) return next();
     const timer = opts.timeoutMs
       ? setTimeout(() => {
-          if (!res.headersSent) sendError(req, res, 'nicht_verfuegbar', 'server_ausgelastet');
+          if (!res.headersSent) sendError(req, res, 'unavailable', 'server_busy');
         }, opts.timeoutMs)
       : null;
     let uid: number | null = null;
     try {
-      uid = await userIdTheRequest(konto, req);
+      uid = await userIdTheRequest(account, req);
     } catch (_) {
       uid = null;
     }
@@ -146,10 +146,10 @@ export function loginOrTokenGuard(konto: AccountServices, opts: { timeoutMs?: nu
 
 /** The computation lives in src/http/userId: the throttle there needs it too,
  * and infra may not import an HTTP layer. The name stays here for the routes. */
-export { nutzerId, signedInUserId };
+export { userId, signedInUserId };
 
 /** Session OR token: `req.session.username` is undefined for token requests. */
-export function nutzerName(req: Request): string | null {
+export function userName(req: Request): string | null {
   return req.session?.username ?? req.apiUser?.username ?? null;
 }
 
@@ -158,15 +158,15 @@ export function perSession(req: Request): boolean {
   return !!req.session?.userId;
 }
 
-export function istVerwalter(req: Request): boolean {
+export function isAdmin(req: Request): boolean {
   if (req.session?.isAdmin) return true;
   return !!req.apiUser?.is_admin;
 }
 
-export function ipThrottle(konto: AccountServices, bucket: string, max: number, windowMs: number) {
+export function ipThrottle(account: AccountServices, bucket: string, max: number, windowMs: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const st = await konto.countRequest(bucket, adresse(req), windowMs);
-    if (st.count > max) return sendError(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: st.waitMin });
+    const st = await account.countRequest(bucket, address(req), windowMs);
+    if (st.count > max) return sendError(req, res, 'too_many', 'too_many_requests', { minutes: st.waitMin });
     next();
   };
 }
@@ -179,55 +179,55 @@ export function accessOf(req: Request): string {
       .update(String(req.sessionID ?? ''))
       .digest('hex')
       .slice(0, 16)}`;
-  const seit = req.apiUser?.created_at;
-  return `t:${seit ? new Date(seit).getTime() : '?'}`;
+  const since = req.apiUser?.created_at;
+  return `t:${since ? new Date(since).getTime() : '?'}`;
 }
 
-function rejections(req: Request, res: Response, absage: ConfirmationRejection): void {
-  const status = STATUS_THE_KIND[absage.art];
-  if (!absage.passkey) {
-    sendError(req, res, absage.art, absage.code, absage.vars);
+function rejections(req: Request, res: Response, refusal: ConfirmationRejection): void {
+  const status = STATUS_THE_KIND[refusal.kind];
+  if (!refusal.passkey) {
+    sendError(req, res, refusal.kind, refusal.code, refusal.vars);
     return;
   }
   res.status(status).json({
     success: false,
-    code: absage.code,
+    code: refusal.code,
     passkey: true,
-    error: errorText(absage.code, responseLanguage(req), absage.vars),
+    error: errorText(refusal.code, responseLanguage(req), refusal.vars),
   });
 }
 
 /** Password, with an active second factor also code or passkey; only for routes
  * with `bestaetigung` in the contract, which the guard test checks individually. */
 export async function confirmWithFactor(
-  konto: AccountServices,
+  account: AccountServices,
   req: Request,
   res: Response,
   uid: number,
-  passwort: string | null | undefined,
+  password: string | null | undefined,
   codeField = 'code',
 ): Promise<boolean> {
   // The key under which the contract router registered the route; an error of the
   // wiring, not a case of the request, hence loud in operation too.
-  const schluessel = String(res.locals.contractKey ?? '');
-  if (routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
-    throw new Error(`${schluessel} bestätigt, ohne \`bestaetigung\` im Vertrag`);
+  const key = String(res.locals.contractKey ?? '');
+  if (routeFor(key) && !routeFor(key)?.confirmation)
+    throw new Error(`${key} bestätigt, ohne \`bestaetigung\` im Vertrag`);
   // The checked body (checkInput): the confirmation fields are in the contract (bestaetigt()).
-  const eingabe = (req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {};
-  const faktor = { code: eingabe[codeField], passkey: eingabe.passkey } as Faktor;
-  const absage = await konto.checkConfirmation(uid, accessOf(req), passwort, faktor);
-  if (absage) rejections(req, res, absage);
-  return !absage;
+  const input = (req as Request & { input?: Record<string, unknown> }).input ?? {};
+  const factor = { code: input[codeField], passkey: input.passkey } as Factor;
+  const refusal = await account.checkConfirmation(uid, accessOf(req), password, factor);
+  if (refusal) rejections(req, res, refusal);
+  return !refusal;
 }
 
 export async function confirmCode(
-  konto: AccountServices,
+  account: AccountServices,
   req: Request,
   res: Response,
   uid: number,
   code: string | number | null | undefined,
 ): Promise<boolean> {
-  const absage = await konto.checkCodeConfirmation(uid, accessOf(req), code);
-  if (absage) rejections(req, res, absage);
-  return !absage;
+  const refusal = await account.checkCodeConfirmation(uid, accessOf(req), code);
+  if (refusal) rejections(req, res, refusal);
+  return !refusal;
 }

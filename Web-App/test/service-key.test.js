@@ -24,7 +24,7 @@
  *   G  `validToken: k.zugaenge.validToken` back in src/account/area.ts → red „Zahl
  *      der Dienstschlüssel“ (538, allowed 537) and „roh weiterreichen“ (konto.validToken)
  *   H  'catalog.catalogStatus' deleted from RAW_ALLOWED → red „roh weiterreichen“ (the form
- *      mit(k.db, setStamm.catalogStatus), recognized via the build as a repository function)
+ *      mit(k.db, setMaster.catalogStatus), recognized via the build as a repository function)
  *   I  JE_AREA.factors set to 17 → red „Schlüssel je Bereich“ (factors 18, allowed 17)
  */
 const test = require('node:test');
@@ -32,35 +32,35 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { buildAndRequire, ROOT, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, ROOT, withoutComments } = require('./helpers/sources');
 const _req = buildAndRequire();
 
 /** A set of services over an access that answers nothing; `contexts` takes up the contexts. */
-function satz(contexts = undefined) {
+function record(contexts = undefined) {
   const stummel = {
     inTransaction: () => false,
     transaction: async () => {
-      throw new Error('Der Bau fragt nicht');
+      throw new Error('The build does not ask');
     },
   };
   return _req('startup/wiring.js').buildServices(stummel, { contexts });
 }
 
 /** The clients of the external sources are not a service but its content; they count as one. */
-const GANZ = new Set(['quellen', 'drossel']);
+const WHOLE = new Set(['sources', 'drossel']);
 
 /** Every service as `bereich.name` or `bereich.teil.name`. */
-function leaves(x, vor) {
+function leaves(x, ago) {
   return Object.entries(/** @type {Record<string, unknown>} */ (x)).flatMap(([n, v]) => {
-    if (n === 'ueber') return [];
-    const teil = v && typeof v === 'object' && !GANZ.has(n) && Object.values(v).some(w => typeof w === 'function');
-    return teil ? leaves(v, `${vor}.${n}`) : [`${vor}.${n}`];
+    if (n === 'over') return [];
+    const part = v && typeof v === 'object' && !WHOLE.has(n) && Object.values(v).some(w => typeof w === 'function');
+    return part ? leaves(v, `${ago}.${n}`) : [`${ago}.${n}`];
   });
 }
 
 /** At most this many per area; a new service displaces an old one. */
-const JE_AREA = {
-  throttle: 10,
+const PER_AREA = {
+  throttle: 11, // the API budget (api_budget) moved here from process memory; vouchers gave up two
   settings: 22,
   mail: 13,
   jobQueue: 65,
@@ -79,82 +79,78 @@ const JE_AREA = {
   parts: 13,
   minifigs: 8,
   wanted: 9,
-  vouchers: 16,
+  vouchers: 15,
   collection: 8,
   management: 28,
 };
 
 /** Source text outside the tests, without comments, per file (path from ROOT). */
-function quellen() {
-  const aus = new Map();
-  (function lauf(d) {
+function sources() {
+  const out = new Map();
+  (function run(d) {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) {
         if (!['node_modules', 'dist', '.git', 'coverage', 'test', 'public', 'docs', 'frontend-types'].includes(n))
-          lauf(p);
+          run(p);
       } else if (n.endsWith('.ts'))
-        aus.set(path.relative(ROOT, p).split(path.sep).join('/'), ohneKommentare(fs.readFileSync(p, 'utf8')));
+        out.set(path.relative(ROOT, p).split(path.sep).join('/'), withoutComments(fs.readFileSync(p, 'utf8')));
     }
   })(ROOT);
-  return aus;
+  return out;
 }
 
 test('service keys become fewer, never more, and each has a caller', () => {
   /** @type {Record<string, any>} */
   const contexts = {};
-  const d = satz(contexts);
-  const schluessel = Object.entries(d).flatMap(([b, x]) => leaves(x, b));
-  assert.ok(Object.keys(d).length > 15, `nur ${Object.keys(d).length} Bereiche gebaut`);
-  assert.ok(schluessel.length > 300, `nur ${schluessel.length} Dienstschlüssel — greift die Zählung noch?`);
-  assert.ok(schluessel.includes('account.sitzungen.endOther'), 'Selbstbeweis: Teilflächen zählen je Dienst');
+  const d = record(contexts);
+  const key = Object.entries(d).flatMap(([b, x]) => leaves(x, b));
+  assert.ok(Object.keys(d).length > 15, `only ${Object.keys(d).length} areas built`);
+  assert.ok(key.length > 300, `only ${key.length} service keys — does the count still work?`);
+  assert.ok(key.includes('account.sessions.endOther'), 'self-proof: sub-surfaces count per service');
 
   const LIMIT_NUMBER = 537;
-  assert.ok(
-    schluessel.length <= LIMIT_NUMBER,
-    `Zahl der Dienstschlüssel: ${schluessel.length}, erlaubt ${LIMIT_NUMBER}`,
-  );
-  if (schluessel.length < LIMIT_NUMBER)
-    console.log(`  ℹ Dienstschlüssel: ${schluessel.length} (Schranke ${LIMIT_NUMBER}) — nachziehen`);
-  const je = {};
-  for (const s of schluessel) je[s.split('.')[0]] = (je[s.split('.')[0]] ?? 0) + 1;
-  const toMuch = Object.entries(je)
-    .filter(([b, n]) => !(b in JE_AREA) || n > JE_AREA[b])
-    .map(([b, n]) => `${b} ${n}, erlaubt ${JE_AREA[b] ?? 'keine Schranke'}`);
-  assert.deepEqual(toMuch, [], 'Schlüssel je Bereich');
+  assert.ok(key.length <= LIMIT_NUMBER, `number of service keys: ${key.length}, allowed ${LIMIT_NUMBER}`);
+  if (key.length < LIMIT_NUMBER) console.log(`  ℹ service keys: ${key.length} (limit ${LIMIT_NUMBER}) — tighten it`);
+  const per = {};
+  for (const s of key) per[s.split('.')[0]] = (per[s.split('.')[0]] ?? 0) + 1;
+  const toMuch = Object.entries(per)
+    .filter(([b, n]) => !(b in PER_AREA) || n > PER_AREA[b])
+    .map(([b, n]) => `${b} ${n}, erlaubt ${PER_AREA[b] ?? 'keine Schranke'}`);
+  assert.deepEqual(toMuch, [], 'keys per area');
 
   // testArea() and every reader would otherwise take the service where the repository is meant.
-  const gleich = schluessel.filter(s => {
+  const same = key.filter(s => {
     const [b = '', k = ''] = s.split('.');
     return typeof contexts[b]?.[k] === 'object' && contexts[b][k] !== null;
   });
-  assert.deepEqual(gleich, [], 'Dienst heisst wie ein Teil des Kontexts');
+  assert.deepEqual(same, [], 'service is named like a part of the context');
 
   // Called via the set (`d.account.…`, `k.konto.…`) or named in Pick<…>; the factory of the area does not count.
-  const q = quellen();
-  const ohne = schluessel.filter(s => {
+  const q = sources();
+  const without = key.filter(s => {
     const name = s.split('.').at(-1);
-    const muster = new RegExp(`[.?]\\s*${name}\\b|['"]${name}['"]`);
+    const pattern = new RegExp(`[.?]\\s*${name}\\b|['"]${name}['"]`);
     const b = s.split('.')[0];
     const factory = ['bereich.ts', 'area.ts'].map(f => `src/${b}/${f}`).find(f => q.has(f)) ?? `src/${b}/bereich.ts`;
-    return ![...q].some(([datei, text]) => datei !== factory && muster.test(text));
+    return ![...q].some(([file, text]) => file !== factory && pattern.test(text));
   });
-  assert.deepEqual(ohne, [], 'Schlüssel ohne Aufrufer ausserhalb der Tests');
+  assert.deepEqual(without, [], 'keys without callers outside the tests');
 });
 
 /** Services that pass a repository through raw, with a reason; the list gets shorter, never longer. */
 const RAW_ALLOWED = {
-  'jobQueue.belegeAuftrag': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.claimJob': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.giveBack': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
-  'jobQueue.lebenszeichen': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.heartbeat': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.rememberExclusive': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
-  'jobQueue.letzteJeArt': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
+  'jobQueue.lastPerKind': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
   'jobQueue.cleanCompletedOn': 'Aufräumlauf: Frist und Regel stehen in der Abfrage',
-  'jobQueue.liesPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
+  'jobQueue.readPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
   'jobQueue.pauseKind': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
-  'jobQueue.liesZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'jobQueue.readState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'jobQueue.deleteState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
-  'jobQueue.setzeZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'jobQueue.setState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'jobQueue.countState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'throttle.hourlyState': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
   'throttle.countHour': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
@@ -162,12 +158,7 @@ const RAW_ALLOWED = {
   'finances.marketPriceFromCache':
     'Rückfall der Set-Bewertung (src/sets/service.ts) auf den Zwischenspeicher, ohne Regel',
   'finances.marketPriceFromHistory': 'Rückfall der Set-Bewertung (src/sets/service.ts) auf den Verlauf, ohne Regel',
-  'vouchers.reencryptAllVouchers':
-    'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
-  'vouchers.reencryptCopies':
-    'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
-  'vouchers.reencryptNumbers':
-    'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
+  'throttle.claimApiBudget': 'API-Budget (src/http/apiThrottle.ts): die Regel steht im SQL des Upserts',
   'catalog.catalogStatus':
     'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',
   'catalog.rememberCatalogPlaceholder':
@@ -178,11 +169,11 @@ const RAW_ALLOWED = {
 
 /** Per area the functions of its repositories, as the build loads them. */
 function repositoryFunctions(b, q) {
-  const raus = new Set();
+  const result = new Set();
   for (const rel of q.keys())
     if (rel.startsWith(`src/${b}/repository/`) || rel === `src/${b}/repository.ts`)
-      for (const f of Object.values(_req(rel.replace(/\.ts$/, '.js')))) if (typeof f === 'function') raus.add(f);
-  return raus;
+      for (const f of Object.values(_req(rel.replace(/\.ts$/, '.js')))) if (typeof f === 'function') result.add(f);
+  return result;
 }
 
 /** `name: mit(k.db, modul.f)` in the factory, with f from a repository of the area. */
@@ -190,44 +181,40 @@ function boundRepositories(b, leavesOfArea, q) {
   const factory = q.get(`src/${b}/bereich.ts`) ?? q.get(`src/${b}/area.ts`);
   if (!factory) return [];
   const repo = repositoryFunctions(b, q);
-  const raus = [];
-  for (const m of factory.matchAll(/^\s*(\w+): mit\(\w+\.db,\s*(\w+)\.(\w+)\)/gm)) {
+  const result = [];
+  for (const m of factory.matchAll(/^\s*(\w+): bound\(\w+\.db,\s*(\w+)\.(\w+)\)/gm)) {
     const imp = new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`).exec(factory);
     const f = imp && _req(`src/${b}/${imp[1]}.js`)[m[3]];
-    if (f && repo.has(f)) raus.push(...leavesOfArea.filter(s => s.endsWith(`.${m[1]}`)));
+    if (f && repo.has(f)) result.push(...leavesOfArea.filter(s => s.endsWith(`.${m[1]}`)));
   }
-  return raus;
+  return result;
 }
 
 test('no service key passes a repository through raw', () => {
   /** @type {Record<string, any>} */
   const contexts = {};
-  const d = satz(contexts);
-  const q = quellen();
-  const roh = new Set();
+  const d = record(contexts);
+  const q = sources();
+  const raw = new Set();
   for (const [b, x] of Object.entries(d)) {
     const leavesOfArea = leaves(x, b);
     // The same function value as in the context (k.repo.f, ...k.repo): the service is the repository.
     const inContext = new Set(
       Object.entries(contexts[b] ?? {})
-        .filter(([n, teil]) => n !== 'db' && teil && typeof teil === 'object')
-        .flatMap(([, teil]) => Object.values(teil).filter(f => typeof f === 'function')),
+        .filter(([n, part]) => n !== 'db' && part && typeof part === 'object')
+        .flatMap(([, part]) => Object.values(part).filter(f => typeof f === 'function')),
     );
     for (const s of leavesOfArea) {
       const f = s
         .split('.')
         .slice(1)
         .reduce((o, n) => o?.[n], x);
-      if (typeof f === 'function' && inContext.has(f)) roh.add(s);
+      if (typeof f === 'function' && inContext.has(f)) raw.add(s);
     }
-    for (const s of boundRepositories(b, leavesOfArea, q)) roh.add(s);
+    for (const s of boundRepositories(b, leavesOfArea, q)) raw.add(s);
   }
-  assert.ok(roh.has('jobQueue.liesZustand') && roh.has('catalog.catalogStatus'), 'Selbstbeweis: beide Formen gefunden');
-  assert.deepEqual(
-    [...roh].sort(),
-    Object.keys(RAW_ALLOWED).sort(),
-    'Dienstschlüssel, die ein Repository roh weiterreichen',
-  );
-  const LIMIT_RAW = 23;
-  assert.ok(roh.size <= LIMIT_RAW, `${roh.size} rohe Weitergaben, erlaubt ${LIMIT_RAW}`);
+  assert.ok(raw.has('jobQueue.readState') && raw.has('catalog.catalogStatus'), 'self-proof: both forms found');
+  assert.deepEqual([...raw].sort(), Object.keys(RAW_ALLOWED).sort(), 'service keys that pass a repository on raw');
+  const LIMIT_RAW = 21;
+  assert.ok(raw.size <= LIMIT_RAW, `${raw.size} raw pass-throughs, allowed ${LIMIT_RAW}`);
 });

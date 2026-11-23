@@ -31,39 +31,39 @@ function stripModuleSyntax(src) {
 const { openUi } = require('./helpers/ui');
 
 const SETS = { success: true, sets: [{ set_number: '10294-1', name: 'Titanic', quantity: 1 }], count: 1, total: 1 };
-const setsCalls = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v1\/sets\?/.test(a.url)).length;
-const kachel = d => d.querySelector('#gallery [data-price-for="10294-1"]')?.closest('[data-click="openModal"], .sc');
+const setsCalls = calls => calls.filter(a => a.method === 'GET' && /\/api\/v2\/sets\?/.test(a.url)).length;
+const tile = d => d.querySelector('#gallery [data-price-for="10294-1"]')?.closest('[data-click="openModal"], .sc');
 
 test('the startup loads the gallery once, and the same language rebuilds nothing', async () => {
-  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
+  const { w, d, waitFor, settle, calls } = await openUi({ '/v2/sets': SETS });
   try {
-    assert.ok(await warte(() => kachel(d)));
-    await ruhig();
-    assert.equal(setsCalls(aufrufe), 1, 'die Galerie wurde beim Start mehrfach geladen');
-    const vorher = kachel(d);
-    const wahl = d.getElementById('lang-select');
-    wahl.value = 'de';
-    wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await ruhig();
-    assert.equal(kachel(d), vorher, 'gleiche Sprache hat die Kacheln neu gezeichnet');
-    assert.equal(setsCalls(aufrufe), 1);
+    assert.ok(await waitFor(() => tile(d)));
+    await settle();
+    assert.equal(setsCalls(calls), 1, 'the gallery was loaded several times at start');
+    const prior = tile(d);
+    const choice = d.getElementById('lang-select');
+    choice.value = 'de';
+    choice.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await settle();
+    assert.equal(tile(d), prior, 'the same language redrew the tiles');
+    assert.equal(setsCalls(calls), 1);
   } finally {
     w.close();
   }
 });
 
 test('a real language change redraws the gallery without reloading it', async () => {
-  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
+  const { w, d, waitFor, settle, calls } = await openUi({ '/v2/sets': SETS });
   try {
-    assert.ok(await warte(() => kachel(d)));
-    await ruhig();
-    const vorher = kachel(d);
-    const wahl = d.getElementById('lang-select');
-    wahl.value = 'en';
-    wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => kachel(d) && kachel(d) !== vorher), 'Kacheln nicht neu gezeichnet');
-    await ruhig();
-    assert.equal(setsCalls(aufrufe), 1, 'ein Sprachwechsel hat die Galerie neu geladen');
+    assert.ok(await waitFor(() => tile(d)));
+    await settle();
+    const prior = tile(d);
+    const choice = d.getElementById('lang-select');
+    choice.value = 'en';
+    choice.dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(await waitFor(() => tile(d) && tile(d) !== prior), 'tiles not redrawn');
+    await settle();
+    assert.equal(setsCalls(calls), 1, 'a language switch reloaded the gallery');
   } finally {
     w.close();
   }
@@ -71,20 +71,20 @@ test('a real language change redraws the gallery without reloading it', async ()
 
 test('refreshing leaves the tiles standing until the new response is there', async () => {
   let n = 0;
-  let los;
-  const spaeter = new Promise(r => {
-    los = r;
+  let go;
+  const subsequent = new Promise(r => {
+    go = r;
   });
-  const { w, d, warte } = await openUi({ '/v1/sets': () => (++n === 1 ? SETS : spaeter.then(() => SETS)) });
+  const { w, d, waitFor } = await openUi({ '/v2/sets': () => (++n === 1 ? SETS : subsequent.then(() => SETS)) });
   try {
-    assert.ok(await warte(() => kachel(d)));
+    assert.ok(await waitFor(() => tile(d)));
     d.getElementById('gsort').value = 'name_asc';
     d.getElementById('gsort').dispatchEvent(new w.Event('change'));
-    assert.ok(await warte(() => n === 2), 'kein zweiter Abruf');
-    assert.ok(kachel(d), 'die Kacheln wurden durch eine Ladeanzeige ersetzt');
-    assert.equal(d.querySelector('#gallery .skelett-raster'), null);
-    los();
-    assert.ok(await warte(() => kachel(d)));
+    assert.ok(await waitFor(() => n === 2), 'no second fetch');
+    assert.ok(tile(d), 'the tiles were replaced by a loading indicator');
+    assert.equal(d.querySelector('#gallery .skeleton-grid'), null);
+    go();
+    assert.ok(await waitFor(() => tile(d)));
   } finally {
     w.close();
   }
@@ -100,13 +100,13 @@ test('the import query does not run unthrottled and not before login', () => {
   assert.match(
     fn,
     /if \(!loggedInAccount( \|\| document\.hidden)?\) return;/,
-    'Ohne Anmeldung gibt es nichts zu prüfen',
+    'Without login there is nothing to check',
   );
-  assert.match(fn, /ct\.includes\('application\/json'\)/, 'Die Antwort muss vor dem Parsen geprüft werden');
-  assert.match(fn, /setInterval\(doCheck, 30000\)/, 'Nach mehreren Fehlschlägen muss die Abfrage langsamer werden');
+  assert.match(fn, /ct\.includes\('application\/json'\)/, 'The response must be checked before parsing');
+  assert.match(fn, /setInterval\(doCheck, 30000\)/, 'After several failures the polling must slow down');
   assert.doesNotMatch(
     fn,
     /\.then\(r=>r\.json\(\)\)/,
-    'Direktes json() ohne Statusprüfung erzeugt bei HTML-Antworten einen Parsefehler',
+    'A direct json() without a status check produces a parse error on HTML responses',
   );
 });

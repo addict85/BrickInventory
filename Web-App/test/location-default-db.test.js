@@ -1,5 +1,7 @@
 /**
  * The storage location DEFAULT against a real database.
+ *
+ * Counter-check: defaultOf() (src/inventory/storageLocation.ts) returns null when the row exists → red “without a star there is no default”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -9,7 +11,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
@@ -46,30 +48,30 @@ async function dbReachable() {
 test('storage location default against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();
-  const bestand = require('./helpers/sources').testArea('inventory');
-  const L = { ..._req('src/inventory/storageLocation.js'), ...bestand.locationService, setDefault: bestand.setDefault };
+  const holding = require('./helpers/sources').testArea('inventory');
+  const L = { ..._req('src/inventory/storageLocation.js'), ...holding.locationService, setDefault: holding.setDefault };
 
-  const estrich = (await L.putLocationAn(U.ich, 'Estrich')).ort;
-  const cellar = (await L.putLocationAn(U.ich, 'Keller')).ort;
-  const fremd = (await L.putLocationAn(U.kind, 'Kinderzimmer')).ort;
+  const estrich = (await L.createStorage(U.ich, 'Estrich')).location;
+  const cellar = (await L.createStorage(U.ich, 'Keller')).location;
+  const fremd = (await L.createStorage(U.kind, 'Kinderzimmer')).location;
 
   await t.test('without a star there is no default', async () => {
     // The initial state, and it is a statement of its own: a UI
     // that got a place here would preselect something on the first capture
     // that nobody set.
-    assert.equal(await L.vorgabeVon(U.ich), null);
+    assert.equal(await L.defaultOf(U.ich), null);
   });
 
   await t.test('the star sets the default and it reads back', async () => {
-    const gesetzt = await L.setDefault(U.ich, estrich.id);
-    assert.equal(gesetzt.name, 'Estrich');
-    const gelesen = await L.vorgabeVon(U.ich);
-    assert.equal(gelesen?.id, estrich.id);
-    assert.equal(gelesen?.name, 'Estrich');
+    const isSet = await L.setDefault(U.ich, estrich.id);
+    assert.equal(isSet.name, 'Estrich');
+    const parsed = await L.defaultOf(U.ich);
+    assert.equal(parsed?.id, estrich.id);
+    assert.equal(parsed?.name, 'Estrich');
   });
 
   await t.test('a second star replaces the first', async () => {
@@ -77,11 +79,11 @@ test('storage location default against a real database', async t => {
     // question without an answer when capturing. That this holds without any effort is the
     // gain from storing it in user_settings (one key, one value).
     await L.setDefault(U.ich, cellar.id);
-    assert.equal((await L.vorgabeVon(U.ich))?.name, 'Keller');
+    assert.equal((await L.defaultOf(U.ich))?.name, 'Keller');
     const n = (
       await db.get(`SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`, [U.ich, L.DEFAULT_KEY])
     ).c;
-    assert.equal(n, 1, `${n} Zeilen fuer die Vorgabe — es darf genau eine geben`);
+    assert.equal(n, 1, `${n} rows for the default — there may be exactly one`);
     await L.setDefault(U.ich, estrich.id);
   });
 
@@ -89,48 +91,43 @@ test('storage location default against a real database', async t => {
     // The child's nursery is not my shelf (migration 0020). Without
     // this boundary my star would stand at a place in another flat.
     // What is checked is `e.code` and not the text: the first draft searched for
-    // „lagerort_unbekannt" in the MESSAGE, and that one is in German …
+    // „storage_unknown" in the MESSAGE, and that one is in German …
     await assert.rejects(
       () => L.setDefault(U.ich, fremd.id),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
-      'Ein fremder Ort liess sich als eigene Vorgabe setzen',
+      (/** @type {any} */ e) => String(e.code) === 'storage_unknown',
+      'A foreign location could be set as the own default',
     );
-    assert.equal(
-      (await L.vorgabeVon(U.ich))?.name,
-      'Estrich',
-      'Die abgelehnte Zuweisung hat die bestehende Vorgabe veraendert',
-    );
+    assert.equal((await L.defaultOf(U.ich))?.name, 'Estrich', 'The rejected assignment changed the existing default');
   });
 
   await t.test('RENAME: the default stays and has a new name', async () => {
     // The statement this file exists for. There is NO line in
     // benenneOrtUm that updates the default — it does not need one, because
     // the ID is stored. With the name this would be red.
-    await L.benenneOrtUm(U.ich, estrich.id, 'Dachboden');
-    const v = await L.vorgabeVon(U.ich);
-    assert.equal(v?.id, estrich.id, 'Die Vorgabe zeigt nach dem Umbenennen ins Leere');
+    await L.renameStorage(U.ich, estrich.id, 'Dachboden');
+    const v = await L.defaultOf(U.ich);
+    assert.equal(v?.id, estrich.id, 'The default points into nothing after the rename');
     assert.equal(
       v?.name,
       'Dachboden',
-      'Die Vorgabe traegt noch den alten Namen — dann steht beim Erfassen ein ' +
-        'Ort, den die Auswahlliste nicht mehr kennt',
+      'The default still carries the old name — then capture shows a ' + 'location the selection list no longer knows',
     );
-    await L.benenneOrtUm(U.ich, estrich.id, 'Estrich');
+    await L.renameStorage(U.ich, estrich.id, 'Estrich');
   });
 
   await t.test('DELETE: the default is gone, not broken', async () => {
     // The second statement. A place can only be deleted when nothing lies
     // in it (loescheOrt) — hence an own, empty place for this probe.
-    const kiste = (await L.putLocationAn(U.ich, 'Kiste 7')).ort;
-    await L.setDefault(U.ich, kiste.id);
-    assert.equal((await L.vorgabeVon(U.ich))?.name, 'Kiste 7');
-    await L.loescheOrt(U.ich, kiste.id);
+    const crate = (await L.createStorage(U.ich, 'Kiste 7')).location;
+    await L.setDefault(U.ich, crate.id);
+    assert.equal((await L.defaultOf(U.ich))?.name, 'Kiste 7');
+    await L.deleteStorage(U.ich, crate.id);
     assert.equal(
-      await L.vorgabeVon(U.ich),
+      await L.defaultOf(U.ich),
       null,
-      'Nach dem Loeschen des Ortes meldet die Vorgabe noch etwas — sie heilt ' +
-        'sich also nicht selbst, und die Oberflaeche waehlt einen Ort vor, den ' +
-        'es nicht gibt',
+      'After deleting the location the default still reports something — so it ' +
+        'does not heal itself, and the UI preselects a location that ' +
+        'does not exist',
     );
     // The orphaned row in user_settings may stay: it is silent (the
     // JOIN finds nothing) and is overwritten with the next star. Cleaning
@@ -139,21 +136,21 @@ test('storage location default against a real database', async t => {
       ?.value;
     assert.equal(
       rest,
-      String(kiste.id),
-      'Erwartet war die stumme, verwaiste Zeile — steht dort etwas anderes, ' +
-        'stimmt die Begruendung in src/inventory/storageLocation.ts nicht mehr',
+      String(crate.id),
+      'Expected was the silent, orphaned row — if something else is there, ' +
+        'the reasoning in src/inventory/storageLocation.ts is no longer correct',
     );
   });
 
   await t.test('the star can be switched off again', async () => {
     await L.setDefault(U.ich, cellar.id);
-    assert.equal((await L.vorgabeVon(U.ich))?.name, 'Keller');
+    assert.equal((await L.defaultOf(U.ich))?.name, 'Keller');
     assert.equal(await L.setDefault(U.ich, null), null);
-    assert.equal(await L.vorgabeVon(U.ich), null, 'Der Stern liess sich nicht loeschen');
+    assert.equal(await L.defaultOf(U.ich), null, 'The star could not be deleted');
     const n = (
       await db.get(`SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`, [U.ich, L.DEFAULT_KEY])
     ).c;
-    assert.equal(n, 0, 'Die Einstellung steht noch da');
+    assert.equal(n, 0, 'The setting is still there');
   });
 
   await db.pool.end().catch(() => {});

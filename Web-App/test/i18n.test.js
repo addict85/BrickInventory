@@ -20,14 +20,14 @@
  *      csv.import_title back to “CSV Import” → red: same place; settings.users_new back to “Neuen Benutzer
  *      erstellen” → red: same place
  *   F  (16.11.2026) users.role.user (de) back to “Benutzer” → red: “no text … untranslated” and “the
- *      roles are called …”; maillink.abbrechen.ok back to “übrigen Verwalter”, FEHLER.nur_admins (de)
+ *      roles are called …”; maillink.cancel.ok back to “übrigen Verwalter”, FEHLER.admins_only (de)
  *      back to “Nur für Admins”, settings.admins_only (en) back to “Admins only” → each red: “the roles are called …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 // Since the split the dictionaries live in public/locales/{de,en}.js —
 // index.html only loads the active language, loadLang() fetches the rest.
@@ -43,8 +43,8 @@ test('DE and EN have identical key sets', () => {
   const enKeys = Object.keys(en).sort();
   const onlyDe = deKeys.filter(k => !(k in en));
   const onlyEn = enKeys.filter(k => !(k in de));
-  assert.deepEqual(onlyDe, [], `Nur in DE vorhanden: ${onlyDe.join(', ')}`);
-  assert.deepEqual(onlyEn, [], `Nur in EN vorhanden: ${onlyEn.join(', ')}`);
+  assert.deepEqual(onlyDe, [], `Only present in DE: ${onlyDe.join(', ')}`);
+  assert.deepEqual(onlyEn, [], `Only present in EN: ${onlyEn.join(', ')}`);
 });
 
 test('placeholders match between DE and EN', () => {
@@ -54,7 +54,7 @@ test('placeholders match between DE and EN', () => {
     assert.deepEqual(
       placeholders(de[k]),
       placeholders(en[k]),
-      `Platzhalter weichen ab bei "${k}": DE=${de[k]}  EN=${en[k]}`,
+      `Placeholders differ at "${k}": DE=${de[k]}  EN=${en[k]}`,
     );
   }
 });
@@ -65,7 +65,7 @@ test('placeholders match between DE and EN', () => {
 test('no text stands untranslated in both languages', () => {
   // Terms, proper names and number formats that are the same in both
   // languages. Every entry is a decision, not leniency.
-  const gewolltGleich = new Set([
+  const intendedEqual = new Set([
     'catalog.sort.name',
     'col.name',
     'col.sets',
@@ -88,7 +88,7 @@ test('no text stands untranslated in both languages', () => {
     'monitor.api.rebrickable',
     // PIN is PIN in both languages — a term, not a sentence.
     'vouchers.pin',
-    // The feedback of the balance query: “{nummer}: {betrag}" — a pure
+    // The feedback of the balance query: “{number}: {amount}" — a pure
     // frame of two placeholders without a word of its own. Nothing in it is
     // translated; the amount comes formatted from LEGO.
     'vouchers.balance_done',
@@ -99,7 +99,7 @@ test('no text stands untranslated in both languages', () => {
     'users.role.admin',
     'users.role.user',
     'users.admin_badge',
-    'users.protokoll.verwalter',
+    'users.log.admin',
     'settings.users_admin_badge',
     // The label of the button that reads in a BrickLink wanted list:
     // a proper name and a file format. “BrickLink XML" is the same in both
@@ -108,24 +108,24 @@ test('no text stands untranslated in both languages', () => {
   ]);
 
   const { de, en } = loadTranslations();
-  assert.ok(Object.keys(en).length > 400, `Zu wenige Texte geladen (${Object.keys(en).length}) — Helfer kaputt?`);
+  assert.ok(Object.keys(en).length > 400, `Too few texts loaded (${Object.keys(en).length}) — helper broken?`);
 
-  const gleich = Object.keys(en).filter(k => k in de && de[k] === en[k]);
-  const untranslated = gleich.filter(k => !gewolltGleich.has(k)).sort();
+  const same = Object.keys(en).filter(k => k in de && de[k] === en[k]);
+  const untranslated = same.filter(k => !intendedEqual.has(k)).sort();
   assert.deepEqual(
     untranslated,
     [],
-    'Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr wahrscheinlich ' +
-      'beim Anlegen kopiert und nicht übersetzt:\n  ' +
+    'These texts are identical in German and English — very likely ' +
+      'copied on creation and not translated:\n  ' +
       untranslated.map(k => `${k} = "${en[k]}"`).join('\n  ') +
-      '\nIst er wirklich in beiden Sprachen gleich, gehört er in `gewolltGleich`.',
+      '\nIf it really is the same in both languages, it belongs in `gewolltGleich`.',
   );
 
-  const veraltet = [...gewolltGleich].filter(k => !gleich.includes(k)).sort();
+  const stale = [...intendedEqual].filter(k => !same.includes(k)).sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
-    `Diese Einträge in \`gewolltGleich\` stimmen nicht mehr: ${veraltet.join(', ')} — raus damit.`,
+    `These entries in \`gewolltGleich\` are no longer correct: ${stale.join(', ')} — remove them.`,
   );
   checkTerms(de, en);
 });
@@ -136,10 +136,10 @@ function checkTerms(de, en) {
     Object.entries(w)
       .filter(([, v]) => r.test(v))
       .map(([k, v]) => `${k} = ${v}`);
-  assert.deepEqual(fund(en, /\be-mail/i), [], 'EN schreibt email');
-  assert.deepEqual(fund(de, /CSV Import/), [], 'DE schreibt CSV-Import');
+  assert.deepEqual(fund(en, /\be-mail/i), [], 'EN writes email');
+  assert.deepEqual(fund(de, /CSV Import/), [], 'DE writes CSV-Import');
   // An account is called Konto; the role is called “Standard”, no longer “Benutzer”.
-  assert.deepEqual(fund(de, /\bBenutzer(?!name)/), [], 'Konto statt Benutzer');
+  assert.deepEqual(fund(de, /\bBenutzer(?!name)/), [], '„Konto“ instead of „Benutzer“');
 }
 
 test('the roles are called Standard and Administrator, also in server error texts', () => {
@@ -148,10 +148,10 @@ test('the roles are called Standard and Administrator, also in server error text
   assert.equal(de['users.role.admin'], 'Administrator');
   assert.equal(en['users.role.user'], 'Standard');
   assert.equal(en['users.role.admin'], 'Administrator');
-  const { FEHLER } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
-  assert.match(FEHLER.letzter_verwalter.de, /Administrator/, 'Server-Fehlertext ohne Rollennamen — Code umbenannt?');
-  const serverDe = Object.fromEntries(Object.entries(FEHLER).map(([k, v]) => [`fehler.${k}`, v.de]));
-  const serverEn = Object.fromEntries(Object.entries(FEHLER).map(([k, v]) => [`fehler.${k}`, v.en]));
+  const { ERRORS } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
+  assert.match(ERRORS.last_admin.de, /Administrator/, 'Server error text without role names — code renamed?');
+  const serverDe = Object.fromEntries(Object.entries(ERRORS).map(([k, v]) => [`fehler.${k}`, v.de]));
+  const serverEn = Object.fromEntries(Object.entries(ERRORS).map(([k, v]) => [`fehler.${k}`, v.en]));
   const alt = [
     ...Object.entries({ ...de, ...serverDe }).filter(([, v]) => /Verwalter|\bAdmins?\b|Admin-/.test(v)),
     ...Object.entries({ ...en, ...serverEn }).filter(([, v]) => /\b[Aa]dmins?\b/.test(v)),
@@ -169,7 +169,7 @@ test('catalog keys present', () => {
     'catalog.buy_bricklink',
     'catalog.add_to_gallery',
   ]) {
-    assert.ok(k in de, `Schlüssel fehlt: ${k}`);
+    assert.ok(k in de, `Key is missing: ${k}`);
   }
 });
 
@@ -181,17 +181,17 @@ test('the trash in the brick theme has a white background from the start, not on
   // whole .ca container is already governed by .sc:hover .ca in styles.css).
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'themes', 'brick.css'), 'utf8');
   const fn = src.slice(src.indexOf('[data-theme="brick"] .sc .delbtn{'), src.indexOf('[data-theme="brick"] .qbadge'));
-  assert.doesNotMatch(fn, /rgba\(255,255,255,\.22\)/, 'Der schwache Ruhezustand darf nicht mehr vorkommen');
+  assert.doesNotMatch(fn, /rgba\(255,255,255,\.22\)/, 'The weak idle state must no longer occur');
   assert.match(
     fn,
     /\[data-theme="brick"\] \.sc \.delbtn\{\s*background:#fff;/,
-    'Der Ruhezustand muss bereits voll weiss hinterlegt sein',
+    'The resting state must already have a fully white background',
   );
 });
 
 const GRAY = 'Dark Bluish Gray';
 const COLORS = {
-  '/v1/parts': {
+  '/v2/parts': {
     success: true,
     total: 1,
     page: 1,
@@ -207,38 +207,38 @@ const COLORS = {
       },
     ],
   },
-  '/v1/parts/colors': {
+  '/v2/parts/colors': {
     success: true,
     colors: [{ color_name: GRAY, color_hex: '6C6E68', unique_parts: 1, total_quantity: 2 }],
   },
-  '/v1/parts/brick-colors': { success: true, colors: [{ id: 72, name: GRAY, hex: '6C6E68' }] },
+  '/v2/parts/brick-colors': { success: true, colors: [{ id: 72, name: GRAY, hex: '6C6E68' }] },
 };
 
 test('color names: displayed in German, stored and filtered in English', async () => {
-  for (const [sprache, sichtbar] of [
+  for (const [language, visible] of [
     ['de', 'Dunkelbläulichgrau'],
     ['en', GRAY],
   ]) {
-    const { w, d } = await openUi(COLORS, { sprache });
+    const { w, d } = await openUi(COLORS, { language });
     try {
-      await reiter(w, 'parts');
+      await switchTab(w, 'parts');
       assert.ok(
-        await warte(
+        await waitFor(
           () => d.querySelector('#ap-color-select option[data-name]') && d.querySelector('#parts-main .group-title'),
         ),
       );
       const option = d.querySelector('#ap-color-select option[data-name]');
       // data-name goes to the backend and to BrickLink on saving: English.
-      assert.deepEqual([option.textContent.trim(), option.dataset.name], [sichtbar, GRAY], sprache);
+      assert.deepEqual([option.textContent.trim(), option.dataset.name], [visible, GRAY], language);
       assert.equal(
         d.querySelector('#parts-main .group-title').textContent.trim(),
-        sichtbar,
-        `${sprache}: Gruppenüberschrift`,
+        visible,
+        `${language}: group heading`,
       );
-      assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(sichtbar), `${sprache}: Kachel`);
+      assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(visible), `${language}: tile`);
       const filter = [...d.querySelectorAll('#parts-color option')].find(o => o.value === GRAY);
-      assert.ok(filter, 'Der Filterwert bleibt englisch');
-      assert.match(filter.textContent, new RegExp(`^${sichtbar} `), `${sprache}: Filterbeschriftung`);
+      assert.ok(filter, 'The filter value stays English');
+      assert.match(filter.textContent, new RegExp(`^${visible} `), `${language}: Filterbeschriftung`);
     } finally {
       w.close();
     }
@@ -249,7 +249,7 @@ test('the purchase price detail dialog loads the part image in full size via the
   const CDN = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
   const { w, d } = await openUi({
     ...COLORS,
-    '/v1/parts/manual': {
+    '/v2/parts/manual': {
       success: true,
       parts: [
         {
@@ -265,10 +265,10 @@ test('the purchase price detail dialog loads the part image in full size via the
     },
   });
   try {
-    await reiter(w, 'parts');
-    assert.ok(await warte(() => d.querySelector('#manual-parts-list [data-click="openManDetail"]')));
+    await switchTab(w, 'parts');
+    assert.ok(await waitFor(() => d.querySelector('#manual-parts-list [data-click="openManDetail"]')));
     d.querySelector('#manual-parts-list [data-click="openManDetail"]').click();
-    assert.ok(await warte(() => d.getElementById('man-detail-img').getAttribute('src')));
+    assert.ok(await waitFor(() => d.getElementById('man-detail-img').getAttribute('src')));
     assert.equal(
       d.getElementById('man-detail-img').getAttribute('src'),
       `/api/v1/img-proxy?url=${encodeURIComponent(CDN)}`,

@@ -1,0 +1,17 @@
+Gegenprobe: Die Merkliste sieht ihre Quelle nicht an; der Abruf schreibt nur in die Ablage
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.WantedViewModelTest
+Rot: the search waits for the pause and filters the store with the last text
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/WantedListViewModel.kt
+@@ -117,7 +117,7 @@
+     val wantedState: StateFlow<WantedUiState> = wantedObserved
+ 
+     private fun shown(st: WantedUiState, l: Local<WantedItemView>?, v: ReservedWantedItem?): WantedUiState {
+-        val listed = if (l?.state != null) st.copy(wantedItem = l.list) else st
++        val listed = if (l?.state != null && false) st.copy(wantedItem = l.list) else st
+         return if (v == null) listed
+         else listed.copy(wantedItem = listed.wantedItem.filterNot { it.setNumber == v.setNumber && it.condition == v.condition })
+     }

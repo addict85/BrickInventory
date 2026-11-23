@@ -14,20 +14,20 @@ object Contrast {
     /** Minimum contrast for control borders (WCAG 1.4.11). */
     const val FRAME = 3.0
 
-    fun verhaeltnis(argbA: Int, argbB: Int): Double {
+    fun ratio(argbA: Int, argbB: Int): Double {
         val a = luminance(argbA)
         val b = luminance(argbB)
         return (max(a, b) + 0.05) / (min(a, b) + 0.05)
     }
 
-    /** Relative Leuchtdichte einer sRGB-Farbe (0 = schwarz, 1 = weiss). */
+    /** Relative luminance of an sRGB color (0 = black, 1 = white). */
     fun luminance(argb: Int): Double {
-        fun kanal(wert: Int): Double {
-            val c = wert / 255.0
+        fun channel(value: Int): Double {
+            val c = value / 255.0
             return if (c <= 0.04045) c / 12.92 else ((c + 0.055) / 1.055).pow(2.4)
         }
-        return 0.2126 * kanal((argb shr 16) and 0xFF) +
-            0.7152 * kanal((argb shr 8) and 0xFF) +
-            0.0722 * kanal(argb and 0xFF)
+        return 0.2126 * channel((argb shr 16) and 0xFF) +
+            0.7152 * channel((argb shr 8) and 0xFF) +
+            0.0722 * channel(argb and 0xFF)
     }
 }

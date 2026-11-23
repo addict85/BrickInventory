@@ -14,44 +14,44 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT } = require('./helpers/sources');
-const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
-const { openUi, reiter, warte } = require('./helpers/ui');
+const withoutComments = (/** @type {string} */ s) => require('./helpers/sources').withoutComments(s);
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 /** The sort values of a source — everything that looks like a WANTED_SORTS key. */
-function sortValues(quelle) {
-  return [...new Set(quelle.match(/\b(?:added|name|num|year|price|qty)_(?:asc|desc)\b/g) || [])].sort();
+function sortValues(source) {
+  return [...new Set(source.match(/\b(?:added|name|num|year|price|qty)_(?:asc|desc)\b/g) || [])].sort();
 }
 
 test('1. the web app sends all four filters to the server', async () => {
   const o = await openUi({
-    '/v1/sets/household-members': {
+    '/v2/sets/household-members': {
       success: true,
       members: [
-        { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-        { id: 7, username: 'ben', is_self: false, tiefe: 1 },
+        { id: 1, username: 'anna', is_self: true, depth: 0 },
+        { id: 7, username: 'ben', is_self: false, depth: 1 },
       ],
     },
-    '/v1/wanted': { success: true, merkposten: [] },
+    '/v2/wanted': { success: true, item: [] },
   });
   try {
-    await reiter(o.w, 'wanted');
-    await o.ruhig();
-    const setze = (id, wert) => {
+    await switchTab(o.w, 'wanted');
+    await o.settle();
+    const put = (id, value) => {
       const f = o.d.getElementById(id);
-      f.value = wert;
-      assert.equal(f.value, wert, `${id} kennt ${wert} nicht`);
+      f.value = value;
+      assert.equal(f.value, value, `${id} does not know ${value}`);
       f.dispatchEvent(new o.w.Event(f.tagName === 'INPUT' ? 'input' : 'change', { bubbles: true }));
     };
-    setze('scope-merkliste', '7');
-    setze('mkcond', 'U');
-    setze('mksort', 'price_asc');
-    setze('mks', 'Burg');
+    put('scope-wanted', '7');
+    put('mkcond', 'U');
+    put('mksort', 'price_asc');
+    put('mks', 'Burg');
     assert.ok(
-      await warte(() => o.aufrufe.some(a => /\/v1\/wanted\?.*search=Burg/.test(a.url)), 2000),
-      'die Suche lädt nicht neu',
+      await waitFor(() => o.calls.some(a => /\/v2\/wanted\?.*search=Burg/.test(a.url)), 2000),
+      'the search does not reload',
     );
-    await o.ruhig();
-    const p = new URL(o.aufrufe.filter(a => /\/v1\/wanted\?/.test(a.url)).at(-1).url, 'http://x').searchParams;
+    await o.settle();
+    const p = new URL(o.calls.filter(a => /\/v2\/wanted\?/.test(a.url)).at(-1).url, 'http://x').searchParams;
     assert.deepEqual(
       [p.get('search'), p.get('condition'), p.get('sort'), p.get('accounts')],
       ['Burg', 'U', 'price_asc', '7'],
@@ -63,42 +63,42 @@ test('1. the web app sends all four filters to the server', async () => {
 
 test('3. the web app offers exactly the sortings the server knows', () => {
   // ── The source of truth ───────────────────────────────────────────────────
-  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
-  const tabelle = server.slice(
+  const server = withoutComments(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
+  const table = server.slice(
     server.indexOf('const WANTED_SORTS'),
     server.indexOf('};', server.indexOf('const WANTED_SORTS')),
   );
-  const erlaubt = sortValues(tabelle);
-  assert.ok(erlaubt.length >= 5, `Nur ${erlaubt.length} Sortierwerte gefunden — Tabelle umbenannt?`);
+  const allowed = sortValues(table);
+  assert.ok(allowed.length >= 5, `Only ${allowed.length} sort values found — table renamed?`);
   // qty_* explicitly does NOT belong to it: a wishlist item has no quantity.
   assert.ok(
-    !erlaubt.some(w => w.startsWith('qty_')),
-    'WANTED_SORTS führt eine Anzahl-Sortierung — ein Merkposten hat keine Anzahl.',
+    !allowed.some(w => w.startsWith('qty_')),
+    'WANTED_SORTS has a quantity sort — a wanted item has no quantity.',
   );
 
   // ── Web app: the <option> values of the sort field ────────────────────────
-  const html = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
-  const feld = html.slice(html.indexOf('id="mksort"'));
-  const webValues = sortValues(feld.slice(0, feld.indexOf('</select>')));
+  const html = withoutComments(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
+  const field = html.slice(html.indexOf('id="mksort"'));
+  const webValues = sortValues(field.slice(0, field.indexOf('</select>')));
   assert.deepEqual(
     webValues,
-    erlaubt,
-    'Die Auswahl der Webapp und WANTED_SORTS gehen auseinander — ein unbekannter ' +
-      'Wert fällt am Server still auf die Vorgabe zurück.',
+    allowed,
+    "The web app's choice and WANTED_SORTS drift apart — an unknown " +
+      'value silently falls back to the default on the server.',
   );
 });
 
 test('4. the default sorting is the same in server and web app', () => {
   // It decides whether the web app sends the parameter at all.
-  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
+  const server = withoutComments(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
   const firstRow = server.slice(server.indexOf('const WANTED_SORTS')).split('\n')[1];
-  assert.match(firstRow, /added_desc/, 'WANTED_SORTS beginnt nicht mit added_desc');
+  assert.match(firstRow, /added_desc/, 'WANTED_SORTS does not start with added_desc');
 
-  const html = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
-  const feld = html.slice(html.indexOf('id="mksort"'));
+  const html = withoutComments(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
+  const field = html.slice(html.indexOf('id="mksort"'));
   assert.match(
-    feld.slice(0, 200),
+    field.slice(0, 200),
     /<option value="added_desc"/,
-    'Die Webapp hat eine andere Vorgabe — das erste <option> ist die Vorauswahl.',
+    'The web app has a different default — the first <option> is the preselection.',
   );
 });

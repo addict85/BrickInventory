@@ -1,5 +1,7 @@
 /**
  * Manually captured parts and figures carry their market price along.
+ *
+ * Counter-check: in src/minifigs/queries.ts avg_price fixed to null → red “manual lists carry the market price from the cache”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -16,8 +18,8 @@ const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
 const U = 990701;
 const FIG = 'mp-fig-1',
-  TEIL = 'mp-teil-1',
-  FARBE = 4;
+  PART = 'mp-teil-1',
+  COLOR = 4;
 
 test('manual lists carry the market price from the cache', async t => {
   try {
@@ -26,14 +28,14 @@ test('manual lists carry the market price from the cache', async t => {
     return t.skip('no test database reachable');
   }
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const tab of ['parts', 'minifigs']) await db.run(`DELETE FROM ${tab} WHERE user_id=$1`, [U]).catch(() => {});
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIG]).catch(() => {});
-    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TEIL]).catch(() => {});
+    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [PART]).catch(() => {});
   };
 
   try {
-    await aufraeumen();
+    await cleanUp();
     await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,'mpreis','x') ON CONFLICT (id) DO NOTHING", [
       U,
     ]);
@@ -41,14 +43,14 @@ test('manual lists carry the market price from the cache', async t => {
     // cache key lies elsewhere — fetchPartPrice translates both before it reads.
     await db.run(
       "INSERT INTO rb_colors (id,name,bl_color_id) VALUES ($1,'Rot',$1) ON CONFLICT (id) DO UPDATE SET bl_color_id=$1",
-      [FARBE],
+      [COLOR],
     );
     // Since migration 0035 the condition stands in the acquisition. This test
     // checks the market price WITHOUT an acquisition, so it stays at the default value
     // 'N' that conditionFromAcquisitions() delivers without acquisitions.
     // bl_fig_number is gone with migration 0037; the same number in both …
-    await holdsMinifig(db, U, FIG, { menge: 1 });
-    await holdsPart(db, U, TEIL, { menge: 1, colorId: FARBE });
+    await holdsMinifig(db, U, FIG, { quantity: 1 });
+    await holdsPart(db, U, PART, { quantity: 1, colorId: COLOR });
 
     // ── 2 first: WITHOUT a cache entry ───────────────────────────────────────
     // This order is intended. If it stood at the end, an error in
@@ -56,10 +58,10 @@ test('manual lists carry the market price from the cache', async t => {
     // the list failing instead of staying empty when a price is missing.
     const figsWithout = await MF.readManualMinifigs([U], U);
     const partsWithout = await H.manualPartsList([U], U);
-    assert.equal(figsWithout.length, 1, 'die Figur muss auch ohne Preis in der Liste stehen');
-    assert.equal(partsWithout.length, 1, 'das Teil muss auch ohne Preis in der Liste stehen');
-    assert.equal(figsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
-    assert.equal(partsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
+    assert.equal(figsWithout.length, 1, 'the figure must be in the list even without a price');
+    assert.equal(partsWithout.length, 1, 'the part must be in the list even without a price');
+    assert.equal(figsWithout[0].avg_price, null, 'without a cache entry the market price stays empty');
+    assert.equal(partsWithout[0].avg_price, null, 'without a cache entry the market price stays empty');
 
     // ── 1. WITH a cache entry ───────────────────────────────────────────────
     await db.run(
@@ -70,23 +72,23 @@ test('manual lists carry the market price from the cache', async t => {
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
                   VALUES ($1,$2,'N','EUR',0.75,0.7,NOW())`,
-      [TEIL, FARBE],
+      [PART, COLOR],
     );
 
     const figs = await MF.readManualMinifigs([U], U);
-    const teile = await H.manualPartsList([U], U);
+    const parts = await H.manualPartsList([U], U);
     assert.equal(
       Number(figs[0].avg_price),
       12.5,
-      `der Marktpreis der Figur fehlt (avg_price=${JSON.stringify(figs[0].avg_price)}) — genau das war Marcos Befund`,
+      `the figure's market price is missing (avg_price=${JSON.stringify(figs[0].avg_price)}) — exactly what Marco reported`,
     );
     assert.equal(
-      Number(teile[0].avg_price),
+      Number(parts[0].avg_price),
       0.75,
-      `der Marktpreis des Teils fehlt (avg_price=${JSON.stringify(teile[0].avg_price)})`,
+      `the part's market price is missing (avg_price=${JSON.stringify(parts[0].avg_price)})`,
     );
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.run('DELETE FROM users WHERE id=$1', [U]).catch(() => {});
     await db.pool.end().catch(() => {});
   }

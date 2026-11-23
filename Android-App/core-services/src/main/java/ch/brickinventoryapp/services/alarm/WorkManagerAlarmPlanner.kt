@@ -18,7 +18,7 @@ internal class WorkManagerAlarmPlanner @Inject constructor(
     @param:ApplicationContext private val context: Context,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : AlarmPlanner {
-    override suspend fun einplanen(an: Boolean): Throwable? = withContext(io) {
-        PreisalarmWorker.einplanen(context, an)
+    override suspend fun schedule(an: Boolean): Throwable? = withContext(io) {
+        PriceAlarmWorker.schedule(context, an)
     }
 }

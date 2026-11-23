@@ -6,11 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,8 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * The header of setup and sign-in: logo in a framed tile, name, below it
@@ -43,9 +43,9 @@ fun BrandsHeader(modifier: Modifier = Modifier, subtitle: String? = null) {
     // a quarter of the page at 200%, and the first field sat below the fold.
     if (largeFont()) {
         Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+            verticalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
             Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
                 Image(painterResource(R.drawable.ic_logo), contentDescription = null, modifier = Modifier.size(32.dp))
                 Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold,
                     style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
@@ -56,7 +56,7 @@ fun BrandsHeader(modifier: Modifier = Modifier, subtitle: String? = null) {
         return
     }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+        verticalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
         Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.size(80.dp)) {
@@ -64,7 +64,7 @@ fun BrandsHeader(modifier: Modifier = Modifier, subtitle: String? = null) {
                 Image(painterResource(R.drawable.ic_logo), contentDescription = null, modifier = Modifier.size(64.dp))
             }
         }
-        Spacer(Modifier.height(Abstaende.mittel))
+        Spacer(Modifier.height(Spacing.medium))
         Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold,
             style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center,
             modifier = Modifier.semantics { heading() })
@@ -79,15 +79,15 @@ fun BrandsHeader(modifier: Modifier = Modifier, subtitle: String? = null) {
  * heading, the mandatory screens would look like a second app.
  */
 @Composable
-fun LoginCard(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.() -> Unit) {
+fun LoginCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = Formen.chip,
-        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
+        shape = Shapes.chip,
+        elevation = CardDefaults.cardElevation(defaultElevation = Shapes.cardElevationHigh),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel), content = inhalt)
+            verticalArrangement = Arrangement.spacedBy(Spacing.medium), content = content)
     }
 }
 

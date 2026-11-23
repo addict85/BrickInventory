@@ -1,0 +1,17 @@
+Gegenprobe: der Setnummer-Filter lässt wieder nur Ziffern und den Bindestrich durch
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.NumericInputTest
+Rot: the set number lets letters and digits through, nothing else
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt
+@@ -21,7 +21,7 @@
+      * a plain digit filter would make them unenterable here.
+      */
+     fun setNumber(input: String): String =
+-        input.filter { it in '0'..'9' || it in 'a'..'z' || it in 'A'..'Z' || it == '-' }
++        input.filter { it.isDigit() || it == '-' }
+ 
+     // Same rule as the web app's isSetNumber(): the filter above also lets "-" or "1--2" through.
+     private val setNumberPattern = Regex("""[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?""")

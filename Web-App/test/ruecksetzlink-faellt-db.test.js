@@ -23,20 +23,20 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
+const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').accounts };
 const { tokenDigest } = _req('src/account/deviceToken.js');
 
 test('reset links fall with password and address change', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const namen = [];
+  const names = [];
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { t });
   /** An account with an open link; the change runs, then the link is redeemed. */
-  const afterSwitch = async (name, wechsel) => {
-    namen.push(name);
+  const afterSwitch = async (name, change) => {
+    names.push(name);
     await db.run('DELETE FROM users WHERE username = $1', [name]);
     const uid = (
       await db.get(
@@ -46,10 +46,10 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
       )
     ).id;
     const token = crypto.randomBytes(32).toString('hex');
-    assert.ok(await K.setRuecksetzTokenIfFree(uid, tokenDigest(token), 60, 15));
-    await wechsel(uid);
+    assert.ok(await K.setResetTokenIfFree(uid, tokenDigest(token), 60, 15));
+    await change(uid);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
-    const r = await fetch(`${base}/api/v1/auth/reset-password`, {
+    const r = await fetch(`${base}/api/v2/auth/reset-password`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ token, password: 'Neu-Sicher-2026x' }),
@@ -65,7 +65,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
   await t.test('own password, admin reset, new address: the link falls', async () => {
     assert.deepEqual(
       [
-        await afterSwitch(`link_eigen_${p}`, uid => K.aendereEigenesPasswort(uid, 'Eigenes-Neu-2026')),
+        await afterSwitch(`link_eigen_${p}`, uid => K.changeOwnPassword(uid, 'Eigenes-Neu-2026')),
         await afterSwitch(`link_fremd_${p}`, uid => K.setForeignPassword(uid, 'Verwalter-Neu-2026')),
         await afterSwitch(`link_mail_${p}`, async uid => {
           await K.rememberEmailNew(uid, `neu_${p}@example.org`, tokenDigest(`mail${p}`), new Date(Date.now() + 60_000));
@@ -79,16 +79,16 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
         }),
       ],
       [
-        [400, 'token_ungueltig'],
-        [400, 'token_ungueltig'],
-        [400, 'token_ungueltig'],
+        [400, 'token_invalid'],
+        [400, 'token_invalid'],
+        [400, 'token_invalid'],
       ],
     );
   });
 
   await t.test('two concurrent requests with the same link: only one sets its password', async () => {
     const name = `link_doppelt_${p}`;
-    namen.push(name);
+    names.push(name);
     await db.run('DELETE FROM users WHERE username = $1', [name]);
     const uid = (
       await db.get(
@@ -98,21 +98,21 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
       )
     ).id;
     const token = crypto.randomBytes(32).toString('hex');
-    assert.ok(await K.setRuecksetzTokenIfFree(uid, tokenDigest(token), 60, 15));
+    assert.ok(await K.setResetTokenIfFree(uid, tokenDigest(token), 60, 15));
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
-    const setze = password =>
-      fetch(`${base}/api/v1/auth/reset-password`, {
+    const put = password =>
+      fetch(`${base}/api/v2/auth/reset-password`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token, password }),
       }).then(async r => [r.status, (await r.json()).code ?? null, password]);
-    const antworten = await Promise.all([setze('Erstes-Neu-2026x'), setze('Zweites-Neu-2026x')]);
-    assert.deepEqual(antworten.map(a => a[0]).sort(), [200, 400], JSON.stringify(antworten));
-    const sieger = antworten.find(a => a[0] === 200)[2];
+    const answers = await Promise.all([put('Erstes-Neu-2026x'), put('Zweites-Neu-2026x')]);
+    assert.deepEqual(answers.map(a => a[0]).sort(), [200, 400], JSON.stringify(answers));
+    const sieger = answers.find(a => a[0] === 200)[2];
     const { password_hash } = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
     assert.ok(
       await _req('src/account/passwordHash.js').passwordFits(sieger, password_hash),
-      'es gilt das Passwort der Anfrage, die 200 bekam',
+      'the password of the request that got 200 applies',
     );
   });
 });

@@ -1,6 +1,8 @@
 /**
  * Portfolio curve: does the SQL version compute the same as an independent
  * JavaScript version of the same rule?
+ *
+ * Counter-check: deleteOldPrices() (src/finances/priceHistory.ts) also deletes with 0 days → red “PRICE_HISTORY_KEEP_DAYS=0 switches cleanup off”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -10,18 +12,18 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 /** The same rule straightforwardly: load daily values, group in JS, carry forward. */
 async function comparisonVersion(setNumbers, setQty, currency, condition, dateFilter) {
-  const platzhalter = setNumbers.map((_, i) => `$${i + 3}`).join(',');
+  const placeholder = setNumbers.map((_, i) => `$${i + 3}`).join(',');
   const rows = await db.all(
     `SELECT set_number, qty_avg_price, avg_price,
             to_char(recorded_at,'YYYY-MM-DD') AS day,
             to_char(recorded_at,'YYYY-MM')    AS month
      FROM price_history
-     WHERE currency_code=$1 AND condition IN ('U','N') AND set_number IN (${platzhalter})
+     WHERE currency_code=$1 AND condition IN ('U','N') AND set_number IN (${placeholder})
        AND (qty_avg_price>0 OR avg_price>0)
      ${dateFilter} ORDER BY recorded_at ASC, (condition = $2) ASC`,
     [currency, condition, ...setNumbers],
@@ -41,7 +43,7 @@ async function comparisonVersion(setNumbers, setQty, currency, condition, dateFi
   const carry = {};
   for (const k of Object.keys(buckets).sort().reverse()) Object.assign(carry, buckets[k].sets);
 
-  let punkte = Object.keys(buckets)
+  let points = Object.keys(buckets)
     .sort()
     .map(k => {
       const b = buckets[k];
@@ -53,17 +55,17 @@ async function comparisonVersion(setNumbers, setQty, currency, condition, dateFi
 
   // Condensation as before: only from 120 points on, last point per month, the
   // very first point stays exactly preserved.
-  if (punkte.length > 120) {
+  if (points.length > 120) {
     const byMonth = new Map();
-    for (const p of punkte) byMonth.set(p.month || p.day.slice(0, 7), p);
+    for (const p of points) byMonth.set(p.month || p.day.slice(0, 7), p);
     const monthly = [...byMonth.values()].map(p => ({ ...p, day: p.month || p.day.slice(0, 7) }));
-    const erster = punkte[0];
-    if (monthly.length && monthly[0].fullDay !== erster.fullDay) {
-      monthly[0] = { ...erster, day: erster.month || erster.day.slice(0, 7) };
+    const firstOne = points[0];
+    if (monthly.length && monthly[0].fullDay !== firstOne.fullDay) {
+      monthly[0] = { ...firstOne, day: firstOne.month || firstOne.day.slice(0, 7) };
     }
-    punkte = monthly;
+    points = monthly;
   }
-  return punkte;
+  return points;
 }
 
 test('the portfolio curve computes the same as the reference version', { concurrency: 1 }, async t => {
@@ -71,7 +73,7 @@ test('the portfolio curve computes the same as the reference version', { concurr
     await db.get('SELECT 1');
   } catch (e) {
     await db.pool.end().catch(() => {});
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -86,7 +88,7 @@ test('the portfolio curve computes the same as the reference version', { concurr
     c0.release();
   }
 
-  const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
+  const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('ph_a','x'),('ph_b','x')");
@@ -168,18 +170,22 @@ test('the portfolio curve computes the same as the reference version', { concurr
   for (const period of ['week', 'month', 'year', 'max']) {
     await t.test(`period ${period}: same points as the reference version`, async () => {
       const alt = await comparisonVersion(setNumbers, setQty, 'CHF', 'N', filter[period]);
-      const neu = await portfolioVerlauf(u1, [u1, u2], period, db, getSetting);
+      const fresh = await portfolioHistory(u1, [u1, u2], period, db, getSetting);
 
-      assert.equal(neu.points.length, alt.length, `andere Anzahl Punkte: ${neu.points.length} statt ${alt.length}`);
+      assert.equal(
+        fresh.points.length,
+        alt.length,
+        `different number of points: ${fresh.points.length} instead of ${alt.length}`,
+      );
 
       // The route delivers {x_label, value, y_frac} — compared are the
       // VALUES in their order.
       for (let i = 0; i < alt.length; i++) {
         const a = alt[i],
-          n = neu.points[i];
+          n = fresh.points[i];
         // Rounding: the old version computed in JS floating point, the new one in
         // NUMERIC. One cent of difference is allowed, no more.
-        assert.ok(Math.abs(n.value - a.total) <= 0.01, `Punkt ${i} (${a.day}): ${n.value} statt ${a.total}`);
+        assert.ok(Math.abs(n.value - a.total) <= 0.01, `point ${i} (${a.day}): ${n.value} instead of ${a.total}`);
       }
     });
   }
@@ -187,7 +193,7 @@ test('the portfolio curve computes the same as the reference version', { concurr
   await t.test('without price history the curve stays empty instead of crashing', async () => {
     await db.run('DELETE FROM price_history');
     await db.run('DELETE FROM price_cache');
-    const r = await portfolioVerlauf(u1, [u1, u2], 'max', db, getSetting);
+    const r = await portfolioHistory(u1, [u1, u2], 'max', db, getSetting);
     assert.equal(Array.isArray(r.points), true);
   });
 
@@ -200,7 +206,7 @@ test('one price entry per set, condition, currency and day', { concurrency: 1 },
   try {
     await db2.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -212,14 +218,14 @@ test('one price entry per set, condition, currency and day', { concurrency: 1 },
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price)
                    VALUES ('99999-1','N','CHF',99,99) ON CONFLICT DO NOTHING`);
     const n = await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='99999-1'`);
-    assert.equal(n.c, 1, 'zweite Zeile desselben Tages angelegt — ON CONFLICT greift nicht');
+    assert.equal(n.c, 1, 'second row for the same day created — ON CONFLICT does not apply');
   });
 
   await t.test('a different condition on the same day is allowed', async () => {
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price)
                    VALUES ('99999-1','U','CHF',8,8) ON CONFLICT DO NOTHING`);
     const n = await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='99999-1'`);
-    assert.equal(n.c, 2, 'Neu und Gebraucht müssen nebeneinander stehen dürfen');
+    assert.equal(n.c, 2, 'New and used must be allowed side by side');
   });
 
   await t.test('cleanup removes old rows — including the old snapshots', async () => {
@@ -232,13 +238,13 @@ test('one price entry per set, condition, currency and day', { concurrency: 1 },
                    VALUES ('88888-1','N','CHF',5,5, NOW() - INTERVAL '4000 days'),
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
     environment({ PRICE_HISTORY_KEEP_DAYS: '1095' });
-    const weg = await deleteOldPrices();
-    assert.ok(weg >= 2, `nicht alles entfernt: ${weg}`);
+    const route = await deleteOldPrices();
+    assert.ok(route >= 2, `not everything removed: ${route}`);
     for (const sn of ['88888-1', '__portfolio__1'])
       assert.equal(
         (await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number=$1`, [sn])).c,
         0,
-        `alte Zeile ${sn} blieb liegen`,
+        `old row ${sn} was left behind`,
       );
   });
 
@@ -259,11 +265,11 @@ test('mail sending never switches off certificate verification', () => {
   // Behavior: test/smtp-tls-festnageln-db.test.js. Here only the ban in the source text.
   const fs = require('node:fs');
   const path = require('node:path');
-  const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/mail/transport.ts'), 'utf8'));
+  const { ROOT, withoutComments } = require('./helpers/sources');
+  const src = withoutComments(fs.readFileSync(path.join(ROOT, 'src/mail/transport.ts'), 'utf8'));
   assert.doesNotMatch(
     src,
     /rejectUnauthorized:\s*(false|!)/,
-    'Zertifikatsprüfung abschaltbar — SMTP-Zugangsdaten und Rücksetz-Links gingen über eine ungeprüfte Verbindung',
+    'Certificate check can be switched off — SMTP credentials and reset links would go over an unverified connection',
   );
 });

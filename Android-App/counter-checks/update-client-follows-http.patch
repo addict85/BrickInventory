@@ -1,0 +1,17 @@
+Gegenprobe: der Update-Client folgt einer Umleitung von https auf http
+Modul: core-data
+Test: ch.brickinventoryapp.data.UpdateClientTest
+Rot: the update client carries nothing from our server and follows no redirect itself
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+@@ -75,7 +75,7 @@
+             // Redirects (github.com → *.githubusercontent.com) are followed by the guard itself,
+             // only to GitHub via https; OkHttp would otherwise follow them to any host.
+             .followRedirects(false)
+-            .followSslRedirects(false)
++            .followSslRedirects(true)
+             .addInterceptor(UpdateRedirects())
+             .connectTimeout(15, TimeUnit.SECONDS)
+             .readTimeout(120, TimeUnit.SECONDS)

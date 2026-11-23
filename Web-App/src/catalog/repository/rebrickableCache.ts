@@ -13,7 +13,7 @@ export interface CatalogSet {
 }
 
 /** The fetch state from catalog_cache, the details from rb_sets and set_catalog (0108). */
-export async function catalogSetTo(db: DbInterface, nummer: string): Promise<CatalogSet | undefined> {
+export async function catalogSetTo(db: DbInterface, number: string): Promise<CatalogSet | undefined> {
   return db.get<CatalogSet>(
     `SELECT cc.set_number, rs.name, NULLIF(rs.year, 0) AS year, rt.name AS theme,
            NULLIF(rs.num_parts, 0) AS pieces, sc.image_url, cc.is_gear, cc.fetched_at
@@ -22,16 +22,16 @@ export async function catalogSetTo(db: DbInterface, nummer: string): Promise<Cat
       LEFT JOIN rb_themes rt ON rt.id = rs.theme_id
       LEFT JOIN set_catalog sc ON sc.set_number = cc.set_number
      WHERE cc.set_number = $1`,
-    [nummer],
+    [number],
   );
 }
 
 /** So that a re-query happens at most daily. */
-export async function rememberUnknownSet(db: DbInterface, nummer: string, alsGear: boolean): Promise<void> {
+export async function rememberUnknownSet(db: DbInterface, number: string, asGear: boolean): Promise<void> {
   await db.run(
     `INSERT INTO catalog_cache (set_number, is_gear) VALUES ($1,$2)
     ON CONFLICT (set_number) DO UPDATE SET is_gear=$2, fetched_at=NOW()`,
-    [nummer, alsGear],
+    [number, asGear],
   );
 }
 
@@ -48,27 +48,28 @@ export async function rememberSet(
   );
 }
 
-export async function partListFromCache(db: DbInterface, nummer: string): Promise<string | undefined> {
-  return (await db.get<{ data: string }>('SELECT data FROM subsets_cache WHERE set_number = $1', [nummer]))?.data;
+export async function partListFromCache(db: DbInterface, number: string): Promise<string | undefined> {
+  return (await db.get<{ data: string }>('SELECT data FROM subsets_cache WHERE set_number = $1', [number]))?.data;
 }
 
-export async function rememberPartList(db: DbInterface, nummer: string, json: string): Promise<void> {
+export async function rememberPartList(db: DbInterface, number: string, json: string): Promise<void> {
   await db.run(
     `INSERT INTO subsets_cache (set_number, data) VALUES ($1,$2)
     ON CONFLICT (set_number) DO UPDATE SET data=$2, fetched_at=NOW()`,
-    [nummer, json],
+    [number, json],
   );
 }
 
-export async function minifigsPartsFromCache(db: DbInterface, figur: string): Promise<string | undefined> {
-  return (await db.get<{ data: string }>('SELECT data FROM minifig_parts_cache WHERE fig_number = $1', [figur]))?.data;
+export async function minifigsPartsFromCache(db: DbInterface, minifig: string): Promise<string | undefined> {
+  return (await db.get<{ data: string }>('SELECT data FROM minifig_parts_cache WHERE fig_number = $1', [minifig]))
+    ?.data;
 }
 
-export async function rememberMinifigsParts(db: DbInterface, figur: string, json: string): Promise<void> {
+export async function rememberMinifigsParts(db: DbInterface, minifig: string, json: string): Promise<void> {
   await db.run(
     `INSERT INTO minifig_parts_cache (fig_number, data, fetched_at) VALUES ($1,$2,NOW())
     ON CONFLICT (fig_number) DO UPDATE SET data=$2, fetched_at=NOW()`,
-    [figur, json],
+    [minifig, json],
   );
 }
 

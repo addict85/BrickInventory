@@ -7,7 +7,7 @@
  *   B  path deleted from PUBLIC                    → red: 401 instead of 200
  *   C  users row taken into the response            → red: „keine Adressen, keine Namen“
  *   D  BrickLink/Rebrickable check removed in setupStatus.ts → red: „mit hinterlegter Quelle gilt die Einrichtung als begonnen“
- *   E  in routes/api_v1/setup.ts `verwalter: true` fixed (07.11.2026)
+ *   E  in routes/api/setup.ts `verwalter: true` fixed (07.11.2026)
  *      → red: „ohne Verwalter verrät der Stand kein Startpasswort“
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -30,14 +30,14 @@ const db = testData();
 after(() => db.pool.end().catch(() => {}));
 
 test('setup state without login', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
-  const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
-  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
+  const key = ['einrichtung_erledigt', 'rebrickable_api_key'];
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [key]);
+  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [key]);
   t.after(async () => {
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
-    for (const z of vorher) {
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [key]);
+    for (const z of prior) {
       await db.run(
         `INSERT INTO global_settings (key, value) VALUES ($1, $2)
                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -55,29 +55,29 @@ test('setup state without login', { concurrency: 1 }, async t => {
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]));
 
-  const srv = testServer(_req, { sitzung: {}, t });
-  const r = await fetch(srv.base + '/api/v1/einrichtung/stand');
+  const srv = testServer(_req, { session: {}, t });
+  const r = await fetch(srv.base + '/api/v2/setup/state');
   assert.equal(r.status, 200);
   const d = await r.json();
   assert.equal(d.success, true);
-  assert.equal(d.erledigt, false);
-  assert.equal(d.konfiguriert, false, 'ohne Quelle ist nichts konfiguriert');
+  assert.equal(d.done, false);
+  assert.equal(d.configured, false, 'without a source nothing is configured');
   assert.equal(d.ca.download, '/ca.crt');
-  assert.ok(Array.isArray(d.schritte) && d.schritte.length >= 5, 'die Prüfungen fehlen');
-  for (const s of d.schritte) {
+  assert.ok(Array.isArray(d.steps) && d.steps.length >= 5, 'the checks are missing');
+  for (const s of d.steps) {
     assert.equal(typeof s.ok, 'boolean');
-    assert.equal(typeof s.pflicht, 'boolean');
+    assert.equal(typeof s.required, 'boolean');
   }
   // An initial password is still set; without an admin „konto“ only means „there is one“.
-  const konto = d.schritte.find(s => s.id === 'konto');
-  assert.equal(konto.ok, true, 'ohne Verwalter verrät der Stand kein Startpasswort');
-  assert.equal(d.basis_url, null, 'ohne Verwalter keine Basis-URL');
-  const verwalter = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
-  const dv = await (await fetch(verwalter.base + '/api/v1/einrichtung/stand')).json();
+  const account = d.steps.find(s => s.id === 'account');
+  assert.equal(account.ok, true, 'without an admin the state reveals no start password');
+  assert.equal(d.base_url, null, 'without an admin no base URL');
+  const admin = testServer(_req, { session: { userId: uid, isAdmin: true }, t });
+  const dv = await (await fetch(admin.base + '/api/v2/setup/state')).json();
   assert.equal(
-    dv.schritte.find(s => s.id === 'konto').ok,
+    dv.steps.find(s => s.id === 'account').ok,
     false,
-    'für den Verwalter steht das Konto erst auf bereit, wenn das Startpasswort ersetzt ist',
+    'for the admin the account only becomes ready once the start password is replaced',
   );
   // No addresses, no names, no key names.
   const text = JSON.stringify(d);
@@ -88,23 +88,24 @@ test('setup state without login', { concurrency: 1 }, async t => {
   // A stored source ends the initial setup: the check button disappears.
   // Via the real write path, because keys lie encrypted (SECRET_KEYS).
   await _req('src/settings/settings.js').setGlobalSetting('rebrickable_api_key', 'probe');
-  const d2 = await (await fetch(srv.base + '/api/v1/einrichtung/stand')).json();
-  assert.equal(d2.konfiguriert, true, 'mit hinterlegter Quelle gilt die Einrichtung als begonnen');
+  const d2 = await (await fetch(srv.base + '/api/v2/setup/state')).json();
+  assert.equal(d2.configured, true, 'with a stored source the setup counts as started');
 });
 
 test('the entry lets only the state through without a session', async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const app = express();
-  const mw = _req('routes/api_v1/middleware.js');
-  app.use('/api/v1', mw.guardFor(require('./helpers/sources').testServices().account).loginAtInbox);
-  app.use('/api/v1', (req, res) => res.json({ success: true, pfad: req.path }));
+  const mw = _req('routes/api/middleware.js');
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', mw.guardFor(require('./helpers/sources').testServices().account).loginAtInbox);
+  app.use('/api/v2', (req, res) => res.json({ success: true, path: req.path }));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const adresse = srv.address();
-  const base = `http://localhost:${typeof adresse === 'object' && adresse ? adresse.port : 0}/api/v1`;
+  const address = srv.address();
+  const base = `http://localhost:${typeof address === 'object' && address ? address.port : 0}/api/v2`;
 
-  const offen = await fetch(base + '/einrichtung/stand');
-  assert.equal(offen.status, 200, 'der Stand muss vor der Anmeldung erreichbar sein');
-  const zu = await fetch(base + '/sets');
-  assert.equal(zu.status, 401, 'alles andere bleibt zu');
+  const open = await fetch(base + '/setup/state');
+  assert.equal(open.status, 200, 'the state must be reachable before the login');
+  const closed = await fetch(base + '/sets');
+  assert.equal(closed.status, 401, 'everything else stays closed');
 });

@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.model.domain.Zustand
-import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.PartsValuationResponse
+import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.SetsResponse
 import ch.brickinventoryapp.contract.ValuationResponse
 import ch.brickinventoryapp.contract.present
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.model.json.BrickJson
 
 /**
  * Client-side API contract for the price history and the valuation.
@@ -37,8 +37,8 @@ class PriceHistorySerializationTest {
         "currency": "CHF",
         "condition": "N",
         "by_condition": {
-            "N": {"market_price": 812.5, "purchase_price": 700.0, "pnl_pct": "16.1", "pnl_prozent": 16.1},
-            "U": {"market_price": 640.0, "purchase_price": 600.0, "pnl_pct": "6.7", "pnl_prozent": 6.7}
+            "N": {"market_price": 812.5, "purchase_price": 700.0, "pnl_pct": "16.1", "pnl_percent": 16.1},
+            "U": {"market_price": 640.0, "purchase_price": 600.0, "pnl_pct": "6.7", "pnl_percent": 6.7}
         },
         "history_new": [
             {"recorded_at": "2026-01-01", "avg_price": "700.00", "qty_avg_price": "690.00",
@@ -81,7 +81,7 @@ class PriceHistorySerializationTest {
         val chart = json.decodeFromString<PriceHistoryResponse>(payload).chart
         assertEquals(listOf("2026-01-01", "2026-02-01"), chart.x)
         val used = chart.values.first { it.name == "U" }
-        assertEquals("der Schlüssel heisst camelCase, nicht first_real_index",
+        assertEquals("the key is camelCase, not first_real_index",
             1, used.firstRealIndex)
         assertEquals(0.0, used.values[0].y, 0.0001)
     }
@@ -101,13 +101,13 @@ class PriceHistorySerializationTest {
         // percentage next to it would be computed against nothing.
         val r = json.decodeFromString<PriceHistoryResponse>("""{
             "success": true, "set_number": "10290-1", "currency": "CHF", "condition": "N",
-            "by_condition": {"N": {"market_price": 148.72, "purchase_price": 120.0, "pnl_pct": "23.9", "pnl_prozent": 23.9}},
+            "by_condition": {"N": {"market_price": 148.72, "purchase_price": 120.0, "pnl_pct": "23.9", "pnl_percent": 23.9}},
             "history_new": [], "history_used": [],
             "current": {"N": {"condition": "N", "avg_price": "148.72"}, "U": null},
             "chart": {"x": [], "values": []}
         }""")
         assertEquals(1, r.byCondition.present().size)
-        assertEquals(Zustand.NEU, r.byCondition.present()[0].first)
+        assertEquals(Condition.NEW, r.byCondition.present()[0].first)
         assertNull(r.byCondition.used)
         assertTrue(r.chart.values.isEmpty())
     }
@@ -179,8 +179,8 @@ class PriceHistorySerializationTest {
                       "max_purchase_price": 160.0, "avg_purchase_price": 120.0}]
         }""")
         val set = r.sets.first()
-        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), set.conditions)
-        assertEquals(Zustand.GEBRAUCHT, set.condition)
+        assertEquals(listOf(Condition.NEW, Condition.USED), set.conditions)
+        assertEquals(Condition.USED, set.condition)
         // The weighted purchase price, not the maximum: 2x100 and 1x160 → 120.
         assertEquals(120.0, set.avgPurchasePrice!!, 0.0001)
     }
@@ -202,7 +202,7 @@ class PriceHistorySerializationTest {
                       "conditions": ["N", "U"], "source": "manual",
                       "avg_purchase_price": 12.5}]
         }""")
-        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), r.figs.first().conditions)
+        assertEquals(listOf(Condition.NEW, Condition.USED), r.figs.first().conditions)
         assertEquals(12.5, r.figs.first().avgPurchasePrice!!, 0.0001)
     }
 
@@ -226,9 +226,9 @@ class PriceHistorySerializationTest {
         }""")
         val part = v.parts.first()
         assertEquals(2, part.acquisitions.size)
-        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), part.conditions)
+        assertEquals(listOf(Condition.NEW, Condition.USED), part.conditions)
         // Quantity 2 in ONE row — two entries on the same day in the same
-        // condition are merged by the server (utils/acquisitions.ts).
+        // condition are merged by the server (`utils/acquisitions.ts`).
         assertEquals(2, part.acquisitions[0].quantity)
         val sum = part.acquisitions.sumOf { it.totalAvg!!.toDouble() }
         assertEquals(part.displayValue!!.toDouble(), sum, 0.0001)
@@ -236,13 +236,13 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `the history of a part fits into the same model as that of a set`() {
-        // The new routes /api/v1/parts/…/price-history and
-        // /api/v1/minifigs/…/price-history deliver the same envelope without the
+        // The new routes /api/v2/parts/…/price-history and
+        // /api/v2/minifigs/…/price-history deliver the same envelope without the
         // set fields. Those must land on their defaults instead of throwing —
         // otherwise the dialog would stay empty, with nobody seeing why.
         val r = json.decodeFromString<PriceHistoryResponse>("""{
             "success": true, "currency": "CHF",
-            "by_condition": {"N": {"market_price": 0.6, "purchase_price": 0.5, "pnl_pct": "20.0", "pnl_prozent": 20.0}},
+            "by_condition": {"N": {"market_price": 0.6, "purchase_price": 0.5, "pnl_pct": "20.0", "pnl_percent": 20.0}},
             "history_new": [
                 {"recorded_at": "2026-08-01", "avg_price": "0.55"},
                 {"recorded_at": "2026-08-09", "avg_price": "0.60"}

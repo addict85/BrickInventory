@@ -8,7 +8,7 @@
  *      → red: “… the preview takes precedence” (original path instead of _thumb)
  *   B  in katalogSuche.ts c.image_local removed from SET_SPALTEN → red: “the list
  *      names the image from set_catalog …” (undefined)
- *   C  in catalogPage() k.bilder.rememberUsed() per row → red: “the
+ *   C  in catalogPage() k.images.rememberUsed() per row → red: “the
  *      list triggers no image work”
  *   D  in catalogSet() image_local only for own sets (`set.owned ? … : null`)
  *      → red: “even a foreign account gets the local file”
@@ -35,33 +35,33 @@ test('catalog images from set_catalog', { concurrency: 1 }, async t => {
 
   const NAME = `katalog-bild-${process.pid}`,
     FREMD = `katalog-fremd-${process.pid}`;
-  const MIT = 'KB/1-1',
-    OHNE = 'KB2-1';
+  const WITH = 'KB/1-1',
+    WITHOUT = 'KB2-1';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, FREMD]]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const fremd = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [FREMD])).id;
-  await db.run('INSERT INTO wanted (user_id, set_number) VALUES ($1, $2), ($1, $3)', [uid, MIT, OHNE]);
-  await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[MIT, OHNE]]);
+  await db.run('INSERT INTO wanted (user_id, set_number) VALUES ($1, $2), ($1, $3)', [uid, WITH, WITHOUT]);
+  await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[WITH, WITHOUT]]);
   await db.run(
     `INSERT INTO rb_sets (set_num, name, year, num_parts, set_img_url)
                 VALUES ($1,'Mit Bild',2001,10,'https://cdn.rebrickable.com/media/sets/kb1.jpg'), ($2,'Ohne Bild',2002,5,NULL)`,
-    [MIT, OHNE],
+    [WITH, WITHOUT],
   );
   await db.run(`INSERT INTO set_catalog (set_number, image_local) VALUES ($1, '/images/sets/KB_1-1.jpg'), ($2, NULL)`, [
-    MIT,
-    OHNE,
+    WITH,
+    WITHOUT,
   ]);
-  const ordner = path.join(process.env.APP_ROOT, 'data', 'images', 'sets');
-  fs.mkdirSync(ordner, { recursive: true });
-  fs.writeFileSync(path.join(ordner, 'KB_1-1.jpg'), 'JPG');
-  fs.writeFileSync(path.join(ordner, 'KB_1-1_thumb.jpg'), 'JPG');
+  const dir = path.join(process.env.APP_ROOT, 'data', 'images', 'sets');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'KB_1-1.jpg'), 'JPG');
+  fs.writeFileSync(path.join(dir, 'KB_1-1_thumb.jpg'), 'JPG');
 
   const noted = require('./helpers/sources').imageNotes();
-  const vorgemerkt = noted.notes;
-  t.after(noted.ende);
+  const queued = noted.notes;
+  t.after(noted.end);
 
   t.after(async () => {
-    await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[MIT, OHNE]]);
+    await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[WITH, WITHOUT]]);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, fremd]]);
     fs.rmSync(process.env.APP_ROOT, { recursive: true, force: true });
     await db.pool.end().catch(() => {});
@@ -69,34 +69,34 @@ test('catalog images from set_catalog', { concurrency: 1 }, async t => {
 
   const { catalogPage, catalogSet } = _req('src/catalog/service.js');
 
-  const bilder = async wer =>
+  const images = async who =>
     Object.fromEntries(
-      (await catalogPage(wer, { q: 'KB', themeId: null }, 'num_asc', 1, 60)).sets.map(s => [
+      (await catalogPage(who, { q: 'KB', themeId: null }, 'num_asc', 1, 60)).sets.map(s => [
         s.set_number,
         s.image_local,
       ]),
     );
 
   await t.test('the list names the image from set_catalog — and the preview takes precedence', async () => {
-    const bild = await bilder(uid);
-    assert.equal(bild[MIT], '/images/sets/KB_1-1_thumb.jpg', 'die Liste nennt das Bild; die Vorschau hat Vorrang');
-    assert.equal(bild[OHNE], null);
+    const image = await images(uid);
+    assert.equal(image[WITH], '/images/sets/KB_1-1_thumb.jpg', 'the list names the image; the preview has priority');
+    assert.equal(image[WITHOUT], null);
   });
 
   await t.test('a foreign account also gets the local file', async () => {
-    assert.equal((await bilder(fremd))[MIT], '/images/sets/KB_1-1_thumb.jpg');
-    assert.equal((await catalogSet(fremd, MIT)).image_local, '/images/sets/KB_1-1_thumb.jpg');
+    assert.equal((await images(fremd))[WITH], '/images/sets/KB_1-1_thumb.jpg');
+    assert.equal((await catalogSet(fremd, WITH)).image_local, '/images/sets/KB_1-1_thumb.jpg');
   });
 
   await t.test('the list triggers no image work', () => {
-    assert.deepEqual(vorgemerkt, []);
+    assert.deepEqual(queued, []);
   });
 
   await t.test('the detail takes the same file and loads nothing more', async () => {
-    const set = await catalogSet(uid, MIT);
+    const set = await catalogSet(uid, WITH);
     assert.equal(set.image_local, '/images/sets/KB_1-1_thumb.jpg');
-    const ohne = await catalogSet(uid, OHNE);
-    assert.equal(ohne.image_local, null, 'ohne Adresse kein Abruf');
-    assert.deepEqual(vorgemerkt, []);
+    const without = await catalogSet(uid, WITHOUT);
+    assert.equal(without.image_local, null, 'no fetch without an address');
+    assert.deepEqual(queued, []);
   });
 });

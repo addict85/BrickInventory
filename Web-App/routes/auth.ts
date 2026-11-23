@@ -1,25 +1,25 @@
-/** Login, token and profile under /api/v1/auth; the sub-routers from routes/auth/ hang behind it. */
-import { guardFor } from './api_v1/middleware';
-import { cookieStaysFrom, sitzungsKeksName, sessionCookieOptions } from '../src/http/sitzungsKeks';
+/** Login, token and profile under /api/v2/auth; the sub-routers from routes/auth/ hang behind it. */
+import { guardFor } from './api/middleware';
+import { cookieStaysFrom, sessionCookieName, sessionCookieOptions } from '../src/http/sessionCookie';
 import { reportError } from '../src/infra/error';
 import {
-  anmelden,
+  login,
   establishSession,
-  nutzerId,
+  userId,
   signedInUserId,
   ipThrottle,
   confirmWithFactor,
-  zweiterFaktorPflicht,
+  secondFactorRequired,
 } from '../src/account/http/login';
 import type { Request, Response } from 'express';
 import { reportAccessChange } from '../src/account/http/accessWatch';
-import { errorText, responseLanguage, fachfehler, notFound, Fachfehler } from '../src/infra/errorTexts';
+import { errorText, responseLanguage, failDomain, notFound, DomainError } from '../src/infra/errorTexts';
 import { buildUserRouter } from './auth/users';
 import { buildSecondFactorRouter } from './auth/secondFactor';
 import { buildRegistrationRouter } from './auth/registration';
 import { buildQrRouter } from './auth/qr';
 import { buildPasskeyRouter } from './auth/passkey';
-import { vertragsRouter } from '../src/http/contractRouter';
+import { contractRouter } from '../src/http/contractRouter';
 import {
   assertLoginAllowed,
   USERNAME_RE,
@@ -30,56 +30,56 @@ import {
   devicesNameContentValid,
   reportLogin,
   emailBecomesChanged,
-  type Angemeldet,
+  type SignedIn,
   type TokenWish,
 } from '../src/account';
-import type { Dienste } from '../src/services';
-type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
+import type { Services } from '../src/services';
+type Refusal = Extract<Awaited<ReturnType<typeof login>>, { ok: false }>['refusal'];
 /** The same path after password and passkey. Token OR session: the session would carry the rights past the
  * token's scope. keks_fehlt always, also as false: then the UI does not guess "without HTTPS" on a 401. */
 async function signedInResponses(
-  d: Pick<Dienste, 'account'>,
+  d: Pick<Services, 'account'>,
   req: Request,
   res: Response,
-  user: Angemeldet,
+  user: SignedIn,
   wish: TokenWish,
   withToken: boolean,
   withPassword = false,
 ) {
-  await d.account.verwalter.cancelTakeovers(Number(user.id));
+  await d.account.admin.cancelTakeovers(Number(user.id));
   if (!withToken)
     await establishSession(d.account, req, {
       userId: Number(user.id),
       username: user.username,
       isAdmin: user.is_admin,
-      mussPasswortAendern: user.must_change_password === true,
+      mustChangePassword: user.must_change_password === true,
       // Only after a password, not after a passkey alone: the basis of the grace period.
       ...(withPassword ? { passwordConfirmedAt: Date.now() } : {}),
     });
   res.json({
     success: true,
     ...(await d.account.loginResponse(user, wish, withToken, req.ip)),
-    keks_fehlt: !withToken && cookieStaysFrom(req),
+    cookie_missing: !withToken && cookieStaysFrom(req),
   });
 }
 
 /** `zweiter_faktor` shows the code field (or `passkey`), `unverified` shows "Resend email?". */
-function loginRejections(absage: Absage): never {
-  const { art, code, vars, unverified, zweiterFaktor, passkey } = absage;
-  const zusatz = zweiterFaktor
-    ? { zweiter_faktor: true, ...(passkey ? { passkey: true } : {}) }
+function loginRejections(refusal: Refusal): never {
+  const { kind, code, vars, unverified, secondFactor, passkey } = refusal;
+  const extra = secondFactor
+    ? { second_factor: true, ...(passkey ? { passkey: true } : {}) }
     : unverified
       ? { unverified: true }
       : undefined;
-  throw new Fachfehler(art, code, vars, zusatz);
+  throw new DomainError(kind, code, vars, extra);
 }
 
-type CheckedToken = NonNullable<Awaited<ReturnType<Dienste['account']['pruefeToken']>>['nutzer']>;
+type CheckedToken = NonNullable<Awaited<ReturnType<Services['account']['checkToken']>>['user']>;
 
 /** is_admin is the right of THIS token: with scope `app` always false. */
-async function tokenUser(d: Pick<Dienste, 'account'>, res: Response, u: CheckedToken) {
-  const faellig = rotationDue(u);
-  if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
+async function tokenUser(d: Pick<Services, 'account'>, res: Response, u: CheckedToken) {
+  const due = rotationDue(u);
+  if (due) res.setHeader('X-Token-Rotation', 'faellig');
   return {
     success: true,
     loggedIn: true,
@@ -87,8 +87,8 @@ async function tokenUser(d: Pick<Dienste, 'account'>, res: Response, u: CheckedT
       id: u.user_id,
       username: u.username,
       is_admin: u.is_admin === true,
-      mustChangePassword: u.muss_passwort_aendern === true,
-      zweiterFaktorPflicht: await d.account.openFactorRequired(u.user_id, u.is_admin === true),
+      mustChangePassword: u.must_change_password === true,
+      secondFactorRequired: await d.account.openFactorRequired(u.user_id, u.is_admin === true),
     },
     token_expires: u.expires_at,
     token_last_used: u.last_used,
@@ -98,12 +98,12 @@ async function tokenUser(d: Pick<Dienste, 'account'>, res: Response, u: CheckedT
       hard_expires_at: u.hard_expires_at ?? null,
       never_expires: u.never_expires === true,
       rotated_at: u.rotated_at,
-      rotation_faellig: faellig,
+      rotation_due: due,
     },
   } as const;
 }
 
-async function sessionUser(d: Pick<Dienste, 'account'>, req: Request, uid: number) {
+async function sessionUser(d: Pick<Services, 'account'>, req: Request, uid: number) {
   const user = await d.account.accountShortOf(uid);
   if (!user) return null;
   return {
@@ -114,38 +114,68 @@ async function sessionUser(d: Pick<Dienste, 'account'>, req: Request, uid: numbe
       username: user.username,
       is_admin: user.is_admin,
       mustChangePassword: user.must_change_password,
-      zweiterFaktorPflicht: await zweiterFaktorPflicht(d.account, req),
+      secondFactorRequired: await secondFactorRequired(d.account, req),
     },
   } as const;
 }
 
-export function buildAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account' | 'factors' | 'profile'>) {
+/** Session first, then the token; a refused token says why (429 when throttled). */
+async function answerMe(d: Pick<Services, 'account'>, req: Request, res: Response, token: string | null) {
+  const session = req.session?.userId ? await sessionUser(d, req, req.session.userId) : null;
+  if (session) return res.json(session);
+  const p = token ? await d.account.checkToken(token, { ip: req.ip }) : { user: null };
+  if (p.user) return res.json(await tokenUser(d, res, p.user));
+  if (!token) return res.json({ success: true, loggedIn: false, user: null });
+  const code = 'reason' in p && p.reason ? p.reason : 'token_invalid';
+  const throttled = code === 'too_many_requests';
+  return res.status(throttled ? 429 : 401).json({
+    success: false,
+    loggedIn: false,
+    user: null,
+    code,
+    error: errorText(code, responseLanguage(req), throttled ? { minutes: 1 } : undefined),
+  });
+}
+
+/** The same regex as login/register: otherwise a foreign email could be entered as
+ * username, and the login searches "username OR email". */
+function checkProfileInput(
+  user: Parameters<typeof emailBecomesChanged>[0],
+  e: { username?: unknown; email?: string | null | undefined; first_name?: unknown; last_name?: unknown },
+): void {
+  if (e.username !== undefined && !USERNAME_RE.test(String(e.username || '')))
+    failDomain('invalid', 'username_invalid');
+  if (!nameValid(e.first_name) || !nameValid(e.last_name)) failDomain('invalid', 'name_invalid');
+  if (emailBecomesChanged(user, e.email) && !emailValid(e.email)) failDomain('invalid', 'email_invalid');
+}
+
+export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account' | 'factors' | 'profile'>) {
   const { requireLoginOrToken } = guardFor(d.account);
-  const router = vertragsRouter('/api/v1/auth');
+  const router = contractRouter('/api/v2/auth');
 
   // One guard for session AND token: the app has no session.
   const requireLogin = requireLoginOrToken;
 
   /** The ONE login for webapp and app, so both meet the same rules. */
-  router.endpunkt('POST /api/v1/auth/login', async (req, res) => {
-    const { username, password, code: secondCode, ohne_token, passkey } = req.eingabe;
-    if (!devicesNameContentValid(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
-    const check = await anmelden(d.account, req, username, password, secondCode, passkey);
-    if (!check.ok) loginRejections(check.absage);
-    await signedInResponses(d, req, res, check.user as Angemeldet, req.eingabe, ohne_token !== true, true);
+  router.endpoint('POST /api/v2/auth/login', async (req, res) => {
+    const { username, password, code: secondCode, without_token, passkey } = req.input;
+    if (!devicesNameContentValid(req.input.label)) failDomain('invalid', 'device_name_invalid');
+    const check = await login(d.account, req, username, password, secondCode, passkey);
+    if (!check.ok) loginRejections(check.refusal);
+    await signedInResponses(d, req, res, check.user as SignedIn, req.input, without_token !== true, true);
   });
 
   /** End the session AND invalidate the token, so one call clears both. */
-  router.endpunkt('POST /api/v1/auth/logout', async (req, res) => {
+  router.endpoint('POST /api/v2/auth/logout', async (req, res) => {
     const auth = String(req.headers.authorization || '');
     // An error goes to the client: if the logout were reported as successful, the token would stay valid.
-    if (auth.startsWith('Bearer ')) await d.account.tokenLoeschen(auth.slice(7));
+    if (auth.startsWith('Bearer ')) await d.account.deleteToken(auth.slice(7));
     // destroy only exists with session middleware; the app calls without a cookie.
     if (req.session?.destroy) {
       req.session.destroy(() => {
         // Open streams of this session check immediately, not only at the next tick.
         reportAccessChange();
-        res.clearCookie(sitzungsKeksName(), sessionCookieOptions()).json({ success: true });
+        res.clearCookie(sessionCookieName(), sessionCookieOptions()).json({ success: true });
       });
       return;
     }
@@ -153,42 +183,28 @@ export function buildAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account'
   });
 
   /** Session OR token; without login 200 for the browser, 401 for a token. */
-  router.endpunkt('GET /api/v1/auth/me', async (req, res) => {
+  router.endpoint('GET /api/v2/auth/me', async (req, res) => {
     const auth = String(req.headers.authorization || '');
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    const respond = async () => {
-      const sitzung = req.session?.userId ? await sessionUser(d, req, req.session.userId) : null;
-      if (sitzung) return res.json(sitzung);
-      const p = token ? await d.account.pruefeToken(token, { ip: req.ip }) : { nutzer: null };
-      if (p.nutzer) return res.json(await tokenUser(d, res, p.nutzer));
-      if (!token) return res.json({ success: true, loggedIn: false, user: null });
-      const code = 'grund' in p && p.grund ? p.grund : 'token_ungueltig';
-      res.status(code === 'zu_viele_anfragen' ? 429 : 401).json({
-        success: false,
-        loggedIn: false,
-        user: null,
-        code,
-        error: errorText(code, responseLanguage(req), code === 'zu_viele_anfragen' ? { minuten: 1 } : undefined),
-      });
-    };
+    const respond = () => answerMe(d, req, res, token);
     await respond().catch((e: unknown) => {
       // A read error is not a logout: with 401 the app would discard its token.
       reportError('auth:me', e);
-      fachfehler('nicht_verfuegbar', 'server_ausgelastet');
+      failDomain('unavailable', 'server_busy');
     });
   });
 
   /** Public: an unlimited token only applies here after the mandatory deadline. */
-  router.endpunkt(
-    'POST /api/v1/auth/token-rotieren',
+  router.endpoint(
+    'POST /api/v2/auth/rotate-token',
     ipThrottle(d.account, 'token-rotieren', 120, 60 * 60 * 1000),
     async req => {
       const auth = String(req.headers.authorization || '');
       const alt = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-      if (!alt || !(await d.account.pruefeToken(alt, { ip: req.ip, zweck: 'rotation' })).nutzer)
-        fachfehler('nicht_angemeldet', 'token_ungueltig');
+      if (!alt || !(await d.account.checkToken(alt, { ip: req.ip, purpose: 'rotation' })).user)
+        failDomain('not_signed_in', 'token_invalid');
       const t = await d.account.rotateToken(alt, req.ip);
-      if (!t) fachfehler('nicht_angemeldet', 'token_ungueltig');
+      if (!t) failDomain('not_signed_in', 'token_invalid');
       return {
         token: t.token,
         token_info: {
@@ -197,79 +213,73 @@ export function buildAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account'
           hard_expires_at: t.hard_expires_at,
           never_expires: t.never_expires,
           rotated_at: t.rotated_at,
-          rotation_faellig: false,
+          rotation_due: false,
         },
-        alt_gueltig_bis: t.alt_gueltig_bis,
-        ueberlappung_sek: OVERLAP_MS / 1000,
+        old_valid_until: t.old_valid_until,
+        overlap_seconds: OVERLAP_MS / 1000,
       };
     },
   );
 
   /** Only from a session, with password and second factor: otherwise a
    * captured access would mint a permanent one. The mail reports it to the owner. */
-  router.endpunkt('POST /api/v1/auth/token-create', requireLogin, async (req, res) => {
-    if (!req.session?.userId) fachfehler('verboten', 'nur_mit_sitzung');
-    if (!devicesNameContentValid(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
+  router.endpoint('POST /api/v2/auth/token-create', requireLogin, async (req, res) => {
+    if (!req.session?.userId) failDomain('forbidden', 'session_only');
+    if (!devicesNameContentValid(req.input.label)) failDomain('invalid', 'device_name_invalid');
     const userId = signedInUserId(req);
-    if (!(await confirmWithFactor(d.account, req, res, userId, req.eingabe.password))) return;
-    const t = await d.account.devicesTokenIssue(userId, req.eingabe.label, req.eingabe.scope, req.ip);
+    if (!(await confirmWithFactor(d.account, req, res, userId, req.input.password))) return;
+    const t = await d.account.devicesTokenIssue(userId, req.input.label, req.input.scope, req.ip);
     return { token: t.token, label: t.label, never_expires: false, token_info: t.token_info };
   });
 
-  router.endpunkt('GET /api/v1/auth/profile', requireLogin, async req => {
-    const user = await d.account.profil(nutzerId(req)!);
-    if (!user) notFound('benutzer_nicht_gefunden');
+  router.endpoint('GET /api/v2/auth/profile', requireLogin, async req => {
+    const user = await d.account.profile(userId(req)!);
+    if (!user) notFound('user_not_found');
     return { user };
   });
 
-  router.endpunkt('PUT /api/v1/auth/profile', requireLogin, async (req, res) => {
-    const { username, email, first_name, last_name, password, password_current } = req.eingabe;
-    const user = await d.account.accountFullOf(nutzerId(req)!);
-    if (!user) notFound('benutzer_nicht_gefunden');
+  router.endpoint('PUT /api/v2/auth/profile', requireLogin, async (req, res) => {
+    const { username, email, first_name, last_name, password, password_current } = req.input;
+    const user = await d.account.accountFullOf(userId(req)!);
+    if (!user) notFound('user_not_found');
 
     // The password only via /change-password: only there do all other accesses end afterwards.
-    if (password) fachfehler('ungueltig', 'passwort_ueber_change_password');
+    if (password) failDomain('invalid', 'password_via_change_password');
 
-    // The same regex as login/register: otherwise a foreign email could be entered as
-    // username, and the login searches "username OR email".
-    if (username !== undefined && !USERNAME_RE.test(String(username || '')))
-      fachfehler('ungueltig', 'benutzername_ungueltig');
-    if (!nameValid(first_name) || !nameValid(last_name)) fachfehler('ungueltig', 'name_ungueltig');
-
-    if (emailBecomesChanged(user, email) && !emailValid(email)) fachfehler('ungueltig', 'email_ungueltig');
+    checkProfileInput(user, { username, email, first_name, last_name });
     // With password (and second factor): a new address could be used to reset the
     // password; only after that does the availability check reveal whether a name or address exists.
-    if (!password_current) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
+    if (!password_current) failDomain('invalid', 'current_password_required');
     if (!(await confirmWithFactor(d.account, req, res, user.id, String(password_current)))) return;
-    const r = await d.account.profilAendern(user, { username, email, first_name, last_name });
+    const r = await d.account.changeProfile(user, { username, email, first_name, last_name });
     if (r.emailChanged) return { emailChanged: true, emailSent: r.emailSent ?? false };
     return {};
   });
 
   // The own account, permanently: password and, if set up, second factor.
-  router.endpunkt('DELETE /api/v1/auth/konto', requireLogin, async (req, res) => {
+  router.endpoint('DELETE /api/v2/auth/account', requireLogin, async (req, res) => {
     const uid = signedInUserId(req);
-    if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
-    await d.account.kontoEntfernen(uid, null);
+    if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
+    await d.account.removeAccount(uid, null);
     console.log(`[konto] Konto ${uid} hat sich selbst gelöscht`);
-    req.session.destroy(() => res.clearCookie(sitzungsKeksName(), sessionCookieOptions()).json({ success: true }));
+    req.session.destroy(() => res.clearCookie(sessionCookieName(), sessionCookieOptions()).json({ success: true }));
   });
 
-  router.endpunkt('POST /api/v1/auth/change-password', requireLogin, async (req, res) => {
-    const { current, newPassword } = req.eingabe;
-    if (!current || !newPassword) fachfehler('ungueltig', 'alle_felder_erforderlich');
-    const uid = nutzerId(req);
-    if (uid == null) fachfehler('nicht_angemeldet', 'nicht_angemeldet');
+  router.endpoint('POST /api/v2/auth/change-password', requireLogin, async (req, res) => {
+    const { current, newPassword } = req.input;
+    if (!current || !newPassword) failDomain('invalid', 'all_fields_required');
+    const uid = userId(req);
+    if (uid == null) failDomain('not_signed_in', 'not_signed_in');
     if (!(await confirmWithFactor(d.account, req, res, uid, String(current)))) return;
     // AFTER checking the old password: a stranger learns nothing through the new one.
     // Ends all accesses, including the own; the session is rebuilt afterwards.
-    const konto = await d.account.eigenesPasswortAendern(uid, newPassword, req.eingabe.passkeys_widerrufen === true);
-    if (req.session?.userId && konto) {
+    const account = await d.account.changeOwnPassword(uid, newPassword, req.input.passkeys_revoked === true);
+    if (req.session?.userId && account) {
       await establishSession(d.account, req, {
         userId: uid,
-        username: konto.username,
+        username: account.username,
         isAdmin: req.session.isAdmin === true,
-        mussPasswortAendern: false,
+        mustChangePassword: false,
         passwordConfirmedAt: Date.now(),
       });
     }
@@ -277,31 +287,31 @@ export function buildAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account'
   });
 
   // Public; the throttle limits how many challenges an address creates.
-  router.endpunkt(
-    'POST /api/v1/auth/passkey/anmelden/optionen',
+  router.endpoint(
+    'POST /api/v2/auth/passkey/login/options',
     ipThrottle(d.account, 'passkey-optionen', 60, 60 * 60 * 1000),
     async req => {
-      const zweck = req.eingabe.zweck === 'zweiter_faktor' ? 'zweiter_faktor' : 'anmelden';
-      const optionen = await d.factors.authenticationOptions(zweck);
-      if (!optionen) fachfehler('nicht_verfuegbar', 'passkey_ohne_domain');
-      return { optionen };
+      const purpose = req.input.purpose === 'second_factor' ? 'second_factor' : 'login';
+      const options = await d.factors.authenticationOptions(purpose);
+      if (!options) failDomain('unavailable', 'passkey_without_domain');
+      return { options };
     },
   );
 
   /** The session for the browser; a token only on `mit_token`, as the app needs it. */
-  router.endpunkt(
-    'POST /api/v1/auth/passkey/anmelden',
+  router.endpoint(
+    'POST /api/v2/auth/passkey/login',
     ipThrottle(d.account, 'passkey-anmelden', 30, 60 * 60 * 1000),
     async (req, res) => {
-      if (!devicesNameContentValid(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
-      const uid = await d.factors.verifyAuthentication(req.eingabe.antwort, 'anmelden');
-      if (!uid) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
+      if (!devicesNameContentValid(req.input.label)) failDomain('invalid', 'device_name_invalid');
+      const uid = await d.factors.verifyAuthentication(req.input.response, 'login');
+      if (!uid) failDomain('not_signed_in', 'passkey_invalid');
       const user = await d.account.accountFullOf(uid);
-      if (!user) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
-      const gesperrt = assertLoginAllowed(user);
-      if (gesperrt) fachfehler(gesperrt.art, gesperrt.code);
-      reportLogin({ ip: req.ip, konto: user.id, zugang: 'passkey' });
-      await signedInResponses(d, req, res, user, req.eingabe, req.eingabe.mit_token === true);
+      if (!user) failDomain('not_signed_in', 'passkey_invalid');
+      const locked = assertLoginAllowed(user);
+      if (locked) failDomain(locked.kind, locked.code);
+      reportLogin({ ip: req.ip, account: user.id, method: 'passkey' });
+      await signedInResponses(d, req, res, user, req.input, req.input.with_token === true);
     },
   );
 

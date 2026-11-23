@@ -27,14 +27,14 @@ const db = testData();
 test('CSV round trip: export and import fit together', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const konto = async n => {
+  const account = async n => {
     await db.run('DELETE FROM users WHERE username=$1', [`${n}-${process.pid}`]);
     return (
       await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`${n}-${process.pid}`])
     ).id;
   };
-  const A = await konto('rundlauf-a'),
-    B = await konto('rundlauf-b');
+  const A = await account('rundlauf-a'),
+    B = await account('rundlauf-b');
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]);
     await db.pool.end().catch(() => {});
@@ -64,17 +64,17 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
     [A],
   );
 
-  const { partsCsv, figurenCsv } = _req('src/inventory/inventoryExport.js');
-  const { setsAlsCsv } = require('./helpers/sources').areaPage('sets');
+  const { partsCsv, minifigsCsv } = _req('src/inventory/inventoryExport.js');
+  const { setsAsCsv } = require('./helpers/sources').areaPage('sets');
   const { importPartsCsv } = _req('src/parts/manualParts.js');
   const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
   const { setCsvRows } = require('./helpers/sources').areaPage('sets');
 
-  const erfassungen = (tabelle, nummer, farbe, u) =>
+  const acqList = (table, number, color, u) =>
     db.all(
-      `SELECT ${nummer}${farbe ? ', color_id' : ''}, quantity, ${tabelle === 'set_acquisitions' ? 'purchase_price' : 'unit_price'}::text AS preis,
+      `SELECT ${number}${color ? ', color_id' : ''}, quantity, ${table === 'set_acquisitions' ? 'purchase_price' : 'unit_price'}::text AS preis,
             condition, day::text AS tag
-       FROM ${tabelle} WHERE user_id=$1 ORDER BY day, condition`,
+       FROM ${table} WHERE user_id=$1 ORDER BY day, condition`,
       [u],
     );
 
@@ -82,24 +82,24 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
     const r = await importPartsCsv(B, await partsCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
-      await erfassungen('part_acquisitions', 'part_number', true, B),
-      await erfassungen('part_acquisitions', 'part_number', true, A),
+      await acqList('part_acquisitions', 'part_number', true, B),
+      await acqList('part_acquisitions', 'part_number', true, A),
     );
   });
 
   await t.test('figures arrive unchanged', async () => {
-    const r = await importMinifigsCsv(B, await figurenCsv(A));
+    const r = await importMinifigsCsv(B, await minifigsCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
-      await erfassungen('minifig_acquisitions', 'fig_number', false, B),
-      await erfassungen('minifig_acquisitions', 'fig_number', false, A),
+      await acqList('minifig_acquisitions', 'fig_number', false, B),
+      await acqList('minifig_acquisitions', 'fig_number', false, A),
     );
   });
 
   await t.test("sets: the import's row reader reads every column of the export", async () => {
-    const { rows } = setCsvRows(await setsAlsCsv(A));
+    const { rows } = setCsvRows(await setsAsCsv(A));
     assert.deepEqual(rows, [
-      { sn: 'RL10001-1', qty: 2, zeile: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' },
+      { sn: 'RL10001-1', qty: 2, row: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' },
     ]);
   });
 });

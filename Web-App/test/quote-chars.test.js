@@ -12,21 +12,21 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
-async function suche(sprache) {
-  const o = await openUi({}, { sprache });
-  const feld = o.d.getElementById('gs');
-  feld.value = 'xyzxyz';
-  feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
-  await warte(() => /xyzxyz/.test(o.d.getElementById('gallery').textContent), 3000);
-  await takt(20);
-  const text = o.d.querySelector('#gallery .leer h2')?.textContent || o.d.getElementById('gallery').textContent;
+async function search(language) {
+  const o = await openUi({}, { language });
+  const field = o.d.getElementById('gs');
+  field.value = 'xyzxyz';
+  field.dispatchEvent(new o.w.Event('input', { bubbles: true }));
+  await waitFor(() => /xyzxyz/.test(o.d.getElementById('gallery').textContent), 3000);
+  await tick(20);
+  const text = o.d.querySelector('#gallery .empty-state h2')?.textContent || o.d.getElementById('gallery').textContent;
   return { o, text: text.trim() };
 }
 
 test('search without results: de', async () => {
-  const { o, text } = await suche('de');
+  const { o, text } = await search('de');
   try {
     assert.equal(text, 'Keine Treffer für „xyzxyz“');
   } finally {
@@ -35,7 +35,7 @@ test('search without results: de', async () => {
 });
 
 test('search without results: en', async () => {
-  const { o, text } = await suche('en');
+  const { o, text } = await search('en');
   try {
     assert.equal(text, 'No results for “xyzxyz”');
   } finally {
@@ -44,11 +44,11 @@ test('search without results: en', async () => {
 });
 
 test('every „ has its “, and English has no straight quotes around words', async () => {
-  const { w } = await openUi({}, { angemeldet: false });
+  const { w } = await openUi({}, { loggedIn: false });
   try {
     const de = Object.entries(w.I18N_DE),
       en = Object.entries(w.I18N_EN);
-    assert.ok(de.length > 500 && en.length > 500, 'Wörterbücher nicht geladen');
+    assert.ok(de.length > 500 && en.length > 500, 'dictionaries not loaded');
     const deWrong = de.filter(
       ([, v]) => (v.match(/„/g) || []).length !== (v.match(/“/g) || []).length || /„[^“]*"/.test(v),
     );
@@ -61,7 +61,7 @@ test('every „ has its “, and English has no straight quotes around words', a
     assert.deepEqual(
       enWrong.map(([k]) => k),
       [],
-      'en: gerade oder deutsche Anführungszeichen',
+      'en: straight or German quotation marks',
     );
   } finally {
     w.close();

@@ -38,16 +38,16 @@ Module.prototype.require = function (name, ...rest) {
 
 const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
-const { warte } = require('./helpers/time');
+const { noDb } = require('./helpers/db');
+const { sleep } = require('./helpers/time');
 
 test('starting the job process queues everything as a job', { concurrency: 1 }, async t => {
   const db = testData();
   /** What startJobs returns: the test holds it like server.ts. */
   const runs = [];
   t.after(async () => {
-    for (const lauf of runs)
-      await _req('startup/jobsProcess.js').stopJobs(require('./helpers/sources').testServices(), lauf);
+    for (const run of runs)
+      await _req('startup/jobsProcess.js').stopJobs(require('./helpers/sources').testServices(), run);
     await testAccess()
       .notification.close()
       .catch(() => {});
@@ -57,44 +57,44 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await db.run('DELETE FROM jobs');
   runs.push(await _req('startup/jobsProcess.js').startJobs(require('./helpers/sources').testServices()));
 
-  const zeilen = await db.all(`SELECT type, dedupe_key, payload, EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek
-                                 FROM jobs WHERE status = 'offen'`);
-  const plan = type => zeilen.find(z => z.dedupe_key === `plan:${type}`);
+  const lines = await db.all(`SELECT type, dedupe_key, payload, EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek
+                                 FROM jobs WHERE status = 'pending'`);
+  const plan = type => lines.find(z => z.dedupe_key === `plan:${type}`);
 
   await t.test('every scheduled kind has an appointment', () => {
-    for (const { art } of require('./helpers/sources')
+    for (const { kind } of require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
-      .filter(a => a.zeitplan))
-      assert.ok(plan(art), `kein Termin für ${art}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
+      .filter(a => a.schedule))
+      assert.ok(plan(kind), `no schedule for ${kind}; present are: ${lines.map(z => z.dedupe_key).join(', ')}`);
     assert.ok(
       plan('csv_sync').in_sek <= 0 && plan('csv_sync').payload.onStart,
-      'der Katalog wird beim Start sofort geprüft',
+      'the catalog is checked right at startup',
     );
-    assert.ok(plan('preise').in_sek <= 30, 'der Preis-Job läuft 30 s nach dem Start');
+    assert.ok(plan('prices').in_sek <= 30, 'the price job runs 30 s after startup');
     assert.ok(
-      zeilen.some(z => z.type === 'wechselkurse'),
-      'kein Wechselkurs-Auftrag',
+      lines.some(z => z.type === 'exchange_rates'),
+      'no exchange-rate job',
     );
   });
 
   await t.test('every follow-up run is queued once', async () => {
     const { FOLLOWUP_RUNS } = _req('src/management/startFollowUpRuns.js');
-    for (const schritt of Object.keys(FOLLOWUP_RUNS))
+    for (const step of Object.keys(FOLLOWUP_RUNS))
       assert.ok(
-        zeilen.some(z => z.dedupe_key === `nachlauf:${schritt}`),
-        `Nachlauf ${schritt} fehlt`,
+        lines.some(z => z.dedupe_key === `followup:${step}`),
+        `Follow-up ${step} is missing`,
       );
     runs.push(await _req('startup/jobsProcess.js').startJobs(require('./helpers/sources').testServices()));
-    const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE status = 'offen'
+    const twice = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE status = 'pending'
                                     GROUP BY dedupe_key HAVING COUNT(*) > 1 LIMIT 1`);
-    assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');
+    assert.equal(twice, undefined, 'a second start creates schedules twice');
   });
 
   await t.test('the worker starts', () => {
@@ -103,12 +103,12 @@ test('starting the job process queues everything as a job', { concurrency: 1 }, 
 
   await t.test('the sign of life follows the worker', async () => {
     const jp = _req('startup/jobsProcess.js');
-    const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
-    for (let i = 0; i < 50 && !(await liesZustand(jp.HEARTBEAT_KEY)); i++) await warte(20);
-    assert.ok(await liesZustand(jp.HEARTBEAT_KEY), 'nach dem Start fehlt das Lebenszeichen');
-    for (const lauf of runs) await jp.stopJobs(require('./helpers/sources').testServices(), lauf);
+    const { readState, deleteState } = require('./helpers/sources').testArea('jobQueue').runState;
+    for (let i = 0; i < 50 && !(await readState(jp.HEARTBEAT_KEY)); i++) await sleep(20);
+    assert.ok(await readState(jp.HEARTBEAT_KEY), 'the heartbeat is missing after startup');
+    for (const run of runs) await jp.stopJobs(require('./helpers/sources').testServices(), run);
     await deleteState(jp.HEARTBEAT_KEY);
     await jp.renewHeartbeat(require('./helpers/sources').testServices(), runs[0].worker);
-    assert.equal(await liesZustand(jp.HEARTBEAT_KEY), null, 'ohne Worker kein Lebenszeichen');
+    assert.equal(await readState(jp.HEARTBEAT_KEY), null, 'no heartbeat without a worker');
   });
 });

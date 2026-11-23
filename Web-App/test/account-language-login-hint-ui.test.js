@@ -9,65 +9,65 @@
  *   A  plRenderSets() back with titel/text instead of titleKey/textKey → red:
  *      “build list in account language” (“Noch keine Sets …”; measured again 13.11.2026
  *      with titel instead of titleKey: “Diese Bauliste ist noch leer”)
- *   B  in doLogin back to d.code==='anmeldedaten_ungueltig' → red: both
+ *   B  in doLogin back to d.code==='credentials_invalid' → red: both
  *      login tests
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, waitFor, tick } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
 test('build list in the account language', async () => {
   const { w, d } = await openUi({
-    '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'en', rebrickable_api_key: 'probe' } },
+    '/v2/settings/raw': { success: true, settings: { currency: 'EUR', language: 'en', rebrickable_api_key: 'probe' } },
   });
   try {
-    await reiter(w, 'partslist');
-    await warte(() => d.documentElement.lang === 'en');
-    await takt(50);
-    const leer = text(d.querySelector('#pl-sets .leer'));
-    assert.doesNotMatch(leer, /Bauliste|Noch keine|Setnummer/, `deutsch: ${leer}`);
-    assert.match(leer, /build list is still empty/i);
+    await switchTab(w, 'partslist');
+    await waitFor(() => d.documentElement.lang === 'en');
+    await tick(50);
+    const empty = text(d.querySelector('#pl-sets .empty-state'));
+    assert.doesNotMatch(empty, /Bauliste|Noch keine|Setnummer/, `deutsch: ${empty}`);
+    assert.match(empty, /build list is still empty/i);
   } finally {
     w.close();
   }
 });
 
-async function anmelden(antwort) {
-  const o = await openUi({ '/v1/auth/login': antwort }, { angemeldet: false });
-  await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
+async function signIn(response) {
+  const o = await openUi({ '/v2/auth/login': response }, { loggedIn: false });
+  await waitFor(() => o.d.getElementById('login-screen').style.display === 'flex');
   o.d.getElementById('lu').value = 'anna';
   o.d.getElementById('lp').value = 'falsch-falsch';
   o.d.getElementById('btn-login').click();
-  await warte(() => text(o.d.getElementById('lerr')) !== '');
+  await waitFor(() => text(o.d.getElementById('lerr')) !== '');
   return o;
 }
 
 test('login: wrong password without confirmation link', async () => {
-  const { w, d } = await anmelden({
+  const { w, d } = await signIn({
     $status: 401,
     success: false,
-    code: 'anmeldedaten_ungueltig',
+    code: 'credentials_invalid',
     error: 'Benutzername oder Passwort falsch',
   });
   try {
-    assert.equal(d.querySelector('#lerr [data-click="bestaetigungErneut"]'), null);
+    assert.equal(d.querySelector('#lerr [data-click="resendConfirmation"]'), null);
   } finally {
     w.close();
   }
 });
 
 test('login: address not confirmed, with confirmation link', async () => {
-  const { w, d } = await anmelden({
+  const { w, d } = await signIn({
     $status: 403,
     success: false,
-    code: 'email_nicht_bestaetigt',
+    code: 'email_not_confirmed',
     unverified: true,
     error: 'E-Mail-Adresse noch nicht bestätigt',
   });
   try {
-    assert.ok(d.querySelector('#lerr [data-click="bestaetigungErneut"]'));
+    assert.ok(d.querySelector('#lerr [data-click="resendConfirmation"]'));
   } finally {
     w.close();
   }

@@ -1,5 +1,5 @@
 /**
- * The UI asks for the code when the server reports zweiter_faktor_noetig for a sensitive
+ * The UI asks for the code when the server reports second_factor_required for a sensitive
  * change, and repeats the request with
  * `code` (withSecondFactor in public/js/admin.js). Checked on the mandatory change
  * of the start password, real bundle in jsdom.
@@ -12,44 +12,44 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 test('mandatory change with second factor asks for the code', async () => {
-  const wechsel = [];
+  const change = [];
   const { w, d } = await openUi({
-    '/v1/auth/me': { loggedIn: true, user: { id: 1, username: 'anna', is_admin: false, mustChangePassword: true } },
-    '/v1/auth/change-password': (_url, o) => {
+    '/v2/auth/me': { loggedIn: true, user: { id: 1, username: 'anna', is_admin: false, mustChangePassword: true } },
+    '/v2/auth/change-password': (_url, o) => {
       const body = JSON.parse(o.body);
-      wechsel.push(body);
+      change.push(body);
       return body.code
         ? { success: true }
-        : { $status: 400, success: false, code: 'zweiter_faktor_noetig', error: 'Code fehlt' };
+        : { $status: 400, success: false, code: 'second_factor_required', error: 'Code fehlt' };
     },
   });
   try {
     assert.ok(
-      await warte(() => d.getElementById('panel-pflichtwechsel')?.style.display === 'block'),
-      'Vorbedingung: Pflichtwechsel sichtbar',
+      await waitFor(() => d.getElementById('panel-required-change')?.style.display === 'block'),
+      'precondition: mandatory change visible',
     );
-    d.getElementById('pflicht-alt').value = 'Start-Passwort-1';
-    d.getElementById('pflicht-neu').value = 'Neues-Passwort-22';
-    d.getElementById('pflicht-wdh').value = 'Neues-Passwort-22';
+    d.getElementById('required-alt').value = 'Start-Passwort-1';
+    d.getElementById('required-new').value = 'Neues-Passwort-22';
+    d.getElementById('required-repeat').value = 'Neues-Passwort-22';
     w.location.reload = () => {};
-    d.getElementById('btn-pflicht').click();
+    d.getElementById('btn-required').click();
 
     const codeWrap = d.getElementById('cd-code-wrap');
     assert.ok(
-      await warte(() => codeWrap && !codeWrap.hidden && d.getElementById('confirm-modal').style.display === 'flex'),
-      'der Code-Dialog erscheint',
+      await waitFor(() => codeWrap && !codeWrap.hidden && d.getElementById('confirm-modal').style.display === 'flex'),
+      'the code dialog appears',
     );
-    assert.equal(d.getElementById('cd-pw-wrap').hidden, true, 'kein Passwortfeld im Code-Dialog');
+    assert.equal(d.getElementById('cd-pw-wrap').hidden, true, 'no password field in the code dialog');
     d.getElementById('cd-code').value = ' 123456 ';
     d.getElementById('cd-confirm').click();
-    assert.ok(await warte(() => wechsel.length === 2), `nur ${wechsel.length} Anfrage(n)`);
-    assert.equal(wechsel[0].code, undefined);
-    assert.equal(wechsel[1].code, '123456', 'die zweite Anfrage trägt den Code');
-    assert.equal(wechsel[1].newPassword, 'Neues-Passwort-22');
-    await takt(20);
+    assert.ok(await waitFor(() => change.length === 2), `only ${change.length} request(s)`);
+    assert.equal(change[0].code, undefined);
+    assert.equal(change[1].code, '123456', 'the second request carries the code');
+    assert.equal(change[1].newPassword, 'Neues-Passwort-22');
+    await tick(20);
   } finally {
     w.close();
   }

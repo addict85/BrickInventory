@@ -19,25 +19,25 @@ const ALLOWED = new Map([]);
 
 test('no SQL statement is in more than one file', () => {
   // Found, not enumerated.
-  const dateien = [];
-  const gehen = d => {
+  const files = [];
+  const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts', 'public', '.git'].includes(e.name) || e.name.startsWith('.'))
         continue;
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) gehen(abs);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+      if (e.isDirectory()) go(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) files.push(abs);
     }
   };
-  gehen(ROOT);
-  assert.ok(dateien.length >= 60, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  go(ROOT);
+  assert.ok(files.length >= 60, `Only ${files.length} source files found — the search no longer works`);
 
   // Fetch statements from strings, unify whitespace. A
-  // route key of the API contract ('DELETE /api/v1/…') is not SQL.
+  // route key of the API contract ('DELETE /api/v2/…') is not SQL.
   const sql = /(['"`])((?:SELECT|INSERT|UPDATE|DELETE)\s(?!\/)[\s\S]*?)\1/g;
-  const wo = new Map();
-  let gefunden = 0;
-  for (const f of dateien) {
+  const where = new Map();
+  let found = 0;
+  for (const f of files) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -47,39 +47,39 @@ test('no SQL statement is in more than one file', () => {
       const k = m[2].replace(/\s+/g, ' ').trim();
       // Too short to mean anything of its own (`SELECT 1 FROM x WHERE id=$1`).
       if (k.length < 45) continue;
-      gefunden++;
-      if (!wo.has(k)) wo.set(k, new Set());
-      wo.get(k).add(rel);
+      found++;
+      if (!where.has(k)) where.set(k, new Set());
+      where.get(k).add(rel);
     }
   }
   // Self-proof: if the search found hardly any statements, the rule would be vacuously true.
-  assert.ok(gefunden >= 300, `Nur ${gefunden} SQL-Anweisungen gefunden — die Suche greift nicht mehr`);
+  assert.ok(found >= 300, `Only ${found} SQL statements found — the search no longer works`);
 
-  const doppelt = [];
-  const gebraucht = new Set();
-  for (const [k, orte] of wo) {
-    if (orte.size < 2) continue;
+  const twice = [];
+  const used = new Set();
+  for (const [k, locations] of where) {
+    if (locations.size < 2) continue;
     // Book instead of skip — otherwise it never stands out when an entry
     // becomes moot. The list is empty today; the check stands
     // here nevertheless, so that the first entry already finds it.
     if (ALLOWED.has(k)) {
-      gebraucht.add(k);
+      used.add(k);
       continue;
     }
-    doppelt.push(`${[...orte].sort().join(' + ')}\n      ${k.slice(0, 130)}`);
+    twice.push(`${[...locations].sort().join(' + ')}\n      ${k.slice(0, 130)}`);
   }
-  const veraltet = [...ALLOWED.keys()].filter(k => !gebraucht.has(k));
+  const stale = [...ALLOWED.keys()].filter(k => !used.has(k));
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
-    'Diese Eintraege in ALLOWED beschreiben keine Doppelung mehr — raus damit:\n  ' +
-      veraltet.map(k => k.slice(0, 130)).join('\n  '),
+    'These entries in ALLOWED no longer describe a duplicate — remove them:\n  ' +
+      stale.map(k => k.slice(0, 130)).join('\n  '),
   );
   assert.deepEqual(
-    doppelt,
+    twice,
     [],
-    'Diese Anweisungen stehen in mehreren Dateien. Entweder gehoeren sie in ' +
-      'eine gemeinsame Funktion, oder es gibt einen Grund — dann in ALLOWED ' +
-      'eintragen, damit der Naechste ihn nicht neu herleiten muss',
+    'These statements are in several files. Either they belong in ' +
+      'a shared function, or there is a reason — then add it to ALLOWED ' +
+      'so that the next person does not have to work it out again',
   );
 });

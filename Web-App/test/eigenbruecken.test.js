@@ -9,28 +9,28 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /** Remove comments line by line: a regex would take the /* in '/data/x/*' for a comment. */
-function ohneKommentare(s) {
-  const zeilen = [];
-  let imBlock = false;
+function withoutComments(s) {
+  const lines = [];
+  let inBlock = false;
   for (const z of String(s).split('\n')) {
     const t = z.trim();
-    if (imBlock) {
-      zeilen.push('');
-      if (t.endsWith('*/')) imBlock = false;
+    if (inBlock) {
+      lines.push('');
+      if (t.endsWith('*/')) inBlock = false;
       continue;
     }
     if (t.startsWith('/*')) {
-      zeilen.push('');
-      if (!t.includes('*/')) imBlock = true;
+      lines.push('');
+      if (!t.includes('*/')) inBlock = true;
       continue;
     }
-    zeilen.push(t.startsWith('//') || t.startsWith('*') ? '' : z);
+    lines.push(t.startsWith('//') || t.startsWith('*') ? '' : z);
   }
-  return zeilen.join('\n');
+  return lines.join('\n');
 }
 
 /** Extensions that point to a source file of this tree. */
-const QUELLE = /\.(ts|js|sql|html|json|yml|xml)$/;
+const SOURCE = /\.(ts|js|sql|html|json|yml|xml)$/;
 
 /**
  * Does this file exist — or the source it is built from?
@@ -42,57 +42,57 @@ function existsSource(rel) {
 }
 
 /** Folders that really exist in the web tree — everything else is not a path from here. */
-const ORDNER = ['routes', 'src', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
+const FOLDER = ['routes', 'src', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
 
 test('no test reads a source file that does not exist', () => {
-  const dateien = fs
+  const files = fs
     .readdirSync(__dirname)
     .filter(f => f.endsWith('.test.js'))
     .sort();
-  assert.ok(dateien.length > 100, `Nur ${dateien.length} Testdateien gefunden — Ordner umbenannt?`);
+  assert.ok(files.length > 100, `Only ${files.length} test files found — folder renamed?`);
 
-  const kaputt = [];
-  const offen = [];
+  const broken = [];
+  const open = [];
   const absent = [];
-  let geprueft = 0;
+  let checked = 0;
 
   /**
    * Does the path stand in an ABSENCE assertion?
    */
-  const isAbwesenheitsCheck = (src, bis) => /!\s*fs\.existsSync\($/.test(src.slice(0, bis).trimEnd());
+  const isAbsenceCheck = (src, until) => /!\s*fs\.existsSync\($/.test(src.slice(0, until).trimEnd());
 
-  for (const datei of dateien) {
-    const src = ohneKommentare(fs.readFileSync(path.join(__dirname, datei), 'utf8'));
+  for (const file of files) {
+    const src = withoutComments(fs.readFileSync(path.join(__dirname, file), 'utf8'));
 
     // ── Form 1: 'src/account/deviceToken.ts' as one string ──────────────────────
     for (const m of src.matchAll(/['"]((?:[\w.-]+\/)+[\w.-]+)['"]/g)) {
       const p = m[1];
-      if (!QUELLE.test(p)) continue;
-      if (!ORDNER.includes(p.split('/')[0])) continue;
-      geprueft++;
-      if (!existsSource(p)) kaputt.push(`${datei}: ${p}`);
+      if (!SOURCE.test(p)) continue;
+      if (!FOLDER.includes(p.split('/')[0])) continue;
+      checked++;
+      if (!existsSource(p)) broken.push(`${file}: ${p}`);
     }
 
     // ── Form 2: path.join(ROOT, 'src/account/deviceToken.ts') ────────────────────────
     for (const m of src.matchAll(/path\.join\(\s*ROOT\s*,([^)]*)\)/g)) {
-      const roh = m[1]
+      const raw = m[1]
         .split(',')
         .map(s => s.trim())
         .filter(Boolean);
-      const segmente = roh.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);
-      if (segmente.some(s => s === undefined)) {
+      const segmentList = raw.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);
+      if (segmentList.some(s => s === undefined)) {
         // Not resolvable — reported, not skipped.
-        offen.push(`${datei}: ${roh.find((_s, i) => segmente[i] === undefined)}`);
+        open.push(`${file}: ${raw.find((_s, i) => segmentList[i] === undefined)}`);
         continue;
       }
-      const p = segmente.join('/');
-      if (!QUELLE.test(p)) continue;
-      if (isAbwesenheitsCheck(src, m.index)) {
-        absent.push(`${datei}: ${p}`);
+      const p = segmentList.join('/');
+      if (!SOURCE.test(p)) continue;
+      if (isAbsenceCheck(src, m.index)) {
+        absent.push(`${file}: ${p}`);
         continue;
       }
-      geprueft++;
-      if (!existsSource(p)) kaputt.push(`${datei}: ${p}`);
+      checked++;
+      if (!existsSource(p)) broken.push(`${file}: ${p}`);
     }
   }
 
@@ -101,35 +101,35 @@ test('no test reads a source file that does not exist', () => {
   // MEASURED: 768. The threshold is at half — it should catch a broken
   // search expression, not trigger on every new test file.
   assert.ok(
-    geprueft > 380,
-    `Nur ${geprueft} Quellpfade gefunden (gemessen waren es 768) — die Muster sind ` +
-      'veraltet, und diese Pruefung sieht damit fast nichts mehr an.',
+    checked > 380,
+    `Only ${checked} source paths found (768 were measured) — the patterns are ` +
+      'outdated, and this check then looks at almost nothing.',
   );
 
   assert.deepEqual(
-    kaputt,
+    broken,
     [],
-    'Diese Testdateien lesen eine Quelldatei, die es nicht (mehr) gibt. Je nach ' +
-      'Test heisst das ein Absturz — oder, schlimmer, eine Pruefung, die nichts ' +
-      'mehr findet und deshalb schweigt.',
+    'These test files read a source file that does not exist (anymore). Depending on the ' +
+      'test that means a crash — or, worse, a check that no longer finds ' +
+      'anything and therefore stays silent.',
   );
 
   // A second spelling of the same path is allowed; a VARIABLE segment
   // does take away the check's view though. A few cases are legitimate (a test
   // that goes through a list of files) — the number just must not grow
   // without anyone noticing. …
-  assert.ok(absent.length <= 3, `${absent.length} Abwesenheits-Zusicherungen (erlaubt: 3):\n  ` + absent.join('\n  '));
+  assert.ok(absent.length <= 3, `${absent.length} absence assertions (allowed: 3):\n  ` + absent.join('\n  '));
 
   // MEASURED: 62, and the number is not the problem it seems at first
   // glance. Almost all are LOOP VARIABLES (`f`, `datei`, `rel`,
   // `ordner`) — tests that go through a list of files. That is a
   // good pattern; writing it out would make the tests worse.
   assert.ok(
-    offen.length <= 76,
-    `${offen.length} Pfade mit variablem Segment (gemessen waren es 76):\n  ` +
-      offen.join('\n  ') +
-      '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
-      'variables Segment nimmt dieser Pruefung die Sicht.',
+    open.length <= 76,
+    `${open.length} paths with a variable segment (76 were measured):\n  ` +
+      open.join('\n  ') +
+      '\nWhere possible, the path belongs spelled out — a ' +
+      'variable segment takes away this check’s view.',
   );
 });
 
@@ -144,8 +144,8 @@ test('whoever processes the image queue clears it beforehand', () => {
   const USED = /_workStack|_tickPass/;
   const CLEARS = /emptyQueue\s*\(/;
 
-  const betroffen = [];
-  const ohne = [];
+  const affected = [];
+  const without = [];
   for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.test.js'))) {
     const src = fs.readFileSync(path.join(dir, f), 'utf8');
     // Comments out: the explanation blocks of these files name the
@@ -159,26 +159,20 @@ test('whoever processes the image queue clears it beforehand', () => {
       })
       .join('\n');
     if (!USED.test(code)) continue;
-    betroffen.push(f);
-    if (!CLEARS.test(code)) ohne.push(f);
+    affected.push(f);
+    if (!CLEARS.test(code)) without.push(f);
   }
 
   // Self-proof: without a finding the assertion below checks nothing.
   assert.ok(
-    betroffen.length >= 5,
-    `Nur ${betroffen.length} Dateien arbeiten die Warteschlange ab — Muster veraltet? ` +
-      'Ohne Fund besteht diese Pruefung stillschweigend.',
+    affected.length >= 5,
+    `Only ${affected.length} files process the queue — pattern outdated? ` +
+      'Without a match this check passes silently.',
   );
 
   assert.deepEqual(
-    ohne,
+    without,
     [],
-    'Diese Testdateien arbeiten die Bild-Warteschlange ab, ohne sie vorher zu leeren:\n  ' +
-      ohne.join('\n  ') +
-      '\n\n_arbeiteStapel() nimmt die aeltesten Notizen der GANZEN Tabelle. Bleibt aus ' +
-      'einer frueher gelaufenen Datei etwas liegen, arbeitet der Stapel DEREN Zeilen ab ' +
-      'und der Test misst etwas anderes, als er glaubt — und zwar nur manchmal, je ' +
-      'nachdem, was vorher lief. Abhilfe: `await emptyQueue(db)` nach dem ' +
-      'Schema-Vorbau (helpers/image-queue.js).',
+    `These test files process the image queue without emptying it first:\n  ${without.join('\n  ')}\n\n_arbeiteStapel() takes the oldest notes of the WHOLE table. If something is left over from a file that ran earlier, the batch processes THOSE rows and the test measures something other than it believes — and only sometimes, depending on what ran before. Remedy: \`await emptyQueue(db)\` after the schema setup (helpers/image-queue.js).`,
   );
 });

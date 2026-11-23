@@ -1,0 +1,19 @@
+Gegenprobe: Ein Knopf im Codeschritt kopiert die Notfallcodes in die Zwischenablage
+Modul: feature-account
+Test: ch.brickinventoryapp.account.SecondFactorMaskTest
+Rot: no button of the codes puts them into the clipboard
+
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt
+@@ -142,6 +142,10 @@
+     Text(codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
+         modifier = Modifier.readAloudAs(codes.joinToString(", ") { charByChar(it) }))
+     val secure = rememberCodesSecure(codes) { secured = true }
++    OutlinedButton(onClick = { SecretClipboard.copy(context, shareTitle, codes.joinToString("\n")) },
++        colors = secondaryButtonColors(), border = secondaryButtonRand()) {
++        Text(stringResource(R.string.zf_copy_key))
++    }
+     OutlinedButton(onClick = secure, modifier = Modifier.fillMaxWidth(),
+         colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+         Text(stringResource(R.string.zf_codes_save))

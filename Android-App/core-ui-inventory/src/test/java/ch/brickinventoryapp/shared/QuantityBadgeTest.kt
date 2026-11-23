@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.shared
 
+import ch.brickinventoryapp.shared.ui.quantityFromSet
+import ch.brickinventoryapp.shared.ui.quantityManual
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.shared.ui.mengeAusSet
-import ch.brickinventoryapp.shared.ui.mengeManuell
 
 /**
  * The quantity badge on a tile faces the same way everywhere.
@@ -17,29 +17,29 @@ import ch.brickinventoryapp.shared.ui.mengeManuell
  *     man-tile   → <span class="qbadge">×N</span>    manually captured
  *     part-card  → <div class="part-qty">N×</div>    from a set
  *
- * (public/js/minifigs.js lines 327 and 486 for the manual tiles,
- * public/js/parts.js line 300 and minifigs.js line 272 for the ones from
+ * (`public/js/minifigs.js` lines 327 and 486 for the manual tiles,
+ * `public/js/parts.js` line 300 and `minifigs.js` line 272 for the ones from
  * sets.) Of the app's four places, exactly ONE matched this rule.
  *
- * The text resource `minifigs_qty_badge` is gone, without a replacement: „%1$d×" stood
+ * The text resource `minifigs_qty_badge` is gone, without a replacement: „%1$d×“ stood
  * identical in both languages. An arithmetic symbol is not a sentence, and the
  * eleven other quantity figures in the app also write it in directly.
  */
 class QuantityBadgeTest {
 
     private fun read(rel: String) =
-        File(Quellen.root, "$rel").readText()
+        File(Sources.root, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     /**
      */
-    // Counter-checks: mengeAusSet() reverted to "$menge×" → red;
-    // mengeManuell() to "$menge×" → red.
+    // Counter-checks: quantityFromSet() reverted to "$menge×" → red;
+    // quantityManual() to "$menge×" → red.
     @Test
     fun `the quantity stands everywhere as a symbol before the number`() {
-        assertEquals("×3", mengeManuell(3))
-        assertEquals("×3", mengeAusSet(3))
+        assertEquals("×3", quantityManual(3))
+        assertEquals("×3", quantityFromSet(3))
     }
 
     /**
@@ -48,19 +48,19 @@ class QuantityBadgeTest {
      */
     @Test
     fun `all tiles get the badge from the same place`() {
-        assert(code(read("shared/ui/ManualItemComposables.kt")).contains("mengeManuell(menge)")) {
-            "ManuelleKachel schreibt die Menge wieder selbst"
+        assert(code(read("shared/ui/ManualItemComposables.kt")).contains("quantityManual(quantity)")) {
+            "ManualTile writes the quantity itself again"
         }
-        for ((datei, wer) in listOf(
-            "parts/ui/screens/TeileKarte.kt" to "ManualPartTile",
-            "parts/ui/screens/FigurenKarte.kt" to "ManualFigTile",
+        for ((file, who) in listOf(
+            "parts/ui/screens/PartsCard.kt" to "ManualPartTile",
+            "parts/ui/screens/FiguresCard.kt" to "ManualFigTile",
         )) {
-            val src = code(read(datei))
-            assert(src.contains("ManuelleKachel(")) {
-                "$wer baut seine Kachel wieder selbst statt ManuelleKachel zu rufen — " +
-                    "dann laufen die beiden Ansichten wieder auseinander"
+            val src = code(read(file))
+            assert(src.contains("ManualTile(")) {
+                "$who builds its tile itself again instead of calling ManualTile — " +
+                    "then the two views drift apart again"
             }
-            assert(src.contains("Text(mengeAusSet(qty)")) { "$datei schreibt die Set-Plakette wieder selbst" }
+            assert(src.contains("Text(quantityFromSet(qty)")) { "$file writes the set badge itself again" }
         }
     }
 
@@ -69,10 +69,10 @@ class QuantityBadgeTest {
         // A resource that contains the same character in both languages only
         // says that someone could translate here — and that's exactly what
         // hid the difference in the first place.
-        for (datei in listOf("values/strings.xml", "values-de/strings.xml")) {
-            val xml = File(Quellen.res, "$datei").readText()
+        for (file in listOf("values/strings.xml", "values-de/strings.xml")) {
+            val xml = File(Sources.res, "$file").readText()
             assert(!xml.contains("minifigs_qty_badge")) {
-                "$datei traegt den Schluessel wieder — die Plakette gehoert direkt in den Quelltext"
+                "$file carries the key again — the badge belongs directly in the source"
             }
         }
     }

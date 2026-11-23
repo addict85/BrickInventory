@@ -10,7 +10,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 const SET = {
   set_number: '10300-1',
@@ -23,8 +23,8 @@ const SET = {
   conditions: ['N'],
 };
 const RESPONSES = {
-  '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
-  '/v1/finance/pnl': {
+  '/v2/sets': { success: true, sets: [SET], total: 1, themes: [] },
+  '/v2/finance/pnl': {
     success: true,
     currency: 'EUR',
     sets: [
@@ -34,27 +34,27 @@ const RESPONSES = {
         current_price: 411.9,
         pnl_pct: '51.1',
         baseline_price: 272.5,
-        kachel_preis: 411.9,
-        kachel_pnl_pct: 51.1,
+        tile_price: 411.9,
+        tile_pnl_pct: 51.1,
       },
     ],
     totals: {},
   },
 };
 
-for (const [sprache, browser, preis, guv] of [
+for (const [language, browser, price, pnl] of [
   ['de', 'de-DE', '411,90 €', '+51,1 %'],
   ['en', 'en-GB', '€411.90', '+51.1%'],
 ]) {
   test(`${browser}: P&L on the tile in the UI's form`, async () => {
-    const { w, d } = await openUi(RESPONSES, { sprache, browserLanguage: browser });
+    const { w, d } = await openUi(RESPONSES, { language, browserLanguage: browser });
     try {
-      await warte(() => d.querySelector('[data-price-for="10300-1"] .pnl-pos'));
-      const feld = d.querySelector('[data-price-for="10300-1"]');
-      assert.ok(feld, 'Keine Preiszeile auf der Kachel');
-      const text = feld.textContent.replace(/ /g, ' ');
-      assert.ok(text.includes(preis), `Preis: „${text}“`);
-      assert.equal(feld.querySelector('.pnl-pos').textContent.replace(/ /g, ' '), guv);
+      await waitFor(() => d.querySelector('[data-price-for="10300-1"] .pnl-pos'));
+      const field = d.querySelector('[data-price-for="10300-1"]');
+      assert.ok(field, 'No price row on the tile');
+      const text = field.textContent.replace(/ /g, ' ');
+      assert.ok(text.includes(price), `price: „${text}“`);
+      assert.equal(field.querySelector('.pnl-pos').textContent.replace(/ /g, ' '), pnl);
     } finally {
       w.close();
     }

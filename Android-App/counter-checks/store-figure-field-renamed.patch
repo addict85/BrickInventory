@@ -1,0 +1,17 @@
+Gegenprobe: FigurZeile verliert den eingefrorenen Feldnamen der Figurennummer
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.StoreVersionTest
+Rot: an old row of every compartment stays readable
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreRows.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreRows.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreRows.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreRows.kt
+@@ -135,7 +135,7 @@
+     @SerialName("set_number") val setNumber: String? = null,
+     val storage: String? = null,
+     @SerialName("unit_price") val unitPrice: Double? = null,
+-    @SerialName("fig_number") val figNumber: String,
++    val figNumber: String,
+     val condition: Condition? = null,
+     val conditions: List<Condition> = emptyList(),
+     @SerialName("owners") val owner: List<AccountRow> = emptyList(),

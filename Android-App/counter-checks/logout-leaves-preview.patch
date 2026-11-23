@@ -1,0 +1,16 @@
+Gegenprobe: Abmelden lässt die Vorschaubilder liegen
+Modul: core-data
+Test: ch.brickinventoryapp.data.LogoutCleansEverythingTest
+Rot: after sign-out every store is empty and the old key worthless
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt
+@@ -53,7 +53,6 @@
+             catchUnlessCancelled { cleanUpInstructions(ctx.cacheDir) }
+             catchUnlessCancelled { cleanUpAccountFiles(ctx.filesDir, ctx.getExternalFilesDir(null)) }
+             catchUnlessCancelled { imageHttpClient.cache?.evictAll() }
+-            catchUnlessCancelled { preview.clearAll() }
+         }
+         // Memory first, otherwise Coil writes to disk again on the next hit.
+         catchUnlessCancelled {

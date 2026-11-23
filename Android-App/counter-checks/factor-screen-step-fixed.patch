@@ -1,0 +1,17 @@
+Gegenprobe: Schrittanzeige steht immer bei Schritt 1
+Modul: feature-account
+Test: ch.brickinventoryapp.account.SecondFactorMaskTest
+Rot: the step indicator names step and name
+
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SecondFactorRequiredMask.kt
+@@ -103,7 +103,7 @@
+                 condition.active == true -> null
+                 else -> 1
+             }
+-            if (step != null) StepIndicator(step)
++            if (step != null) StepIndicator(1)
+             // In the same card as sign-in and start password; steps and sign-out outside.
+             LoginCard {
+                 when {

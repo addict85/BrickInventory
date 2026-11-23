@@ -29,39 +29,39 @@ test('limits for forms with a file', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const datei = () => new Blob([JSON.stringify({ user_settings: { currency: 'CHF' } })], { type: 'application/json' });
-  const sende = async (pfad, fd) => {
-    const r = await fetch(base + pfad, { method: 'POST', body: fd });
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  const file = () => new Blob([JSON.stringify({ user_settings: { currency: 'CHF' } })], { type: 'application/json' });
+  const send = async (path, fd) => {
+    const r = await fetch(base + path, { method: 'POST', body: fd });
     return [r.status, (await r.json()).code ?? null];
   };
 
   await t.test('precondition: the settings import accepts an ordinary form', async () => {
     const fd = new FormData();
-    fd.append('file', datei(), 'e.json');
-    assert.deepEqual(await sende('/api/v1/settings/import', fd), [200, null]);
+    fd.append('file', file(), 'e.json');
+    assert.deepEqual(await send('/api/v2/settings/import', fd), [200, null]);
   });
 
   await t.test('too many fields, fields too large, two files: 400', async () => {
-    const viele = new FormData();
-    for (let i = 0; i < 30; i++) viele.append(`f${i}`, 'x');
-    viele.append('file', datei(), 'e.json');
+    const many = new FormData();
+    for (let i = 0; i < 30; i++) many.append(`f${i}`, 'x');
+    many.append('file', file(), 'e.json');
     const gross = new FormData();
     gross.append('notiz', 'x'.repeat(100 * 1024));
     gross.append('file', new Blob(['%PDF-1.4\n'], { type: 'application/pdf' }), 'g.pdf');
-    const zwei = new FormData();
-    zwei.append('file', datei(), 'e.json');
-    zwei.append('file', datei(), 'f.json');
+    const two = new FormData();
+    two.append('file', file(), 'e.json');
+    two.append('file', file(), 'f.json');
     assert.deepEqual(
       [
-        await sende('/api/v1/settings/import', viele),
-        await sende('/api/v1/vouchers/pdf', gross),
-        await sende('/api/v1/settings/import', zwei),
+        await send('/api/v2/settings/import', many),
+        await send('/api/v2/vouchers/pdf', gross),
+        await send('/api/v2/settings/import', two),
       ],
       [
-        [400, 'upload_ungueltig'],
-        [400, 'upload_ungueltig'],
-        [400, 'upload_ungueltig'],
+        [400, 'upload_invalid'],
+        [400, 'upload_invalid'],
+        [400, 'upload_invalid'],
       ],
     );
   });

@@ -22,9 +22,9 @@ const { chrome } = require('./helpers/app-browser');
 /** The SMTP card as it stands in index.html. */
 function smtpCard() {
   const d = new JSDOM(fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8')).window.document;
-  const karte = d.getElementById('smtp-port')?.closest('.ssec');
-  assert.ok(karte, 'Die SMTP-Karte ist nicht mehr zu finden');
-  return karte.outerHTML;
+  const card = d.getElementById('smtp-port')?.closest('.ssec');
+  assert.ok(card, 'The SMTP card can no longer be found');
+  return card.outerHTML;
 }
 
 function testPage() {
@@ -34,10 +34,10 @@ function testPage() {
 <body><main><div class="sgrid2">${smtpCard()}</div></main><pre id="ergebnis"></pre>
 <script>
 window.addEventListener('load', () => {
-  const karte = document.getElementById('smtp-port').closest('.ssec');
-  const k = karte.getBoundingClientRect(), p = document.getElementById('smtp-port').getBoundingClientRect();
-  const innen = k.right - parseFloat(getComputedStyle(karte).paddingRight);
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ port: p.right, innen, breite: p.width }) + 'ENDE';
+  const card = document.getElementById('smtp-port').closest('.ssec');
+  const k = card.getBoundingClientRect(), p = document.getElementById('smtp-port').getBoundingClientRect();
+  const inner = k.right - parseFloat(getComputedStyle(card).paddingRight);
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ port: p.right, inner, width: p.width }) + 'ENDE';
 });
 </script></body></html>`;
 }
@@ -48,11 +48,11 @@ test('the port field stays in the card', t => {
     t.skip('no Chrome found');
     return;
   }
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'einstellungen-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testPage());
-  for (const breite of [1440, 390]) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'einstellungen-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'seite.html');
+  fs.writeFileSync(file, testPage());
+  for (const width of [1440, 390]) {
     const dom = execFileSync(
       bin,
       [
@@ -60,17 +60,17 @@ test('the port field stays in the card', t => {
         '--no-sandbox',
         '--disable-gpu',
         '--allow-file-access-from-files',
-        `--window-size=${breite},900`,
+        `--window-size=${width},900`,
         '--virtual-time-budget=3000',
         '--dump-dom',
-        `file://${datei}`,
+        `file://${file}`,
       ],
       { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
     );
     const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-    assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+    assert.ok(m, 'The test page wrote no result');
     const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
-    assert.ok(e.breite > 40, `${breite}: Port-Feld nur ${e.breite} px breit`);
-    assert.ok(e.port <= e.innen + 0.5, `${breite}: Port ragt ${Math.round(e.port - e.innen)} px über die Karte hinaus`);
+    assert.ok(e.width > 40, `${width}: Port-Feld nur ${e.width} px breit`);
+    assert.ok(e.port <= e.inner + 0.5, `${width}: port sticks out ${Math.round(e.port - e.inner)} px beyond the card`);
   }
 });

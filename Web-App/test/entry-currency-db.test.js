@@ -9,7 +9,7 @@
  *     `kaufpreis_geschaetzt` if all purchase prices are estimated.
  *
  * Counter-checks (measured 05.11.2026, each alone):
- *   A  in erfassungenInKontowaehrung the sum again over purchase_price →
+ *   A  in acquisitionsInAccountCurrency the sum again over purchase_price →
  *      red: “sum in account currency like the finances” (1490.98)
  *   B  in valueAcquisitionRows the field price_estimated omitted → red:
  *      “estimated purchase prices are marked”
@@ -49,21 +49,21 @@ test('purchase prices in a foreign currency and estimated ones', { concurrency: 
     [uid, SN, GS],
   );
   await db.run(`UPDATE set_acquisitions SET price_estimated = true WHERE user_id=$1 AND set_number=$2`, [uid, GS]);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const hole = async pfad => (await fetch(`${base}/api/v1/${pfad}`)).json();
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  const hole = async path => (await fetch(`${base}/api/v2/${path}`)).json();
 
   await t.test('sum in the account currency like the finances', async () => {
     const r = await hole(`sets/${SN}/acquisitions`);
     assert.equal(r.totals.currency, 'EUR');
-    assert.equal(r.totals.ohne_kurs, 0);
+    assert.equal(r.totals.without_rate, 0);
     // 3 × 260,66 / 1,25 + 2 × 354,50 = 625,584 + 709
     assert.equal(r.totals.amount, 1334.58);
     const usd = r.acquisitions.find(a => a.currency === 'USD');
-    assert.equal(usd.preis_konto, 208.528);
+    assert.equal(usd.account_price, 208.528);
     const v = await hole('finance/valuation');
     const set = v.sets.find(s => s.set_number === SN);
-    const finanzen = set.acquisitions.reduce((s, a) => s + a.purchase_price * a.quantity, 0);
-    assert.equal(Math.round(finanzen * 100) / 100, r.totals.amount, 'gleicher Betrag wie in den Finanzen');
+    const finances = set.acquisitions.reduce((s, a) => s + a.purchase_price * a.quantity, 0);
+    assert.equal(Math.round(finances * 100) / 100, r.totals.amount, 'same amount as in the finances');
   });
 
   await t.test('without a rate not included but counted', async () => {
@@ -73,21 +73,21 @@ test('purchase prices in a foreign currency and estimated ones', { concurrency: 
       [uid, SN],
     );
     const r = await hole(`sets/${SN}/acquisitions`);
-    assert.equal(r.totals.ohne_kurs, 1);
+    assert.equal(r.totals.without_rate, 1);
     assert.equal(r.totals.amount, 1334.58);
     await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1 AND currency='JPY'`, [uid]);
   });
 
   await t.test('estimated purchase prices are marked', async () => {
     const v = await hole('finance/valuation');
-    const geschaetzt = v.sets.find(s => s.set_number === GS).acquisitions;
+    const estimated = v.sets.find(s => s.set_number === GS).acquisitions;
     assert.deepEqual(
-      geschaetzt.map(a => a.price_estimated),
+      estimated.map(a => a.price_estimated),
       [true],
     );
     assert.ok(v.sets.find(s => s.set_number === SN).acquisitions.every(a => !a.price_estimated));
-    const liste = await hole('sets');
-    assert.equal(liste.sets.find(s => s.set_number === GS).kaufpreis_geschaetzt, true);
-    assert.equal(liste.sets.find(s => s.set_number === SN).kaufpreis_geschaetzt, false);
+    const list = await hole('sets');
+    assert.equal(list.sets.find(s => s.set_number === GS).purchase_price_estimated, true);
+    assert.equal(list.sets.find(s => s.set_number === SN).purchase_price_estimated, false);
   });
 });

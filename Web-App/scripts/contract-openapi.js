@@ -2,35 +2,40 @@
 'use strict';
 
 /**
- * Writes docs/openapi.json from the contract in src/contract/.
- * The file is checked in; test/contract-openapi.test.js checks that it
- * matches the code. Call: npm run vertrag:openapi
+ * Writes docs/openapi-v2.json (API v2) and docs/openapi.json (the v1 alias, kept for app
+ * versions before the move to v2) from the contract in src/contract/. Both are checked in; test/contract-openapi.test.js
+ * checks that they match the code. Call: npm run contract:openapi
  */
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const DATEI = path.join(ROOT, 'docs', 'openapi.json');
+const OUT_FILE = path.join(ROOT, 'docs', 'openapi.json');
+const OUT_FILE_V2 = path.join(ROOT, 'docs', 'openapi-v2.json');
 
-/** The text as it should stand in the file. @param {Record<string, unknown>} dok */
-const alsText = dok => JSON.stringify(dok, null, 2) + '\n';
+/** The text as it should stand in the file. @param {Record<string, unknown>} doc */
+const asText = doc => JSON.stringify(doc, null, 2) + '\n';
 
 if (require.main === module) {
   execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], {
     stdio: 'inherit',
   });
   const { openapi } = require(path.join(ROOT, 'dist', 'src', 'contract', 'openapi.js'));
-  fs.writeFileSync(DATEI, alsText(openapi()));
-  console.log(`geschrieben: ${path.relative(ROOT, DATEI)}`);
-  // The UI's types follow the contract in the same step.
-  const typen = require('./contract-frontend-types.js');
-  fs.writeFileSync(typen.ZIEL, typen.create(JSON.parse(fs.readFileSync(DATEI, 'utf8'))));
-  console.log(`geschrieben: ${path.relative(ROOT, typen.ZIEL)}`);
-  // Likewise the response types of the Android app (core-contract).
+  /** Only a changed file is written: an unchanged run leaves the tree untouched. */
+  const write = (/** @type {string} */ file, /** @type {string} */ text) => {
+    if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === text) return;
+    fs.writeFileSync(file, text);
+    console.log(`geschrieben: ${path.relative(ROOT, file)}`);
+  };
+  write(OUT_FILE, asText(openapi(1)));
+  write(OUT_FILE_V2, asText(openapi(2)));
+  // The UI speaks v2; its types follow in the same step.
+  const types = require('./contract-frontend-types.js');
+  write(types.TARGET_FILE, types.create(JSON.parse(fs.readFileSync(OUT_FILE_V2, 'utf8'))));
+  // The app speaks v2 as well; the v1 document stays for older app versions until the sunset.
   const kotlin = require('./contract-kotlin-dtos.js');
-  fs.writeFileSync(kotlin.ZIEL, kotlin.create(JSON.parse(fs.readFileSync(DATEI, 'utf8'))));
-  console.log(`geschrieben: ${path.relative(ROOT, kotlin.ZIEL)}`);
+  write(kotlin.TARGET_FILE, kotlin.create(JSON.parse(fs.readFileSync(OUT_FILE_V2, 'utf8'))));
 }
 
-module.exports = { DATEI, alsText };
+module.exports = { OUT_FILE, OUT_FILE_V2, asText };

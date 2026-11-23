@@ -19,10 +19,10 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const gesendet = [];
+const sent = [];
 require('./helpers/sources').replaceServices('mail', {
   sendSmtpTest: async to => {
-    gesendet.push(to);
+    sent.push(to);
     return { success: true, mode: 'console' };
   },
 });
@@ -37,12 +37,12 @@ const NAME = `smtprelais_${process.pid}`,
 test('SMTP test only to the own address or with password', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const eigene = `${NAME}@example.org`;
+  const owned = `${NAME}@example.org`;
   const uid = (
     await db.get(
       `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
     VALUES ($1, $3, $2, true, true, true) RETURNING id`,
-      [NAME, bcrypt.hashSync(PASS, 4), eigene],
+      [NAME, bcrypt.hashSync(PASS, 4), owned],
     )
   ).id;
   t.after(async () => {
@@ -52,12 +52,12 @@ test('SMTP test only to the own address or with password', { concurrency: 1 }, a
     await db.pool.end().catch(() => {});
   });
   const { base } = routerServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v1': 'routes/api_v1/settings.js' },
+    session: { userId: uid, isAdmin: true },
+    routes: { '/api/v2': 'routes/api/settings.js' },
     t,
   });
   const probe = body =>
-    fetch(`${base}/api/v1/settings/smtp-test`, {
+    fetch(`${base}/api/v2/settings/smtp-test`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -66,30 +66,30 @@ test('SMTP test only to the own address or with password', { concurrency: 1 }, a
   await t.test('the own address needs no password', async () => {
     const r = await probe({});
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const r2 = await probe({ to: eigene.toUpperCase() });
+    const r2 = await probe({ to: owned.toUpperCase() });
     assert.equal(r2.status, 200, JSON.stringify(r2.body));
-    assert.deepEqual(gesendet, [eigene, eigene.toUpperCase()]);
+    assert.deepEqual(sent, [owned, owned.toUpperCase()]);
   });
 
   await t.test('a foreign address needs the password', async () => {
-    gesendet.length = 0;
+    sent.length = 0;
     const r = await probe({ to: 'fremd@example.net' });
-    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_falsch']);
-    assert.deepEqual(gesendet, []);
-    const falsch = await probe({ to: 'fremd@example.net', password: 'falsch' });
-    assert.equal(falsch.status, 400);
-    assert.deepEqual(gesendet, []);
+    assert.deepEqual([r.status, r.body.code], [400, 'current_password_wrong']);
+    assert.deepEqual(sent, []);
+    const wrong = await probe({ to: 'fremd@example.net', password: 'falsch' });
+    assert.equal(wrong.status, 400);
+    assert.deepEqual(sent, []);
     const ok = await probe({ to: 'fremd@example.net', password: PASS });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
-    assert.deepEqual(gesendet, ['fremd@example.net']);
+    assert.deepEqual(sent, ['fremd@example.net']);
   });
 
   await t.test('from the eleventh mail in an hour it stops', async () => {
-    let letzte;
+    let last;
     for (let i = 0; i < 12; i++) {
-      letzte = await probe({});
-      if (letzte.status === 429) break;
+      last = await probe({});
+      if (last.status === 429) break;
     }
-    assert.equal(letzte.status, 429, JSON.stringify(letzte.body));
+    assert.equal(last.status, 429, JSON.stringify(last.body));
   });
 });

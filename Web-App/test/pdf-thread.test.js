@@ -19,7 +19,7 @@ const { drawPdfInThread } = _req('src/catalog/pdf/pdfDrawing.js');
 
 test('the event loop stays free while the PDF is being created', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdf-faden-'));
-  const ziel = path.join(dir, 'liste.pdf');
+  const target = path.join(dir, 'liste.pdf');
   // One color: pdfkit draws the whole group without interruption.
   const parts = Array.from({ length: 6000 }, (_, i) => ({
     part_number: `p${i}`,
@@ -29,21 +29,21 @@ test('the event loop stays free while the PDF is being created', async () => {
     color_hex: 'C91A09',
     quantity: 1 + (i % 3),
   }));
-  let letzte = Date.now(),
+  let last = Date.now(),
     longest = 0;
-  const uhr = setInterval(() => {
+  const clock = setInterval(() => {
     const j = Date.now();
-    longest = Math.max(longest, j - letzte);
-    letzte = j;
+    longest = Math.max(longest, j - last);
+    last = j;
   }, 5);
   try {
-    await drawPdfInThread([{ set_number: '1-1' }], parts, ziel);
+    await drawPdfInThread([{ set_number: '1-1' }], parts, target);
   } finally {
-    clearInterval(uhr);
+    clearInterval(clock);
   }
   try {
-    assert.equal(fs.readFileSync(ziel).subarray(0, 5).toString(), '%PDF-');
-    assert.ok(longest < 150, `längste Pause der Ereignisschleife: ${longest} ms`);
+    assert.equal(fs.readFileSync(target).subarray(0, 5).toString(), '%PDF-');
+    assert.ok(longest < 150, `longest pause of the event loop: ${longest} ms`);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

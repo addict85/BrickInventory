@@ -1,0 +1,17 @@
+Gegenprobe: das Protokoll schreibt auch ohne Android ins Logcat (android.util.Log ist im JVM-Test eine werfende Attrappe)
+Modul: core-network
+Test: ch.brickinventoryapp.network.LogWithoutAndroidTest
+Rot: without Android a warning ends up on stderr, not in logcat
+
+diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/AppLog.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/AppLog.kt
+--- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/AppLog.kt
++++ b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/AppLog.kt
+@@ -22,7 +22,7 @@
+      * a log line. There, the line goes to stderr instead.
+      */
+     internal fun default(vm: String? = System.getProperty("java.vm.name")): (Level, String, String, Throwable?) -> Unit =
+-        if (vm == "Dalvik") { level, tag, text, error ->
++        if (true) { level, tag, text, error ->
+             if (level == Level.WARNING) android.util.Log.w(tag, text, error) else android.util.Log.i(tag, text)
+         } else { level, tag, text, error ->
+             System.err.println("$level $tag: $text" + error?.let { " ($it)" }.orEmpty())

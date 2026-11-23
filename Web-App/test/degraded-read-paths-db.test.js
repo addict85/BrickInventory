@@ -26,7 +26,7 @@ const db = testData();
 const { getGlobalSetting } = _req('src/settings/settings.js');
 
 const NAME = `degradiert_${process.pid}`,
-  TEIL = '3001dg';
+  PART = '3001dg';
 
 test('read errors: `degradiert` or an error, never silently empty', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -38,49 +38,49 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
       [NAME],
     )
   ).id;
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, TEIL]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, PART]);
   await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, $2, 5, 2)`, [
     uid,
-    TEIL,
+    PART,
   ]);
   // The table comes back in the finally, even if an assertion fails.
-  const weg = async (/** @type {string} */ tabelle) => {
-    await db.run(`ALTER TABLE ${tabelle} RENAME TO ${tabelle}_weg`);
-    return () => db.run(`ALTER TABLE IF EXISTS ${tabelle}_weg RENAME TO ${tabelle}`);
+  const route = async (/** @type {string} */ table) => {
+    await db.run(`ALTER TABLE ${table} RENAME TO ${table}_weg`);
+    return () => db.run(`ALTER TABLE IF EXISTS ${table}_weg RENAME TO ${table}`);
   };
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const manuelle = async () => {
-    const r = await fetch(`${base}/api/v1/parts/manual`);
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  const manualOnes = async () => {
+    const r = await fetch(`${base}/api/v2/parts/manual`);
     assert.equal(r.status, 200);
     return r.json();
   };
 
   await t.test('with prices `degradiert` stays away', async () => {
-    const j = await manuelle();
+    const j = await manualOnes();
     assert.deepEqual(
       j.parts.map((/** @type {any} */ p) => p.part_number),
-      [TEIL],
+      [PART],
     );
-    assert.equal(j.degradiert, undefined);
+    assert.equal(j.degraded, undefined);
   });
 
   await t.test('without prices the list says why', async () => {
-    const zurueck = await weg('part_price_cache');
+    const back = await route('part_price_cache');
     try {
-      const j = await manuelle();
+      const j = await manualOnes();
       assert.deepEqual(
         j.parts.map((/** @type {any} */ p) => p.part_number),
-        [TEIL],
-        'die Liste bleibt',
+        [PART],
+        'the list stays',
       );
       assert.equal(j.parts[0].avg_price, null);
-      assert.deepEqual(j.degradiert, ['marktpreise']);
+      assert.deepEqual(j.degraded, ['marktpreise']);
     } finally {
-      await zurueck();
+      await back();
     }
   });
 
@@ -88,13 +88,13 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
     assert.equal(
       await getGlobalSetting(`fehlt_${process.pid}`, '24'),
       '24',
-      'Vorbedingung: Vorgabe für „nicht gesetzt“',
+      'Precondition: default for „nicht gesetzt“',
     );
-    const zurueck = await weg('global_settings');
+    const back = await route('global_settings');
     try {
       await assert.rejects(getGlobalSetting('price_cache_ttl', '24'), (/** @type {any} */ e) => e.code === '42P01');
     } finally {
-      await zurueck();
+      await back();
     }
   });
 });

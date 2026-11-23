@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.shared
 
-import ch.brickinventoryapp.model.domain.Geld
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -20,15 +19,16 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.shared.ui.AcquisitionSummarySection
-import ch.brickinventoryapp.shared.ui.WertKacheln
-import ch.brickinventoryapp.model.domain.Waehrung
-import ch.brickinventoryapp.model.domain.KaufAnsicht
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.PurchaseView
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.shared.ui.AcquisitionSummarySection
+import ch.brickinventoryapp.shared.ui.ValueTiles
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.util.fmtProzent
+import ch.brickinventoryapp.ui.util.fmtPercent
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -45,9 +45,9 @@ import java.util.Locale
  * narrow phone entirely on one line, and at 200% text size the purchase price sits
  * below its label.
  *
- * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
- *   wertkacheln-immer-drei          value tiles always three side by side → red „Wert-Kacheln … 100 Prozent“
- *   grosse-schrift-kaufpreis-daneben purchase price next to the label → red „Kaufpreis …“
+ * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
+ *   value-tiles-always-three          value tiles always three side by side → red „Wert-Kacheln … 100 Prozent“
+ *   large-font-purchase-price-beside purchase price next to the label → red „Kaufpreis …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -57,30 +57,30 @@ class ValueTilesTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val vorher = Locale.getDefault()
+    private val before = Locale.getDefault()
     private val ctx: Context = ApplicationProvider.getApplicationContext()
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() = Locale.setDefault(vorher)
+    fun tearDown() = Locale.setDefault(before)
 
-    private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
+    private fun show(font: Float = 1f, content: @Composable () -> Unit) {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
-                CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
-                    Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
+                CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
+                    Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
         }
         compose.waitForIdle()
     }
 
-    private fun zeilen(node: SemanticsNodeInteraction): Int {
-        val ergebnis = mutableListOf<TextLayoutResult>()
-        node.fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-        return ergebnis.single().lineCount
+    private fun rows(node: SemanticsNodeInteraction): Int {
+        val outcome = mutableListOf<TextLayoutResult>()
+        node.fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(outcome)
+        return outcome.single().lineCount
     }
 
     /**
@@ -88,29 +88,29 @@ class ValueTilesTest {
      * tile (with softWrap = false it would otherwise run past the edge). Tiles of the same
      * row are equally high.
      */
-    private fun valueTilesWhole(schrift: Float) {
-        val markt = fmtMoney(1712.4, Waehrung.CHF)
-        val kauf = fmtMoney(1500.0, Waehrung.CHF)
-        val pnl = fmtProzent(14.2)
-        zeige(schrift) {
+    private fun valueTilesWhole(font: Float) {
+        val market = fmtMoney(1712.4, CurrencyCode.CHF)
+        val purchase = fmtMoney(1500.0, CurrencyCode.CHF)
+        val pnl = fmtPercent(14.2)
+        show(font) {
             Box(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
-                WertKacheln(markt, kauf, 14.2)
+                ValueTiles(market, purchase, 14.2)
             }
         }
-        for (betrag in listOf(markt, kauf, pnl)) {
-            val ergebnis = mutableListOf<TextLayoutResult>()
-            compose.onNodeWithText(betrag, useUnmergedTree = true).fetchSemanticsNode()
-                .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-            val t = ergebnis.single()
-            assertEquals("$betrag in einer Zeile", 1, t.lineCount)
-            assertTrue("$betrag ist abgeschnitten (rechts ${t.getLineRight(0)} von ${t.size.width})",
-                !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == betrag.length &&
+        for (amount in listOf(market, purchase, pnl)) {
+            val outcome = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(amount, useUnmergedTree = true).fetchSemanticsNode()
+                .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(outcome)
+            val t = outcome.single()
+            assertEquals("$amount in one line", 1, t.lineCount)
+            assertTrue("$amount is cut off (right ${t.getLineRight(0)} of ${t.size.width})",
+                !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == amount.length &&
                     t.getLineRight(0) <= t.size.width + 0.5f)
         }
         val tiles = listOf(R.string.detail_section_market, R.string.detail_purchase_price, R.string.detail_pnl_tile)
             .map { compose.onNodeWithText(ctx.getString(it), substring = true).fetchSemanticsNode().boundsInRoot }
         tiles.groupBy { it.top }.values.filter { it.size > 1 }.forEach { series ->
-            assertTrue("Kacheln einer Reihe gleich hoch: ${series.map { it.height }}",
+            assertTrue("tiles of a row equally high: ${series.map { it.height }}",
                 series.all { kotlin.math.abs(it.height - series[0].height) < 1f })
         }
     }
@@ -123,14 +123,14 @@ class ValueTilesTest {
 
     @Test
     fun `purchase price at 200 percent stands below the label in one line`() {
-        zeige(schrift = 2f) {
+        show(font = 2f) {
             Box(Modifier.width(360.dp)) {
-                AcquisitionSummarySection(listOf(KaufAnsicht(id = 1, quantity = 1, purchasePrice = Geld.aus(700.0))), Waehrung.CHF) {}
+                AcquisitionSummarySection(listOf(PurchaseView(id = 1, quantity = 1, purchasePrice = Money.from(700.0))), CurrencyCode.CHF) {}
             }
         }
-        val betrag = compose.onNodeWithText(fmtMoney(700.0, Waehrung.CHF), useUnmergedTree = true)
-        assertEquals(1, zeilen(betrag))
-        val bezeichnung = compose.onNodeWithText(ctx.getString(R.string.detail_purchase_price)).fetchSemanticsNode().boundsInRoot
-        assertTrue("Der Betrag steht unter der Bezeichnung", betrag.fetchSemanticsNode().boundsInRoot.top >= bezeichnung.bottom)
+        val amount = compose.onNodeWithText(fmtMoney(700.0, CurrencyCode.CHF), useUnmergedTree = true)
+        assertEquals(1, rows(amount))
+        val name = compose.onNodeWithText(ctx.getString(R.string.detail_purchase_price)).fetchSemanticsNode().boundsInRoot
+        assertTrue("the amount stands below the label", amount.fetchSemanticsNode().boundsInRoot.top >= name.bottom)
     }
 }

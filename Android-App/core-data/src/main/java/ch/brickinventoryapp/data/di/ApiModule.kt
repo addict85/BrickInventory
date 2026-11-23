@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.data.api.MinifigsApi
-import ch.brickinventoryapp.data.api.FinancesApi
-import ch.brickinventoryapp.data.api.VouchersApi
-import ch.brickinventoryapp.data.api.HouseholdApi
+import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.api.CatalogApi
 import ch.brickinventoryapp.data.api.DeviceApi
-import ch.brickinventoryapp.data.api.AccountApi
-import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.api.PartsApi
+import ch.brickinventoryapp.data.api.FinancesApi
+import ch.brickinventoryapp.data.api.HouseholdApi
 import ch.brickinventoryapp.data.api.ManagementApi
+import ch.brickinventoryapp.data.api.MinifigsApi
+import ch.brickinventoryapp.data.api.PartsApi
+import ch.brickinventoryapp.data.api.SetsApi
+import ch.brickinventoryapp.data.api.VouchersApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,7 +20,7 @@ import javax.inject.Singleton
 /**
  * One binding per area of the interface (data/api/): every repository gets
  * only its area and cannot call anything else. One Retrofit, one client —
- * the network behavior stands in NetzModule and is the same for all areas.
+ * the network behavior stands in NetworkModule and is the same for all areas.
  */
 @Module
 @InstallIn(SingletonComponent::class)

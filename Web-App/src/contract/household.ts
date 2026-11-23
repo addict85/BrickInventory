@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { KontoName, type Route, bestaetigt, WITHOUT_BODY, KENNUNG, TEXT_OR_EMPTY } from './base';
+import { AccountName, type Route, confirmed, WITHOUT_BODY, IDENTIFIER, TEXT_OR_EMPTY } from './base';
 import { DEGRADED, GenericResponse } from './shared';
 
-export const HaushaltBeigetreten = GenericResponse.extend({ linked_to: KontoName });
+export const HouseholdJoined = GenericResponse.extend({ linked_to: AccountName });
 
-export const HaushaltGeloest = GenericResponse.extend({ removed: z.number().int() });
+export const HouseholdUnlinked = GenericResponse.extend({ removed: z.number().int() });
 
-export const GetrenntesKonto = z.looseObject({
+export const SeparatedAccount = z.looseObject({
   id: z.number().int(),
   username: z.string(),
   via: z.string().nullable(),
@@ -20,11 +20,11 @@ export const HouseholdInviteResponse = z.looseObject({
 
 export const HouseholdInviteCheckResponse = z.looseObject({
   success: z.boolean(),
-  inviter: KontoName,
+  inviter: AccountName,
 });
 
 export const HouseholdMember = z.looseObject({
-  tiefe: z.number().int(),
+  depth: z.number().int(),
   id: z.number().int(),
   username: z.string(),
   is_self: z.boolean(),
@@ -36,40 +36,40 @@ export const HouseholdMembersResponse = z.looseObject({
 });
 
 export const HouseholdStatusResponse = z.looseObject({
-  blickfeld: z.array(HouseholdMember),
+  view: z.array(HouseholdMember),
   success: z.boolean(),
   is_main: z.boolean(),
   is_sub: z.boolean(),
   currency: z.string(),
-  linked_to: KontoName.nullable(),
-  parents: z.array(KontoName),
+  linked_to: AccountName.nullable(),
+  parents: z.array(AccountName),
   sub_accounts: z.array(HouseholdMember),
   open_invites: z.number().int(),
-  former_links: z.array(GetrenntesKonto),
-  degradiert: DEGRADED,
+  former_links: z.array(SeparatedAccount),
+  degraded: DEGRADED,
 });
 
-export const routen = {
-  'GET /api/v1/settings/household': { klein: true, antwort: HouseholdStatusResponse },
-  'GET /api/v1/sets/household-members': { klein: true, antwort: HouseholdMembersResponse },
-  'POST /api/v1/settings/household/invite': { eingabe: WITHOUT_BODY, antwort: HouseholdInviteResponse, geheim: true },
-  'POST /api/v1/settings/household/redeem/pruefen': {
-    antwort: HouseholdInviteCheckResponse,
-    eingabe: z.strictObject({ code: TEXT_OR_EMPTY(64) }),
+export const routes = {
+  'GET /api/v2/settings/household': { small: true, response: HouseholdStatusResponse },
+  'GET /api/v2/sets/household-members': { small: true, response: HouseholdMembersResponse },
+  'POST /api/v2/settings/household/invite': { input: WITHOUT_BODY, response: HouseholdInviteResponse, secret: true },
+  'POST /api/v2/settings/household/redeem/check': {
+    response: HouseholdInviteCheckResponse,
+    input: z.strictObject({ code: TEXT_OR_EMPTY(64) }),
   },
-  'POST /api/v1/settings/household/redeem': {
-    antwort: HaushaltBeigetreten,
-    ...bestaetigt({ code: TEXT_OR_EMPTY(64) }, 'password', 'faktor_code'),
+  'POST /api/v2/settings/household/redeem': {
+    response: HouseholdJoined,
+    ...confirmed({ code: TEXT_OR_EMPTY(64) }, 'password', 'factor_code'),
   },
-  'POST /api/v1/settings/household/unlink': {
-    eingabe: z.strictObject({
-      sub_user_id: KENNUNG.nullable().optional(),
-      main_user_id: KENNUNG.nullable().optional(),
+  'POST /api/v2/settings/household/unlink': {
+    input: z.strictObject({
+      sub_user_id: IDENTIFIER.nullable().optional(),
+      main_user_id: IDENTIFIER.nullable().optional(),
     }),
-    antwort: HaushaltGeloest,
+    response: HouseholdUnlinked,
   },
-  'POST /api/v1/settings/household/former/dismiss': {
-    eingabe: z.strictObject({ sub_user_id: KENNUNG }),
-    antwort: HaushaltGeloest,
+  'POST /api/v2/settings/household/former/dismiss': {
+    input: z.strictObject({ sub_user_id: IDENTIFIER }),
+    response: HouseholdUnlinked,
   },
 } satisfies Record<string, Route>;

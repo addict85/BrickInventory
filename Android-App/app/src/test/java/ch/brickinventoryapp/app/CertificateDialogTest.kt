@@ -1,6 +1,10 @@
 package ch.brickinventoryapp.app
 
 import androidx.activity.ComponentActivity
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
@@ -10,17 +14,17 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
+import ch.brickinventoryapp.app.ui.components.CodeScan
 import ch.brickinventoryapp.app.ui.components.closable
-import ch.brickinventoryapp.security.Transcript
-import org.junit.Assert.assertFalse
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
 import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.security.Transcript
 import ch.brickinventoryapp.security.fingerprintReadable
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -33,30 +37,34 @@ import java.util.Base64
  * is not on the screen (only the beginning); on first contact via a public
  * CA the whole fingerprint for comparison.
  *
- * Counter-checks (Robolectric, measurable only in CI; job `gegenproben`):
- *   (a) in the dialog again `fingerprintReadable(frage.fingerabdruck)` instead of the
+ * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
+ *   (a) in the dialog again `fingerprintReadable(question.fingerprint)` instead of the
  *       beginning → red “whoever types it sees no part that is to be typed”
- *       (gegenproben/zertifikat-zeigt-alles.patch)
+ *       (counter-checks/certificate-shows-everything.patch)
  *   (b) `writeOff` only for GEAENDERT → red “via a user CA …”
- *       (gegenproben/nutzerca-ein-tipp.patch)
- *   (c) CertificateDialog without the branch for CODE_ABWEICHUNG → red “if the
- *       server deviates from the code …” (gegenproben/code-abweichung-im-dialog.patch)
+ *       (counter-checks/user-ca-one-tap.patch)
+ *   (c) CertificateDialog without the branch for CODE_MISMATCH → red “if the
+ *       server deviates from the code …” (counter-checks/code-mismatch-in-dialog.patch)
  *   (d) the field again with the whole sentence as label, without explanation below →
- *       red “the field carries a short label …” (gegenproben/zertifikat-satz-als-etikett.patch)
+ *       red “the field carries a short label …” (counter-checks/certificate-sentence-as-label.patch)
  *   (e) fingerprint field without pairTranscriptIn() (no colons) → red “the transcript
- *       gets colons …” (gegenproben/abschrift-ohne-paare.patch)
+ *       gets colons …” (counter-checks/transcript-without-pairs.patch)
  *   (f) in transcriptError() TO_SHORT like FITS_NOT → red “too short and wrongly …”
- *       (gegenproben/abschrift-zu-kurz-wie-falsch.patch)
+ *       (counter-checks/transcript-too-short-as-wrong.patch)
  *   (g) schliessbar() with `dismissOnClickOutside = true` → red “tapping outside never closes
- *       the dialog …” (gegenproben/zertifikat-daneben-verworfen.patch)
- *   (h) `writeOff` also for SCHLUESSEL_NEU → red “with CT requirement a new server key is
- *       shown in full …” (gegenproben/schluessel-neu-abtippen.patch)
+ *       the dialog …” (counter-checks/certificate-mismatch-discarded.patch)
+ *   (h) `writeOff` also for KEY_NEW → red “with CT requirement a new server key is
+ *       shown in full …” (counter-checks/key-new-typing.patch)
  *   (i) the button „stattdessen abtippen“ removed → red “on first contact it can be
- *       typed instead …” (gegenproben/erstkontakt-ohne-abtippen.patch)
- *   (j) `writeOff` for SCHLUESSEL_NEU always off again → red “without CT requirement a
- *       new server key is typed …” (gegenproben/schluessel-neu-dialog-ohne-feld.patch)
+ *       typed instead …” (counter-checks/first-contact-without-typing.patch)
+ *   (j) `writeOff` for KEY_NEW always off again → red “without CT requirement a
+ *       new server key is typed …” (counter-checks/key-new-dialog-without-field.patch)
  *   (k) `writeOff` on first contact again only on request → red “without CT requirement it is
- *       typed on first contact …” (gegenproben/erstkontakt-dialog-ein-tipp.patch)
+ *       typed on first contact …” (counter-checks/first-contact-dialog-one-tap.patch)
+ *   (l) the scan offered under a public CA too (`codeScan.takeIf { true }`) → red “under a public
+ *       CA there is nothing to scan” (counter-checks/certificate-scan-public.patch)
+ *   (m) scanError() silent for FITS_NOT → red “a scanned code that does not fit …”
+ *       (counter-checks/certificate-scan-mismatch-silent.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class CertificateDialogTest {
@@ -68,25 +76,27 @@ class CertificateDialogTest {
     private val fp = Base64.getEncoder().encodeToString(ByteArray(32) { (it * 7 + 3).toByte() })
     private val hex = fingerprintReadable(fp)
 
-    private fun zeige(
-        art: CertificateUnresolved.Art,
-        erwartet: String? = null,
+    private fun show(
+        kind: CertificateUnresolved.Kind,
+        expected: String? = null,
         ct: Boolean = false,
+        codeScan: CodeScan? = null,
         trustOn: (String?) -> Boolean = { false },
     ) {
-        val frage = CertificateUnresolved("nas:8443", fp, art, erwartet, ctForced = ct)
+        val question = CertificateUnresolved("nas:8443", fp, kind, expected, ctForced = ct)
         compose.setContent {
             BrickInventoryManagerTheme {
-                CertificateDialog(frage, userCaAn = false, trustOn = trustOn, onNutzerCa = {}, onAbbrechen = {})
+                CertificateDialog(question, userCaEnabled = false, trustOn = trustOn, onUserCa = {}, onCancel = {},
+                    codeScan = codeScan)
             }
         }
         compose.waitForIdle()
     }
 
-    private fun feld() = compose.onNode(hasSetTextAction())
+    private fun field() = compose.onNode(hasSetTextAction())
 
-    private fun getippt(): String =
-        feld().fetchSemanticsNode().config.getOrNull(SemanticsProperties.EditableText)?.text.orEmpty()
+    private fun typed(): String =
+        field().fetchSemanticsNode().config.getOrNull(SemanticsProperties.EditableText)?.text.orEmpty()
 
     /**
      * The web app shows `AB:CD:…`. Whoever copied „24 Zeichen“ including colons had only 16
@@ -94,37 +104,37 @@ class CertificateDialogTest {
      */
     @Test
     fun `the transcript gets colons and a character counter while typing`() {
-        zeige(CertificateUnresolved.Art.UNBEKANNTE_CA)
-        assertEquals("Der Zähler steht vor dem Tippen da", 1, gezeigt("0/24"))
-        feld().performTextInput("3fa2b")
-        assertEquals("3F:A2:B", getippt())
-        assertEquals(1, gezeigt("5/24"))
-        feld().performTextInput("c")
-        assertEquals("Weitergetippt wird am Ende, nicht vor dem letzten Zeichen", "3F:A2:BC", getippt())
-        assertEquals(1, gezeigt("6/24"))
+        show(CertificateUnresolved.Kind.UNKNOWN_CA)
+        assertEquals("the counter is shown before typing", 1, shown("0/24"))
+        field().performTextInput("3fa2b")
+        assertEquals("3F:A2:B", typed())
+        assertEquals(1, shown("5/24"))
+        field().performTextInput("c")
+        assertEquals("typing continues at the end, not before the last character", "3F:A2:BC", typed())
+        assertEquals(1, shown("6/24"))
     }
 
     @Test
     fun `too short and wrongly transcribed are different errors`() {
         val withoutPoints = hex.replace(":", "")
-        zeige(CertificateUnresolved.Art.UNBEKANNTE_CA) { Transcript.confirmed(it, fp) }
-        val button = compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen))
-        feld().performTextInput(withoutPoints.takeLast(16))
+        show(CertificateUnresolved.Kind.UNKNOWN_CA) { Transcript.confirmed(it, fp) }
+        val button = compose.onNodeWithText(ctx.getString(R.string.cert_trust))
+        field().performTextInput(withoutPoints.takeLast(16))
         button.performClick()
-        assertEquals("16 Zeichen sind zu kurz, nicht falsch", 1,
-            gezeigt(ctx.getString(R.string.zert_eingabe_zu_kurz, 16, 24)))
-        assertEquals(0, gezeigt(ctx.getString(R.string.zert_eingabe_falsch)))
+        assertEquals("16 characters are too short, not wrong", 1,
+            shown(ctx.getString(R.string.cert_input_too_short, 16, 24)))
+        assertEquals(0, shown(ctx.getString(R.string.cert_input_wrong)))
 
-        feld().performTextClearance()
-        feld().performTextInput("0".repeat(24))
+        field().performTextClearance()
+        field().performTextInput("0".repeat(24))
         button.performClick()
-        assertEquals(1, gezeigt(ctx.getString(R.string.zert_eingabe_falsch)))
+        assertEquals(1, shown(ctx.getString(R.string.cert_input_wrong)))
 
-        feld().performTextClearance()
-        feld().performTextInput(withoutPoints.takeLast(24))
+        field().performTextClearance()
+        field().performTextInput(withoutPoints.takeLast(24))
         button.performClick()
-        assertEquals("Angenommen: kein Fehler mehr", 0, gezeigt(ctx.getString(R.string.zert_eingabe_falsch)))
-        assertEquals(0, gezeigt(ctx.getString(R.string.zert_eingabe_zu_kurz, 24, 24)))
+        assertEquals("accepted: no error any more", 0, shown(ctx.getString(R.string.cert_input_wrong)))
+        assertEquals(0, shown(ctx.getString(R.string.cert_input_too_short, 24, 24)))
     }
 
     /** A tap outside discarded the half-typed input; Back applies only as long as nothing is typed. */
@@ -136,109 +146,138 @@ class CertificateDialogTest {
         assertFalse(closable("3F:A2").dismissOnBackPress)
     }
 
-    private fun gezeigt(text: String) = compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().size
+    private fun shown(text: String) = compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().size
 
     @Test
     fun `whoever types it sees no part that is to be typed`() {
-        zeige(CertificateUnresolved.Art.GEAENDERT, erwartet = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
-        assertEquals("Die letzten 24 Zeichen stehen da", 0, gezeigt(hex.takeLast(35)))
-        assertEquals("Der Anfang fehlt", 1, gezeigt(hex.take(11)))
+        show(CertificateUnresolved.Kind.CHANGED, expected = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+        assertEquals("the last 24 characters are shown", 0, shown(hex.takeLast(35)))
+        assertEquals("the beginning is missing", 1, shown(hex.take(11)))
     }
 
     @Test
     fun `without a known CA only the beginning is shown`() {
-        zeige(CertificateUnresolved.Art.UNBEKANNTE_CA)
-        assertEquals(0, gezeigt(hex.takeLast(35)))
-        assertEquals(1, gezeigt(hex.take(11)))
+        show(CertificateUnresolved.Kind.UNKNOWN_CA)
+        assertEquals(0, shown(hex.takeLast(35)))
+        assertEquals(1, shown(hex.take(11)))
     }
 
     @Test
     fun `on first contact via a public CA the whole fingerprint is shown`() {
-        zeige(CertificateUnresolved.Art.ERSTKONTAKT, ct = true)
-        assertEquals(1, gezeigt(hex))
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled()
+        show(CertificateUnresolved.Kind.FIRST_CONTACT, ct = true)
+        assertEquals(1, shown(hex))
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsEnabled()
     }
 
     @Test
     fun `if the server deviates from the code there is nothing to confirm`() {
-        val laut = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-        zeige(CertificateUnresolved.Art.CODE_ABWEICHUNG, erwartet = laut)
-        compose.onNodeWithText(ctx.getString(R.string.zert_titel_code_abweichung)).assertExists()
-        assertEquals("Der Wert des Servers steht ganz da", 1, gezeigt(hex))
-        assertEquals("Der Wert des Codes steht ganz da", 1, gezeigt(fingerprintReadable(laut)))
-        assertEquals("Kein Knopf zum Vertrauen", 0, gezeigt(ctx.getString(R.string.zert_vertrauen)))
-        assertEquals("Kein Feld zum Abtippen", 0,
+        val aloud = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        show(CertificateUnresolved.Kind.CODE_MISMATCH, expected = aloud)
+        compose.onNodeWithText(ctx.getString(R.string.cert_title_code_mismatch)).assertExists()
+        assertEquals("the server's value is shown in full", 1, shown(hex))
+        assertEquals("the code's value is shown in full", 1, shown(fingerprintReadable(aloud)))
+        assertEquals("no button to trust", 0, shown(ctx.getString(R.string.cert_trust)))
+        assertEquals("no field to type it in", 0,
             compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
     }
 
     @Test
     fun `the field carries a short label, the instructions are below it`() {
-        zeige(CertificateUnresolved.Art.GEAENDERT, erwartet = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
-        val feld = compose.onNode(hasSetTextAction()).fetchSemanticsNode()
-        val texts = feld.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
-        assertTrue("Kein kurzes Etikett: $texts", ctx.getString(R.string.zert_eingabe_etikett) in texts)
-        assertTrue("Die Anleitung fehlt: $texts", ctx.getString(R.string.zert_geaendert_eingabe) in texts)
+        show(CertificateUnresolved.Kind.CHANGED, expected = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+        val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode()
+        val texts = field.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
+        assertTrue("no short label: $texts", ctx.getString(R.string.cert_input_label) in texts)
+        assertTrue("the instructions are missing: $texts", ctx.getString(R.string.cert_changed_input) in texts)
     }
 
     @Test
     fun `via a user CA a tap is not enough, the input is blind`() {
-        zeige(CertificateUnresolved.Art.NUTZER_CA)
-        assertEquals(0, gezeigt(hex.takeLast(35)))
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsNotEnabled()
+        show(CertificateUnresolved.Kind.USER_CA)
+        assertEquals(0, shown(hex.takeLast(35)))
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsNotEnabled()
         compose.onNode(hasSetTextAction()).performTextInput(hex.takeLast(35))
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled()
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsEnabled()
     }
 
     @Test
     fun `with CT requirement a new server key is shown in full and applies without typing`() {
-        val bisher = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-        var angenommen: String? = "nie"
-        zeige(CertificateUnresolved.Art.SCHLUESSEL_NEU, erwartet = bisher, ct = true) { angenommen = it; true }
-        compose.onNodeWithText(ctx.getString(R.string.zert_titel_schluessel_neu)).assertExists()
-        assertEquals("Der neue Schlüssel steht ganz da", 1, gezeigt(hex))
-        assertEquals("Der bisherige auch", 1, gezeigt(fingerprintReadable(bisher)))
-        assertEquals("Kein Feld zum Abtippen", 0, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen_neu)).assertIsEnabled().performClick()
-        assertEquals(null, angenommen)
+        val previous = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        var accepted: String? = "nie"
+        show(CertificateUnresolved.Kind.KEY_NEW, expected = previous, ct = true) { accepted = it; true }
+        compose.onNodeWithText(ctx.getString(R.string.cert_title_key_new)).assertExists()
+        assertEquals("the new key is shown in full", 1, shown(hex))
+        assertEquals("the previous one too", 1, shown(fingerprintReadable(previous)))
+        assertEquals("no field to type it in", 0, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsEnabled().performClick()
+        assertEquals(null, accepted)
     }
 
     @Test
     fun `without CT requirement a new server key is typed, only the beginning is shown`() {
-        var angenommen: String? = null
-        zeige(CertificateUnresolved.Art.SCHLUESSEL_NEU, erwartet = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") { angenommen = it; true }
-        assertEquals("Das Abzutippende steht nicht da", 0, gezeigt(hex.takeLast(35)))
-        compose.onNodeWithText(ctx.getString(R.string.zert_schluessel_neu_eingabe)).assertExists()
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen_neu)).assertIsNotEnabled()
-        feld().performTextInput(hex.replace(":", "").takeLast(24))
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen_neu)).assertIsEnabled().performClick()
-        assertEquals(hex.replace(":", "").takeLast(24), angenommen?.replace(":", ""))
+        var accepted: String? = null
+        show(CertificateUnresolved.Kind.KEY_NEW, expected = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") { accepted = it; true }
+        assertEquals("what is to be typed in is not shown", 0, shown(hex.takeLast(35)))
+        compose.onNodeWithText(ctx.getString(R.string.cert_key_new_input)).assertExists()
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsNotEnabled()
+        field().performTextInput(hex.replace(":", "").takeLast(24))
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsEnabled().performClick()
+        assertEquals(hex.replace(":", "").takeLast(24), accepted?.replace(":", ""))
     }
 
     @Test
     fun `on first contact it can be typed instead, then only the beginning is shown`() {
-        var angenommen: String? = null
-        zeige(CertificateUnresolved.Art.ERSTKONTAKT, ct = true) { angenommen = it; true }
-        compose.onNodeWithText(ctx.getString(R.string.zert_erstkontakt_abtippen)).performClick()
+        var accepted: String? = null
+        show(CertificateUnresolved.Kind.FIRST_CONTACT, ct = true) { accepted = it; true }
+        compose.onNodeWithText(ctx.getString(R.string.cert_first_contact_type)).performClick()
         compose.waitForIdle()
-        assertEquals("Das Abzutippende steht nicht mehr da", 0, gezeigt(hex.takeLast(35)))
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsNotEnabled()
-        feld().performTextInput(hex.replace(":", "").takeLast(24))
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled().performClick()
-        assertEquals(hex.replace(":", "").takeLast(24), angenommen?.replace(":", ""))
+        assertEquals("what is to be typed in is no longer shown", 0, shown(hex.takeLast(35)))
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsNotEnabled()
+        field().performTextInput(hex.replace(":", "").takeLast(24))
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsEnabled().performClick()
+        assertEquals(hex.replace(":", "").takeLast(24), accepted?.replace(":", ""))
+    }
+
+    /** Instead of the camera a button that delivers [payload]; [answer] stands for the comparison. */
+    private fun fakeScan(payload: String, answer: CodeCheck, seen: MutableList<String>) =
+        CodeScan(trust = { seen += it; answer }) { onResult, _ ->
+            TextButton(onClick = { onResult(payload) }) { Text("fake scan") }
+        }
+
+    @Test
+    fun `a scanned code that does not fit says so and leaves the comparison by hand`() {
+        val seen = mutableListOf<String>()
+        show(CertificateUnresolved.Kind.CHANGED, expected = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            codeScan = fakeScan("brickinventory-cert:v1:spki-sha256:00", CodeCheck.FITS_NOT, seen))
+        assertEquals("the button replaces the old hint", 0, shown(ctx.getString(R.string.cert_changed_qr)))
+        compose.onNodeWithText(ctx.getString(R.string.cert_scan_qr)).performClick()
+        compose.onNodeWithText("fake scan").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("brickinventory-cert:v1:spki-sha256:00"), seen)
+        assertEquals(1, shown(ctx.getString(R.string.cert_scan_mismatch)))
+        assertEquals("the field for typing stays", 1, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `under a public CA there is nothing to scan`() {
+        val seen = mutableListOf<String>()
+        show(CertificateUnresolved.Kind.FIRST_CONTACT, ct = true,
+            codeScan = fakeScan("brickinventory-cert:v1:spki-sha256:00", CodeCheck.MATCHES, seen))
+        assertEquals(0, shown(ctx.getString(R.string.cert_scan_qr)))
     }
 
     /** Android 11–15: without CT a misissued chain would get through with a tap. */
     @Test
     fun `without CT requirement it is typed on first contact, a tap is not enough`() {
-        var angenommen: String? = null
-        zeige(CertificateUnresolved.Art.ERSTKONTAKT) { angenommen = it; true }
-        compose.onNodeWithText(ctx.getString(R.string.zert_text_erstkontakt_abtippen, "nas")).assertExists()
-        assertEquals("Das Abzutippende steht nicht da", 0, gezeigt(hex.takeLast(35)))
-        assertEquals("Abtippen ist keine Wahl", 0, gezeigt(ctx.getString(R.string.zert_erstkontakt_abtippen)))
-        compose.onNodeWithText(ctx.getString(R.string.zert_erstkontakt_eingabe)).assertExists()
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsNotEnabled()
-        feld().performTextInput(hex.replace(":", "").takeLast(24))
-        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled().performClick()
-        assertEquals(hex.replace(":", "").takeLast(24), angenommen?.replace(":", ""))
+        var accepted: String? = null
+        show(CertificateUnresolved.Kind.FIRST_CONTACT) { accepted = it; true }
+        compose.onNodeWithText(ctx.getString(R.string.cert_text_first_contact_type, "nas")).assertExists()
+        assertEquals("what is to be typed in is not shown", 0, shown(hex.takeLast(35)))
+        assertEquals("typing it in is not a choice", 0, shown(ctx.getString(R.string.cert_first_contact_type)))
+        compose.onNodeWithText(ctx.getString(R.string.cert_first_contact_input)).assertExists()
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsNotEnabled()
+        field().performTextInput(hex.replace(":", "").takeLast(24))
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsEnabled().performClick()
+        assertEquals(hex.replace(":", "").takeLast(24), accepted?.replace(":", ""))
     }
 }

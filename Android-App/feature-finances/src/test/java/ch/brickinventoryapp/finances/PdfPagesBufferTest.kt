@@ -17,7 +17,7 @@ import java.nio.ByteBuffer
  * it set, and only if the memory is exactly that size.
  *
  * Counter-check (Robolectric, measured by CI):
- *   pdf-puffer-ungeprueft  bitmapFromBuffer() without a size check → red “memory of a different
+ *   pdf-buffer-unchecked  bitmapFromBuffer() without a size check → red “memory of a different
  *                          size yields no page”
  */
 @RunWith(RobolectricTestRunner::class)
@@ -29,11 +29,11 @@ class PdfPagesBufferTest {
     @Test
     fun `the renderer's pixels come into the page unchanged`() {
         val template = createBitmap(3, 2).apply { eraseColor(Color.WHITE); setPixel(1, 1, Color.RED) }
-        val puffer = ByteBuffer.allocate(dimensions.bytes).also { template.copyPixelsToBuffer(it); it.rewind() }
-        val seite = bitmapFromBuffer(puffer, dimensions)!!
-        assertEquals(3 to 2, seite.width to seite.height)
-        assertEquals(Color.RED, seite.getPixel(1, 1))
-        assertEquals(Color.WHITE, seite.getPixel(0, 0))
+        val buffer = ByteBuffer.allocate(dimensions.bytes).also { template.copyPixelsToBuffer(it); it.rewind() }
+        val page = bitmapFromBuffer(buffer, dimensions)!!
+        assertEquals(3 to 2, page.width to page.height)
+        assertEquals(Color.RED, page.getPixel(1, 1))
+        assertEquals(Color.WHITE, page.getPixel(0, 0))
     }
 
     @Test

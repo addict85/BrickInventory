@@ -1,0 +1,16 @@
+Gegenprobe: Abmelden lässt den verschlüsselten Token stehen
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenVaultTest
+Rot: sign-out removes both entries
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -558,7 +558,6 @@
+             // BOTH keys: if the old one remained, one would be signed in again via the legacy stock
+             // after sign-out.
+             it.remove(AUTH_TOKEN)
+-            it.remove(AUTH_TOKEN_ENC)
+             it.remove(ORIGIN)
+             it.remove(NAME)
+             it.remove(SIGNED_IN_AT)

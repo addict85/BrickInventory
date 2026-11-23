@@ -1,0 +1,16 @@
+Gegenprobe: Der Bild-Client verliert den ServerGuard und damit den Token
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerClientsTest
+Rot: both clients hook in the server guard
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+@@ -96,6 +96,7 @@
+     ): OkHttpClient =
+         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, question = question)
+             .newBuilder()
++            .apply { interceptors().removeAll { it is ch.brickinventoryapp.network.di.ServerGuard } }
+             // ── Persistent store of the thumbnails ──
+             //
+             // First in the chain so that the tap sees the end result — the

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { cleanup, cleanupDaily } from './cleanup';
 import { FOLLOW_UP_STEPS, runFollowUp } from './startFollowUpRuns';
 import type { ManagementContext } from './context';
@@ -9,35 +9,35 @@ const FollowUpPayload = z.object({ schritt: z.enum(FOLLOW_UP_STEPS) });
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    nachlauf: typeof FollowUpPayload;
-    aufraeumen: typeof EMPTY;
-    aufraeumen_taeglich: typeof EMPTY;
+    followup: typeof FollowUpPayload;
+    cleanup: typeof EMPTY;
+    cleanup_daily: typeof EMPTY;
   }
 }
 
-export function managementJobTypes(k: ManagementContext): Anmeldung[] {
+export function managementJobTypes(k: ManagementContext): Login[] {
   return [
-    auftragsart({
-      art: 'nachlauf',
-      nutzlast: FollowUpPayload,
-      ausfuehren: (n, l) => runFollowUp(k, n, l),
-      kontouebergreifend: 'Altbestand und Katalog aller Konten',
+    jobKind({
+      kind: 'followup',
+      payload: FollowUpPayload,
+      run: (n, l) => runFollowUp(k, n, l),
+      crossAccount: 'Altbestand und Katalog aller Konten',
     }),
-    auftragsart({
-      art: 'aufraeumen',
-      nutzlast: EMPTY,
-      ausfuehren: (_n, l) => cleanup(k, l),
-      exklusiv: true,
-      kontouebergreifend: 'Reste aller Konten',
-      zeitplan: { minuten: { vorgabe: 60 } },
+    jobKind({
+      kind: 'cleanup',
+      payload: EMPTY,
+      run: (_n, l) => cleanup(k, l),
+      exclusive: true,
+      crossAccount: 'Reste aller Konten',
+      schedule: { minutes: { preset: 60 } },
     }),
-    auftragsart({
-      art: 'aufraeumen_taeglich',
-      nutzlast: EMPTY,
-      ausfuehren: (_n, l) => cleanupDaily(k, l),
-      exklusiv: true,
-      kontouebergreifend: 'Reste aller Konten',
-      zeitplan: { minuten: { vorgabe: 24 * 60 } },
+    jobKind({
+      kind: 'cleanup_daily',
+      payload: EMPTY,
+      run: (_n, l) => cleanupDaily(k, l),
+      exclusive: true,
+      crossAccount: 'Reste aller Konten',
+      schedule: { minutes: { preset: 24 * 60 } },
     }),
   ];
 }

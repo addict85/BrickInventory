@@ -1,13 +1,13 @@
 /**
  * On the desktop every control of the finances view is at least 32 px high and wide (like .delbtn and
- * .acq-loeschen): sort buttons in the table header, row links and the account menu of the header. Measured in the
+ * .acq-delete): sort buttons in the table header, row links and the account menu of the header. Measured in the
  * browser; the header keeps its height of 58 px.
  *
  * Counter-checks (measured 08.11.2026, each alone):
- *   A  .sort-knopf again min-height/min-width 24 px → red: “controls of the finances”
+ *   A  .sort-button again min-height/min-width 24 px → red: “controls of the finances”
  *      (sort buttons 24 px high, “Name” 34 × 24)
- *   B  .zeile-oeffnen again min-height 24 px → red: “controls of the finances” (row link 24 px)
- *   C  --kopf-hoehe back to 28 px → red: “controls of the finances” (btn-umenu 28 px)
+ *   B  .row-open again min-height 24 px → red: “controls of the finances” (row link 24 px)
+ *   C  --header-height back to 28 px → red: “controls of the finances” (btn-umenu 28 px)
  *
  * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -26,28 +26,28 @@ const TO_SMALL = `[...document.querySelectorAll('a[href], button, [role=button],
 test('finances on the computer: controls at least 32 px', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `finklick_${process.pid}`,
-    bestand: async (db, uid) => {
-      await holdsSet(db, uid, '10294-1', 2, { preis: 100 });
-      await holdsSet(db, uid, '75192-1', 1, { preis: 50 });
+    holding: async (db, uid) => {
+      await holdsSet(db, uid, '10294-1', 2, { price: 100 });
+      await holdsSet(db, uid, '75192-1', 1, { price: 50 });
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
-  await ruhig();
-  await b.auswerten(`location.hash = '#/finanzen'; true`);
-  await bis(`document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2`, 'Sets in der Finanztabelle');
+  const { b, until, settle } = app;
+  await settle();
+  await b.evaluate(`location.hash = '#/finanzen'; true`);
+  await until(`document.querySelectorAll('[data-fin-kind="sets"] tbody tr').length === 2`, 'Sets in the finance table');
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
-  await ruhig();
+  await settle();
 
   await t.test('controls of the finances', async () => {
-    assert.deepEqual(await b.auswerten(TO_SMALL), []);
+    assert.deepEqual(await b.evaluate(TO_SMALL), []);
     const m =
-      await b.auswerten(`({ sort: document.querySelectorAll('.sort-knopf').length, zeile: document.querySelectorAll('.zeile-oeffnen').length,
-      kopf: Math.round(document.querySelector('header').getBoundingClientRect().height) })`);
-    assert.ok(m.sort >= 3 && m.zeile >= 1, `zu wenig gemessen: ${JSON.stringify(m)}`);
-    assert.equal(m.kopf, 58, 'Kopfleiste ist nicht mehr 58 px hoch');
+      await b.evaluate(`({ sort: document.querySelectorAll('.sort-button').length, line: document.querySelectorAll('.row-open').length,
+      head: Math.round(document.querySelector('header').getBoundingClientRect().height) })`);
+    assert.ok(m.sort >= 3 && m.line >= 1, `too little measured: ${JSON.stringify(m)}`);
+    assert.equal(m.head, 58, 'Header bar is no longer 58 px high');
   });
 });

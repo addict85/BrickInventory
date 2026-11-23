@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.util.INSTRUCTION_DISPLAY_FOLDER
-import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.data.util.InstructionStore
-import ch.brickinventoryapp.data.util.pdfAblage
-import ch.brickinventoryapp.data.util.raeumeAnleitungenAuf
-import ch.brickinventoryapp.data.util.raeumeKlartextAnleitungenAuf
+import ch.brickinventoryapp.data.util.cleanUpInstructions
+import ch.brickinventoryapp.data.util.cleanUpPlaintextInstructions
+import ch.brickinventoryapp.data.util.pdfStore
+import ch.brickinventoryapp.security.StoreCipher
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -24,88 +24,88 @@ import java.io.IOException
  * Counter-checks:
  *   A  InstructionStore writes and reads via FileSystem.SYSTEM instead of via
  *      EncryptedFileSystem → red “an instruction lies encrypted …”;
- *      gegenproben/anleitung-klartext.patch
+ *      counter-checks/instruction-plaintext.patch
  *   B  in EncryptedFileSystem `.part` deleted from INTERMEDIATE_STATES → red “an
  *      aborted download is resumed at the plaintext byte …” (the finished file is
  *      bound to the partial file's name and unreadable)
- *   C  in raeumeAnleitungenAuf() the line with INSTRUCTION_PREFIX deleted → red
- *      “sign-out clears all instructions …”; gegenproben/anleitungen-ueberleben-abmelden.patch
+ *   C  in cleanUpInstructions() the line with INSTRUCTION_PREFIX deleted → red
+ *      “sign-out clears all instructions …”; counter-checks/instructions-survive-logout.patch
  */
 class InstructionStoreTest {
 
     private val cache = File(System.getProperty("java.io.tmpdir"), "bim-anleitung-${System.nanoTime()}").apply { mkdirs() }
-    private val ablage = InstructionStore(StoreCipher { ByteArray(32) { 5 } })
-    private val adresse = "https://brick.example/api/v1/instructions/42/file"
+    private val store = InstructionStore(StoreCipher { ByteArray(32) { 5 } })
+    private val address = "https://brick.example/api/v2/instructions/42/file"
     private val pdf = ("%PDF-1.7 Anleitung 75192-1 Millennium Falcon " + "x".repeat(150_000)).toByteArray()
 
     @After
-    fun zu() { cache.deleteRecursively() }
+    fun tearDown() { cache.deleteRecursively() }
 
-    private fun datei() = pdfAblage(cache, adresse, false)!!
+    private fun file() = pdfStore(cache, address, false)!!
 
-    private fun ablegen(ziel: File, inhalt: ByteArray, resume: Boolean = false) =
-        ablage.schreibe(ziel, resume).use { it.write(inhalt) }
+    private fun put(target: File, content: ByteArray, resume: Boolean = false) =
+        store.write(target, resume).use { it.write(content) }
 
-    private fun lies(f: File) = ablage.lies(f).use { it.readBytes() }
+    private fun read(f: File) = store.read(f).use { it.readBytes() }
 
     @Test
     fun `an instruction lies encrypted and can be read again`() {
-        val f = datei()
-        ablegen(f, pdf)
-        val roh = String(f.readBytes(), Charsets.ISO_8859_1)
-        assertFalse("Die Datei trägt das PDF im Klartext", "%PDF" in roh)
-        assertFalse("Die Datei trägt die Setnummer im Klartext", "75192" in roh)
-        assertArrayEquals(pdf, lies(f))
+        val f = file()
+        put(f, pdf)
+        val raw = String(f.readBytes(), Charsets.ISO_8859_1)
+        assertFalse("The file carries the PDF in plaintext", "%PDF" in raw)
+        assertFalse("The file carries the set number in plaintext", "75192" in raw)
+        assertArrayEquals(pdf, read(f))
     }
 
     @Test
     fun `an aborted download is resumed at the plaintext byte and counts after renaming`() {
-        val f = datei()
-        val teil = File(f.path + ".part")
-        ablegen(teil, pdf.copyOfRange(0, 100_000))
-        assertEquals("Fortsetzpunkt", 100_000L, ablage.plaintextLength(teil))
-        ablegen(teil, pdf.copyOfRange(100_000, pdf.size), resume = true)
-        assertEquals(pdf.size.toLong(), ablage.plaintextLength(teil))
-        assertTrue(teil.renameTo(f))
-        assertArrayEquals("Die fertige Datei trägt die ganze Anleitung", pdf, lies(f))
+        val f = file()
+        val part = File(f.path + ".part")
+        put(part, pdf.copyOfRange(0, 100_000))
+        assertEquals("Fortsetzpunkt", 100_000L, store.plaintextLength(part))
+        put(part, pdf.copyOfRange(100_000, pdf.size), resume = true)
+        assertEquals(pdf.size.toLong(), store.plaintextLength(part))
+        assertTrue(part.renameTo(f))
+        assertArrayEquals("The finished file carries the whole instruction", pdf, read(f))
     }
 
     @Test
     fun `a truncated, foreign or unreadable file does not count`() {
-        val f = datei()
-        ablegen(f, pdf)
-        val gekuerzt = File(cache, "gekuerzt").apply { writeBytes(f.readBytes().copyOf(f.length().toInt() - 36)) }
-        gekuerzt.copyTo(f, overwrite = true)
-        assertTrue("Eine hinten gekürzte Anleitung wird gelesen", runCatching { lies(f) }.exceptionOrNull() is IOException)
+        val f = file()
+        put(f, pdf)
+        val truncated = File(cache, "gekuerzt").apply { writeBytes(f.readBytes().copyOf(f.length().toInt() - 36)) }
+        truncated.copyTo(f, overwrite = true)
+        assertTrue("An instruction truncated at the end is read", runCatching { read(f) }.exceptionOrNull() is IOException)
 
-        ablegen(f, pdf)
-        val andere = pdfAblage(cache, "$adresse?x", false)!!
-        f.copyTo(andere)
-        assertTrue("Die Kopie unter fremdem Namen gilt", runCatching { lies(andere) }.exceptionOrNull() is IOException)
+        put(f, pdf)
+        val other = pdfStore(cache, "$address?x", false)!!
+        f.copyTo(other)
+        assertTrue("The copy under a foreign name counts", runCatching { read(other) }.exceptionOrNull() is IOException)
 
-        val teil = File(f.path + ".part").apply { writeBytes(pdf.copyOf(5000)) }
-        assertEquals("Ein Klartext-Rest gilt als Fortsetzpunkt", 0L, ablage.plaintextLength(teil))
-        assertFalse("Der unlesbare Rest bleibt liegen", teil.exists())
+        val part = File(f.path + ".part").apply { writeBytes(pdf.copyOf(5000)) }
+        assertEquals("A plaintext rest counts as a resume point", 0L, store.plaintextLength(part))
+        assertFalse("The unreadable rest stays behind", part.exists())
     }
 
     @Test
     fun `sign-out clears all instructions, the start only the plaintext`() {
-        val encrypted = datei().also { ablegen(it, pdf) }
-        val teil = File(encrypted.path + ".part").also { ablegen(it, pdf.copyOf(10)) }
-        val alt = File(cache, "pdfview_abc.pdf").apply { writeBytes(pdf) }
-        val altPart = File(cache, "pdfview_abc.pdf.part").apply { writeBytes(pdf) }
-        val anzeige = File(File(cache, INSTRUCTION_DISPLAY_FOLDER).apply { mkdirs() }, "anzeige1.pdf").apply { writeBytes(pdf) }
-        val fremd = File(cache, "anderes.json").apply { writeText("{}") }
+        val encrypted = file().also { put(it, pdf) }
+        val part = File(encrypted.path + ".part").also { put(it, pdf.copyOf(10)) }
+        val old = File(cache, "pdfview_abc.pdf").apply { writeBytes(pdf) }
+        val oldPart = File(cache, "pdfview_abc.pdf.part").apply { writeBytes(pdf) }
+        val display = File(File(cache, INSTRUCTION_DISPLAY_FOLDER).apply { mkdirs() }, "anzeige1.pdf").apply { writeBytes(pdf) }
+        val foreign = File(cache, "anderes.json").apply { writeText("{}") }
 
-        raeumeKlartextAnleitungenAuf(cache)
-        assertFalse("Klartext älterer Fassungen bleibt liegen", alt.exists() || altPart.exists())
-        assertFalse("Ein Anzeige-Rest bleibt liegen", anzeige.exists())
-        assertTrue("Der Start löscht die verschlüsselten Anleitungen", encrypted.exists() && teil.exists())
+        cleanUpPlaintextInstructions(cache)
+        assertFalse("Plaintext of older versions stays behind", old.exists() || oldPart.exists())
+        assertFalse("A display rest stays behind", display.exists())
+        assertTrue("The start deletes the encrypted instructions", encrypted.exists() && part.exists())
 
-        alt.writeBytes(pdf)
-        raeumeAnleitungenAuf(cache)
-        assertFalse("Abmelden lässt eine verschlüsselte Anleitung liegen", encrypted.exists() || teil.exists())
-        assertFalse("Abmelden lässt Klartext liegen", alt.exists())
-        assertTrue("Abmelden löscht Fremdes", fremd.exists())
+        old.writeBytes(pdf)
+        cleanUpInstructions(cache)
+        assertFalse("Signing out leaves an encrypted instruction behind", encrypted.exists() || part.exists())
+        assertFalse("Signing out leaves plaintext behind", old.exists())
+        assertTrue("Signing out deletes foreign files", foreign.exists())
     }
 }

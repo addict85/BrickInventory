@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * What is no longer used stands out.
@@ -27,10 +27,10 @@ class DeadCodeTest {
 
     @Test
     fun `every text resource is used`() {
-        val en = File(Quellen.res, "values/strings.xml").readText()
-        val schluessel = Regex("""<string name="([^"]+)"""").findAll(en)
+        val en = File(Sources.res, "values/strings.xml").readText()
+        val key = Regex("""<string name="([^"]+)"""").findAll(en)
             .map { it.groupValues[1] }.toSet()
-        assert(schluessel.size > 300) { "Nur ${schluessel.size} Texte gefunden — Muster veraltet?" }
+        assert(key.size > 300) { "Only ${key.size} texts found — pattern outdated?" }
 
         // Searched is the Kotlin code AND the other XML files (themes,
         // menus, the manifest also include texts).
@@ -46,47 +46,47 @@ class DeadCodeTest {
         // it is dead — and that is the kind of explanation one is most likely
         // to write down.
         val usage = buildString {
-            Quellen.alle().forEach { append(Quellen.withoutComments(it.readText())).append('\n') }
-            Quellen.res.walkTopDown()
+            Sources.all().forEach { append(Sources.withoutComments(it.readText())).append('\n') }
+            Sources.res.walkTopDown()
                 .filter { it.isFile && it.extension == "xml" && !it.name.startsWith("strings") }
                 .forEach { append(withoutXmlComments(it.readText())).append('\n') }
-            append(withoutXmlComments(Quellen.manifest.readText()))
+            append(withoutXmlComments(Sources.manifest.readText()))
         }
-        assert(usage.length > 100_000) { "Zu wenig Quelltext gelesen — Pfad veraltet?" }
+        assert(usage.length > 100_000) { "Too little source read — path outdated?" }
 
-        val tot = schluessel.filter {
+        val dead = key.filter {
             it !in allowedResources && !Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(usage)
         }.sorted()
-        assert(tot.isEmpty()) {
-            "Diese Texte werden nirgends benutzt (${tot.size}):\n  " + tot.joinToString("\n  ") +
-                "\nEntweder ist die Anzeige dazu nie gebaut worden — dann fehlt eine " +
-                "Funktion —, oder sie ist entfernt worden und der Text blieb liegen."
+        assert(dead.isEmpty()) {
+            "These texts are used nowhere (${dead.size}):\n  " + dead.joinToString("\n  ") +
+                "\nEither the display for them was never built — then a " +
+                "function is missing —, or it was removed and the text was left behind."
         }
     }
 
     @Test
     fun `every function has a caller`() {
-        val dateien = Quellen.alle().associateWith { Quellen.withoutComments(it.readText()) }
-        val alles = dateien.values.joinToString("\n")
+        val files = Sources.all().associateWith { Sources.withoutComments(it.readText()) }
+        val everything = files.values.joinToString("\n")
         // The helpers from core-testing are there for tests; their callers stand there, not in the main tree.
-        val fromTests = alles + "\n" + Quellen.tests.walkTopDown().filter { it.extension == "kt" }
-            .joinToString("\n") { Quellen.withoutComments(it.readText()) }
+        val fromTests = everything + "\n" + Sources.tests.walkTopDown().filter { it.extension == "kt" }
+            .joinToString("\n") { Sources.withoutComments(it.readText()) }
 
         // Only own declarations: `override`, `operator` and constructors
         // stay out — the framework calls them, not this tree.
         val declaration = Regex("""^(?:internal |private |public |)fun (\w+)\s*[(<]""", RegexOption.MULTILINE)
-        val orte = mutableMapOf<String, MutableList<String>>()
-        dateien.forEach { (datei, s) ->
-            declaration.findAll(s).forEach { orte.getOrPut(it.groupValues[1]) { mutableListOf() } += datei.invariantSeparatorsPath }
+        val locations = mutableMapOf<String, MutableList<String>>()
+        files.forEach { (file, s) ->
+            declaration.findAll(s).forEach { locations.getOrPut(it.groupValues[1]) { mutableListOf() } += file.invariantSeparatorsPath }
         }
-        assert(orte.size > 80) { "Nur ${orte.size} Funktionen gefunden — Muster veraltet?" }
+        assert(locations.size > 80) { "Only ${locations.size} functions found — pattern outdated?" }
 
         // Entry points nobody calls from within this tree.
         val entries = setOf("main", "onCreate", "onStart", "onResume", "onPause", "onDestroy")
 
-        val tot = orte.filter { (name, wo) ->
+        val dead = locations.filter { (name, where) ->
             if (name in entries) return@filter false
-            val text = if (wo.all { "/testing/" in it }) fromTests else alles
+            val text = if (where.all { "/testing/" in it }) fromTests else everything
             // A call is `name(`, a reference `::name`, a named
             // argument `name =`. Fewer hits than declarations means:
             // apart from the declaration nothing stands there.
@@ -103,19 +103,19 @@ class DeadCodeTest {
             //
             // The gap was there before and simply never struck:
             // MEASURED, exactly TWO own functions use this form,
-            // `AppKarte` (3 places) and the new one here (2). `AppKarte` is
+            // `AppCard` (3 places) and the new one here (2). `AppCard` is
             // also called with brackets and therefore slipped through.
             val calls = Regex("""\b${Regex.escape(name)}\s*\(""").findAll(text).count()
             val asBlock = Regex("""\b${Regex.escape(name)}\s*\{""").findAll(text).count()
             val references = Regex("""::${Regex.escape(name)}\b""").findAll(text).count()
             val named = Regex("""\b${Regex.escape(name)}\s*=""").findAll(text).count()
-            calls <= wo.size && asBlock == 0 && references == 0 && named == 0
+            calls <= where.size && asBlock == 0 && references == 0 && named == 0
         }.map { "${it.key} (${it.value.joinToString { p -> p.substringAfterLast('/') }})" }.sorted()
 
-        assert(tot.isEmpty()) {
-            "Diese Funktionen haben keinen Aufrufer (${tot.size}):\n  " + tot.joinToString("\n  ") +
-                "\nEntfernen — oder es fehlt die Stelle, die sie benutzen sollte. " +
-                "Genau das war bei saveUserDefaultCondition der Fall."
+        assert(dead.isEmpty()) {
+            "These functions have no caller (${dead.size}):\n  " + dead.joinToString("\n  ") +
+                "\nRemove them — or the place that should use them is missing. " +
+                "Exactly that was the case with saveUserDefaultCondition."
         }
     }
 }

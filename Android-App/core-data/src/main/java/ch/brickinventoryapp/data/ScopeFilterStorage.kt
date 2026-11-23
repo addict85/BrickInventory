@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.data.ScopeFilter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.model.data.ScopeFilter
 
 /**
  * Where the choice of the account and storage location filter lies: only in memory. The values name accounts
@@ -17,15 +17,15 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 @Singleton
 class ScopeFilterStorage @Inject constructor() {
 
-    private val werte = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val values = MutableStateFlow<Map<String, String>>(emptyMap())
 
     private fun prefKey(view: ScopeFilter.View) = "scope_${view.key}"
 
     fun flow(view: ScopeFilter.View): Flow<String> =
-        werte.map { it[prefKey(view)] ?: ScopeFilter.ALL }
+        values.map { it[prefKey(view)] ?: ScopeFilter.ALL }
 
     fun set(view: ScopeFilter.View, value: String) {
-        werte.update { it + (prefKey(view) to value) }
+        values.update { it + (prefKey(view) to value) }
     }
 
     /**
@@ -34,18 +34,18 @@ class ScopeFilterStorage @Inject constructor() {
      * collection had disappeared. The storage location filter along with it, for the same reason.
      */
     fun resetAll() {
-        werte.value = emptyMap()
+        values.value = emptyMap()
     }
 
-    // ═══ Storage location filter — per view, like the account filter (public/js/account-filter.js) ═══
+    // ═══ Storage location filter — per view, like the account filter (`public/js/account-filter.js`) ═══
 
     private fun storageKey(view: ScopeFilter.View) = "lager_${view.key}"
 
     /** Empty text = not filtered. */
     fun storageFlow(view: ScopeFilter.View): Flow<String> =
-        werte.map { it[storageKey(view)] ?: "" }
+        values.map { it[storageKey(view)] ?: "" }
 
-    fun setLager(view: ScopeFilter.View, value: String) {
-        werte.update { if (value.isBlank()) it - storageKey(view) else it + (storageKey(view) to value) }
+    fun setStorage(view: ScopeFilter.View, value: String) {
+        values.update { if (value.isBlank()) it - storageKey(view) else it + (storageKey(view) to value) }
     }
 }

@@ -12,11 +12,11 @@ export const PROCESS = randomUUID();
 export const receiptId = (): string => `${PROCESS}/${randomUUID()}`;
 
 /** The lock connection belongs to the access whose pool it comes from. */
-const sperre = (k: JobsContext) => k.faecher.fach('prozessSperre', () => ({ client: null as PoolClient | null }));
+const lock = (k: JobsContext) => k.compartments.slot('prozessSperre', () => ({ client: null as PoolClient | null }));
 
 /** @returns jobs taken over from dead processes */
-export async function reportProcessAn(k: JobsContext): Promise<number> {
-  const s = sperre(k);
+export async function registerProcess(k: JobsContext): Promise<number> {
+  const s = lock(k);
   if (!s.client) {
     const c = await k.db.systemPool.connect();
     c.on('error', e => reportError('auftraege:prozess-sperre', e));
@@ -26,8 +26,8 @@ export async function reportProcessAn(k: JobsContext): Promise<number> {
   return repo.giveOrphanedBack(s.client, PROCESS);
 }
 
-export function reportProcessAb(k: JobsContext): void {
-  const s = sperre(k);
+export function deregisterProcess(k: JobsContext): void {
+  const s = lock(k);
   s.client?.release(true);
   s.client = null;
 }

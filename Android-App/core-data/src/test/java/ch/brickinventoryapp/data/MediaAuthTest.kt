@@ -1,8 +1,7 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
-import java.io.File
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Images and PDFs need sign-in on the server side — the app must send it
@@ -22,7 +21,8 @@ import ch.brickinventoryapp.testing.Quellen
  * — without an error message, because DownloadManager does not check the
  * status code.
  *
- * These tests pin down the chain.
+ * These tests pin down the bans along the chain; the download button (PdfDownloadTest,
+ * feature-finances) and the instruction client (InstructionDownloadTest) run.
  */
 class MediaAuthTest {
 
@@ -30,13 +30,7 @@ class MediaAuthTest {
         // Lower bound: all checks here run over their
         // own file walk and collect violations. If it found nothing, they would
         // all be green without having checked anything.
-        check(Quellen.alle().size >= 60) { "Zu wenige Kotlin-Dateien — Pfad veraltet?" }
-    }
-
-    private fun read(rel: String): String {
-        val f = File(Quellen.root, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
+        check(Sources.all().size >= 60) { "Too few Kotlin files — path outdated?" }
     }
 
     private fun code(src: String): String {
@@ -44,76 +38,24 @@ class MediaAuthTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    // ── Bilder ───────────────────────────────────────────────────────────────
+    // ── Images ───────────────────────────────────────────────────────────────
 
     @Test
     fun `images are not loaded bypassing the ImageLoader`() {
         // An own HttpURLConnection or OkHttp call for images would not have the
         // interceptor and would thus run without a token.
-        for (rel in Quellen.root.walkTopDown()
+        for (rel in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = code(rel.readText())
             assert(!src.contains("HttpURLConnection")) {
-                "${rel.name}: eigener HTTP-Aufruf — Bilder gehören über den ImageLoader"
+                "${rel.name}: its own HTTP call — images belong to the ImageLoader"
             }
         }
     }
 
-    // That signing out clears the image cache is checked, executed, by SignOutCleansEverythingTest (app).
+    // That signing out clears the image cache is checked, executed, by LogoutCleansEverythingTest (app).
 
-    // ── PDFs ─────────────────────────────────────────────────────────────────
-
-    @Test
-    fun `the PDF download copies the loaded file instead of loading again`() {
-        val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
-        assert(!viewer.contains("DownloadManager")) {
-            "DownloadManager kennt den Bearer-Token nicht — der Abruf endet in einer 401, " +
-            "die als PDF gespeichert wird"
-        }
-        assert(viewer.contains("savePdfToDownloads")) { "Kopier-Funktion fehlt" }
-        assert(viewer.contains("MediaStore.Downloads")) {
-            "Ab Android 10 ist der direkte Schreibzugriff auf Downloads/ gesperrt"
-        }
-    }
-
-    @Test
-    fun `the download button appears only once the file is loaded`() {
-        val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
-        val actions = viewer.substringAfter("actions = {").substringBefore("            )")
-        // Both buttons work on the loaded source of the Ready state and may
-        // only be visible there. The field is read from Ready, not named fixed.
-        // Counter-check: gegenproben/pdf-download-ausserhalb-ready.patch → red here.
-        val zustand = code(read("finances/ui/pdf/PdfQuelle.kt"))
-        val feld = Regex("""class Ready\(val (\w+): \w+,""").find(zustand)?.groupValues?.get(1)
-        assert(feld != null) { "PdfLoadState.Ready trägt keine geladene Quelle mehr" }
-        assert(actions.contains("if (s is PdfLoadState.Ready)")) { "Ready-Prüfung fehlt" }
-        val ready = actions.substringAfter("if (s is PdfLoadState.Ready)")
-        assert(ready.contains("savePdfToDownloads(ctx, s.$feld, title)")) {
-            "Der Herunterladen-Knopf muss innerhalb des Ready-Zweigs stehen — " +
-            "vorher stand er ausserhalb und lud eigenständig neu"
-        }
-    }
-
-    @Test
-    fun `the display itself runs via the authenticated client`() {
-        // Loading happens in the data layer (AnleitungsRepository), not in the screen.
-        val viewer = code(read("data/AnleitungsRepository.kt"))
-        // What is checked is the statement, not the wording of the call: the download runs
-        // via the injected client, no matter how the arguments wrap.
-        val call = Quellen.fenster(viewer, "downloadPdfWithResume(", 8)
-        assert(call.isNotEmpty()) { "Der Download-Aufruf fehlt ganz" }
-        assert(call.contains("httpClient")) {
-            "Das PDF muss über den injizierten OkHttpClient geladen werden, nicht frei"
-        }
-        assert(!viewer.contains("OkHttpClient()")) {
-            "Ein frei gebauter Client kennt den Bearer-Token nicht"
-        }
-        assert(viewer.contains("""@param:ApiClient private val httpClient: OkHttpClient""")) {
-            "Der Lader bekommt nicht den api-Client mit Token und Klartext-Verbot"
-        }
-    }
-
-    // ── Pfade ────────────────────────────────────────────────────────────────
+    // ── Paths ────────────────────────────────────────────────────────────────
 
     @Test
     fun `the app does not assemble image paths itself`() {
@@ -121,7 +63,7 @@ class MediaAuthTest {
         // (/images/parts/, /images/minifigs/) instead of together in
         // /data/part_images/. The address comes ready from the API — whoever
         // assembles it themselves breaks at the next re-sorting.
-        for (rel in Quellen.root.walkTopDown()
+        for (rel in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = code(rel.readText())
             assert(!src.contains("/data/part_images") && !src.contains("instructions/shared")) {
@@ -143,7 +85,7 @@ class MediaAuthTest {
         // PdfExportManager for the retry loop), the when lacks the
         // null case. The temptation is then an else — exactly that shall stand
         // out here. Correct is an explicit `null ->` branch.
-        for (f in Quellen.root.walkTopDown()
+        for (f in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             var idx = src.indexOf("is Ergebnis.Erfolg")
@@ -160,10 +102,10 @@ class MediaAuthTest {
                 // flagged and could only be fixed by pointless rebuilding of the
                 // code.
                 val nextWhen = body.indexOf("when ", 1)
-                val bereich = if (nextWhen > 0) body.substring(0, nextWhen) else body
-                assert(!bereich.contains("else ->")) {
-                    "${f.name}: else-Zweig in einem when über Result — " +
-                    "stattdessen einen expliziten null-Zweig ergänzen"
+                val area = if (nextWhen > 0) body.substring(0, nextWhen) else body
+                assert(!area.contains("else ->")) {
+                    "${f.name}: else branch in a when over Result — " +
+                    "add an explicit null branch instead"
                 }
                 idx = src.indexOf("is Ergebnis.Erfolg", idx + 1)
             }
@@ -176,7 +118,7 @@ class MediaAuthTest {
         // which does not attach the bearer token; the server then answers with 401,
         // and the area stays empty without an error message.
         val offenders = mutableListOf<String>()
-        for (f in Quellen.root.walkTopDown()
+        for (f in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             var i = src.indexOf("AsyncImage(")
@@ -191,7 +133,7 @@ class MediaAuthTest {
             }
         }
         assert(offenders.isEmpty()) {
-            "AsyncImage ohne imageLoader (Bilder bleiben nach 401 leer): ${offenders.joinToString()}"
+            "AsyncImage without imageLoader (images stay empty after 401): ${offenders.joinToString()}"
         }
     }
 
@@ -199,11 +141,11 @@ class MediaAuthTest {
     fun `no UNUSED_PARAMETER suppress on an ImageLoader`() {
         // The suppress was the symptom: it removed the warning that would have
         // pointed to exactly this error.
-        for (f in Quellen.root.walkTopDown()
+        for (f in Sources.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             assert(!Regex("""@Suppress\("UNUSED_PARAMETER"\)\s*imageLoader""").containsMatchIn(src)) {
-                "${f.name}: imageLoader ist als unbenutzt markiert — dann fehlt der Auth-Header"
+                "${f.name}: imageLoader is marked as unused — then the auth header is missing"
             }
         }
     }

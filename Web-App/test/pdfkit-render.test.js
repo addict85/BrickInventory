@@ -1,6 +1,8 @@
 /**
  * pdfkit actually produces a valid PDF — with exactly the API that this
  * application uses.
+ *
+ * Counter-check: the JPEG replaced by the PNG in the test document → red “images are embedded — JPEG and PNG”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,37 +11,37 @@ const path = require('node:path');
 const os = require('node:os');
 
 /** Collects the data stream of a document into a buffer. */
-function rendern(bauen) {
+function render(build) {
   const PDFDocument = require('pdfkit');
-  return new Promise((fertig, fehler) => {
+  return new Promise((done, error) => {
     const doc = new PDFDocument({ margin: 40, size: 'A4' });
-    const teile = [];
-    doc.on('data', c => teile.push(c));
-    doc.on('error', fehler);
-    doc.on('end', () => fertig(Buffer.concat(teile)));
+    const parts = [];
+    doc.on('data', c => parts.push(c));
+    doc.on('error', error);
+    doc.on('end', () => done(Buffer.concat(parts)));
     try {
-      bauen(doc);
+      build(doc);
       doc.end();
     } catch (e) {
-      fehler(e);
+      error(e);
     }
   });
 }
 
-function isValidPdf(b, wo) {
-  assert.equal(b.slice(0, 5).toString(), '%PDF-', `${wo}: kein PDF-Kopf`);
-  assert.ok(b.slice(-1024).toString().includes('%%EOF'), `${wo}: keine EOF-Marke`);
-  assert.ok(b.length > 500, `${wo}: nur ${b.length} Bytes — das kann kein Dokument sein`);
+function isValidPdf(b, where) {
+  assert.equal(b.slice(0, 5).toString(), '%PDF-', `${where}: no PDF header`);
+  assert.ok(b.slice(-1024).toString().includes('%%EOF'), `${where}: no EOF marker`);
+  assert.ok(b.length > 500, `${where}: only ${b.length} bytes — that cannot be a document`);
 }
 
 test('the parts list export draws a valid PDF', async () => {
-  // The same set of methods as in routes/api_v1/pdf.ts.
-  const b = await rendern(doc => {
+  // The same set of methods as in routes/api/pdf.ts.
+  const b = await render(doc => {
     doc.font('Helvetica-Bold').fontSize(16).text('Teileliste');
     doc.moveDown(0.5);
     doc.font('Helvetica').fontSize(10);
     const lineHeight = doc.currentLineHeight();
-    assert.ok(lineHeight > 0, 'currentLineHeight() liefert keine Höhe mehr');
+    assert.ok(lineHeight > 0, 'currentLineHeight() no longer returns a height');
     doc.text('3001 · Brick 2x4 · Rot · 12×');
     doc.circle(120, 200, 6);
     doc.moveTo(50, 220);
@@ -75,7 +77,7 @@ test('images are embedded — JPEG and PNG', async () => {
   );
 
   try {
-    const b = await rendern(doc => {
+    const b = await render(doc => {
       doc.addPage({ size: [600, 800] });
       doc.image(jpg, 0, 0, { width: 600 });
       doc.addPage({ size: [600, 800] });
@@ -84,8 +86,8 @@ test('images are embedded — JPEG and PNG', async () => {
     isValidPdf(b, 'Bildseiten');
     // Both image formats must end up as an XObject in the document.
     const text = b.toString('latin1');
-    assert.ok(text.includes('/DCTDecode'), 'Das JPEG wurde nicht eingebettet');
-    assert.ok(text.includes('/FlateDecode'), 'Das PNG wurde nicht eingebettet');
+    assert.ok(text.includes('/DCTDecode'), 'The JPEG was not embedded');
+    assert.ok(text.includes('/FlateDecode'), 'The PNG was not embedded');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -96,11 +98,11 @@ test('jpeg-exif is no longer in the dependency tree', () => {
   // library, that should stand out — nobody reliably reads the warning
   // in the installation log.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
-  const treffer = Object.keys(lock.packages || {}).filter(p => p.includes('jpeg-exif'));
+  const hits = Object.keys(lock.packages || {}).filter(p => p.includes('jpeg-exif'));
   assert.deepEqual(
-    treffer,
+    hits,
     [],
-    'jpeg-exif ist zurück. Es wird nicht mehr gepflegt und kam zuletzt über ' +
-      'pdfkit < 0.20 herein — dort ist es seither entfallen.',
+    'jpeg-exif is back. It is no longer maintained and last came in via ' +
+      'pdfkit < 0.20 — it has been dropped there since.',
   );
 });

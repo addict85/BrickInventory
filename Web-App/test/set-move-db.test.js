@@ -1,5 +1,9 @@
 /**
  * Moving a set between accounts — against a real database.
+ *
+ * Counter-check (22.11.2026): setEntriesReassign hands the acquisitions over with
+ * `UPDATE set_acquisitions SET user_id` instead of bookDailyEntry → red “a moved purchase joins
+ * the target's row of the same day” (two rows instead of one).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +12,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
@@ -17,7 +21,7 @@ test('move set', { concurrency: 1 }, async t => {
     await db.get('SELECT 1');
   } catch (e) {
     await db.pool.end().catch(() => {});
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -35,28 +39,28 @@ test('move set', { concurrency: 1 }, async t => {
   }
 
   // In one transaction via its context: the collection calls the move like this (t.sets).
-  const sammlung = require('./helpers/sources').testContext('collection');
+  const collection = require('./helpers/sources').testContext('collection');
   // Two foreign accounts: across both only in the system context (the owner role creates the data).
   const { inSystemContext } = _req('src/infra/accountContext.js');
   const setEntriesReassign = (...a) =>
-    inSystemContext('Testdaten', () => sammlung.transaktion(t => t.sets.setEntriesReassign(...a)));
+    inSystemContext('Testdaten', () => collection.transact(t => t.sets.setEntriesReassign(...a)));
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('mv_a','x'),('mv_b','x')");
   const [a, b] = (await db.all('SELECT id FROM users ORDER BY id')).map(r => r.id);
 
   /** Create a set with contents at the sender. */
-  async function createInventory(sn, teile, figuren) {
+  async function createInventory(sn, parts, minifigs) {
     await holdsSet(db, a, sn, 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,50,'N')`,
       [a, sn],
     );
-    for (let i = 0; i < teile; i++) {
-      await holdsPart(db, a, `300${i}`, { setNumber: sn, menge: 2, colorId: 4 });
+    for (let i = 0; i < parts; i++) {
+      await holdsPart(db, a, `300${i}`, { setNumber: sn, quantity: 2, colorId: 4 });
     }
-    for (let i = 0; i < figuren; i++) {
-      await holdsMinifig(db, a, `fig-00${i}`, { setNumber: sn, menge: 1 });
+    for (let i = 0; i < minifigs; i++) {
+      await holdsMinifig(db, a, `fig-00${i}`, { setNumber: sn, quantity: 1 });
     }
   }
 
@@ -79,7 +83,7 @@ test('move set', { concurrency: 1 }, async t => {
     assert.deepEqual(
       parallel,
       [],
-      'pg meldet parallele Abfragen auf einer Verbindung — ab pg 9 ist das ein Fehler, nicht nur ein Hinweis',
+      'pg reports parallel queries on one connection — from pg 9 on that is an error, not just a warning',
     );
   });
 
@@ -87,19 +91,19 @@ test('move set', { concurrency: 1 }, async t => {
     await createInventory('10002-1', 4, 1);
     const r = await setEntriesReassign('10002-1', a, b);
 
-    assert.equal(r.parts, 4, `${r.parts} statt 4 Teile gemeldet`);
-    assert.equal(r.minifigs, 1, `${r.minifigs} statt 1 Minifigur gemeldet`);
-    assert.equal(r.source_emptied, true, 'das letzte Exemplar ist weg — der Absender muss leer sein');
+    assert.equal(r.parts, 4, `${r.parts} instead of 4 parts reported`);
+    assert.equal(r.minifigs, 1, `${r.minifigs} instead of 1 minifigure reported`);
+    assert.equal(r.source_emptied, true, 'the last copy is gone — the sender must be empty');
 
     const onTarget = await db.get(
-      `SELECT (SELECT COUNT(*)::int FROM parts    WHERE user_id=$1 AND set_number='10002-1') AS teile,
-              (SELECT COUNT(*)::int FROM minifigs WHERE user_id=$1 AND set_number='10002-1') AS figuren`,
+      `SELECT (SELECT COUNT(*)::int FROM parts    WHERE user_id=$1 AND set_number='10002-1') AS parts,
+              (SELECT COUNT(*)::int FROM minifigs WHERE user_id=$1 AND set_number='10002-1') AS minifigs`,
       [b],
     );
-    assert.equal(onTarget.teile, 4);
-    assert.equal(onTarget.figuren, 1);
+    assert.equal(onTarget.parts, 4);
+    assert.equal(onTarget.minifigs, 1);
     const onSender = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND set_number='10002-1'`, [a]);
-    assert.equal(onSender.c, 0, 'beim Absender blieben Teile ohne Set zurück');
+    assert.equal(onSender.c, 0, 'parts without a set stayed behind at the sender');
   });
 
   await t.test('without contents 0 parts is the right answer, not an error', async () => {
@@ -110,16 +114,16 @@ test('move set', { concurrency: 1 }, async t => {
     const r = await setEntriesReassign('10003-1', a, b);
     assert.equal(r.parts, 0);
     assert.equal(r.minifigs, 0);
-    assert.equal(r.quantity, 1, 'das Exemplar selbst muss trotzdem gewandert sein');
+    assert.equal(r.quantity, 1, 'the copy itself must have moved anyway');
   });
 
   await t.test('if the target already has parts, nothing is copied twice', async () => {
     await createInventory('10004-1', 2, 0);
-    await holdsPart(db, b, '3000', { setNumber: '10004-1', menge: 2, colorId: 4 });
+    await holdsPart(db, b, '3000', { setNumber: '10004-1', quantity: 2, colorId: 4 });
     const r = await setEntriesReassign('10004-1', a, b);
-    assert.equal(r.parts, 0, 'Teile wurden trotz vorhandener Zeilen erneut kopiert');
+    assert.equal(r.parts, 0, 'parts were copied again although rows existed');
     const n = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND set_number='10004-1'`, [b]);
-    assert.equal(n.c, 1, 'doppelte Zeilen — die Zusammenfassung zählte die Menge zweimal');
+    assert.equal(n.c, 1, 'duplicate rows — the summary counted the quantity twice');
   });
 
   await t.test('part move leaves everything to the sender; manual parts stay even with the last copy', async () => {
@@ -132,27 +136,43 @@ test('move set', { concurrency: 1 }, async t => {
                   VALUES ($1,'10005-1',1,60,'U',NOW() - interval '2 days')`,
       [a],
     );
-    await holdsPart(db, a, '3005', { menge: 2, colorId: 4 });
-    const [erste, zweite] = (
+    await holdsPart(db, a, '3005', { quantity: 2, colorId: 4 });
+    const [first, second] = (
       await db.all("SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number='10005-1' ORDER BY id", [a])
     ).map(r => r.id);
     const z = uid =>
       db.get(
         `SELECT (SELECT COUNT(*)::int FROM sets WHERE user_id=$1 AND set_number='10005-1') AS sets,
-              (SELECT COUNT(*)::int FROM parts WHERE user_id=$1 AND set_number='10005-1') AS teile,
-              (SELECT COUNT(*)::int FROM minifigs WHERE user_id=$1 AND set_number='10005-1') AS figuren,
-              (SELECT COUNT(*)::int FROM parts WHERE user_id=$1 AND source='manual') AS manuell`,
+              (SELECT COUNT(*)::int FROM parts WHERE user_id=$1 AND set_number='10005-1') AS parts,
+              (SELECT COUNT(*)::int FROM minifigs WHERE user_id=$1 AND set_number='10005-1') AS minifigs,
+              (SELECT COUNT(*)::int FROM parts WHERE user_id=$1 AND source='manual') AS manual`,
         [uid],
       );
 
-    const r1 = await setEntriesReassign('10005-1', a, b, [erste]);
+    const r1 = await setEntriesReassign('10005-1', a, b, [first]);
     assert.equal(r1.source_emptied, false);
-    assert.deepEqual(await z(a), { sets: 1, teile: 2, figuren: 1, manuell: 1 });
-    assert.deepEqual(await z(b), { sets: 1, teile: 2, figuren: 1, manuell: 0 });
+    assert.deepEqual(await z(a), { sets: 1, parts: 2, minifigs: 1, manual: 1 });
+    assert.deepEqual(await z(b), { sets: 1, parts: 2, minifigs: 1, manual: 0 });
 
-    const r2 = await setEntriesReassign('10005-1', a, b, [zweite]);
+    const r2 = await setEntriesReassign('10005-1', a, b, [second]);
     assert.equal(r2.source_emptied, true);
-    assert.deepEqual(await z(a), { sets: 0, teile: 0, figuren: 0, manuell: 1 });
+    assert.deepEqual(await z(a), { sets: 0, parts: 0, minifigs: 0, manual: 1 });
+  });
+
+  await t.test("a moved purchase joins the target's row of the same day", async () => {
+    const sn = '10006-1';
+    for (const u of [a, b]) {
+      await holdsSet(db, u, sn, 0);
+      await db.run(
+        `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition) VALUES ($1,$2,1,50,'N')`,
+        [u, sn],
+      );
+    }
+    await setEntriesReassign(sn, a, b);
+    assert.deepEqual(
+      await db.all('SELECT quantity FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [b, sn]),
+      [{ quantity: 2 }],
+    );
   });
 
   await db.pool.end().catch(() => {});

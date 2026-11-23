@@ -13,7 +13,7 @@ import org.junit.Test
  * briefly holds the old token again after discarding.
  *
  * Counter-check:
- *   in TokenLimit.spiegle() the check `roh(jetzt()) == r` removed → red
+ *   in TokenLimit.spiegle() the check `raw(now()) == r` removed → red
  *   “an outdated disk value does not turn the memory back” (was: token-zwischen).
  */
 class MirrorFollowUpTest {
@@ -21,31 +21,31 @@ class MirrorFollowUpTest {
     @Test
     fun `an outdated disk value does not turn the memory back`() = runTest {
         val limit = TokenLimit()
-        val strom = Channel<String>(Channel.UNLIMITED)
-        var platte = "token-alt"
-        var speicher: String? = null
-        var gelesen = 0
-        val spiegel = launch {
-            limit.mirror(strom.receiveAsFlow(), { platte }, { it }, { r: String, melde: suspend (String) -> Unit -> melde(r) },
-                setze = { speicher = it }, gelesen = { gelesen++ })
+        val stream = Channel<String>(Channel.UNLIMITED)
+        var plate = "token-alt"
+        var memory: String? = null
+        var onRead = 0
+        val mirror = launch {
+            limit.mirror(stream.receiveAsFlow(), { plate }, { it }, { r: String, report: suspend (String) -> Unit -> report(r) },
+                set = { memory = it }, onRead = { onRead++ })
         }
-        strom.send("token-alt")
+        stream.send("token-alt")
         testScheduler.runCurrent()
-        assertEquals("Der erste Stand der Platte kommt an", "token-alt", speicher)
-        assertEquals(1, gelesen)
+        assertEquals("The first state of the disk arrives", "token-alt", memory)
+        assertEquals(1, onRead)
 
         // Discard: memory first, then the disk; the disk's notification comes too late.
-        limit.schreibe { speicher = ""; platte = "" }
-        strom.send("token-zwischen")
+        limit.write { memory = ""; plate = "" }
+        stream.send("token-zwischen")
         testScheduler.runCurrent()
-        assertEquals("ein überholter Plattenwert dreht den Speicher nicht zurück", "", speicher)
+        assertEquals("an outdated disk value does not turn the memory back", "", memory)
 
         // A change that did not come via the writes counts.
-        platte = "token-fremd"
-        strom.send("token-fremd")
+        plate = "token-fremd"
+        stream.send("token-fremd")
         testScheduler.runCurrent()
-        assertEquals("token-fremd", speicher)
-        assertEquals("gelesen zählt nur den ersten Stand", 1, gelesen)
-        spiegel.cancel()
+        assertEquals("token-fremd", memory)
+        assertEquals("read counts only the first state", 1, onRead)
+        mirror.cancel()
     }
 }

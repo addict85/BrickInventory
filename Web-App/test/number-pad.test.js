@@ -15,7 +15,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /** index.html plus all frontend building blocks — NOT the built bundle. */
-function quellen() {
+function sources() {
   const js = fs
     .readdirSync(path.join(ROOT, 'public/js'))
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')
@@ -24,30 +24,30 @@ function quellen() {
 }
 
 function numberFields() {
-  const treffer = [];
-  for (const [p, s] of quellen()) {
+  const hits = [];
+  for (const [p, s] of sources()) {
     for (const m of s.matchAll(/<input\b[^>]*>/g)) {
       const tag = m[0];
       if (!/type=["']?number|inputmode=["']?decimal/.test(tag)) continue;
-      treffer.push({ datei: p, zeile: s.slice(0, m.index).split('\n').length, tag });
+      hits.push({ file: p, row: s.slice(0, m.index).split('\n').length, tag });
     }
   }
-  return treffer;
+  return hits;
 }
 
 test('1. every type="number" carries an inputmode', () => {
-  const felder = numberFields();
+  const fields = numberFields();
   // Self-proof: does the search find anything at all? Without that an
   // empty list would be green forever without ever having looked at a field.
-  assert.ok(felder.length >= 20, `Nur ${felder.length} Zahlenfelder gefunden — Muster veraltet?`);
+  assert.ok(fields.length >= 20, `Only ${fields.length} number fields found — pattern outdated?`);
 
-  const ohne = felder.filter(f => !/inputmode=/i.test(f.tag)).map(f => `${f.datei}:${f.zeile}`);
+  const without = fields.filter(f => !/inputmode=/i.test(f.tag)).map(f => `${f.file}:${f.row}`);
   assert.deepEqual(
-    ohne,
+    without,
     [],
-    'Diese Zahlenfelder sagen dem Handy nicht, welche Tastatur es zeigen soll:\n  ' +
-      ohne.join('\n  ') +
-      '\n`numeric` für ganze Zahlen, `decimal` für alles mit Komma.',
+    'These number fields do not tell the phone which keyboard to show:\n  ' +
+      without.join('\n  ') +
+      '\n`numeric` for whole numbers, `decimal` for anything with a decimal comma.',
   );
 });
 
@@ -55,26 +55,24 @@ test('2. prices and thresholds get `decimal`, not `numeric`', () => {
   // `numeric` is a pure digit pad — without a comma. For a price field
   // that means: one can type 12, but not 12.50. The difference only becomes
   // noticeable when somebody wants to enter an amount with cents.
-  const falsch = [];
+  const wrong = [];
   for (const f of numberFields()) {
     const commaField = /step=["']?0?\.\d/.test(f.tag);
-    const modus = (f.tag.match(/inputmode=["']?(\w+)/i) || [])[1];
-    if (commaField && modus !== 'decimal') falsch.push(`${f.datei}:${f.zeile} (${modus})`);
+    const mode = (f.tag.match(/inputmode=["']?(\w+)/i) || [])[1];
+    if (commaField && mode !== 'decimal') wrong.push(`${f.file}:${f.row} (${mode})`);
   }
   assert.deepEqual(
-    falsch,
+    wrong,
     [],
-    'Diese Felder erlauben Kommastellen (step=0.01), zeigen aber einen reinen ' +
-      'Ziffernblock:\n  ' +
-      falsch.join('\n  '),
+    'These fields allow decimals (step=0.01) but show a pure ' + 'digit pad:\n  ' + wrong.join('\n  '),
   );
 });
 
 test('3. money fields are text fields: type="number" discards "149,95"', () => {
   // Depending on the language, Chrome delivers "" or 149 for a number field with a comma;
   // it is read with readAmount() (money-input.test.js checks the behavior).
-  const falsch = numberFields()
+  const wrong = numberFields()
     .filter(f => /inputmode=["']?decimal/i.test(f.tag) && /type=["']?number/.test(f.tag))
-    .map(f => `${f.datei}:${f.zeile}`);
-  assert.deepEqual(falsch, []);
+    .map(f => `${f.file}:${f.row}`);
+  assert.deepEqual(wrong, []);
 });

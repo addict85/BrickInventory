@@ -20,7 +20,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test("the app's currency parameter does NOT override the user setting", { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const USERNAME = 'currency-param-test';
   const SET = '10307-1';
@@ -44,10 +44,10 @@ test("the app's currency parameter does NOT override the user setting", { concur
     [SET],
   );
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid, username: USERNAME, isAdmin: false }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid, username: USERNAME, isAdmin: false }, t });
 
   const hole = async query => {
-    const r = await fetch(`${base}/api/v1/sets/${SET}/price${query}`);
+    const r = await fetch(`${base}/api/v2/sets/${SET}/price${query}`);
     assert.equal(r.status, 200);
     return r.json();
   };
@@ -56,9 +56,9 @@ test("the app's currency parameter does NOT override the user setting", { concur
     // The error case from before: the app sends its start value EUR along. The
     // response must nevertheless be the CHF price of the user setting.
     let j = await hole('?currency=EUR');
-    assert.equal(j.currency, 'CHF', 'die Antwortwährung ist die Nutzereinstellung, nicht der Parameter');
-    assert.equal(parseFloat(j.avg_price), 629.9, 'der Preis kommt aus dem Cache der Nutzereinstellung');
-    assert.ok(!j.no_price, 'kein no_price — genau das war die leere Kachel');
+    assert.equal(j.currency, 'CHF', "the response currency is the user's setting, not the parameter");
+    assert.equal(parseFloat(j.avg_price), 629.9, "the price comes from the cache of the user's setting");
+    assert.ok(!j.no_price, 'no no_price — exactly that was the empty tile');
 
     // Without a parameter (web app, future app versions): identical result.
     j = await hole('');

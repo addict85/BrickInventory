@@ -3,7 +3,7 @@
  *
  * ── Counter-checks (performed, results copied down) ─────────────────────────
  *
- *   A  `stempleAssetsGecacht(...)` removed from src/profile/indexHtml.ts
+ *   A  `stampAssetsCached(...)` removed from src/profile/indexHtml.ts
  *      → “the renderer really stamps" red
  *   B  the size omitted from the stamp (mtime only)
  *      → “a changed file gets a new address" red — but only at
@@ -15,6 +15,8 @@
  *        the same millisecond. The case passed by chance. Since then there is
  *        a pause in between — the counter-check repaired the check,
  *        not the other way round.
+ *   D  `return stampAssetsCached(…)` in startPageHtml() replaced by `return out`
+ *      → “the renderer really stamps” red (runs the renderer with a stub context).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,12 +27,12 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { stempleAssets, fileStamp } = _req('src/infra/assetStempel.js');
+const { stampAssets, fileStamp } = _req('src/infra/assetStamp.js');
 
 /** A throwaway directory with a file in it. */
-function build(inhalt) {
+function build(content) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stempel-'));
-  fs.writeFileSync(path.join(dir, 'a.css'), inhalt);
+  fs.writeFileSync(path.join(dir, 'a.css'), content);
   return dir;
 }
 const HTML = '<link rel="stylesheet" href="/a.css?v=alt">';
@@ -39,16 +41,16 @@ const stampFrom = s => (s.match(/\?v=([^"]*)/) || [])[1];
 test('a changed file gets a new address', () => {
   const dir = build('.a{color:red}');
   try {
-    const vorher = stampFrom(stempleAssets(HTML, dir));
-    assert.ok(vorher && vorher !== 'alt', `Kein Stempel gesetzt: ${vorher}`);
+    const prior = stampFrom(stampAssets(HTML, dir));
+    assert.ok(prior && prior !== 'alt', `No stamp set: ${prior}`);
 
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}');
-    const nachher = stampFrom(stempleAssets(HTML, dir));
+    const later = stampFrom(stampAssets(HTML, dir));
     assert.notEqual(
-      nachher,
-      vorher,
-      'Nach dem Ändern steht dieselbe Adresse da — dann behält jeder Browser ' +
-        'seine alte Kopie, bis zu sieben Tage lang. Genau das war Marcos Befund.',
+      later,
+      prior,
+      'After the change the same address is there — then every browser keeps ' +
+        'its old copy for up to seven days. That was exactly Marco’s finding.',
     );
 
     // And the case that justifies the SIZE in the stamp: same mtime,
@@ -57,10 +59,10 @@ test('a changed file gets a new address', () => {
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}/*x*/');
     fs.utimesSync(path.join(dir, 'a.css'), st.atime, st.mtime);
     assert.notEqual(
-      stampFrom(stempleAssets(HTML, dir)),
-      nachher,
-      'Bei gleicher Änderungszeit, aber anderer Grösse bleibt die Adresse ' +
-        'gleich — dann fehlt die Grösse im Stempel.',
+      stampFrom(stampAssets(HTML, dir)),
+      later,
+      'With the same modification time but a different size the address stays ' +
+        'the same — then the size is missing in the stamp.',
     );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -75,14 +77,14 @@ test('an unchanged file keeps its address', async () => {
   // counter-check C, not reflection.
   const dir = build('.a{color:red}');
   try {
-    const a = stampFrom(stempleAssets(HTML, dir));
+    const a = stampFrom(stampAssets(HTML, dir));
     await new Promise(r => setTimeout(r, 20));
-    const b = stampFrom(stempleAssets(HTML, dir));
+    const b = stampFrom(stampAssets(HTML, dir));
     assert.equal(
       a,
       b,
-      'Zwei Aufrufe liefern verschiedene Adressen, obwohl sich nichts geändert ' +
-        'hat — dann lädt der Browser bei jedem Aufruf alles neu.',
+      'Two calls deliver different addresses although nothing has changed ' +
+        '— then the browser reloads everything on every call.',
     );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -93,11 +95,11 @@ test('a missing file leaves the existing value in place', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stempel-leer-'));
   try {
     assert.equal(
-      stempleAssets(HTML, dir),
+      stampAssets(HTML, dir),
       HTML,
-      'Für eine Datei, die es nicht gibt, wurde etwas gestempelt — eine ' +
-        'fehlende Datei ist ein anderes Problem und darf die Adressen der ' +
-        'übrigen nicht verwackeln.',
+      'Something was stamped for a file that does not exist — a ' +
+        'missing file is a different problem and must not shake the addresses of the ' +
+        'others.',
     );
     assert.equal(fileStamp(path.join(dir, 'gibtsnicht.css')), null);
   } finally {
@@ -108,34 +110,32 @@ test('a missing file leaves the existing value in place', () => {
 test('a reference without ?v= stays untouched', () => {
   const dir = build('.a{}');
   try {
-    const roh = '<link href="/a.css"><script src="/b.js"></script>';
-    assert.equal(stempleAssets(roh, dir), roh, 'Ein bewusst unversionierter Verweis wurde angefasst.');
+    const raw = '<link href="/a.css"><script src="/b.js"></script>';
+    assert.equal(stampAssets(raw, dir), raw, 'A deliberately unversioned reference was touched.');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('the renderer really stamps', () => {
-  // A rule nobody calls is the most expensive way of doing nothing —
-  // and the cases above would stay green because they call the function
-  // directly. The same gap as with sitzung-beruehrung and
-  // sitzung-leerlauf, closed there with the same rationale.
-  const idx = fs.readFileSync(path.join(ROOT, 'src/profile/indexHtml.ts'), 'utf8');
-  assert.match(
-    idx,
-    /return stempleAssetsGecacht\(out, PUBLIC_DIR\)/,
-    'src/profile/indexHtml.ts stempelt die Assets nicht mehr — dann gilt wieder die ' +
-      'Zahl aus package.json, und die steht still, wenn niemand den Bumper läuft.',
-  );
-  // LAST, after the language swap: the language file itself carries a `?v=`.
-  //
-  // The anchor is `lang !== ` and NOT `/locales/`. The first attempt took
-  // the latter — and hit a comment further up (position 3150 instead of
-  // 4882), making the case red although the order was right. A
-  // check that hangs on the wrong word measures the wrong thing.
-  assert.ok(
-    idx.indexOf('stempleAssetsGecacht(out') > idx.indexOf('lang !== '),
-    'Gestempelt wird vor dem Austausch der Sprachdatei — dann hängt der ' +
-      'Stempel der deutschen Datei an der englischen.',
-  );
+test('the renderer really stamps', async () => {
+  // A rule nobody calls does nothing; the start page must carry the stamps of the files it names —
+  // and the stamp of the language file it serves, not of the German one it replaced.
+  // Straight from dist/: _req binds area functions to the test services, here k is the stub.
+  const { startPageHtml } = require(path.join(ROOT, 'dist', 'src/profile/indexHtml.js'));
+  const k = {
+    config: { production: false },
+    clock: { now: () => Date.now() },
+    settings: {
+      themeFor: async () => ({ own: 'classic' }),
+      globalValue: async () => 'classic',
+      userSettings: async () => ({ language: 'en' }),
+    },
+  };
+  const out = await startPageHtml(k, 1);
+  const pub = path.join(ROOT, 'public');
+  const styles = fileStamp(path.join(pub, 'styles.css'));
+  const en = fileStamp(path.join(pub, 'locales', 'en.js'));
+  assert.ok(styles && en, 'the stamp of the files could not be computed');
+  assert.ok(out.includes(`/styles.css?v=${styles}`), 'the start page does not carry the stamp of styles.css');
+  assert.ok(out.includes(`/locales/en.js?v=${en}`), 'the English language file carries a foreign stamp');
 });

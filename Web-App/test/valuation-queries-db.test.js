@@ -19,19 +19,19 @@ const N = 20; // enough so that „je Stück" can be told apart from „einmalig
 const NR = i => `bwt-teil-${i}`;
 
 // Record all queries of this run.
-const gesehen = [];
+const seen = [];
 let count = false;
 const altQuery = db.pool.query.bind(db.pool);
 db.pool.query = (text, ...rest) => {
   if (count) {
     const sql = String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' ');
-    gesehen.push(sql);
+    seen.push(sql);
   }
   return altQuery(text, ...rest);
 };
-const howOften = muster => gesehen.filter(q => muster.test(q)).length;
+const howOften = pattern => seen.filter(q => pattern.test(q)).length;
 
-async function aufraeumen() {
+async function cleanUp() {
   await db.run('DELETE FROM parts WHERE user_id = $1', [UID]).catch(() => {});
   await db.run('DELETE FROM part_price_cache WHERE part_number LIKE $1', ['bwt-teil-%']).catch(() => {});
   await db.run("DELETE FROM bl_mapping WHERE type='part' AND rb_id LIKE $1", ['bwt-teil-%']).catch(() => {});
@@ -46,12 +46,12 @@ test('parts valuation: no lookup per part', async t => {
   }
 
   try {
-    await aufraeumen();
+    await cleanUp();
     await db.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'bwt_messnutzer', 'x')", [UID]);
     for (let i = 0; i < N; i++) {
       // Since migration 0035 condition and price stand in the acquisition, the
       // piece count since 0038 — holdsPart() creates both.
-      await holdsPart(db, UID, NR(i), { menge: 1, colorId: 4 });
+      await holdsPart(db, UID, NR(i), { quantity: 1, colorId: 4 });
       // The production case: the backfill job has looked it up. A row with an
       // EMPTY bl_id means „no differing number" (migration 0037) —
       // so the price cache key stays the Rebrickable number.
@@ -61,11 +61,11 @@ test('parts valuation: no lookup per part', async t => {
       );
       // Warm price cache — the normal case. Without it one measures the
       // BrickLink fetch along, which no longer exists on the second call.
-      for (const zustand of ['N', 'U'])
+      for (const condition of ['N', 'U'])
         await db.run(
           `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
            VALUES ($1, 4, $2, 'EUR', 1.5, 1.4, NOW()) ON CONFLICT DO NOTHING`,
-          [NR(i), zustand],
+          [NR(i), condition],
         );
     }
     // Color table: rb_colors is remembered as a WHOLE. Without a row for color 4
@@ -77,12 +77,12 @@ test('parts valuation: no lookup per part', async t => {
       )
       .catch(() => {});
 
-    gesehen.length = 0;
+    seen.length = 0;
     count = true;
-    const ergebnis = await fc.valueParts(UID, [UID]);
+    const outcome = await fc.valueParts(UID, [UID]);
     count = false;
 
-    assert.equal(ergebnis.parts.length, N, 'alle Teile bewertet');
+    assert.equal(outcome.parts.length, N, 'all parts valued');
 
     // ── 1. No SINGLE query per part any more ────────────────────────────────
     //
@@ -92,47 +92,47 @@ test('parts valuation: no lookup per part', async t => {
     assert.equal(
       howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       0,
-      'die Zuordnung wurde einzeln gefragt — das Vorladen (loadBlNumbersBefore) greift nicht',
+      'the mapping was queried one by one — the preloading (loadBlNumbersBefore) does not work',
     );
 
     // ── 2. Instead exactly one collective query ───────────────────────────
     assert.equal(
       howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id = ANY\(\$2\)/),
       1,
-      'die Sammelabfrage auf bl_mapping fehlt oder lief mehrfach',
+      'the batch query on bl_mapping is missing or ran several times',
     );
 
     // ── 3. The color table at most once ────────────────────────────────
     // At most, not exactly: a previous test in the same process may already
     // have loaded it, and then zero is the right number.
-    const farben = howOften(/FROM rb_colors/);
-    assert.ok(farben <= 1, `rb_colors wurde ${farben}x gefragt — erwartet höchstens 1x für alle Teile`);
+    const colors = howOften(/FROM rb_colors/);
+    assert.ok(colors <= 1, `rb_colors was queried ${colors}x — expected at most 1x for all parts`);
 
     // ── 4. The total stays below two round trips per part ───────────────
     // Counted: 1.1 per part (the price cache row plus a few one-off ones).
     // The limit stands at 2 so that it does not break on every harmless change
     // — but far below the 4.1 from before.
     assert.ok(
-      gesehen.length < 2 * N,
-      `${gesehen.length} Abfragen für ${N} Teile (${(gesehen.length / N).toFixed(1)} je Teil) — erwartet unter 2 je Teil`,
+      seen.length < 2 * N,
+      `${seen.length} queries for ${N} parts (${(seen.length / N).toFixed(1)} per part) — expected below 2 per part`,
     );
 
     // ── COUNTER-CHECK ────────────────────────────────────────────────────────
     // Would the counter see the single queries at all? A part that was NOT
     // preloaded must trigger both single paths — otherwise the
     // assertions above check nothing.
-    gesehen.length = 0;
+    seen.length = 0;
     count = true;
     await fc.resolveBlPartNumber('bwt-teil-gibtesnicht');
     count = false;
     assert.equal(
       howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       1,
-      'Gegenprobe: die Einzelabfrage auf bl_mapping wurde nicht mitgezählt',
+      'counter-check: the single query on bl_mapping was not counted',
     );
   } finally {
     db.pool.query = altQuery;
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end().catch(() => {});
   }
 });

@@ -19,23 +19,23 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { openUi, sicht } = require('./helpers/ui');
+const { openUi, view } = require('./helpers/ui');
 
 /** The button as the opened “App” view shows it. */
-async function knopf() {
-  const o = await openUi({ '/v1/settings/tokens': { success: true, tokens: [] } });
+async function button() {
+  const o = await openUi({ '/v2/settings/tokens': { success: true, tokens: [] } });
   try {
-    await sicht(o.w, 'app');
+    await view(o.w, 'app');
     const a = o.d.querySelector('a.apk-btn');
     const qr = o.d.getElementById('qr-container');
-    assert.ok(a && qr, 'Download-Knopf oder QR-Code fehlt in der Sicht „App“');
-    const sichtbar = el => {
+    assert.ok(a && qr, 'Download button or QR code missing in the „App“ view');
+    const visible = el => {
       for (let e = el; e; e = e.parentElement) if (e.style?.display === 'none' || e.hidden) return false;
       return true;
     };
     return {
       href: a.getAttribute('href'),
-      sichtbar: sichtbar(a),
+      visible: visible(a),
       vorQr: !!(a.compareDocumentPosition(qr) & o.w.Node.DOCUMENT_POSITION_FOLLOWING),
       svg: !!a.querySelector('svg'),
       markup: a.outerHTML,
@@ -46,34 +46,38 @@ async function knopf() {
 }
 
 test('1. the button is in the "app" view, before the QR code, without a foreign brand mark', async () => {
-  const k = await knopf();
-  assert.match(k.href, /^https:\/\/github\.com\//, 'Der Knopf zeigt nicht auf GitHub — dort liegt das APK.');
-  assert.ok(k.sichtbar, 'Der Knopf ist in der geöffneten Sicht nicht zu sehen');
+  const k = await button();
+  assert.match(
+    k.href,
+    /^https:\/\/github\.com\//,
+    'The button does not point to GitHub — that is where the APK lives.',
+  );
+  assert.ok(k.visible, 'The button is not visible in the opened view');
   // First get the app, then link the device; the other way round there is nothing to scan yet.
-  assert.ok(k.vorQr, 'Der Knopf steht hinter dem QR-Code');
+  assert.ok(k.vorQr, 'The button is behind the QR code');
   // Google's Android robot is bound by trademark law; the icon is deliberately our own.
-  assert.ok(k.svg, 'Das Symbol kommt nicht als eigenes SVG mit.');
+  assert.ok(k.svg, 'The icon does not come along as its own SVG.');
   assert.doesNotMatch(k.markup, /androidicons|google.*android.*logo|gstatic|play\.google\.com\/intl/i);
 });
 
 test('2. the same address as in the workflow', async () => {
-  const adresse = (await knopf()).href;
+  const address = (await button()).href;
   // ── From the workflow: fixed link and the name under which the APK is created ──
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-release.yml'), 'utf8');
   const link = yml.match(/^\s*LINK="https:\/\/github\.com\/\$GITHUB_REPOSITORY\/(\S+)"/m)?.[1];
-  assert.ok(link, 'Im Workflow ist kein LINK mehr zu finden — Muster veraltet?');
+  assert.ok(link, 'No LINK found in the workflow anymore — pattern outdated?');
   const apkName = yml.match(/^\s*APK=.*\/([^/\s]+\.apk)/m)?.[1];
-  assert.ok(apkName, 'Im Workflow ist kein APK-Dateiname mehr zu finden — Muster veraltet?');
-  assert.match(yml, /gh release create "\$QUELLE" [^\n]*"\$APK"/, 'Die Release wird ohne $APK angelegt.');
+  assert.ok(apkName, 'No APK file name found in the workflow anymore — pattern outdated?');
+  assert.match(yml, /gh release create "\$QUELLE" [^\n]*"\$APK"/, 'The release is created without $APK.');
 
   assert.equal(
-    adresse,
+    address,
     `https://github.com/addict85/BrickInventory/${link}`,
-    'Knopf und fester Link des Workflows zeigen auf verschiedene Orte.',
+    'The button and the fixed link of the workflow point to different places.',
   );
   assert.ok(
-    adresse.endsWith(`/releases/latest/download/${apkName}`),
-    `Der Knopf zeigt auf "${adresse}", die Release trägt das APK aber als "${apkName}". ` +
-      'Ein Klick endete auf der 404-Seite von GitHub.',
+    address.endsWith(`/releases/latest/download/${apkName}`),
+    `The button points to "${address}", but the release carries the APK as "${apkName}". ` +
+      'A click would end on the GitHub 404 page.',
   );
 });

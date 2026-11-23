@@ -4,7 +4,7 @@
  * to another place of the API, `?…` appended own parameters.
  *
  * Checked twice: GET /sets/:setNumber/parts-list rejects such numbers at the
- * entrance (contract: PATH), and behind it holeSetTeile() builds the address with
+ * entrance (contract: PATH), and behind it fetchSetParts() builds the address with
  * intercepted https.get.
  *
  * Counter-checks (measured on 30.10.2026):
@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
 const db = testData();
 
@@ -33,7 +33,7 @@ test('pathSegment', () => {
   const { pathSegment, numbersList } = _req('src/infra/foreignAddresses.js');
   assert.equal(pathSegment('10294-1'), '10294-1');
   assert.equal(pathSegment('x/../y?z'), 'x%2F..%2Fy%3Fz');
-  for (const p of ['', '.', '..', '...']) assert.throws(() => pathSegment(p), /Pfadsegment/, `„${p}“ geht durch`);
+  for (const p of ['', '.', '..', '...']) assert.throws(() => pathSegment(p), /Pfadsegment/, `„${p}“ gets through`);
   assert.equal(numbersList(['3001', 'a&b=c', '3,4']), '3001,a%26b%3Dc,3%2C4');
 });
 
@@ -41,7 +41,7 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {
@@ -53,14 +53,14 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
     }
   }
   const S = _req('src/settings/settings.js');
-  const vorher = await S.getGlobalSetting('rebrickable_api_key');
+  const prior = await S.getGlobalSetting('rebrickable_api_key');
   await S.setGlobalSetting('rebrickable_api_key', 'testschluessel-pfade');
-  const echt = https.get;
-  const abgerufen = [];
+  const original = https.get;
+  const fetched = [];
   /** @type {any} */ (https).get = (url, opt, cb) => {
     // httpsGetRobust calls with options instead of an address.
-    abgerufen.push(typeof url === 'string' ? url : `https://${url.hostname}${url.path}`);
-    const fertig = typeof opt === 'function' ? opt : cb;
+    fetched.push(typeof url === 'string' ? url : `https://${url.hostname}${url.path}`);
+    const done = typeof opt === 'function' ? opt : cb;
     const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
@@ -71,38 +71,38 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
       r.headers = {};
       r.resume = () => {};
       r.setEncoding = () => {};
-      fertig(r);
+      done(r);
       setImmediate(() => r.emit('end'));
     });
     return req;
   };
   t.after(async () => {
-    https.get = echt;
-    if (vorher) await S.setGlobalSetting('rebrickable_api_key', vorher);
+    https.get = original;
+    if (prior) await S.setGlobalSetting('rebrickable_api_key', prior);
     else await S.deleteGlobalValues('rebrickable_api_key');
     await db.pool.end().catch(() => {});
   });
 
   const { base } = routerServer(_req, {
-    sitzung: { userId: 1 },
-    apiNutzer: { user_id: 1, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    session: { userId: 1 },
+    apiAccount: { user_id: 1, is_admin: 0 },
+    routes: { '/api/v2': 'routes/api/index.js' },
     t,
   });
-  let geprueft = 0;
-  const { holeSetTeile } = require('./helpers/sources').testServices().externalSources.quellen;
-  for (const roh of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {
-    const r = await fetch(`${base}/api/v1/sets/${roh}/parts-list`);
-    assert.equal(r.status, 400, `${roh}: kommt am Eingang durch`);
-    abgerufen.length = 0;
-    await holeSetTeile(decodeURIComponent(roh));
-    const api = abgerufen.filter(u => u.includes('/api/v3/'));
+  let checked = 0;
+  const { fetchSetParts } = require('./helpers/sources').testServices().externalSources.sources;
+  for (const raw of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {
+    const r = await fetch(`${base}/api/v2/sets/${raw}/parts-list`);
+    assert.equal(r.status, 400, `${raw}: gets through at the entrance`);
+    fetched.length = 0;
+    await fetchSetParts(decodeURIComponent(raw));
+    const api = fetched.filter(u => u.includes('/api/v3/'));
     for (const u of api) {
-      geprueft++;
+      checked++;
       const p = new URL(u);
-      assert.match(p.pathname, /^\/api\/v3\/lego\/sets\/[^/]+\/parts\/$/, `${roh}: ${u} verlässt das Pfadsegment`);
-      assert.deepEqual([...p.searchParams.keys()].sort(), ['inc_part_details', 'page_size'], `${roh}: ${u}`);
+      assert.match(p.pathname, /^\/api\/v3\/lego\/sets\/[^/]+\/parts\/$/, `${raw}: ${u} leaves the path segment`);
+      assert.deepEqual([...p.searchParams.keys()].sort(), ['inc_part_details', 'page_size'], `${raw}: ${u}`);
     }
   }
-  assert.ok(geprueft >= 2, `nur ${geprueft} Abrufe gesehen — dann prüft die Schleife nichts`);
+  assert.ok(checked >= 2, `only ${checked} fetches seen — then the loop checks nothing`);
 });

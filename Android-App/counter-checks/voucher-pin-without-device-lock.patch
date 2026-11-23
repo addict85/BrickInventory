@@ -1,0 +1,19 @@
+Gegenprobe: Die Gutschein-PIN wird ohne Gerätesperre aufgedeckt
+Modul: app
+Test: ch.brickinventoryapp.app.FlowTest
+Rot: without confirming the device lock the PIN stays hidden
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
+@@ -123,9 +123,7 @@
+                 pinVisible = g.id in condition.pinVisible,
+                 events = VoucherEvents(
+                     // Hiding needs no confirmation, revealing does.
+-                    switchPin = {
+-                        if (g.id in condition.pinVisible) actions.switchPin(g.id) else guarded { actions.switchPin(g.id) }
+-                    },
++                    switchPin = { actions.switchPin(g.id) },
+                     edit = { guarded { actions.edit(g.id) } },
+                     delete = { guarded { actions.delete(g.id) } },
+                     openPdf = { guarded { actions.openPdf(g.id) } },

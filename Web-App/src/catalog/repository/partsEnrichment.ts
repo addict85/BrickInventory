@@ -27,12 +27,12 @@ export function setPartsCatalog(db: DbInterface, setNumber: string) {
 export function blMappings(db: DbInterface, partNumbers: string[]) {
   return db.all<{ rb_id: string; bl_id: string | null }>(
     `SELECT rb_id, bl_id FROM bl_mapping
-     WHERE art = 'part' AND rb_id = ANY($1::text[])`,
+     WHERE type = 'part' AND rb_id = ANY($1::text[])`,
     [partNumbers],
   );
 }
 
-export async function minifigsInSetkatalog(db: DbInterface, setNumber: string): Promise<number> {
+export async function minifigsInSetCatalog(db: DbInterface, setNumber: string): Promise<number> {
   const r = await db.get<{ c: string }>('SELECT COUNT(*) AS c FROM set_minifigs_catalog WHERE set_number = $1', [
     setNumber,
   ]);
@@ -42,7 +42,7 @@ export async function minifigsInSetkatalog(db: DbInterface, setNumber: string): 
 export type ImageRequest = { id: string; color_id: number; image_url: string; kind: 'part' | 'fig' };
 
 export async function imagesWithoutFile(db: DbInterface, setNumber: string): Promise<ImageRequest[]> {
-  const [teile, figuren] = await Promise.all([
+  const [parts, minifigs] = await Promise.all([
     db.all<ImageRequest>(
       `SELECT part_number AS id, color_id, image_url, 'part' AS kind FROM set_parts_catalog
        WHERE set_number = $1 AND image_url IS NOT NULL AND image_local IS NULL`,
@@ -54,7 +54,7 @@ export async function imagesWithoutFile(db: DbInterface, setNumber: string): Pro
       [setNumber],
     ),
   ]);
-  return [...teile, ...figuren];
+  return [...parts, ...minifigs];
 }
 
 export function minifigsOfSets(db: DbInterface, setNumber: string) {
@@ -64,12 +64,12 @@ export function minifigsOfSets(db: DbInterface, setNumber: string) {
   );
 }
 
-export function inventoriesTheMinifigs(db: DbInterface, figurnummern: string[]) {
+export function inventoriesTheMinifigs(db: DbInterface, minifigNumbers: string[]) {
   return db.all<{ set_num: string; id: number }>(
     `SELECT set_num, id FROM rb_inventories
      WHERE set_num = ANY($1::text[])
      ORDER BY version DESC`,
-    [figurnummern],
+    [minifigNumbers],
   );
 }
 
@@ -93,8 +93,8 @@ export function localImagesWithAddress(db: DbInterface) {
 /** An unrecoverable image is cleared here: the UIs fall back
  * to the CDN address. */
 export const CATALOGS_WITH_IMAGE = ['part_color_catalog', 'minifigs_catalog', 'set_catalog'] as const;
-export function forgetLocalImage(db: DbInterface, katalog: (typeof CATALOGS_WITH_IMAGE)[number], imageLocal: string) {
-  return db.run(`UPDATE ${katalog} SET image_local=NULL WHERE image_local=$1`, [imageLocal]);
+export function forgetLocalImage(db: DbInterface, catalog: (typeof CATALOGS_WITH_IMAGE)[number], imageLocal: string) {
+  return db.run(`UPDATE ${catalog} SET image_local=NULL WHERE image_local=$1`, [imageLocal]);
 }
 
 /** Locking and releasing must run on the same session; via the pool

@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.ui.components
 
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -11,16 +9,16 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.MaterialTheme
@@ -32,13 +30,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.skeletonTone
 
 /**
@@ -48,12 +48,12 @@ import ch.brickinventoryapp.ui.theme.skeletonTone
  */
 @Composable
 fun SkeletonRaster(
-    spalten: GridCells,
-    kachelHoehe: Dp,
+    columns: GridCells,
+    tileHeight: Dp,
     modifier: Modifier = Modifier,
-    anzahl: Int = 12,
-    innenabstand: PaddingValues = PaddingValues(Abstaende.mittel),
-    abstand: Dp = 10.dp,
+    count: Int = 12,
+    padding: PaddingValues = PaddingValues(Spacing.medium),
+    spacing: Dp = 10.dp,
     /** A row across the full width up front, where the list shows key figures (gallery). */
     headerRow: Boolean = false,
     /**
@@ -62,42 +62,42 @@ fun SkeletonRaster(
      */
     imageRatio: Float? = null,
 ) {
-    val laedt = stringResource(R.string.common_loading)
+    val loading = stringResource(R.string.common_loading)
     // One shimmer for all tiles: if it runs across all of them together, it reads as one
     // surface loading. The tone comes from skeletonTone (Theme.kt), so the tiles
     // stand out from the background in every theme.
-    val weg by rememberInfiniteTransition(label = "skelett").animateFloat(
+    val gone by rememberInfiniteTransition(label = "skelett").animateFloat(
         initialValue = -600f, targetValue = 1800f,
         animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart),
         label = "skelett-schimmer",
     )
-    val grund = skeletonTone(MaterialTheme.colorScheme)
+    val reason = skeletonTone(MaterialTheme.colorScheme)
     val light = skeletonTone(MaterialTheme.colorScheme, 0.04f)
     // Without motion, a calm surface instead of the traveling light.
-    val schimmer = if (movementReduced()) SolidColor(grund) else Brush.linearGradient(listOf(grund, light, grund),
-        start = Offset(weg, 0f), end = Offset(weg + 600f, 600f))
+    val shimmer = if (movementReduced()) SolidColor(reason) else Brush.linearGradient(listOf(reason, light, reason),
+        start = Offset(gone, 0f), end = Offset(gone + 600f, 600f))
     LazyVerticalGrid(
-        columns = spalten,
-        modifier = modifier.fillMaxSize().semantics { contentDescription = laedt; liveRegion = LiveRegionMode.Polite },
-        contentPadding = innenabstand,
-        horizontalArrangement = Arrangement.spacedBy(abstand),
-        verticalArrangement = Arrangement.spacedBy(abstand),
+        columns = columns,
+        modifier = modifier.fillMaxSize().semantics { contentDescription = loading; liveRegion = LiveRegionMode.Polite },
+        contentPadding = padding,
+        horizontalArrangement = Arrangement.spacedBy(spacing),
+        verticalArrangement = Arrangement.spacedBy(spacing),
         userScrollEnabled = false,
     ) {
         if (headerRow) item(key = "skelett-kopf", span = { GridItemSpan(maxLineSpan) }) {
-            Box(Modifier.fillMaxWidth().height(SKELETON_HEADER).clip(Formen.karte).background(schimmer))
+            Box(Modifier.fillMaxWidth().height(SKELETON_HEADER).clip(Shapes.card).background(shimmer))
         }
-        items(anzahl, key = { "skelett-$it" }) {
+        items(count, key = { "skelett-$it" }) {
             // Like a card: a surface, with an image and two lines of text as bars inside.
             Column(
-                Modifier.fillMaxWidth().height(kachelHoehe).clip(Formen.leiste)
-                    .background(MaterialTheme.colorScheme.surface).padding(Abstaende.klein),
-                verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                Modifier.fillMaxWidth().height(tileHeight).clip(Shapes.bar)
+                    .background(MaterialTheme.colorScheme.surface).padding(Spacing.small),
+                verticalArrangement = Arrangement.spacedBy(Spacing.small),
             ) {
-                val bild = if (imageRatio != null) Modifier.aspectRatio(imageRatio) else Modifier.weight(1f)
-                Box(Modifier.fillMaxWidth().then(bild).clip(Formen.kachel).background(schimmer))
-                Box(Modifier.fillMaxWidth(0.8f).height(Abstaende.mittel).clip(Formen.strich).background(schimmer))
-                Box(Modifier.fillMaxWidth(0.5f).height(Abstaende.mittel).clip(Formen.strich).background(schimmer))
+                val image = if (imageRatio != null) Modifier.aspectRatio(imageRatio) else Modifier.weight(1f)
+                Box(Modifier.fillMaxWidth().then(image).clip(Shapes.tile).background(shimmer))
+                Box(Modifier.fillMaxWidth(0.8f).height(Spacing.medium).clip(Shapes.stroke).background(shimmer))
+                Box(Modifier.fillMaxWidth(0.5f).height(Spacing.medium).clip(Shapes.stroke).background(shimmer))
             }
         }
     }
@@ -112,12 +112,12 @@ private val SKELETON_HEADER = 88.dp
  * also used outside lists, where animateItem() doesn't apply.
  */
 @Composable
-fun LazyGridItemScope.Moved(inhalt: @Composable () -> Unit) {
-    Box(if (movementReduced()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
+fun LazyGridItemScope.Moved(content: @Composable () -> Unit) {
+    Box(if (movementReduced()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { content() }
 }
 
 /** The same for entries of a LazyColumn. */
 @Composable
-fun LazyItemScope.Moved(inhalt: @Composable () -> Unit) {
-    Box(if (movementReduced()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
+fun LazyItemScope.Moved(content: @Composable () -> Unit) {
+    Box(if (movementReduced()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { content() }
 }

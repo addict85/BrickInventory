@@ -1,39 +1,39 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). Whoever holds a lock connection of their own calls the repository directly with it. */
 import type { Db } from '../../db/database';
-import { mit, buildArea, type Inspect } from '../infra/area';
-import { Faecher } from '../infra/cache';
+import { bound, buildArea, type Inspect } from '../infra/area';
+import { Compartments } from '../infra/cache';
 import * as imageStateService from './imageState';
 import * as blMappingService from './blMapping';
 import * as bricklinkLink from './bricklinkLink';
-import * as bricklinkPreise from './bricklinkPrices';
-import * as bricksetNachlauf from './bricksetFollowUp';
-import * as dienst from './service';
-import * as farben from './colors';
+import * as bricklinkPrices from './bricklinkPrices';
+import * as bricksetFollowUp from './bricksetFollowUp';
+import * as service from './service';
+import * as colors from './colors';
 import * as instructions from './instructions';
-import * as katalogAbgleich from './catalogSync';
-import * as katalogPflege from './catalogMaintenance';
+import * as catalogReconcile from './catalogSync';
+import * as catalogMaintenance from './catalogMaintenance';
 import * as minifigsImport from './minifigsImport';
 import * as partsImport from './partsImport';
-import * as rbInventar from './rbInventory';
-import * as rebrickableKatalog from './rebrickableCatalog';
+import * as rbInventory from './rbInventory';
+import * as rebrickableCatalog from './rebrickableCatalog';
 import * as partsEnrichmentService from './partsEnrichment';
 import { ConcurrentRateLimiter } from '../externalSources';
-import * as pdfAuftraege from './pdf/pdfJobs';
-import * as anleitungsAuftrag from './instructionJob';
-import * as setStamm from './setMaster';
+import * as pdfJobs from './pdf/pdfJobs';
+import * as instructionJob from './instructionJob';
+import * as setMaster from './setMaster';
 import { catalogJobTypes } from './jobTypes';
-import { zugang, type CatalogDependencies, type CatalogContext } from './context';
+import { access, type CatalogDependencies, type CatalogContext } from './context';
 
 export type { CatalogDependencies, CatalogContext } from './context';
 
 export function createCatalog(
-  a: Omit<CatalogDependencies, 'faecher' | 'cdnDrossel'>,
+  a: Omit<CatalogDependencies, 'compartments' | 'cdnThrottle'>,
   inspect?: Inspect<CatalogContext>,
 ) {
-  const cdnDrossel = new ConcurrentRateLimiter(2, 1000, a.uhr);
+  const cdnThrottle = new ConcurrentRateLimiter(2, 1000, a.clock);
   const d = buildArea(
-    { ...a, cdnDrossel, faecher: new Faecher() },
-    (db: Db) => zugang(db, a.lesevertrag),
+    { ...a, cdnThrottle, compartments: new Compartments() },
+    (db: Db) => access(db, a.readContract),
     catalogServices,
     inspect,
   );
@@ -42,79 +42,79 @@ export function createCatalog(
 
 function imageServices(k: CatalogContext) {
   return {
-    fillFromBrickset: mit(k)(imageStateService.fillFromBrickset),
-    backfillInstructions: mit(k)(imageStateService.backfillInstructions),
-    reloadSetImages: mit(k)(imageStateService.reloadSetImages),
-    backfillThumbnails: mit(k)(imageStateService.backfillThumbnails),
-    enterSetImageLocal: mit(k)(imageStateService.enterSetImageLocal),
+    fillFromBrickset: bound(k)(imageStateService.fillFromBrickset),
+    backfillInstructions: bound(k)(imageStateService.backfillInstructions),
+    reloadSetImages: bound(k)(imageStateService.reloadSetImages),
+    backfillThumbnails: bound(k)(imageStateService.backfillThumbnails),
+    enterSetImageLocal: bound(k)(imageStateService.enterSetImageLocal),
   };
 }
 
 function catalogServices(k: CatalogContext) {
   return {
     ...imageServices(k),
-    rememberBlNumber: mit(k)(blMappingService.rememberBlNumber),
-    rememberOwnBlNumber: mit(k)(blMappingService.rememberOwnBlNumber),
-    blNumberOf: mit(k)(blMappingService.blNumberOf),
-    blFetchNumber: mit(k)(blMappingService.blFetchNumber),
-    blFetchNumbers: mit(k)(blMappingService.blFetchNumbers),
-    merkeBlFarbnummer: mit(k)(blMappingService.merkeBlFarbnummer),
-    resolveBlLinks: mit(k)(bricklinkLink.resolveMany),
-    resolveBlLink: mit(k)(bricklinkLink.resolveSingle),
-    setKnownInCatalog: mit(k)(bricklinkPreise.setKnownInCatalog),
-    catalogEntry: mit(k)(bricklinkPreise.catalogEntry),
-    emptySubsetsCache: mit(k)(bricklinkPreise.clearSubsetsCache),
-    emptyCatalogCache: mit(k)(bricklinkPreise.clearCatalogCache),
-    cacheStand: mit(k)(bricklinkPreise.getCacheStats),
-    priceGuide: mit(k)(bricklinkPreise.priceGuideQuery),
-    bricksetList: mit(k)(bricksetNachlauf.bricksetList),
-    anleitungEinreihen: mit(k)(anleitungsAuftrag.anleitungEinreihen),
-    catalogMeta: mit(k)(dienst.catalogMeta),
-    yearDistribution: mit(k)(dienst.yearDistribution),
-    catalogPage: mit(k)(dienst.catalogPage),
-    catalogLoaded: mit(k)(dienst.catalogLoaded),
-    catalogSet: mit(k)(dienst.catalogSet),
-    colorList: mit(k)(farben.colorList),
-    anzahlAnleitungen: mit(k)(instructions.anzahlAnleitungen),
-    instructionsToSet: mit(k)(instructions.instructionsToSet),
-    instructionNewLoadAllowed: mit(k)(instructions.instructionNewLoadAllowed),
-    deleteInstructions: mit(k)(instructions.deleteInstructions),
-    loadSetInstructions: mit(k)(instructions.setAnleitungenLaden),
-    sameMissingAb: mit(k)(katalogAbgleich.syncAllMissing),
-    backfillPartColorsImages: mit(k)(katalogAbgleich.backfillPartColorsImages),
-    rememberPart: mit(k)(katalogPflege.rememberPart),
-    rememberPartColor: mit(k)(katalogPflege.rememberPartColor),
-    rememberMinifig: mit(k)(katalogPflege.rememberMinifig),
-    merkeSetFiguren: mit(k)(katalogPflege.merkeSetFiguren),
-    catalogPart: mit(k)(katalogPflege.catalogPart),
-    catalogMinifig: mit(k)(katalogPflege.catalogMinifig),
-    minifigsFromCatalog: mit(k)(minifigsImport.minifigsFromCatalog),
-    loadSetMinifigs: mit(k)(minifigsImport.loadSetMinifigs),
-    setFigurenMerken: mit(k)(minifigsImport.setFigurenMerken),
-    loadSetParts: mit(k)(partsImport.loadSetParts),
-    setTeileMerken: mit(k)(partsImport.setTeileMerken),
-    enqueueSetPartImages: mit(k)(partsImport.enqueueSetPartImages),
-    reloadBlNumbers: mit(k)(partsImport.reloadBlNumbers),
-    inventoryForCandidates: mit(k)(rbInventar.inventoryForCandidates),
-    newestInventory: mit(k)(rbInventar.newestInventory),
-    setInfo: mit(k)(rebrickableKatalog.setAngaben),
-    allSetParts: mit(k)(rebrickableKatalog.alleTeileDesSets),
-    minifigParts: mit(k)(rebrickableKatalog.minifigPartsQuery),
-    enrichSetPartsAn: mit(k)(partsEnrichmentService.enrichSetParts),
-    loadSetImages: mit(k)(partsEnrichmentService.downloadSetImages),
-    enrichSetMinifigsAn: mit(k)(partsEnrichmentService.enrichSetMinifigs),
+    rememberBlNumber: bound(k)(blMappingService.rememberBlNumber),
+    rememberOwnBlNumber: bound(k)(blMappingService.rememberOwnBlNumber),
+    blNumberOf: bound(k)(blMappingService.blNumberOf),
+    blFetchNumber: bound(k)(blMappingService.blFetchNumber),
+    blFetchNumbers: bound(k)(blMappingService.blFetchNumbers),
+    rememberBlColorNumber: bound(k)(blMappingService.rememberBlColorNumber),
+    resolveBlLinks: bound(k)(bricklinkLink.resolveMany),
+    resolveBlLink: bound(k)(bricklinkLink.resolveSingle),
+    setKnownInCatalog: bound(k)(bricklinkPrices.setKnownInCatalog),
+    catalogEntry: bound(k)(bricklinkPrices.catalogEntry),
+    emptySubsetsCache: bound(k)(bricklinkPrices.clearSubsetsCache),
+    emptyCatalogCache: bound(k)(bricklinkPrices.clearCatalogCache),
+    cacheState: bound(k)(bricklinkPrices.getCacheStats),
+    priceGuide: bound(k)(bricklinkPrices.priceGuideQuery),
+    bricksetList: bound(k)(bricksetFollowUp.bricksetList),
+    enqueueInstruction: bound(k)(instructionJob.enqueueInstruction),
+    catalogMeta: bound(k)(service.catalogMeta),
+    yearDistribution: bound(k)(service.yearDistribution),
+    catalogPage: bound(k)(service.catalogPage),
+    catalogLoaded: bound(k)(service.catalogLoaded),
+    catalogSet: bound(k)(service.catalogSet),
+    colorList: bound(k)(colors.colorList),
+    instructionCount: bound(k)(instructions.instructionCount),
+    instructionsToSet: bound(k)(instructions.instructionsToSet),
+    instructionNewLoadAllowed: bound(k)(instructions.instructionNewLoadAllowed),
+    deleteInstructions: bound(k)(instructions.deleteInstructions),
+    loadSetInstructions: bound(k)(instructions.loadSetInstructions),
+    syncAllMissing: bound(k)(catalogReconcile.syncAllMissing),
+    backfillPartColorsImages: bound(k)(catalogReconcile.backfillPartColorsImages),
+    rememberPart: bound(k)(catalogMaintenance.rememberPart),
+    rememberPartColor: bound(k)(catalogMaintenance.rememberPartColor),
+    rememberMinifig: bound(k)(catalogMaintenance.rememberMinifig),
+    rememberSetMinifigs: bound(k)(catalogMaintenance.rememberSetMinifigs),
+    catalogPart: bound(k)(catalogMaintenance.catalogPart),
+    catalogMinifig: bound(k)(catalogMaintenance.catalogMinifig),
+    minifigsFromCatalog: bound(k)(minifigsImport.minifigsFromCatalog),
+    loadSetMinifigs: bound(k)(minifigsImport.loadSetMinifigs),
+    rememberSetFigs: bound(k)(minifigsImport.rememberSetFigs),
+    loadSetParts: bound(k)(partsImport.loadSetParts),
+    rememberSetParts: bound(k)(partsImport.rememberSetParts),
+    enqueueSetPartImages: bound(k)(partsImport.enqueueSetPartImages),
+    reloadBlNumbers: bound(k)(partsImport.reloadBlNumbers),
+    inventoryForCandidates: bound(k)(rbInventory.inventoryForCandidates),
+    newestInventory: bound(k)(rbInventory.newestInventory),
+    setInfo: bound(k)(rebrickableCatalog.setDetails),
+    allSetParts: bound(k)(rebrickableCatalog.allPartsOfSet),
+    minifigParts: bound(k)(rebrickableCatalog.minifigPartsQuery),
+    enrichSetParts: bound(k)(partsEnrichmentService.enrichSetParts),
+    loadSetImages: bound(k)(partsEnrichmentService.downloadSetImages),
+    enrichSetMinifigs: bound(k)(partsEnrichmentService.enrichSetMinifigs),
     /** PDF jobs of an account: trigger, track, discard; the cleanup across all. */
     pdf: {
-      starten: mit(k)(pdfAuftraege.startPdfJob),
-      lies: mit(k)(pdfAuftraege.readJob),
-      finishedFile: mit(k)(pdfAuftraege.finishedFile),
-      loesche: mit(k)(pdfAuftraege.deleteJob),
-      raeumeAuf: mit(k)(pdfAuftraege.cleanOldPdfJobs),
+      start: bound(k)(pdfJobs.startPdfJob),
+      read: bound(k)(pdfJobs.readJob),
+      finishedFile: bound(k)(pdfJobs.finishedFile),
+      remove: bound(k)(pdfJobs.deleteJob),
+      cleanUp: bound(k)(pdfJobs.cleanOldPdfJobs),
     },
-    catalogStatus: mit(k.db, setStamm.catalogStatus),
-    rememberCatalogPlaceholder: mit(k.db, setStamm.rememberCatalogPlaceholder),
-    rememberSetCatalog: mit(k.db, setStamm.rememberSetCatalog),
-    auftragsarten: (importProcess: string) => catalogJobTypes(k, importProcess),
+    catalogStatus: bound(k.db, setMaster.catalogStatus),
+    rememberCatalogPlaceholder: bound(k.db, setMaster.rememberCatalogPlaceholder),
+    rememberSetCatalog: bound(k.db, setMaster.rememberSetCatalog),
+    jobKinds: (importProcess: string) => catalogJobTypes(k, importProcess),
   };
 }
 

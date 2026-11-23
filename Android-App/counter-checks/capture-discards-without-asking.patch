@@ -1,0 +1,17 @@
+Gegenprobe: Zurück verwirft ein ausgefülltes Formular ohne Rückfrage
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.AddDialogTest
+Rot: back asks first when there are inputs
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialogs.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialogs.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialogs.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialogs.kt
+@@ -109,7 +109,7 @@
+ ) {
+     var discardAsk by rememberSaveable { mutableStateOf(false) }
+     // Back and tapping outside end up here; Cancel and the X keep closing without asking.
+-    val close: () -> Unit = { if (changed) { discardAsk = true } else { onCancel() } }
++    val close: () -> Unit = { onCancel() }
+     if (discardAsk) {
+         Prompt(
+             title = stringResource(R.string.record_discard_title),

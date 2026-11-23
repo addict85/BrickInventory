@@ -1,103 +1,115 @@
 package ch.brickinventoryapp.app.ui.components
 
-import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.components.readAloudAs
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.progressBarRangeInfo
-import androidx.compose.ui.semantics.expand
-import androidx.compose.ui.semantics.collapse
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.expand
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Abstaende
-import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Error
-import ch.brickinventoryapp.ui.theme.LocalStatusFarben
-import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.readAloudAs
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.LocalStatusColors
+import ch.brickinventoryapp.ui.theme.Spacing
+
+/** How far the import is: sets done of all, the one in progress, and the outcome so far. */
+data class CsvProgress(
+    val done: Int,
+    val total: Int,
+    val current: String?,
+    val ok: Int,
+    val warn: Int,
+    val err: Int,
+)
 
 @Composable
 fun CsvImportBanner(
-    done: Int, total: Int, current: String?,
-    ok: Int, warn: Int, err: Int, running: Boolean,
+    progress: CsvProgress,
+    running: Boolean,
     /**
      * Cancel — visible only while the import runs.
      *
-     * The web app has always had the button (collection.js, btn-cancel-import).
+     * The web app has always had the button (`collection.js`, btn-cancel-import).
      * The app showed the same bar and no way out: an accidentally
      * started import of hundreds of sets fetches the master data for each and
      * had to be sat out.
      */
-    onAbbrechen: () -> Unit,
+    onCancel: () -> Unit,
 ) {
+    val done = progress.done
+    val total = progress.total
     var expanded by rememberSaveable { mutableStateOf(false) }
     val bg  = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
     // The expander names what it does and whether it is open (TalkBack only read “3/10, button”).
-    val zustand = stringResource(if (expanded) R.string.zustand_ausgeklappt else R.string.zustand_eingeklappt)
-    val fortschritt = pluralStringResource(R.plurals.csv_fortschritt, total, done, total)
+    val condition = stringResource(if (expanded) R.string.state_expanded else R.string.state_collapsed)
+    val progressText = pluralStringResource(R.plurals.csv_progress, total, done, total)
     // Announced in steps of ten, not for every set.
-    val stufe = if (total > 0) done * ANNOUNCEMENT_LEVELS / total else 0
-    val angesagt = remember(stufe, running) { fortschritt }
-    val ziel = stringResource(if (expanded) R.string.csv_details_verbergen else R.string.csv_details_zeigen)
+    val level = if (total > 0) done * ANNOUNCEMENT_LEVELS / total else 0
+    val announced = remember(level, running) { progressText }
+    val target = stringResource(if (expanded) R.string.csv_details_hide else R.string.csv_details_show)
 
     Column {
         Surface(
             color = bg,
             modifier = Modifier.fillMaxWidth()
-                .clickable(role = Role.Button, onClickLabel = ziel) {
+                .clickable(role = Role.Button, onClickLabel = target) {
                     expanded = !expanded
                 }
                 .semantics {
-                    stateDescription = zustand
+                    stateDescription = condition
                     if (expanded) collapse { expanded = false; true } else expand { expanded = true; true }
                 }
         ) {
-            Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.klein)) {
-                CsvHeaderRow(done, total, ok, running, expanded, fortschritt, onAbbrechen)
-                if (running && current != null) {
+            Column(Modifier.padding(horizontal = Spacing.large, vertical = Spacing.small)) {
+                CsvHeaderRow(done, total, progress.ok, running, expanded, progressText, onCancel)
+                if (running && progress.current != null) {
                     Text(
-                        current,
+                        progress.current,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(top = Abstaende.hairline)
+                        modifier = Modifier.padding(top = Spacing.hairline)
                     )
                 }
             }
         }
         // Outside the button: otherwise the whole bar would become a live region and announce every set.
-        if (running) Box(Modifier.announce().semantics { contentDescription = angesagt })
-        if (expanded) CsvImportNumbers(ok, warn, err, running)
+        if (running) Box(Modifier.announce().semantics { contentDescription = announced })
+        if (expanded) CsvImportNumbers(progress.ok, progress.warn, progress.err, running)
     }
 }
 
 /** Header row of the bar: progress, cancel and the expander's arrow. */
 @Composable
 private fun CsvHeaderRow(
-    done: Int, total: Int, ok: Int, running: Boolean, expanded: Boolean, fortschritt: String, onAbbrechen: () -> Unit,
+    done: Int, total: Int, ok: Int, running: Boolean, expanded: Boolean, progress: String, onCancel: () -> Unit,
 ) {
     val pct = if (total > 0) done.toFloat() / total else 0f
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small)
     ) {
         Icon(Icons.Default.UploadFile, null, Modifier.size(withFont(16.dp)),
             tint = if (running) MaterialTheme.colorScheme.onPrimary
@@ -112,7 +124,7 @@ private fun CsvHeaderRow(
         )
         Text(
             if (running) "$done/$total" else stringResource(R.string.csv_ok_count, ok),
-            modifier = if (running) Modifier.readAloudAs(fortschritt) else Modifier,
+            modifier = if (running) Modifier.readAloudAs(progress) else Modifier,
             style = MaterialTheme.typography.bodySmall,
             color = if (running) MaterialTheme.colorScheme.onPrimary
                     else MaterialTheme.colorScheme.onSecondaryContainer,
@@ -125,8 +137,8 @@ private fun CsvHeaderRow(
         if (running) {
             // Full 48 dp: the bar becomes a bit taller, but in return
             // one hits Cancel even on the move.
-            MitTooltip(stringResource(R.string.csv_cancel)) {
-                IconButton(onClick = onAbbrechen) {
+            WithTooltip(stringResource(R.string.csv_cancel)) {
+                IconButton(onClick = onCancel) {
                     Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
                         Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onPrimary)
@@ -150,18 +162,18 @@ private fun CsvImportNumbers(ok: Int, warn: Int, err: Int, running: Boolean) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            Modifier.padding(horizontal = Abstaende.gross, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.gross)
+            Modifier.padding(horizontal = Spacing.large, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.large)
         ) {
-            val farben = LocalStatusFarben.current
+            val colors = LocalStatusColors.current
             listOf(
-                Triple(ok, Icons.Default.CheckCircle to farben.erfolg, stringResource(R.string.csv_stat_success)),
-                Triple(warn, Icons.Default.Warning to farben.warnung, stringResource(R.string.csv_stat_warnings)),
-                Triple(err, Icons.Default.Error to farben.fehler, stringResource(R.string.csv_stat_errors))
+                Triple(ok, Icons.Default.CheckCircle to colors.success, stringResource(R.string.csv_stat_success)),
+                Triple(warn, Icons.Default.Warning to colors.warning, stringResource(R.string.csv_stat_warnings)),
+                Triple(err, Icons.Default.Error to colors.error, stringResource(R.string.csv_stat_errors))
             ).forEach { (v, symbol, l) ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
                         Icon(symbol.first, null, Modifier.size(withFont(16.dp)), tint = symbol.second)
                         Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     }

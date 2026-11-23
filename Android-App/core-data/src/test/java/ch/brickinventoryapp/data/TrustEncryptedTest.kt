@@ -5,8 +5,8 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.security.Vertrauenschiffre
-import ch.brickinventoryapp.testing.testVertrauenschiffre
+import ch.brickinventoryapp.data.testing.testTrustCipher
+import ch.brickinventoryapp.security.TrustCipher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -27,24 +27,24 @@ import java.util.Base64
  * user confirms anew, an uncheckable value never counts as trust. A restart is
  * a new instance on the same SharedPreferences.
  *
- * Counter-checks (Robolectric, measured by CI; job `gegenproben`):
- *   vertrauen-pin-klartext           rememberPin() additionally writes the plaintext → red
+ * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
+ *   trust-pin-plaintext           rememberPin() additionally writes the plaintext → red
  *                                    “pin and switch do not lie in plaintext”
- *   vertrauen-unlesbar-erlaubt       userCaAllowed() takes an unreadable value as
+ *   trust-unreadable-allowed       userCaAllowed() takes an unreadable value as
  *                                    „on“ → red “a changed value does not count”
- *   vertrauen-ohne-bindung           Vertrauenschiffre does not bind the name → red
+ *   trust-without-binding           Vertrauenschiffre does not bind the name → red
  *                                    “a ciphertext under a foreign name does not count”
- *   vertrauen-klartext-bleibt        the takeover does not delete the plaintext → red
+ *   trust-plaintext-stays        the takeover does not delete the plaintext → red
  *                                    “plaintext is taken over once”
- *   vertrauen-marke-uebergangen      the marker is not checked → red “plaintext
+ *   trust-marker-skipped      the marker is not checked → red “plaintext
  *                                    placed later does not count”
- *   vertrauen-fehler-als-klartext    rememberPin() stores plaintext when encryption
+ *   trust-error-as-plaintext    rememberPin() stores plaintext when encryption
  *                                    fails → red “without a key nothing stays …”
- *   code-pin-ueber-alte-verbindung   holdBefore() does not call the listeners → red “a pin from the
+ *   code-pin-over-old-connection   holdBefore() does not call the listeners → red “a pin from the
  *                                    code applies only via a new connection”
- *   pin-namen-ohne-uebernahme        prepareBefore() without adoptPinNames() → red “a pin
+ *   pin-names-without-adoption        prepareBefore() without adoptPinNames() → red “a pin
  *                                    of an earlier version goes under a name …”
- *   pin-name-mit-host                pinEntry() appends host and port again → red “no
+ *   pin-name-with-host                pinEntry() appends host and port again → red “no
  *                                    entry names the server”
  */
 @RunWith(RobolectricTestRunner::class)
@@ -52,22 +52,22 @@ import java.util.Base64
 class TrustEncryptedTest {
 
     private val ctx = ApplicationProvider.getApplicationContext<Context>()
-    private val spiegel: SharedPreferences =
+    private val mirror: SharedPreferences =
         ctx.getSharedPreferences(DevicesStore.DESIGN_MIRROR_FILE, Context.MODE_PRIVATE)
     private val host = "brick.example.org:443"
     private val fp = "sha256/AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKK="
 
     @Before
-    fun leer() = spiegel.edit(commit = true) { clear() }
+    fun empty() = mirror.edit(commit = true) { clear() }
 
     /** As at app start: new instance, prepareBefore() before the first connection setup. */
-    private fun start(cipher: Vertrauenschiffre = testVertrauenschiffre()): DevicesStore {
+    private fun start(cipher: TrustCipher = testTrustCipher()): DevicesStore {
         val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "vertrauen-${System.nanoTime()}.preferences_pb") }
         return DevicesStore(ctx, store, cipher).also { it.prepareBefore() }
     }
 
     private fun plaintextOnDisk(): List<String> =
-        spiegel.all.filter { (k, v) -> k == DevicesStore.NUTZER_CA || k.startsWith(DevicesStore.PIN_PREFIX) || v == fp }
+        mirror.all.filter { (k, v) -> k == DevicesStore.USER_CA || k.startsWith(DevicesStore.PIN_PREFIX) || v == fp }
             .map { (k, v) -> "$k=$v" }
 
     @Test
@@ -75,54 +75,54 @@ class TrustEncryptedTest {
         val g = start()
         g.rememberPin(host, fp)
         g.setUserCa(true)
-        assertEquals("Pin und Schalter liegen nicht im Klartext", emptyList<String>(), plaintextOnDisk())
-        val neu = start()
-        assertEquals(fp, neu.pin(host))
-        assertTrue(neu.userCaAllowed())
-        neu.setUserCa(false)
-        assertFalse("Aus bleibt aus", start().userCaAllowed())
+        assertEquals("Pin and switch are not in plaintext", emptyList<String>(), plaintextOnDisk())
+        val newValue = start()
+        assertEquals(fp, newValue.pin(host))
+        assertTrue(newValue.userCaAllowed())
+        newValue.setUserCa(false)
+        assertFalse("Off stays off", start().userCaAllowed())
     }
 
     @Test
     fun `a changed value does not count, not even with a foreign key`() {
         start().apply { rememberPin(host, fp); setUserCa(true) }
-        assertNull("Fremder Schlüssel: kein Pin", start(testVertrauenschiffre(8)).pin(host))
-        assertFalse("Fremder Schlüssel: Schalter aus", start(testVertrauenschiffre(8)).userCaAllowed())
+        assertNull("Foreign key: no pin", start(testTrustCipher(8)).pin(host))
+        assertFalse("Foreign key: switch off", start(testTrustCipher(8)).userCaAllowed())
         val entry = start().pinEntry(host)!!
-        spiegel.edit(commit = true) {
-            putString(DevicesStore.USER_CA_SECRET, flip(spiegel.getString(DevicesStore.USER_CA_SECRET, null)!!))
+        mirror.edit(commit = true) {
+            putString(DevicesStore.USER_CA_SECRET, flip(mirror.getString(DevicesStore.USER_CA_SECRET, null)!!))
             putString(entry, "kein-base64-%%%")
         }
         val g = start()
-        assertFalse("ein veraenderter Wert gilt nicht als „an“", g.userCaAllowed())
-        assertNull("ein unlesbarer Pin ist kein Pin — der Nutzer bestätigt neu", g.pin(host))
+        assertFalse("a changed value does not count as „on“", g.userCaAllowed())
+        assertNull("an unreadable pin is no pin — the user confirms anew", g.pin(host))
     }
 
     @Test
     fun `a ciphertext under a foreign name does not count`() {
-        val anderer = "anderer.example.org:443"
-        val g0 = start().apply { rememberPin(anderer, fp) }
-        val geheim = spiegel.getString(g0.pinEntry(anderer)!!, null)!!
-        spiegel.edit(commit = true) {
-            putString(g0.pinEntry(host)!!, geheim)
-            putString(DevicesStore.USER_CA_SECRET, geheim)
+        val other = "anderer.example.org:443"
+        val g0 = start().apply { rememberPin(other, fp) }
+        val secret = mirror.getString(g0.pinEntry(other)!!, null)!!
+        mirror.edit(commit = true) {
+            putString(g0.pinEntry(host)!!, secret)
+            putString(DevicesStore.USER_CA_SECRET, secret)
         }
         val g = start()
-        assertNull("Der Pin eines anderen Servers gilt nicht für diesen", g.pin(host))
-        assertFalse("Ein Pin-Geheimtext schaltet die Nutzer-CAs nicht ein", g.userCaAllowed())
-        assertEquals(fp, g.pin(anderer))
+        assertNull("Another server's pin does not count for this one", g.pin(host))
+        assertFalse("A pin ciphertext does not switch on the user CAs", g.userCaAllowed())
+        assertEquals(fp, g.pin(other))
     }
 
     @Test
     fun `plaintext is taken over once and deleted afterwards`() {
-        spiegel.edit(commit = true) {
+        mirror.edit(commit = true) {
             putBoolean(DevicesStore.USER_CA_FROM_APPLIED, true)
-            putBoolean(DevicesStore.NUTZER_CA, true)
+            putBoolean(DevicesStore.USER_CA, true)
             putString(DevicesStore.PIN_PREFIX + host, fp)
         }
         val g = start()
-        assertEquals("Der alte Pin gilt weiter", fp, g.pin(host))
-        assertTrue("Der alte Schalter gilt weiter", g.userCaAllowed())
+        assertEquals("The old pin still applies", fp, g.pin(host))
+        assertTrue("The old switch still applies", g.userCaAllowed())
         assertEquals("plaintext is taken over once and deleted afterwards", emptyList<String>(), plaintextOnDisk())
         assertEquals(fp, start().pin(host))
     }
@@ -130,12 +130,12 @@ class TrustEncryptedTest {
     @Test
     fun `plaintext placed later does not count and is deleted`() {
         start().rememberPin(host, fp)
-        spiegel.edit(commit = true) {
-            putBoolean(DevicesStore.NUTZER_CA, true)
+        mirror.edit(commit = true) {
+            putBoolean(DevicesStore.USER_CA, true)
             putString(DevicesStore.PIN_PREFIX + "boese.example.org:443", fp)
         }
         val g = start()
-        assertFalse("spaeter hingelegter Klartext gilt nicht", g.userCaAllowed())
+        assertFalse("plaintext put there later does not count", g.userCaAllowed())
         assertNull(g.pin("boese.example.org:443"))
         assertEquals(fp, g.pin(host))
         assertEquals(emptyList<String>(), plaintextOnDisk())
@@ -143,29 +143,29 @@ class TrustEncryptedTest {
 
     @Test
     fun `without a key nothing stays in plaintext and nothing counts as allowed`() {
-        val kaputt = Vertrauenschiffre { throw IOException("Keystore gerade nicht bereit") }
-        spiegel.edit(commit = true) {
+        val broken = TrustCipher { throw IOException("Keystore gerade nicht bereit") }
+        mirror.edit(commit = true) {
             putBoolean(DevicesStore.USER_CA_FROM_APPLIED, true)
-            putBoolean(DevicesStore.NUTZER_CA, true)
+            putBoolean(DevicesStore.USER_CA, true)
         }
-        val g = start(kaputt)
-        assertFalse("Nicht übernommener Klartext gilt nicht", g.userCaAllowed())
+        val g = start(broken)
+        assertFalse("Plaintext not taken over does not count", g.userCaAllowed())
         g.setUserCa(true)
-        assertFalse("Ein unverschlüsselbares „an“ wird nicht abgelegt", g.userCaAllowed())
+        assertFalse("An „on“ that cannot be encrypted is not stored", g.userCaAllowed())
         g.rememberPin(host, fp)
-        assertEquals("Bestätigt gilt der Pin bis zum Prozessende", fp, g.pin(host))
-        assertEquals("ohne Schluessel bleibt nichts im Klartext auf der Platte",
-            listOf("${DevicesStore.NUTZER_CA}=true"), plaintextOnDisk())
-        assertTrue("Mit Schlüssel wird der liegengebliebene Klartext übernommen", start().userCaAllowed())
-        assertNull("Der ungesicherte Pin überlebt den Neustart nicht", start().pin(host))
+        assertEquals("Confirmed, the pin applies until the process ends", fp, g.pin(host))
+        assertEquals("without a key nothing stays on disk in plaintext",
+            listOf("${DevicesStore.USER_CA}=true"), plaintextOnDisk())
+        assertTrue("With a key the leftover plaintext is taken over", start().userCaAllowed())
+        assertNull("The unsecured pin does not survive the restart", start().pin(host))
     }
 
     @Test
     fun `no entry names the server`() {
         start().apply { rememberPin(host, fp); rememberPin("$host#blatt", fp) }
-        val namen = spiegel.all.keys
-        assertTrue("Pins sind abgelegt: $namen", namen.count { it.startsWith(DevicesStore.PIN_NAME_PREFIX) } == 2)
-        assertFalse("Ein Name verrät den Server: $namen", namen.any { "example" in it || "443" in it })
+        val names = mirror.all.keys
+        assertTrue("Pins are stored: $names", names.count { it.startsWith(DevicesStore.PIN_NAME_PREFIX) } == 2)
+        assertFalse("A name reveals the server: $names", names.any { "example" in it || "443" in it })
     }
 
     @Test
@@ -173,20 +173,20 @@ class TrustEncryptedTest {
         val g0 = start()
         g0.rememberPin(host, fp)
         val entry = g0.pinEntry(host)!!
-        val geheim = spiegel.getString(entry, null)!!
+        val secret = mirror.getString(entry, null)!!
         // This is how it lay in earlier versions: the same ciphertext, host and port in the name.
-        spiegel.edit(commit = true) { remove(entry); putString(DevicesStore.PIN_SECRET_PREFIX + host, geheim) }
+        mirror.edit(commit = true) { remove(entry); putString(DevicesStore.PIN_SECRET_PREFIX + host, secret) }
         val g = start()
         assertEquals(fp, g.pin(host))
-        assertFalse("Der alte Name ist weg", spiegel.contains(DevicesStore.PIN_SECRET_PREFIX + host))
-        assertEquals(geheim, spiegel.getString(entry, null))
+        assertFalse("The old name is gone", mirror.contains(DevicesStore.PIN_SECRET_PREFIX + host))
+        assertEquals(secret, mirror.getString(entry, null))
     }
 
     /** Flip a bit in the ciphertext: the Base64 stays valid, the GCM tag does not. */
     private fun flip(b64: String): String {
-        val roh = Base64.getDecoder().decode(b64)
-        roh[roh.size - 1] = (roh[roh.size - 1].toInt() xor 1).toByte()
-        return Base64.getEncoder().encodeToString(roh)
+        val raw = Base64.getDecoder().decode(b64)
+        raw[raw.size - 1] = (raw[raw.size - 1].toInt() xor 1).toByte()
+        return Base64.getEncoder().encodeToString(raw)
     }
 
     /**
@@ -197,13 +197,13 @@ class TrustEncryptedTest {
     @Test
     fun `a pin from the code applies only via a new connection`() {
         val g = start()
-        var neu = 0
-        g.onUserCaSwitch { neu++ }
+        var newValue = 0
+        g.onUserCaSwitch { newValue++ }
         g.holdBefore(host, fp)
-        assertEquals(1, neu)
+        assertEquals(1, newValue)
         assertTrue(g.fromCode(host))
         assertEquals(fp, g.pin(host))
         g.rememberPin(host, fp)
-        assertFalse("Gemerkt gilt er nicht mehr als Pin aus dem Code", g.fromCode(host))
+        assertFalse("Remembered, it no longer counts as a pin from the code", g.fromCode(host))
     }
 }

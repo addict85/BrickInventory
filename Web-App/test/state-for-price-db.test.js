@@ -27,17 +27,17 @@ const { conditionForPrice, setGlobalSetting } = _req('src/settings/settings.js')
 const { setUserSetting } = _req('src/settings/userSetting.js');
 
 test('condition for the market price: input → stock → default', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   // Own user per process — the test runs next to others on the same DB.
   const name = `zfp_${process.pid}`;
-  const angelegt = await db.get(
+  const created = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ($1,'x')
        ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username
      RETURNING id`,
     [name],
   );
-  const uid = angelegt.id;
+  const uid = created.id;
 
   const beforeGlobal = await db
     .get(`SELECT value FROM global_settings WHERE key='default_price_condition'`)
@@ -51,20 +51,20 @@ test('condition for the market price: input → stock → default', { concurrenc
     assert.equal(
       await conditionForPrice(undefined, null, uid),
       'U',
-      'ohne Eingabe und ohne Bestand muss der globale Standard gelten',
+      'without input and without stock the global default must apply',
     );
 
     // ── The stock beats the default ────────────────────────────────────
     assert.equal(
       await conditionForPrice(undefined, 'N', uid),
       'N',
-      'ein als "Neu" geführter Bestand darf nicht auf den Standard zurückfallen — ' +
-        'genau das war der Fehler aus einer früheren Runde, nur andersherum',
+      'stock kept as "Neu" must not fall back to the default — ' +
+        'that was exactly the bug from an earlier round, just the other way round',
     );
 
     // ── The input beats both ──────────────────────────────────────────
-    assert.equal(await conditionForPrice('N', 'U', uid), 'N', 'die Eingabe gewinnt');
-    assert.equal(await conditionForPrice('U', 'N', uid), 'U', 'die Eingabe gewinnt');
+    assert.equal(await conditionForPrice('N', 'U', uid), 'N', 'the input wins');
+    assert.equal(await conditionForPrice('U', 'N', uid), 'U', 'the input wins');
 
     // ── An invalid input does not count ──────────────────────────────────
     // The body comes from the client; anything can stand there. An 'X' must not
@@ -73,7 +73,7 @@ test('condition for the market price: input → stock → default', { concurrenc
       assert.equal(
         await conditionForPrice(garbage, 'U', uid),
         'U',
-        `Eingabe ${JSON.stringify(garbage)} ist kein Zustand und muss übergangen werden`,
+        `input ${JSON.stringify(garbage)} is not a condition and must be skipped`,
       );
     }
 
@@ -83,7 +83,7 @@ test('condition for the market price: input → stock → default', { concurrenc
     assert.equal(
       await conditionForPrice(undefined, '', uid),
       'U',
-      'die leere Zeichenkette ist kein Zustand — sie muss auf den Standard durchfallen',
+      'the empty string is not a condition — it must fall through to the default',
     );
 
     // ── The user value beats the global default ────────────────────────
@@ -91,7 +91,7 @@ test('condition for the market price: input → stock → default', { concurrenc
     assert.equal(
       await conditionForPrice(undefined, null, uid),
       'N',
-      'der eigene Standard des Nutzers muss den globalen verdrängen',
+      "the user's own default must override the global one",
     );
   } finally {
     await db.run(`DELETE FROM user_settings WHERE user_id=$1`, [uid]).catch(() => {});

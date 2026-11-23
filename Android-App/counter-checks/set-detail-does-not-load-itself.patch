@@ -1,0 +1,16 @@
+Gegenprobe: Das Set-Detail lädt beim Erzeugen nichts; früher stiess der Bildschirm das Laden an
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetDetailViewModelTest
+Rot: the set comes from the SavedStateHandle and everything is loaded on creation
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
+@@ -121,7 +121,6 @@
+     )
+ 
+     // At the end of the fields: the fetches need the running jobs and alarmInput already assigned.
+-    init { refresh() }
+ 
+     /** Fetch everything the view shows anew; on creation and on „Erneut versuchen“. */
+     override fun refresh() {

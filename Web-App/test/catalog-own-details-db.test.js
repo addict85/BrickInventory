@@ -24,7 +24,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
@@ -49,7 +49,7 @@ test('own catalog details stay with the account and its household', { concurrenc
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   {
@@ -61,24 +61,24 @@ test('own catalog details stay with the account and its household', { concurrenc
     }
   }
   const suffix = process.pid;
-  const konto = async n =>
+  const account = async n =>
     (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [`${n}-${suffix}`])).id;
-  const alice = await konto('alice'),
-    bob = await konto('bob'),
-    carol = await konto('carol'),
-    kind = await konto('kind');
+  const alice = await account('alice'),
+    bob = await account('bob'),
+    carol = await account('carol'),
+    kind = await account('kind');
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [carol, kind]);
   t.after(() => db.run('DELETE FROM users WHERE id = ANY($1)', [[alice, bob, carol, kind]]).catch(() => {}));
 
   const api = uid => {
-    const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-    return async (methode, pfad, body) => {
-      const r = await fetch(base + '/api/v1' + pfad, {
-        method: methode,
+    const { base } = testServer(_req, { session: { userId: uid }, t });
+    return async (method, path, body) => {
+      const r = await fetch(base + '/api/v2' + path, {
+        method: method,
         ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
       });
       const j = await r.json();
-      assert.equal(r.status, 200, `${methode} ${pfad}: ${JSON.stringify(j)}`);
+      assert.equal(r.status, 200, `${method} ${path}: ${JSON.stringify(j)}`);
       return j;
     };
   };
@@ -86,7 +86,7 @@ test('own catalog details stay with the account and its household', { concurrenc
     B = api(bob),
     C = api(carol),
     K = api(kind);
-  const { partsCsv, figurenCsv } = _req('src/inventory/inventoryExport.js');
+  const { partsCsv, minifigsCsv } = _req('src/inventory/inventoryExport.js');
 
   const ALICE = ['Alices Prototyp', 'Tresorrot', 'AB1234', 'Privat', 'media/alice.jpg', 'Geheimfigur', 'Gefälscht'];
   await A('POST', '/parts', {
@@ -121,15 +121,15 @@ test('own catalog details stay with the account and its household', { concurrenc
   await t.test('Alice sees her own details', async () => {
     const l = await listen(A);
     for (const s of ['Alices Prototyp', 'Tresorrot', 'AB1234', 'Privat', 'media/alice.jpg', 'Geheimfigur'])
-      assert.ok(l.includes(s), `Alices Liste ohne ${s}`);
+      assert.ok(l.includes(s), `Alice’s list without ${s}`);
     const csv = await partsCsv(alice);
     assert.match(csv, /geheim-77,1,4,Tresorrot/);
   });
 
   await t.test("Bob sees Alice's inputs in no list and no export", async () => {
-    const l = (await listen(B)) + (await partsCsv(bob)) + (await figurenCsv(bob));
-    assert.ok(l.includes('geheim-77') && l.includes('fig-000001'), 'Testdaten: Bob führt beide Nummern');
-    for (const s of ALICE) assert.ok(!l.includes(s), `Bob sieht ${s}`);
+    const l = (await listen(B)) + (await partsCsv(bob)) + (await minifigsCsv(bob));
+    assert.ok(l.includes('geheim-77') && l.includes('fig-000001'), 'Test data: Bob has both numbers');
+    for (const s of ALICE) assert.ok(!l.includes(s), `Bob sees ${s}`);
   });
 
   await t.test('the verified name takes precedence over an input', async () => {
@@ -137,7 +137,7 @@ test('own catalog details stay with the account and its household', { concurrenc
       const m = (await X('GET', '/parts/manual')).parts.find(p => p.part_number === '3003');
       assert.equal(m?.part_name, 'Brick 2 x 2');
     }
-    assert.ok(!(await listen(C)).includes('Gefälscht'), 'Carol sieht Alices Text');
+    assert.ok(!(await listen(C)).includes('Gefälscht'), 'Carol sees Alice’s text');
   });
 
   await t.test('every account keeps its own name for the same number', async () => {
@@ -151,19 +151,19 @@ test('own catalog details stay with the account and its household', { concurrenc
   await t.test("household: the main account sees the sub-account's details", async () => {
     await K('POST', '/parts', { part_number: 'haus-1', color_id: 1, quantity: 1, part_name: 'Kinds Name' });
     await B('POST', '/parts', { part_number: 'haus-1', color_id: 1, quantity: 1 });
-    const zeilen = (await C('GET', '/parts/manual')).parts.filter(p => p.part_number === 'haus-1');
+    const lines = (await C('GET', '/parts/manual')).parts.filter(p => p.part_number === 'haus-1');
     assert.deepEqual(
-      zeilen.map(p => [p.user_id, p.part_name]),
+      lines.map(p => [p.user_id, p.part_name]),
       [[kind, 'Kinds Name']],
     );
-    assert.ok(!(await listen(B)).includes('Kinds Name'), 'Bob sieht den Namen des Unterkontos');
+    assert.ok(!(await listen(B)).includes('Kinds Name'), 'Bob sees the name of the sub-account');
   });
 
   await t.test("household: the sub-account does not see the main account's details", async () => {
     await C('POST', '/parts', { part_number: 'haus-2', color_id: 1, quantity: 1, part_name: 'Carols Name' });
     await K('POST', '/parts', { part_number: 'haus-2', color_id: 1, quantity: 1 });
     const l = await listen(K);
-    assert.ok(l.includes('haus-2'), 'Testdaten: das Unterkonto führt haus-2');
-    assert.ok(!l.includes('Carols Name'), 'das Unterkonto sieht die Angaben des Hauptkontos nicht');
+    assert.ok(l.includes('haus-2'), 'Test data: the sub-account has haus-2');
+    assert.ok(!l.includes('Carols Name'), 'the sub-account does not see the details of the main account');
   });
 });

@@ -1,0 +1,16 @@
+Gegenprobe: der Zustand importiert wieder aus dem Retrofit-Paket data.api
+Modul: app
+Test: ch.brickinventoryapp.app.LayerRulesTest
+Rot: an area does not know the Retrofit interfaces, only core-data knows the wire format
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexts.kt
+@@ -1,6 +1,7 @@
+ package ch.brickinventoryapp.state.ui.viewmodel
+ 
+ import ch.brickinventoryapp.data.LoginState
++import ch.brickinventoryapp.data.api.AccountApi
+ import ch.brickinventoryapp.data.repository.Outcome
+ import ch.brickinventoryapp.data.repository.errorTextToCode
+ import ch.brickinventoryapp.model.util.TextSource

@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { runMigrations } = _req('db/migrate.js');
 
@@ -29,11 +29,11 @@ test('checksums of the migrations', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const c = await db.pool.connect();
-  const summe = async () =>
+  const sum = async () =>
     (await c.query('SELECT pruefsumme FROM schema_migrations WHERE name = $1', [PROBE])).rows[0].pruefsumme;
   t.after(async () => {
     await c.query('UPDATE schema_migrations SET pruefsumme = NULL WHERE name = $1', [PROBE]).catch(() => {});
@@ -41,13 +41,13 @@ test('checksums of the migrations', { concurrency: 1 }, async t => {
     c.release();
     await db.pool.end().catch(() => {});
   });
-  const echt = await summe();
-  assert.match(echt, /^[0-9a-f]{64}$/, 'die Migration trägt eine SHA-256-Summe');
+  const original = await sum();
+  assert.match(original, /^[0-9a-f]{64}$/, 'the migration carries a SHA-256 sum');
 
   await t.test('a missing sum is filled in', async () => {
     await c.query('UPDATE schema_migrations SET pruefsumme = NULL WHERE name = $1', [PROBE]);
     assert.deepEqual(await runMigrations(c), []);
-    assert.equal(await summe(), echt);
+    assert.equal(await sum(), original);
   });
 
   await t.test('a changed migration stops the startup', async () => {

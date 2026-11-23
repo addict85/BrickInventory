@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.ui.components
 
-import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.AppCard
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * The frame of a settings section. Public in core-ui, because settings
@@ -20,14 +20,14 @@ fun SettingsCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    AppKarte {
+    AppCard {
         // The spacing between a card's children lives here once, so every card
         // gets it without anyone having to think of it.
         Column(
-            Modifier.padding(Abstaende.gross),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            Modifier.padding(Spacing.large),
+            verticalArrangement = Arrangement.spacedBy(Spacing.small),
         ) {
-            if (title != null) SectionTitle(title, Modifier.padding(bottom = Abstaende.mittel), symbol = icon)
+            if (title != null) SectionTitle(title, Modifier.padding(bottom = Spacing.medium), symbol = icon)
             content()
         }
     }

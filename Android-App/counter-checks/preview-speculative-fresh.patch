@@ -1,0 +1,17 @@
+Gegenprobe: ein vorgewärmtes Bild bekommt einen frischen Zeitstempel
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewStorageTest
+Rot: a warmed image goes before a viewed one
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+@@ -127,8 +127,6 @@
+             val temp = File(folder, "${target.name}.tmp")
+             temp.writeBytes(cipher.encrypt(bytes, binding(target)))
+             if (!temp.renameTo(target)) temp.delete()
+-            // Prewarmed entries age at once; the reason is at SPECULATIVE_TIME.
+-            else if (speculative) target.setLastModified(SPECULATIVE_TIME)
+         }
+         cleanupIfNeeded()
+     }

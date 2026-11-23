@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Where a number belongs, the number pad appears.
  *
  * ── How to recognize a number field ──────────────────────────────────────────
  *
- * Not by the label — „Teilenummer" sounds like a number and is
- * „3001pb01", „Figurennummer" is „sw0001". A number pad would make
+ * Not by the label — „Teilenummer“ sounds like a number and is
+ * „3001pb01“, „Figurennummer“ is „sw0001“. A number pad would make
  * both unusable.
  *
  * But by the field sending its input through one of the filters from
@@ -30,49 +30,9 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * ── Counter-checks ─────────────────────
  *
- * Two interventions in a throwaway branch, one per test method, both anchors
- * checked for uniqueness beforehand:
- *
- *   a) `keyboardOptions` removed from the quantity field in the catalog detail, the
- *      `NumericInput.quantity()` filter deliberately left in place.
- *   b) in the price comparison `NumericInput.setNumber(it)` → `it`, the keyboard
- *      deliberately left in place — so that really only the filter is missing.
- *
- * MEASURED (506 tests completed, 3 failed):
- *
- *   NumberPadTest > whoever filters numbers also shows the number pad
- *   NumberPadTest > the price comparison takes digits and hyphen
- *   NumericInputTest   > kein Zahlenfeld steht ohne Tastaturwahl da
- *
- * I had expected TWO. The third was no chance hit but the
- * actual find of the counter-check: the rule already existed, since 22.09.,
- * in NumericInputTest — I had written it a second time without
- * noticing. One intervention, two red tests: that is exactly what a duplicate rule
- * looks like.
- *
- * Resolved: the older, weaker version is removed (the note in
- * its place in NumericInputTest says why this one is the stricter);
- * its line number report has been taken over here.
- *
- * ── Re-run with three isolated interventions ──────────────
- *
- * Afterwards ONE intervention per rule, to really show the mapping and
- * not merely claim it. MEASURED (506 tests completed, 3 failed):
- *
- *   keyboard gone in the catalog detail, filter stays
- *     → whoever filters numbers also shows the number pad
- *   filter gone at the alert threshold, keyboard stays
- *     → whoever shows the number pad also filters
- *   ImeAction.Search → Done in the price comparison
- *     → the price comparison takes digits and hyphen
- *
- * Three interventions, three red tests, each exactly one — and NumericInputTest
- * is silent about it now. Thus the duplication is not only cleared away, but
- * its disappearance is measured too.
- *
- * What that says about the counter-check: here it did not prove that the
- * rule applies — that too —, but that it was one too many. Without it
- * two versions of the same rule would have stayed side by side.
+ *   keyboard gone in the catalog detail, filter stays → red “whoever filters numbers also shows …”
+ *   filter gone at the alert threshold, keyboard stays → red “whoever shows the number pad also filters”
+ *   The price comparison's field is rendered in ComparisonSearchFieldTest (feature-collection).
  */
 class NumberPadTest {
 
@@ -84,31 +44,31 @@ class NumberPadTest {
      * version in NumericInputTest could do that; that should not get lost
      * in the move.
      */
-    private fun textFields(quelle: String): List<Pair<Int, String>> {
+    private fun textFields(source: String): List<Pair<Int, String>> {
         val blocks = mutableListOf<Pair<Int, String>>()
-        var i = Regex("""\b(Outlined)?TextField\(""").find(quelle)?.range?.first ?: return blocks
+        var i = Regex("""\b(Outlined)?TextField\(""").find(source)?.range?.first ?: return blocks
         while (true) {
-            var tiefe = 0
-            var j = quelle.indexOf('(', i)
-            var ende = j
-            while (ende < minOf(j + 4000, quelle.length)) {
-                when (quelle[ende]) {
-                    '(' -> tiefe++
-                    ')' -> { tiefe--; if (tiefe == 0) break }
+            var depth = 0
+            var j = source.indexOf('(', i)
+            var end = j
+            while (end < minOf(j + 4000, source.length)) {
+                when (source[end]) {
+                    '(' -> depth++
+                    ')' -> { depth--; if (depth == 0) break }
                 }
-                ende++
+                end++
             }
-            val zeile = quelle.substring(0, i).count { c -> c == '\n' } + 1
-            blocks += zeile to quelle.substring(i, minOf(ende + 1, quelle.length))
+            val row = source.substring(0, i).count { c -> c == '\n' } + 1
+            blocks += row to source.substring(i, minOf(end + 1, source.length))
             i = Regex("""\b(Outlined)?TextField\(""")
-                .find(quelle, minOf(ende + 1, quelle.length))?.range?.first ?: break
+                .find(source, minOf(end + 1, source.length))?.range?.first ?: break
         }
         return blocks
     }
 
     private val filter = Regex("""NumericInput\.(setNumber|quantity|price)\b""")
     private val keyboard = Regex(
-        """keyboardType\s*=\s*KeyboardType\.\w+|NumericInput\.(ganzzahl|preis|setnummer)Tastatur|NumericInput\.(integer|price|setNumber)Keyboard""")
+        """keyboardType\s*=\s*KeyboardType\.\w+|NumericInput\.(ganzzahl|price|setNumber)Tastatur|NumericInput\.(integer|price|setNumber)Keyboard""")
 
     /**
      * Only the NUMBER keyboards — Email, Password and Phone do not belong
@@ -116,27 +76,27 @@ class NumberPadTest {
      * outputs.
      */
     private val numberPad = Regex(
-        """KeyboardType\.(Number|Decimal)\b|NumericInput\.(ganzzahl|preis)Tastatur|NumericInput\.(integer|price)Keyboard""")
+        """KeyboardType\.(Number|Decimal)\b|NumericInput\.(ganzzahl|price)Tastatur|NumericInput\.(integer|price)Keyboard""")
 
     @Test
     fun `whoever filters numbers also shows the number pad`() {
-        val fehler = mutableListOf<String>()
-        var gesehen = 0
-        for (datei in Quellen.alle()) {
-            val s = Quellen.withoutComments(datei.readText())
-            for ((zeile, blk) in textFields(s)) {
+        val error = mutableListOf<String>()
+        var seen = 0
+        for (file in Sources.all()) {
+            val s = Sources.withoutComments(file.readText())
+            for ((row, blk) in textFields(s)) {
                 if (!filter.containsMatchIn(blk)) continue
-                gesehen++
-                if (!keyboard.containsMatchIn(blk)) fehler += "${datei.name}:$zeile"
+                seen++
+                if (!keyboard.containsMatchIn(blk)) error += "${file.name}:$row"
             }
         }
         // Self-proof against the silent zero: does the search find any
         // fields at all? Without that an empty error list would be green forever.
-        assert(gesehen >= 15) { "Nur $gesehen gefilterte Felder gefunden — Muster veraltet?" }
-        assert(fehler.isEmpty()) {
-            "Diese Felder lassen nur Ziffern zu, bieten aber die Texttastatur an:\n  " +
-                fehler.joinToString("\n  ") +
-                "\nDer Filter aus NumericInput gehoert mit der passenden Tastatur zusammen."
+        assert(seen >= 15) { "Only $seen filtered fields found — pattern outdated?" }
+        assert(error.isEmpty()) {
+            "These fields only allow digits but offer the text keyboard:\n  " +
+                error.joinToString("\n  ") +
+                "\nThe filter from NumericInput belongs together with the matching keyboard."
         }
     }
 
@@ -166,62 +126,22 @@ class NumberPadTest {
      */
     @Test
     fun `whoever shows the number pad also filters`() {
-        val fehler = mutableListOf<String>()
-        var gesehen = 0
-        for (datei in Quellen.alle()) {
-            val s = Quellen.withoutComments(datei.readText())
-            for ((zeile, blk) in textFields(s)) {
+        val error = mutableListOf<String>()
+        var seen = 0
+        for (file in Sources.all()) {
+            val s = Sources.withoutComments(file.readText())
+            for ((row, blk) in textFields(s)) {
                 if (!numberPad.containsMatchIn(blk)) continue
-                gesehen++
-                if (!filter.containsMatchIn(blk)) fehler += "${datei.name}:$zeile"
+                seen++
+                if (!filter.containsMatchIn(blk)) error += "${file.name}:$row"
             }
         }
         // Self-proof against the silent zero, measured on 28.09.: 21.
-        assert(gesehen >= 15) { "Nur $gesehen Felder mit Zahlentastatur — Muster veraltet?" }
-        assert(fehler.isEmpty()) {
-            "Diese Felder zeigen die Zahlentastatur, lassen aber alles herein:\n  " +
-                fehler.joinToString("\n  ") +
-                "\nDie Tastaturwahl ist eine Bitte, keine Zusicherung — der Filter fehlt."
-        }
-    }
-
-    /**
-     * The price comparison in particular.
-     *
-     * It did not stand here by chance: the field was a free-text search, and the
-     * swap was intended. If the filter is back on free text, the
-     * decision is silently taken back.
-     *
-     * ── Why this is not a third version of the same rule ──────────────────────
-     *
-     * The two rules above say something CONDITIONALLY: if a field is a
-     * number field, it needs both halves. If one takes filter
-     * AND keyboard from this field at once, it falls out of both loops and neither of the
-     * two turns red — it is then simply no longer a number field.
-     *
-     * This rule says something UNCONDITIONALLY: this one field IS a number field,
-     * because that has been decided. No rule can know that
-     * that recognizes fields only by their construction — the same gap that
-     * NumericInputTest already closes with „every set number field takes filter and
-     * number pad".
-     *
-     * Plus the search key, which nobody else says anything about.
-     */
-    @Test
-    fun `the price comparison takes digits and hyphen`() {
-        val s = Quellen.withoutComments(Quellen.lies("collection/ui/screens/ComparisonScreen.kt"))
-        assert(s.contains("NumericInput.setNumber(")) {
-            "Das Suchfeld filtert nicht mehr auf Ziffern und Bindestrich."
-        }
-        assert(s.contains("NumericInput.ganzzahlTastatur(")) {
-            "Das Suchfeld zeigt nicht mehr die Zahlentastatur — genau das hat " +
-                "Marco am 28.09. verlangt."
-        }
-        // The search key MUST stay: the field triggers the search via
-        // ImeAction.Search, and without it there would be no way to trigger it
-        // except the button next to it.
-        assert(s.contains("ImeAction.Search")) {
-            "Die Suchtaste der Tastatur ist weg."
+        assert(seen >= 15) { "Only $seen fields with the number keyboard — pattern outdated?" }
+        assert(error.isEmpty()) {
+            "These fields show the number keyboard but let everything in:\n  " +
+                error.joinToString("\n  ") +
+                "\nThe keyboard choice is a request, not a guarantee — the filter is missing."
         }
     }
 }

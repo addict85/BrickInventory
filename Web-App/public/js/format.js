@@ -22,7 +22,7 @@ export function fmtN(v, cur) {
  * Amount with ISO code instead of symbol ("260,66 USD"): for foreign currencies whose symbol is ambiguous.
  * @param {unknown} v @param {string} cur
  */
-export function fmtGeldCode(v, cur) {
+export function fmtMoneyCode(v, cur) {
   if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
   return new Intl.NumberFormat(locale(), {
     style: 'currency',
@@ -34,10 +34,10 @@ export function fmtGeldCode(v, cur) {
 
 /**
  * A captured purchase price of 0 is a gift; if it is missing (null), it is unknown.
- * @param {unknown} kauf
+ * @param {unknown} purchase
  */
-export function isGift(kauf) {
-  return kauf !== null && kauf !== undefined && String(kauf).trim() !== '' && Number(kauf) === 0;
+export function isGift(purchase) {
+  return purchase !== null && purchase !== undefined && String(purchase).trim() !== '' && Number(purchase) === 0;
 }
 
 /**
@@ -45,7 +45,7 @@ export function isGift(kauf) {
  * @param {number | string | null | undefined} v
  * @param {string} [cur]
  */
-export function fmtGeld(v, cur) {
+export function fmtMoney(v, cur) {
   if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
   return Number(v) === 0
     ? new Intl.NumberFormat(locale(), {
@@ -56,35 +56,41 @@ export function fmtGeld(v, cur) {
     : fmtN(v, cur);
 }
 
+/** Which sign separates the decimals: with only one kind of sign several times, or one sign that is the
+ * locale's group sign before exactly three digits, there is none. @param {string} s @param {number} last */
+function decimalSign(s, last) {
+  const divider = s.match(/[.,]/g) || [];
+  if (!divider.length) return null;
+  if (new Set(divider).size === 1 && divider.length > 1) return null;
+  if (divider.length === 1) {
+    const group = new Intl.NumberFormat(locale()).formatToParts(1000).find(p => p.type === 'group')?.value;
+    if (divider[0] === group && /^\d{3}$/.test(s.slice(last + 1)) && !/^0[.,]/.test(s)) return null;
+  }
+  return s[last];
+}
+
 /**
  * An amount from an input field. Comma and dot are both decimal separators, spaces and ' are
  * thousands separators; a single separator with exactly three digits after it counts as thousands if the
  * language writes it that way ("1.234" de-DE). Empty → null; not a number → NaN, so that the caller reports at the field
  * instead of silently cutting "149,95" to 149.
- * @param {unknown} roh
+ * @param {unknown} raw
  * @returns {number|null}
  */
-export function readAmount(roh) {
-  const s = String(roh ?? '')
+export function readAmount(raw) {
+  const s = String(raw ?? '')
     .replace(/[\s  \x27’]/g, '')
     .replace(/^[€$£]|[€$£]$/g, '');
   if (!s) return null;
   if (!/^[\d.,]*\d[\d.,]*$/.test(s)) return NaN;
-  const trenner = s.match(/[.,]/g) || [];
-  const letztes = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
-  let dezimal = trenner.length ? s[letztes] : null;
-  if (new Set(trenner).size === 1 && trenner.length > 1) dezimal = null;
-  if (trenner.length === 1) {
-    const gruppe = new Intl.NumberFormat(locale()).formatToParts(1000).find(p => p.type === 'group')?.value;
-    if (trenner[0] === gruppe && /^\d{3}$/.test(s.slice(letztes + 1)) && !/^0[.,]/.test(s)) dezimal = null;
-  }
-  const ganz = dezimal ? s.slice(0, letztes) : s,
-    nach = dezimal ? s.slice(letztes + 1) : '';
-  if (/[.,]/.test(nach) || (dezimal && ganz.includes(dezimal))) return NaN;
-  const gruppen = ganz.split(/[.,]/);
-  if (gruppen.length > 1 && (!/^\d{1,3}$/.test(gruppen[0]) || gruppen.slice(1).some(g => !/^\d{3}$/.test(g))))
-    return NaN;
-  return Number((gruppen.join('') || '0') + (nach ? '.' + nach : ''));
+  const last = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+  const decimal = decimalSign(s, last);
+  const whole = decimal ? s.slice(0, last) : s,
+    nach = decimal ? s.slice(last + 1) : '';
+  if (/[.,]/.test(nach) || (decimal && whole.includes(decimal))) return NaN;
+  const groups = whole.split(/[.,]/);
+  if (groups.length > 1 && (!/^\d{1,3}$/.test(groups[0]) || groups.slice(1).some(g => !/^\d{3}$/.test(g)))) return NaN;
+  return Number((groups.join('') || '0') + (nach ? '.' + nach : ''));
 }
 
 /**
@@ -101,19 +107,19 @@ export function amountForField(v) {
 }
 
 /**
- * Percent in the UI's form (de-DE "+51,1 %", en-GB "+51.1%"), so that it does not stand in a second notation next to the amounts from
+ * Percent in the UI's form (de-DE "+51,1 %", en-GB "+51.1%"), so that it does not state in a second notation next to the amounts from
  * fmtN().
  * @param {number|string} v  percentage value (51.1, not 0.511)
- * @param {{sign?: boolean, stellen?: number}} [o]
+ * @param {{sign?: boolean, places?: number}} [o]
  */
 export function fmtPct(v, o = {}) {
   const n = parseFloat(String(v));
   if (!Number.isFinite(n)) return '—';
-  const stellen = o.stellen ?? 1;
+  const places = o.places ?? 1;
   return new Intl.NumberFormat(locale(), {
     style: 'percent',
-    minimumFractionDigits: stellen,
-    maximumFractionDigits: stellen,
+    minimumFractionDigits: places,
+    maximumFractionDigits: places,
     signDisplay: o.sign === false ? 'auto' : 'exceptZero',
   }).format(n / 100);
 }
@@ -146,43 +152,46 @@ export function browserWritesDateHowApp(iso) {
   }
 }
 
-/**
- * A date the same everywhere: "05.01.2024" (de), "5 Jan 2024" (en). Before, every place had toLocaleDateString()
- * ("5.1.2024") next to its own forms.
- * @param {string|number|Date|null|undefined} v
- * @param {'tag'|'zeit'|'tagzeit'|'lang'|'wann'} [art]  lang: "1. Juni 2026"; wann: "10:03" today, otherwise
- *   "tomorrow 10:03", "yesterday 10:03" or date with time
- * @returns {string}
- */
-export function fmtDatum(v, art = 'tag') {
-  if (v === null || v === undefined || v === '') return '';
-  const d =
-    v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
-  if (Number.isNaN(d.getTime())) return '';
-  // A time alone read as today, even if the run was only tomorrow or three days ago.
-  if (art === 'wann') {
-    const tage = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
-    const zeit = fmtDatum(d, 'zeit');
-    if (tage === 0) return zeit;
-    if (tage === 1) return tRaw('zeit.morgen', { zeit });
-    if (tage === -1) return tRaw('zeit.gestern', { zeit });
-    return fmtDatum(d, 'tagzeit');
-  }
-  // English with month names: "03/11/2026" reads as 11 March in the USA. German always 24 hours, even
-  // with a browser defaulting to 12 h.
+/** A time alone read as today, even if the run was only tomorrow or three days ago. @param {Date} d */
+function whenText(d) {
+  const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
+  const time = fmtDate(d, 'time');
+  if (days === 0) return time;
+  if (days === 1) return tRaw('time.morgen', { time });
+  if (days === -1) return tRaw('time.yesterday', { time });
+  return fmtDate(d, 'datetime');
+}
+
+/** English with month names: "03/11/2026" reads as 11 March in the USA. German always 24 hours, even
+ * with a browser defaulting to 12 h. @param {string} kind @returns {Intl.DateTimeFormatOptions} */
+function dateOptions(kind) {
+  /** @type {Intl.DateTimeFormatOptions} */
   const tag =
     LANG === 'en'
       ? { day: 'numeric', month: 'short', year: 'numeric' }
       : { day: '2-digit', month: '2-digit', year: 'numeric' };
-  const zeit =
+  /** @type {Intl.DateTimeFormatOptions} */
+  const time =
     LANG === 'en' ? { hour: '2-digit', minute: '2-digit' } : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
-  const o =
-    art === 'zeit'
-      ? zeit
-      : art === 'tagzeit'
-        ? { ...tag, ...zeit }
-        : art === 'lang'
-          ? { day: 'numeric', month: 'long', year: 'numeric' }
-          : tag;
-  return new Intl.DateTimeFormat(locale(), /** @type {Intl.DateTimeFormatOptions} */ (o)).format(d);
+  if (kind === 'time') return time;
+  if (kind === 'datetime') return { ...tag, ...time };
+  if (kind === 'lang') return { day: 'numeric', month: 'long', year: 'numeric' };
+  return tag;
+}
+
+/**
+ * A date the same everywhere: "05.01.2024" (de), "5 Jan 2024" (en). Before, every place had toLocaleDateString()
+ * ("5.1.2024") next to its own forms.
+ * @param {string|number|Date|null|undefined} v
+ * @param {'tag'|'time'|'datetime'|'lang'|'when'} [kind]  lang: "1. Juni 2026"; when: "10:03" today, otherwise
+ *   "tomorrow 10:03", "yesterday 10:03" or date with time
+ * @returns {string}
+ */
+export function fmtDate(v, kind = 'tag') {
+  if (v === null || v === undefined || v === '') return '';
+  const d =
+    v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
+  if (Number.isNaN(d.getTime())) return '';
+  if (kind === 'when') return whenText(d);
+  return new Intl.DateTimeFormat(locale(), dateOptions(kind)).format(d);
 }

@@ -1,24 +1,24 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { runCatalogFollowUp } from './summary';
 import type { PartsContext } from './context';
 
-const LEER = z.object({});
+const EMPTY = z.object({});
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    katalog_nachzug: typeof LEER;
+    catalog_followup: typeof EMPTY;
   }
 }
 
 /** The web process doesn't change the catalog outside system scope; the follow-up for the summary is the job's. */
-export function partsJobKinds(k: PartsContext): Anmeldung[] {
+export function partsJobKinds(k: PartsContext): Login[] {
   return [
-    auftragsart({
-      art: 'katalog_nachzug',
-      nutzlast: LEER,
-      ausfuehren: async () => void (await runCatalogFollowUp(k)),
-      kontouebergreifend: 'Parts summary of all accounts',
+    jobKind({
+      kind: 'catalog_followup',
+      payload: EMPTY,
+      run: async () => void (await runCatalogFollowUp(k)),
+      crossAccount: 'Parts summary of all accounts',
     }),
   ];
 }

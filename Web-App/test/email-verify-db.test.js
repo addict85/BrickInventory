@@ -22,10 +22,10 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { verifyEmailToken } = _req('src/account/loginCheck.js');
-const INVALID = { code: 'bestaetigungslink_ungueltig' };
+const INVALID = { code: 'confirmation_link_invalid' };
 const { tokenDigest } = _req('src/account/deviceToken.js');
 
 async function dbReachable() {
@@ -64,7 +64,7 @@ async function newUser(name, { minutesValid = 60, email = `${name}@example.ch` }
   return { id, token };
 }
 
-const zustand = id =>
+const condition = id =>
   db.get(
     'SELECT email, email_verified, registration_pending, new_email, new_email_token, new_email_until FROM users WHERE id=$1',
     [id],
@@ -73,19 +73,15 @@ const zustand = id =>
 test('email verification against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();
 
   await t.test('valid token: sets email_verified and clears the fields', async () => {
     const u = await newUser('gueltig');
-    assert.deepEqual(
-      await verifyEmailToken(u.token),
-      { userId: u.id },
-      'Ein frischer Token muss eingelöst werden können',
-    );
-    assert.deepEqual(await zustand(u.id), {
+    assert.deepEqual(await verifyEmailToken(u.token), { userId: u.id }, 'A fresh token must be redeemable');
+    assert.deepEqual(await condition(u.id), {
       email: 'gueltig@example.ch',
       email_verified: true,
       registration_pending: false,
@@ -98,13 +94,13 @@ test('email verification against a real database', async t => {
   await t.test('an expired token is rejected and changes nothing', async () => {
     const u = await newUser('abgelaufen', { minutesValid: -5 });
     await assert.rejects(verifyEmailToken(u.token), INVALID);
-    const z = await zustand(u.id);
+    const z = await condition(u.id);
     assert.deepEqual(
       [z.email, z.email_verified, z.registration_pending],
       [null, false, true],
-      'Ein abgelaufener Token hat bestätigt',
+      'An expired token confirmed',
     );
-    assert.notEqual(z.new_email_token, null, 'Die Felder wurden fälschlich abgeräumt');
+    assert.notEqual(z.new_email_token, null, 'The fields were wrongly cleared');
   });
 
   await t.test('an unknown token is rejected', async () => {
@@ -112,22 +108,22 @@ test('email verification against a real database', async t => {
   });
 
   await t.test('a missing token is rejected', async () => {
-    for (const leer of [undefined, null, '', '   '])
-      await assert.rejects(verifyEmailToken(leer), INVALID, `${JSON.stringify(leer)} wurde angenommen`);
+    for (const empty of [undefined, null, '', '   '])
+      await assert.rejects(verifyEmailToken(empty), INVALID, `${JSON.stringify(empty)} was accepted`);
   });
 
   await t.test('redeeming the same token a second time fails', async () => {
     const u = await newUser('zweimal');
     await verifyEmailToken(u.token);
-    await assert.rejects(verifyEmailToken(u.token), INVALID, 'Derselbe Link liess sich ein zweites Mal einlösen');
+    await assert.rejects(verifyEmailToken(u.token), INVALID, 'The same link could be redeemed a second time');
   });
 
   await t.test('the first confirmation wins, the second registration stays open', async () => {
-    const erste = await newUser('erste', { email: 'geteilt@example.ch' });
-    const zweite = await newUser('zweite', { email: 'GETEILT@example.ch' });
-    await verifyEmailToken(erste.token);
-    await assert.rejects(verifyEmailToken(zweite.token), { code: 'email_vergeben' });
-    const z = await zustand(zweite.id);
+    const first = await newUser('erste', { email: 'geteilt@example.ch' });
+    const second = await newUser('zweite', { email: 'GETEILT@example.ch' });
+    await verifyEmailToken(first.token);
+    await assert.rejects(verifyEmailToken(second.token), { code: 'email_taken' });
+    const z = await condition(second.id);
     assert.deepEqual([z.email, z.registration_pending, z.new_email_token], [null, true, null]);
   });
 

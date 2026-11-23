@@ -42,22 +42,22 @@ const SETS = {
 function loadedImages(w) {
   Object.defineProperty(w.HTMLImageElement.prototype, 'complete', { get: () => true });
   Object.defineProperty(w.HTMLImageElement.prototype, 'naturalWidth', { get: () => 120 });
-  const stil = w.document.createElement('style');
-  stil.textContent = STILE;
-  w.document.head.append(stil);
+  const style = w.document.createElement('style');
+  style.textContent = STILE;
+  w.document.head.append(style);
 }
 
 test('loaded images are marked as loaded immediately, also in the list', async () => {
-  const { w, d, warte } = await openUi({ '/v1/sets': SETS }, { vorher: loadedImages });
+  const { w, d, waitFor } = await openUi({ '/v2/sets': SETS }, { before: loadedImages });
   try {
-    assert.ok(await warte(() => d.querySelectorAll('#gallery img').length === 2));
+    assert.ok(await waitFor(() => d.querySelectorAll('#gallery img').length === 2));
     const notLoaded = () => [...d.querySelectorAll('#gallery img')].filter(i => !i.classList.contains('loaded'));
     assert.deepEqual(
       notLoaded().map(i => i.outerHTML.slice(0, 60)),
       [],
     );
     d.getElementById('vl').click();
-    assert.ok(await warte(() => d.querySelector('#gallery .tw img, #gallery table img')));
+    assert.ok(await waitFor(() => d.querySelector('#gallery .tw img, #gallery table img')));
     assert.deepEqual(
       notLoaded().map(i => i.outerHTML.slice(0, 60)),
       [],
@@ -69,37 +69,39 @@ test('loaded images are marked as loaded immediately, also in the list', async (
 });
 
 test('prices go into the existing tile; an empty container is hidden', async () => {
-  let priceLos;
-  const preise = new Promise(r => {
-    priceLos = r;
+  let priceGo;
+  const prices = new Promise(r => {
+    priceGo = r;
   });
-  const { w, d, warte, ruhig } = await openUi(
+  const { w, d, waitFor, settle } = await openUi(
     {
-      '/v1/sets': SETS,
-      '/v1/finance/pnl': () =>
-        preise.then(() => ({
+      '/v2/sets': SETS,
+      '/v2/finance/pnl': () =>
+        prices.then(() => ({
           success: true,
           currency: 'EUR',
-          sets: [{ set_number: '10294-1', quantity: 1, kachel_preis: 679.99, kachel_quelle: 'markt' }],
-          totals: { purchase: '0', current: '679.99', kaufpreise_fremde_waehrung: 0 },
+          sets: [{ set_number: '10294-1', quantity: 1, tile_price: 679.99, tile_source: 'market' }],
+          totals: { purchase: '0', current: '679.99', foreign_currency_purchases: 0 },
         })),
     },
-    { vorher: loadedImages },
+    { before: loadedImages },
   );
   try {
-    assert.ok(await warte(() => d.querySelector('#gallery [data-price-for="10294-1"]')));
-    const bild = d.querySelector('#gallery img');
+    assert.ok(await waitFor(() => d.querySelector('#gallery [data-price-for="10294-1"]')));
+    const image = d.querySelector('#gallery img');
     const titanic = d.querySelector('#gallery [data-price-for="10294-1"]');
     const treehouse = d.querySelector('#gallery [data-price-for="21318-1"]');
-    assert.equal(titanic.hidden, true, 'vor dem Preis verborgen');
-    assert.equal(w.getComputedStyle(titanic).display, 'none', '.price-badge[hidden] muss display:none setzen');
-    priceLos();
-    assert.ok(await warte(() => /679/.test(d.querySelector('#gallery [data-price-for="10294-1"]')?.textContent || '')));
-    await ruhig();
-    assert.equal(d.querySelector('#gallery img'), bild, 'die Kachelwand wurde neu gebaut');
+    assert.equal(titanic.hidden, true, 'hidden before the price');
+    assert.equal(w.getComputedStyle(titanic).display, 'none', '.price-badge[hidden] must set display:none');
+    priceGo();
+    assert.ok(
+      await waitFor(() => /679/.test(d.querySelector('#gallery [data-price-for="10294-1"]')?.textContent || '')),
+    );
+    await settle();
+    assert.equal(d.querySelector('#gallery img'), image, 'the tile wall was rebuilt');
     assert.equal(d.querySelector('#gallery [data-price-for="10294-1"]'), titanic);
     assert.equal(titanic.hidden, false);
-    assert.equal(treehouse.hidden, true, 'ohne Preis bleibt der Container verborgen');
+    assert.equal(treehouse.hidden, true, 'without a price the container stays hidden');
   } finally {
     w.close();
   }

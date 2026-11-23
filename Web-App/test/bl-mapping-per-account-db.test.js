@@ -5,9 +5,9 @@
  * the shared mapping — in price fetch, minifigure price, valuation and …
  *
  * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
- *   A  routes/api_v1/wanted.ts: rememberNumber always writes rememberBlNumber →
+ *   A  routes/api/wanted.ts: rememberNumber always writes rememberBlNumber →
  *      red: all seven subtests (Anna's 3001 fills the note for 3003)
- *   B  db/blMappingSql.ts: blNummerSql without `_e.bl_id` → red: “valuation”
+ *   B  db/blMappingSql.ts: blNumberSql without `_e.bl_id` → red: “valuation”
  *      (Anna sees the shared number)
  *   C  resolveBlPartNumber() ignores `konto` → red: “price fetch”
  *   D  writeBlNumber() back with `DO UPDATE SET bl_id=…` without WHERE → red:
@@ -27,7 +27,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/jobs');
 const db = testData();
 const { testServer } = require('./helpers/server');
@@ -36,17 +36,17 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const item = (typ, id, farbe) =>
-  `<ITEM><ITEMTYPE>${typ}</ITEMTYPE><ITEMID>${id}</ITEMID>` +
-  (farbe === null ? '' : `<COLOR>${farbe}</COLOR>`) +
+const item = (kind, id, color) =>
+  `<ITEM><ITEMTYPE>${kind}</ITEMTYPE><ITEMID>${id}</ITEMID>` +
+  (color === null ? '' : `<COLOR>${color}</COLOR>`) +
   '<MINQTY>1</MINQTY><CONDITION>N</CONDITION></ITEM>';
-const liste = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>${i.join('')}</INVENTORY>\n`;
+const list = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>${i.join('')}</INVENTORY>\n`;
 
-async function hochladen(base, xml, korrekturen) {
+async function uploadIt(base, xml, corrections) {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  fd.append('korrekturen', JSON.stringify(korrekturen));
-  const r = await fetch(`${base}/api/v1/wanted-list/import/xml?schreiben=1`, { method: 'POST', body: fd });
+  fd.append('corrections', JSON.stringify(corrections));
+  const r = await fetch(`${base}/api/v2/wanted-list/import/xml?write=1`, { method: 'POST', body: fd });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
@@ -54,13 +54,12 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  importWorker(t, _req);
   {
     const c = await db.pool.connect();
     try {
@@ -69,11 +68,13 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
       c.release();
     }
   }
+  // Only after the migrations: a worker polling meanwhile locked the tables 0127 renames (deadlock).
+  importWorker(t, _req);
 
-  const neu = async name =>
+  const fresh = async name =>
     (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
-  const ANNA = await neu('anna'),
-    BRUNO = await neu('bruno');
+  const ANNA = await fresh('anna'),
+    BRUNO = await fresh('bruno');
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name) VALUES ('3001','Brick 2 x 4'), ('3003','Brick 2 x 2')`,
   );
@@ -86,11 +87,11 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   await db.run(
     `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part','3003',NULL), ('fig','fig-000001','sw0001')`,
   );
-  const gemeinsam = async () =>
+  const common = async () =>
     (await db.all('SELECT type, rb_id, bl_id FROM bl_mapping ORDER BY type, rb_id')).map(
       z => `${z.type}|${z.rb_id}|${z.bl_id}`,
     );
-  const vorher = await gemeinsam();
+  const prior = await common();
 
   // Bruno holds the same things so that his valuation has rows.
   const { addManualPart } = _req('src/parts/manualParts.js');
@@ -100,19 +101,19 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
     await addManualMinifig(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
   });
 
-  const anna = testServer(_req, { sitzung: { userId: ANNA }, t });
+  const anna = testServer(_req, { session: { userId: ANNA }, t });
 
   await t.test("the import only writes Anna's mapping", async () => {
-    const { status, body } = await hochladen(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [
-      { index: 0, blId: 'sw0001a', art: 'fig', rbId: 'fig-000001' },
-      { index: 1, blId: '3001', art: 'part', rbId: '3003', rbFarbe: 4 },
+    const { status, body } = await uploadIt(anna.base, list(item('M', 'sw0001a', null), item('P', '3001', 5)), [
+      { index: 0, blId: 'sw0001a', kind: 'fig', rbId: 'fig-000001' },
+      { index: 1, blId: '3001', kind: 'part', rbId: '3003', rbColor: 4 },
     ]);
     assert.equal(status, 200, JSON.stringify(body));
-    assert.equal(body.korrekturen?.angewandt, 2, JSON.stringify(body.korrekturen));
-    assert.deepEqual(await gemeinsam(), vorher, 'die gemeinsame Zuordnung hat sich verändert');
-    const eigen = await db.all('SELECT user_id, type, rb_id, bl_id FROM bl_mapping_custom ORDER BY type');
+    assert.equal(body.corrections?.applied, 2, JSON.stringify(body.corrections));
+    assert.deepEqual(await common(), prior, 'the shared mapping has changed');
+    const own = await db.all('SELECT user_id, type, rb_id, bl_id FROM bl_mapping_custom ORDER BY type');
     assert.deepEqual(
-      eigen.map(z => `${z.user_id}|${z.type}|${z.rb_id}|${z.bl_id}`),
+      own.map(z => `${z.user_id}|${z.type}|${z.rb_id}|${z.bl_id}`),
       [`${ANNA}|fig|fig-000001|sw0001a`, `${ANNA}|part|3003|3001`],
     );
   });
@@ -123,13 +124,13 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   await t.test('price fetch: Anna asks BrickLink for 3001, Bruno for 3003', async () => {
     assert.equal(await asAccount(ANNA, () => resolveBlPartNumber('3003', ANNA)), '3001');
     assert.equal(await asAccount(BRUNO, () => resolveBlPartNumber('3003', BRUNO)), '3003');
-    assert.equal(await resolveBlPartNumber('3003'), '3003', 'ohne Konto gilt die gemeinsame Zuordnung');
+    assert.equal(await resolveBlPartNumber('3003'), '3003', 'without an account the shared mapping applies');
     // The fetch itself reads the price under the translated number.
     await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, fetched_at)
                   VALUES ('3001',5,'N','EUR',7,NOW()), ('3003',5,'N','EUR',2,NOW())`);
-    const preis = uid => asAccount(uid, () => fetchPartPrice('3003', 4, 'N', 'EUR', 24, null, uid));
-    assert.equal(Number((await preis(ANNA))?.avg_price), 7);
-    assert.equal(Number((await preis(BRUNO))?.avg_price), 2);
+    const price = uid => asAccount(uid, () => fetchPartPrice('3003', 4, 'N', 'EUR', 24, null, uid));
+    assert.equal(Number((await price(ANNA))?.avg_price), 7);
+    assert.equal(Number((await price(BRUNO))?.avg_price), 2);
   });
 
   await t.test('figure price: every account by its number', async () => {
@@ -138,29 +139,29 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   });
 
   await t.test('valuation: numbers per account', async () => {
-    const repo = require('./helpers/sources').testArea('finances').bewertung;
+    const repo = require('./helpers/sources').testArea('finances').valuation;
     // Every account values its stock; two foreign accounts are never in one valuation.
     const je2 = async f => [...(await asAccount(ANNA, () => f([ANNA]))), ...(await asAccount(BRUNO, () => f([BRUNO])))];
-    const figuren = await je2(ids => repo.manualMinifigsToValuation(ids));
-    const teile = await je2(ids => repo.manualPartsToValuation(ids));
-    const je = (zeilen, feld) => Object.fromEntries(zeilen.map(z => [z.user_id, z[feld]]));
-    assert.deepEqual(je(figuren, 'bl_fig_number'), { [ANNA]: 'sw0001a', [BRUNO]: 'sw0001' });
-    assert.deepEqual(je(teile, 'bl_part_number'), { [ANNA]: '3001', [BRUNO]: '3003' });
+    const minifigs = await je2(ids => repo.manualMinifigsToValuation(ids));
+    const parts = await je2(ids => repo.manualPartsToValuation(ids));
+    const per = (lines, field) => Object.fromEntries(lines.map(z => [z.user_id, z[field]]));
+    assert.deepEqual(per(minifigs, 'bl_fig_number'), { [ANNA]: 'sw0001a', [BRUNO]: 'sw0001' });
+    assert.deepEqual(per(parts, 'bl_part_number'), { [ANNA]: '3001', [BRUNO]: '3003' });
   });
 
   await t.test("the next import: Anna's correction resolves for Anna, not for Bruno", async () => {
     const { resolveLocalOn } = _req('src/wanted/wantedResolution.js');
     const { readWantedList } = _req('src/wanted/wantedParser.js');
-    const { posten } = readWantedList(liste(item('P', '3001', 5)));
-    assert.equal((await asAccount(ANNA, () => resolveLocalOn(posten, ANNA)))[0].rbId, '3003');
-    const bruno = (await asAccount(BRUNO, () => resolveLocalOn(posten, BRUNO)))[0];
+    const { items } = readWantedList(list(item('P', '3001', 5)));
+    assert.equal((await asAccount(ANNA, () => resolveLocalOn(items, ANNA)))[0].rbId, '3003');
+    const bruno = (await asAccount(BRUNO, () => resolveLocalOn(items, BRUNO)))[0];
     assert.equal(bruno.rbId, '3001');
-    assert.equal(bruno.sicherheit, 'katalogtreffer');
+    assert.equal(bruno.confidence, 'katalogtreffer');
   });
 
   await t.test('the BrickLink no. of an own figure stays with the account', async () => {
     await asAccount(BRUNO, () => updateManualMinifig(BRUNO, 'fig-000001', { bl_fig_number: 'sw9999' }));
-    assert.deepEqual(await gemeinsam(), vorher);
+    assert.deepEqual(await common(), prior);
     assert.equal(await asAccount(BRUNO, () => blNumberOf('fig', 'fig-000001', BRUNO)), 'sw9999');
     assert.equal(await asAccount(ANNA, () => blNumberOf('fig', 'fig-000001', ANNA)), 'sw0001a');
   });
@@ -172,9 +173,9 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
     await rememberBlNumber('part', '3003', '3003b');
     await rememberBlNumber('part', '3004', '3004');
     assert.deepEqual(
-      await gemeinsam(),
+      await common(),
       ['fig|fig-000001|sw0001', 'part|3003|3003b', 'part|3004|null'],
-      'ein vorhandener Wert bleibt, ein leerer wird gefüllt, ein neuer angelegt',
+      'an existing value stays, an empty one is filled, a new one is created',
     );
   });
 });

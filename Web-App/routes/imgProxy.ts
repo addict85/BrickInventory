@@ -2,15 +2,15 @@
  * is stored in database rows and installed apps. */
 import type { Express, Request, Response } from 'express';
 import { passThroughImage, setNumberFromImageAddress } from '../src/images/http/imageProxy';
-import { guardFor } from './api_v1/middleware';
+import { guardFor } from './api/middleware';
 import { IMG_PROXY_PATH, IMG_PROXY_PATH_LEGACY } from '../src/images';
-import type { Dienste } from '../src/services';
+import type { Services } from '../src/services';
 
-function registerImgProxy(app: Express, d: Pick<Dienste, 'account' | 'images'>) {
+function registerImgProxy(app: Express, d: Pick<Services, 'account' | 'images'>) {
   const { requireLoginOrToken, inboundLock } = guardFor(d.account);
-  const durchreichen = (req: Request, res: Response) => passThroughImage(d, req, res);
-  app.get(IMG_PROXY_PATH, requireLoginOrToken, inboundLock, durchreichen);
-  app.get(IMG_PROXY_PATH_LEGACY, requireLoginOrToken, inboundLock, durchreichen);
+  const passThrough = (req: Request, res: Response) => passThroughImage(d, req, res);
+  app.get(IMG_PROXY_PATH, requireLoginOrToken, inboundLock, passThrough);
+  app.get(IMG_PROXY_PATH_LEGACY, requireLoginOrToken, inboundLock, passThrough);
 }
 
 export { registerImgProxy, passThroughImage, setNumberFromImageAddress };

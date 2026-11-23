@@ -9,8 +9,8 @@
  * (src/jobQueue/jobs.ts) reportStatus() removed → red: the same test.
  *
  * Counter-checks for the parts list (measured on 02.11.2026), each red: “the
- * parts list is checked …”: `eingabe: PdfEingabe` deleted from the contract;
- * in the route again `req.body` instead of PdfEingabe.parse()
+ * parts list is checked …”: `eingabe: PdfInput` deleted from the contract;
+ * in the route again `req.body` instead of PdfInput.parse()
  * („unbekannte Felder gehen in den Auftrag“); `.max(5000)` deleted
  * („zu viele Posten“ got 200).
  *
@@ -19,7 +19,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
@@ -36,7 +36,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -76,7 +76,8 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   const app = express();
   // As in operation the body is read by the server's parser, not the router.
   app.use(express.json({ limit: '4mb' })); // like server.ts for this route
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/pdf.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/pdf.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
@@ -84,41 +85,41 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   async function jobPut(jobId, userId, status = 'done') {
     await db.run(
       `INSERT INTO jobs (type, user_id, dedupe_key, status, locked_by, deadline_at)
-                  VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'laeuft' THEN 'test' END,
-                          CASE WHEN $3 = 'laeuft' THEN NOW() + INTERVAL '1 hour' END)`,
-      [jobs.pdfKey(jobId), userId, status === 'done' ? 'erledigt' : 'laeuft'],
+                  VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'running' THEN 'test' END,
+                          CASE WHEN $3 = 'running' THEN NOW() + INTERVAL '1 hour' END)`,
+      [jobs.pdfKey(jobId), userId, status === 'done' ? 'done' : 'running'],
     );
     await fs.mkdir(PDF_JOB_DIR, { recursive: true });
     if (status === 'done') {
       await fs.writeFile(path.join(PDF_JOB_DIR, `${jobId}.pdf`), '%PDF-1.4 test');
     }
   }
-  const hol = (pfad, token) =>
-    fetch(`${basis}/api/v1/sets/partslist-pdf/${pfad}`, { headers: { Authorization: `Bearer ${token}` } });
+  const fetchIt = (path, token) =>
+    fetch(`${basis}/api/v2/sets/partslist-pdf/${path}`, { headers: { Authorization: `Bearer ${token}` } });
 
   try {
     const jobA = jobs.newJobId(Date.now());
     await jobPut(jobA, idA);
 
     await t.test('the own job can be fetched', async () => {
-      const s = await hol(`status/${jobA}`, tokA);
+      const s = await fetchIt(`status/${jobA}`, tokA);
       const body = await s.json();
       assert.equal(s.status, 200, JSON.stringify(body));
       assert.equal(body.status, 'done');
     });
 
     await t.test('a foreign job cannot — and with the same 404', async () => {
-      const s = await hol(`status/${jobA}`, tokB);
-      assert.equal(s.status, 404, 'fremder Auftragsstatus war lesbar');
+      const s = await fetchIt(`status/${jobA}`, tokB);
+      assert.equal(s.status, 404, "a foreign job's status was readable");
 
-      const d = await hol(`download/${jobA}`, tokB);
+      const d = await fetchIt(`download/${jobA}`, tokB);
       assert.equal(d.status, 404, 'fremdes PDF war herunterladbar');
-      assert.doesNotMatch(await d.text(), /PDF/, 'die Antwort enthielt PDF-Inhalt');
+      assert.doesNotMatch(await d.text(), /PDF/, 'the response contained PDF content');
 
       // Important: the failed attempt must not damage the job — the
       // download deletes the file after delivering it.
-      const s2 = await hol(`status/${jobA}`, tokA);
-      assert.equal(s2.status, 200, 'der eigene Auftrag ist durch den Fremdzugriff verschwunden');
+      const s2 = await fetchIt(`status/${jobA}`, tokA);
+      assert.equal(s2.status, 200, 'the own job disappeared because of the foreign access');
     });
 
     await t.test('the cap applies at the third concurrent job', async () => {
@@ -127,20 +128,20 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       await jobPut(jobs.newJobId(Date.now()), idA, 'running');
       await jobPut(jobs.newJobId(Date.now()), idB, 'running'); // a foreign run does not count
 
-      const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
+      const r = await fetch(`${basis}/api/v2/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
       });
-      assert.equal(r.status, 429, `dritter Auftrag wurde angenommen (${r.status})`);
+      assert.equal(r.status, 429, `third job was accepted (${r.status})`);
 
       // The second user is not affected by it.
-      const r2 = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
+      const r2 = await fetch(`${basis}/api/v2/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokB}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
       });
-      assert.equal(r2.status, 200, `fremder Deckel hat den zweiten Benutzer gebremst (${r2.status})`);
+      assert.equal(r2.status, 200, `a foreign cap slowed down the second user (${r2.status})`);
     });
 
     await t.test('expired runs do not lock anyone out permanently', async () => {
@@ -153,12 +154,12 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       await db.run(`UPDATE jobs SET created_at = NOW() - INTERVAL '1 day' WHERE dedupe_key = ANY($1)`, [
         [alt1, alt2].map(jobs.pdfKey),
       ]);
-      const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
+      const r = await fetch(`${basis}/api/v2/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
         body: JSON.stringify({ sets: [], parts: [{ part_number: '3001', quantity: 1 }] }),
       });
-      assert.equal(r.status, 200, 'ein hängengebliebener Lauf sperrt den Benutzer für immer aus');
+      assert.equal(r.status, 200, 'a stuck run locks the user out forever');
     });
 
     await t.test('the status stream reports the end immediately', async () => {
@@ -166,7 +167,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       const job = jobs.newJobId(Date.now());
       await jobPut(job, idA, 'running');
       const ctrl = new AbortController();
-      const r = await fetch(`${basis}/api/v1/sets/partslist-pdf/stream/${job}`, {
+      const r = await fetch(`${basis}/api/v2/sets/partslist-pdf/stream/${job}`, {
         headers: { Authorization: `Bearer ${tokA}` },
         signal: ctrl.signal,
       });
@@ -176,13 +177,13 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       let text = '';
       const start = Date.now();
       // The worker reports the end via erledigt(); the job here belongs to the claimer 'test'.
-      const zeile = await db.get(`SELECT id FROM jobs WHERE dedupe_key = $1`, [jobs.pdfKey(job)]);
+      const row = await db.get(`SELECT id FROM jobs WHERE dedupe_key = $1`, [jobs.pdfKey(job)]);
       setTimeout(
         () =>
           Object.assign({}, _req('src/jobQueue/jobs.js'), {
             ..._req('src/jobQueue/service.js'),
-            ...require('./helpers/sources').testArea('jobQueue').auftraege,
-          }).erledigt({ id: String(zeile.id), locked_by: 'test', type: 'pdf' }),
+            ...require('./helpers/sources').testArea('jobQueue').jobs,
+          }).done({ id: String(row.id), locked_by: 'test', type: 'pdf' }),
         300,
       );
       while (!text.includes('"done"') && Date.now() - start < 8000) {
@@ -194,54 +195,54 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
         text += dec.decode(value);
       }
       ctrl.abort();
-      assert.match(text, /"done"/, `kein Ende im Strom: ${text}`);
-      assert.ok(Date.now() - start < 5000, `erst nach ${Date.now() - start} ms`);
+      assert.match(text, /"done"/, `no end in the stream: ${text}`);
+      assert.ok(Date.now() - start < 5000, `only after ${Date.now() - start} ms`);
     });
 
     await t.test('the parts list is checked before a job arises', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
-      const starte = rumpf =>
-        fetch(`${basis}/api/v1/sets/partslist-pdf`, {
+      const launch = reqBody =>
+        fetch(`${basis}/api/v2/sets/partslist-pdf`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
-          body: JSON.stringify(rumpf),
+          body: JSON.stringify(reqBody),
         }).then(async r => ({ status: r.status, body: await r.json() }));
-      const teil = (mehr = {}) => ({ part_number: '3001', quantity: 2, color_id: 5, color_hex: 'C91A09', ...mehr });
-      const falsch = {
-        'zu viele Posten': { parts: Array.from({ length: 5001 }, () => teil()) },
-        'Menge 0': { parts: [teil({ quantity: 0 })] },
-        'Menge 10000': { parts: [teil({ quantity: 10000 })] },
-        'Menge als Unsinn': { parts: [teil({ quantity: '2; DROP' })] },
-        'zu lange Teilenummer': { parts: [teil({ part_number: 'x'.repeat(65) })] },
-        'zu langer Name': { parts: [teil({ part_name: 'n'.repeat(501) })] },
-        'Farbe als Text': { parts: [teil({ color_hex: 'red);evil' })] },
+      const part = (more = {}) => ({ part_number: '3001', quantity: 2, color_id: 5, color_hex: 'C91A09', ...more });
+      const wrong = {
+        'zu viele Posten': { parts: Array.from({ length: 5001 }, () => part()) },
+        'Menge 0': { parts: [part({ quantity: 0 })] },
+        'Menge 10000': { parts: [part({ quantity: 10000 })] },
+        'Menge als Unsinn': { parts: [part({ quantity: '2; DROP' })] },
+        'zu lange Teilenummer': { parts: [part({ part_number: 'x'.repeat(65) })] },
+        'zu langer Name': { parts: [part({ part_name: 'n'.repeat(501) })] },
+        'Farbe als Text': { parts: [part({ color_hex: 'red);evil' })] },
         'parts kein Array': { parts: 'alles' },
         'Teil ohne Nummer': { parts: [{ quantity: 1 }] },
       };
-      for (const [fall, rumpf] of Object.entries(falsch)) {
-        const r = await starte(rumpf);
+      for (const [fall, reqBody] of Object.entries(wrong)) {
+        const r = await launch(reqBody);
         assert.equal(r.status, 400, `${fall}: ${JSON.stringify(r.body).slice(0, 200)}`);
-        assert.equal(r.body.code, 'eingabe_ungueltig', fall);
+        assert.equal(r.body.code, 'input_invalid', fall);
       }
-      assert.equal((await db.get(`SELECT count(*)::int n FROM jobs WHERE type = 'pdf'`)).n, 0, 'ein Auftrag trotz 400');
+      assert.equal((await db.get(`SELECT count(*)::int n FROM jobs WHERE type = 'pdf'`)).n, 0, 'a job despite 400');
 
-      const ok = await starte({
+      const ok = await launch({
         sets: [{ set_number: '10001-1', name: 'Probe' }],
-        parts: [teil({ quantity: '12', boese: 'x'.repeat(10000) }), ...Array.from({ length: 4999 }, () => teil())],
+        parts: [part({ quantity: '12', evil: 'x'.repeat(10000) }), ...Array.from({ length: 4999 }, () => part())],
       });
       assert.equal(ok.status, 200, JSON.stringify(ok.body));
       const payload = (await db.get(`SELECT payload FROM jobs WHERE type = 'pdf'`)).payload;
       assert.equal(payload.parts.length, 5000);
       assert.equal(payload.parts[0].quantity, '12');
-      assert.ok(!('boese' in payload.parts[0]), 'unbekannte Felder gehen in den Auftrag');
+      assert.ok(!('evil' in payload.parts[0]), 'unknown fields go into the job');
     });
 
     await t.test('the job identifier comes from cryptographic randomness', () => {
       const ids = new Set(Array.from({ length: 200 }, () => jobs.newJobId(Date.now())));
-      assert.equal(ids.size, 200, 'Kennungen wiederholen sich');
-      for (const id of ids) assert.ok(jobs.validJobId(id), `eigene Kennung ist ungültig: ${id}`);
-      const zufallsteil = [...ids][0].split('-')[1];
-      assert.match(zufallsteil, /^[0-9a-f]{12}$/, 'kein 6-Byte-Hex — stammt die Kennung noch aus Math.random()?');
+      assert.equal(ids.size, 200, 'identifiers repeat');
+      for (const id of ids) assert.ok(jobs.validJobId(id), `own identifier is invalid: ${id}`);
+      const randomPart = [...ids][0].split('-')[1];
+      assert.match(randomPart, /^[0-9a-f]{12}$/, 'no 6-byte hex — does the identifier still come from Math.random()?');
     });
   } finally {
     srv.close();

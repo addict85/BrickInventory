@@ -1,0 +1,17 @@
+Gegenprobe: ManualFigTile reicht die Zustände nicht an die gemeinsame Kachel weiter
+Modul: app
+Test: ch.brickinventoryapp.app.ManualTileDisplayTest
+Rot: the manual figure shows conditions, owners and the averaged purchase price
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/FiguresCard.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/FiguresCard.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/FiguresCard.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/FiguresCard.kt
+@@ -57,7 +57,7 @@
+         item = ManualTileItem(
+             name = fig.figName ?: fig.figNumber,
+             quantity = fig.quantity,
+-            states = fig.conditions,
++            states = emptyList(),
+             condition = fig.condition,
+             owner = fig.owners,
+             price = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,

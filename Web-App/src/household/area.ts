@@ -1,37 +1,37 @@
 /** Every service takes the context; rules without a database live in rules.ts. */
 import type { Db } from '../../db/database';
-import { mit, buildArea, type Inspect } from '../infra/area';
-import { Faecher } from '../infra/cache';
-import * as haushalt from './household';
-import { zugang, type HouseholdDependencies, type HouseholdContext } from './context';
+import { bound, buildArea, type Inspect } from '../infra/area';
+import { Compartments } from '../infra/cache';
+import * as household from './household';
+import { access, type HouseholdDependencies, type HouseholdContext } from './context';
 
 export type { HouseholdDependencies, HouseholdContext } from './context';
 
-export function createHousehold(a: Omit<HouseholdDependencies, 'faecher'>, inspect?: Inspect<HouseholdContext>) {
+export function createHousehold(a: Omit<HouseholdDependencies, 'compartments'>, inspect?: Inspect<HouseholdContext>) {
   return buildArea(
-    { ...a, faecher: new Faecher() },
-    (db: Db) => zugang(db, a.lesevertrag),
+    { ...a, compartments: new Compartments() },
+    (db: Db) => access(db, a.readContract),
     (k: HouseholdContext) => ({
-      reportHouseholdChange: mit(k)(haushalt.reportHouseholdChange),
-      schreibbereich: mit(k)(haushalt.schreibbereich),
-      householdMembers: mit(k)(haushalt.householdMembers),
-      createInvitation: mit(k)(haushalt.createInvitation),
-      checkInvitation: mit(k)(haushalt.checkInvitation),
-      redeemInvitation: mit(k)(haushalt.redeemInvitation),
-      unlinkAccounts: mit(k)(haushalt.unlinkAccounts),
-      unlinkForeignAccess: mit(k)(haushalt.unlinkForeignAccess),
-      discardSeparated: mit(k)(haushalt.discardSeparated),
-      householdStatus: mit(k)(haushalt.householdStatus),
-      scopeIds: mit(k)(haushalt.scopeIds),
-      scopeFrom: mit(k)(haushalt.scopeFrom),
-      writeAreaFrom: mit(k)(haushalt.writeAreaFrom),
-      seesAccount: mit(k)(haushalt.seesAccount),
-      schreibziel: mit(k)(haushalt.schreibziel),
-      writeTargetOrNull: mit(k)(haushalt.writeTargetOrNull),
-      moveSource: mit(k)(haushalt.moveSource),
-      besitzerAnhaengen: mit(k)(haushalt.besitzerAnhaengen),
-      atHouseholdChange: mit(k)(haushalt.atHouseholdChange),
-      listenOnChanges: mit(k)(haushalt.listenOnChanges),
+      reportHouseholdChange: bound(k)(household.reportHouseholdChange),
+      writeScope: bound(k)(household.writeScope),
+      householdMembers: bound(k)(household.householdMembers),
+      createInvitation: bound(k)(household.createInvitation),
+      checkInvitation: bound(k)(household.checkInvitation),
+      redeemInvitation: bound(k)(household.redeemInvitation),
+      unlinkAccounts: bound(k)(household.unlinkAccounts),
+      unlinkForeignAccess: bound(k)(household.unlinkForeignAccess),
+      discardSeparated: bound(k)(household.discardSeparated),
+      householdStatus: bound(k)(household.householdStatus),
+      scopeIds: bound(k)(household.scopeIds),
+      scopeFrom: bound(k)(household.scopeFrom),
+      writeAreaFrom: bound(k)(household.writeAreaFrom),
+      seesAccount: bound(k)(household.seesAccount),
+      writeTarget: bound(k)(household.writeTarget),
+      writeTargetOrNull: bound(k)(household.writeTargetOrNull),
+      moveSource: bound(k)(household.moveSource),
+      attachOwners: bound(k)(household.attachOwners),
+      atHouseholdChange: bound(k)(household.atHouseholdChange),
+      listenOnChanges: bound(k)(household.listenOnChanges),
     }),
     inspect,
   );

@@ -1,0 +1,17 @@
+Gegenprobe: Der Name eines Pin-Eintrags trägt wieder Host und Port
+Modul: core-data
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
+Rot: no entry names the server
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -303,7 +303,7 @@
+ 
+     /** Where the pin for [key] lies; null if the pins' key is not working right now. */
+     internal fun pinEntry(key: String): String? =
+-        trustCipher.name(PIN_PREFIX + key)?.let { PIN_NAME_PREFIX + it }
++        trustCipher.name(PIN_PREFIX + key)?.let { PIN_NAME_PREFIX + it + key }
+ 
+     /**
+      * Pins of older versions carry host and port in the name. The same ciphertext (its binding

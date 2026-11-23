@@ -16,7 +16,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const ROT = {
   part_number: '3001',
@@ -36,61 +36,61 @@ const UNKNOWN = {
   quantity: 2,
 };
 
-async function exportiere(sprache) {
+async function exportIt(language) {
   const o = await openUi(
     {
-      '/v1/sets/10294-1/parts-list': { success: true, parts: [ROT, UNKNOWN] },
-      '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
-      '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
-      '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },
+      '/v2/sets/10294-1/parts-list': { success: true, parts: [ROT, UNKNOWN] },
+      '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
+      '/v2/sets/info/10294-1': { success: true, name: 'Titanic', in_catalog: true },
+      '/v2/parts/bl-color-map': { success: true, map: { 4: 5 } },
     },
-    { sprache },
+    { language },
   );
-  const dateien = [];
+  const files = [];
   o.w.URL.createObjectURL = blob => {
-    dateien.push(blob);
-    return `blob:test/${dateien.length}`;
+    files.push(blob);
+    return `blob:test/${files.length}`;
   };
   o.w.URL.revokeObjectURL = () => {};
   o.w.open = () => ({});
   try {
-    return await bedienen(o, dateien);
+    return await operate(o, files);
   } catch (e) {
     o.w.close();
     throw e;
   }
 }
 
-async function bedienen(o, dateien) {
-  await reiter(o.w, 'partslist');
+async function operate(o, files) {
+  await switchTab(o.w, 'partslist');
   o.d.getElementById('pl-setnr').value = '10294';
   o.d.querySelector('[data-click="plAddSet"]').click();
-  await warte(() => o.d.querySelector('#pl-sets .pl-chip-name')?.textContent.trim(), 3000);
+  await waitFor(() => o.d.querySelector('#pl-sets .pl-chip-name')?.textContent.trim(), 3000);
   o.d.getElementById('btn-pl-gen').click();
-  assert.ok(await warte(() => o.d.querySelector('.pl-have-input'), 3000), 'Liste erstellt');
+  assert.ok(await waitFor(() => o.d.querySelector('.pl-have-input'), 3000), 'list created');
   o.d.getElementById('btn-pl-bl').click();
   assert.ok(
-    await warte(() => dateien.length === 1 && o.d.querySelectorAll('#toasts .toast').length >= 2, 3000),
-    'Kein Export',
+    await waitFor(() => files.length === 1 && o.d.querySelectorAll('#toasts .toast').length >= 2, 3000),
+    'no export',
   );
-  const xml = await dateien[0].text();
-  const meldungen = [...o.d.querySelectorAll('#toasts .toast')].map(t => ({ art: t.className, text: t.textContent }));
-  return { ...o, xml, meldungen };
+  const xml = await files[0].text();
+  const messages = [...o.d.querySelectorAll('#toasts .toast')].map(t => ({ kind: t.className, text: t.textContent }));
+  return { ...o, xml, messages };
 }
 
 test('no Rebrickable color number goes out as a BrickLink color — items without one are named', async () => {
-  const { w, xml, meldungen } = await exportiere('de');
+  const { w, xml, messages } = await exportIt('de');
   try {
     // Without an XML declaration: BrickLink rejects a file with one (bricklink-wanted-xml.test.js checks the building block).
     assert.ok(xml.startsWith('<INVENTORY>'), xml.slice(0, 60));
-    assert.match(xml, /<ITEMID>3001<\/ITEMID>\s*<COLOR>5<\/COLOR>/, 'Die BrickLink-Farbe aus der Zuordnung');
+    assert.match(xml, /<ITEMID>3001<\/ITEMID>\s*<COLOR>5<\/COLOR>/, 'The BrickLink colour from the mapping');
     assert.doesNotMatch(xml, /3002|<COLOR>999<\/COLOR>|<COLOR>4<\/COLOR>/, xml);
     assert.equal((xml.match(/<ITEM>/g) || []).length, 1);
-    const fehler = meldungen.find(m => /error/.test(m.art));
+    const error = messages.find(m => /error/.test(m.kind));
     assert.match(
-      fehler?.text ?? '',
+      error?.text ?? '',
       /1 Posten ohne bekannte BrickLink-Farbe.*3002 \(Mystery\)/,
-      JSON.stringify(meldungen),
+      JSON.stringify(messages),
     );
   } finally {
     w.close();
@@ -98,12 +98,12 @@ test('no Rebrickable color number goes out as a BrickLink color — items withou
 });
 
 test('the messages are translated, not typed in', async () => {
-  const { w, meldungen } = await exportiere('en');
+  const { w, messages } = await exportIt('en');
   try {
-    const texte = meldungen.map(m => m.text).join(' | ');
-    assert.match(texte, /1 missing part types? exported/);
-    assert.match(texte, /1 items? without a known BrickLink colour/);
-    assert.doesNotMatch(texte, /fehlende|Posten/);
+    const texts = messages.map(m => m.text).join(' | ');
+    assert.match(texts, /1 missing part types? exported/);
+    assert.match(texts, /1 items? without a known BrickLink colour/);
+    assert.doesNotMatch(texts, /fehlende|Posten/);
   } finally {
     w.close();
   }

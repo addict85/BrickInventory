@@ -27,21 +27,21 @@ const DESIGNS = [
     .map(n => n.slice(0, -4)),
 ];
 
-function measure(bin, ordner, design) {
+function measure(bin, dir, design) {
   const css = ['tokens.css', 'styles.css', ...fs.readdirSync(path.join(PUBLIC, 'themes')).map(n => `themes/${n}`)]
     .map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`)
     .join('');
-  const datei = path.join(ordner, `${design}.html`);
+  const file = path.join(dir, `${design}.html`);
   fs.writeFileSync(
-    datei,
+    file,
     `<!doctype html><html lang="de" data-theme="${design}"><head><meta charset="utf-8">${css}
 <style>*{transition:none!important;animation:none!important}</style></head><body>
 <header><span>BrickInventory</span></header><nav><button class="ntab">Sammlung</button></nav>
 <main style="height:5000px"></main><pre id="ergebnis"></pre>
 <script>window.scrollTo(0, 1500); {
   const r = (s) => document.querySelector(s).getBoundingClientRect();
-  document.getElementById('ergebnis').textContent = 'ERGE' + 'BNIS' + JSON.stringify({ kopf: [r('header').top, r('header').bottom],
-    reiter: [r('nav').top, r('nav').bottom], gerollt: window.scrollY }) + 'EN' + 'DE'; }</script></body></html>`,
+  document.getElementById('ergebnis').textContent = 'ERGE' + 'BNIS' + JSON.stringify({ head: [r('header').top, r('header').bottom],
+    tabBar: [r('nav').top, r('nav').bottom], scrolled: window.scrollY }) + 'EN' + 'DE'; }</script></body></html>`,
   );
   const dom = execFileSync(
     bin,
@@ -53,12 +53,12 @@ function measure(bin, ordner, design) {
       '--window-size=1200,800',
       '--virtual-time-budget=3000',
       '--dump-dom',
-      `file://${datei}`,
+      `file://${file}`,
     ],
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, `${design}: kein Ergebnis`);
+  assert.ok(m, `${design}: no result`);
   return JSON.parse(m[1].replace(/&quot;/g, '"'));
 }
 
@@ -68,23 +68,23 @@ test('header and tab bar stick together in every theme and connect to each other
     t.skip('no Chrome found');
     return;
   }
-  assert.ok(DESIGNS.length >= 5, `nur ${DESIGNS.length} Designs gefunden`);
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'haftung-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const fehler = [];
+  assert.ok(DESIGNS.length >= 5, `only ${DESIGNS.length} designs found`);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'haftung-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const error = [];
   for (const d of DESIGNS) {
-    const { kopf, reiter, gerollt } = measure(bin, ordner, d);
-    assert.ok(gerollt > 1000, `${d}: die Seite rollt nicht (${gerollt})`);
-    const headerSticks = Math.round(kopf[0]) === 0,
-      tabVisible = reiter[1] > 0;
+    const { head, tabBar, scrolled } = measure(bin, dir, d);
+    assert.ok(scrolled > 1000, `${d}: the page does not scroll (${scrolled})`);
+    const headerSticks = Math.round(head[0]) === 0,
+      tabVisible = tabBar[1] > 0;
     if (headerSticks !== tabVisible)
-      fehler.push(
+      error.push(
         `${d}: Kopfleiste ${headerSticks ? 'haftet' : 'rollt weg'}, Reiterleiste ${tabVisible ? 'haftet' : 'rollt weg'}`,
       );
-    else if (headerSticks && Math.round(reiter[0]) !== Math.round(kopf[1]))
-      fehler.push(`${d}: Reiterleiste bei ${Math.round(reiter[0])}, Kopfleiste endet bei ${Math.round(kopf[1])}`);
+    else if (headerSticks && Math.round(tabBar[0]) !== Math.round(head[1]))
+      error.push(`${d}: Reiterleiste bei ${Math.round(tabBar[0])}, Kopfleiste endet bei ${Math.round(head[1])}`);
   }
-  assert.deepEqual(fehler, []);
+  assert.deepEqual(error, []);
   // The base styling pins both; without that the comparison above would check “scrolls away” twice.
-  assert.equal(Math.round(measure(bin, ordner, 'classic').kopf[0]), 0, 'classic: die Kopfleiste haftet nicht');
+  assert.equal(Math.round(measure(bin, dir, 'classic').head[0]), 0, 'classic: the header bar does not stick');
 });

@@ -1,0 +1,17 @@
+Gegenprobe: Der Name eines Pin-Eintrags ist wieder Host und Port selbst
+Modul: core-security
+Test: ch.brickinventoryapp.security.TrustCipherTest
+Rot: a name does not reveal the server and stays the same
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+@@ -32,7 +32,7 @@
+      */
+     fun name(binding: String): String? = runCatching {
+         val nameKey = hmac(trust(), NAMES)
+-        Base64.getUrlEncoder().withoutPadding().encodeToString(hmac(nameKey, binding)).take(NAME_LENGTH)
++        binding.also { nameKey.size }
+     }.getOrNull()
+ 
+     /** null if the key isn't working right now (locked): then nothing is stored. */

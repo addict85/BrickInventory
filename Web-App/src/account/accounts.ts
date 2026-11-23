@@ -1,14 +1,14 @@
 /** Every path that changes a password ends all accesses afterwards — in one
  * place, so no path forgets the step. */
-import { hashePassword } from './passwordHash';
+import { hashPassword } from './passwordHash';
 import * as repo from './repository/accounts';
 import { emptyTokenCache } from './tokenCache';
 import { withAccessEnd, endAllSessions, accessTransaction } from './accessEnd';
 import { tokenDigest, revokeAllTokens } from './deviceToken';
 import { emailValid } from '../infra/validate';
-import { removeStartpasswort } from '../infra/startpasswort';
+import { removeStartPassword } from '../infra/startPassword';
 import { rememberAdminAction } from './adminLog';
-import { asDuplicate, fachfehler, notFound } from '../infra/errorTexts';
+import { asDuplicate, failDomain, notFound } from '../infra/errorTexts';
 import type { ResetSideEffects } from '../mail';
 import { hintInBackground } from './accountNotice';
 import { deleteDailyLimit } from './loginLimiter';
@@ -17,7 +17,7 @@ import type { TakeoverKind } from './repository/takeovers';
 
 /** Only report, change nothing: only the owner knows which address was meant. */
 export async function reportInvalidAddresses(k: AccountContext): Promise<number[]> {
-  const ids = (await k.konten.allAddresses()).filter(z => !emailValid(z.email)).map(z => z.id);
+  const ids = (await k.accounts.allAddresses()).filter(z => !emailValid(z.email)).map(z => z.id);
   if (ids.length)
     console.warn(
       `⚠️  [konto] ${ids.length} Konto/Konten mit einer E-Mail-Adresse, die keine einzelne reine Adresse ist ` +
@@ -28,7 +28,7 @@ export async function reportInvalidAddresses(k: AccountContext): Promise<number[
 
 /** H5: an address from the legacy stock that was never confirmed no longer counts; the owner must know. */
 export async function reportPendingAddresses(k: AccountContext): Promise<number[]> {
-  const ids = await k.konten.pendingWithoutLink();
+  const ids = await k.accounts.pendingWithoutLink();
   if (ids.length)
     console.warn(
       `⚠️  [konto] ${ids.length} Konto/Konten mit einer nie bestätigten Adresse (IDs ${ids.join(', ')}). ` +
@@ -38,160 +38,160 @@ export async function reportPendingAddresses(k: AccountContext): Promise<number[
 }
 
 export async function accountsList(k: AccountContext) {
-  const konten = await k.konten.allAccounts();
-  const withFactor = await k.factors.activeAmong(konten.map(z => z.id));
+  const accounts = await k.accounts.allAccounts();
+  const withFactor = await k.factors.activeAmong(accounts.map(z => z.id));
   // Announced changes to administrators (24 h): the other administrators should see them, not only by mail.
-  const angekuendigt = new Map<number, { type: TakeoverKind; effective_at: string }[]>();
-  for (const a of await k.uebernahmen.announced())
-    angekuendigt.set(a.target_id, [
-      ...(angekuendigt.get(a.target_id) ?? []),
+  const announced = new Map<number, { type: TakeoverKind; effective_at: string }[]>();
+  for (const a of await k.takeovers.announced())
+    announced.set(a.target_id, [
+      ...(announced.get(a.target_id) ?? []),
       { type: a.type, effective_at: new Date(a.effective_at).toISOString() },
     ]);
-  return konten.map(z => ({ ...z, zweiter_faktor: withFactor.has(z.id), angekuendigt: angekuendigt.get(z.id) ?? [] }));
+  return accounts.map(z => ({ ...z, second_factor: withFactor.has(z.id), announced: announced.get(z.id) ?? [] }));
 }
 
-export async function profil(k: AccountContext, id: number) {
-  return k.konten.profileRow(id);
+export async function profile(k: AccountContext, id: number) {
+  return k.accounts.profileRow(id);
 }
 
 export function accountShortOf(k: AccountContext, id: number) {
-  return k.konten.accountShort(id);
+  return k.accounts.accountShort(id);
 }
 
 export function accountFullOf(k: AccountContext, id: number) {
-  return k.konten.accountFull(id);
+  return k.accounts.accountFull(id);
 }
 
 export function givesAccount(k: AccountContext, id: number): Promise<boolean> {
-  return k.konten.accountExists(id);
+  return k.accounts.accountExists(id);
 }
 
 /** For notices to administrators: a just deleted account is at least named by its id. */
 export async function accountDisplayName(k: AccountContext, id: number): Promise<string> {
-  return (await k.konten.accountShort(id))?.username ?? String(id);
+  return (await k.accounts.accountShort(id))?.username ?? String(id);
 }
 
 /** The password alone does not carry administrator rights; a passkey does not replace TOTP here. */
-export async function openFactorRequired(k: AccountContext, uid: number, verwalter: boolean): Promise<boolean> {
-  return verwalter && !(await k.factors.isActive(uid));
+export async function openFactorRequired(k: AccountContext, uid: number, admin: boolean): Promise<boolean> {
+  return admin && !(await k.factors.isActive(uid));
 }
 
 /** The setup step "account": one exists, and an administrator has replaced the start password. */
-export async function accountConfigured(k: AccountContext, verwalter: boolean): Promise<boolean> {
-  const s = await k.einrichtung.accountsStatus();
-  return s.vorhanden && (!verwalter || !s.startpasswort);
+export async function accountConfigured(k: AccountContext, admin: boolean): Promise<boolean> {
+  const s = await k.setup.accountsStatus();
+  return s.existing && (!admin || !s.start_password);
 }
 
 export function passwordSwitchDue(k: AccountContext, id: number): Promise<boolean> {
-  return k.konten.mussPasswortAendern(id);
+  return k.accounts.mustChangePassword(id);
 }
 
-const hashe = (passwort: string) => hashePassword(passwort);
+const hashOf = (password: string) => hashPassword(password);
 
 export async function endAccesses(k: AccountContext, uid: number): Promise<void> {
   await revokeAllTokens(k, uid);
   await endAllSessions(k, uid);
 }
 
-async function startpasswortDone(k: AccountContext, uid: number): Promise<void> {
-  if ((await k.konten.accountShort(uid))?.is_admin) removeStartpasswort();
+async function startPasswordDone(k: AccountContext, uid: number): Promise<void> {
+  if ((await k.accounts.accountShort(uid))?.is_admin) removeStartPassword();
 }
 
 /** Password, accesses and log entry of the administrator `durch` together or not at all. */
 export async function setForeignPassword(
   k: AccountContext,
   uid: number,
-  passwort: string,
-  durch: number | null = null,
+  password: string,
+  through: number | null = null,
 ): Promise<boolean> {
-  const hash = await hashe(passwort);
+  const hash = await hashOf(password);
   return withAccessEnd(k, uid, async t => {
-    if (!(await t.konten.setPasswordHash(uid, hash))) return false;
+    if (!(await t.accounts.setPasswordHash(uid, hash))) return false;
     await endAccesses(t, uid);
-    if (durch !== null) await rememberAdminAction(t, durch, uid, 'passwort_gesetzt');
+    if (through !== null) await rememberAdminAction(t, through, uid, 'password_set');
     return true;
   });
 }
 
 /** The token just used falls too. Passkeys only on request: whoever merely
  * renews the password should not have to set up their devices again. */
-export async function aendereEigenesPasswort(
+export async function changeOwnPassword(
   k: AccountContext,
   uid: number,
-  passwort: string,
-  o: { passkeysWiderrufen?: boolean } = {},
+  password: string,
+  o: { revokePasskeys?: boolean } = {},
 ): Promise<void> {
-  const hash = await hashe(passwort);
+  const hash = await hashOf(password);
   await withAccessEnd(k, uid, async t => {
-    await t.konten.setOwnPassword(uid, hash);
+    await t.accounts.setOwnPassword(uid, hash);
     await endAccesses(t, uid);
-    if (o.passkeysWiderrufen) await t.factors.revokePasskeys(uid);
+    if (o.revokePasskeys) await t.factors.revokePasskeys(uid);
   });
-  await startpasswortDone(k, uid);
+  await startPasswordDone(k, uid);
 }
 
 /** The link carries the token in plaintext; only its hash is stored. */
-export function setPasswordPerLink(k: AccountContext, token: string, passwort: string): Promise<number | null> {
-  return setPasswordBack(k, tokenDigest(token), passwort);
+export function setPasswordPerLink(k: AccountContext, token: string, password: string): Promise<number | null> {
+  return setPasswordBack(k, tokenDigest(token), password);
 }
 
 /** Here one wants to get rid of an intruder: passkeys, main accounts above this account, open
  * invitations and an address change fall too (not on a normal change: that is triggered by the
  * signed-in owner). @returns the account, or null if the link is already used or expired */
-export async function setPasswordBack(k: AccountContext, tokenHash: string, passwort: string): Promise<number | null> {
-  const hash = await hashe(passwort);
+export async function setPasswordBack(k: AccountContext, tokenHash: string, password: string): Promise<number | null> {
+  const hash = await hashOf(password);
   const r = await withAccessEnd(
     k,
     (e: { uid: number; resolved: ResetSideEffects } | null) => e?.uid ?? null,
     async t => {
-      const uid = (await t.konten.resetSetPasswordAfter(tokenHash, hash))?.id;
+      const uid = (await t.accounts.resetSetPasswordAfter(tokenHash, hash))?.id;
       if (!uid) return null;
       await endAccesses(t, uid);
       await t.factors.revokePasskeys(uid);
-      const haushalt = await t.household.unlinkForeignAccess(uid);
-      const adresse = await t.konten.discardPendingAddress(uid);
+      const household = await t.household.unlinkForeignAccess(uid);
+      const address = await t.accounts.discardPendingAddress(uid);
       await deleteDailyLimit(t, uid);
-      return { uid, resolved: { haushalt: haushalt.hauptkonten, einladungen: haushalt.einladungen, adresse } };
+      return { uid, resolved: { household: household.mainAccounts, invitations: household.invitations, address } };
     },
   );
   if (!r) return null;
   k.household.reportHouseholdChange();
-  await startpasswortDone(k, r.uid);
-  hintInBackground(k, r.uid, 'passwort_zurueckgesetzt', undefined, { resolved: r.resolved });
+  await startPasswordDone(k, r.uid);
+  hintInBackground(k, r.uid, 'password_reset', undefined, { resolved: r.resolved });
   return r.uid;
 }
 
 /** The same computing time as registriere(): otherwise the response time would reveal a taken address. */
-export async function computeHowRegistration(passwort: string): Promise<void> {
-  await hashe(passwort);
+export async function computeHowRegistration(password: string): Promise<void> {
+  await hashOf(password);
 }
 
 /** Longer than any confirmation link is valid; after that name and address are free again. */
 export const REGISTRATION_DEADLINE_DAYS = 7;
 export function cleanOpenRegistrationsOn(k: AccountContext): Promise<number> {
-  return accessTransaction(k, t => t.konten.deleteOpenRegistrations(REGISTRATION_DEADLINE_DAYS));
+  return accessTransaction(k, t => t.accounts.deleteOpenRegistrations(REGISTRATION_DEADLINE_DAYS));
 }
 
 /** Account and log entry in one transaction: an account without an entry
  * would conceal who created it. Hashing happens before, so bcrypt holds no
  * connection. @returns the new id, or null if the name is taken */
-export async function putAccountAn(
+export async function addAccount(
   k: AccountContext,
-  verwalter: number,
+  admin: number,
   username: string,
-  passwort: string,
+  password: string,
   asAdmin: boolean,
 ): Promise<number | null> {
-  const hash = await hashe(passwort);
+  const hash = await hashOf(password);
   return accessTransaction(k, async t => {
     // Also against the addresses: the login searches both columns.
-    if (await t.konten.nameTaken(username, 0)) return null;
-    const neu = await t.konten.addAccountOne(username, hash, asAdmin);
-    if (neu === null) return null;
-    await rememberAdminAction(t, verwalter, neu, 'konto_angelegt');
-    if (asAdmin) await rememberAdminAction(t, verwalter, neu, 'verwalter_ernannt');
-    return neu;
-  }).catch(asDuplicate('benutzername_vergeben'));
+    if (await t.accounts.nameTaken(username, 0)) return null;
+    const fresh = await t.accounts.addAccountOne(username, hash, asAdmin);
+    if (fresh === null) return null;
+    await rememberAdminAction(t, admin, fresh, 'account_created');
+    if (asAdmin) await rememberAdminAction(t, admin, fresh, 'admin_appointed');
+    return fresh;
+  }).catch(asDuplicate('username_taken'));
 }
 
 export async function register(
@@ -201,17 +201,17 @@ export async function register(
     email: string;
     first_name?: string | null | undefined;
     last_name?: string | null | undefined;
-    passwort: string;
+    password: string;
     tokenHash: string;
     bis: Date;
   },
 ): Promise<number | null> {
-  return k.konten.registerAccount({
+  return k.accounts.registerAccount({
     username: d.username,
     email: d.email,
     first_name: d.first_name,
     last_name: d.last_name,
-    hash: await hashe(d.passwort),
+    hash: await hashOf(d.password),
     tokenHash: d.tokenHash,
     bis: d.bis,
   });
@@ -219,29 +219,25 @@ export async function register(
 
 /** Lock first, then delete accesses (the token query checks is_active). Sessions
  * fall through the session version, even a row written again. */
-export async function setzeAktiv(k: AccountContext, uid: number, soll: boolean): Promise<{ geaendert: boolean }> {
-  const r = await accessTransaction(k, t => t.konten.writeActive(uid, soll));
-  if (!r) notFound('benutzer_nicht_gefunden');
-  if (r === repo.LAST_ADMIN) fachfehler('konflikt', 'letzter_verwalter');
-  if (!soll) await endAccesses(k, uid);
-  return { geaendert: r.vorher !== soll };
+export async function setActiveFlag(k: AccountContext, uid: number, expected: boolean): Promise<{ changed: boolean }> {
+  const r = await accessTransaction(k, t => t.accounts.writeActive(uid, expected));
+  if (!r) notFound('user_not_found');
+  if (r === repo.LAST_ADMIN) failDomain('conflict', 'last_admin');
+  if (!expected) await endAccesses(k, uid);
+  return { changed: r.before !== expected };
 }
 
 /** If the role changes, the browser sessions end: they carry the role
  * since login. The token cache is only cleared — the app should see the new
  * role, not be signed out. */
-export async function setzeVerwalterRolle(
-  k: AccountContext,
-  uid: number,
-  soll: boolean,
-): Promise<{ geaendert: boolean }> {
-  const vorher = await accessTransaction(k, t => t.konten.setAdmin(uid, soll));
-  if (!vorher) notFound('benutzer_nicht_gefunden');
-  if (vorher === repo.LAST_ADMIN) fachfehler('konflikt', 'letzter_verwalter');
-  const geaendert = vorher.vorher !== soll;
-  if (geaendert) {
+export async function setAdminFlag(k: AccountContext, uid: number, expected: boolean): Promise<{ changed: boolean }> {
+  const before = await accessTransaction(k, t => t.accounts.setAdmin(uid, expected));
+  if (!before) notFound('user_not_found');
+  if (before === repo.LAST_ADMIN) failDomain('conflict', 'last_admin');
+  const changed = before.before !== expected;
+  if (changed) {
     await endAllSessions(k, uid);
     emptyTokenCache(k);
   }
-  return { geaendert };
+  return { changed };
 }

@@ -1,0 +1,17 @@
+Gegenprobe: „Alles leeren“ leert den Preis-Cache ohne Rückfrage
+Modul: feature-management
+Test: ch.brickinventoryapp.management.CacheClearAsksTest
+Rot: clearing asks first and then clears in the chosen scope
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
+@@ -135,7 +135,7 @@
+             // daily quota; a mistake takes quota away from everyone else.
+             CacheClearButtons(
+                 onPrices = { clearEverything = false; showClearQuestion = true },
+-                onEverything = { clearEverything = true; showClearQuestion = true },
++                onEverything = { events.cacheClear(true) },
+             )
+         }
+     }

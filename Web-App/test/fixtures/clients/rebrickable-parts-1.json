@@ -1,0 +1,46 @@
+{
+  "count": 3,
+  "next": "https://rebrickable.com/api/v3/lego/sets/10294-1/parts/?page=2&page_size=500&inc_part_details=1",
+  "results": [
+    {
+      "part": {
+        "part_num": "3001",
+        "name": "Teil 3001",
+        "part_cat_id": 11,
+        "part_img_url": "https://cdn.rebrickable.com/media/parts/3001.png",
+        "external_ids": {
+          "BrickLink": [
+            "3001"
+          ]
+        }
+      },
+      "color": {
+        "id": 0,
+        "name": "Black",
+        "rgb": "05131D"
+      },
+      "quantity": 4,
+      "is_spare": false
+    },
+    {
+      "part": {
+        "part_num": "3002",
+        "name": "Teil 3002",
+        "part_cat_id": 11,
+        "part_img_url": "https://cdn.rebrickable.com/media/parts/3002.png",
+        "external_ids": {
+          "BrickLink": [
+            "3002"
+          ]
+        }
+      },
+      "color": {
+        "id": 0,
+        "name": "Black",
+        "rgb": "05131D"
+      },
+      "quantity": 2,
+      "is_spare": false
+    }
+  ]
+}

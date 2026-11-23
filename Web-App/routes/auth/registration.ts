@@ -2,151 +2,151 @@
  * Every response reveals equally little about whether an account exists. */
 import { ipThrottle } from '../../src/account/http/login';
 import { passwordLack } from '../../src/infra/passwordRule';
-import { errorText, responseLanguage, fachfehler } from '../../src/infra/errorTexts';
-import { basisUrl, hintWithoutBaseUrl } from '../../src/infra/basisUrl';
-import { vertragsRouter, type OpenRequest } from '../../src/http/contractRouter';
+import { errorText, responseLanguage, failDomain } from '../../src/infra/errorTexts';
+import { baseUrl, hintWithoutBaseUrl } from '../../src/infra/baseUrl';
+import { contractRouter, type OpenRequest } from '../../src/http/contractRouter';
 import { USERNAME_RE, emailValid, nameValid } from '../../src/account';
 import { relyingParty } from '../../src/factors';
-import type { Dienste } from '../../src/services';
+import type { Services } from '../../src/services';
 
 /** The reason of the first rejection, or null if the input is sufficient. */
-function registrierungsMangel(e: OpenRequest<'POST /api/v1/auth/register'>['eingabe']) {
-  if (!e.username || !e.email || !e.password) return 'registrierung_felder' as const;
-  const mangel = passwordLack(e.password, e.username);
-  if (mangel) return mangel;
-  if (!emailValid(e.email)) return 'email_ungueltig' as const;
-  if (!USERNAME_RE.test(e.username)) return 'benutzername_ungueltig' as const;
-  if (!nameValid(e.first_name) || !nameValid(e.last_name)) return 'name_ungueltig' as const;
+function registrationShortfall(e: OpenRequest<'POST /api/v2/auth/register'>['input']) {
+  if (!e.username || !e.email || !e.password) return 'registration_fields' as const;
+  const lack = passwordLack(e.password, e.username);
+  if (lack) return lack;
+  if (!emailValid(e.email)) return 'email_invalid' as const;
+  if (!USERNAME_RE.test(e.username)) return 'username_invalid' as const;
+  if (!nameValid(e.first_name) || !nameValid(e.last_name)) return 'name_invalid' as const;
   return null;
 }
 
-export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account'>) {
-  const router = vertragsRouter('/api/v1/auth');
+export function buildRegistrationRouter(d: Pick<Services, 'settings' | 'mail' | 'account'>) {
+  const router = contractRouter('/api/v2/auth');
 
   // The login form only shows paths this server supports; without mail, registration would end in an account nobody can confirm.
-  router.endpunkt('GET /api/v1/auth/registration-status', async (_req, res) => {
+  router.endpoint('GET /api/v2/auth/registration-status', async (_req, res) => {
     const mail = await d.mail.mailReady();
     res.json({
       enabled: mail && (await d.settings.registrationOpen()),
       passkey: !!relyingParty(),
-      passwort_vergessen: mail,
-      mail_versand: mail,
+      forgot_password: mail,
+      mail_delivery: mail,
     });
   });
 
-  router.endpunkt('POST /api/v1/auth/register', ipThrottle(d.account, 'register', 5, 60 * 60 * 1000), async req => {
-    const { username, email, first_name, last_name, password, language } = req.eingabe;
+  router.endpoint('POST /api/v2/auth/register', ipThrottle(d.account, 'register', 5, 60 * 60 * 1000), async req => {
+    const { username, email, first_name, last_name, password, language } = req.input;
     if (!(await d.settings.registrationOpen()) || !(await d.mail.mailReady()))
-      fachfehler('verboten', 'registrierung_deaktiviert');
-    const mangel = registrierungsMangel(req.eingabe);
-    if (mangel || !username || !email || !password) fachfehler('ungueltig', mangel ?? 'registrierung_felder');
+      failDomain('forbidden', 'registration_disabled');
+    const lack = registrationShortfall(req.input);
+    if (lack || !username || !email || !password) failDomain('invalid', lack ?? 'registration_fields');
     // Counts every attempt, whether the address exists or not: the rejection reveals nothing.
-    const ziel = await d.account.targetThrottled('register-ziel', email, 3, 60 * 60 * 1000);
-    if (ziel) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: ziel.waitMin });
-    const gesendet = await d.account.tryRegistration({
+    const target = await d.account.targetThrottled('register-ziel', email, 3, 60 * 60 * 1000);
+    if (target) failDomain('too_many', 'too_many_requests', { minutes: target.waitMin });
+    const sent = await d.account.tryRegistration({
       username,
       email,
       first_name,
       last_name,
-      passwort: password,
+      password: password,
       lang: language === 'en' ? 'en' : 'de',
     });
     return {
-      message: gesendet
+      message: sent
         ? 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.'
         : 'Konto erstellt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann das Konto freischalten.',
-      email_sent: gesendet,
+      email_sent: sent,
       // Registration requires a mail server (above): the console never prints the link.
       console_mode: false,
     };
   });
 
   // Like /forgot-password: same answer and duration whether an unconfirmed account exists or not.
-  router.endpunkt(
-    'POST /api/v1/auth/bestaetigung-erneut',
+  router.endpoint(
+    'POST /api/v2/auth/resend-confirmation',
     ipThrottle(d.account, 'bestaetigung-erneut', 5, 60 * 60 * 1000),
     async req => {
-      const { email } = req.eingabe;
-      if (!emailValid(email)) fachfehler('ungueltig', email ? 'email_ungueltig' : 'email_erforderlich');
-      if (!basisUrl()) {
+      const { email } = req.input;
+      if (!emailValid(email)) failDomain('invalid', email ? 'email_invalid' : 'email_required');
+      if (!baseUrl()) {
         hintWithoutBaseUrl('bestaetigung-erneut', 'Bestätigungs-Mails werden nicht versendet.');
-        fachfehler('nicht_verfuegbar', 'bestaetigung_nicht_eingerichtet');
+        failDomain('unavailable', 'confirmation_not_configured');
       }
       await d.account.confirmationAgainRequest(String(email));
-      return { message: errorText('bestaetigung_gesendet', responseLanguage(req)) };
+      return { message: errorText('confirmation_sent', responseLanguage(req)) };
     },
   );
 
-  router.endpunkt(
-    'POST /api/v1/auth/email-bestaetigen/vorschau',
+  router.endpoint(
+    'POST /api/v2/auth/confirm-email/preview',
     ipThrottle(d.account, 'email-vorschau', 30, 60 * 60 * 1000),
     async req => {
-      const token = req.eingabe.token;
+      const token = req.input.token;
       const username = token ? await d.account.nameToConfirmation(String(token)) : null;
-      if (!username) fachfehler('ungueltig', 'bestaetigungslink_ungueltig');
+      if (!username) failDomain('invalid', 'confirmation_link_invalid');
       return { username };
     },
   );
 
-  router.endpunkt(
-    'POST /api/v1/auth/email-bestaetigen',
+  router.endpoint(
+    'POST /api/v2/auth/confirm-email',
     ipThrottle(d.account, 'email-bestaetigen', 30, 60 * 60 * 1000),
     async req => {
-      await d.account.verifyEmailToken(req.eingabe.token);
+      await d.account.verifyEmailToken(req.input.token);
       return {};
     },
   );
 
-  router.endpunkt(
-    'POST /api/v1/auth/forgot-password',
+  router.endpoint(
+    'POST /api/v2/auth/forgot-password',
     ipThrottle(d.account, 'forgot-password', 5, 60 * 60 * 1000),
     async req => {
-      const { email } = req.eingabe;
-      if (!emailValid(email)) fachfehler('ungueltig', email ? 'email_ungueltig' : 'email_erforderlich');
+      const { email } = req.input;
+      if (!emailValid(email)) failDomain('invalid', email ? 'email_invalid' : 'email_required');
       // Before the user lookup, so the rejection reveals nothing about the address.
-      if (!basisUrl()) {
+      if (!baseUrl()) {
         hintWithoutBaseUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
-        fachfehler('nicht_verfuegbar', 'passwort_reset_nicht_eingerichtet');
+        failDomain('unavailable', 'password_reset_not_configured');
       }
       // Always the same answer after the same minimum duration, whether the address exists or not.
-      await d.account.ruecksetzLinkRequest(String(email));
+      await d.account.resetLinkRequest(String(email));
       return { message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' };
     },
   );
 
-  router.endpunkt(
-    'POST /api/v1/auth/reset-password',
+  router.endpoint(
+    'POST /api/v2/auth/reset-password',
     ipThrottle(d.account, 'reset-password', 10, 60 * 60 * 1000),
     async req => {
-      const { token, password } = req.eingabe;
-      if (!token || !password) fachfehler('ungueltig', 'token_passwort_erforderlich');
-      const mangel = passwordLack(password);
-      if (mangel) fachfehler('ungueltig', mangel);
-      const user = await d.account.accountToRuecksetzLink(token);
-      if (!user) fachfehler('ungueltig', 'token_ungueltig');
+      const { token, password } = req.input;
+      if (!token || !password) failDomain('invalid', 'token_password_required');
+      const lack = passwordLack(password);
+      if (lack) failDomain('invalid', lack);
+      const user = await d.account.accountToResetLink(token);
+      if (!user) failDomain('invalid', 'token_invalid');
       // Only the account behind the token knows the name; the rule applies as on all other paths.
-      const nameMangel = passwordLack(password, user.username);
-      if (nameMangel) fachfehler('ungueltig', nameMangel);
+      const nameLack = passwordLack(password, user.username);
+      if (nameLack) failDomain('invalid', nameLack);
       // Only the request that consumes the link sets its password.
       const uid = await d.account.setPasswordPerLink(token, password);
-      if (!uid) fachfehler('ungueltig', 'token_ungueltig');
+      if (!uid) failDomain('invalid', 'token_invalid');
       return { message: 'Passwort erfolgreich geändert.' };
     },
   );
   // Links from mails, without login: the token is the right, the throttle stops guessing.
-  router.endpunkt(
-    'POST /api/v1/auth/uebernahme-abbrechen',
+  router.endpoint(
+    'POST /api/v2/auth/cancel-takeover',
     ipThrottle(d.account, 'uebernahme-abbrechen', 20, 60 * 60 * 1000),
     async req => {
-      await d.account.redeemMailLink('abbrechen', req.eingabe.token ?? '');
+      await d.account.redeemMailLink('abbrechen', req.input.token ?? '');
       return {};
     },
   );
-  router.endpunkt(
-    'POST /api/v1/auth/anmeldung-freigeben',
+  router.endpoint(
+    'POST /api/v2/auth/approve-login',
     ipThrottle(d.account, 'anmeldung-freigeben', 20, 60 * 60 * 1000),
     async req => {
-      await d.account.redeemMailLink('freigeben', req.eingabe.token ?? '');
+      await d.account.redeemMailLink('freigeben', req.input.token ?? '');
       return {};
     },
   );

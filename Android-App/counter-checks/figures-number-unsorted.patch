@@ -1,0 +1,17 @@
+Gegenprobe: Die Ordnung NUMMER laesst die Reihenfolge des Servers stehen
+Modul: app
+Test: ch.brickinventoryapp.app.UiUniformTest
+Rot: minifigures can be sorted
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt
+@@ -64,7 +64,7 @@
+ 
+     fun sort(figures: List<FigureView>): List<FigureView> = when (this) {
+         NAME -> figures
+-        NUMBER -> figures.sortedBy { it.figNumber.lowercase() }
++        NUMBER -> figures
+         QUANTITY -> figures.sortedByDescending { it.totalQuantity ?: it.quantity }
+     }
+ 

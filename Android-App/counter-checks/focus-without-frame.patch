@@ -1,0 +1,17 @@
+Gegenprobe: fokusRahmen zeichnet keinen Rahmen
+Modul: app
+Test: ch.brickinventoryapp.app.AccessibilityTest
+Rot: keyboard focus shows a frame in the primary color
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Focus.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Focus.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Focus.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Focus.kt
+@@ -21,7 +21,7 @@
+     var focus by remember { mutableStateOf(false) }
+     val color = MaterialTheme.colorScheme.primary
+     onFocusChanged { focus = it.hasFocus }
+-        .then(if (focus) Modifier.border(FOCUS_FRAME, color, form) else Modifier)
++        .then(Modifier)
+ }
+ 
+ /** Width of the focus border: clearly wider than the cards' 1-dp borders. */

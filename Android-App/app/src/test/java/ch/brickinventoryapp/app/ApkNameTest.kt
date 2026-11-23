@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * The name of the release APK stands in exactly ONE place.
@@ -15,8 +15,8 @@ import ch.brickinventoryapp.testing.Quellen
  *     (afterwards) BrickInventory.apk      ← from the workflow
  *
  * Two versions of the same rule, in two spellings: `build.gradle.kts`
- * put a copy under „Brickinventory.apk", the workflow then renamed
- * `app-release.apk` to „BrickInventory.apk". On Linux these are
+ * put a copy under „Brickinventory.apk“, the workflow then renamed
+ * `app-release.apk` to „BrickInventory.apk“. On Linux these are
  * two files. Only the workflow's was uploaded — the Gradle copy
  * was dead weight, and the README named the one name in one place and
  * the other in two others.
@@ -35,7 +35,7 @@ import ch.brickinventoryapp.testing.Quellen
  * records that it stays that way.
  *
  * ── Counter-check ───────────────────────────────
- * `build.gradle.kts` wrote „Brickinventory.apk" again — i.e. the state from
+ * `build.gradle.kts` wrote „Brickinventory.apk“ again — i.e. the state from
  * before. Result: `354 tests completed, 1 failed`, namely
  * `ApkNameTest > Gradle and workflow mean the same file`.
  *
@@ -45,12 +45,12 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * The patterns here previously had two errors of their own, both found by a
  * local mirror instead of a ten-minute run:
- *   - `File(dir, "…")` found THREE „target names", because the source names of
+ *   - `File(dir, "…")` found THREE „target names“, because the source names of
  *     AGP stand next to it in the same spelling. Now `val target = File(dir, …)`.
  */
 class ApkNameTest {
 
-    private val bauskript = File("build.gradle.kts")
+    private val buildScript = File("build.gradle.kts")
 
     /**
      * The workflow lies outside the Gradle module. The path is therefore
@@ -63,7 +63,7 @@ class ApkNameTest {
      * signing path and release are read together: the name must be the same in all.
      */
     private fun workflow(): String =
-        listOf("android.yml", "android-signieren.yml", "android-release.yml").joinToString("\n") { Quellen.workflow(it) }
+        listOf("android.yml", "android-signieren.yml", "android-release.yml").joinToString("\n") { Sources.workflow(it) }
 
     /**
      * The target name that `build.gradle.kts` assigns.
@@ -71,23 +71,23 @@ class ApkNameTest {
      * Searched is `val target = File(dir, "…")`, not every `File(dir, …)`:
      * next to it stand the SOURCE names of AGP (app-release.apk and
      * app-release-unsigned.apk) in the same spelling. The broader pattern
-     * found three „target names" and was thus useless.
+     * found three „target names“ and was thus useless.
      */
-    private fun zielname(): String {
-        val treffer = Regex("""val target = File\(dir,\s*"([^"]+\.apk)"\)""")
-            .findAll(bauskript.readText()).toList()
-        assert(treffer.size == 1) {
-            "In build.gradle.kts stehen ${treffer.size} APK-Zielnamen " +
-                "(${treffer.joinToString { it.groupValues[1] }}). Genau einer gehört dorthin."
+    private fun targetName(): String {
+        val hits = Regex("""val target = File\(dir,\s*"([^"]+\.apk)"\)""")
+            .findAll(buildScript.readText()).toList()
+        assert(hits.size == 1) {
+            "build.gradle.kts contains ${hits.size} APK target names " +
+                "(${hits.joinToString { it.groupValues[1] }}). Exactly one belongs there."
         }
-        return treffer[0].groupValues[1]
+        return hits[0].groupValues[1]
     }
 
     @Test
     fun `Gradle and workflow mean the same file`() {
         // Counter-check: with "Brickinventory.apk" (lowercase i) in build.gradle.kts —
         // i.e. the state from before — this test fails.
-        val ziel = zielname()
+        val target = targetName()
         val wf = workflow()
 
         // AGP's standard names are not a violation: they describe what is
@@ -98,13 +98,13 @@ class ApkNameTest {
         val inWorkflow = Regex("""(?<!RUNNER_TEMP/)\b[\w.-]+\.apk""").findAll(wf).map { it.value }.toSet() - agp
 
         assert(inWorkflow.isNotEmpty()) {
-            "Der Workflow nennt gar keinen APK-Namen mehr — dann lädt er nichts hoch, " +
-                "oder das Muster hier ist veraltet."
+            "The workflow no longer names any APK name — then it uploads nothing, " +
+                "or the pattern here is outdated."
         }
-        assert(inWorkflow == setOf(ziel)) {
-            "Gradle legt \"$ziel\" ab, der Workflow spricht von " +
+        assert(inWorkflow == setOf(target)) {
+            "Gradle stores \"$target\", the workflow speaks of " +
                 inWorkflow.joinToString(", ") { "\"$it\"" } +
-                ". Auf Linux sind das verschiedene Dateien — schon ein Buchstabe genügt."
+                ". On Linux these are different files — a single letter is enough."
         }
     }
 
@@ -117,11 +117,11 @@ class ApkNameTest {
         // the original APK that output-metadata.json points to and that
         // downstream steps still expect.
         val wf = workflow()
-        val umbenennen = Regex("""^\s*(mv|cp)\s+\S*\.apk\s""", RegexOption.MULTILINE).find(wf)
-        assert(umbenennen == null) {
-            "Der Workflow verschiebt oder kopiert wieder selbst eine APK " +
-                "(\"${umbenennen?.value?.trim()}\"). Den Namen vergibt Gradle — " +
-                "zwei Stellen dafür sind eine Stelle zu viel."
+        val rename = Regex("""^\s*(mv|cp)\s+\S*\.apk\s""", RegexOption.MULTILINE).find(wf)
+        assert(rename == null) {
+            "The workflow moves or copies an APK itself again " +
+                "(\"${rename?.value?.trim()}\"). Gradle assigns the name — " +
+                "two places for it are one place too many."
         }
     }
 
@@ -133,59 +133,59 @@ class ApkNameTest {
      * there. Comment lines are already out via workflow().
      *
      * Counting starts only FROM `steps:` — the `paths:` lists under `on:` have
-     * the same indentation. The local mirror reported that: 20 „steps"
+     * the same indentation. The local mirror reported that: 20 „steps“
      * for 15. A number that counts something other than it claims is
      * useless as a self-proof too.
      */
-    private fun schritte(): List<String> {
-        val ganz = workflow()
-        val ab = ganz.indexOf("\n    steps:")
-        assert(ab >= 0) { "Der Abschnitt `steps:` ist in android.yml nicht mehr zu finden" }
-        val teile = ganz.substring(ab).split(Regex("""^      - """, RegexOption.MULTILINE))
-        assert(teile.size >= 10) {
-            "Nur ${teile.size - 1} Schritte gefunden — Einzug im Workflow geaendert? " +
-                "Ein Muster, das nichts findet, laesst jede Pruefung darunter still bestehen."
+    private fun steps(): List<String> {
+        val whole = workflow()
+        val ab = whole.indexOf("\n    steps:")
+        assert(ab >= 0) { "the section `steps:` can no longer be found in android.yml" }
+        val parts = whole.substring(ab).split(Regex("""^      - """, RegexOption.MULTILINE))
+        assert(parts.size >= 10) {
+            "Only ${parts.size - 1} steps found — indentation in the workflow changed? " +
+                "A pattern that finds nothing lets every check below it pass silently."
         }
-        return teile.drop(1)
+        return parts.drop(1)
     }
 
     @Test
     fun `the APK is delivered raw, not as a zip`() {
         // upload-artifact always delivers a zip; the APK must therefore hang on no
         // artifact step. Every step is checked, a future one too.
-        val ziel = zielname()
-        val alle = schritte()
+        val target = targetName()
+        val all = steps()
 
-        val artifacts = alle.filter { it.contains("upload-artifact") }
+        val artifacts = all.filter { it.contains("upload-artifact") }
         // Self-proof: without artifact steps the condition below checks
         // nothing and would always be green. The workflow has some (test reports,
         // bundle) — if the pattern finds none, it is outdated.
         assert(artifacts.isNotEmpty()) {
-            "Kein einziger upload-artifact-Schritt gefunden — Muster veraltet?"
+            "Not a single upload-artifact step found — pattern outdated?"
         }
-        val zipped = artifacts.filter { it.contains(ziel) }
+        val zipped = artifacts.filter { it.contains(target) }
         assert(zipped.isEmpty()) {
-            "$ziel haengt wieder an einem Artefakt und kommt damit nur als Zip " +
-                "heraus. Als Release-Anhang wird dieselbe Datei roh ausgeliefert."
+            "$target hangs on an artifact again and therefore only comes out as a zip. " +
+                "As a release attachment the same file is delivered raw."
         }
 
         // Releases are immutable: the attachments come with `gh release create`, a
         // later `gh release upload` fails with HTTP 422. Both are counted.
         // Counter-check: a second step with `gh release upload … BrickInventory.apk` → red „… 2-mal …“.
-        val roh = alle.filter { Regex("""gh release (create|upload)""").containsMatchIn(it) && it.contains(ziel) }
-        assert(roh.size == 1) {
-            "Der Schritt, der $ziel als Release-Anhang bereitstellt, steht " +
-                "${roh.size}-mal im Workflow. Ohne ihn gibt es keinen direkten " +
-                "Download; zweimal waere dieselbe Regel an zwei Stellen."
+        val raw = all.filter { Regex("""gh release (create|upload)""").containsMatchIn(it) && it.contains(target) }
+        assert(raw.size == 1) {
+            "The step that provides $target as a release attachment stands " +
+                "${raw.size} times in the workflow. Without it there is no direct " +
+                "download; twice would be the same rule in two places."
         }
         // A pull request must not create a release with the file behind the fixed link —
         // otherwise it points to an unchecked branch. Uploading happens only from
         // android-release.yml, and that never starts from a pull request.
-        val release = Quellen.workflow("android-release.yml")
+        val release = Sources.workflow("android-release.yml")
         val trigger = release.substringAfter("\non:\n").substringBefore("\npermissions:")
-        assert(roh[0] in release && !Regex("""\n  (pull_request|pull_request_target|push):""").containsMatchIn("\n" + trigger)) {
-            "Der Release-Schritt laeuft auch bei Pull-Requests oder Pushes und ueberschreibt " +
-                "damit das APK hinter dem stabilen Link."
+        assert(raw[0] in release && !Regex("""\n  (pull_request|pull_request_target|push):""").containsMatchIn("\n" + trigger)) {
+            "The release step also runs on pull requests or pushes and thereby overwrites " +
+                "the APK behind the stable link."
         }
     }
 
@@ -195,21 +195,21 @@ class ApkNameTest {
         // difference lies solely in the source name. If both files lay in the folder after
         // a key change, the timestamp used to decide —
         // i.e. chance. An unsigned APK cannot be installed.
-        val src = bauskript.readText()
-        val anfang = src.indexOf("val built =")
-        assert(anfang >= 0) { "Der Ausdruck `val built =` steht nicht mehr in build.gradle.kts" }
-        val ende = src.indexOf("if (built != null)", anfang)
-        assert(ende > anfang) { "Das Ende des Ausdrucks ist nicht mehr zu finden" }
-        val expression = src.substring(anfang, ende)
+        val src = buildScript.readText()
+        val begin = src.indexOf("val built =")
+        assert(begin >= 0) { "the expression `val built =` no longer stands in build.gradle.kts" }
+        val end = src.indexOf("if (built != null)", begin)
+        assert(end > begin) { "the end of the expression can no longer be found" }
+        val expression = src.substring(begin, end)
 
-        val signiert = expression.indexOf("app-release.apk")
-        val unsigniert = expression.indexOf("app-release-unsigned.apk")
-        assert(signiert >= 0 && unsigniert >= 0) {
-            "Der Ausdruck unterscheidet signiert und unsigniert nicht mehr"
+        val signed = expression.indexOf("app-release.apk")
+        val unsigned = expression.indexOf("app-release-unsigned.apk")
+        assert(signed >= 0 && unsigned >= 0) {
+            "the expression no longer distinguishes signed and unsigned"
         }
-        assert(signiert < unsigniert) {
-            "Die unsignierte APK wird vor der signierten geprüft — dann gewinnt " +
-                "die falsche, sobald beide im Ordner liegen."
+        assert(signed < unsigned) {
+            "The unsigned APK is checked before the signed one — then the " +
+                "wrong one wins as soon as both lie in the folder."
         }
     }
 }

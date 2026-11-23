@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.model.ui.Vorgang
-import ch.brickinventoryapp.model.ui.beendet
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.ended
 import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.model.ui.withoutError
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -16,34 +16,34 @@ import org.junit.Test
  * An action runs, is finished or failed; what a screen reads from it
  * fits the case, and clearing an error does not stop a running operation.
  *
- * Counter-checks (gegenproben/, :core-model:test):
- *   vorgang-wegraeumen-haelt-an  withoutError() always returns Fertig → red “clearing an error …”
- *   vorgang-beendet-ohne-grund   beendet(null) gives a failure → red “ended without a reason …”
+ * Counter-checks (counter-checks/, :core-model:test):
+ *   operation-cleanup-stops  withoutError() always returns Fertig → red “clearing an error …”
+ *   operation-ended-without-reason   ended(null) gives a failure → red “ended without a reason …”
  */
 class OperationTest {
 
-    private val fehler = Vorgang.Fehlgeschlagen(Meldung.Resource(7))
+    private val error = Operation.Failed(Message.Resource(7))
 
     @Test
     fun `only a running operation runs, only a failed one names a reason`() {
-        assertTrue(Vorgang.Laeuft.laeuft)
-        assertFalse(Vorgang.Fertig.laeuft)
-        assertFalse(fehler.laeuft)
-        assertEquals(Meldung.Resource(7), fehler.errorMessage)
-        assertNull(Vorgang.Laeuft.errorMessage)
-        assertNull(Vorgang.Fertig.errorMessage)
+        assertTrue(Operation.Running.running)
+        assertFalse(Operation.Done.running)
+        assertFalse(error.running)
+        assertEquals(Message.Resource(7), error.errorMessage)
+        assertNull(Operation.Running.errorMessage)
+        assertNull(Operation.Done.errorMessage)
     }
 
     @Test
     fun `clearing an error does not stop a running operation`() {
-        assertEquals(Vorgang.Fertig, fehler.withoutError())
-        assertEquals(Vorgang.Laeuft, Vorgang.Laeuft.withoutError())
-        assertEquals(Vorgang.Fertig, Vorgang.Fertig.withoutError())
+        assertEquals(Operation.Done, error.withoutError())
+        assertEquals(Operation.Running, Operation.Running.withoutError())
+        assertEquals(Operation.Done, Operation.Done.withoutError())
     }
 
     @Test
     fun `ended without a reason is finished, with a reason failed`() {
-        assertEquals(Vorgang.Fertig, beendet(null))
-        assertEquals(fehler, beendet(Meldung.Resource(7)))
+        assertEquals(Operation.Done, ended(null))
+        assertEquals(error, ended(Message.Resource(7)))
     }
 }

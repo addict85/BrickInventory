@@ -4,7 +4,7 @@
  * would return nothing after writing.
  *
  * Counter-checks (measured 14.11.2026), each again `.catch(e => { reportError(…); return []; })`:
- *   A  in alleAlarme() → red: “all alerts” (Missing expected rejection)
+ *   A  in allAlerts() → red: “all alerts” (Missing expected rejection)
  *   B  in triggeredSince() → red: “triggered alerts since …”
  *   C  in alertsFor() → red: “setzeAlarm …” (undefined instead of an error)
  *   D  in checkSet() → red: “the price run …” (0 instead of an error)
@@ -20,10 +20,10 @@ const { buildAndRequire, testServices, testData, asAccount } = require('./helper
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-function replace(rel, felder) {
+function replace(rel, fields) {
   const p = require.resolve(path.join(ROOT, 'dist', rel));
-  const echt = require(p);
-  require.cache[p].exports = Object.assign({}, echt, felder);
+  const original = require(p);
+  require.cache[p].exports = Object.assign({}, original, fields);
 }
 const disrupted = async () => {
   throw new Error('Tabelle gestört');
@@ -45,16 +45,16 @@ test('price alerts: a read error is not an empty list', { concurrency: 1 }, asyn
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const p = testServices().finances.preisalarm;
+  const p = testServices().finances.priceAlert;
   const SN = `92${String(process.pid).slice(-4)}-1`;
 
-  await t.test('all alerts', () => assert.rejects(p.alleAlarme(uid), /Tabelle gestört/));
+  await t.test('all alerts', () => assert.rejects(p.allAlerts(uid), /Tabelle gestört/));
   await t.test('triggered alerts since a marker', () =>
     assert.rejects(p.triggeredSince(uid, new Date(0)), /Tabelle gestört/),
   );
   await t.test('setzeAlarm reads after writing', () =>
     assert.rejects(
-      asAccount(uid, () => p.setzeAlarm(uid, SN, 'EUR', { direction: 'unter', threshold: 10, condition: 'N' })),
+      asAccount(uid, () => p.setAlert(uid, SN, 'EUR', { direction: 'below', threshold: 10, condition: 'N' })),
       /Tabelle gestört/,
     ),
   );

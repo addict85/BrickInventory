@@ -1,0 +1,17 @@
+Gegenprobe: Der Bild-Client lässt wieder direkte Anfragen an Bild-CDNs durch
+Modul: core-network
+Test: ch.brickinventoryapp.network.ImageHostGuardTest
+Rot: an image CDN is not requested directly either
+
+diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/ImageHosts.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/ImageHosts.kt
+--- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/ImageHosts.kt
++++ b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/ImageHosts.kt
+@@ -44,7 +44,7 @@
+         return locked(request)
+     }
+ 
+-    private fun prepared(r: Request): Request? = r.takeIf { ownServer(it.url) }
++    private fun prepared(r: Request): Request? = r.takeIf { ownServer(it.url) || it.url.host.endsWith("rebrickable.com") || it.url.host.endsWith("brickset.com") || it.url.host.endsWith("bricklink.com") }
+ 
+     private fun locked(r: Request): Response = Response.Builder()
+         .request(r).protocol(Protocol.HTTP_1_1).code(403).message("Bild-Host nicht erlaubt")

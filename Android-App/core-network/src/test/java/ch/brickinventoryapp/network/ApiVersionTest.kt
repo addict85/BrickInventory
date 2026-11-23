@@ -17,18 +17,18 @@ class ApiVersionTest {
 
     @Test
     fun `a too old app`() {
-        assertEquals(VersionsHint.APP_ZU_ALT, versionsHint(serverApi = 3, minApp = 2, appApi = 1))
+        assertEquals(VersionsHint.APP_TOO_OLD, versionsHint(serverApi = 3, minApp = 2, appApi = 1))
     }
 
     @Test
     fun `a too old server`() {
-        assertEquals(VersionsHint.SERVER_TO_ALT, versionsHint(serverApi = 1, minApp = 1, appApi = 2))
+        assertEquals(VersionsHint.SERVER_TO_OLD, versionsHint(serverApi = 1, minApp = 1, appApi = 2))
     }
 
     @Test
     fun `fits, or the server says nothing`() {
         assertNull(versionsHint(serverApi = 1, minApp = 1, appApi = 1))
         assertNull(versionsHint(serverApi = 2, minApp = 1, appApi = 1))
-        assertNull("Ältere Server senden keine Kopfzeile", versionsHint(serverApi = null, minApp = null, appApi = 1))
+        assertNull("older servers send no header", versionsHint(serverApi = null, minApp = null, appApi = 1))
     }
 }

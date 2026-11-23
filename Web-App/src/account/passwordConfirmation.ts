@@ -14,39 +14,39 @@ import type { AccountContext } from './context';
 
 /** Domain, not HTTP: the HTTP layer chooses the status (src/http/errorKind.ts). */
 export type ConfirmationRejection = {
-  art: ErrorKind;
+  kind: ErrorKind;
   code: ErrorCode;
   vars?: Record<string, string | number>;
   passkey?: boolean;
 };
-export type Faktor = { code?: string | number | null | undefined; passkey?: unknown };
+export type Factor = { code?: string | number | null | undefined; passkey?: unknown };
 
-const leer = (w: unknown) => w === undefined || w === null || String(w).trim() === '';
+const blank = (w: unknown) => w === undefined || w === null || String(w).trim() === '';
 
-async function gebremst(
+async function braked(
   k: AccountContext,
-  art: Brake,
+  kind: Brake,
   uid: number,
-  zugang: string,
+  method: string,
   check: () => Promise<boolean>,
-  absage: ErrorCode,
+  refusal: ErrorCode,
 ): Promise<ConfirmationRejection | null> {
-  const gesperrt = await confirmationLocked(k, art, uid, zugang);
-  if (gesperrt) {
-    reportLoginEvent('bestaetigung_gesperrt', { konto: uid, art, zugang });
-    return { art: 'zu_viele', ...gesperrt };
+  const locked = await confirmationLocked(k, kind, uid, method);
+  if (locked) {
+    reportLoginEvent('bestaetigung_gesperrt', { account: uid, kind, method });
+    return { kind: 'too_many', ...locked };
   }
   if (!(await check())) {
-    reportLoginEvent('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
+    reportLoginEvent('bestaetigung_fehlgeschlagen', { account: uid, kind, method });
     // Whoever guesses in a running session has captured an access: the owner learns about it (1×/day).
-    if (await confirmationFailed(k, art, uid, zugang)) {
-      reportLoginEvent('bestaetigung_gebremst', { konto: uid, art, zugang });
+    if (await confirmationFailed(k, kind, uid, method)) {
+      reportLoginEvent('confirmation_throttled', { account: uid, kind, method });
       if (!(await accountThrottled(k, 'bestaetigung-hinweis', uid, 1, 86_400_000)))
-        hintInBackground(k, uid, 'bestaetigung_gebremst');
+        hintInBackground(k, uid, 'confirmation_throttled');
     }
-    return { art: 'ungueltig', code: absage };
+    return { kind: 'invalid', code: refusal };
   }
-  await confirmationSucceeded(k, art, uid, zugang);
+  await confirmationSucceeded(k, kind, uid, method);
   return null;
 }
 
@@ -57,49 +57,48 @@ async function gebremst(
 export async function checkConfirmation(
   k: AccountContext,
   uid: number,
-  zugang: string,
-  passwort: string | null | undefined,
-  faktor: Faktor,
+  method: string,
+  password: string | null | undefined,
+  factor: Factor,
 ): Promise<ConfirmationRejection | null> {
   const withFactor = await k.factors.isActive(uid);
-  if (withFactor && leer(faktor.code) && leer(faktor.passkey))
+  if (withFactor && blank(factor.code) && blank(factor.passkey))
     return {
-      art: 'ungueltig',
-      code: 'zweiter_faktor_noetig',
+      kind: 'invalid',
+      code: 'second_factor_required',
       ...((await k.factors.hasPasskeys(uid)) ? { passkey: true } : {}),
     };
-  const pw = await gebremst(
+  const pw = await braked(
     k,
     'passwort',
     uid,
-    zugang,
+    method,
     async () => {
-      const u = await k.zugaenge.passwortHash(uid);
-      return !!u && typeof passwort === 'string' && passwort !== '' && passwordFits(passwort, u.password_hash);
+      const u = await k.accesses.passwordHash(uid);
+      return !!u && typeof password === 'string' && password !== '' && passwordFits(password, u.password_hash);
     },
-    'aktuelles_passwort_falsch',
+    'current_password_wrong',
   ).catch((e: unknown) => {
-    if (e instanceof BcryptOverload)
-      return { art: 'nicht_verfuegbar', code: 'server_ausgelastet' } as ConfirmationRejection;
+    if (e instanceof BcryptOverload) return { kind: 'unavailable', code: 'server_busy' } as ConfirmationRejection;
     throw e;
   });
   if (pw || !withFactor) return pw;
-  return leer(faktor.passkey)
-    ? gebremst(
+  return blank(factor.passkey)
+    ? braked(
         k,
         'faktor',
         uid,
-        zugang,
-        async () => !!(await k.factors.checkCode(uid, faktor.code)),
-        'zweiter_faktor_falsch',
+        method,
+        async () => !!(await k.factors.checkCode(uid, factor.code)),
+        'second_factor_wrong',
       )
-    : gebremst(
+    : braked(
         k,
         'faktor',
         uid,
-        zugang,
-        async () => (await k.factors.verifyAuthentication(faktor.passkey, 'zweiter_faktor', uid)) === uid,
-        'passkey_ungueltig',
+        method,
+        async () => (await k.factors.verifyAuthentication(factor.passkey, 'second_factor', uid)) === uid,
+        'passkey_invalid',
       );
 }
 
@@ -107,17 +106,10 @@ export async function checkConfirmation(
 export function checkCodeConfirmation(
   k: AccountContext,
   uid: number,
-  zugang: string,
+  method: string,
   code: string | number | null | undefined,
 ): Promise<ConfirmationRejection | null> {
-  return gebremst(
-    k,
-    'faktor',
-    uid,
-    zugang,
-    async () => !!(await k.factors.checkCode(uid, code)),
-    'zweiter_faktor_falsch',
-  );
+  return braked(k, 'faktor', uid, method, async () => !!(await k.factors.checkCode(uid, code)), 'second_factor_wrong');
 }
 
 /** Confirming the setup also checks a code; without a brake
@@ -126,20 +118,20 @@ export function checkCodeConfirmation(
 export async function confirmSetupThrottled(
   k: AccountContext,
   uid: number,
-  zugang: string,
+  method: string,
   code: string | number | null | undefined,
 ): Promise<string[] | ConfirmationRejection> {
   let codes: string[] | null = null;
-  const absage = await gebremst(
+  const refusal = await braked(
     k,
     'faktor',
     uid,
-    zugang,
+    method,
     async () => {
       codes = await k.factors.confirmSetup(uid, String(code ?? ''));
       return !!codes;
     },
-    'zweiter_faktor_falsch',
+    'second_factor_wrong',
   );
-  return absage ?? codes ?? { art: 'ungueltig', code: 'zweiter_faktor_falsch' };
+  return refusal ?? codes ?? { kind: 'invalid', code: 'second_factor_wrong' };
 }

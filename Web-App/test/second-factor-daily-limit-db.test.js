@@ -8,7 +8,7 @@
  *   A  factorCodeLocked() always delivers false → red: “above the limit
  *      even a correct one-time code does not apply”
  *   B  in checkCredentials() the call hintInBackground(…,
- *      'zweiter_faktor_gesperrt') deleted → red: “the owner learns of it
+ *      'second_factor_locked') deleted → red: “the owner learns of it
  *      immediately, once”
  *   C  pruefeCode() checks nothing at all with mitEinmalcode=false (return
  *      null before the recovery codes) → red: “a recovery code
@@ -28,13 +28,13 @@ const _req = S.buildAndRequire();
 const mails = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
-  mailAccountNotice: async (an, _name, art) => {
-    mails.push({ an, art });
+  mailAccountNotice: async (an, _name, kind) => {
+    mails.push({ an, kind });
     return { success: true };
   },
 });
 const { accessOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const zf = _req('src/factors/secondFactor.js');
 const lim = _req('src/account/loginLimiter.js');
 const { checkCredentials } = _req('src/account/loginCheck.js');
@@ -66,51 +66,49 @@ test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 
     await db.pool.end().catch(() => {});
   });
 
-  const geheimnis = await zf.beginSetup(uid);
-  const schluessel = zf.fromBase32(geheimnis);
-  const codes = await zf.confirmSetup(uid, zf.hotp(schluessel, zf.timeStep() - 1));
-  assert.equal(codes?.length, 10, 'Einrichtung');
+  const secret = await zf.beginSetup(uid);
+  const key = zf.fromBase32(secret);
+  const codes = await zf.confirmSetup(uid, zf.hotp(key, zf.timeStep() - 1));
+  assert.equal(codes?.length, 10, 'setup');
   const s = zf.timeStep();
-  const gueltig = [-1, 0, 1].map(v => zf.hotp(schluessel, s + v));
-  const FALSCH = ['000000', '111111', '222222', '333333'].find(c => !gueltig.includes(c));
+  const valid = [-1, 0, 1].map(v => zf.hotp(key, s + v));
+  const WRONG = ['000000', '111111', '222222', '333333'].find(c => !valid.includes(c));
 
-  const anmelden = async code => {
+  const signIn = async code => {
     await lockEmpty();
     return checkCredentials({ ip: IP }, NAME, PASS, code);
   };
 
   await t.test('up to the limit: wrong code', async () => {
-    for (let i = 1; i < lim.MAX_FACTOR_LOGIN_JE_ACCOUNT; i++) {
-      const r = await anmelden(FALSCH);
-      assert.equal(r.absage?.code, 'zweiter_faktor_falsch', `Versuch ${i}`);
+    for (let i = 1; i < lim.MAX_FACTOR_LOGIN_PER_ACCOUNT; i++) {
+      const r = await signIn(WRONG);
+      assert.equal(r.refusal?.code, 'second_factor_wrong', `attempt ${i}`);
     }
-    const r = await anmelden(FALSCH);
-    assert.equal(r.absage?.code, 'zweiter_faktor_gesperrt', 'der 20. falsche Code erreicht die Schranke');
-    assert.equal(r.absage?.zweiterFaktor, true, 'das Codefeld bleibt offen');
-    const zeile = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [
-      `faktor-anmeldung-konto|${uid}`,
-    ]);
-    assert.equal(Number(zeile?.count), lim.MAX_FACTOR_LOGIN_JE_ACCOUNT, 'gezählt in der Datenbank');
+    const r = await signIn(WRONG);
+    assert.equal(r.refusal?.code, 'second_factor_locked', 'the 20th wrong code reaches the limit');
+    assert.equal(r.refusal?.secondFactor, true, 'the code field stays open');
+    const row = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`faktor-anmeldung-konto|${uid}`]);
+    assert.equal(Number(row?.count), lim.MAX_FACTOR_LOGIN_PER_ACCOUNT, 'counted in the database');
   });
 
   await t.test('the owner learns of it immediately, once', async () => {
     // hintInBackground sends without await; only a second look shows that it stays at one mail.
-    await bis(() => mails.some(m => m.art === 'zweiter_faktor_gesperrt'));
-    await anmelden(FALSCH);
+    await until(() => mails.some(m => m.kind === 'second_factor_locked'));
+    await signIn(WRONG);
     assert.deepEqual(
-      mails.filter(m => m.art === 'zweiter_faktor_gesperrt'),
-      [{ an: `${NAME}@example.org`, art: 'zweiter_faktor_gesperrt' }],
+      mails.filter(m => m.kind === 'second_factor_locked'),
+      [{ an: `${NAME}@example.org`, kind: 'second_factor_locked' }],
     );
   });
 
   await t.test('above the limit even a correct one-time code does not apply', async () => {
-    const r = await anmelden(zf.hotp(schluessel, zf.timeStep()));
-    assert.equal(r.ok, false, 'richtiger Einmalcode über der Schranke angenommen');
-    assert.equal(r.absage?.code, 'zweiter_faktor_gesperrt');
+    const r = await signIn(zf.hotp(key, zf.timeStep()));
+    assert.equal(r.ok, false, 'correct one-time code accepted above the limit');
+    assert.equal(r.refusal?.code, 'second_factor_locked');
   });
 
   await t.test('a recovery code still applies', async () => {
-    const r = await anmelden(codes[0]);
-    assert.equal(r.ok, true, JSON.stringify(r.absage));
+    const r = await signIn(codes[0]);
+    assert.equal(r.ok, true, JSON.stringify(r.refusal));
   });
 });

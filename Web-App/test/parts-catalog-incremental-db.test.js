@@ -8,7 +8,7 @@
  *   A  in runCatalogFollowUp() instead of the groups the whole account deleted and
  *      rebuilt (`nurGruppen` false, DELETE without part_key) → red: “other
  *      accounts and other groups stay”
- *   B  in the trigger merke_teilekatalog_beide() only `neu` read (the old
+ *   B  in the trigger remember_parts_catalog_both() only `neu` read (the old
  *      BrickLink number is missing) → red: “a new BrickLink mapping …”
  *      (the group of W keeps counting X: 3 instead of 1)
  *   C  the follow-up left out in summaryFresh() → red: “a changed
@@ -29,17 +29,17 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { holdsSet, holdsPart } = require('./helpers/inventory');
 const { asRequest } = _req('src/infra/accountContext.js');
-const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
+const as = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 
 test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const PS = _req('src/parts/summary.js');
@@ -50,12 +50,12 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
     Y = `ky${p}`,
     SA = `91${p % 1000}-1`,
     SB = `92${p % 1000}-1`;
-  const konto = async n => {
+  const account = async n => {
     await db.run('DELETE FROM users WHERE username=$1', [n]);
     return (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [n])).id;
   };
-  const a = await konto(`katalogA_${p}`),
-    b = await konto(`katalogB_${p}`);
+  const a = await account(`katalogA_${p}`),
+    b = await account(`katalogB_${p}`);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
     await db.run('DELETE FROM part_catalog WHERE part_number = ANY($1)', [[X, W, Y, Z]]);
@@ -64,39 +64,39 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   await holdsSet(db, a, SA, 1);
-  await holdsPart(db, a, X, { setNumber: SA, menge: 2, colorId: 4 });
-  await holdsPart(db, a, Z, { setNumber: SA, menge: 3, colorId: 4 });
+  await holdsPart(db, a, X, { setNumber: SA, quantity: 2, colorId: 4 });
+  await holdsPart(db, a, Z, { setNumber: SA, quantity: 3, colorId: 4 });
   await holdsSet(db, b, SB, 1);
-  await holdsPart(db, b, Y, { setNumber: SB, menge: 5, colorId: 1 });
+  await holdsPart(db, b, Y, { setNumber: SB, quantity: 5, colorId: 1 });
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,'X alt'),($2,'Z'),($3,'Y')
                 ON CONFLICT (part_number) DO UPDATE SET part_name = EXCLUDED.part_name`,
     [X, Z, Y],
   );
-  await als(a, () => PS.rebuildNow(a));
-  await als(b, () => PS.rebuildNow(b));
-  await als(a, () => PS.runCatalogFollowUp()); // clear from the queue what the build already contains
+  await as(a, () => PS.rebuildNow(a));
+  await as(b, () => PS.rebuildNow(b));
+  await as(a, () => PS.runCatalogFollowUp()); // clear from the queue what the build already contains
 
-  const zeilen = uid =>
+  const lines = uid =>
     db.all(
       `SELECT part_key, color_id, part_number, bl_part_number, part_name, total_quantity, in_sets, storage
                                     FROM parts_summary WHERE user_id = $1 ORDER BY part_key, color_id`,
       [uid],
     );
-  const marke = (uid, teil) =>
-    db.run(`UPDATE parts_summary SET storage = 'Marke' WHERE user_id = $1 AND part_number = $2`, [uid, teil]);
+  const mark = (uid, part) =>
+    db.run(`UPDATE parts_summary SET storage = 'Marke' WHERE user_id = $1 AND part_number = $2`, [uid, part]);
   /** Result now against a full rebuild of the same account. */
   const equalFullSetup = async uid => {
-    const nach = await zeilen(uid);
-    await als(uid, () => PS.rebuildNow(uid));
-    assert.deepEqual(nach, await zeilen(uid), 'Nachzug und voller Neuaufbau ergeben dieselben Zeilen');
+    const nach = await lines(uid);
+    await as(uid, () => PS.rebuildNow(uid));
+    assert.deepEqual(nach, await lines(uid), 'catch-up and full rebuild yield the same rows');
   };
 
   await t.test('a changed part name is there without a rebuild', async () => {
-    await marke(a, Z);
-    await marke(b, Y);
+    await mark(a, Z);
+    await mark(b, Y);
     await db.run(`UPDATE part_catalog SET part_name = 'X neu' WHERE part_number = $1`, [X]);
-    assert.equal(await als(a, () => PS.summaryFresh(a, { strict: true })), true);
+    assert.equal(await as(a, () => PS.summaryFresh(a, { strict: true })), true);
     assert.equal(
       (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1 AND part_number=$2', [a, X])).part_name,
       'X neu',
@@ -107,12 +107,12 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
     assert.equal(
       (await db.get('SELECT storage FROM parts_summary WHERE user_id=$1', [b])).storage,
       'Marke',
-      'Konto B wurde neu gebaut',
+      'account B was rebuilt',
     );
     assert.equal(
       (await db.get('SELECT storage FROM parts_summary WHERE user_id=$1 AND part_number=$2', [a, Z])).storage,
       'Marke',
-      'die Gruppe Z in Konto A wurde neu gebaut',
+      'group Z in account A was rebuilt',
     );
     await db.run(`UPDATE parts_summary SET storage = NULL WHERE storage = 'Marke' AND user_id = ANY($1)`, [[a, b]]);
     await equalFullSetup(a);
@@ -120,7 +120,7 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
 
   await t.test("one account's request also updates the others", async () => {
     await db.run(`UPDATE part_catalog SET part_name = 'Y neu' WHERE part_number = $1`, [Y]);
-    assert.equal(await als(a, () => PS.summaryFresh(a, { strict: true })), true);
+    assert.equal(await as(a, () => PS.summaryFresh(a, { strict: true })), true);
     assert.equal((await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n, 0);
     assert.equal(
       (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1 AND part_number=$2', [b, Y])).part_name,
@@ -130,16 +130,16 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
 
   await t.test('a new BrickLink mapping moves the group', async () => {
     // W and X share a BrickLink number; the group is named after W.
-    await holdsPart(db, a, W, { setNumber: SA, menge: 1, colorId: 4 });
-    await als(a, () => PS.rebuildNow(a));
+    await holdsPart(db, a, W, { setNumber: SA, quantity: 1, colorId: 4 });
+    await as(a, () => PS.rebuildNow(a));
     await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, $3), ('part', $2, $3)`, [
       X,
       W,
       `${X}bl`,
     ]);
-    assert.equal(await als(a, () => PS.summaryFresh(a, { strict: true })), true);
+    assert.equal(await as(a, () => PS.summaryFresh(a, { strict: true })), true);
     assert.deepEqual(
-      (await zeilen(a)).map(z => [z.part_key, z.part_number, Number(z.total_quantity)]),
+      (await lines(a)).map(z => [z.part_key, z.part_number, Number(z.total_quantity)]),
       [
         [`${X}bl`, W, 3],
         [Z, Z, 3],
@@ -147,9 +147,9 @@ test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
     );
     // X moves on; the group of W then no longer contains X.
     await db.run(`UPDATE bl_mapping SET bl_id = $2 WHERE type = 'part' AND rb_id = $1`, [X, `${X}neu`]);
-    assert.equal(await als(a, () => PS.summaryFresh(a, { strict: true })), true);
+    assert.equal(await as(a, () => PS.summaryFresh(a, { strict: true })), true);
     assert.deepEqual(
-      (await zeilen(a)).map(z => [z.part_key, z.part_number, Number(z.total_quantity)]),
+      (await lines(a)).map(z => [z.part_key, z.part_number, Number(z.total_quantity)]),
       [
         [`${X}bl`, W, 1],
         [`${X}neu`, X, 2],

@@ -15,7 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { pruefe, RUNS } = require('../scripts/check-frontend-types');
+const { check, RUNS } = require('../scripts/check-frontend-types');
 
 test('UI: the CI checks both configurations as a step of its own', () => {
   // The tsc run is done by CI (npm run typecheck:frontend, both RUNS); run here
@@ -25,8 +25,8 @@ test('UI: the CI checks both configurations as a step of its own', () => {
   const ci = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
   assert.match(ci, /^\s+run: npm run typecheck:frontend\s*$/m);
   assert.equal(require('../package.json').scripts['typecheck:frontend'], 'node scripts/check-frontend-types.js');
-  assert.deepEqual(RUNS, ['tsconfig.frontend.json', 'tsconfig.frontend-skripte.json']);
-  assert.equal(typeof pruefe, 'function');
+  assert.deepEqual(RUNS, ['tsconfig.frontend.json', 'tsconfig.frontend-scripts.json']);
+  assert.equal(typeof check, 'function');
 });
 
 test('UI: strict is switched on, no part of it switched off', () => {
@@ -44,7 +44,7 @@ test('UI: strict is switched on, no part of it switched off', () => {
     );
     const o = JSON.parse(r.stdout).compilerOptions;
     assert.equal(o.strict, true, `${config}: strict`);
-    for (const teil of [
+    for (const part of [
       'strictNullChecks',
       'noImplicitAny',
       'noImplicitThis',
@@ -54,6 +54,6 @@ test('UI: strict is switched on, no part of it switched off', () => {
       'useUnknownInCatchVariables',
       'alwaysStrict',
     ])
-      assert.notEqual(o[teil], false, `${config}: ${teil} abgeschaltet`);
+      assert.notEqual(o[part], false, `${config}: ${part} switched off`);
   }
 });

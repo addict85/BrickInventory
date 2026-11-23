@@ -29,9 +29,9 @@ test('open household invitations are limited', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const lade = async () => {
-    const r = await fetch(`${base}/api/v1/settings/household/invite`, {
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  const load = async () => {
+    const r = await fetch(`${base}/api/v2/settings/household/invite`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: '{}',
@@ -41,13 +41,13 @@ test('open household invitations are limited', { concurrency: 1 }, async t => {
   };
 
   await t.test('five work, the sixth does not, a redeemed one makes room', async () => {
-    for (let i = 0; i < 5; i++) assert.deepEqual(await lade(), [200, 'string'], `Einladung ${i + 1}`);
-    assert.deepEqual(await lade(), [409, 'einladungen_zu_viele'], 'die sechste');
+    for (let i = 0; i < 5; i++) assert.deepEqual(await load(), [200, 'string'], `Einladung ${i + 1}`);
+    assert.deepEqual(await load(), [409, 'too_many_invites'], 'the sixth');
     await db.run(
       `UPDATE account_link_invites SET used_at = NOW()
       WHERE ctid = (SELECT ctid FROM account_link_invites WHERE main_user_id = $1 LIMIT 1)`,
       [uid],
     );
-    assert.deepEqual(await lade(), [200, 'string']);
+    assert.deepEqual(await load(), [200, 'string']);
   });
 });

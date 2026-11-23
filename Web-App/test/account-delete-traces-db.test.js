@@ -12,7 +12,7 @@
  *      red: “copies older than the period …”
  *   D  cleanLogOn() with 3650 instead of 365 days → red: “log lines
  *      older than a year …”
- *   Since migration 0117 the function verwaltungsprotokoll_aufraeumen() cleans up (repeated
+ *   Since migration 0117 the function admin_log_cleanup() cleans up (repeated
  *   14.11.2026): there `target_name = target_name` → red like B; 3650 instead of 365 days → red like D.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -28,9 +28,9 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const AUTH = require('./helpers/sources').mounting('auth');
 const { secureUserData, cleanOldBackupsOn } = _req('db/migrate.js');
-const { cleanLogOn } = require('./helpers/sources').testArea('account').protokoll;
+const { cleanLogOn } = require('./helpers/sources').testArea('account').log;
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('account deletion without traces', { concurrency: 1 }, async t => {
@@ -54,7 +54,7 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, `8${P % 100000}-1`]);
   await db.run(
     `INSERT INTO admin_log (admin_id, target_id, target_name, action)
-    VALUES ($1, $2, $3, 'passwort_gesetzt')`,
+    VALUES ($1, $2, $3, 'password_set')`,
     [chef, uid, NAME],
   );
   const client = await db.pool.connect();
@@ -70,14 +70,14 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, chef]]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const zaehle = async (tabelle, spalte) =>
-    (await db.get(`SELECT count(*)::int n FROM ${schema}.${tabelle} WHERE ${spalte} = $1`, [uid])).n;
-  assert.equal(await zaehle('users', 'id'), 1, 'Vorbedingung: das Konto steht in der Kopie');
-  assert.equal(await zaehle('sets', 'user_id'), 1, 'Vorbedingung: sein Set steht in der Kopie');
+  const count = async (table, column) =>
+    (await db.get(`SELECT count(*)::int n FROM ${schema}.${table} WHERE ${column} = $1`, [uid])).n;
+  assert.equal(await count('users', 'id'), 1, 'Precondition: the account is in the copy');
+  assert.equal(await count('sets', 'user_id'), 1, 'Precondition: its set is in the copy');
 
-  const sitzung = { userId: uid, username: NAME, destroy: fertig => fertig() };
-  const { base } = testServer(_req, { sitzung, t });
-  const r = await fetch(`${base}${AUTH}/konto`, {
+  const session = { userId: uid, username: NAME, destroy: done => done() };
+  const { base } = testServer(_req, { session, t });
+  const r = await fetch(`${base}${AUTH}/account`, {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ password: PASS }),
@@ -85,18 +85,18 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
   assert.equal(r.status, 200, await r.clone().text());
 
   await t.test('the deleted account is in no copy any more', async () => {
-    assert.equal(await zaehle('users', 'id'), 0);
-    assert.equal(await zaehle('sets', 'user_id'), 0);
+    assert.equal(await count('users', 'id'), 0);
+    assert.equal(await count('sets', 'user_id'), 0);
     assert.ok(
       (await db.get(`SELECT count(*)::int n FROM ${schema}.users WHERE id = $1`, [chef])).n === 1,
-      'andere Konten bleiben',
+      'other accounts stay',
     );
   });
 
   await t.test('after the cleanup run the admin log no longer names the name', async () => {
     await cleanLogOn();
     const z = await db.all('SELECT target_id, target_name FROM admin_log WHERE target_id = $1', [uid]);
-    assert.equal(z.length, 1, 'die Zeile selbst bleibt');
+    assert.equal(z.length, 1, 'the row itself stays');
     assert.equal(z[0].target_name, null);
   });
 
@@ -106,26 +106,26 @@ test('account deletion without traces', { concurrency: 1 }, async t => {
     assert.ok((await cleanOldBackupsOn(db)) >= 1);
     const da = (await db.all(`SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_'`)).map(z => z.nspname);
     assert.ok(!da.includes('vor_migration_20200101000000000'), da.join(', '));
-    assert.ok(da.includes(schema), 'die frische Kopie bleibt');
+    assert.ok(da.includes(schema), 'the fresh copy stays');
   });
 
   await t.test('log rows older than one year disappear in the cleanup run', async () => {
     const alt = (
       await db.get(
         `INSERT INTO admin_log (occurred_at, admin_id, target_id, target_name, action)
-      VALUES (NOW() - INTERVAL '400 days', $1, $1, 'alt', 'konto_angelegt') RETURNING id`,
+      VALUES (NOW() - INTERVAL '400 days', $1, $1, 'alt', 'account_created') RETURNING id`,
         [chef],
       )
     ).id;
-    const jung = (
+    const young = (
       await db.get(
         `INSERT INTO admin_log (occurred_at, admin_id, target_id, target_name, action)
-      VALUES (NOW() - INTERVAL '300 days', $1, $1, 'jung', 'konto_angelegt') RETURNING id`,
+      VALUES (NOW() - INTERVAL '300 days', $1, $1, 'jung', 'account_created') RETURNING id`,
         [chef],
       )
     ).id;
     await cleanLogOn();
-    const ids = (await db.all('SELECT id FROM admin_log WHERE id = ANY($1)', [[alt, jung]])).map(z => z.id);
-    assert.deepEqual(ids, [jung]);
+    const ids = (await db.all('SELECT id FROM admin_log WHERE id = ANY($1)', [[alt, young]])).map(z => z.id);
+    assert.deepEqual(ids, [young]);
   });
 });

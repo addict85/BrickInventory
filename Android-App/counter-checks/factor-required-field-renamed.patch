@@ -1,0 +1,18 @@
+Gegenprobe: Das Modell liest das Feld unter falschem Namen
+Modul: core-state
+Test: ch.brickinventoryapp.state.SecondFactorTakeoverTest
+Rot: sign-in and auth me read the field secondFactorRequired
+
+
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+@@ -2239,7 +2239,7 @@
+     @SerialName("username") val username: String,
+     @SerialName("is_admin") val isAdmin: Boolean = false,
+     @SerialName("mustChangePassword") val mustChangePassword: Boolean = false,
+-    @SerialName("secondFactorRequired") val secondFactorRequired: Boolean = false,
++    @SerialName("second_factor_required") val secondFactorRequired: Boolean = false,
+ )
+ 
+ @Serializable

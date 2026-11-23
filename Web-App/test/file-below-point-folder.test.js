@@ -14,16 +14,16 @@ const path = require('node:path');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 const { deliverFile } = require('./helpers/sources').buildAndRequire()('src/http/serveFile.js');
 
-const ORDNER = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'punkt-')), '.versteckt', 'daten');
-fs.mkdirSync(ORDNER, { recursive: true });
-const DATEI = path.join(ORDNER, 'gutschein.pdf');
-fs.writeFileSync(DATEI, '%PDF-1.4 probe');
-fs.writeFileSync(path.join(ORDNER, '.geheim'), 'nicht ausliefern');
+const FOLDER = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'punkt-')), '.versteckt', 'daten');
+fs.mkdirSync(FOLDER, { recursive: true });
+const FILE = path.join(FOLDER, 'gutschein.pdf');
+fs.writeFileSync(FILE, '%PDF-1.4 probe');
+fs.writeFileSync(path.join(FOLDER, '.geheim'), 'nicht ausliefern');
 
 test('delivery under a dot folder', async t => {
   const app = express();
-  app.get('/datei', (_req, res) => deliverFile(res, DATEI));
-  app.get('/punktdatei', (_req, res) => deliverFile(res, path.join(ORDNER, '.geheim')));
+  app.get('/datei', (_req, res) => deliverFile(res, FILE));
+  app.get('/punktdatei', (_req, res) => deliverFile(res, path.join(FOLDER, '.geheim')));
   const srv = app.listen(0);
   t.after(() => srv.close());
   const basis = `http://127.0.0.1:${srv.address().port}`;

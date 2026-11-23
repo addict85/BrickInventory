@@ -1,0 +1,17 @@
+Gegenprobe: eine Absage des Servers verliert ihren Satz
+Modul: core-data
+Test: ch.brickinventoryapp.data.SetCreateStreamTest
+Rot: a refusal carries the server's sentence
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
+@@ -127,7 +127,7 @@
+     /** Get the sentence the server sent from an error response. */
+     private fun errorTextFrom(bodyBytes: String?): String =
+         try {
+-            json.parseToJsonElement(bodyBytes.orEmpty()).jsonObject["error"]?.jsonPrimitive?.content.orEmpty()
++            json.parseToJsonElement(bodyBytes.orEmpty()).jsonObject["fehler"]?.jsonPrimitive?.content.orEmpty()
+         } catch (_: IllegalArgumentException) { "" }
+ 
+     private companion object {

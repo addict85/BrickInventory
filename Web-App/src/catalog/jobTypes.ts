@@ -1,20 +1,20 @@
 /** Not strict: the payload survives deploys, a legacy field should not make an open job fail. */
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { bricksetJobType } from '../externalSources';
-import * as anleitungLaden from './loadInstruction';
-import * as bildNachlauf from './imageFollowUp';
-import * as bilderNachladen from './reloadImages';
-import * as bricksetNachlauf from './bricksetFollowUp';
-import * as csvAbgleich from './csvSync';
-import * as pdfErzeugung from './pdf/pdfGeneration';
-import * as widerrufsliste from './revocationList';
+import * as loadInstruction from './loadInstruction';
+import * as imageFollowUp from './imageFollowUp';
+import * as reloadImages from './reloadImages';
+import * as bricksetFollowUp from './bricksetFollowUp';
+import * as csvReconcile from './csvSync';
+import * as pdfGeneration from './pdf/pdfGeneration';
+import * as revocationList from './revocationList';
 import type { CatalogContext } from './context';
 
-const SETNR = z.string().min(1).max(64);
-const LEER = z.object({});
+const SET_NUMBER = z.string().min(1).max(64);
+const EMPTY = z.object({});
 
-const PdfTeil = z.object({
+const PdfPart = z.object({
   part_number: z.string(),
   bl_part_number: z.string().nullish(),
   part_name: z.string().nullish(),
@@ -31,74 +31,74 @@ export const PdfPayload = z.object({
   job_id: z.string().min(1),
   user_id: z.number().int().positive(),
   sets: z.array(z.object({ set_number: z.string(), name: z.string().nullish() })),
-  parts: z.array(PdfTeil),
+  parts: z.array(PdfPart),
 });
 /** Queued by the catalog and by the sets; executed by the sets (src/sets/jobTypes.ts). */
-export const ImagesPayload = z.object({ set_number: SETNR, only_images: z.boolean().optional() });
-const InstructionPayload = z.object({ set_number: SETNR, nur_ausweichquelle: z.boolean().optional() });
+export const ImagesPayload = z.object({ set_number: SET_NUMBER, only_images: z.boolean().optional() });
+const InstructionPayload = z.object({ set_number: SET_NUMBER, nur_ausweichquelle: z.boolean().optional() });
 const CatalogSyncPayload = z.object({ onStart: z.boolean().optional() });
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
     pdf: typeof PdfPayload;
-    bilder: typeof ImagesPayload;
-    anleitung: typeof InstructionPayload;
-    bilder_neu_laden: typeof LEER;
+    images: typeof ImagesPayload;
+    instructions: typeof InstructionPayload;
+    images_reload: typeof EMPTY;
     csv_sync: typeof CatalogSyncPayload;
-    bild_nachlauf: typeof LEER;
-    widerrufsliste: typeof LEER;
+    image_followup: typeof EMPTY;
+    revocation_list: typeof EMPTY;
   }
 }
 
-export const CATALOG_SYNC_TIME_OF_DAY = { setting: 'job_time_csv_sync', vorgabe: '03:00' } as const;
+export const CATALOG_SYNC_TIME_OF_DAY = { setting: 'job_time_csv_sync', preset: '03:00' } as const;
 
 /** Exclusive are kinds that spare a remote side or swap tables. */
-export function catalogJobTypes(k: CatalogContext, importProcess: string): Anmeldung[] {
+export function catalogJobTypes(k: CatalogContext, importProcess: string): Login[] {
   return [
-    auftragsart({
-      art: 'pdf',
-      nutzlast: PdfPayload,
-      ausfuehren: (n, l) => pdfErzeugung.createPdf(k, n, l),
-      aufgegeben: (n, fehler) => pdfErzeugung.pdfGivenUp(n, fehler),
+    jobKind({
+      kind: 'pdf',
+      payload: PdfPayload,
+      run: (n, l) => pdfGeneration.createPdf(k, n, l),
+      givenUp: (n, error) => pdfGeneration.pdfGivenUp(n, error),
       discardPayload: true,
     }),
-    auftragsart({
-      art: 'anleitung',
-      nutzlast: InstructionPayload,
-      ausfuehren: (n, l) => anleitungLaden.anleitungLaden(k, n, l),
-      exklusiv: true,
+    jobKind({
+      kind: 'instructions',
+      payload: InstructionPayload,
+      run: (n, l) => loadInstruction.loadInstruction(k, n, l),
+      exclusive: true,
     }),
-    bricksetJobType((n, l) => bricksetNachlauf.bricksetNachlauf(k, n, l)),
-    auftragsart({
-      art: 'bilder_neu_laden',
-      nutzlast: LEER,
-      ausfuehren: async (_n, l) => {
-        await bilderNachladen.redownloadMissingImages(k, l);
+    bricksetJobType((n, l) => bricksetFollowUp.bricksetFollowUp(k, n, l)),
+    jobKind({
+      kind: 'images_reload',
+      payload: EMPTY,
+      run: async (_n, l) => {
+        await reloadImages.redownloadMissingImages(k, l);
       },
-      exklusiv: true,
-      kontouebergreifend: 'fehlende Bilder aller Bestände',
+      exclusive: true,
+      crossAccount: 'fehlende Bilder aller Bestände',
     }),
-    auftragsart({
-      art: 'csv_sync',
-      nutzlast: CatalogSyncPayload,
-      ausfuehren: (n, l) => csvAbgleich.csvAbgleich(k, n, l, importProcess),
-      exklusiv: true,
-      kontouebergreifend: 'BrickLink-Nummern der Teile aller Konten',
-      zeitplan: { taeglich: CATALOG_SYNC_TIME_OF_DAY },
+    jobKind({
+      kind: 'csv_sync',
+      payload: CatalogSyncPayload,
+      run: (n, l) => csvReconcile.csvReconcile(k, n, l, importProcess),
+      exclusive: true,
+      crossAccount: 'BrickLink-Nummern der Teile aller Konten',
+      schedule: { daily: CATALOG_SYNC_TIME_OF_DAY },
     }),
-    auftragsart({
-      art: 'bild_nachlauf',
-      nutzlast: LEER,
-      ausfuehren: (_n, l) => bildNachlauf.bildNachlauf(k, l),
-      exklusiv: true,
-      kontouebergreifend: 'Bilder aller Bestände',
-      zeitplan: { minuten: { vorgabe: 60 } },
+    jobKind({
+      kind: 'image_followup',
+      payload: EMPTY,
+      run: (_n, l) => imageFollowUp.imageFollowUp(k, l),
+      exclusive: true,
+      crossAccount: 'Bilder aller Bestände',
+      schedule: { minutes: { preset: 60 } },
     }),
-    auftragsart({
-      art: 'widerrufsliste',
-      nutzlast: LEER,
-      ausfuehren: (_n, l) => widerrufsliste.loadRevocationList(k, l),
-      zeitplan: { minuten: { vorgabe: 6 * 60 } },
+    jobKind({
+      kind: 'revocation_list',
+      payload: EMPTY,
+      run: (_n, l) => revocationList.loadRevocationList(k, l),
+      schedule: { minutes: { preset: 6 * 60 } },
     }),
   ];
 }

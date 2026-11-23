@@ -1,0 +1,17 @@
+Gegenprobe: TabScaffold verwirft die Rollposition des angetippten Reiters nicht mehr
+Modul: app
+Test: ch.brickinventoryapp.app.TabOpensAtTopTest
+Rot: no tab destination builds the scaffold itself
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -272,7 +272,7 @@
+         snackbarHostState = environment.snackbar,
+         csvImport = CsvImportBar(csvImport.csvImportState) { csvImport.cancelCsvImport() },
+         // Tab tapped → start at the top.
+-        onTabTapped = { target -> vm.scrollMemory.forgetTab(rollKey(target)) },
++        onTabTapped = { _ -> },
+         // The silent start check has a result — here it gets a place.
+         updateAvailable = updateUiState.newerVersion != null,
+         pendingChanges = open,

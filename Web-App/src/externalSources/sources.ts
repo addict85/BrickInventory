@@ -13,14 +13,14 @@ export { ECB_HISTORY, ECB_DAILY_RATES, firstZipFile, readHistory, readDailyRates
 export { RebrickableLocked, firstBlNumber, parseThrottleWait } from '../../clients/rebrickable';
 export { RbSet, RbSetMinifig, rbPage } from '../../clients/responses';
 import { loadCatalogCsv } from '../../clients/rebrickableCsv';
-import { oeffneBild, fetchImage } from '../../clients/imageCdn';
+import { openImage, fetchImage } from '../../clients/imageCdn';
 import { ecbFetch } from '../../clients/ecb';
 export { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../clients/imageCdn';
 import { legoFetch } from '../../clients/legoBalance';
 export { legoFetch };
 export { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../../clients/legoBalance';
-export type { Abruf, Kurs } from '../../clients/ecb';
-export type { RbSetTeil } from '../../clients/rebrickable';
+export type { Fetch, Rate } from '../../clients/ecb';
+export type { RbSetPart } from '../../clients/rebrickable';
 export type { ClientsAccess } from '../../clients/access';
 
 /** The clients of an access, flat like the exports used to be; `setAngaben` is the one from
@@ -35,7 +35,7 @@ export function buildSources(z: ClientsAccess) {
     fromRetryQueue: bs.fromRetryQueue,
     getSetByBarcode: bs.getSetByBarcode,
     getSetByEan: bs.getSetByEan,
-    setAngaben: bs.setAngaben,
+    setDetails: bs.setDetails,
     checkBricksetAccess: bs.checkBricksetAccess,
     brickset: bs,
     productTitle: (ean13: string) => productTitle(rb.httpsGetRobust, ean13),
@@ -45,10 +45,10 @@ export function buildSources(z: ClientsAccess) {
     revocationListFetch,
     downloadFile,
     rebrickableRaw,
-    oeffneBild,
+    openImage,
     fetchImage,
     ecbFetch,
   };
 }
 
-export type Quellen = ReturnType<typeof buildSources>;
+export type Sources = ReturnType<typeof buildSources>;

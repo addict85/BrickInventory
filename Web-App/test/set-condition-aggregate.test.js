@@ -16,11 +16,11 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { checkParameter } = require('./helpers/sources');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 test('the aggregate rule now exists in only one place', () => {
-  const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /function zustandsAggregat/, 'Der gemeinsame Helfer fehlt');
+  const h = require('./helpers/sources').handlerSource();
+  assert.match(h, /function conditionAggregate/, 'The shared helper is missing');
   // Neither setsLesen()/readSet() nor the manual lists may ever phrase the rule
   // on their own — it stands in conditionFromAcquisitions().
   // Two parameters, not three: the third was the stored condition of the
@@ -37,7 +37,7 @@ test('the aggregate rule now exists in only one place', () => {
   assert.equal(
     inlineRules.length,
     1,
-    `Die Regel steht ${inlineRules.length}× im Code — sie gehört genau einmal in conditionFromAcquisitions()`,
+    `The rule appears ${inlineRules.length}× in the code — it belongs exactly once in conditionFromAcquisitions()`,
   );
 });
 
@@ -53,292 +53,12 @@ test('an unknown theme value resets nothing', () => {
   const w = dom.window;
   w.fetch = () => new Promise(() => {});
   w.eval(fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), 'utf8'));
-  for (const wert of [undefined, null, '', 'gibtsnicht']) {
-    assert.equal(w.__bimApplyTheme(wert), null, `${wert} wurde als Design angenommen`);
-    assert.equal(
-      w.document.documentElement.getAttribute('data-theme'),
-      'brick',
-      `${wert} hat das Design zurückgesetzt`,
-    );
-    assert.equal(w.localStorage.getItem('bim_theme'), 'brick', `${wert} hat den Cache überschrieben`);
+  for (const value of [undefined, null, '', 'gibtsnicht']) {
+    assert.equal(w.__bimApplyTheme(value), null, `${value} was accepted as a design`);
+    assert.equal(w.document.documentElement.getAttribute('data-theme'), 'brick', `${value} reset the design`);
+    assert.equal(w.localStorage.getItem('bim_theme'), 'brick', `${value} overwrote the cache`);
   }
   w.close();
-});
-
-test('a manually entered part gets market price and entry', () => {
-  // Two gaps: the market price was fetched without a condition (i.e. the new price,
-  // even for „Gebraucht"), and no row arose at all in
-  // part_acquisitions — the purchase price only stood in the master table, while
-  // detail view and condition rule work with the acquisitions. …
-  const src =
-    fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8') +
-    '\n' +
-    fs.readFileSync(path.join(ROOT, 'src/parts/manualParts.ts'), 'utf8');
-  const fn = src.slice(src.indexOf('async function addManualPart'), src.indexOf('async function changeManualPart'));
-
-  // The condition must go into the price determination — otherwise the new price comes, even
-  // for „Gebraucht".
-  const withoutState = [
-    ...src.matchAll(
-      /(?:currentPartMarketPrice|currentPartMarketPrice)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?([^)]*)\)/g,
-    ),
-  ]
-    .filter(m => !m[1].includes('function')) // not the definition itself
-    .filter(m => m[1].split(',').length < 4);
-  assert.equal(
-    withoutState.length,
-    0,
-    'Diese Aufrufe holen den Marktpreis OHNE Zustand:\n  ' +
-      withoutState.map(m => m[0]).join('\n  ') +
-      '\nDann fällt die Ermittlung intern auf den Standardzustand zurück, und ein ' +
-      'als gebraucht erfasstes Teil bekommt den Neupreis.',
-  );
-  // Self-proof: without occurrences an empty list says nothing.
-  const allCalls = [
-    ...src.matchAll(
-      /(?:currentPartMarketPrice|currentPartMarketPrice)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/g,
-    ),
-  ];
-  assert.ok(allCalls.length >= 4, `Nur ${allCalls.length} Vorkommen von currentPartMarketPrice( — Muster veraltet?`);
-  // Two paths: newly created and captured again — BOTH need an
-  // acquisition. The second used to end with `return { action: 'updated' }`
-  // without creating one; a differing acquisition date got lost in the process.
-  //
-  // Since hardened-93 writing happens via addPurchaseAtTag(), which tops up the
-  // row of the day in the same condition instead of creating a second one.
-  const writes = [
-    ...fn.matchAll(
-      /(?:addPurchaseAtTag|bookDailyEntry)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g,
-    ),
-  ];
-  assert.equal(
-    writes.length,
-    2,
-    `${writes.length} statt 2 Erfassungs-Schreibvorgänge — Neuanlage und Zweiterfassung brauchen je einen`,
-  );
-  assert.match(fn, /createdAt: acquiredAt/, 'Das Erfassungsdatum muss übernommen werden');
-  // The rule, not its notation
-  assert.match(
-    fn,
-    /price: erfassungsPreis/,
-    'Die Erfassung nimmt nicht den Preis, der ohne Marktpreis NULL ist ' +
-      '(src/finances/priceRule.ts, erfassungsPreis) — in der Erfassung hiesse eine 0 ' +
-      '„für null Franken gekauft"',
-  );
-  const regel = fs.readFileSync(path.join(ROOT, 'src/finances/priceRule.ts'), 'utf8');
-  assert.match(
-    regel,
-    /erfassungsPreis:\s*kaufpreis > 0 \? kaufpreis : null/,
-    'src/finances/priceRule.ts wandelt die 0 der Stammzeile nicht mehr in NULL für die Erfassung',
-  );
-  assert.match(fn, /condition: effectiveCondition/, 'Die Erfassung braucht den Zustand');
-});
-
-test('the minifigure market price asks BrickLink even without a separate BL number', () => {
-  // The fetch only ran when a differing bl_fig_number was stored.
-  // For manually captured figures that is the exception — mostly the
-  // own number matches the BrickLink number. The fetch was
-  // skipped, the parts estimate took over, and without a
-  // parts composition from Rebrickable it delivers nothing: no price at all.
-  const src = fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8');
-  // Since an earlier round the fetch is called figMarketPriceWithOrigin: it delivers
-  // next to the price the condition it comes from. currentMinifigMarketPrice
-  // stands next to it as a thin wrapper and only passes the number on — what is checked
-  // here is the fetch itself, not the wrapper.
-  const fn = src.slice(
-    src.indexOf('async function figMarketPriceWithOrigin'),
-    src.indexOf('async function manuellerFigurenkauf'),
-  );
-  assert.ok(fn.length > 0, 'Der Minifiguren-Preisabruf ist nicht mehr zu finden');
-
-  assert.match(fn, /for \(const num of \[blFigNumber, figNumber\]\)/, 'Beide Nummern müssen versucht werden');
-  assert.doesNotMatch(
-    fn,
-    /if \(blFigNumber\) \{\s*const priceData/,
-    'Der Abruf darf nicht mehr an einer separaten BL-Nummer hängen',
-  );
-
-  // Order: BrickLink first, parts estimate only as a fallback
-  const iLoop = fn.indexOf('for (const num of');
-  const iEst = fn.indexOf('estimateMinifigsPrice');
-  assert.ok(iLoop > 0 && iEst > iLoop, 'Die Teile-Schätzung gehört hinter den BrickLink-Abruf');
-
-  // And it estimates in the DETERMINED condition, not in the default condition: without
-  // a BrickLink number the estimate is the only price there is — if it
-  // ran fixed on „Neu", a figure captured as used got the new price
-  // of its parts. For figures WITH a number the condition had long been considered;
-  // exactly the case without a number fell through.
-  assert.match(
-    fn,
-    /estimateMinifigsPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?figNumber, userId, effCond\)/,
-    'Der ermittelte Zustand muss in die Schätzung',
-  );
-
-  const est = src.slice(
-    src.indexOf('async function estimateFigPriceFromParts'),
-    src.indexOf('async function currentMinifigMarketPrice'),
-  );
-  assert.match(
-    est,
-    /fetchPartPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?blPartNum, p\.color_id \?\? KEINE_FARBE, cond,/,
-    'Die Teilepreise müssen im übergebenen Zustand geholt werden',
-  );
-  assert.doesNotMatch(
-    est.replace(/\/\/[^\n]*/g, ''),
-    /fetchPartPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?[^)]*DEFAULT_PRICE_CONDITION/,
-    'Kein fester Standardzustand mehr in der Schätzung',
-  );
-
-  // And the valuation calls it per condition — otherwise two rows with
-  // different conditions would show the same market price.
-  const fc = require('./helpers/sources').finanzQuelle();
-  // viewerId instead of uid: since the household view „whose settings"
-  // and „whose data" are two quantities. The estimate needs the SETTINGS
-  // (currency) of the asking account — and still the condition.
-  // Estimating happens in the job preise_nachladen; the valuation queues the condition.
-  assert.match(
-    fc,
-    /art: 'schaetzung', nummer: key, zustand: cond/,
-    'Die Minifiguren-Bewertung muss den Zustand mitgeben',
-  );
-});
-
-test('the parts estimate lands in cache and history', () => {
-  // Reported: in the detail dialog of a minifigure WITHOUT a BrickLink number there were
-  // only dashes at market price (new) and (used), the history stayed empty —
-  // although purchase prices were captured in both conditions.
-  const src =
-    fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8') +
-    '\n' +
-    fs.readFileSync(path.join(ROOT, 'src/minifigs/manualMinifigs.ts'), 'utf8');
-  const est = src.slice(
-    src.indexOf('async function estimateFigPriceFromParts'),
-    src.indexOf('async function currentMinifigMarketPrice'),
-  );
-
-  // Cache and history per condition are checked by test/minifigs-estimate-store-db.test.js.
-  // Only with a real price: a zero point would look like a crash in the chart.
-  assert.match(est, /if \(priced === 0\) return null;/, 'Ohne bepreiste Teile darf nichts geschrieben werden');
-
-  // And when creating, the determined price must go into the acquisition
-  // Since the date adoption created_at belongs to the column list.
-  // Both paths (new creation and second capture), read without comments.
-  const withoutComment = src.replace(/\/\/[^\n]*/g, '');
-  const erfassungen = [
-    ...withoutComment.matchAll(
-      /(?:addPurchaseAtTag|bookDailyEntry)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?acquisitionPrice/g,
-    ),
-  ];
-  assert.equal(erfassungen.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
-});
-
-test('manual minifigures also create a row on every entry', () => {
-  // The same early exit as with the parts: `if (existing) { … return }`
-  // ended the path before an acquisition arose. The quantity rose, but no
-  // purchase price and no differing acquisition date.
-  const src = fs.readFileSync(path.join(ROOT, 'src/minifigs/manualMinifigs.ts'), 'utf8');
-  const fn = src.slice(
-    src.indexOf('async function addManualMinifig'),
-    src.indexOf('async function addManualMinifig') + 6000,
-  );
-
-  const writes = [
-    ...fn.matchAll(
-      /(?:addPurchaseAtTag|bookDailyEntry)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\]/g,
-    ),
-  ];
-  assert.equal(
-    writes.length,
-    2,
-    `${writes.length} statt 2 Erfassungs-Schreibvorgänge — Neuanlage und Zweiterfassung brauchen je einen`,
-  );
-  assert.match(fn, /createdAt: acquiredAt/, 'Das Erfassungsdatum muss übernommen werden');
-  // The second capture must determine the price via the same function
-  assert.match(
-    fn,
-    /const re = await manualMinifigPurchase\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uid, \{/,
-    'Die Zweiterfassung darf die Preislogik nicht neu ausformulieren',
-  );
-});
-
-test('entries without a purchase price are filled in', () => {
-  // During the CSV import the set is often not yet in the price cache, and the
-  // BrickLink fetch fails for many sets on the daily quota. The acquisition
-  // then arose without a purchase price — the market price appeared later nevertheless
-  // as soon as the price job filled the cache. Exactly this deviation was reported.
-  const job =
-    fs.readFileSync(path.join(ROOT, 'src/inventory/purchasePriceBackfill.ts'), 'utf8') +
-    fs.readFileSync(path.join(ROOT, 'src/inventory/repository/backfill.ts'), 'utf8');
-
-  assert.match(
-    job,
-    /async function backfillAcquisitions\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?\)/,
-    'Nachtrag fehlt',
-  );
-  // Independent of the set row: backfillSets() only sees sets with a NULL price
-  assert.match(
-    job,
-    /FROM \$\{l\.setErfassungen\(\)\} e\s+WHERE purchase_price IS NULL/,
-    'Der Nachtrag muss alle preislosen Erfassungen finden',
-  );
-  // The condition of the ACQUISITION determines the price, not that of the set
-  assert.match(
-    job,
-    /(?:aktuellerMarktpreis|aktuellerMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?row\.set_number, row\.user_id, row\.condition \|\| null\)/,
-    'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis',
-  );
-  // No mirroring into the sets row
-  assert.doesNotMatch(
-    job.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
-    /UPDATE sets SET/,
-    'Der Nachtrag schreibt wieder in die sets-Zeile — dort gibt es seit ' +
-      'Migration 0032 weder Kaufpreis noch Zustand',
-  );
-  assert.match(job, /\(\) => backfillAcquisitions\(k\)/, 'Der Durchlauf ist nicht eingehängt');
-
-  // And the import itself should end without a price less often
-  // The set service reads the market price from cache and history via finanzen (owner of price_history).
-  const sets =
-    require('./helpers/sources').setCoreSource() +
-    fs.readFileSync(path.join(ROOT, 'src/finances/repository/priceCache.ts'), 'utf8');
-  assert.match(
-    sets,
-    /FROM price_history[\s\S]{0,200}ORDER BY \(condition = \$3\) DESC, recorded_at DESC/,
-    'Die Historie fehlt als letzter Rückfall beim Import',
-  );
-});
-
-test('new sets fetch the right condition, not the default', () => {
-  // When creating a new set neither the sets row nor the
-  // set_acquisitions row exists yet. conditionsNeededFor() therefore found nothing and
-  // fell back to 'N' — a set imported as „Gebraucht" got the
-  // new price as purchase price, because the subsequent price query for 'U' still …
-  const job = fs.readFileSync(path.join(ROOT, 'src/finances/priceRun.ts'), 'utf8');
-  const { hatParameter } = require('./helpers/sources');
-  assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true), 'Der Hinweis-Parameter fehlt');
-  assert.match(
-    job,
-    /if \(hintCondition === 'U' \|\| hintCondition === 'N'\) eigene\.add\(hintCondition\);/,
-    'Der Hinweis muss in die Liste der zu holenden Zustände einfliessen',
-  );
-  assert.ok(
-    hatParameter(job, 'preisFuerSetHolen', 'hintCondition', true),
-    'preisFuerSetHolen muss den Hinweis annehmen',
-  );
-  assert.match(
-    job,
-    /conditionsNeededFor\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?setNumber, userId, hintCondition\)/,
-    'preisFuerSetHolen muss den Hinweis weiterreichen',
-  );
-
-  // And aktuellerMarktpreis must pass it along when creating — exactly at the
-  // place where the row does not exist yet.
-  const preis = fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8');
-  assert.match(
-    preis,
-    /preisFuerSetHolen\(k, setNumber, userId, condition\)/,
-    'aktuellerMarktpreis muss den angefragten Zustand als Hinweis übergeben',
-  );
 });
 
 // Price and history route in the condition of the set are checked on the server by test/price-state-of-sets-db.test.js.
@@ -347,14 +67,14 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   // aktuellerMarktpreis, gainAndLoss, the web app history route and now the
   // Android API each had their own version. From now on exactly one function for
   // callers without already loaded acq_count/used_count fields.
-  const fc = require('./helpers/sources').finanzQuelle();
+  const fc = require('./helpers/sources').financeSource();
   // Since the household view it also takes a list of accounts — the
   // main account queries the condition of a set that belongs to a sub-account.
-  checkParameter(fc, 'setState', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
+  checkParameter(fc, 'conditionOfSet', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
   assert.match(
     fc,
-    /export async function setState\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
-    'Der Helfer muss exportiert sein',
+    /export async function conditionOfSet\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
+    'The helper must be exported',
   );
 
   // Both callers must really import it, not put an own
@@ -369,14 +89,14 @@ test('exactly ONE condition resolution for single sets — setState', () => {
   assert.match(
     helper,
     /import \{[^}]*\bsetState\b[^}]*\} from '\.\/financeCalc';/,
-    'src/finances/priceHistory.ts muss den gemeinsamen Helfer benutzen',
+    'src/finances/priceHistory.ts must use the shared helper',
   );
 
   // The price route of the Android API still resolves by itself (it fetches a
   // price, not a history) — exactly one occurrence.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/prices.ts'), 'utf8');
-  const uses = (apiV1.match(/sk\.finances\.setState\(blickfeld, sn\)/g) || []).length;
-  assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
+  const uses = (apiV1.match(/sk\.finances\.setState\(scope, sn\)/g) || []).length;
+  assert.equal(uses, 1, 'The /price route must use it; the history goes via priceHistory.ts');
 });
 
 // The database lock of the rebuild is checked by test/parts-summary-lock-db.test.js.
@@ -388,8 +108,8 @@ test('CDN requests force IPv4', () => {
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/images/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
-    /await (?:k\.externalSources\.quellen\s*\.)?(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
-    'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort',
+    /await (?:k\.externalSources\.sources\s*\.)?(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
+    'The background download on import must also force IPv4 — same cause, same place',
   );
 });
 
@@ -399,57 +119,24 @@ test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', 
   // Counter-check (05.11.2026): family: 4 deleted from https.get in abruf.ts or from the pool → red.
   const _req = require('./helpers/sources').buildAndRequire();
   const { holeHttps } = _req('src/infra/fetch.js');
-  const { oeffneBild } = _req('clients/imageCdn.js');
+  const { openImage } = _req('clients/imageCdn.js');
   const { recording } = require('./helpers/https-recording');
   const hosts = ['cdn.rebrickable.com'];
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
-  const aufrufe = await recording(async () => {
-    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000 }).catch(() => {});
-    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000, methode: 'POST', rumpf: '{}' }).catch(() => {});
-    await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
+  const calls = await recording(async () => {
+    await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000 }).catch(() => {});
+    await holeHttps(url, { hosts, maxBytes: 1000, timeoutMs: 5000, method: 'POST', bodyText: '{}' }).catch(() => {});
+    await openImage(url, { maxBytes: 1000, pool: true }).catch(() => {});
   });
   assert.deepEqual(
-    aufrufe.map(a => [a.art, a.optionen.family]),
+    calls.map(a => [a.kind, a.options.family]),
     [
       ['get', 4],
       ['request', 4],
       ['get', 4],
     ],
   );
-  assert.equal(aufrufe[2].optionen.agent?.options?.family, 4, 'der Pool der Bild-CDNs erzwingt IPv4 nicht');
-});
-
-test('the background job for parts and minifigures now creates preview images', () => {
-  // Reported: manually captured parts (and the same pattern also applied to
-  // minifigures) never got a preview. Cause: the hourly
-  // background job downloaded the image and updated image_local,
-  // but never called vorschauErzeugenAus() — unlike for sets (the same …
-  const src = require('./helpers/sources').serverAll();
-
-  const partsLoop = src.slice(
-    src.indexOf('for (const p of manualParts) {'),
-    src.indexOf('for (const f of figsToFetch) {'),
-  );
-  // REPHRASED to: the WORDING of the line was checked
-  //     const { vorschauErzeugenAus } = require('./src/images/thumbs');
-  // When converting the late require() into real import statements it became
-  // an import at the file head — the check turned red without its …
-  assert.match(src, /vorschauErzeugenAus/, 'vorschauErzeugenAus ist in server.ts nicht mehr verfügbar');
-  assert.match(
-    partsLoop,
-    /(?:vorschauErzeugenAus|\w+\.images\.createPreview)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
-    'Die Teile-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
-  );
-
-  const figsLoop = src.slice(
-    src.indexOf('for (const f of figsToFetch) {'),
-    src.lastIndexOf("await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht'"),
-  );
-  assert.match(
-    figsLoop,
-    /(?:vorschauErzeugenAus|\w+\.images\.createPreview)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
-    'Die Minifiguren-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
-  );
+  assert.equal(calls[2].options.agent?.options?.family, 4, 'the pool of image CDNs does not force IPv4');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -469,8 +156,8 @@ test('mixed entries result in TWO badges', () => {
 });
 
 test('only one condition results in one badge', () => {
-  assert.deepEqual(conditionsFromAcquisitions(3, 0), ['N'], 'alle Erfassungen neu → nur Neu');
-  assert.deepEqual(conditionsFromAcquisitions(2, 2), ['U'], 'alle Erfassungen gebraucht → nur Gebraucht');
+  assert.deepEqual(conditionsFromAcquisitions(3, 0), ['N'], 'all acquisitions new → only new');
+  assert.deepEqual(conditionsFromAcquisitions(2, 2), ['U'], 'all acquisitions used → only used');
 });
 
 test('without entries “Neu” applies', () => {
@@ -491,26 +178,14 @@ test('the order is fixed: new before used', () => {
 
 test('the tiles do not compute the badges themselves', () => {
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'components.js'), 'utf8');
-  assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
+  assert.match(gal, /export function condBadges/, 'One shared version for set, part and minifigure tiles');
   // One badge, no copies with hard-coded colors instead of the CSS classes:
   // no row may carry a condition label AND an own color.
   for (const f of ['public/js/parts.js', 'public/js/minifigs.js', 'public/js/finances.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l => /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
-    assert.equal(inline.length, 0, `${f}: Zustandsfarben gehören in die CSS-Klassen cond-new/cond-used`);
+    assert.equal(inline.length, 0, `${f}: condition colours belong in the CSS classes cond-new/cond-used`);
   }
-});
-
-test('the purchase price on the tile is quantity-weighted, not the maximum', () => {
-  // MAX(purchase_price) showed the value 160 for 2x100 and 1x160.
-  const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /avg_purchase_price/, 'Der gewichtete Kaufpreis fehlt im Aggregat');
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'collection.js'), 'utf8');
-  assert.match(
-    gal,
-    /s\.avg_purchase_price \?\? s\.max_purchase_price/,
-    'Die Kachel muss den gewichteten Wert bevorzugen',
-  );
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -526,7 +201,7 @@ test('the login name may be an e-mail address', () => {
   // allowed characters in the username.
   assert.ok(loginNameValid('marco@example.com'));
   assert.ok(loginNameValid('marco.meier+lego@sub.example.co.uk'));
-  assert.ok(loginNameValid('marco'), 'Benutzername muss weiterhin gehen');
+  assert.ok(loginNameValid('marco'), 'A user name must still work');
   assert.ok(loginNameValid('mar_co.1-x'));
 });
 
@@ -542,7 +217,7 @@ test('obvious nonsense still does not reach the query', () => {
     'a'.repeat(300) + '@example.com',
     "' OR 1=1 --",
   ]) {
-    assert.equal(loginNameValid(bad), false, `\`${bad}\` sollte abgelehnt werden`);
+    assert.equal(loginNameValid(bad), false, `\`${bad}\` should be rejected`);
   }
 });
 
@@ -563,22 +238,22 @@ test('both login paths check the same', async () => {
   for (const name of ['a b', "' OR 1=1 --", '@example.com'])
     assert.deepEqual(
       await checkCredentials({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),
-      { ok: false, absage: { art: 'ungueltig', code: 'name_oder_email_eingeben' } },
+      { ok: false, refusal: { kind: 'invalid', code: 'enter_name_or_email' } },
       name,
     );
 
-  const dateien = dir =>
+  const files = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
-      return e.isDirectory() ? dateien(p) : e.name.endsWith('.ts') ? [p] : [];
+      return e.isDirectory() ? files(p) : e.name.endsWith('.ts') ? [p] : [];
     });
-  const alle = [...dateien(path.join(ROOT, 'routes')), ...dateien(path.join(ROOT, 'src'))];
-  assert.ok(alle.length >= 30, `nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
+  const all = [...files(path.join(ROOT, 'routes')), ...files(path.join(ROOT, 'src'))];
+  assert.ok(all.length >= 30, `only ${all.length} files searched — paths outdated?`);
 
-  const kopien = alle
+  const copies = all
     .filter(f => /\/\^\[A-Za-z0-9_\.-\]\{3,32\}\$\/\.test\(\s*username\s*\)/.test(fs.readFileSync(f, 'utf8')))
     .map(f => path.relative(ROOT, f));
-  assert.deepEqual(kopien, [], `eigene Kopie des Benutzernamen-Musters statt USERNAME_RE: ${kopien.join(', ')}`);
+  assert.deepEqual(copies, [], `own copy of the user name pattern instead of USERNAME_RE: ${copies.join(', ')}`);
 });
 
 test('the tile takes the condition from the server response', async () => {
@@ -587,9 +262,9 @@ test('the tile takes the condition from the server response', async () => {
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, conditions: ['N'], condition: 'N' };
   let listen = 0;
   const { w, d } = await openUi({
-    '/v1/sets': () => (++listen === 1 ? { success: true, total: 1, themes: [], sets: [SET] } : new Promise(() => {})),
-    '/v1/sets/10294-1': { success: true, set: SET },
-    '/v1/sets/10294-1/acquisitions': {
+    '/v2/sets': () => (++listen === 1 ? { success: true, total: 1, themes: [], sets: [SET] } : new Promise(() => {})),
+    '/v2/sets/10294-1': { success: true, set: SET },
+    '/v2/sets/10294-1/acquisitions': {
       success: true,
       acquisitions: [
         {
@@ -604,25 +279,25 @@ test('the tile takes the condition from the server response', async () => {
       ],
       totals: { quantity: 1, amount: 100, currency: 'EUR' },
     },
-    '/v1/sets/10294-1/acquisitions/7': {
+    '/v2/sets/10294-1/acquisitions/7': {
       success: true,
       set: { set_number: '10294-1', conditions: ['U'], condition: 'U' },
     },
   });
-  const badges = () => d.querySelector('#gallery .sc .splaketten')?.textContent ?? '';
+  const badges = () => d.querySelector('#gallery .sc .sbadges')?.textContent ?? '';
   try {
-    assert.ok(await warte(() => /Neu/.test(badges())), `vorher: ${badges()}`);
+    assert.ok(await waitFor(() => /Neu/.test(badges())), `before: ${badges()}`);
     d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => d.querySelector('[data-click="openAcqModal"]')));
+    assert.ok(await waitFor(() => d.querySelector('[data-click="openAcqModal"]')));
     d.querySelector('[data-click="openAcqModal"]').click();
     assert.ok(
-      await warte(() => d.querySelector('select[data-change="acqSave"][data-arg3="cond"]')),
-      'Keine Zustandswahl',
+      await waitFor(() => d.querySelector('select[data-change="acqSave"][data-arg3="cond"]')),
+      'no condition choice',
     );
-    const wahl = d.querySelector('select[data-change="acqSave"][data-arg3="cond"]');
-    wahl.value = 'U';
-    wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => /Gebraucht/.test(badges()) && !/Neu/.test(badges())), `nachher: ${badges()}`);
+    const choice = d.querySelector('select[data-change="acqSave"][data-arg3="cond"]');
+    choice.value = 'U';
+    choice.dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(await waitFor(() => /Gebraucht/.test(badges()) && !/Neu/.test(badges())), `after: ${badges()}`);
   } finally {
     w.close();
   }

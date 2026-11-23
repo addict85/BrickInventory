@@ -20,14 +20,14 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 test('figure estimate and set price per condition', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const mf = _req('src/finances/marketPrice.js');
@@ -42,36 +42,36 @@ test('figure estimate and set price per condition', async t => {
         FIG,
         JSON.stringify([{ part_num: 'abl-1', bl_part_num: 'abl-1', color_id: 5, quantity: 2 }]),
       ]);
-      const farbe = Number(await fc.resolveBlColorId(5)) || 0;
-      for (const [zustand, preis] of [
+      const color = Number(await fc.resolveBlColorId(5)) || 0;
+      for (const [condition, price] of [
         ['N', 2],
         ['U', 3],
       ])
         await db.run(
           `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
                       VALUES ('abl-1', $1, $2, 'EUR', $3, $3)`,
-          [farbe, zustand, preis],
+          [color, condition, price],
         );
 
-      assert.deepEqual(await mf.estimateMinifigsPrice(FIG, u.id, 'N'), { preis: 4, abdeckung: 1 });
-      assert.deepEqual(await mf.estimateMinifigsPrice(FIG, u.id, 'U'), { preis: 6, abdeckung: 1 });
+      assert.deepEqual(await mf.estimateMinifigsPrice(FIG, u.id, 'N'), { price: 4, abdeckung: 1 });
+      assert.deepEqual(await mf.estimateMinifigsPrice(FIG, u.id, 'U'), { price: 6, abdeckung: 1 });
       const cache = await db.all(
-        `SELECT condition, avg_price::float AS preis, estimated AS geschaetzt FROM minifig_price_cache
+        `SELECT condition, avg_price::float AS price, estimated FROM minifig_price_cache
                                    WHERE fig_number = $1 ORDER BY condition`,
         [FIG],
       );
       assert.deepEqual(cache, [
-        { condition: 'N', preis: 4, geschaetzt: true },
-        { condition: 'U', preis: 6, geschaetzt: true },
+        { condition: 'N', price: 4, estimated: true },
+        { condition: 'U', price: 6, estimated: true },
       ]);
-      const verlauf = await db.all(
-        `SELECT condition, avg_price::float AS preis FROM minifig_price_history
+      const timeline = await db.all(
+        `SELECT condition, avg_price::float AS price FROM minifig_price_history
                                      WHERE fig_number = $1 AND estimated ORDER BY condition`,
         [FIG],
       );
-      assert.deepEqual(verlauf, [
-        { condition: 'N', preis: 4 },
-        { condition: 'U', preis: 6 },
+      assert.deepEqual(timeline, [
+        { condition: 'N', price: 4 },
+        { condition: 'U', price: 6 },
       ]);
     });
 
@@ -89,11 +89,15 @@ test('figure estimate and set price per condition', async t => {
                     VALUES ($1, $2, 1, 'N', 'EUR')`,
         [u.id, SN],
       );
-      assert.equal(await mf.aktuellerMarktpreis(SN, u.id), 10);
-      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'U'), 20);
-      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'N'), 10);
+      assert.equal(await mf.currentMarketPrice(SN, u.id), 10);
+      assert.equal(await mf.currentMarketPrice(SN, u.id, 'U'), 20);
+      assert.equal(await mf.currentMarketPrice(SN, u.id, 'N'), 10);
       await db.run(`DELETE FROM price_cache WHERE set_number = $1 AND condition = 'U'`, [SN]);
-      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'U'), 10, 'ohne Preis im Wunschzustand der andere');
+      assert.equal(
+        await mf.currentMarketPrice(SN, u.id, 'U'),
+        10,
+        'without a price in the wanted condition, the other one',
+      );
     });
   } finally {
     await db.run('DELETE FROM users WHERE id = $1', [u.id]);

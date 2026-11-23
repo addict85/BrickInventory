@@ -1,5 +1,7 @@
 /**
  * Five wirings that were previously only asserted as text patterns.
+ *
+ * Counter-check: PASSWORD_MIN_CHARS in src/infra/passwordRule.ts set to 8 → red “3. a too short password is rejected”.
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
@@ -8,12 +10,12 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
-const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
-mailAttrappe();
+const { mailFake, enterMailServer } = require('./helpers/mail-fake');
+mailFake();
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -51,47 +53,47 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
 
   // Without a session and without a token the app sees exactly what it sees for a
   // request without a valid sign-in. The first case is about that.
-  const ohne = testServer(_req, { sitzung: {}, t });
-  const mit = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const without = testServer(_req, { session: {}, t });
+  const withIt = testServer(_req, { session: { userId: MAIN }, t });
 
   await t.test('1. the PDF download does not respond with the file without a token', async () => {
-    const r = await fetch(`${ohne.base}/api/v1/sets/partslist-pdf/download/irgendwas`);
+    const r = await fetch(`${without.base}/api/v2/sets/partslist-pdf/download/irgendwas`);
     assert.ok(
       r.status === 401 || r.status === 403,
-      `Erwartet 401 oder 403, bekam ${r.status}. Ohne requireToken lieferte diese ` +
-        'Adresse eine fertige Teileliste an jeden aus, der die Auftragsnummer errät.',
+      `Expected 401 or 403, got ${r.status}. Without requireToken this ` +
+        'address served a finished parts list to anyone who guesses the job number.',
     );
-    assert.notEqual(r.headers.get('content-type'), 'application/pdf', 'Es kam trotzdem ein PDF zurück');
+    assert.notEqual(r.headers.get('content-type'), 'application/pdf', 'A PDF came back anyway');
   });
 
   await t.test('2. the image proxy fetches nothing from a foreign host', async () => {
     const fremd = encodeURIComponent('https://angreifer.example/x.jpg');
-    const r = await fetch(`${mit.base}/api/v1/img-proxy?url=${fremd}`);
+    const r = await fetch(`${withIt.base}/api/v1/img-proxy?url=${fremd}`);
     assert.equal(
       r.status,
       403,
-      `Erwartet 403, bekam ${r.status}. Ohne die Hostprüfung holt der Server jede ` +
-        'Adresse, die ihm jemand unterschiebt — auch solche im eigenen Netz.',
+      `Expected 403, got ${r.status}. Without the host check the server fetches any ` +
+        'address someone slips it — including ones in the own network.',
     );
 
     // The opposite direction: an ALLOWED host must not fail at the filter.
     // Nothing is fetched here (no network in the test) — it is only checked that the
     // response is something OTHER than 403. Without this case the rule would also be
     // satisfied if the proxy rejected everything.
-    const erlaubt = encodeURIComponent('https://cdn.rebrickable.com/media/sets/75192-1.jpg');
-    const r2 = await fetch(`${mit.base}/api/v1/img-proxy?url=${erlaubt}`);
+    const allowed = encodeURIComponent('https://cdn.rebrickable.com/media/sets/75192-1.jpg');
+    const r2 = await fetch(`${withIt.base}/api/v1/img-proxy?url=${allowed}`);
     assert.notEqual(
       r2.status,
       403,
-      'Auch ein erlaubter Host wurde mit 403 abgewiesen — dann prüft der Proxy ' +
-        'nicht den Host, sondern lehnt grundsätzlich ab',
+      'An allowed host was rejected with 403 too — then the proxy does not check ' +
+        'the host but refuses in principle',
     );
   });
 
@@ -108,36 +110,36 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
       if (baseBefore === undefined) environment({ APP_BASE_URL: undefined });
       else environment({ APP_BASE_URL: baseBefore });
     });
-    const r = await fetch(`${mit.base}/api/v1/auth/register`, {
+    const r = await fetch(`${withIt.base}/api/v2/auth/register`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling', email: 'n@example.org', password: '12345678901', language: 'de' }),
     });
     const b = await r.json().catch(() => ({}));
-    assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
+    assert.equal(r.status, 400, `expected 400, got ${r.status}: ${JSON.stringify(b)}`);
     // The response carries the translated SENTENCE, not the key — the
     // error language is central (src/infra/errorTexts.ts). So the sentence
     // is checked; it names the number that matters.
     assert.match(
       String(b.error || ''),
       /mindestens 12 Zeichen/,
-      `Abgelehnt wurde mit „${b.error}" — erwartet die Passwortlänge. Ein anderer ` +
-        'Grund hiesse, die Länge wurde gar nicht geprüft.',
+      `Rejected with „${b.error}" — expected the password length. Another ` +
+        'reason would mean the length was not checked at all.',
     );
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM users WHERE username='neuling'`)).c,
       0,
-      'Das Konto wurde trotz Ablehnung angelegt',
+      'The account was created despite the rejection',
     );
 
     // Opposite direction: twelve characters pass. Without it the rule would also be
     // satisfied if EVERY registration failed.
-    const r2 = await fetch(`${mit.base}/api/v1/auth/register`, {
+    const r2 = await fetch(`${withIt.base}/api/v2/auth/register`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling2', email: 'n2@example.org', password: 'zwoelf12Zchn', language: 'de' }),
     });
-    assert.notEqual(r2.status, 400, 'Auch zwölf Zeichen wurden mit 400 abgelehnt — dann ist die Grenze nicht zwölf');
+    assert.notEqual(r2.status, 400, 'Twelve characters were rejected with 400 too — then the limit is not twelve');
   });
 
   await t.test('4. a date on which a purchase already exists is rejected', async () => {
@@ -145,80 +147,80 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     // acquisition to a day on which the same position already has
     // one gets 409. Without the check it would run into the unique
     // index (since 0047 idx_set_acq_tag_merkmale) and come back as 500. …
-    const heute = new Date().toISOString().slice(0, 10);
-    const gestern = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
-    await holdsSet(db, MAIN, SN, 1, { preis: 100, am: gestern });
+    await holdsSet(db, MAIN, SN, 1, { price: 100, am: yesterday });
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                   VALUES ($1,$2,1,100,'N',$3::timestamptz)`,
-      [MAIN, SN, heute],
+      [MAIN, SN, todayDate],
     );
-    const zeilen = await db.all(
+    const lines = await db.all(
       `SELECT id, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
         ORDER BY created_at`,
       [MAIN, SN],
     );
-    assert.equal(zeilen.length, 2, 'Vorbedingung: zwei Erfassungen an zwei Tagen');
+    assert.equal(lines.length, 2, 'precondition: two acquisitions on two days');
 
     // Move the OLDER one to the day of the younger one.
-    const r = await fetch(`${mit.base}/api/v1/sets/${SN}/acquisitions/${zeilen[0].id}`, {
+    const r = await fetch(`${withIt.base}/api/v2/sets/${SN}/acquisitions/${lines[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ date: heute }),
+      body: JSON.stringify({ date: todayDate }),
     });
     const b = await r.json().catch(() => ({}));
     assert.equal(
       r.status,
       409,
-      `Erwartet 409, bekam ${r.status}: ${JSON.stringify(b)}. Ohne die Tagesprüfung ` +
-        'landet das im eindeutigen Index und kommt als 500 zurück — ein Serverfehler ' +
-        'statt einer Auskunft.',
+      `Expected 409, got ${r.status}: ${JSON.stringify(b)}. Without the per-day check ` +
+        'this ends up in the unique index and comes back as 500 — a server error ' +
+        'instead of information.',
     );
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [MAIN, SN])).c,
       2,
-      'Trotz Ablehnung hat sich die Zahl der Erfassungen geändert',
+      'Despite the rejection the number of acquisitions changed',
     );
 
     // Opposite direction: a FREE day passes. Without it the rule would also be
     // satisfied if every date change were rejected.
     const dayBeforeYesterday = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
-    const r2 = await fetch(`${mit.base}/api/v1/sets/${SN}/acquisitions/${zeilen[0].id}`, {
+    const r2 = await fetch(`${withIt.base}/api/v2/sets/${SN}/acquisitions/${lines[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ date: dayBeforeYesterday }),
     });
     assert.ok(
       r2.status < 400,
-      `Ein freier Tag wurde mit ${r2.status} abgelehnt — dann prüft die Route nicht ` +
-        'den Tag, sondern lehnt jede Datumsänderung ab',
+      `A free day was rejected with ${r2.status} — then the route does not check ` +
+        'the day but rejects every date change',
     );
   });
 
   await t.test('5. moving a set without acquisition_ids is rejected', async () => {
-    const r = await fetch(`${mit.base}/api/v1/sets/${SN}/move`, {
+    const r = await fetch(`${withIt.base}/api/v2/sets/${SN}/move`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ to_user_id: KIND }),
     });
     const b = await r.json().catch(() => ({}));
-    assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
+    assert.equal(r.status, 400, `expected 400, got ${r.status}: ${JSON.stringify(b)}`);
     // As with the password length: the response carries the translated sentence,
     // not the key. `acquisition_ids` is literally in it — exactly
     // the field that is missing.
     assert.match(
       String(b.error || ''),
       /acquisition_ids/,
-      `Abgelehnt wurde mit „${b.error}". Verschoben wird über den KAUFPREIS: Drei ` +
-        'Erfassungen sind drei Käufe, die im Haushalt verschiedenen Kindern gehören ' +
-        'können — wer alles verschieben will, wählt alle Zeilen.',
+      `Rejected with „${b.error}". Moving goes via the PURCHASE PRICE: three ` +
+        'acquisitions are three purchases that can belong to different children in the household ' +
+        '— whoever wants to move everything selects all rows.',
     );
     // And nothing has moved.
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [KIND, SN])).c,
       0,
-      'Trotz Ablehnung hat das Kind das Set bekommen',
+      'Despite the rejection the child got the set',
     );
   });
 });

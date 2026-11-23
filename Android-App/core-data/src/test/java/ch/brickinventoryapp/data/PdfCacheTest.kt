@@ -5,10 +5,10 @@ import ch.brickinventoryapp.data.util.pdfStep
 import org.junit.Test
 
 /**
- * A fully loaded instruction is not „resumed": after a complete
+ * A fully loaded instruction is not „resumed“: after a complete
  * download `Range: bytes=<size>-` pointed behind the last byte, and the server
  * rightly answers with 416 (via the instruction route as 404). The decision
- * „finished or from which byte" is therefore a pure function and executed here;
+ * „finished or from which byte“ is therefore a pure function and executed here;
  * the server half is checked by Web-App/test/instruction-area.test.js.
  *
  * Counter-check: in pdfStep() the first branch removed, so that a finished file
@@ -20,9 +20,9 @@ class PdfCacheTest {
     fun `a finished instruction is not requested again`() {
         // THE case from the report: 12 MB lie there finished.
         val s = pdfStep(finishedSize = 12_000_000L, partSize = 0L)
-        assert(s is PdfStep.Fertig) {
-            "Eine vollstaendige Anleitung ergab $s. Damit schickt der Viewer " +
-                "wieder einen Bereich hinter dem Dateiende — genau Marcos 404."
+        assert(s is PdfStep.Done) {
+            "A complete instruction gave $s. With that the viewer sends " +
+                "a range behind the end of the file again — exactly the reported 404."
         }
     }
 
@@ -32,13 +32,13 @@ class PdfCacheTest {
         // broke off at 3 MB. If this step fails, every aborted
         // 300 MB instruction loads from the start again.
         val s = pdfStep(finishedSize = 0L, partSize = 3_000_000L)
-        assert(s == PdfStep.Holen(3_000_000L)) { "Teildatei ergab $s statt Holen(3000000)" }
+        assert(s == PdfStep.Fetch(3_000_000L)) { "Partial file gave $s instead of Fetch(3000000)" }
     }
 
     @Test
     fun `without anything it loads from the start`() {
         val s = pdfStep(finishedSize = 0L, partSize = 0L)
-        assert(s == PdfStep.Holen(0L)) { "Leerer Cache ergab $s statt Holen(0)" }
+        assert(s == PdfStep.Fetch(0L)) { "Empty cache gave $s instead of Fetch(0)" }
     }
 
     @Test
@@ -47,6 +47,6 @@ class PdfCacheTest {
         // the first was already finished. The finished file wins; the partial file
         // is cleaned away by prunePdfCache.
         val s = pdfStep(finishedSize = 12_000_000L, partSize = 3_000_000L)
-        assert(s is PdfStep.Fertig) { "Fertig + Teildatei ergab $s" }
+        assert(s is PdfStep.Done) { "Done + partial file gave $s" }
     }
 }

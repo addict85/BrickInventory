@@ -5,18 +5,15 @@
 require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
-const fs = require('node:fs');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, ohneKommentare, testData } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const { holdsSet } = require('./helpers/inventory');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { readSet, setsLesen } = require('./helpers/sources').areaPage('sets');
+const { readSet, readSets } = require('./helpers/sources').areaPage('sets');
 
 test('instructions: the server says which one was uploaded by the user', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -48,26 +45,22 @@ test('instructions: the server says which one was uploaded by the user', { concu
   try {
     // ── 1. Detail: every row carries its origin ────────────────────────────
     const detail = await readSet(uid, SN);
-    assert.ok(detail, 'Set nicht gefunden');
-    assert.equal(
-      detail.instructions.length,
-      2,
-      'Es sollen beide Anleitungen ankommen — geteilt und selbst hochgeladen',
-    );
+    assert.ok(detail, 'Set not found');
+    assert.equal(detail.instructions.length, 2, 'Both instructions should arrive — shared and self-uploaded');
 
-    const geteilt = detail.instructions.find(i => i.description === 'Anleitung automatisch');
-    const eigene = detail.instructions.find(i => i.description === 'Anleitung selbst');
-    assert.ok(geteilt && eigene, 'Beide Anleitungen sollen in der Liste stehen');
+    const shared = detail.instructions.find(i => i.description === 'Anleitung automatisch');
+    const owned = detail.instructions.find(i => i.description === 'Anleitung selbst');
+    assert.ok(shared && owned, 'Both instructions should be in the list');
 
     assert.equal(
-      geteilt.is_manual,
+      shared.is_manual,
       false,
-      'Die automatisch importierte Anleitung ist NICHT selbst hochgeladen — kein Papierkorb',
+      'The automatically imported instruction is NOT self-uploaded — no trash button',
     );
     assert.equal(
-      eigene.is_manual,
+      owned.is_manual,
       true,
-      'Die selbst hochgeladene Anleitung traegt is_manual=true — nur hier ein Papierkorb',
+      'The self-uploaded instruction carries is_manual=true — only here a trash button',
     );
 
     // ── 2. Counter-check of the old rule: `id != null` separates nothing ───
@@ -76,20 +69,20 @@ test('instructions: the server says which one was uploaded by the user', { concu
     // and the counters of the two tables are independent of each other — the
     // numbers can therefore coincide.
     assert.notEqual(
-      geteilt.id,
+      shared.id,
       null,
-      'Gemessen: auch die geteilte Anleitung bringt eine id mit — die alte Regel trennte nicht',
+      'Measured: the shared instruction also brings an id — the old rule did not separate',
     );
-    assert.notEqual(eigene.id, null, 'Die eigene Anleitung bringt ebenfalls eine id mit');
+    assert.notEqual(owned.id, null, 'The own instruction brings an id as well');
 
     // ── 3. List: the same marking so that the tile counts the same ─────────
-    const { sets } = await setsLesen(uid, {});
+    const { sets } = await readSets(uid, {});
     const inList = sets.find(s => s.set_number === SN);
-    assert.ok(inList, 'Set fehlt in der Galerie');
+    assert.ok(inList, 'Set is missing in the gallery');
     assert.deepEqual(
       inList.instructions.map(i => i.is_manual).sort(),
       [false, true],
-      'Auch die Galerie soll beide Herkuenfte unterscheiden',
+      'The gallery should also distinguish both origins',
     );
   } finally {
     await db.run(`DELETE FROM shared_instructions WHERE set_number=$1`, [SN]).catch(() => {});
@@ -100,19 +93,33 @@ test('instructions: the server says which one was uploaded by the user', { concu
   }
 });
 
-test('instructions: the web app attaches the trash to is_manual', () => {
-  const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/set-detail.js'), 'utf8'));
-
-  assert.ok(
-    /const isUpload = !!i\.is_manual;/.test(galerie),
-    'Die Webapp soll die Herkunft vom Server nehmen, nicht selbst am Pfad ablesen',
-  );
-  assert.ok(
-    !/local_path\.startsWith\('\/data\/uploads\/'\)/.test(galerie),
-    'Der Pfadvergleich war die zweite Fassung derselben Regel und soll weg sein',
-  );
-  assert.ok(
-    /\$\{isUpload \? (?:html)?`<button data-click="delInstr"/.test(galerie),
-    'Der Loeschknopf der Webapp soll nur bei selbst hochgeladenen Anleitungen stehen',
-  );
+test('instructions: the web app attaches the trash to is_manual', async () => {
+  // Real bundle in jsdom: the origin comes from the server, not from the path. An imported file lying
+  // under /data/uploads/ gets no trash, an own upload elsewhere does.
+  // Counter-checks (22.11.2026, each alone, public/js/set-detail.js): isUpload from
+  // `local_path.startsWith('/data/uploads/')` again → red; the trash shown for every instruction → red.
+  const { openUi, waitFor } = require('./helpers/ui');
+  const SET = {
+    set_number: '10294-1',
+    name: 'Titanic',
+    year: 2021,
+    quantity: 1,
+    instructions: [
+      { id: 1, description: 'Import', local_path: '/data/uploads/import.pdf', url: null, is_manual: false },
+      { id: 2, description: 'Eigene', local_path: '/data/instructions/eigen.pdf', url: null, is_manual: true },
+    ],
+  };
+  const { w, d } = await openUi({
+    '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
+    '/v2/sets/10294-1': { success: true, set: SET },
+  });
+  try {
+    assert.ok(await waitFor(() => d.querySelector('#gallery [data-click="openModal"]')));
+    d.querySelector('#gallery [data-click="openModal"]').click();
+    assert.ok(await waitFor(() => d.getElementById('instr-2')), 'the instructions are not shown');
+    assert.equal(d.querySelector('#instr-1 [data-click="delInstr"]'), null, 'trash on an imported instruction');
+    assert.ok(d.querySelector('#instr-2 [data-click="delInstr"]'), 'no trash on the own upload');
+  } finally {
+    w.close();
+  }
 });

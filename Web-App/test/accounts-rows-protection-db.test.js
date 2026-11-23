@@ -29,10 +29,10 @@ const { asRequest } = _req('src/infra/accountContext.js');
 test('accounts only in the own household', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid;
-  const namen = ['haupt', 'unter', 'fremd', 'frueher', 'fremdunter'].map(n => `kz_${n}_${P}`);
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = ['haupt', 'unter', 'fremd', 'frueher', 'fremdunter'].map(n => `kz_${n}_${P}`);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push(
       (
         await db.get(
@@ -42,46 +42,44 @@ test('accounts only in the own household', { concurrency: 1, timeout: 120_000 },
         )
       ).id,
     );
-  const [haupt, unter, fremd, frueher, fremdunter] = ids;
+  const [main, sub, fremd, earlier, foreignSub] = ids;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2), ($3, $4)', [
-    haupt,
-    unter,
+    main,
+    sub,
     fremd,
-    fremdunter,
+    foreignSub,
   ]);
-  await db.run('INSERT INTO household_former_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, frueher]);
+  await db.run('INSERT INTO household_former_links (main_user_id, sub_user_id) VALUES ($1, $2)', [main, earlier]);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const zugang = S.testAccess();
-  const als = (uid, f) => asRequest({ session: { userId: uid } }, f);
+  const access = S.testAccess();
+  const as = (uid, f) => asRequest({ session: { userId: uid } }, f);
 
   await t.test('injected SQL only sees the own account and household', async () => {
-    const sicht = async uid => ({
-      konten: (await als(uid, () => zugang.all('SELECT id FROM users WHERE id = ANY($1) ORDER BY id', [ids]))).map(
+    const view = async uid => ({
+      accounts: (await as(uid, () => access.all('SELECT id FROM users WHERE id = ANY($1) ORDER BY id', [ids]))).map(
         z => z.id,
       ),
       links: (
-        await als(uid, () =>
-          zugang.all('SELECT main_user_id AS m FROM account_links WHERE main_user_id = ANY($1) ORDER BY 1', [ids]),
+        await as(uid, () =>
+          access.all('SELECT main_user_id AS m FROM account_links WHERE main_user_id = ANY($1) ORDER BY 1', [ids]),
         )
       ).map(z => z.m),
     });
-    assert.deepEqual(await sicht(haupt), { konten: [haupt, unter, frueher], links: [haupt] });
-    assert.deepEqual(await sicht(unter), { konten: [haupt, unter], links: [haupt] });
-    assert.deepEqual(await sicht(fremd), { konten: [fremd, fremdunter], links: [fremd] });
+    assert.deepEqual(await view(main), { accounts: [main, sub, earlier], links: [main] });
+    assert.deepEqual(await view(sub), { accounts: [main, sub], links: [main] });
+    assert.deepEqual(await view(fremd), { accounts: [fremd, foreignSub], links: [fremd] });
   });
 
   await t.test('… not addresses, not even the own one; names only on the own account', async () => {
     await assert.rejects(
-      als(haupt, () => zugang.get('SELECT email FROM users WHERE id = $1', [haupt])),
+      as(main, () => access.get('SELECT email FROM users WHERE id = $1', [main])),
       /permission denied/,
     );
-    await als(haupt, () => zugang.run('UPDATE users SET first_name = $2 WHERE id = ANY($1)', [[haupt, unter], 'Neu']));
-    const firstNames = await db.all('SELECT id, first_name FROM users WHERE id = ANY($1) ORDER BY id', [
-      [haupt, unter],
-    ]);
+    await as(main, () => access.run('UPDATE users SET first_name = $2 WHERE id = ANY($1)', [[main, sub], 'Neu']));
+    const firstNames = await db.all('SELECT id, first_name FROM users WHERE id = ANY($1) ORDER BY id', [[main, sub]]);
     assert.deepEqual(
       firstNames.map(z => z.first_name),
       ['Neu', null],
@@ -89,24 +87,24 @@ test('accounts only in the own household', { concurrency: 1, timeout: 120_000 },
   });
 
   await t.test('whoever is invited learns the name of the inviter', async () => {
-    const haushalt = { ..._req('src/household/household.js'), ...S.testArea('household') };
-    const { code } = await S.asAccount(fremd, () => haushalt.createInvitation(fremd));
-    const { base } = testServer(_req, { sitzung: { userId: haupt, username: namen[0] }, t });
-    const r = await fetch(`${base}/api/v1/settings/household/redeem/pruefen`, {
+    const household = { ..._req('src/household/household.js'), ...S.testArea('household') };
+    const { code } = await S.asAccount(fremd, () => household.createInvitation(fremd));
+    const { base } = testServer(_req, { session: { userId: main, username: names[0] }, t });
+    const r = await fetch(`${base}/api/v2/settings/household/redeem/check`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ code }),
     });
     const body = await r.json();
-    assert.deepEqual([r.status, body.inviter?.username], [200, namen[2]], JSON.stringify(body));
+    assert.deepEqual([r.status, body.inviter?.username], [200, names[2]], JSON.stringify(body));
   });
 
   await t.test('the household view names sub-accounts and separated accounts by name', async () => {
-    const { base } = testServer(_req, { sitzung: { userId: haupt, username: namen[0] }, t });
-    const body = await (await fetch(`${base}/api/v1/settings/household`)).json();
+    const { base } = testServer(_req, { session: { userId: main, username: names[0] }, t });
+    const body = await (await fetch(`${base}/api/v2/settings/household`)).json();
     assert.deepEqual(
       [body.sub_accounts?.map(k => k.username), body.former_links?.map(k => k.username)],
-      [[namen[1]], [namen[3]]],
+      [[names[1]], [names[3]]],
       JSON.stringify(body),
     );
   });

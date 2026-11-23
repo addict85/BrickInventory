@@ -1,0 +1,16 @@
+Gegenprobe: Die Bewertung folgt der Ablage nicht
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.FinanceViewModelTest
+Rot: a change of the stock in the store reloads the valuation
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
+@@ -48,7 +48,6 @@
+     init {
+         logoutSequence(session) { reset() }
+         // The valuation is computed by the server from the store's stock; if that changes, it is no longer valid.
+-        viewModelScope.launch { changes.inventoryChanged().collect { loadValuation() } }
+     }
+ 
+     override fun setScope(view: ScopeFilter.View, value: String) {

@@ -15,17 +15,17 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, sicht, warte } = require('./helpers/ui');
+const { openUi, view, waitFor } = require('./helpers/ui');
 
 async function hintFor(url) {
   const o = await openUi({
-    '/v1/auth/qr-token': { success: true, url, token: 'abc', expires_in: 300, token_days: null },
+    '/v2/auth/qr-token': { success: true, url, token: 'abc', expires_in: 300, token_days: null },
   });
   try {
     o.d.getElementById('btn-gen-qr').click();
-    await warte(() => o.d.getElementById('qr-code').textContent.includes('abc'));
+    await waitFor(() => o.d.getElementById('qr-code').textContent.includes('abc'));
     const el = o.d.getElementById('qr-tls-hint');
-    return { versteckt: el.hidden, text: el.textContent };
+    return { hidden: el.hidden, text: el.textContent };
   } finally {
     o.w.close();
   }
@@ -33,38 +33,38 @@ async function hintFor(url) {
 
 test('http:// gets the hint that the app only accepts HTTPS', async () => {
   const h = await hintFor('http://192.168.1.5:3000');
-  assert.equal(h.versteckt, false);
+  assert.equal(h.hidden, false);
   assert.match(h.text, /Android-App nimmt nur noch HTTPS an/);
 });
 
 test('https:// gets none', async () => {
   const h = await hintFor('https://lego.example.org');
-  assert.equal(h.versteckt, true);
+  assert.equal(h.hidden, true);
   assert.equal(h.text, '');
 });
 
 test('without HTTPS the TLS area says that the app only connects via HTTPS', async () => {
   const { w, d } = await openUi({
-    '/v1/settings/tls': { success: true, https: false, fp: null },
-    '/v1/settings/tokens': { success: true, tokens: [] },
+    '/v2/settings/tls': { success: true, https: false, fp: null },
+    '/v2/settings/tokens': { success: true, tokens: [] },
   });
   try {
-    await sicht(w, 'app');
-    await warte(() => /HTTPS/.test(d.getElementById('tls-flaeche')?.textContent || ''));
-    assert.match(d.getElementById('tls-flaeche').textContent, /Android-App verbindet sich nur über HTTPS/);
+    await view(w, 'app');
+    await waitFor(() => /HTTPS/.test(d.getElementById('tls-surface')?.textContent || ''));
+    assert.match(d.getElementById('tls-surface').textContent, /Android-App verbindet sich nur über HTTPS/);
   } finally {
     w.close();
   }
 });
 
 test("the countdown counts from the server's duration, the hint names the same", async () => {
-  for (const [sprache, minuten] of /** @type {[string, RegExp][]} */ ([
+  for (const [language, minutes] of /** @type {[string, RegExp][]} */ ([
     ['de', /5 Minuten gültig/],
     ['en', /valid for 5 minutes/],
   ])) {
     const { w, d } = await openUi(
       {
-        '/v1/auth/qr-token': {
+        '/v2/auth/qr-token': {
           success: true,
           url: 'https://lego.example.org',
           token: 'abc',
@@ -72,16 +72,16 @@ test("the countdown counts from the server's duration, the hint names the same",
           token_days: null,
         },
       },
-      { sprache },
+      { language },
     );
     try {
-      assert.match(d.querySelector('[data-i18n="settings.qr.hint"]').textContent, minuten);
+      assert.match(d.querySelector('[data-i18n="settings.qr.hint"]').textContent, minutes);
       d.getElementById('btn-gen-qr').click();
-      await warte(() => d.getElementById('qr-code').textContent.includes('abc'));
+      await waitFor(() => d.getElementById('qr-code').textContent.includes('abc'));
       assert.match(
         d.getElementById('qr-hint').textContent,
         /\b5:00\b/,
-        'Der Zähler beginnt nicht bei der Dauer des Servers',
+        "The counter does not start at the server's duration",
       );
     } finally {
       w.close();

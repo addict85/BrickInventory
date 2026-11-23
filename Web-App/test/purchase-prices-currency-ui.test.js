@@ -25,19 +25,19 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, reiter } = require('./helpers/ui');
+const { openUi, waitFor, tick, switchTab } = require('./helpers/ui');
 
 const SN = '10326-1';
 /** Text with simple spaces: Intl puts narrow no-break spaces before the currency sign. */
 const text = s => String(s || '').replace(/\s+/g, ' ');
-const ERFASSUNGEN = [
+const ACQUISITIONS = [
   {
     id: 1,
     quantity: 3,
     condition: 'N',
     purchase_price: 260.66,
     currency: 'USD',
-    preis_konto: 208.528,
+    account_price: 208.528,
     price_estimated: false,
     created_at: '2019-03-04T12:00:00Z',
   },
@@ -47,59 +47,59 @@ const ERFASSUNGEN = [
     condition: 'N',
     purchase_price: 354.5,
     currency: 'EUR',
-    preis_konto: 354.5,
+    account_price: 354.5,
     price_estimated: false,
     created_at: '2019-03-05T12:00:00Z',
   },
 ];
 
 /** Set detail and acquisitions; the sum changes after the first PUT. */
-function antworten(stand) {
+function answers(state) {
   return {
-    [`/v1/sets/${SN}`]: {
+    [`/v2/sets/${SN}`]: {
       success: true,
       set: { set_number: SN, name: 'Natural History Museum', quantity: 5, conditions: ['N'], instructions: [] },
     },
-    [`/v1/sets/${SN}/acquisitions`]: () => ({
+    [`/v2/sets/${SN}/acquisitions`]: () => ({
       success: true,
       owner_user_id: 1,
-      acquisitions: ERFASSUNGEN,
-      totals: { quantity: 5, amount: stand.betrag, priced_rows: 2, currency: 'EUR', ohne_kurs: 0 },
+      acquisitions: ACQUISITIONS,
+      totals: { quantity: 5, amount: state.amount, priced_rows: 2, currency: 'EUR', without_rate: 0 },
     }),
-    [`/v1/sets/${SN}/acquisitions/2`]: () => {
-      stand.betrag = 1309.58;
+    [`/v2/sets/${SN}/acquisitions/2`]: () => {
+      state.amount = 1309.58;
       return { success: true };
     },
   };
 }
 
 async function openSet(o) {
-  const knopf = o.d.createElement('button');
-  knopf.dataset.click = 'openModal';
-  knopf.dataset.arg = SN;
-  o.d.body.append(knopf);
-  knopf.click();
-  await warte(() => o.d.querySelector('#set-modal [data-click="openAcqModal"]'), 4000);
+  const button = o.d.createElement('button');
+  button.dataset.click = 'openModal';
+  button.dataset.arg = SN;
+  o.d.body.append(button);
+  button.click();
+  await waitFor(() => o.d.querySelector('#set-modal [data-click="openAcqModal"]'), 4000);
 }
 
 test('purchase price dialog: currency per row, the sum follows', async () => {
-  const stand = { betrag: 1334.58 };
-  const o = await openUi(antworten(stand), { browserLanguage: 'de-DE' });
+  const state = { amount: 1334.58 };
+  const o = await openUi(answers(state), { browserLanguage: 'de-DE' });
   try {
     await openSet(o);
     o.d.querySelector('#set-modal [data-click="openAcqModal"]').click();
-    await warte(() => o.d.getElementById('acq-preis-2'));
-    const zeile = id => text(o.d.getElementById(`acq-row-${id}`).textContent);
-    assert.match(zeile(1), /USD/);
-    assert.match(zeile(1), /≈ 208,53 €/);
-    assert.match(zeile(2), /EUR/);
+    await waitFor(() => o.d.getElementById('acq-price-2'));
+    const row = id => text(o.d.getElementById(`acq-row-${id}`).textContent);
+    assert.match(row(1), /USD/);
+    assert.match(row(1), /≈ 208,53 €/);
+    assert.match(row(2), /EUR/);
     assert.equal(text(o.d.getElementById('acq-total-price').textContent), '1.334,58 €');
-    const feld = o.d.getElementById('acq-preis-2');
-    feld.value = '342,04';
-    feld.dispatchEvent(new o.w.FocusEvent('blur'));
+    const field = o.d.getElementById('acq-price-2');
+    field.value = '342,04';
+    field.dispatchEvent(new o.w.FocusEvent('blur'));
     assert.ok(
-      await warte(() => text(o.d.getElementById('acq-total-price').textContent) === '1.309,58 €', 1500),
-      `Summe: ${o.d.getElementById('acq-total-price').textContent}`,
+      await waitFor(() => text(o.d.getElementById('acq-total-price').textContent) === '1.309,58 €', 1500),
+      `total: ${o.d.getElementById('acq-total-price').textContent}`,
     );
   } finally {
     o.w.close();
@@ -107,17 +107,19 @@ test('purchase price dialog: currency per row, the sum follows', async () => {
 });
 
 test('Escape returns focus to the trigger', async () => {
-  const o = await openUi(antworten({ betrag: 1334.58 }), { browserLanguage: 'de-DE' });
+  const o = await openUi(answers({ amount: 1334.58 }), { browserLanguage: 'de-DE' });
   try {
     await openSet(o);
     const trigger = o.d.querySelector('#set-modal [data-click="openAcqModal"]');
     trigger.focus();
     trigger.click();
-    await warte(() => o.d.getElementById('acq-modal').classList.contains('open') && o.d.getElementById('acq-preis-1'));
+    await waitFor(
+      () => o.d.getElementById('acq-modal').classList.contains('open') && o.d.getElementById('acq-price-1'),
+    );
     o.d.dispatchEvent(new o.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     assert.ok(
-      await warte(() => o.d.activeElement?.matches?.('#set-modal [data-click="openAcqModal"]'), 2000),
-      `Fokus auf ${o.d.activeElement?.outerHTML?.slice(0, 80)}`,
+      await waitFor(() => o.d.activeElement?.matches?.('#set-modal [data-click="openAcqModal"]'), 2000),
+      `focus on ${o.d.activeElement?.outerHTML?.slice(0, 80)}`,
     );
   } finally {
     o.w.close();
@@ -125,38 +127,38 @@ test('Escape returns focus to the trigger', async () => {
 });
 
 test('set detail: a USD purchase names USD and the converted amount', async () => {
-  const o = await openUi(antworten({ betrag: 1334.58 }), { browserLanguage: 'de-DE' });
+  const o = await openUi(answers({ amount: 1334.58 }), { browserLanguage: 'de-DE' });
   try {
     await openSet(o);
-    await warte(() => /USD/.test(o.d.getElementById('m-acq-summary')?.textContent || ''));
-    const inhalt = text(o.d.getElementById('m-acq-summary').textContent);
-    assert.match(inhalt, /260,66 USD/);
-    assert.match(inhalt, /≈ 208,53 €/);
+    await waitFor(() => /USD/.test(o.d.getElementById('m-acq-summary')?.textContent || ''));
+    const content = text(o.d.getElementById('m-acq-summary').textContent);
+    assert.match(content, /260,66 USD/);
+    assert.match(content, /≈ 208,53 €/);
   } finally {
     o.w.close();
   }
 });
 
 test('finances: ≈ and number of estimates', async () => {
-  const kauf = (id, preis, geschaetzt) => ({
+  const purchase = (id, price, estimated) => ({
     id,
     condition: 'N',
     quantity: 4,
-    purchase_price: preis,
+    purchase_price: price,
     avg_price: 310,
-    wert_gesamt: 1240,
-    pnl_prozent: 0.6,
+    value_total: 1240,
+    pnl_percent: 0.6,
     created_at: '2026-11-05T12:00:00Z',
-    ...(geschaetzt ? { price_estimated: true } : {}),
+    ...(estimated ? { price_estimated: true } : {}),
   });
   const o = await openUi(
     {
-      '/v1/finance/valuation': {
+      '/v2/finance/valuation': {
         success: true,
         currency: 'EUR',
         condition: 'N',
         total_value: '2480',
-        kaufpreise_fremde_waehrung: 0,
+        foreign_currency_purchases: 0,
         totals: { min: '0', avg: '2480', max: '0', qty_avg: '2480' },
         sets: [
           {
@@ -164,60 +166,60 @@ test('finances: ≈ and number of estimates', async () => {
             name: 'Burg',
             quantity: 4,
             avg_price: 310,
-            wert_gesamt: 1240,
+            value_total: 1240,
             from_cache: true,
             is_fallback: false,
             no_price: false,
             mixed: false,
-            acquisitions: [kauf(1, 308, true)],
+            acquisitions: [purchase(1, 308, true)],
           },
           {
             set_number: '10294-1',
             name: 'Titanic',
             quantity: 4,
             avg_price: 310,
-            wert_gesamt: 1240,
+            value_total: 1240,
             from_cache: true,
             is_fallback: false,
             no_price: false,
             mixed: false,
-            acquisitions: [kauf(2, 300, false)],
+            acquisitions: [purchase(2, 300, false)],
           },
         ],
       },
-      '/v1/finance/pnl': {
+      '/v2/finance/pnl': {
         success: true,
         currency: 'EUR',
         sets: [],
         totals: {
           purchase: '2432',
           current: '2480',
-          kaufpreise_fremde_waehrung: 0,
-          positionen: 2,
-          positionen_bewertet: 2,
-          positionen_ohne_marktpreis: 0,
-          positionen_ohne_kaufpreis: 0,
-          basis_einstand: '2432',
-          basis_marktwert: '2480',
-          basis_guv_betrag: '48',
-          pnl_prozent: 2,
+          foreign_currency_purchases: 0,
+          positions: 2,
+          positions_valued: 2,
+          positions_without_market_price: 0,
+          positions_without_purchase_price: 0,
+          baseline_cost: '2432',
+          baseline_market_value: '2480',
+          baseline_pnl_amount: '48',
+          pnl_percent: 2,
         },
       },
     },
     { browserLanguage: 'de-DE' },
   );
   try {
-    await reiter(o.w, 'finance');
-    await warte(() => o.d.querySelectorAll('#fin-tbl tbody tr').length >= 2, 4000);
-    const zeilen = [...o.d.querySelectorAll('#fin-tbl tbody tr[data-arg]')];
-    const burg = zeilen.find(z => z.dataset.arg === '10305-1');
+    await switchTab(o.w, 'finance');
+    await waitFor(() => o.d.querySelectorAll('#fin-tbl tbody tr').length >= 2, 4000);
+    const lines = [...o.d.querySelectorAll('#fin-tbl tbody tr[data-arg]')];
+    const burg = lines.find(z => z.dataset.arg === '10305-1');
     const purchaseCell = burg.querySelectorAll('td.price-cell')[0];
     assert.match(purchaseCell.textContent, /≈/);
     assert.match(purchaseCell.querySelector('[title]').getAttribute('title'), /geschätzt/);
-    const titanic = zeilen.find(z => z.dataset.arg === '10294-1');
+    const titanic = lines.find(z => z.dataset.arg === '10294-1');
     assert.doesNotMatch(titanic.textContent, /≈/);
-    assert.match(burg.querySelector('.fin-unter').textContent, /Kaufpreis geschätzt/, 'auch in der Telefonzeile');
-    assert.ok(await warte(() => !o.d.getElementById('fin-basis').hidden));
+    assert.match(burg.querySelector('.fin-sub').textContent, /Kaufpreis geschätzt/, 'also in the phone row');
+    assert.ok(await waitFor(() => !o.d.getElementById('fin-basis').hidden));
     assert.match(o.d.getElementById('fin-basis').textContent, /1 geschätzter Kaufpreis/);
   } finally {
     o.w.close();
@@ -227,19 +229,19 @@ test('finances: ≈ and number of estimates', async () => {
 test('adding a set sends currency and date', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
-    o.d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
-    await takt(10);
-    assert.equal(o.d.getElementById('add-currency').value, 'EUR', 'Vorgabe ist die Kontowährung');
-    assert.match(o.d.getElementById('add-date').value, /^\d{4}-\d{2}-\d{2}$/, 'Vorgabe heute');
+    o.d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
+    await tick(10);
+    assert.equal(o.d.getElementById('add-currency').value, 'EUR', 'the default is the account currency');
+    assert.match(o.d.getElementById('add-date').value, /^\d{4}-\d{2}-\d{2}$/, 'default today');
     o.d.getElementById('add-num').value = '10326-1';
     o.d.getElementById('add-price').value = '260,66';
     o.d.getElementById('add-currency').value = 'USD';
     o.d.getElementById('add-date').value = '2019-03-04';
     o.d.getElementById('btn-add').click();
-    await warte(() => o.aufrufe.some(a => a.url.includes('/sets/add-stream')));
-    const rumpf = JSON.parse(o.aufrufe.find(a => a.url.includes('/sets/add-stream')).body);
+    await waitFor(() => o.calls.some(a => a.url.includes('/sets/add-stream')));
+    const body = JSON.parse(o.calls.find(a => a.url.includes('/sets/add-stream')).body);
     assert.deepEqual(
-      { p: rumpf.purchase_price, c: rumpf.currency, d: rumpf.date },
+      { p: body.purchase_price, c: body.currency, d: body.date },
       { p: 260.66, c: 'USD', d: '2019-03-04' },
     );
   } finally {
@@ -253,11 +255,11 @@ test('entry dialogs consistent', async () => {
     assert.equal(o.d.getElementById('ap-qty-inline').labels[0].textContent.trim(), 'Anzahl');
     for (const id of ['add-set-modal', 'add-part-modal', 'add-fig-modal']) {
       const dialog = o.d.getElementById(id);
-      assert.ok(dialog.querySelector('input[type=date]'), `${id}: kein Datumsfeld`);
-      const sichtbar =
+      assert.ok(dialog.querySelector('input[type=date]'), `${id}: no date field`);
+      const visible =
         dialog.textContent +
         [...dialog.querySelectorAll('[placeholder]')].map(e => e.getAttribute('placeholder')).join(' ');
-      assert.doesNotMatch(sichtbar, /z\.B\.|\(opt\.\)/, id);
+      assert.doesNotMatch(visible, /z\.B\.|\(opt\.\)/, id);
     }
   } finally {
     o.w.close();

@@ -1,14 +1,17 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.Darstellungsablage
-import ch.brickinventoryapp.data.Vertrauensablage
-import ch.brickinventoryapp.session.Sitzung
-import ch.brickinventoryapp.state.ui.viewmodel.DarstellungViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
-import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.data.AppearanceStore
+import ch.brickinventoryapp.data.TrustStore
+import ch.brickinventoryapp.data.testing.StorageSessionStore
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
+import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.session.StoreAccountValues
+import ch.brickinventoryapp.session.testing.testSession
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -24,145 +27,179 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.StorageSessionStore
-import ch.brickinventoryapp.session.StoreAccountValues
+import java.util.Base64
 
 /**
- * DarstellungViewModel and VertrauenViewModel put to the test, with in-memory stores
+ * AppearanceViewModel and TrustViewModel put to the test, with in-memory stores
  * instead of PreferencesManager and in virtual time.
  *
  * Counter-checks:
- *   design-spaet-gesetzt        StoreAccountValues starts with the default instead of the remembered theme → red „der Zustand wird mit …“
- *   widget-nicht-angestossen    `widget.refresh()` removed → red „eine Wahl wird gemerkt …“
- *   vertrauen-ohne-abwurf       after trustCertificate() no `drop.discard()` → red „ein bestätigter …“
- *   unbekannte-ca-ohne-abtippen in CertificateQuestion.bestaetige() the typing-in requirement removed → red „ohne bekannte CA …“
+ *   theme-set-late        StoreAccountValues starts with the default instead of the remembered theme → red „der Zustand wird mit …“
+ *   widget-not-triggered    `widget.refresh()` removed → red „eine Wahl wird gemerkt …“
+ *   trust-without-discard       after trustCertificate() no `drop.discard()` → red „ein bestätigter …“
+ *   unknown-ca-without-typing in CertificateQuestion.confirm() the typing-in requirement removed → red „ohne bekannte CA …“
+ *   certificate-code-trusts-any    confirmByCode() adopts the pin whatever check() says → red „only a scanned code …“
+ *   certificate-code-without-discard trustByCode() without `drop.discard()` → red „only a scanned code …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RenderingAndTrustTest {
 
-    private val takt = StandardTestDispatcher()
+    private val tick = StandardTestDispatcher()
 
-    @Before fun auf() = Dispatchers.setMain(takt)
+    @Before fun setUp() = Dispatchers.setMain(tick)
 
     @After fun ab() = Dispatchers.resetMain()
 
-    private class StorageRendering : Darstellungsablage {
+    private class StorageRendering : AppearanceStore {
         var design = Design.CLASSIC
-        var hell = "system"
-        var farben = false
-        var verbergen = true
+        var light = "system"
+        var colors = false
+        var hide = true
         var widget = false
-        var sprache = ""
+        var language = ""
         override fun rememberedDesign() = design
-        override fun helligkeit() = hell
-        override fun setzeHelligkeit(wahl: String) { hell = wahl }
-        override fun systemfarben() = farben
-        override fun setzeSystemfarben(an: Boolean) { farben = an }
-        override fun hidePreview() = verbergen
-        override fun setzeVorschauVerbergen(an: Boolean) { verbergen = an }
+        override fun brightness() = light
+        override fun applyBrightness(choice: String) { light = choice }
+        override fun systemColors() = colors
+        override fun applySystemColors(an: Boolean) { colors = an }
+        override fun hidePreview() = hide
+        override fun applyPreviewHidden(an: Boolean) { hide = an }
         override fun showWidgetValues() = widget
         override fun showSetWidgetValues(an: Boolean) { widget = an }
-        override suspend fun saveLanguage(lang: String) { sprache = lang }
+        override suspend fun saveLanguage(lang: String) { language = lang }
     }
 
-    private class StorageTrust : Vertrauensablage {
+    private class StorageTrust : TrustStore {
         val pins = mutableMapOf<String, String>()
         var caOn = false
-        override fun pin(schluessel: String) = pins[schluessel]
-        override fun rememberPin(schluessel: String, fingerabdruck: String) { pins[schluessel] = fingerabdruck }
+        override fun pin(key: String) = pins[key]
+        override fun rememberPin(key: String, fingerprint: String) { pins[key] = fingerprint }
         override fun userCaAllowed() = caOn
         override fun setUserCa(an: Boolean) { caOn = an }
     }
 
     @Test
-    fun `the state is born with the remembered design`() = runTest(takt) {
-        val ablage = StorageRendering().apply { design = Design.NOPPE }
-        val konto = StorageSessionStore().apply { design.value = Design.NOPPE }
+    fun `the state is born with the remembered design`() = runTest(tick) {
+        val store = StorageRendering().apply { design = Design.STUD }
+        val account = StorageSessionStore().apply { design.value = Design.STUD }
         // As on the device: currency and theme from the store, the first from the synchronous mirror.
-        val sitzung = Sitzung(StoreAccountValues(konto, ablage, backgroundScope))
-        val vm = DarstellungViewModel(ablage, sitzung) {}
+        val session = testSession(StoreAccountValues(account, store, backgroundScope))
+        val vm = AppearanceViewModel(store, session) {}
         // Without a single tick of the clock: the first frame already shows the remembered theme.
-        assertEquals(Design.NOPPE, vm.appTheme.value)
-        assertEquals(Design.NOPPE, sitzung.state.value.appTheme)
+        assertEquals(Design.STUD, vm.appTheme.value)
+        assertEquals(Design.STUD, session.state.value.appTheme)
         vm.viewModelScope.cancel()
     }
 
     @Test
-    fun `a choice is remembered and applies immediately, the widget learns of its values`() = runTest(takt) {
-        val ablage = StorageRendering()
+    fun `a choice is remembered and applies immediately, the widget learns of its values`() = runTest(tick) {
+        val store = StorageRendering()
         var widgetKicks = 0
-        val vm = DarstellungViewModel(ablage, Sitzung()) { widgetKicks++ }
-        assertTrue("Vorgabe: Vorschau verborgen", vm.hidePreview.value)
+        val vm = AppearanceViewModel(store, testSession()) { widgetKicks++ }
+        assertTrue("default: preview hidden", vm.hidePreview.value)
 
-        vm.setHelligkeit("dunkel")
-        vm.setSystemfarben(true)
-        vm.setVorschauVerbergen(false)
-        assertEquals("dunkel", ablage.hell)
-        assertEquals("dunkel", vm.helligkeit.value)
-        assertTrue(ablage.farben && vm.systemfarben.value)
-        assertFalse(ablage.verbergen || vm.hidePreview.value)
-        assertEquals("Andere Werte stossen das Widget nicht an", 0, widgetKicks)
+        vm.setBrightness("dunkel")
+        vm.setSystemColors(true)
+        vm.setPreviewHidden(false)
+        assertEquals("dunkel", store.light)
+        assertEquals("dunkel", vm.brightness.value)
+        assertTrue(store.colors && vm.systemColors.value)
+        assertFalse(store.hide || vm.hidePreview.value)
+        assertEquals("other values do not nudge the widget", 0, widgetKicks)
 
         vm.setWidgetValues(true)
         advanceUntilIdle()
-        assertTrue(ablage.widget && vm.widgetValues.value)
-        assertEquals("Das Widget zeigt die neue Wahl erst nach einem Anstoss", 1, widgetKicks)
+        assertTrue(store.widget && vm.widgetValues.value)
+        assertEquals("the widget only shows the new choice after a nudge", 1, widgetKicks)
         vm.viewModelScope.cancel()
     }
 
     @Test
     fun `a confirmed first contact remembers the pin and discards the open connections`() {
-        val frage = CertificateQuestion()
-        val ablage = StorageTrust()
+        val question = CertificateQuestion()
+        val store = StorageTrust()
         var drops = 0
-        val vm = VertrauenViewModel(ablage, { drops++ }, frage)
-        frage.melde(CertificateUnresolved("brick.example:443", "AB:CD", CertificateUnresolved.Art.ERSTKONTAKT, ctForced = true))
-        assertEquals("AB:CD", vm.zertifikat.value?.fingerabdruck)
+        val vm = TrustViewModel(store, { drops++ }, question)
+        question.report(CertificateUnresolved("brick.example:443", "AB:CD", CertificateUnresolved.Kind.FIRST_CONTACT, ctForced = true))
+        assertEquals("AB:CD", vm.certificate.value?.fingerprint)
 
         assertTrue(vm.trustCertificate())
-        assertEquals("AB:CD", ablage.pins["brick.example:443"])
-        assertEquals("Verbindungen mit dem alten Vertrauen bleiben offen", 1, drops)
-        assertNull(vm.zertifikat.value)
-        assertFalse("Ohne offene Frage nichts zu bestätigen", vm.trustCertificate())
+        assertEquals("AB:CD", store.pins["brick.example:443"])
+        assertEquals("connections with the old trust stay open", 1, drops)
+        assertNull(vm.certificate.value)
+        assertFalse("without an open question nothing to confirm", vm.trustCertificate())
         assertEquals(1, drops)
     }
 
     @Test
     fun `without a known CA only the typed fingerprint counts, discarding remembers nothing`() {
-        val frage = CertificateQuestion()
-        val ablage = StorageTrust()
+        val question = CertificateQuestion()
+        val store = StorageTrust()
         var drops = 0
-        val vm = VertrauenViewModel(ablage, { drops++ }, frage)
+        val vm = TrustViewModel(store, { drops++ }, question)
         val fp = "0123456789ABCDEF0123456789ABCDEF"
-        frage.melde(CertificateUnresolved("brick.example:443", fp, CertificateUnresolved.Art.UNBEKANNTE_CA))
+        question.report(CertificateUnresolved("brick.example:443", fp, CertificateUnresolved.Kind.UNKNOWN_CA))
 
-        assertFalse("Ein Tipp allein genügt nicht", vm.trustCertificate())
-        assertFalse("Ein falscher Fingerabdruck genügt nicht", vm.trustCertificate("FFFFFFFFFFFF"))
-        assertTrue(ablage.pins.isEmpty())
+        assertFalse("a tap alone is not enough", vm.trustCertificate())
+        assertFalse("a wrong fingerprint is not enough", vm.trustCertificate("FFFFFFFFFFFF"))
+        assertTrue(store.pins.isEmpty())
         assertEquals(0, drops)
         assertTrue(vm.trustCertificate(fp))
-        assertEquals(fp, ablage.pins["brick.example:443"])
+        assertEquals(fp, store.pins["brick.example:443"])
         assertEquals(1, drops)
 
-        frage.melde(CertificateUnresolved("andere.example:443", "EE", CertificateUnresolved.Art.ERSTKONTAKT))
+        question.report(CertificateUnresolved("andere.example:443", "EE", CertificateUnresolved.Kind.FIRST_CONTACT))
         vm.discardCertificate()
-        assertNull(vm.zertifikat.value)
-        assertNull(ablage.pins["andere.example:443"])
+        assertNull(vm.certificate.value)
+        assertNull(store.pins["andere.example:443"])
+    }
+
+    @Test
+    fun `only a scanned code of the whole fingerprint trusts, like a confirmation`() {
+        val question = CertificateQuestion()
+        val store = StorageTrust()
+        var drops = 0
+        val vm = TrustViewModel(store, { drops++ }, question)
+        val bytes = ByteArray(32) { (it * 5 + 1).toByte() }
+        val fp = Base64.getEncoder().encodeToString(bytes)
+        val hex = bytes.joinToString("") { "%02x".format(it) }
+        question.report(CertificateUnresolved("brick.example:443", fp, CertificateUnresolved.Kind.UNKNOWN_CA, sheet = "BLATT"))
+
+        val other = "brickinventory-cert:v1:spki-sha256:" + "ff" + hex.drop(2)
+        assertEquals(CodeCheck.FITS_NOT, vm.trustByCode(other))
+        assertEquals(CodeCheck.NOT_A_CODE, vm.trustByCode("brickinventory-cert:v1:spki-sha256:" + hex.takeLast(24)))
+        assertEquals(CodeCheck.UNKNOWN_VERSION, vm.trustByCode("brickinventory-cert:v9:spki-sha256:$hex"))
+        assertTrue("no wrong code remembers anything", store.pins.isEmpty())
+        assertEquals(0, drops)
+        assertEquals("the question stays open for the manual comparison", fp, vm.certificate.value?.fingerprint)
+
+        assertEquals(CodeCheck.MATCHES, vm.trustByCode("brickinventory-cert:v1:spki-sha256:$hex"))
+        assertEquals(fp, store.pins["brick.example:443"])
+        assertEquals("like a confirmation: the leaf as the second pin", "BLATT", store.pins["brick.example:443#blatt"])
+        assertEquals(1, drops)
+        assertNull(vm.certificate.value)
+
+        // A server that contradicts the sign-in code can never be confirmed, not by a code either.
+        question.report(CertificateUnresolved("brick.example:443", fp, CertificateUnresolved.Kind.CODE_MISMATCH, expected = "X"))
+        store.pins.clear()
+        assertEquals(CodeCheck.FITS_NOT, vm.trustByCode("brickinventory-cert:v1:spki-sha256:$hex"))
+        assertTrue(store.pins.isEmpty())
+        assertEquals(1, drops)
     }
 
     @Test
     fun `user CAs only after confirmation, every change discards the connections`() {
-        val ablage = StorageTrust()
+        val store = StorageTrust()
         var drops = 0
-        val vm = VertrauenViewModel(ablage, { drops++ }, CertificateQuestion())
+        val vm = TrustViewModel(store, { drops++ }, CertificateQuestion())
         vm.userCa.requests()
-        assertTrue(vm.userCa.frage.value)
-        assertFalse("Erst die Bestätigung schaltet ein", ablage.caOn)
-        vm.userCa.bestaetigen()
-        assertTrue(ablage.caOn && vm.userCa.an.value)
+        assertTrue(vm.userCa.question.value)
+        assertFalse("only the confirmation switches on", store.caOn)
+        vm.userCa.confirm()
+        assertTrue(store.caOn && vm.userCa.an.value)
         assertEquals(1, drops)
         vm.userCa.turnOff()
-        assertFalse(ablage.caOn)
+        assertFalse(store.caOn)
         assertEquals(2, drops)
     }
 }

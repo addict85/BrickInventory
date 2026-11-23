@@ -18,25 +18,25 @@ const { queryWithRetry, isReading } = _req('db/database.js');
 
 /** Fails on the first attempt with `code`, afterwards it succeeds. */
 function onceAbort(code) {
-  let versuche = 0;
+  let attempts = 0;
   const fn = async () => {
-    versuche++;
-    if (versuche === 1) throw Object.assign(new Error('weg'), { code });
+    attempts++;
+    if (attempts === 1) throw Object.assign(new Error('weg'), { code });
     return 'ok';
   };
-  return { fn, versuche: () => versuche };
+  return { fn, attempts: () => attempts };
 }
 
 test('a read access after a connection loss is retried', async () => {
   const a = onceAbort('08006');
   assert.equal(await queryWithRetry(a.fn, true), 'ok');
-  assert.equal(a.versuche(), 2);
+  assert.equal(a.attempts(), 2);
 });
 
 test('a write access after a connection loss', async () => {
   const a = onceAbort('08006');
   await assert.rejects(queryWithRetry(a.fn, false), { code: '08006' });
-  assert.equal(a.versuche(), 1, 'Die Zeile stünde sonst womöglich doppelt da');
+  assert.equal(a.attempts(), 1, 'Otherwise the row might show up twice');
 });
 
 test('deadlock and startup phase may retry once even when writing', async () => {

@@ -9,7 +9,7 @@ import {
   rememberPartColor,
   rememberSetPart,
   rememberMinifigs,
-  merkeSetFiguren,
+  rememberSetMinifigs,
 } from './catalogMaintenance';
 import { parseThrottleWait as ptw } from '../externalSources';
 
@@ -18,18 +18,18 @@ type JobHttpResult = { status: number; body: string };
 
 import { pathSegment, numbersList } from '../infra/foreignAddresses';
 import type * as repo from './repository/partsEnrichment';
-import { KEINE_FARBE } from '../infra/validate';
+import { NO_COLOR } from '../infra/validate';
 import type { CatalogContext } from './context';
 
 async function apiGet(k: CatalogContext, url: string, rbKey: string) {
   let serverErrors = 0;
   while (true) {
     if (!(await k.externalSources.consumeRebrickableDaily())) return null;
-    await k.externalSources.drossel.hintergrund.waitForSlot();
-    const result: JobHttpResult = await k.externalSources.quellen.rebrickableRaw(url, rbKey);
+    await k.externalSources.throttle.background.waitForSlot();
+    const result: JobHttpResult = await k.externalSources.sources.rebrickableRaw(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
-      k.externalSources.drossel.hintergrund.throttle(wait);
+      k.externalSources.throttle.background.throttle(wait);
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
@@ -55,10 +55,10 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
   const invId = await newestInventory(k, setNumber);
   if (!invId) return;
 
-  const csvParts = await k.teileAnreicherung.partsOfInventory(invId);
+  const csvParts = await k.partsEnrichment.partsOfInventory(invId);
   if (!csvParts.length) return;
 
-  const catalogRows = await k.teileAnreicherung.setPartsCatalog(n);
+  const catalogRows = await k.partsEnrichment.setPartsCatalog(n);
   const catalogMap: Record<
     string,
     { image_url: string | null; image_local: string | null; bl_part_number?: string | null }
@@ -67,7 +67,7 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
 
   // The ROW in bl_mapping counts, not its value: empty means "looked up,
   // no differing number".
-  const lookedUp = await k.teileAnreicherung.blMappings(csvParts.map(p => p.part_num));
+  const lookedUp = await k.partsEnrichment.blMappings(csvParts.map(p => p.part_num));
   const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
 
   // Only parts that were never looked up — every fetch costs quota.
@@ -81,7 +81,7 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
 
   if (!missing.length) return;
 
-  const rbKey = await k.externalSources.quellen.getRbKey();
+  const rbKey = await k.externalSources.sources.getRbKey();
   if (!rbKey) {
     console.log('[parts-enrich] No API key');
     return;
@@ -93,7 +93,7 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
   await supplementSetMinifigs(k, n, rbKey);
 }
 
-type ApiTeil = {
+type ApiPart = {
   part_name: string;
   bl_part_num: string | null;
   image_url: string | null;
@@ -103,8 +103,8 @@ type ApiTeil = {
 };
 
 /** The set's parts according to Rebrickable, per "part_num|color_id". */
-async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promise<Record<string, ApiTeil>> {
-  const apiParts: Record<string, ApiTeil> = {};
+async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promise<Record<string, ApiPart>> {
+  const apiParts: Record<string, ApiPart> = {};
   let url = `https://rebrickable.com/api/v3/lego/sets/${pathSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   while (url) {
     const data = await apiGet(k, url, rbKey);
@@ -131,7 +131,7 @@ async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promi
  * incomplete. */
 async function supplementBlNumbers(
   kx: CatalogContext,
-  apiParts: Record<string, ApiTeil>,
+  apiParts: Record<string, ApiPart>,
   missingBl: string[],
   rbKey: string,
 ): Promise<void> {
@@ -161,27 +161,27 @@ async function rememberPartsOfSets(
   k: CatalogContext,
   n: string,
   csvParts: Awaited<ReturnType<typeof repo.partsOfInventory>>,
-  apiParts: Record<string, ApiTeil>,
+  apiParts: Record<string, ApiPart>,
 ): Promise<void> {
-  const blMapRows = await k.teileAnreicherung.blMappings(csvParts.map(p => p.part_num));
+  const blMapRows = await k.partsEnrichment.blMappings(csvParts.map(p => p.part_num));
   const blMap: Record<string, string | null> = {};
   for (const r of blMapRows) blMap[r.rb_id] = r.bl_id;
 
   for (const p of csvParts) {
     const key = `${p.part_num}|${p.color_id}`;
-    const info: Partial<ApiTeil> = apiParts[key] ?? {};
+    const info: Partial<ApiPart> = apiParts[key] ?? {};
     const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
     // Into the MAPPING: the number belongs to the part, not to set, part and color.
     if (blPartNum) await rememberBlNumber(k, 'part', p.part_num, blPartNum);
     // No name without a Rebrickable response — the part number does not belong in the catalog as a verified name.
     await rememberPart(k, p.part_num, info.part_name);
-    await rememberPartColor(k, p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url);
-    await rememberSetPart(k, n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
+    await rememberPartColor(k, p.part_num, p.color_id ?? NO_COLOR, info.color_name, info.color_hex, info.image_url);
+    await rememberSetPart(k, n, p.part_num, p.color_id ?? NO_COLOR, p.quantity || 1, false);
   }
 }
 
 async function supplementSetMinifigs(k: CatalogContext, n: string, rbKey: string): Promise<void> {
-  const existingFigs = await k.teileAnreicherung.minifigsInSetkatalog(n);
+  const existingFigs = await k.partsEnrichment.minifigsInSetCatalog(n);
 
   if (!existingFigs) {
     const figsData = await apiGet(
@@ -196,7 +196,7 @@ async function supplementSetMinifigs(k: CatalogContext, n: string, rbKey: string
         k,
         figs.map(f => ({ figNumber: f.set_num, figName: f.set_name || null, imageUrl: f.set_img_url || null })),
       );
-      await merkeSetFiguren(
+      await rememberSetMinifigs(
         k,
         n,
         figs.map(f => ({ figNumber: f.set_num, quantity: f.quantity })),
@@ -205,74 +205,54 @@ async function supplementSetMinifigs(k: CatalogContext, n: string, rbKey: string
   }
 }
 
-async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
-  const n = withVersion(setNumber);
-  const rbKey = await k.externalSources.quellen.getRbKey();
-  if (!rbKey) return;
-
-  const figs = await k.teileAnreicherung.minifigsOfSets(n);
-  if (!figs.length) return;
-
-  const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
-  const invRows = await k.teileAnreicherung.inventoriesTheMinifigs(figNums);
-
-  // Per set_num the highest version (first because of ORDER BY DESC).
+/** Per minifig the parts of its newest inventory (first because of ORDER BY DESC). */
+async function minifigParts(k: CatalogContext, figs: { fig_number: string; quantity: number }[]) {
+  const invRows = await k.partsEnrichment.inventoriesTheMinifigs(figs.map(f => f.fig_number));
   const invMap: Record<string, number> = {};
   for (const r of invRows) {
     if (!invMap[r.set_num]) invMap[r.set_num] = r.id;
   }
-
-  const allPartNums = new Set<string>();
   const figPartsMap: Record<string, { parts: repo.InventoryPart[]; figQty: number }> = {};
-
   for (const fig of figs) {
     const invId = invMap[fig.fig_number];
-    if (!invId) continue;
-
-    const parts = await k.teileAnreicherung.partsOfInventory(invId);
-
-    figPartsMap[fig.fig_number] = { parts, figQty: fig.quantity };
-    for (const p of parts) allPartNums.add(p.part_num);
+    if (invId)
+      figPartsMap[fig.fig_number] = { parts: await k.partsEnrichment.partsOfInventory(invId), figQty: fig.quantity };
   }
+  return figPartsMap;
+}
 
-  if (!allPartNums.size) return;
-
-  // bl_mapping: the number, once per part.
-  const rbBlRows = await k.teileAnreicherung.blMappings([...allPartNums]);
-  const rbBlMap: Record<string, string> = {};
-  for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
-
-  // Only query numbers that were never looked up.
-  const needsBl = [...allPartNums].filter(pn => !(String(pn) in rbBlMap));
-
-  const apiBlMap: Record<string, string> = {};
-  if (needsBl.length > 0) {
-    const BATCH = 500;
-    for (let i = 0; i < needsBl.length; i += BATCH) {
-      const batch = needsBl.slice(i, i + BATCH);
-      const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${numbersList(batch)}&page_size=500`;
-      const data = await apiGet(k, url, rbKey);
-      if (!data) continue;
-      for (const p of data.results || []) {
-        const blId = p.external_ids?.BrickLink?.[0] || null;
-        const finalId = blId || p.part_num;
-        apiBlMap[p.part_num] = finalId;
-
-        await rememberBlNumber(k, 'part', p.part_num, finalId);
-      }
+/** Only numbers that were never looked up go to the API; the BrickLink number is remembered per part. */
+async function lookUpBlNumbers(k: CatalogContext, partNums: Set<string>, rbKey: string): Promise<void> {
+  const known = new Set((await k.partsEnrichment.blMappings([...partNums])).map(r => r.rb_id));
+  const needsBl = [...partNums].filter(pn => !known.has(String(pn)));
+  const BATCH = 500;
+  for (let i = 0; i < needsBl.length; i += BATCH) {
+    const batch = needsBl.slice(i, i + BATCH);
+    const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${numbersList(batch)}&page_size=500`;
+    const data = await apiGet(k, url, rbKey);
+    for (const p of data?.results || []) {
+      const blId = p.external_ids?.BrickLink?.[0] || null;
+      await rememberBlNumber(k, 'part', p.part_num, blId || p.part_num);
     }
   }
+}
 
-  // Precedence: API > bl_mapping > own number.
-  const finalBlMap: Record<string, string> = {};
-  for (const pn of allPartNums as Iterable<string>) {
-    finalBlMap[pn] = apiBlMap[pn] || rbBlMap[pn] || pn;
-  }
+async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
+  const n = withVersion(setNumber);
+  const rbKey = await k.externalSources.sources.getRbKey();
+  if (!rbKey) return;
 
+  const figs = await k.partsEnrichment.minifigsOfSets(n);
+  if (!figs.length) return;
+  const figPartsMap = await minifigParts(k, figs);
+  const allPartNums = new Set(Object.values(figPartsMap).flatMap(f => f.parts.map(p => p.part_num)));
+  if (!allPartNums.size) return;
+
+  await lookUpBlNumbers(k, allPartNums, rbKey);
   for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
       // Without the BrickLink number: it is stored once per part in bl_mapping.
-      await rememberSetPart(k, figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
+      await rememberSetPart(k, figNum, p.part_num, p.color_id ?? NO_COLOR, p.quantity || 1, false);
     }
   }
 }

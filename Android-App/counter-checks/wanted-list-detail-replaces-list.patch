@@ -1,0 +1,17 @@
+Gegenprobe: Merkposten-Detail steht nie neben der Liste
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: tablet shows wishlist and detail side by side
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
+@@ -265,7 +265,7 @@
+             onOpen = { sn, z -> if (sideBySide) open = listOf(sn, z.identifier) else onOpenSingle(sn, z) },
+             chosen = selection.takeIf { sideBySide })
+     }
+-    if (sideBySide && selection != null) {
++    if (false && sideBySide && selection != null) {
+         ListAndDetail(
+             list = list,
+             detail = {

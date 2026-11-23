@@ -1,0 +1,16 @@
+Gegenprobe: Die Anmeldung ohne Schutz vor Überlagerung
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginProtectionTest
+Rot: the sign-in is protected against overlays, the passkey button too
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
+@@ -81,7 +81,6 @@
+ fun LoginScreen(state: LoginScreenState, actions: LoginActions) {
+     // A planted tap can sign in here or confirm a passkey. The
+     // visual protection for a revealed password is brought along by the PasswordField itself.
+-    OverlayGuard()
+ 
+     // The keyboard does not learn password, code or address. In landscape, brand and form
+     // sit side by side as during setup, otherwise „Registrieren“ was below the fold.

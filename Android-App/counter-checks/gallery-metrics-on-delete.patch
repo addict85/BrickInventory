@@ -1,0 +1,17 @@
+Gegenprobe: Die Kennzahlen zählen das vorgemerkte Set weiter mit
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryViewModelTest
+Rot: the key figures do not count the pending set and count it again after undo
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
+@@ -113,7 +113,7 @@
+     // The key figures likewise: next to two tiles there would otherwise still be „3 Sets“.
+     private fun withoutReserved(st: GalleryUiState, v: ReservedDelete?): GalleryUiState =
+         if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber },
+-            stats = st.stats?.let { k -> v.set?.let { withoutSet(k, it) } ?: k })
++                stats = st.stats)
+     val galleryState: StateFlow<GalleryUiState> = galleryObserved
+ 
+     private val _prices = MutableStateFlow<Map<String, TilePrice>>(emptyMap())

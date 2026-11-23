@@ -1,0 +1,18 @@
+Gegenprobe: Beobachtet meldet jeden Sammler statt nur den ersten
+Modul: core-state
+Test: ch.brickinventoryapp.state.LoadOnObserveTest
+Rot: Observed counts the observers and reports only the first
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
+@@ -159,7 +159,8 @@
+     override val value: T get() = source.value
+     override val replayCache: List<T> get() = source.replayCache
+     override suspend fun collect(collector: FlowCollector<T>): Nothing {
+-        if (counter.getAndUpdate { it + 1 } == 0) observeOn()
++        counter.update { it + 1 }
++        observeOn()
+         try {
+             source.collect(collector)
+         } finally {

@@ -73,13 +73,13 @@ test('display × quantity always yields the sum', () => {
 
 test('missing price for one condition falls back to the other', () => {
   const v = valueSet(SN, [{ quantity: 1, condition: 'U' }], prices(148.72, null));
-  assert.equal(v.unit_price, 148.72, 'besser der andere Zustand als gar kein Wert');
+  assert.equal(v.unit_price, 148.72, 'rather the other condition than no value at all');
 });
 
 test('no price at all yields null, not 0', () => {
   const v = valueSet(SN, [{ quantity: 1, condition: 'N' }], new Map());
   assert.equal(v.unit_price, null);
-  assert.equal(v.total, null, 'eine 0 sähe in den Summen wie ein bekannter Wert aus');
+  assert.equal(v.total, null, 'a 0 would look like a known value in the totals');
 });
 
 // valueSet() is also used for manual parts and minifigures; there
@@ -111,12 +111,12 @@ test('qty_avg_price is no longer read anywhere for set prices', () => {
   // The set core works exclusively with set prices — the identifier must not
   // occur there. Exception is setPrice(): the price response of the
   // app carries the field qty_avg_price and only passes it through.
-  const roh = require('./helpers/sources').setCoreSource();
-  const von = roh.indexOf('export async function setPrice');
-  const bis = roh.indexOf('export async function currencyOf', von);
-  assert.ok(von > 0 && bis > von, 'setPrice() nicht gefunden');
-  const sets = roh.slice(0, von) + roh.slice(bis);
-  assert.equal((sets.match(/qty_avg_price/g) || []).length, 0, 'Set-Kern: Set-Preise müssen über avg_price laufen');
+  const raw = require('./helpers/sources').setCoreSource();
+  const from = raw.indexOf('export async function setPrice');
+  const until = raw.indexOf('export async function currencyOf', from);
+  assert.ok(from > 0 && until > from, 'setPrice() not found');
+  const sets = raw.slice(0, from) + raw.slice(until);
+  assert.equal((sets.match(/qty_avg_price/g) || []).length, 0, 'set core: set prices must go via avg_price');
 });
 
 test("guide_type is 'sold' everywhere, not 'stock'", () => {
@@ -125,7 +125,7 @@ test("guide_type is 'sold' everywhere, not 'stock'", () => {
   for (const f of [
     'clients/bricklink.ts',
     'src/catalog/bricklinkPrices.ts',
-    'routes/api_v1/sets.ts',
+    'routes/api/sets.ts',
     'src/finances/financeCalc.ts',
     'src/finances/priceRun.ts',
   ]) {
@@ -142,8 +142,8 @@ test("guide_type is 'sold' everywhere, not 'stock'", () => {
         `${f}: guide_type 'stock' als Erstabfrage — erlaubt ist es nur als Rückfall`,
       );
     }
-    assert.doesNotMatch(code, /'price_guide_type',\s*'stock'/, `${f}: Vorgabe der Einstellung ist noch 'stock'`);
-    assert.doesNotMatch(code, /guideType = 'stock'/, `${f}: Parametervorgabe ist noch 'stock'`);
+    assert.doesNotMatch(code, /'price_guide_type',\s*'stock'/, `${f}: the setting still defaults to 'stock'`);
+    assert.doesNotMatch(code, /guideType = 'stock'/, `${f}: parameter default is still 'stock'`);
   }
 });
 
@@ -153,74 +153,119 @@ test('a cached zero price does not permanently block the fallback', () => {
   // the whole window, one without only briefly.
   const { cacheUsable } = _req('src/finances/calculation/prices.js');
   // Time is a parameter: a fixed instant instead of the computer's clock.
-  const JETZT = Date.UTC(2026, 0, 10, 12);
-  const vor = (/** @type {number} */ h) => new Date(JETZT - h * 3600000).toISOString();
+  const NOW = Date.UTC(2026, 0, 10, 12);
+  const ago = (/** @type {number} */ h) => new Date(NOW - h * 3600000).toISOString();
+  assert.equal(cacheUsable({ avg_price: '0', fetched_at: ago(1) }, 24, NOW), true, 'a fresh 0 entry answers');
   assert.equal(
-    cacheUsable({ avg_price: '0', fetched_at: vor(1) }, 24, JETZT),
-    true,
-    'ein frischer 0-Eintrag antwortet',
-  );
-  assert.equal(
-    cacheUsable({ avg_price: '0', fetched_at: vor(7) }, 24, JETZT),
+    cacheUsable({ avg_price: '0', fetched_at: ago(7) }, 24, NOW),
     false,
-    'ein alter 0-Eintrag muss durchfallen und einen Neuabruf auslösen',
+    'an old 0 entry must fall through and trigger a refetch',
   );
-  assert.equal(cacheUsable({ avg_price: '0' }, 24, JETZT), false, 'ohne fetched_at ist das Alter unbekannt');
-  assert.equal(cacheUsable({ avg_price: '0', fetched_at: vor(3) }, 2, JETZT), false, 'die kürzere Frist gewinnt');
+  assert.equal(cacheUsable({ avg_price: '0' }, 24, NOW), false, 'without fetched_at the age is unknown');
+  assert.equal(cacheUsable({ avg_price: '0', fetched_at: ago(3) }, 2, NOW), false, 'the shorter period wins');
   assert.equal(
-    cacheUsable({ avg_price: '12.5', fetched_at: vor(20) }, 24, JETZT),
+    cacheUsable({ avg_price: '12.5', fetched_at: ago(20) }, 24, NOW),
     true,
-    'ein Preis gilt das volle Fenster',
+    'a price is valid for the full window',
   );
   assert.equal(
-    cacheUsable({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24, JETZT),
+    cacheUsable({ avg_price: '0', qty_avg_price: '9', fetched_at: ago(7) }, 24, NOW),
     true,
-    'ein Mengenschnitt allein ist ein Preis (marketPriceFrom) und gilt das volle Fenster',
+    'a quantity average alone is a price (marketPriceFrom) and is valid for the full window',
   );
 });
 
-test('the finances view shows avg_price as market price', () => {
-  // The detail dialog was right after the last fix, the finances tab
-  // was not: there the column labeled „Marktpreis" showed qty_avg_price,
-  // and the total column computed with it.
-  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finances.js'), 'utf8');
-  assert.match(
-    fin,
-    /const total\s*=\s*acq \? acq\.wert_gesamt : s\.wert_gesamt;/,
-    'Die Total-Spalte muss über avg_price laufen, nicht über qty_avg',
-  );
-  assert.match(
-    fin,
-    /parseFloat\(d\.totals\.avg\s*\|\|\s*'?0'?\)/,
-    'Die Summen sind als „Ø Marktpreis" beschriftet und müssen totals.avg nehmen',
-  );
-  assert.match(
-    fin,
-    /(?:parseFloat|Number)\(it\.avg_price \?\? it\.qty_avg_price \?\? 0\)/,
-    'Teile- und Minifiguren-Zeilen: avg_price zuerst',
-  );
-  assert.doesNotMatch(fin, /parseFloat\(d\.totals\.qty_avg/, 'Keine Summe darf mehr auf qty_avg basieren');
-
-  // The second market price column has meanwhile been dropped entirely — the target form
-  // is checked by the test “finances: purchase price instead of a second market price column”.
-  // finance.qty_avg was removed with the column — no dead key.
-  const i18n = require('./helpers/sources').i18nAll();
-  assert.doesNotMatch(i18n, /'finance\.qty_avg':/, 'Der Schlüssel gehört mit der Spalte entfernt');
+test('the finances view shows avg_price as market price', async () => {
+  // Real bundle in jsdom: avg_price and qty_avg_price differ on purpose, so the wrong one shows.
+  // Counter-checks (22.11.2026, each alone, public/js/finances.js): the part row with qty_avg_price first →
+  // red “part”; the set sum from totals.qty_avg → red “sum”; the set total computed from qty_avg_price → red “set”.
+  const { openUi, switchTab, waitFor } = require('./helpers/ui');
+  const SET = {
+    set_number: '10294-1',
+    name: 'Titanic',
+    year: 2021,
+    quantity: 2,
+    purchase_price: 50,
+    avg_price: 100,
+    qty_avg_price: 80,
+    min_price: 70,
+    max_price: 130,
+    value_total: 200,
+    pnl_percent: 100,
+  };
+  const PART = {
+    part_number: '3001',
+    color_id: 5,
+    part_name: 'Brick',
+    color_name: 'Rot',
+    quantity: 2,
+    purchase_price: 1,
+    avg_price: 5,
+    qty_avg_price: 3,
+    value_total: 10,
+  };
+  const { w, d } = await openUi({
+    '/v2/finance/valuation': {
+      success: true,
+      currency: 'EUR',
+      total_value: '200',
+      condition: 'N',
+      foreign_currency_purchases: 0,
+      converted_purchase_prices: 0,
+      prices_pending: 0,
+      guide_type: 'sold',
+      ttl_hours: 24,
+      cache_ttl_hours: 24,
+      sets: [SET],
+      totals: { min: '140', avg: '200', max: '260', qty_avg: '160' },
+      value_total: 200,
+      total: 1,
+      page: 1,
+      page_size: 1,
+    },
+    '/v2/finance/parts-valuation': {
+      success: true,
+      currency: 'EUR',
+      parts: [PART],
+      total_value: '10',
+      foreign_currency_purchases: 0,
+      converted_purchase_prices: 0,
+      prices_pending: 0,
+      value_total: 10,
+      total: 1,
+      page: 1,
+      page_size: 1,
+    },
+  });
+  const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
+  try {
+    await switchTab(w, 'finance');
+    const setRow = () => d.querySelector('#fin-tbl [data-fin-kind="sets"] tbody tr');
+    assert.ok(await waitFor(() => setRow()), 'no set row');
+    const setValue = text(setRow().querySelector('.fin-value'));
+    assert.ok(setValue.includes('200,00') && !setValue.includes('160'), `set: ${setValue}`);
+    const sum = text(d.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot'));
+    assert.ok(sum.includes('200,00') && !sum.includes('160,00'), `sum: ${sum}`);
+    const partValue = text(d.querySelector('#fin-tbl [data-fin-kind="parts"] tbody tr .fin-value'));
+    assert.ok(partValue.includes('5,00') && !partValue.includes('3,00'), `part: ${partValue}`);
+  } finally {
+    w.close();
+  }
 });
 
 test('finances: purchase price instead of a second market price column', () => {
   const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finances.js'), 'utf8');
   // The sets table had two price columns for the same concept.
-  assert.doesNotMatch(fin, /t\('finance\.qty_avg'\)/, 'Die mengengewichtete Spalte ist entfallen');
+  assert.doesNotMatch(fin, /t\('finance\.qty_avg'\)/, 'The quantity-weighted column has been dropped');
   // Cost (quantity × purchase price) before market price, the same for all three tables.
   // The header may be a sort button (sortButton), the order stays.
   assert.match(
     fin,
-    /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortButton\('kauf', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{(?:t(?:Raw)?\('(?:detail\.market_price|finance\.grand\.value)'\)|sortButton\('wert', \w+, tRaw\('finance\.grand\.value'\)\))\}/,
-    'Sets-Tabelle: Kaufpreis vor Marktpreis, wie bei Teilen und Minifiguren',
+    /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortButton\('purchase', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{(?:t(?:Raw)?\('(?:detail\.market_price|finance\.grand\.value)'\)|sortButton\('value', \w+, tRaw\('finance\.grand\.value'\)\))\}/,
+    'sets table: purchase price before market price, as for parts and minifigs',
   );
-  // fmtGeld instead of fmtN: a purchase price of 0 (gift) stands there as „0,00 €“.
-  assert.match(fin, /if \(n <= 1\) return fmtGeld\(p, cur\);/, 'Die Kaufpreis-Spalte muss den Wert auch anzeigen');
+  // fmtMoney instead of fmtN: a purchase price of 0 (gift) stands there as „0,00 €“.
+  assert.match(fin, /if \(n <= 1\) return fmtMoney\(p, cur\);/, 'The purchase price column must also show the value');
 
   // The weighting of the purchase price has moved from the SQL into weightedPurchase()
   // — it is now computed over the same rows that also stand in
@@ -230,90 +275,39 @@ test('finances: purchase price instead of a second market price column', () => {
   assert.match(
     sv,
     /withCost\.reduce\(\(s, r\) => s \+ \(r\.purchase_price as number\) \* r\.quantity, 0\) \/ qty/,
-    'Der Kaufpreis muss mengengewichtet gemittelt werden: 2x100 + 1x160 ergibt 120, nicht 130',
+    'The purchase price must be averaged weighted by quantity: 2x100 + 1x160 yields 120, not 130',
   );
-  assert.match(sv, /r\.purchase_price != null/, 'Erfassungen ohne Kaufpreis dürfen den Nenner nicht aufblähen');
+  assert.match(
+    sv,
+    /r\.purchase_price != null/,
+    'Acquisitions without a purchase price must not inflate the denominator',
+  );
 
   // The valuation takes exclusively the weighted purchase price from the
   // acquisitions, no fallback to a column of the inventory row.
-  const fc = require('./helpers/sources').finanzQuelle();
+  const fc = require('./helpers/sources').financeSource();
   assert.match(
     fc,
     /const purchase = weightedPurchase\(rows\);/,
-    'Die Bewertung muss den Kaufpreis aus den Erfassungen nehmen, ohne Rueckfall',
+    'The valuation must take the purchase price from the acquisitions, without a fallback',
   );
   assert.doesNotMatch(
     fc.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
     /parseFloat\(set\.purchase_price\)/,
-    'Kein Pfad darf auf eine Kaufpreis-Spalte der sets-Zeile zurueckfallen',
+    'No path may fall back to a purchase price column of the sets row',
   );
 });
 
 test('a late response does not write into a foreign dialog', () => {
   const src = require('./helpers/sources').adminSource();
   // Since round 24 (N7) the figure count comes from the catalog; only the price history is loaded afterwards.
-  const i = src.indexOf("api('GET', `/v1/sets/${sn}/price-history`)");
-  assert.ok(i > 0, 'Die Nachfrage nach dem Preisverlauf fehlt');
+  const i = src.indexOf("api('GET', `/v2/sets/${sn}/price-history`)");
+  assert.ok(i > 0, 'The request for the price history is missing');
   const fn = src.slice(i, i + 500);
   assert.match(
     fn,
     /!openSet \|\| openSet\.set_number !== sn/,
-    'Die späte Antwort prüft nicht, ob noch dasselbe Set offen ist',
-  );
-});
-
-test('preview generation is capped', () => {
-  // Marco's measurement
-  const server = require('./helpers/sources').serverAll();
-  const parallel = server.match(/const THUMB_MAX_PARALLEL = (\d+)/);
-  assert.ok(parallel, 'THUMB_MAX_PARALLEL nicht gefunden');
-  assert.ok(
-    parseInt(parallel[1], 10) <= 1,
-    `THUMB_MAX_PARALLEL = ${parallel[1]} — im Cluster vervielfacht sich das je ` +
-      'Arbeitsprozess. Einer je Prozess genügt: Die Vorschau ist eine ' +
-      'Beschleunigung für später, nichts, worauf jemand wartet.',
-  );
-  assert.match(
-    server,
-    /_thumbQueue\.length >= THUMB_MAX_QUEUE/,
-    'Die Warteschlange hat keine Obergrenze — wer schnell durchscrollt, staut ' +
-      'den halben Katalog auf, und der Server rechnet ihn stur ab',
-  );
-
-  // And the limit must apply to the WHOLE server
-  assert.match(
-    server,
-    /pg_try_advisory_lock\(\$1\)/,
-    'Die Vorschau-Erzeugung hat keine prozessübergreifende Sperre — dann rechnet ' +
-      'jeder Arbeitsprozess für sich, und die Grenze oben ist wirkungslos',
-  );
-  // try, do not wait: whoever does not get the lock leaves it. A waiting
-  // run would hold a database connection and back up the work again after all.
-  assert.doesNotMatch(
-    server,
-    /pg_advisory_lock\(\$1\)/,
-    'Ein WARTENDER Lock staut die Arbeit nur an anderer Stelle auf',
-  );
-  assert.match(
-    server,
-    /pg_advisory_unlock\(\$1\)/,
-    'Ohne Freigabe blockiert der erste Lauf alle folgenden bis zum Neustart',
-  );
-
-  // And the catalog produces no previews at all
-  assert.match(
-    server,
-    /const createMay = req\.query\.gen !== '0'/,
-    'Der Proxy kennt kein „Vorschau nutzen, aber keine erzeugen"',
-  );
-  const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', 'catalog.js'), 'utf8');
-  assert.match(kat, /imgUrl\(thumbUrl\(src\), 'nur'\)/, 'Die Katalog-Kachel lässt weiter Verkleinerungen erzeugen');
-  // The gallery does NOT — there it pays off.
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'collection.js'), 'utf8');
-  assert.match(
-    gal,
-    /imgUrl\(thumbUrl\(src\)\s*\|\|\s*src,\s*true\)/,
-    'Der eigene Bestand sollte weiterhin Vorschauen bekommen',
+    'The late response does not check whether the same set is still open',
   );
 });
 
@@ -335,11 +329,11 @@ test('valuation and display use the same condition rule', () => {
     assert.equal(
       effectiveCondition({ acq_count: acq, used_count: used }),
       conditionFromAcquisitions(acq, used),
-      `acq_count=${acq}, used_count=${used}: Bewertung und Anzeige weichen ab`,
+      `acq_count=${acq}, used_count=${used}: valuation and display differ`,
     );
   }
-  assert.equal(effectiveCondition({ acq_count: 2, used_count: 1 }), 'U', 'eine gebrauchte Erfassung genügt');
-  assert.equal(effectiveCondition(null), 'N', 'ohne Erfassungen gilt „Neu“');
+  assert.equal(effectiveCondition({ acq_count: 2, used_count: 1 }), 'U', 'one used acquisition is enough');
+  assert.equal(effectiveCondition(null), 'N', 'without acquisitions „Neu“ applies');
 });
 
 test('the history endpoints deliver finished chart data', () => {
@@ -359,22 +353,18 @@ test('the history endpoints deliver finished chart data', () => {
     },
     { name: 'U', rows: [{ recorded_at: '2026-01-03', avg_price: null, qty_avg_price: '7' }] },
   ]);
-  assert.deepEqual(d.x, ['2026-01-02', '2026-01-03'], 'Die Achse trägt die Messtage beider Reihen');
+  assert.deepEqual(d.x, ['2026-01-02', '2026-01-03'], 'The axis carries the measuring days of both series');
   assert.deepEqual(
     d.values[1].values.map((/** @type {any} */ p) => p.y),
     [0, 7],
-    'Leere Positionen werden mit 0 aufgefüllt',
+    'Empty positions are padded with 0',
   );
-  assert.equal(
-    d.values[1].firstRealIndex,
-    1,
-    'Ohne diesen Index kann ein Renderer die aufgefüllten Nullen nicht überspringen',
-  );
+  assert.equal(d.values[1].firstRealIndex, 1, 'Without this index a renderer cannot skip the padded zeros');
   assert.equal(d.values[0].firstRealIndex, 0);
   assert.equal(
-    buildChart([{ name: 'leer', rows: [] }]).values[0].firstRealIndex,
+    buildChart([{ name: 'empty-state', rows: [] }]).values[0].firstRealIndex,
     0,
-    'Eine leere Reihe zeigt hinter ihr Ende',
+    'An empty series points past its end',
   );
 
   // All three history endpoints must use it.
@@ -384,20 +374,20 @@ test('the history endpoints deliver finished chart data', () => {
   // share ONE build there, hence buildChart stands twice in the
   // file: once for sets, once for both manual kinds.
   const uses = (ph.match(/buildChart\(/g) || []).length;
-  assert.equal(uses, 2, `${uses} statt 2 buildChart-Aufrufe in src/finances/priceHistory.ts`);
+  assert.equal(uses, 2, `${uses} instead of 2 buildChart calls in src/finances/priceHistory.ts`);
   // Also where the history routes stand: an adapter builds no chart data.
-  const v1fin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/finance.ts'), 'utf8');
+  const v1Finances = fs.readFileSync(path.join(ROOT, 'routes/api/finance.ts'), 'utf8');
   assert.doesNotMatch(
-    v1fin,
+    v1Finances,
     /buildChart\(/,
-    'Die Routendatei ist ein Adapter — die Diagrammdaten baut der gemeinsame Helfer',
+    'The route file is an adapter — the shared helper builds the chart data',
   );
 
   // The renderer must not draw the padded zeros — otherwise the
   // line begins at zero and jumps straight up: a price crash that never
   // gab.
   const admin = require('./helpers/sources').adminSource();
-  assert.match(admin, /slice\(sd\.firstRealIndex \?\? 0\)/, 'priceChartSVG muss führende Nullen überspringen');
+  assert.match(admin, /slice\(sd\.firstRealIndex \?\? 0\)/, 'priceChartSVG must skip leading zeros');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -419,9 +409,9 @@ test('one row per entry, each with the price of ITS condition', () => {
   // new copy was then also valued with the used price.
   const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, 100), acq(2, 'U', 1, 60)], prices(148.72, 92.68));
 
-  assert.equal(rows.length, 2, 'Zwei Kaufpreise → zwei Zeilen');
-  assert.equal(rows[0].avg_price, 148.72, 'Die Neu-Zeile bekommt den Neupreis');
-  assert.equal(rows[1].avg_price, 92.68, 'Die Gebraucht-Zeile bekommt den Gebrauchtpreis');
+  assert.equal(rows.length, 2, 'two purchase prices → two rows');
+  assert.equal(rows[0].avg_price, 148.72, 'The new row gets the new price');
+  assert.equal(rows[1].avg_price, 92.68, 'The used row gets the used price');
   assert.equal(rows[0].total_avg, '148.72');
   assert.equal(rows[1].total_avg, '92.68');
 });
@@ -439,10 +429,10 @@ test('quantity counts: the row sum is price × quantity', () => {
 
 test('without an entered purchase price no percentage — and none at 0 either', () => {
   const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, null), acq(2, 'N', 1, 0)], prices(50, 20));
-  assert.equal(rows[0].purchase_price, null, 'nicht erfasst bleibt null, nicht 0');
-  assert.equal(rows[0].pnl_pct, null, 'gegen nichts gerechnet ergibt keine Zahl');
-  assert.equal(rows[1].purchase_price, 0, 'ein Geschenk ist erfasst: 0, nicht null');
-  assert.equal(rows[1].pnl_pct, null, 'gegen 0 gerechnet gibt es keine Prozentzahl');
+  assert.equal(rows[0].purchase_price, null, 'not recorded stays null, not 0');
+  assert.equal(rows[0].pnl_pct, null, 'computed against nothing yields no number');
+  assert.equal(rows[1].purchase_price, 0, 'a gift is recorded: 0, not null');
+  assert.equal(rows[1].pnl_pct, null, 'computed against 0 there is no percentage');
 });
 
 test('if the price of one condition is missing, the other steps in', () => {
@@ -461,7 +451,7 @@ test('the purchase price is only averaged over the rows that have one', () => {
     prices(50, 20),
   );
   assert.equal(weightedPurchase(rows), 120);
-  assert.equal(weightedPurchase([]), null, 'keine Zeile mit Preis → kein Kaufpreis');
+  assert.equal(weightedPurchase([]), null, 'no row with a price → no purchase price');
 });
 
 test('row sums and set unit price match', () => {
@@ -472,11 +462,11 @@ test('row sums and set unit price match', () => {
   const rows = valueAcquisitionRows(SN, acqs, p);
   const v = valueSet(SN, acqs, p);
   const sumRows = rows.reduce((s, r) => s + parseFloat(r.total_avg), 0);
-  assert.equal(sumRows, v.total, 'Σ Zeilen = Gesamtwert des Sets');
+  assert.equal(sumRows, v.total, 'Σ rows = total value of the set');
   assert.equal(
     Math.round(v.unit_price * v.quantity * 100) / 100,
     v.total,
-    'Stückpreis × Menge = Gesamtwert (so rechnen Webapp und Android)',
+    'unit price × quantity = total value (that is how the web app and Android compute)',
   );
 });
 

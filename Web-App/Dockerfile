@@ -73,15 +73,15 @@ COPY --from=builder /app/dist ./dist/
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/public ./public/
 
-COPY docker-entrypoint.sh schluessel-anlegen.sh daten-rechte.sh ./
+COPY docker-entrypoint.sh create-keys.sh data-permissions.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 # ── App ───────────────────────────────────────────────────────────────────────
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NODE_OPTIONS="--max-old-space-size=384"
-# Ein Prozess für Web und Jobs; compose.yaml teilt sie mit ROLLE=web und ROLLE=jobs.
-ENV ROLLE=beides
+# Ein Prozess für Web und Jobs; compose.yaml teilt sie mit ROLE=web und ROLE=jobs.
+ENV ROLE=beides
 
 # ── Datenbank ─────────────────────────────────────────────────────────────────
 ENV PGHOST=postgres

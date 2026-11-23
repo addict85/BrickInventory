@@ -1,0 +1,17 @@
+Gegenprobe: istKlartextDatenbank prüft den Dateikopf nicht mehr; jede Datei gälte als Klartext
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.InventoryKeyTest
+Rot: the database gets a ready key and recognizes plaintext
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/StockEncryption.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/StockEncryption.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/StockEncryption.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/StockEncryption.kt
+@@ -87,7 +87,7 @@
+     if (!file.isFile || file.length() < HEADER.size) return false
+     val begin = ByteArray(HEADER.size)
+     file.inputStream().use { if (it.read(begin) != HEADER.size) return false }
+-    return begin.contentEquals(HEADER)
++    return true
+ }
+ 
+ private val HEADER = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)

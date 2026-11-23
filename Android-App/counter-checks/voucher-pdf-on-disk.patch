@@ -1,0 +1,17 @@
+Gegenprobe: ein Gutschein-PDF bekommt wieder eine Datei im Zwischenspeicher (Stand vor sec11 N1)
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherPdfStoreTest
+Rot: a voucher PDF gets no file, an instruction lies in the cache
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
+@@ -42,7 +42,7 @@
+  * (hashCode) two addresses would easily share a file.
+  */
+ fun pdfStore(cacheDir: File, pdfUrl: String, confidential: Boolean): File? {
+-    if (confidential) return null
++    if (confidential) return File(cacheDir, "pdfview_vertraulich.pdf")
+     val hash = java.security.MessageDigest.getInstance("SHA-256").digest(pdfUrl.toByteArray())
+     return File(cacheDir, INSTRUCTION_PREFIX + hash.joinToString("") { "%02x".format(it) } + INSTRUCTION_EXTENSION)
+ }

@@ -1,0 +1,17 @@
+Gegenprobe: Der Einstieg der Meldungen ist exportiert
+Modul: app
+Test: ch.brickinventoryapp.app.ForeignEntryTest
+Rot: the entry point of the notifications is not exported
+
+diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml
+--- a/Android-App/app/src/main/AndroidManifest.xml
++++ b/Android-App/app/src/main/AndroidManifest.xml
+@@ -256,7 +256,7 @@
+         -->
+         <activity
+             android:name=".app.MessageEntryPoint"
+-            android:exported="false"
++            android:exported="true"
+             android:taskAffinity=""
+             android:excludeFromRecents="true"
+             android:noHistory="true"

@@ -30,7 +30,7 @@ const MIGRATION = fs.readFileSync(
   'utf8',
 );
 const SCHEMA = `probe0109_${process.pid}`;
-const TABELLEN = [
+const TABLES = [
   'wanted',
   'price_alerts',
   'price_cache',
@@ -57,7 +57,7 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
     await c.query(`CREATE SCHEMA ${SCHEMA}`);
     await c.query(`SET search_path TO ${SCHEMA}, public`);
     // Without today's checks: defaults and indexes, no CHECKs.
-    for (const tab of TABELLEN)
+    for (const tab of TABLES)
       await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING DEFAULTS INCLUDING INDEXES)`);
     // State before 0124: migration 0109 only knows the names of back then.
     await c.query(`ALTER TABLE price_alerts RENAME COLUMN direction TO richtung;
@@ -70,7 +70,7 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
     await c.query(`INSERT INTO wanted (user_id, set_number, condition) VALUES
       (1, '1-1', 'n'), (1, '1-1', 'N'), (1, '2-1', 'u '), (1, '3-1', 'x'), (1, '4-1', 'n'), (1, '4-1', ' n')`);
     await c.query(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
-                   VALUES (1, '1-1', 'u', 'unter', 5, 'EUR'), (1, '2-1', '?', 'unter', 5, 'EUR')`);
+                   VALUES (1, '1-1', 'u', 'below', 5, 'EUR'), (1, '2-1', '?', 'below', 5, 'EUR')`);
     await c.query(`INSERT INTO price_cache (set_number, condition, currency_code) VALUES
       ('1-1', 'N', 'EUR'), ('1-1', 'n', 'EUR')`);
     await c.query(`INSERT INTO auftraege (art) VALUES ('preise'), ('verschwunden')`);
@@ -95,8 +95,8 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
     });
 
     await tt.test('jobs and pauses of unknown kind drop', async () => {
-      assert.deepEqual((await c.query('SELECT art FROM auftraege')).rows, [{ art: 'preise' }]);
-      assert.deepEqual((await c.query('SELECT art FROM auftrag_pausen')).rows, [{ art: 'preise' }]);
+      assert.deepEqual((await c.query('SELECT art AS kind FROM auftraege')).rows, [{ kind: 'preise' }]);
+      assert.deepEqual((await c.query('SELECT art AS kind FROM auftrag_pausen')).rows, [{ kind: 'preise' }]);
     });
 
     await tt.test('afterwards the schema rejects unknown values', async () => {
@@ -110,13 +110,13 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
   });
 
   await t.test('job_types knows exactly the registered kinds', async () => {
-    const angemeldet = require('./helpers/sources')
+    const signedIn = require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
-      .map(a => a.art);
+      .map(a => a.kind);
     const inDb = (await db.all('SELECT type FROM job_types ORDER BY type')).map(z => z.type);
-    assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet`);
-    assert.deepEqual(inDb, [...angemeldet].sort());
+    assert.ok(signedIn.length > 15, `only ${signedIn.length} kinds registered`);
+    assert.deepEqual(inDb, [...signedIn].sort());
   });
 
   await t.test('a condition other than N and U is rejected', async () => {
@@ -125,11 +125,11 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
         tab === 'wanted'
           ? `INSERT INTO wanted (user_id, set_number, condition) VALUES ((SELECT min(id) FROM users), '9-1', 'n')`
           : `INSERT INTO price_cache (set_number, condition, currency_code) VALUES ('9-1', 'n', 'EUR')`;
-      await assert.rejects(db.run(sql), new RegExp(`${tab}_zustand`));
+      await assert.rejects(db.run(sql), new RegExp(`${tab}_condition`));
     }
   });
 
   await t.test('an unknown job kind is rejected', async () => {
-    await assert.rejects(db.run(`INSERT INTO jobs (type) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
+    await assert.rejects(db.run(`INSERT INTO jobs (type) VALUES ('gibt_es_nicht')`), /jobs_type_fkey/);
   });
 });

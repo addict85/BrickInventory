@@ -8,7 +8,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 async function dbReachable() {
@@ -24,19 +24,19 @@ async function dbReachable() {
 async function holdAs(fremder, ns) {
   const client = await db.pool.connect();
   const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [ns]);
-  assert.equal(rows[0].ok, true, `${fremder}: Sperre ${ns} war schon belegt`);
+  assert.equal(rows[0].ok, true, `${fremder}: lock ${ns} was already taken`);
   return async () => {
     await client.query('SELECT pg_advisory_unlock($1, 0)', [ns]).catch(() => {});
     client.release();
   };
 }
 
-const REDL_LOCK = 57;
+const REDOWNLOAD_LOCK = 57;
 
 test('job locks work across process boundaries', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
 
@@ -56,19 +56,19 @@ test('job locks work across process boundaries', async t => {
   await t.test('the image follow-up run does not start twice', async () => {
     const enrich = _req('src/catalog/partsEnrichment.js');
     // Counter-check: without a foreign lock it runs through (empty catalog → 0 missing).
-    const frei = await enrich.redownloadMissingImages();
-    assert.equal(frei.alreadyRunning, undefined, 'Lauf wurde ohne fremde Sperre abgewiesen');
+    const free = await enrich.redownloadMissingImages();
+    assert.equal(free.alreadyRunning, undefined, 'Run was rejected without a foreign lock');
 
-    const freigeben = await holdAs('zweiter Worker', REDL_LOCK);
+    const release = await holdAs('zweiter Worker', REDOWNLOAD_LOCK);
     try {
-      const gesperrt = await enrich.redownloadMissingImages();
+      const locked = await enrich.redownloadMissingImages();
       assert.equal(
-        gesperrt.alreadyRunning,
+        locked.alreadyRunning,
         true,
-        'zweiter Lauf gestartet — dieselben Bilder würden doppelt vom CDN geladen',
+        'second run started — the same images would be loaded twice from the CDN',
       );
     } finally {
-      await freigeben();
+      await release();
     }
   });
 

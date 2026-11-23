@@ -1,0 +1,19 @@
+Gegenprobe: Noppe im Dunkeln wieder mit dem roten primaryContainer der Tokens (#2a1415)
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.RedOnlyForWarningTest
+Rot: value and state surfaces are never red
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -334,9 +334,7 @@
+         // Like light: `noppe` red is barely distinguishable from the error color in the dark.
+         // Main color becomes the blue of the chart line, the containers take the blue steps
+         // from classic, and the accent stays the amber of the base.
+-        if (theme == Design.STUD || theme == Design.GLOSSY) it.copy(primary = Color(0xFF6AA8FF),
+-            primaryContainer = Color(argb(darkToken(Design.CLASSIC, "b50") ?: "#13233d")),
+-            onPrimaryContainer = Color(argb(darkToken(Design.CLASSIC, "b700") ?: "#a9caff")))
++        if (theme == Design.STUD || theme == Design.GLOSSY) it.copy(primary = Color(0xFF6AA8FF))
+         else it
+     }, dark = true)
+     else when (theme) {

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.catalog
 
-import ch.brickinventoryapp.model.domain.JahrAnzahlAnsicht
 import ch.brickinventoryapp.catalog.ui.CatalogYearMath
+import ch.brickinventoryapp.model.domain.YearCountView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -23,7 +23,7 @@ import org.junit.Test
  * therefore STILL in the newest year — calculated linearly, that spot would give
  * the oldest.
  *
- * The same calculation lives in the web app (js/katalog.js → _jahrAnPosition).
+ * The same calculation lives in the web app (`js/katalog.js` → _jahrAnPosition).
  * Web-App/test/catalog-frontend.test.js checks, across both source trees, that
  * both have it and neither estimates linearly.
  */
@@ -34,45 +34,45 @@ class CatalogYearMathTest {
 
     /** Newest first — the same order the list is in. */
     private val DISTRIBUTION = listOf(
-        JahrAnzahlAnsicht(2024, 90),
-        JahrAnzahlAnsicht(2010, 7),
-        JahrAnzahlAnsicht(1965, 3),
+        YearCountView(2024, 90),
+        YearCountView(2010, 7),
+        YearCountView(1965, 3),
     )
     private val TOTAL = 100
 
-    private fun jahr(share: Float) = CatalogYearMath.yearAnPosition(share, TOTAL, DISTRIBUTION)
+    private fun year(share: Float) = CatalogYearMath.yearAnPosition(share, TOTAL, DISTRIBUTION)
 
     @Test
     fun `nine tenths down is not yet at the oldest year`() {
         // Linear would give 1965 here. In fact the
         // 2024 year goes up to running number 89, and 0.9 * 99 = 89.
-        assertEquals(2024, jahr(0.9f))
+        assertEquals(2024, year(0.9f))
     }
 
     @Test
     fun `the edges hit the first and the last year`() {
-        assertEquals(2024, jahr(0f))
-        assertEquals(1965, jahr(1f))
+        assertEquals(2024, year(0f))
+        assertEquals(1965, year(1f))
         // Clamped outside the range, not computed.
-        assertEquals(2024, jahr(-2f))
-        assertEquals(1965, jahr(5f))
+        assertEquals(2024, year(-2f))
+        assertEquals(1965, year(5f))
     }
 
     @Test
     fun `the boundary between two years lies at the right number`() {
         // Number 89 is the last of 2024, number 90 the first of 2010.
         assertEquals(89, CatalogYearMath.numberFrom(0.9f, TOTAL))
-        assertEquals(2024, jahr(89f / 99f))
-        assertEquals(2010, jahr(90f / 99f))
+        assertEquals(2024, year(89f / 99f))
+        assertEquals(2010, year(90f / 99f))
     }
 
     @Test
     fun `the year falls with the position - never the other way round`() {
-        var vorher = Int.MAX_VALUE
+        var before = Int.MAX_VALUE
         for (i in 0..100) {
-            val j = jahr(i / 100f)!!
-            assertTrue("Bei $i% springt das Jahr zurück: $vorher -> $j", j <= vorher)
-            vorher = j
+            val j = year(i / 100f)!!
+            assertTrue("at $i% the year jumps back: $before -> $j", j <= before)
+            before = j
         }
     }
 
@@ -93,12 +93,12 @@ class CatalogYearMathTest {
 
     @Test
     fun `touch and handle position are inverse to each other`() {
-        for (prozent in 0..100) {
-            val share = prozent / 100f
+        for (percent in 0..100) {
+            val share = percent / 100f
             val offset = CatalogYearMath.thumbOffset(share, H, T)
             // Die Griffmitte an dieser Stelle ergibt wieder denselben Anteil.
-            val zurueck = CatalogYearMath.shareFrom(offset + T / 2f, H, T)
-            assertEquals("Anteil $share", share, zurueck, 0.002f)
+            val back = CatalogYearMath.shareFrom(offset + T / 2f, H, T)
+            assertEquals("share $share", share, back, 0.002f)
         }
         assertEquals(0, CatalogYearMath.thumbOffset(0f, H, T))
         assertEquals(H - T, CatalogYearMath.thumbOffset(1f, H, T))
@@ -107,10 +107,10 @@ class CatalogYearMathTest {
     @Test
     fun `number and share are inverse to each other`() {
         for (n in 0 until TOTAL) {
-            assertEquals(n, CatalogYearMath.numberFrom(CatalogYearMath.anteilAusNummer(n, TOTAL), TOTAL))
+            assertEquals(n, CatalogYearMath.numberFrom(CatalogYearMath.shareFromNumber(n, TOTAL), TOTAL))
         }
         // A list with a single entry has no span.
-        assertEquals(0f, CatalogYearMath.anteilAusNummer(0, 1), 0f)
+        assertEquals(0f, CatalogYearMath.shareFromNumber(0, 1), 0f)
         assertEquals(0, CatalogYearMath.numberFrom(0.5f, 0))
     }
 

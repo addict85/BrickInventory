@@ -23,7 +23,7 @@ const db = testData();
 const { changeManualPart } = _req('src/parts/manualParts.js');
 
 const NAME = `kuerzen_${process.pid}`,
-  TEIL = '3001kz';
+  PART = '3001kz';
 
 test('trimming works completely or not at all', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -36,18 +36,18 @@ test('trimming works completely or not at all', { concurrency: 1 }, async t => {
       [NAME],
     )
   ).id;
-  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, TEIL]);
+  await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, PART]);
   const alt = (
     await db.get(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, created_at)
                              VALUES ($1, $2, 5, 3, NOW() - INTERVAL '3 days') RETURNING id`,
-      [uid, TEIL],
+      [uid, PART],
     )
   ).id;
   await db.run(
     `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, created_at)
                 VALUES ($1, $2, 5, 2, NOW() - INTERVAL '1 day')`,
-    [uid, TEIL],
+    [uid, PART],
   );
   const fn = `kuerzen_sperre_${process.pid}`;
   await db.run(`CREATE FUNCTION ${fn}() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -60,21 +60,21 @@ test('trimming works completely or not at all', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const erfassungen = async () =>
+  const acqList = async () =>
     (await db.all('SELECT quantity FROM part_acquisitions WHERE user_id = $1 ORDER BY created_at', [uid])).map(
       r => r.quantity,
     );
 
   await t.test('nothing half trimmed', async () => {
-    assert.deepEqual(await erfassungen(), [3, 2], 'Vorbedingung');
+    assert.deepEqual(await acqList(), [3, 2], 'Vorbedingung');
     // 5 → 1: the newer one (2) gone, shorten the older one by 2 — there the trigger applies.
-    await assert.rejects(changeManualPart(uid, TEIL, 5, { quantity: 1 }), /erzwungener Fehler/);
-    assert.deepEqual(await erfassungen(), [3, 2], 'Die neuere Erfassung ist weg, die ältere nicht gekürzt');
+    await assert.rejects(changeManualPart(uid, PART, 5, { quantity: 1 }), /erzwungener Fehler/);
+    assert.deepEqual(await acqList(), [3, 2], 'The newer acquisition is gone, the older one not shortened');
   });
 
   await t.test('without errors trimming happens', async () => {
     await db.run(`DROP TRIGGER ${fn} ON part_acquisitions`);
-    await changeManualPart(uid, TEIL, 5, { quantity: 1 });
-    assert.deepEqual(await erfassungen(), [1]);
+    await changeManualPart(uid, PART, 5, { quantity: 1 });
+    assert.deepEqual(await acqList(), [1]);
   });
 });

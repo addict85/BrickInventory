@@ -16,12 +16,12 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The light falloff of a glossy surface — light at the top, shadow at the bottom, the same
- * stops as in themes/hochglanz.css. The light rim is narrow (0.34 at 30%),
+ * stops as in `themes/hochglanz.css`. The light rim is narrow (0.34 at 30%),
  * so it doesn't eat away the lid color on the phone; that color is the theme's
  * defining beat. Numbers instead of design-tokens.json, because a gradient of white and
  * black proportions is not a color, but sits on top of every base color.
  */
-val LackHistory = Brush.verticalGradient(
+val LacquerHistory = Brush.verticalGradient(
     0.00f to Color.White.copy(alpha = 0.34f),
     0.30f to Color.White.copy(alpha = 0.10f),
     0.62f to Color.Black.copy(alpha = 0.10f),
@@ -30,13 +30,13 @@ val LackHistory = Brush.verticalGradient(
 
 /**
  * The shape of a stud: flush at the bottom with the lid, round at the
- * top — the same as `--studs-form` in styles.css, in one place.
+ * top — the same as `--studs-form` in `styles.css`, in one place.
  */
 val StudsForm = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
 
 /**
  * The light falloff on the brick edge, the same stops as `.sc::before` in
- * themes/brick.css. Weaker than LackHistory, because the brick theme is matte
+ * `themes/brick.css`. Weaker than LacquerHistory, because the brick theme is matte
  * plastic; without it the edge would be flat.
  */
 val BrickEdgesHistory = Brush.verticalGradient(
@@ -54,9 +54,9 @@ data class StudsMass(
     /** Height of the edge as a whole — `height` of the ::before rule in the CSS. */
     val edgeHeight: Dp,
     /** Distance from stud center to stud center — `mask-size` in the CSS. */
-    val takt: Dp,
-    val breite: Dp,
-    val hoehe: Dp,
+    val tick: Dp,
+    val width: Dp,
+    val height: Dp,
     /** Inset left and right — `left`/`right` in the CSS. */
     val edge: Dp,
     /**
@@ -64,29 +64,29 @@ data class StudsMass(
      * stick out as on a real brick; then the row is drawn outside the card
      * (StudsSeries).
      */
-    val oben: Dp,
-    /** Does the row fill the whole width? Otherwise `anzahl` pieces apply. */
+    val top: Dp,
+    /** Does the row fill the whole width? Otherwise `count` pieces apply. */
     val filling: Boolean,
-    val anzahl: Int = 4,
+    val count: Int = 4,
 ) {
     /** Does the row stick out past the edge? Then it doesn't belong inside the card. */
-    val overhanging: Boolean get() = oben < 0.dp
+    val overhanging: Boolean get() = top < 0.dp
 
     companion object {
-        /** themes/brick.css: one row across the whole edge, beat 17. */
-        val Stein = StudsMass(edgeHeight = 22.dp, takt = 17.dp, breite = 10.dp,
-                               hoehe = 6.dp, edge = 10.dp, oben = (-6).dp, filling = true)
+        /** `themes/brick.css`: one row across the whole edge, beat 17. */
+        val Brick = StudsMass(edgeHeight = 22.dp, tick = 17.dp, width = 10.dp,
+                               height = 6.dp, edge = 10.dp, top = (-6).dp, filling = true)
 
-        /** themes/noppe.css: four studs on the lid, beat 22. */
-        val Deckel = StudsMass(edgeHeight = 16.dp, takt = 22.dp, breite = 14.dp,
-                                hoehe = 7.dp, edge = 12.dp, oben = 6.dp, filling = false, anzahl = 4)
+        /** `themes/noppe.css`: four studs on the lid, beat 22. */
+        val Lid = StudsMass(edgeHeight = 16.dp, tick = 22.dp, width = 14.dp,
+                                height = 7.dp, edge = 12.dp, top = 6.dp, filling = false, count = 4)
     }
 }
 
 /**
  * Stud lid for brick cards: a narrow colored strip with studs; the
  * card's clipping rounds it off at the top. A stud is a rectangle with a round
- * top edge, as in themes/noppe.css (13 × 6, radius 4, spacing 7). `gloss` curves
+ * top edge, as in `themes/noppe.css` (13 × 6, radius 4, spacing 7). `gloss` curves
  * the lid — a parameter instead of a second building block, because it's the same
  * lid in a different material.
  */
@@ -97,18 +97,18 @@ fun BrickStudCap(
     /** Without one given, the height from `mass` — then no number sits at the call site. */
     height: Dp? = null,
     gloss: Boolean = false,
-    mass: StudsMass = StudsMass.Deckel,
+    mass: StudsMass = StudsMass.Lid,
     studsColor: Color? = null,
     /** Light falloff over the base color — see BrickEdgesHistory. */
-    verlauf: Brush? = null,
+    history: Brush? = null,
 ) {
     Box(
         modifier
             .fillMaxWidth()
             .height(height ?: mass.edgeHeight)
             .background(color)
-            .then(if (verlauf != null) Modifier.background(verlauf) else Modifier)
-            .then(if (gloss) Modifier.background(LackHistory) else Modifier)
+            .then(if (history != null) Modifier.background(history) else Modifier)
+            .then(if (gloss) Modifier.background(LacquerHistory) else Modifier)
     ) {
         // If the row sticks out past the edge, it doesn't belong here: a
         // Material Card clips to its shape, and the studs would be gone. The
@@ -116,8 +116,8 @@ fun BrickStudCap(
         if (!mass.overhanging) {
             StudsSeries(
                 mass = mass,
-                modifier = Modifier.align(Alignment.TopStart).offset(y = mass.oben),
-                farbe = studsColor,
+                modifier = Modifier.align(Alignment.TopStart).offset(y = mass.top),
+                color = studsColor,
                 gloss = gloss,
             )
         }
@@ -133,24 +133,24 @@ fun BrickStudCap(
 fun StudsSeries(
     mass: StudsMass,
     modifier: Modifier = Modifier,
-    farbe: Color? = null,
+    color: Color? = null,
     gloss: Boolean = false,
 ) {
-    BoxWithConstraints(modifier.fillMaxWidth().height(mass.hoehe)) {
+    BoxWithConstraints(modifier.fillMaxWidth().height(mass.height)) {
         // How many studs fit on the edge? In the CSS,
         // `mask-repeat:repeat-x` computes this on its own; here it needs the width,
         // and that only exists once measured. BoxWithConstraints exists for exactly this.
-        val anzahl =
-            if (mass.filling) (((maxWidth - mass.edge * 2) / mass.takt).toInt()).coerceAtLeast(1)
-            else mass.anzahl
+        val count =
+            if (mass.filling) (((maxWidth - mass.edge * 2) / mass.tick).toInt()).coerceAtLeast(1)
+            else mass.count
         Row(
             Modifier.align(Alignment.TopStart).padding(start = mass.edge),
-            horizontalArrangement = Arrangement.spacedBy(mass.takt - mass.breite)
+            horizontalArrangement = Arrangement.spacedBy(mass.tick - mass.width)
         ) {
-            repeat(anzahl) {
+            repeat(count) {
                 Box(
                     Modifier
-                        .size(width = mass.breite, height = mass.hoehe)
+                        .size(width = mass.width, height = mass.height)
                         .clip(StudsForm)
                         // The dome: a highlight at the top instead of an evenly
                         // bright disc. The same radial gradient as
@@ -163,7 +163,7 @@ fun StudsSeries(
                                     1.00f to Color.White.copy(alpha = 0.18f),
                                 )
                             ) else Modifier.background(
-                                farbe ?: Color.White.copy(alpha = 0.55f)
+                                color ?: Color.White.copy(alpha = 0.55f)
                             )
                         )
                 )

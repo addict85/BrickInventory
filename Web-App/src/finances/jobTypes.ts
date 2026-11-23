@@ -1,36 +1,36 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { PricesReload } from './priceItems';
-import { preiseNachladen } from './reloadPrices';
+import { reloadPrices } from './reloadPrices';
 import { runPriceRefresh } from './priceRun';
-import { kursauftrag } from './exchangeRates';
+import { rateJob } from './exchangeRates';
 import type { FinancesContext } from './context';
 
-const LEER = z.object({});
+const EMPTY = z.object({});
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    wechselkurse: typeof LEER;
-    preise: typeof LEER;
+    exchange_rates: typeof EMPTY;
+    prices: typeof EMPTY;
   }
 }
 
-export function financesJobTypes(k: FinancesContext): Anmeldung[] {
+export function financesJobTypes(k: FinancesContext): Login[] {
   return [
-    auftragsart({ art: 'wechselkurse', nutzlast: LEER, ausfuehren: (_n, l) => kursauftrag(k, undefined, l) }),
-    auftragsart({
-      art: 'preise',
-      nutzlast: LEER,
-      ausfuehren: (_n, l) => runPriceRefresh(k, l),
-      exklusiv: true,
-      kontouebergreifend: 'Preise aller Sets',
-      zeitplan: { minuten: { setting: 'price_job_interval_minutes', vorgabe: 60, mindestens: 5 } },
+    jobKind({ kind: 'exchange_rates', payload: EMPTY, run: (_n, l) => rateJob(k, undefined, l) }),
+    jobKind({
+      kind: 'prices',
+      payload: EMPTY,
+      run: (_n, l) => runPriceRefresh(k, l),
+      exclusive: true,
+      crossAccount: 'Preise aller Sets',
+      schedule: { minutes: { setting: 'price_job_interval_minutes', preset: 60, atLeast: 5 } },
     }),
-    auftragsart({
-      art: 'preise_nachladen',
-      nutzlast: PricesReload,
-      ausfuehren: (n, l) => preiseNachladen(k, n, l),
-      exklusiv: true,
+    jobKind({
+      kind: 'price_refresh',
+      payload: PricesReload,
+      run: (n, l) => reloadPrices(k, n, l),
+      exclusive: true,
     }),
   ];
 }

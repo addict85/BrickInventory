@@ -24,13 +24,13 @@ test('without an entry no condition in the chart, the raw data stays', { concurr
   const { priceHistoryMinifig, statesForHistory } = _req('src/finances/priceHistory.js');
   const NAME = `verlauf-${process.pid}`,
     FN = `fig-vl${process.pid}`;
-  const weg = async () => {
+  const route = async () => {
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);
     await db.run('DELETE FROM minifig_price_history WHERE fig_number=$1', [FN]);
   };
-  await weg();
+  await route();
   t.after(async () => {
-    await weg().catch(() => {});
+    await route().catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -50,9 +50,9 @@ test('without an entry no condition in the chart, the raw data stays', { concurr
   assert.deepEqual(
     v.chart.values.map(s => s.name),
     ['U'],
-    'nur Gebraucht wird gezeichnet',
+    'only used is drawn',
   );
-  assert.equal(v.history_new.length, 1, 'die Rohdaten bleiben vollständig');
+  assert.equal(v.history_new.length, 1, 'the raw data stay complete');
   assert.equal(v.history_used.length, 2);
 
   // Without any acquisition the fallback applies: both conditions.

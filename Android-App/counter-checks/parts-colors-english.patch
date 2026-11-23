@@ -1,0 +1,26 @@
+Gegenprobe: Farbnamen unübersetzt und Teilenamen ohne Sprachauszeichnung
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: parts name colors in German and names as English
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
+@@ -24,7 +24,7 @@
+  */
+ @Composable
+ fun colorTranslator(): (String) -> String =
+-    if (german()) ColorGerman::translate else { name -> name }
++    { name -> name }
+ 
+ /** Part categories in the app's language, like the colors next to them („Steine“ instead of „Bricks“). */
+ @Composable
+@@ -39,7 +39,7 @@
+  */
+ @Composable
+ fun catalogName(name: String): AnnotatedString =
+-    if (german()) AnnotatedString(name, SpanStyle(localeList = LocaleList("en"))) else AnnotatedString(name)
++    AnnotatedString(name)
+ 
+ /**
+  * „Name auf Englisch“ under a catalog name, only in a German UI: otherwise an English name

@@ -1,19 +1,19 @@
-import type { DbInterface, Treffer } from '../../../db/database';
-import { mengeSkalar } from '../../../db/stockQuantity';
-import { blJoin, blNummerSql } from '../../../db/blMappingSql';
-import type { CatalogPart, ListenTeil, SetMaster } from '../rows';
-import { setStammJoin, SET } from '../../../db/catalogView';
+import type { DbInterface, Hit } from '../../../db/database';
+import { quantityScalar } from '../../../db/stockQuantity';
+import { blJoin, blNumberSql } from '../../../db/blMappingSql';
+import type { CatalogPart, ListedPart, SetMaster } from '../rows';
+import { setMasterJoin, SET } from '../../../db/catalogView';
 
 /** Details from rb_sets, image and figures from set_catalog (0108). A placeholder
  * "Set …" only says that some account captured the number. */
-export function setStamm(db: DbInterface, setNumber: string) {
+export function setMaster(db: DbInterface, setNumber: string) {
   return db.get<SetMaster>(
-    `SELECT ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme,
-           ${SET.teile} AS pieces, c.minifigs, c.image_url, c.image_local,
-           ${SET.name} = 'Set ' || rs.set_num AND ${SET.jahr} IS NULL AND ${SET.thema} IS NULL
-             AND ${SET.teile} IS NULL AS platzhalter
+    `SELECT ${SET.name} AS name, ${SET.year} AS year, ${SET.theme} AS theme,
+           ${SET.parts} AS pieces, c.minifigs, c.image_url, c.image_local,
+           ${SET.name} = 'Set ' || rs.set_num AND ${SET.year} IS NULL AND ${SET.theme} IS NULL
+             AND ${SET.parts} IS NULL AS placeholder
       FROM (SELECT $1::text AS nr) x
-      ${setStammJoin('x.nr')}
+      ${setMasterJoin('x.nr')}
       LEFT JOIN set_catalog c ON c.set_number = x.nr
      WHERE rs.set_num IS NOT NULL`,
     [setNumber],
@@ -22,8 +22,8 @@ export function setStamm(db: DbInterface, setNumber: string) {
 
 export function setCatalog(db: DbInterface, setNumber: string) {
   return db.get<SetMaster>(
-    `SELECT ${SET.name} AS name, c.image_local, c.image_url, ${SET.jahr} AS year,
-           ${SET.teile} AS pieces, ${SET.thema} AS theme, c.minifigs
+    `SELECT ${SET.name} AS name, c.image_local, c.image_url, ${SET.year} AS year,
+           ${SET.parts} AS pieces, ${SET.theme} AS theme, c.minifigs
       FROM rb_sets rs LEFT JOIN rb_themes rt ON rt.id = rs.theme_id
       LEFT JOIN set_catalog c ON c.set_number = rs.set_num
      WHERE rs.set_num = $1`,
@@ -32,11 +32,11 @@ export function setCatalog(db: DbInterface, setNumber: string) {
 }
 
 /** Numbers that were already asked for (catalog_cache); the name is in rb_sets. */
-export function firstCatalogHits(db: DbInterface, nummern: string[]) {
+export function firstCatalogHits(db: DbInterface, numbers: string[]) {
   return db.get<{ set_number: string; name: string | null }>(
     `SELECT cc.set_number, rs.name FROM catalog_cache cc
       LEFT JOIN rb_sets rs ON rs.set_num = cc.set_number WHERE cc.set_number = ANY($1) LIMIT 1`,
-    [nummern],
+    [numbers],
   );
 }
 
@@ -46,7 +46,7 @@ export function catalogCacheAfterNumber(db: DbInterface, setNumber: string) {
 
 export function catalogPartsOfSets(db: DbInterface, setNumber: string) {
   return db.all<CatalogPart>(
-    `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
+    `SELECT c.part_number, c.color_id, ${blNumberSql('c.part_number')} AS bl_part_number,
             c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
        FROM set_parts_catalog c
        ${blJoin('c.part_number', 'part', null)}
@@ -56,7 +56,7 @@ export function catalogPartsOfSets(db: DbInterface, setNumber: string) {
 }
 
 export function inventoryPartsOfSets(db: DbInterface, invId: number) {
-  return db.all<ListenTeil>(
+  return db.all<ListedPart>(
     `SELECT ip.part_num AS part_number, ip.color_id, ip.quantity AS total_quantity, ip.is_spare,
               COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
               p.name AS part_name, p.part_img_url AS rb_image_url,
@@ -81,35 +81,35 @@ export function inventoryMinifigsOfSets(db: DbInterface, invId: number) {
   );
 }
 
-export function setInField(db: DbInterface, setNumber: string, blickfeld: number[]) {
-  return db.get<Treffer>('SELECT 1 AS da FROM sets WHERE set_number = $1 AND user_id = ANY($2) LIMIT 1', [
+export function setInField(db: DbInterface, setNumber: string, scope: number[]) {
+  return db.get<Hit>('SELECT 1 AS da FROM sets WHERE set_number = $1 AND user_id = ANY($2) LIMIT 1', [
     setNumber,
-    blickfeld,
+    scope,
   ]);
 }
 
 export function setsWithQuantity(db: DbInterface, uid: number) {
   return db.all<{ set_number: string; quantity: number }>(
-    `SELECT s.set_number, ${mengeSkalar('s')} AS quantity FROM sets s WHERE s.user_id=$1 ORDER BY s.set_number ASC`,
+    `SELECT s.set_number, ${quantityScalar('s')} AS quantity FROM sets s WHERE s.user_id=$1 ORDER BY s.set_number ASC`,
     [uid],
   );
 }
 
 export function setOfAccount(db: DbInterface, uid: number, setNumber: string) {
-  return db.get<Treffer>('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, setNumber]);
+  return db.get<Hit>('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, setNumber]);
 }
 
 export function addInstructionOne(
   db: DbInterface,
   uid: number,
   setNumber: string,
-  pfad: string,
-  beschreibung: string | null,
+  path: string,
+  description: string | null,
   localPath: string,
 ) {
   return db.run(
     'INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
-    [uid, setNumber, pfad, beschreibung, localPath],
+    [uid, setNumber, path, description, localPath],
   );
 }
 
@@ -120,10 +120,10 @@ export function instructionPath(db: DbInterface, id: number, uid: number) {
   ]);
 }
 
-export function loescheAnleitung(db: DbInterface, id: number, uid: number) {
+export function deleteInstructionRow(db: DbInterface, id: number, uid: number) {
   return db.run('DELETE FROM instructions WHERE id = $1 AND user_id = $2', [id, uid]);
 }
 
-export function instructionFileUsed(db: DbInterface, pfad: string) {
-  return db.get<Treffer>('SELECT 1 AS ok FROM instructions WHERE local_path = $1 LIMIT 1', [pfad]);
+export function instructionFileUsed(db: DbInterface, path: string) {
+  return db.get<Hit>('SELECT 1 AS ok FROM instructions WHERE local_path = $1 LIMIT 1', [path]);
 }

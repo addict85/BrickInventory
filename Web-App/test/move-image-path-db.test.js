@@ -1,5 +1,7 @@
 /**
  * After moving a set EVERY component in the target account has its image.
+ *
+ * Counter-check: in src/sets/setMove.ts copyContents() skipped → red “a moved set takes the image paths of all its components along”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,10 +15,10 @@ const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
 test('a moved set takes the image paths of all its components along', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const p = String(process.pid).slice(-5);
-  const VON = `mv_von_${p}`,
+  const FROM_VALUE = `mv_von_${p}`,
     NACH = `mv_nach_${p}`;
   const SN = `81${p}-1`,
     PN = `pt${p}`,
@@ -24,9 +26,9 @@ test('a moved set takes the image paths of all its components along', { concurre
   const PATH_PART = `/img/parts/${PN}.png`;
   const PATH_MINIFIG = `/img/minifigs/${FN}.png`;
 
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [VON, NACH]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [VON, NACH]);
-  const ofId = (await db.get(`SELECT id FROM users WHERE username=$1`, [VON])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [FROM_VALUE, NACH]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [FROM_VALUE, NACH]);
+  const ofId = (await db.get(`SELECT id FROM users WHERE username=$1`, [FROM_VALUE])).id;
   const nachId = (await db.get(`SELECT id FROM users WHERE username=$1`, [NACH])).id;
 
   try {
@@ -52,19 +54,19 @@ test('a moved set takes the image paths of all its components along', { concurre
                   ON CONFLICT (fig_number) DO UPDATE SET image_local=EXCLUDED.image_local`,
       [FN, PATH_MINIFIG],
     );
-    await holdsPart(db, ofId, PN, { setNumber: SN, menge: 2, colorId: 4 });
-    await holdsMinifig(db, ofId, FN, { setNumber: SN, menge: 1 });
+    await holdsPart(db, ofId, PN, { setNumber: SN, quantity: 2, colorId: 4 });
+    await holdsMinifig(db, ofId, FN, { setNumber: SN, quantity: 1 });
 
     // Like the collection: in one transaction via its context; two foreign accounts only in the system frame.
     const { inSystemContext } = _req('src/infra/accountContext.js');
-    const sammlung = require('./helpers/sources').testContext('collection');
-    await inSystemContext('Testdaten', () => sammlung.transaktion(tt => tt.sets.setEntriesReassign(SN, ofId, nachId)));
+    const collection = require('./helpers/sources').testContext('collection');
+    await inSystemContext('Testdaten', () => collection.transact(tt => tt.sets.setEntriesReassign(SN, ofId, nachId)));
 
     // Read via the same JOIN that the UIs use — i.e.
     // via the effect. A query on parts.image_local no longer exists,
     // and it would also be the wrong question: the user wants to see the image, and
     // whether it is copied or looked up does not matter to him.
-    const teil = await db.get(
+    const part = await db.get(
       `SELECT pcc.image_local
          FROM parts p
          LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
@@ -72,7 +74,7 @@ test('a moved set takes the image paths of all its components along', { concurre
         WHERE p.user_id=$1 AND p.part_number=$2`,
       [nachId, PN],
     );
-    const figur = await db.get(
+    const minifig = await db.get(
       `SELECT mc.image_local
          FROM minifigs m
          LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
@@ -80,29 +82,29 @@ test('a moved set takes the image paths of all its components along', { concurre
       [nachId, FN],
     );
 
-    assert.ok(teil, 'Das Teil ist im Zielkonto gar nicht angekommen');
-    assert.ok(figur, 'Die Minifigur ist im Zielkonto gar nicht angekommen');
+    assert.ok(part, 'The part never arrived in the target account');
+    assert.ok(minifig, 'The minifigure never arrived in the target account');
 
     assert.equal(
-      figur.image_local,
+      minifig.image_local,
       PATH_MINIFIG,
-      `Die verschobene Minifigur hat image_local=${figur.image_local} statt "${PATH_MINIFIG}". ` +
-        'Das Figurenbild ist im Zielkonto nicht sichtbar, und bis zum nächsten ' +
-        'Serverstart kommt es wieder über den Proxy vom CDN.',
+      `The moved minifigure has image_local=${minifig.image_local} instead of "${PATH_MINIFIG}". ` +
+        'The figure image is not visible in the target account, and until the next ' +
+        'server start it comes from the CDN through the proxy again.',
     );
     assert.equal(
-      teil.image_local,
+      part.image_local,
       PATH_PART,
-      `Das verschobene Teil hat image_local=${teil.image_local} statt "${PATH_PART}".`,
+      `The moved part has image_local=${part.image_local} instead of "${PATH_PART}".`,
     );
 
     // The actual rule: both branches deliver the same result.
     assert.deepEqual(
-      { teil: teil.image_local !== null, figur: figur.image_local !== null },
+      { teil: part.image_local !== null, figur: minifig.image_local !== null },
       { teil: true, figur: true },
-      'Teile und Minifiguren kommen beim Verschieben verschieden heraus — ' +
-        'copyContents() kopiert zwei Tabellen mit derselben Absicht, und bei ' +
-        'einer davon fehlt hinterher das Bild.',
+      'Parts and minifigures come out differently when moved — ' +
+        'copyContents() copies two tables with the same intent, and in ' +
+        'one of them the image is missing afterwards.',
     );
   } finally {
     for (const uid of [ofId, nachId]) {
@@ -111,7 +113,7 @@ test('a moved set takes the image paths of all its components along', { concurre
       await db.run(`DELETE FROM minifigs WHERE user_id=$1`, [uid]).catch(() => {});
       await db.run(`DELETE FROM sets WHERE user_id=$1`, [uid]).catch(() => {});
     }
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [VON, NACH]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [FROM_VALUE, NACH]).catch(() => {});
     // The catalog rows hang on no account and would otherwise remain.
     await db.run(`DELETE FROM part_color_catalog WHERE part_number=$1`, [PN]).catch(() => {});
     await db.run(`DELETE FROM minifigs_catalog WHERE fig_number=$1`, [FN]).catch(() => {});

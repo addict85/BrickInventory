@@ -1,5 +1,5 @@
 import { reportError } from '../infra/error';
-import { versuche } from '../infra/result';
+import { attempts } from '../infra/result';
 import type { ImagesContext } from './context';
 
 /** Remembered ONCE, for all processes; after a week the question is asked again. */
@@ -11,52 +11,52 @@ const REFRESH_MS = 5 * 60 * 1000;
 
 /** Per set of services. `reasons` separate, because isKnownMissing() is the hottest path;
  * `writeTo` buffers the table, otherwise a burst of 404s would be a burst of INSERTs. */
-const stand = (k: ImagesContext) =>
-  k.faecher.fach('fehlanzeige', () => ({
-    vorne: new Map<string, number>(),
+const state = (k: ImagesContext) =>
+  k.compartments.slot('fehlanzeige', () => ({
+    front: new Map<string, number>(),
     reasons: new Map<string, string>(),
     writeTo: new Map<string, string>(),
-    takte: [] as NodeJS.Timeout[],
+    ticks: [] as NodeJS.Timeout[],
   }));
 
 export async function setUpImageGaps(k: ImagesContext): Promise<void> {
-  const _ticks = stand(k).takte;
+  const _ticks = state(k).ticks;
   if (_ticks.length) return;
   // Process-local: must therefore run in EVERY worker process.
   _ticks.push(
     setInterval(() => {
-      auffrischen(k).catch(e => reportError('bild-fehlanzeige:auffrischen', e));
+      refresh(k).catch(e => reportError('bild-fehlanzeige:auffrischen', e));
     }, REFRESH_MS),
     setInterval(() => {
-      schreibePuffer(k).catch(e => reportError('bild-fehlanzeige:schreibePuffer', e));
+      writeBuffer(k).catch(e => reportError('bild-fehlanzeige:schreibePuffer', e));
     }, 10_000),
   );
   for (const t of _ticks) t.unref();
-  await auffrischen(k);
+  await refresh(k);
 }
 
 /** Before closing the pool: stop ticks, still write the remembered failures. */
 export async function stopNone(k: ImagesContext): Promise<void> {
-  for (const t of stand(k).takte.splice(0)) clearInterval(t);
-  await schreibePuffer(k);
+  for (const t of state(k).ticks.splice(0)) clearInterval(t);
+  await writeBuffer(k);
 }
 
 /** Synchronous and without database; at most one refresh interval old. */
 export function isKnownMissing(k: ImagesContext, key: string): boolean {
-  const _front = stand(k).vorne;
-  const vorne = _front.get(key);
-  if (vorne === undefined) return false;
-  if (k.uhr.jetzt() - vorne < AGAIN_CHECK_MS) return true;
+  const _front = state(k).front;
+  const front = _front.get(key);
+  if (front === undefined) return false;
+  if (k.clock.now() - front < AGAIN_CHECK_MS) return true;
   _front.delete(key);
   return false;
 }
 
-async function auffrischen(k: ImagesContext): Promise<void> {
+async function refresh(k: ImagesContext): Promise<void> {
   // Not readable: the previous state in memory stays until the next reconciliation succeeds.
-  const r = await versuche('bild-fehlanzeige:rows', k.bildFehlschlaege.freshFailures(String(AGAIN_CHECK_MS)));
+  const r = await attempts('bild-fehlanzeige:rows', k.imageFailures.freshFailures(String(AGAIN_CHECK_MS)));
   if (!r.ok) return;
-  const rows = r.wert;
-  const { vorne: _front, reasons: _reasons } = stand(k);
+  const rows = r.value;
+  const { front: _front, reasons: _reasons } = state(k);
   _front.clear();
   _reasons.clear();
   for (const r of rows) {
@@ -66,23 +66,21 @@ async function auffrischen(k: ImagesContext): Promise<void> {
 }
 
 /** Immediately in memory, buffered into the table (stand().writeTo). */
-export function rememberMissing(k: ImagesContext, key: string, grund = ''): void {
-  const { vorne: _front, reasons: _reasons, writeTo: _writeTo } = stand(k);
-  _front.set(key, k.uhr.jetzt());
-  if (grund) _reasons.set(key, grund);
-  _writeTo.set(key, grund);
+export function rememberMissing(k: ImagesContext, key: string, reason = ''): void {
+  const { front: _front, reasons: _reasons, writeTo: _writeTo } = state(k);
+  _front.set(key, k.clock.now());
+  if (reason) _reasons.set(key, reason);
+  _writeTo.set(key, reason);
 }
 
 export function reasonFor(k: ImagesContext, key: string): string {
-  return stand(k).reasons.get(key) || '';
+  return state(k).reasons.get(key) || '';
 }
 
 // The way back out of the block.
 export async function forgetMissing(kx: ImagesContext, keys?: string[]): Promise<number> {
-  const r = keys?.length
-    ? await kx.bildFehlschlaege.forgetFailures(keys)
-    : await kx.bildFehlschlaege.forgetAllFailures();
-  const { vorne: _front, reasons: _reasons, writeTo: _writeTo } = stand(kx);
+  const r = keys?.length ? await kx.imageFailures.forgetFailures(keys) : await kx.imageFailures.forgetAllFailures();
+  const { front: _front, reasons: _reasons, writeTo: _writeTo } = state(kx);
   if (keys?.length)
     for (const k of keys) {
       _front.delete(k);
@@ -97,13 +95,13 @@ export async function forgetMissing(kx: ImagesContext, keys?: string[]): Promise
   return r?.changes || 0;
 }
 
-async function schreibePuffer(kx: ImagesContext): Promise<void> {
-  const _writeTo = stand(kx).writeTo;
+async function writeBuffer(kx: ImagesContext): Promise<void> {
+  const _writeTo = state(kx).writeTo;
   if (!_writeTo.size) return;
   const keys = [..._writeTo.keys()];
   const reasons = keys.map(k => _writeTo.get(k) || '');
   _writeTo.clear();
-  await kx.bildFehlschlaege.rememberFailures(keys, reasons).catch(() => {
+  await kx.imageFailures.rememberFailures(keys, reasons).catch(() => {
     for (let i = 0; i < keys.length; i++) {
       const k = keys[i];
       if (k) _writeTo.set(k, reasons[i] ?? '');
@@ -112,7 +110,7 @@ async function schreibePuffer(kx: ImagesContext): Promise<void> {
 }
 
 export function _emptyForeground(k: ImagesContext): void {
-  stand(k).vorne.clear();
-  stand(k).reasons.clear();
+  state(k).front.clear();
+  state(k).reasons.clear();
 }
-export { schreibePuffer as _writeBuffer, auffrischen as _refresh };
+export { writeBuffer as _writeBuffer, refresh as _refresh };

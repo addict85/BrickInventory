@@ -1,0 +1,17 @@
+Gegenprobe: Die Ausgangsform folgt einer Umbenennung (set_number → setNumber); abgelegte Posten werden unlesbar
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.InitialFormTest
+Rot: reads and writes every frozen row of version 1 unchanged
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/InitialForm.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/InitialForm.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/InitialForm.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/InitialForm.kt
+@@ -123,7 +123,7 @@
+ 
+ @Serializable
+ internal data class SetRequestF1(
+-    @SerialName("set_number") val setNumber: String,
++    @SerialName("setNumber") val setNumber: String,
+     val quantity: Int = 1,
+     @SerialName("purchase_price") val purchasePrice: Double? = null,
+     val condition: Condition? = null,

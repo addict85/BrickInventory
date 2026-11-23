@@ -11,15 +11,15 @@ import {
   type WebAuthnCredential,
 } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
-import { basisUrl } from '../infra/basisUrl';
-import { fehlertext } from '../infra/error';
-import { fachfehler } from '../infra/errorTexts';
+import { baseUrl } from '../infra/baseUrl';
+import { errorMessage } from '../infra/error';
+import { failDomain } from '../infra/errorTexts';
 import { searchValue } from '../infra/secret';
 import type { FactorsContext } from './context';
 import { androidOrigins } from './androidApp';
 
 function rejected(e: unknown): null {
-  console.warn('[passkey] response rejected:', fehlertext(e));
+  console.warn('[passkey] response rejected:', errorMessage(e));
   return null;
 }
 
@@ -32,7 +32,7 @@ type Transports = NonNullable<WebAuthnCredential['transports']>;
 const transports = (s: string | null): { transports?: Transports } =>
   s ? { transports: s.split(',') as Transports } : {};
 
-export type PasskeyPurpose = 'registrieren' | 'anmelden' | 'zweiter_faktor';
+export type PasskeyPurpose = 'register' | 'login' | 'second_factor';
 
 /** The browser dialog runs for at most this long. */
 const CHALLENGE_MS = 5 * 60 * 1000;
@@ -40,7 +40,7 @@ const CHALLENGE_MS = 5 * 60 * 1000;
 /** A browser only allows WebAuthn for a domain name, not an IP address;
  * without a name there are no passkeys. */
 export function relyingParty(): { rpID: string; origin: string; rpName: string } | null {
-  const basis = basisUrl();
+  const basis = baseUrl();
   if (!basis) return null;
   const u = new URL(basis);
   if (/^\d+\.\d+\.\d+\.\d+$/.test(u.hostname) || u.hostname.startsWith('[')) return null;
@@ -53,7 +53,7 @@ const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
  * instead of a table that grows without bound. */
 export const MAX_OPEN_CHALLENGES = 5000;
 
-const PURPOSES: readonly PasskeyPurpose[] = ['registrieren', 'anmelden', 'zweiter_faktor'];
+const PURPOSES: readonly PasskeyPurpose[] = ['register', 'login', 'second_factor'];
 const signature = (content: Buffer) =>
   Buffer.from(searchValue('passkey-challenge', content.toString('base64url')), 'hex');
 
@@ -88,11 +88,11 @@ async function rememberChallenge(
       hash(challenge),
       purpose,
       uid,
-      new Date(k.uhr.jetzt() + CHALLENGE_MS),
+      new Date(k.clock.now() + CHALLENGE_MS),
       MAX_OPEN_CHALLENGES,
     ))
   )
-    fachfehler('nicht_verfuegbar', 'server_ausgelastet');
+    failDomain('unavailable', 'server_busy');
 }
 
 /** Exactly once: a repeated response no longer finds its row. */
@@ -119,8 +119,8 @@ const userHandle = (uid: number) =>
 export async function registrationOptions(k: FactorsContext, uid: number, name: string) {
   const rp = relyingParty();
   if (!rp) return null;
-  const vorhanden = await k.passkeys.accountCredentialIds(uid);
-  const optionen = await generateRegistrationOptions({
+  const present = await k.passkeys.accountCredentialIds(uid);
+  const options = await generateRegistrationOptions({
     rpName: rp.rpName,
     rpID: rp.rpID,
     userName: name,
@@ -128,10 +128,10 @@ export async function registrationOptions(k: FactorsContext, uid: number, name: 
     attestationType: 'none',
     // Discoverable, so these same passkeys can also log in without a username.
     authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
-    excludeCredentials: vorhanden.map(v => ({ id: v.credential_id, ...transports(v.transports) })),
+    excludeCredentials: present.map(v => ({ id: v.credential_id, ...transports(v.transports) })),
   });
-  await rememberChallenge(k, optionen.challenge, 'registrieren', uid);
-  return optionen;
+  await rememberChallenge(k, options.challenge, 'register', uid);
+  return options;
 }
 
 export async function verifyRegistration(
@@ -141,12 +141,12 @@ export async function verifyRegistration(
   name: string,
 ): Promise<{ id: number; name: string } | null> {
   const rp = relyingParty();
-  const antwort = asResponse<RegistrationResponseJSON>(raw);
-  if (!rp || !antwort) return null;
-  const challenge = await resolveChallenge(k, antwort.response.clientDataJSON, 'registrieren', uid);
+  const reply = asResponse<RegistrationResponseJSON>(raw);
+  if (!rp || !reply) return null;
+  const challenge = await resolveChallenge(k, reply.response.clientDataJSON, 'register', uid);
   if (!challenge) return null;
   const v = await verifyRegistrationResponse({
-    response: antwort,
+    response: reply,
     expectedChallenge: challenge,
     expectedOrigin: rp.origin,
     expectedRPID: rp.rpID,
@@ -164,15 +164,15 @@ export async function verifyRegistration(
   );
 }
 
-export async function authenticationOptions(k: FactorsContext, purpose: 'anmelden' | 'zweiter_faktor') {
+export async function authenticationOptions(k: FactorsContext, purpose: 'login' | 'second_factor') {
   const rp = relyingParty();
   if (!rp) return null;
   // Empty allowCredentials: the browser offers the discoverable passkeys without
   // the server revealing which account has which.
   return generateAuthenticationOptions({
     rpID: rp.rpID,
-    userVerification: purpose === 'anmelden' ? 'required' : 'preferred',
-    challenge: signedChallenge(purpose, k.uhr.jetzt() + CHALLENGE_MS),
+    userVerification: purpose === 'login' ? 'required' : 'preferred',
+    challenge: signedChallenge(purpose, k.clock.now() + CHALLENGE_MS),
   });
 }
 
@@ -182,35 +182,35 @@ export async function authenticationOptions(k: FactorsContext, purpose: 'anmelde
 export async function verifyAuthentication(
   kx: FactorsContext,
   raw: unknown,
-  purpose: 'anmelden' | 'zweiter_faktor',
+  purpose: 'login' | 'second_factor',
   uid: number | null = null,
 ): Promise<number | null> {
   const rp = relyingParty();
-  const antwort = asResponse<AuthenticationResponseJSON>(raw);
-  if (!rp || !antwort) return null;
+  const reply = asResponse<AuthenticationResponseJSON>(raw);
+  if (!rp || !reply) return null;
   let challenge: string;
   try {
-    challenge = decodeClientDataJSON(antwort.response.clientDataJSON).challenge;
+    challenge = decodeClientDataJSON(reply.response.clientDataJSON).challenge;
   } catch (e) {
     return rejected(e);
   }
-  const until = signedDeadline(challenge, purpose, kx.uhr.jetzt());
+  const until = signedDeadline(challenge, purpose, kx.clock.now());
   if (until === null) return null;
-  const k = await kx.passkeys.byCredentialId(antwort.id, uid);
+  const k = await kx.passkeys.byCredentialId(reply.id, uid);
   if (!k) return null;
   const v = await verifyAuthenticationResponse({
     // Registration only happens in the browser; logging in may also use the enrolled app.
-    response: antwort,
+    response: reply,
     expectedChallenge: challenge,
-    expectedOrigin: [rp.origin, ...androidOrigins(kx.konfig)],
+    expectedOrigin: [rp.origin, ...androidOrigins(kx.config)],
     expectedRPID: rp.rpID,
     credential: {
-      id: antwort.id,
+      id: reply.id,
       publicKey: new Uint8Array(k.public_key),
       counter: Number(k.sign_count),
       ...transports(k.transports),
     },
-    requireUserVerification: purpose === 'anmelden',
+    requireUserVerification: purpose === 'login',
   }).catch(rejected);
   if (!v?.verified) return null;
   // Only recorded after a valid signature: a repeat of the same response finds it.

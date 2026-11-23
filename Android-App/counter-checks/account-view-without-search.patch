@@ -1,0 +1,17 @@
+Gegenprobe: Die Kontosicht fragt den Server ohne Suchtext
+Modul: core-data
+Test: ch.brickinventoryapp.data.AccountViewTest
+Rot: every filter of the account view is in the request
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
+@@ -107,7 +107,7 @@
+ 
+     val gallery = ServerView<SetsQuery, SetView>(store, arrayOf(Slots.SETS)) { a ->
+         allPages({ it.sets }, { it.setNumber }, { it.total }, retry) { page ->
+-            safeCall { sets.getSets(a.accounts?.request, a.search, a.theme, a.sort?.identifier, page, GALLERY_PAGE_SIZE, a.storageLocation) }
++            safeCall { sets.getSets(a.accounts?.request, null, a.theme, a.sort?.identifier, page, GALLERY_PAGE_SIZE, a.storageLocation) }
+         }.mapData { l -> l.map { it.asView() } }
+     }
+ 

@@ -1,0 +1,43 @@
+Gegenprobe: Plakette und „zuletzt …“ wieder in einer Row, die Plakette mit dem langen Text
+Modul: app
+Test: ch.brickinventoryapp.app.WrapGuardTest
+Rot: price alerts at 100 percent without character wrapping and truncation
+
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
+@@ -903,7 +903,7 @@
+     <string name="alerts_intro">Hier legst du Alarme an, änderst Schwelle und Richtung oder entfernst sie.</string>
+     <string name="alerts_empty">Noch kein Preisalarm gesetzt. Lege unten einen an oder in der Detailansicht eines Sets.</string>
+     <string name="alerts_armed">Aktiv</string>
+-    <string name="alerts_fired">Ausgelöst</string>
++    <string name="alerts_fired">Ausgelöst – wartet, bis der Preis zurückkehrt</string>
+     <string name="alerts_last">zuletzt %1$s</string>
+     <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
+     <string name="alerts_delete">Preisalarm löschen?</string>
+diff --git a/Android-App/core-resources/src/main/res/values/strings.xml b/Android-App/core-resources/src/main/res/values/strings.xml
+--- a/Android-App/core-resources/src/main/res/values/strings.xml
++++ b/Android-App/core-resources/src/main/res/values/strings.xml
+@@ -916,7 +916,7 @@
+     <string name="alerts_intro">Create alerts here, change their threshold and direction, or remove them.</string>
+     <string name="alerts_empty">No price alert yet. Create one below or in the detail view of a set.</string>
+     <string name="alerts_armed">Active</string>
+-    <string name="alerts_fired">Triggered</string>
++    <string name="alerts_fired">Triggered – waiting for the price to return</string>
+     <string name="alerts_last">last %1$s</string>
+     <string name="alerts_bad_value">The threshold must be greater than 0.</string>
+     <string name="alerts_delete">Delete price alert?</string>
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsAlarme.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsAlarme.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsAlarme.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsAlarme.kt
+@@ -178,8 +178,8 @@
+                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+             // FlowRow: in a Row the badge took the whole width, and "last …"
+             // wrapped character by character. This way the price below moves when it gets tight.
+-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+-                verticalArrangement = Arrangement.spacedBy(Spacing.hairline)) {
++            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small),
++                verticalAlignment = Alignment.CenterVertically) {
+                 AlarmStateBadge(a.triggered)
+                 a.lastlyPrice?.let {
+                     Text(stringResource(R.string.alerts_last,

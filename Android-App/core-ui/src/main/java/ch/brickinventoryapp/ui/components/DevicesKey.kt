@@ -21,34 +21,34 @@ internal object AppLockKey : KeystoreKey("app_sperre")
  * the screen lock (validity 0). A newly enrolled fingerprint invalidates it;
  * then a new one is created — setting it up already required the screen lock.
  */
-internal open class KeystoreKey(private val alias: String) : Entsperrschluessel, AttestierbarerKey {
-    private fun speicher() = KeyStore.getInstance(KEYSTORE).apply { load(null) }
+internal open class KeystoreKey(private val alias: String) : UnlockKey, AttestableKey {
+    private fun memory() = KeyStore.getInstance(KEYSTORE).apply { load(null) }
 
     /** A signature prepared for signing; it can only sign after the release. */
-    override fun signatur(): Signature {
-        val ks = speicher()
-        val schluessel = ks.getKey(alias, null) as? PrivateKey ?: erzeuge()
+    override fun signature(): Signature {
+        val ks = memory()
+        val key = ks.getKey(alias, null) as? PrivateKey ?: generate()
         return try {
-            Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(schluessel) }
+            Signature.getInstance(StepApproval.SIGNATURE_SCHEME).apply { initSign(key) }
         } catch (_: KeyPermanentlyInvalidatedException) {
             ks.deleteEntry(alias)
-            Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(erzeuge()) }
+            Signature.getInstance(StepApproval.SIGNATURE_SCHEME).apply { initSign(generate()) }
         }
     }
 
-    override fun oeffentlich(): PublicKey = speicher().getCertificate(alias).publicKey
+    override fun public(): PublicKey = memory().getCertificate(alias).publicKey
 
-    override fun discard() = speicher().deleteEntry(alias)
+    override fun discard() = memory().deleteEntry(alias)
 
     /** Always a new key: the challenge lives in its certificate, the old one carries a spent one. */
     override fun createWithAttestation(challenge: ByteArray): List<ByteArray> {
-        val ks = speicher()
+        val ks = memory()
         ks.deleteEntry(alias)
-        erzeuge(challenge)
+        generate(challenge)
         return ks.getCertificateChain(alias)?.map { it.encoded }.orEmpty()
     }
 
-    private fun erzeuge(challenge: ByteArray? = null): PrivateKey = strongBoxFirst { strongBox ->
+    private fun generate(challenge: ByteArray? = null): PrivateKey = strongBoxFirst { strongBox ->
         val gen = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, KEYSTORE)
         gen.initialize(
             KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN)

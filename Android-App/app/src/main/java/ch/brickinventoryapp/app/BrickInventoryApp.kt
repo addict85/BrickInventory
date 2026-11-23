@@ -1,51 +1,55 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.app.Activity
 import android.app.Application
-import android.os.Bundle
-import android.os.Process
-import androidx.work.Configuration
-import dagger.hilt.android.HiltAndroidApp
-import javax.inject.Inject
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import ch.brickinventoryapp.services.alarm.PreisalarmWorker
-import androidx.hilt.work.HiltWorkerFactory
-import ch.brickinventoryapp.data.Alarmablage
-import ch.brickinventoryapp.data.Sprachablage
-import ch.brickinventoryapp.data.Tokenuebernahme
-import ch.brickinventoryapp.data.di.Scopes
-import ch.brickinventoryapp.state.ui.Ausgangsmelder
-import ch.brickinventoryapp.session.SitzungsRepository
-import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.network.util.Protokoll
-import ch.brickinventoryapp.data.util.cleanOldPartListOn
-import ch.brickinventoryapp.data.util.raeumeKlartextAnleitungenAuf
-import ch.brickinventoryapp.security.cleanPlaintextImageCachesOn
-import ch.brickinventoryapp.data.util.raeumeVertraulichePdfsAuf
-import android.os.Build
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
-import androidx.glance.appwidget.updateAll
-import ch.brickinventoryapp.app.widget.SammlungsWidget
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
+import android.os.Bundle
+import android.os.Process
 import androidx.core.content.ContextCompat
+import androidx.glance.appwidget.updateAll
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
+import ch.brickinventoryapp.app.widget.CollectionWidget
+import ch.brickinventoryapp.data.AlarmStore
+import ch.brickinventoryapp.data.LanguageStore
+import ch.brickinventoryapp.data.TokenAdoption
+import ch.brickinventoryapp.data.di.Scopes
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.data.util.cleanOldPartListOn
+import ch.brickinventoryapp.data.util.cleanUpConfidentialPdfs
+import ch.brickinventoryapp.data.util.cleanUpPlaintextInstructions
+import ch.brickinventoryapp.model.util.LockWipe
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.network.util.AppLog
+import ch.brickinventoryapp.security.cleanPlaintextImageCachesOn
+import ch.brickinventoryapp.services.alarm.PriceAlarmWorker
+import ch.brickinventoryapp.session.SessionRepository
+import ch.brickinventoryapp.state.ui.OutboxNotifier
+import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import java.io.File
+import javax.inject.Inject
 
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {
     // Lazy: the isolated PDF process also creates an Application but must not open any files.
-    @Inject lateinit var tokenuebernahmeLazy: dagger.Lazy<Tokenuebernahme>
-    @Inject lateinit var alertsLazy: dagger.Lazy<Alarmablage>
-    @Inject lateinit var languageLazy: dagger.Lazy<Sprachablage>
-    private val tokenuebernahme get() = tokenuebernahmeLazy.get()
+    @Inject lateinit var tokenAdoptionLazy: dagger.Lazy<TokenAdoption>
+    @Inject lateinit var alertsLazy: dagger.Lazy<AlarmStore>
+    @Inject lateinit var languageLazy: dagger.Lazy<LanguageStore>
+    private val tokenAdoption get() = tokenAdoptionLazy.get()
     private val alerts get() = alertsLazy.get()
-    private val sprache get() = languageLazy.get()
+    private val language get() = languageLazy.get()
     @Inject lateinit var areas: Scopes
     @Inject lateinit var workerFactory: HiltWorkerFactory
-    @Inject lateinit var sessionLazy: dagger.Lazy<SitzungsRepository>
-    @Inject lateinit var ausgangsmelderLazy: dagger.Lazy<Ausgangsmelder>
+    @Inject lateinit var sessionLazy: dagger.Lazy<SessionRepository>
+    @Inject lateinit var outboxNotifierLazy: dagger.Lazy<OutboxNotifier>
+    @Inject lateinit var lockWipeLazy: dagger.Lazy<LockWipe>
 
     /**
      * WorkManager on demand instead of at start, the counterpart to tools:node="remove"
@@ -57,13 +61,13 @@ class BrickInventoryApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        // In the render process (ui/pdf/PdfRenderDienst) there are neither files nor an account.
+        // In the render process (ui/pdf/PdfRenderService) there are neither files nor an account.
         if (Process.isIsolated()) return
         // Session and outbox start with the first MainActivity and then live as long
         // as the process, not like a ViewModel; a worker alone (price alert) does not wake them.
         registerActivityLifecycleCallbacks(AtFirstUi {
-            sessionLazy.get().starte()
-            ausgangsmelderLazy.get().starte(areas.application)
+            sessionLazy.get().launch()
+            outboxNotifierLazy.get().launch(areas.application)
         })
 
         // A token of earlier versions under the weaker key moves under the strict one right after
@@ -71,29 +75,32 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         // locked it could not read its numbers (DevicesStore.widgetStatus).
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                areas.application.launch { fangeAusserAbbruch { tokenuebernahme.levelTokenHigh() } }
-                areas.application.launch { fangeAusserAbbruch { SammlungsWidget().updateAll(context) } }
+                lockWipeLazy.get().restore()
+                areas.application.launch { catchUnlessCancelled { tokenAdoption.levelTokenHigh() } }
+                areas.application.launch { catchUnlessCancelled { CollectionWidget().updateAll(context) } }
             }
         }, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
 
+        // Screen off with a secure lock: store keys and token leave memory (LockWipe). Without a
+        // lock the Keystore releases them anyway; dropping them would only cost reloading.
+        ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (context.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true) lockWipeLazy.get().wipe()
+            }
+        }, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED)
+
         // Cleanup in the background; a plaintext token of older versions never counts, it just goes away.
         areas.application.launch {
-            // Voucher PDFs of an aborted run: the viewer was never left.
-            fangeAusserAbbruch { raeumeVertraulichePdfsAuf(cacheDir) }
-            // Instructions of older versions lay in plaintext; new ones lie encrypted.
-            fangeAusserAbbruch { raeumeKlartextAnleitungenAuf(cacheDir) }
-            // Image cache of older versions (plaintext) and an expired parts list.
-            fangeAusserAbbruch { cleanPlaintextImageCachesOn(cacheDir) }
-            fangeAusserAbbruch { cleanOldPartListOn(filesDir, System.currentTimeMillis()) }
-            fangeAusserAbbruch { tokenuebernahme.adoptOldToken() }
+            cleanUpLeftovers(cacheDir, filesDir, System.currentTimeMillis())
+            catchUnlessCancelled { tokenAdoption.adoptOldToken() }
             // Reschedule the price alert fetch: reset app data or a
             // „Force Stop“ discard the jobs, the switch would otherwise stand on “on”
             // without effect. KEEP leaves a scheduled job unchanged.
-            fangeAusserAbbruch {
-                if (alerts.alarmMessagesAn.first()) {
-                    PreisalarmWorker
-                        .einplanen(this@BrickInventoryApp, true)
-                        ?.let { Protokoll.warnung("Preisalarm", "Abruf nicht eingeplant", it) }
+            catchUnlessCancelled {
+                if (alerts.alarmMessagesEnabled.first()) {
+                    PriceAlarmWorker
+                        .schedule(this@BrickInventoryApp, true)
+                        ?.let { AppLog.warning("Preisalarm", "Abruf nicht eingeplant", it) }
                 }
             }
         }
@@ -102,12 +109,12 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         // (saved before the mirror), catch up once — AppCompat then recreates the
         // activity. From 13 on the system remembers the language itself.
         if (Build.VERSION.SDK_INT < 33) {
-            val gemerkt = sprache.rememberedLanguage()
-            if (gemerkt != null) {
-                LanguageManager.applyLanguage(gemerkt)
+            val wanted = language.rememberedLanguage()
+            if (wanted != null) {
+                LanguageManager.applyLanguage(wanted)
             } else {
-                areas.application.launch(areas.haupt) {
-                    val lang = fangeAusserAbbruch { sprache.followUpLanguage() }.getOrNull() ?: return@launch
+                areas.application.launch(areas.main) {
+                    val lang = catchUnlessCancelled { language.followUpLanguage() }.getOrNull() ?: return@launch
                     LanguageManager.applyLanguage(lang)
                 }
             }
@@ -115,14 +122,14 @@ class BrickInventoryApp : Application(), Configuration.Provider {
     }
 }
 
-/** Calls [los] once when the first MainActivity is created; other activities do not count. */
-private class AtFirstUi(private val los: () -> Unit) : Application.ActivityLifecycleCallbacks {
-    private var gelaufen = false
+/** Calls [go] once when the first MainActivity is created; other activities do not count. */
+private class AtFirstUi(private val go: () -> Unit) : Application.ActivityLifecycleCallbacks {
+    private var ran = false
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-        if (gelaufen || activity !is MainActivity) return
-        gelaufen = true
-        los()
+        if (ran || activity !is MainActivity) return
+        ran = true
+        go()
     }
 
     override fun onActivityStarted(activity: Activity) = Unit
@@ -131,4 +138,15 @@ private class AtFirstUi(private val los: () -> Unit) : Application.ActivityLifec
     override fun onActivityStopped(activity: Activity) = Unit
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
     override fun onActivityDestroyed(activity: Activity) = Unit
+}
+
+/** What an aborted run or an older version left behind; each step on its own, one failure stops none. */
+internal fun cleanUpLeftovers(cacheDir: File, filesDir: File, now: Long) {
+    // Voucher PDFs of an aborted run: the viewer was never left.
+    catchUnlessCancelled { cleanUpConfidentialPdfs(cacheDir) }
+    // Instructions of older versions lay in plaintext; new ones lie encrypted.
+    catchUnlessCancelled { cleanUpPlaintextInstructions(cacheDir) }
+    // Image cache of older versions (plaintext) and an expired parts list.
+    catchUnlessCancelled { cleanPlaintextImageCachesOn(cacheDir) }
+    catchUnlessCancelled { cleanOldPartListOn(filesDir, now) }
 }

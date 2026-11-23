@@ -16,19 +16,19 @@ export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
   const invId = await kx.catalog.inventoryForCandidates([figNumber, figNumber.replace('fig-', '')]);
   if (!invId) return { parts: [], source: 'not_found' };
 
-  const teile = await kx.minifigParts.inventoryPartsOfMinifig(invId);
+  const partRows = await kx.minifigParts.inventoryPartsOfMinifig(invId);
 
   let kat = await catalogParts(kx, figNumber);
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
     const parentSet = await kx.minifigParts.setWithMinifig(figNumber);
     const enrich = parentSet
-      ? kx.catalog.enrichSetMinifigsAn(parentSet.set_number)
-      : kx.catalog.enrichSetPartsAn(figNumber);
+      ? kx.catalog.enrichSetMinifigs(parentSet.set_number)
+      : kx.catalog.enrichSetParts(figNumber);
     await enrich.catch(logAndContinue('figuren:anreichern'));
     kat = await catalogParts(kx, figNumber);
   }
   const byPart = new Map(kat.map(r => [`${r.part_number}|${r.color_id}`, r]));
-  const parts = teile.map(p => {
+  const parts = partRows.map(p => {
     const k = byPart.get(`${p.part_number}|${p.color_id}`);
     return {
       ...p,
@@ -39,9 +39,9 @@ export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
   setImmediate(() => {
     kx.jobQueue
       .placeJobOne(
-        'bilder',
+        'images',
         { set_number: figNumber, only_images: true },
-        { schluessel: `bilder:${withVersion(figNumber)}:nur`, maxAttempts: 3 },
+        { key: `images:${withVersion(figNumber)}:nur`, maxAttempts: 3 },
       )
       .catch(logAndContinue('figuren:downloadSetImages'));
   });

@@ -15,26 +15,26 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, takt, warte } = require('./helpers/ui');
+const { openUi, tick, waitFor } = require('./helpers/ui');
 
 const errorAt = (d, id) => {
-  const e = d.getElementById(id + '-fehler');
+  const e = d.getElementById(id + '-error');
   return e && !e.hidden ? e.textContent : '';
 };
 
-async function setErfassen(o, { qty, datum = null }) {
-  const { d, aufrufe } = o;
-  d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
-  await takt(10);
+async function setAcquire(o, { qty, date = null }) {
+  const { d, calls } = o;
+  d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
+  await tick(10);
   d.getElementById('add-num').value = '10294-1';
   d.getElementById('add-qty').value = qty;
-  if (datum) d.getElementById('add-date').value = datum;
-  const vorher = aufrufe.length;
+  if (date) d.getElementById('add-date').value = date;
+  const prior = calls.length;
   d.getElementById('btn-add').click();
-  await takt(30);
-  const a = aufrufe.slice(vorher).find(x => x.url.includes('/sets/add-stream'));
+  await tick(30);
+  const a = calls.slice(prior).find(x => x.url.includes('/sets/add-stream'));
   return {
-    gesendet: a ? JSON.parse(a.body) : null,
+    sent: a ? JSON.parse(a.body) : null,
     qtyError: errorAt(d, 'add-qty'),
     dateError: errorAt(d, 'add-date'),
   };
@@ -43,20 +43,20 @@ async function setErfassen(o, { qty, datum = null }) {
 test('add set: quantity only whole from 1 to 10,000, otherwise a hint at the field', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
-    for (const roh of ['0', '', '1.5', '-3', '99999', '10001', 'abc']) {
-      const r = await setErfassen(o, { qty: roh });
-      assert.equal(r.gesendet, null, `„${roh}“ ging an den Server`);
-      assert.match(r.qtyError, /ganze Zahl von 1 bis 10\.000/, `„${roh}“: kein Hinweis am Feld`);
+    for (const raw of ['0', '', '1.5', '-3', '99999', '10001', 'abc']) {
+      const r = await setAcquire(o, { qty: raw });
+      assert.equal(r.sent, null, `„${raw}“ went to the server`);
+      assert.match(r.qtyError, /ganze Zahl von 1 bis 10\.000/, `„${raw}“: no hint at the field`);
       assert.equal(o.d.getElementById('add-qty').getAttribute('aria-invalid'), 'true');
     }
-    for (const [roh, soll] of [
+    for (const [raw, want] of [
       ['1', 1],
       ['7', 7],
       ['10000', 10000],
     ]) {
-      const r = await setErfassen(o, { qty: roh });
-      assert.equal(r.qtyError, '', `„${roh}“ gemeldet`);
-      assert.equal(r.gesendet?.quantity, soll);
+      const r = await setAcquire(o, { qty: raw });
+      assert.equal(r.qtyError, '', `„${raw}“ reported`);
+      assert.equal(r.sent?.quantity, want);
     }
   } finally {
     o.w.close();
@@ -64,9 +64,9 @@ test('add set: quantity only whole from 1 to 10,000, otherwise a hint at the fie
 });
 
 test('add set: hint in English', async () => {
-  const o = await openUi({}, { sprache: 'en', browserLanguage: 'en-GB' });
+  const o = await openUi({}, { language: 'en', browserLanguage: 'en-GB' });
   try {
-    const r = await setErfassen(o, { qty: '0' });
+    const r = await setAcquire(o, { qty: '0' });
     assert.equal(r.qtyError, 'The quantity must be a whole number from 1 to 10,000.');
   } finally {
     o.w.close();
@@ -76,15 +76,15 @@ test('add set: hint in English', async () => {
 test('add set: "bought on" not in the future', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
-    const r = await setErfassen(o, { qty: '1', datum: '2099-01-01' });
-    assert.equal(r.gesendet, null, 'Zukunftsdatum ging an den Server');
+    const r = await setAcquire(o, { qty: '1', date: '2099-01-01' });
+    assert.equal(r.sent, null, 'Future date went to the server');
     assert.match(r.dateError, /Zukunft/);
-    const heute = new Date();
-    const iso = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, '0')}-${String(heute.getDate()).padStart(2, '0')}`;
-    assert.equal(o.d.getElementById('add-date').max, iso, 'max steht nicht auf heute');
-    const ok = await setErfassen(o, { qty: '1', datum: iso });
+    const todayDate = new Date();
+    const iso = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
+    assert.equal(o.d.getElementById('add-date').max, iso, 'max is not set to today');
+    const ok = await setAcquire(o, { qty: '1', date: iso });
     assert.equal(ok.dateError, '');
-    assert.equal(ok.gesendet?.date, iso);
+    assert.equal(ok.sent?.date, iso);
   } finally {
     o.w.close();
   }
@@ -93,29 +93,29 @@ test('add set: "bought on" not in the future', async () => {
 test('add part and figure: invalid quantity and future date do not go out', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
-    const { d, aufrufe } = o;
-    for (const [art, nr, knopf, post] of [
+    const { d, calls } = o;
+    for (const [kind, nr, button, post] of [
       ['part', 'ap', 'btn-add-part', '/parts'],
       ['fig', 'af', 'btn-add-fig', '/minifigs'],
     ]) {
-      d.querySelector(`[data-click="oeffneErfassen"][data-arg="${art}"]`).click();
-      await takt(10);
-      d.getElementById(nr + '-num-inline').value = art === 'part' ? '3001' : 'fig-001';
-      for (const [qty, datum, errorId] of [
+      d.querySelector(`[data-click="openCapture"][data-arg="${kind}"]`).click();
+      await tick(10);
+      d.getElementById(nr + '-num-inline').value = kind === 'part' ? '3001' : 'fig-001';
+      for (const [qty, date, errorId] of [
         ['0', null, nr + '-qty-inline'],
         ['1', '2099-01-01', nr + '-date'],
       ]) {
         d.getElementById(nr + '-qty-inline').value = qty;
-        if (datum) d.getElementById(nr + '-date').value = datum;
-        const vorher = aufrufe.length;
-        d.getElementById(knopf).click();
-        await takt(30);
+        if (date) d.getElementById(nr + '-date').value = date;
+        const prior = calls.length;
+        d.getElementById(button).click();
+        await tick(30);
         assert.equal(
-          aufrufe.slice(vorher).filter(a => a.method === 'POST' && a.url.endsWith(post)).length,
+          calls.slice(prior).filter(a => a.method === 'POST' && a.url.endsWith(post)).length,
           0,
-          `${art}: ${qty}/${datum} ging hinaus`,
+          `${kind}: ${qty}/${date} ging hinaus`,
         );
-        assert.notEqual(errorAt(d, errorId), '', `${art}: kein Hinweis an ${errorId}`);
+        assert.notEqual(errorAt(d, errorId), '', `${kind}: no hint at ${errorId}`);
       }
     }
   } finally {
@@ -126,26 +126,26 @@ test('add part and figure: invalid quantity and future date do not go out', asyn
 async function purchasePriceDialog(puts) {
   const o = await openUi(
     {
-      '/v1/sets/10294-1/acquisitions': () => ({
+      '/v2/sets/10294-1/acquisitions': () => ({
         success: true,
         acquisitions: [
           { id: 7, quantity: 2, condition: 'N', purchase_price: 129.99, created_at: '2026-06-01T10:00:00Z' },
         ],
         totals: { quantity: 2, amount: 259.98 },
       }),
-      '/v1/sets/10294-1/acquisitions/7': (_url, opt) => {
+      '/v2/sets/10294-1/acquisitions/7': (_url, opt) => {
         puts.push(JSON.parse(opt.body));
         return { success: true };
       },
     },
     { browserLanguage: 'de-DE' },
   );
-  const knopf = o.d.createElement('button');
-  knopf.dataset.click = 'openAcqModal';
-  knopf.dataset.arg = '10294-1';
-  o.d.body.append(knopf);
-  knopf.click();
-  await warte(() => o.d.getElementById('acq-menge-7'));
+  const button = o.d.createElement('button');
+  button.dataset.click = 'openAcqModal';
+  button.dataset.arg = '10294-1';
+  o.d.body.append(button);
+  button.click();
+  await waitFor(() => o.d.getElementById('acq-quantity-7'));
   return o;
 }
 
@@ -154,29 +154,29 @@ test('purchase price dialog: quantity and date report at the field, valid ones g
   const o = await purchasePriceDialog(puts);
   try {
     const { d, w } = o;
-    const menge = d.getElementById('acq-menge-7');
-    for (const roh of ['0', '', '-1', '10001']) {
-      menge.value = roh;
-      menge.dispatchEvent(new w.FocusEvent('blur'));
-      await takt(30);
-      assert.equal(puts.length, 0, `Anzahl „${roh}“ ging hinaus`);
-      assert.match(errorAt(d, 'acq-menge-7'), /ganze Zahl/, `Anzahl „${roh}“ ohne Hinweis`);
+    const quantity = d.getElementById('acq-quantity-7');
+    for (const raw of ['0', '', '-1', '10001']) {
+      quantity.value = raw;
+      quantity.dispatchEvent(new w.FocusEvent('blur'));
+      await tick(30);
+      assert.equal(puts.length, 0, `Quantity „${raw}“ went out`);
+      assert.match(errorAt(d, 'acq-quantity-7'), /ganze Zahl/, `Quantity „${raw}“ without a hint`);
     }
-    menge.value = '3';
-    menge.dispatchEvent(new w.FocusEvent('blur'));
-    await warte(() => puts.length);
+    quantity.value = '3';
+    quantity.dispatchEvent(new w.FocusEvent('blur'));
+    await waitFor(() => puts.length);
     assert.deepEqual(puts[0], { quantity: 3 });
 
     d.activeElement?.blur();
-    await o.ruhig();
+    await o.settle();
     puts.length = 0;
-    const datum = d.getElementById('acq-datum-feld-7');
-    assert.ok(datum.max, 'Datumsfeld ohne max');
-    datum.value = '2099-01-01';
-    datum.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await takt(30);
+    const date = d.getElementById('acq-date-field-7');
+    assert.ok(date.max, 'Date field without max');
+    date.value = '2099-01-01';
+    date.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await tick(30);
     assert.equal(puts.filter(p => 'date' in p).length, 0, 'Zukunftsdatum ging hinaus');
-    assert.match(errorAt(d, 'acq-datum-feld-7'), /Zukunft/);
+    assert.match(errorAt(d, 'acq-date-field-7'), /Zukunft/);
   } finally {
     o.w.close();
   }

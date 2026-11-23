@@ -7,7 +7,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * From the ServerWaechter (403 `nur_admins` on a token) to the SitzungsDienst, which
+ * From the ServerGuard (403 `only_admins` on a token) to the SessionService, which
  * follows up the admin right. A state until acknowledgement: several 403s shortly
  * in a row count once — a polling management page should not trigger a
  * series of /auth/me fetches —, and without a collector none gets lost.
@@ -15,9 +15,9 @@ import javax.inject.Singleton
 @Singleton
 class RightsSignal @Inject constructor() {
     private val _revoked = MutableStateFlow(false)
-    val entzogen: StateFlow<Boolean> = _revoked.asStateFlow()
+    val revoked: StateFlow<Boolean> = _revoked.asStateFlow()
 
-    fun melde() { _revoked.value = true }
+    fun report() { _revoked.value = true }
 
     fun acknowledge() { _revoked.value = false }
 }

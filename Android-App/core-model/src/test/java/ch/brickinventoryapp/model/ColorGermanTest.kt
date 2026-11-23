@@ -39,7 +39,7 @@ class ColorGermanTest {
         // Keys with or without quotes: the formatter leaves them out where JavaScript does not need them.
         val web = Regex("""(?:'([^']+)'|([A-Za-z_]\w*))\s*:\s*'([^']*)'""").findAll(block)
             .associate { (it.groupValues[1].ifEmpty { it.groupValues[2] }) to it.groupValues[3] }
-        assert(web.size > 10) { "Im Block COLOR_WORDS_DE nur ${web.size} Wörter gefunden – Muster veraltet?" }
+        assert(web.size > 10) { "Only ${web.size} words found in the block COLOR_WORDS_DE – pattern outdated?" }
         assertEquals(web, ColorGerman.words)
         val pre = js.substring(js.indexOf("const COLOR_PREFIX_DE"), js.indexOf("]);", js.indexOf("const COLOR_PREFIX_DE")))
         assertEquals(Regex("""'([^']+)'""").findAll(pre).map { it.groupValues[1] }.toSet(), ColorGerman.prefixes)

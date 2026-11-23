@@ -1,12 +1,12 @@
-import type { Konfig } from '../infra/config';
+import type { AppConfig } from '../infra/config';
 import path from 'node:path';
 import fs from 'node:fs';
-import { AbrufFehler } from '../infra/fetch';
+import { FetchError } from '../infra/fetch';
 import { IMAGE_HEADERS } from '../externalSources';
 import type { ImagesContext } from './context';
 
 /** What the image works need; it is created before the area's context (area.ts). */
-export type ImageWorkerContext = Pick<ImagesContext, 'konfig' | 'externalSources'>;
+export type ImageWorkerContext = Pick<ImagesContext, 'config' | 'externalSources'>;
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { withVersion } from '../infra/setNumber';
 
@@ -17,8 +17,8 @@ export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
 /** The same browser identifier as the image proxy: the CDN rejects an own one with 403,
  * and the image job would then pause endlessly. IMG_USER_AGENT stays as a way out. */
-export function bildUserAgent(k: Pick<Konfig, 'bildUserAgent'>): string {
-  return k.bildUserAgent || String(IMAGE_HEADERS['User-Agent']);
+export function imageUserAgent(k: Pick<AppConfig, 'imageUserAgent'>): string {
+  return k.imageUserAgent || String(IMAGE_HEADERS['User-Agent']);
 }
 
 /** Only Rebrickable images are stored by the proxy including preview under images/sets. */
@@ -29,21 +29,21 @@ export function rebrickableSetImage(setNumber: string): string {
 /** If image and preview already lie in images/sets, the image job needs nothing more. */
 export async function setImageComplete(setNumber: string): Promise<boolean> {
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
-  const da = (datei: string) =>
-    fs.promises.access(path.join(SET_IMAGES_DIR, datei)).then(
+  const da = (file: string) =>
+    fs.promises.access(path.join(SET_IMAGES_DIR, file)).then(
       () => true,
       () => false,
     );
   return (await da(`${safe}.jpg`)) && (await da(`${safe}_thumb.jpg`));
 }
 
-export async function setBildHerunterladen(
+export async function downloadSetImage(
   k: ImageWorkerContext,
   url: string,
   setNumber: string,
   info?: { status?: number },
 ) {
-  const userAgent = bildUserAgent(k.konfig);
+  const userAgent = imageUserAgent(k.config);
   if (!url) return null;
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
   const localPath = path.join(SET_IMAGES_DIR, `${safe}.jpg`);
@@ -55,15 +55,15 @@ export async function setBildHerunterladen(
     )
   )
     return relPath;
-  const buf = await k.externalSources.quellen
+  const buf = await k.externalSources.sources
     .fetchImage(url, {
       maxBytes: SET_IMG_MAX_BYTES,
-      zeitlimitMs: 30_000,
-      kopfzeilen: { ...IMAGE_HEADERS, 'User-Agent': userAgent },
+      timeoutMs: 30_000,
+      headers: { ...IMAGE_HEADERS, 'User-Agent': userAgent },
     })
     .then(
       r => {
-        if (r.status === 200) return r.koerper;
+        if (r.status === 200) return r.body;
         // "404" and "403 bot detection" require different measures; without
         // a real code it counts as temporary in src/images/imageDemandRun.ts.
         const notPresent = r.status === 404 || r.status === 410;
@@ -72,16 +72,12 @@ export async function setBildHerunterladen(
         return null;
       },
       (e: unknown) => {
-        if (e instanceof AbrufFehler && e.grund === 'zu-gross')
+        if (e instanceof FetchError && e.reason === 'zu-gross')
           console.error(
             `[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`,
           );
         else
-          console.error(
-            `[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`
-              .replace(/\r?\n/g, ' ⏎ ')
-              .replace(/\n|\r/g, ''),
-          );
+          console.error(`[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`);
         return null;
       },
     );
@@ -92,10 +88,10 @@ export async function setBildHerunterladen(
     return null;
   }
   // Finished first, then visible: the image proxy would otherwise deliver half a file.
-  const teil = `${localPath}.${process.pid}.teil`;
+  const part = `${localPath}.${process.pid}.teil`;
   // On a fresh installation the folder is still missing.
   await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
-  await fs.promises.writeFile(teil, buf);
-  await fs.promises.rename(teil, localPath);
+  await fs.promises.writeFile(part, buf);
+  await fs.promises.rename(part, localPath);
   return relPath;
 }

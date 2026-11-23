@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.material3.MaterialTheme
@@ -9,6 +8,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -16,16 +16,25 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.account.ui.screens.PreisalarmeRoute
+import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.app.testing.Examples
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.util.resolveThumbUrl
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import coil3.ImageLoader
+import coil3.intercept.Interceptor
+import coil3.request.ErrorResult
+import kotlinx.coroutines.Dispatchers
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -36,6 +45,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.IOException
 import java.util.Locale
 
 /**
@@ -44,12 +54,14 @@ import java.util.Locale
  * confirmation. A row opens its set only if it is in the collection, and the
  * state stands as a word, not only as a color — in both languages.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
- *   preisalarm-laedt-nicht         observeLoadOn of the overview deleted → red “the overview fetches …”
- *   preisalarm-loescht-sofort      the trash can deletes without confirmation → red “the overview fetches …”
- *   preisalarm-zeile-immer-offen   every row clickable → red “a row opens …”
- *   preisalarm-zustand-gleich      the badge always says „Aktiv“ → red “a row opens …”
- *   preisalarm-texte-gleich        alerts_fired equal to alerts_armed (de) → red “the two states …”
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
+ *   price-alarm-does-not-load         observeLoadOn of the overview deleted → red “the overview fetches …”
+ *   price-alarm-deletes-immediately      the trash can deletes without confirmation → red “the overview fetches …”
+ *   price-alarm-row-always-open   every row clickable → red “a row opens …”
+ *   price-alarm-state-equal      the badge always says „Aktiv“ → red “a row opens …”
+ *   price-alarm-texts-equal        alerts_fired equal to alerts_armed (de) → red “the two states …”
+ * Counter-checks (run here): FinanceImage removed from the row → red “a row shows the set's preview …”;
+ * “Done” without `number != a.threshold` → red “Done saves only a changed threshold”.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -60,83 +72,87 @@ class PriceAlertsDisplayTest {
     val compose = createComposeRule()
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val vorher = Locale.getDefault()
-    private val world = Examples.Welt(ContextTexts())
+    private val before = Locale.getDefault()
+    private val world = Examples.World(ContextTexts())
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() {
-        Locale.setDefault(vorher)
+    fun tearDown() {
+        Locale.setDefault(before)
         world.close()
     }
 
     private val alerts = """{"success":true,"alerts":[
-        {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF",
-         "name":"Millennium Falcon","image_local":"/beispiel/set1_thumb.png","besitzt":true,"triggered":false},
-        {"set_number":"10179-1","condition":"N","direction":"unter","threshold":900.0,"currency_code":"CHF",
-         "name":"Ultimate Falcon","besitzt":false,"triggered":true}]}"""
+        {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF",
+         "name":"Millennium Falcon","image_local":"/beispiel/set1_thumb.png","owns":true,"triggered":false},
+        {"set_number":"10179-1","condition":"N","direction":"below","threshold":900.0,"currency_code":"CHF",
+         "name":"Ultimate Falcon","owns":false,"triggered":true}]}"""
 
-    private fun einstellungen() = world.t.merke(SettingsViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, world.t.sync,
+    private fun settings() = world.t.track(SettingsViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.sync,
         testAccountRepository(world.t.api, world.t.io), testManagementRepository(world.t.api),
         world.t.alerts(), testPartsRepository(world.t.api),
         object : FileReader {
-            override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null
+            override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
         }))
 
-    /** Shows the overview and waits until it has fetched its alerts; [geoeffnet] collects clicks on sets. */
-    private fun zeige(geoeffnet: MutableList<String> = mutableListOf()): SettingsViewModel {
-        world.paths.antworten["/api/v1/alerts"] = alerts
-        world.paths.antworten["/api/v1/sets/75192-1/alert"] = """{"success":true}"""
-        val vm = einstellungen()
+    /** Shows the overview and waits until it has fetched its alerts; [opened] collects clicks on sets. */
+    private fun show(
+        opened: MutableList<String> = mutableListOf(),
+        images: ImageLoader = ImageLoader.Builder(ctx).build(),
+        server: String = "",
+    ): SettingsViewModel {
+        world.paths.responses["/api/v2/alerts"] = alerts
+        world.paths.responses["/api/v2/sets/75192-1/alert"] = """{"success":true}"""
+        val vm = settings()
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    PreisalarmeRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
-                        snackbarHostState = remember { SnackbarHostState() }, onSetClick = { geoeffnet += it },
-                        onZurueck = {}, reportToggle = {})
+                    PriceAlarmsRoute(vm = vm, imageLoader = images, serverUrl = server,
+                        snackbarHostState = remember { SnackbarHostState() }, onSetClick = { opened += it },
+                        onBack = {}, reportToggle = {})
                 }
             }
         }
-        wait("Alarme") { vm.alarmOverview.value.geladen }
+        wait("alerts") { vm.alarmOverview.value.loaded }
         return vm
     }
 
-    private fun wait(name: String, fertig: () -> Boolean) {
-        driveUntil(name, bereit = fertig)
+    private fun wait(name: String, done: () -> Boolean) {
+        driveUntil(name, ready = done)
         compose.waitForIdle()
     }
 
-    private fun requests(methode: String) = world.paths.requests.toList().filter { it.startsWith("$methode ") }
+    private fun requests(method: String) = world.paths.requests.toList().filter { it.startsWith("$method ") }
 
     @Test
     fun `the overview fetches its alerts, changes and deletes via the set, deletes only after confirmation`() {
-        zeige()
-        assertEquals(listOf("GET /api/v1/alerts"), requests("GET").filter { "alerts" in it })
+        show()
+        assertEquals(listOf("GET /api/v2/alerts"), requests("GET").filter { "alerts" in it })
 
         compose.onAllNodesWithText(ctx.getString(R.string.detail_alert_chip_above))[0].performClick()
-        wait("Richtung") { requests("PUT").isNotEmpty() }
-        assertTrue(requests("PUT").toString(), requests("PUT").single().startsWith("PUT /api/v1/sets/75192-1/alert"))
+        wait("direction") { requests("PUT").isNotEmpty() }
+        assertTrue(requests("PUT").toString(), requests("PUT").single().startsWith("PUT /api/v2/sets/75192-1/alert"))
 
-        compose.onNodeWithContentDescription(ctx.getString(R.string.alerts_delete_fuer, "Millennium Falcon")).performClick()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.alerts_delete_for, "Millennium Falcon")).performClick()
         compose.waitForIdle()
-        assertEquals("Ein Tipp auf den Mülleimer löscht schon", emptyList<String>(), requests("DELETE"))
+        assertEquals("a tap on the bin already deletes", emptyList<String>(), requests("DELETE"))
         compose.onNode(hasText(ctx.getString(R.string.common_delete)) and hasClickAction() and hasAnyAncestor(isDialog()))
             .performClick()
-        wait("Löschen") { requests("DELETE").isNotEmpty() }
-        assertTrue(requests("DELETE").single().startsWith("DELETE /api/v1/sets/75192-1/alert"))
+        wait("delete") { requests("DELETE").isNotEmpty() }
+        assertTrue(requests("DELETE").single().startsWith("DELETE /api/v2/sets/75192-1/alert"))
     }
 
     @Test
     fun `a row opens its set only if it is in the collection, and names its state in words`() {
-        val geoeffnet = mutableListOf<String>()
-        zeige(geoeffnet)
+        val opened = mutableListOf<String>()
+        show(opened)
         compose.onNodeWithContentDescription("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode()
 
         compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).performClick()
         compose.onNodeWithText("Ultimate Falcon", useUnmergedTree = true).performClick()
         compose.waitForIdle()
-        assertEquals("Nur das Set aus der Sammlung öffnet sich", listOf("75192-1"), geoeffnet)
+        assertEquals("only the set from the collection opens", listOf("75192-1"), opened)
 
         compose.onNodeWithText(ctx.getString(R.string.alerts_armed), useUnmergedTree = true).fetchSemanticsNode()
         compose.onNodeWithText(ctx.getString(R.string.alerts_fired), useUnmergedTree = true).fetchSemanticsNode()
@@ -144,17 +160,40 @@ class PriceAlertsDisplayTest {
 
     @Test
     fun `the two states say in both languages without color and symbol what applies`() {
-        for (sprache in listOf("de", "en")) {
-            val c = ctx.createConfigurationContext(Configuration(ctx.resources.configuration).apply { setLocale(Locale.forLanguageTag(sprache)) })
-            val aktiv = c.getString(R.string.alerts_armed)
-            val ausgeloest = c.getString(R.string.alerts_fired)
-            assertNotEquals("Beide Zustände heissen in $sprache gleich", aktiv.lowercase(), ausgeloest.lowercase())
-            for (t in listOf(aktiv, ausgeloest)) {
-                assertTrue("„$t“ ($sprache) trägt ein Sinnbildzeichen", t.none { it in '■'..'◿' })
-                assertTrue("„$t“ ($sprache) ist kein Wort", t.count { it.isLetter() } >= 4)
+        for (language in listOf("de", "en")) {
+            val c = ctx.createConfigurationContext(Configuration(ctx.resources.configuration).apply { setLocale(Locale.forLanguageTag(language)) })
+            val active = c.getString(R.string.alerts_armed)
+            val triggered = c.getString(R.string.alerts_fired)
+            assertNotEquals("both states are called the same in $language", active.lowercase(), triggered.lowercase())
+            for (t in listOf(active, triggered)) {
+                assertTrue("“$t” ($language) carries a symbol character", t.none { it in '■'..'◿' })
+                assertTrue("“$t” ($language) is not a word", t.count { it.isLetter() } >= 4)
             }
             val explanation = c.getString(R.string.detail_alert_fired)
-            assertTrue("„$explanation“ ($sprache) erklärt nicht, was als Nächstes geschieht", explanation.trim().contains(' '))
+            assertTrue("“$explanation” ($language) does not explain what happens next", explanation.trim().contains(' '))
         }
+    }
+
+    @Test
+    fun `a row shows the set's preview from the server like the finances`() {
+        val asked = mutableListOf<String>()
+        val images = ImageLoader.Builder(ctx).components {
+            add(Interceptor { chain -> asked += chain.request.data.toString(); ErrorResult(null, chain.request, IOException("test")) })
+        }.coroutineContext(Dispatchers.Main.immediate).interceptorCoroutineContext(Dispatchers.Main.immediate).build()
+        show(images = images, server = "http://nas:3000")
+        wait("image") { asked.isNotEmpty() }
+        assertTrue("asked for $asked", resolveThumbUrl("http://nas:3000", "/beispiel/set1_thumb.png", null) in asked)
+    }
+
+    @Test
+    fun `Done saves only a changed threshold`() {
+        show()
+        val field = compose.onAllNodes(hasSetTextAction())[0]
+        field.performImeAction()
+        wait("done") { true }
+        assertEquals("an unchanged threshold was sent", emptyList<String>(), requests("PUT"))
+        field.performTextReplacement("700")
+        field.performImeAction()
+        wait("saved") { requests("PUT").isNotEmpty() }
     }
 }

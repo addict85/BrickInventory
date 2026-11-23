@@ -20,7 +20,7 @@ const { spawnSync } = require('node:child_process');
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'check-references.js');
 
 /** Repo/Web-App with src/, docs/ and README.md; dead references only stand in comments and docs. */
-function probebaum() {
+function probeTree() {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'verweise-'));
   const web = path.join(repo, 'Web-App');
   for (const d of ['src', 'docs', 'scripts']) fs.mkdirSync(path.join(web, d), { recursive: true });
@@ -40,12 +40,12 @@ function probebaum() {
   return { repo, web };
 }
 
-const lauf = (/** @type {string} */ web) => spawnSync(process.execPath, [SCRIPT, web], { encoding: 'utf8' });
+const run = (/** @type {string} */ web) => spawnSync(process.execPath, [SCRIPT, web], { encoding: 'utf8' });
 
 test('in the sample tree the script reports exactly the dead references in comments and docs', t => {
-  const { repo, web } = probebaum();
+  const { repo, web } = probeTree();
   t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
-  const r = lauf(web);
+  const r = run(web);
   assert.equal(r.status, 1, r.stderr);
   assert.deepEqual(r.stdout.trim().split('\n').sort(), [
     'README.md:1 docs/plan.md',
@@ -57,9 +57,9 @@ test('in the sample tree the script reports exactly the dead references in comme
 });
 
 test('the codebase has no dead references', () => {
-  const r = lauf(path.join(__dirname, '..'));
-  const gesehen = Number(/(\d+) Pfadverweise/.exec(r.stderr)?.[1]);
-  assert.ok(gesehen > 200, `nur ${gesehen} Verweise gefunden — greift die Suche noch?\n${r.stderr}`);
-  assert.equal(r.stdout, '', 'Pfad auf die heutige Datei ändern; Geschichte gehört in den Commit');
+  const r = run(path.join(__dirname, '..'));
+  const seen = Number(/(\d+) Pfadverweise/.exec(r.stderr)?.[1]);
+  assert.ok(seen > 200, `only ${seen} references found — does the search still work?\n${r.stderr}`);
+  assert.equal(r.stdout, '', 'Change the path to the current file; history belongs in the commit');
   assert.equal(r.status, 0);
 });

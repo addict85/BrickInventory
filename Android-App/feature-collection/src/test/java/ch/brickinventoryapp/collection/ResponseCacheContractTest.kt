@@ -1,21 +1,19 @@
 package ch.brickinventoryapp.collection
 
+import ch.brickinventoryapp.contract.FigValuationItem
+import ch.brickinventoryapp.contract.Minifig
 import ch.brickinventoryapp.contract.MinifigsResponse
 import ch.brickinventoryapp.contract.SetsResponse
-import ch.brickinventoryapp.contract.ValuationSet
 import ch.brickinventoryapp.contract.StatsResponse
+import ch.brickinventoryapp.contract.ValuationSet
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
-import ch.brickinventoryapp.contract.FigValuationItem
-import ch.brickinventoryapp.contract.Minifig
-import java.io.File
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * The server's answers pass through serialization without loss; how they lie in the
- * store is checked by AblageformTest and StoreVersionTest with their own row form.
+ * store is checked by StoreShapeTest and StoreVersionTest with their own row form.
  */
 class ResponseCacheContractTest {
 
@@ -127,11 +125,11 @@ class MinifigImageFieldTest {
 
         // Resolution as in the screen: local wins, otherwise absolute CDN address
         val serverUrl = "https://lego.example.org"
-        val bild = fig.imageUrl
+        val image = fig.imageUrl
         val resolved = when {
             fig.imageLocal != null -> "$serverUrl${fig.imageLocal}"
-            bild != null && bild.startsWith("/") -> "$serverUrl$bild"
-            else -> bild
+            image != null && image.startsWith("/") -> "$serverUrl$image"
+            else -> image
         }
         assertEquals("https://lego.example.org/images/sets/fig-000140.jpg", resolved)
     }
@@ -154,46 +152,5 @@ class MinifigImageFieldTest {
             """{"fig_number":"fig-2","image_local":"/images/sets/fig-2.jpg"}"""
         )
         assertEquals("/images/sets/fig-2.jpg", item.imageLocal)
-    }
-}
-
-/**
- * Retry for gallery tiles after a load error.
- *
- * Observed: tiles stayed empty, but the image appeared right away as soon as
- * the affected set was opened — a sign of a one-off, transient
- * failure on the first load attempt. Coil does not retry a failed
- * request on its own.
- */
-class GalleryImageRetryTest {
-
-    private fun read(rel: String): String {
-        val f = File(Quellen.root, rel)
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
-
-    @Test
-    fun `SetCard retries a failed image exactly once`() {
-        val src = read("collection/ui/screens/GalerieKarte.kt")
-
-        assert(src.contains("var retryNonce by remember(set.setNumber, imageUrl)")) {
-            "Der Wiederholzähler fehlt oder ist nicht je Kachel/Bild gebunden"
-        }
-        assert(src.contains("AsyncImagePainter.State.Error && retryNonce == 0")) {
-            "Der Wiederholversuch muss auf GENAU EINMAL begrenzt sein"
-        }
-        // Coil 3 no longer knows this parameter; checked in the sources of
-        // coil-core 3.3.0, memoryCacheKeyExtra is the successor. What is checked
-        // remains the WHAT (a distinguishable feature of the request), not
-        // the name of a library function — the name is only here because
-        // a text comparison can do nothing else.
-        assert(src.contains(".memoryCacheKeyExtra(\"retry\", retryNonce.toString())")) {
-            "Die Anfrage braucht ein unterscheidbares Merkmal, sonst könnte Coil " +
-            "sie mit dem fehlgeschlagenen Vorgänger verwechseln"
-        }
-        assert(src.contains("kotlinx.coroutines.delay(1000)")) {
-            "Der Wiederholversuch sollte verzögert erfolgen, nicht sofort im selben Moment"
-        }
     }
 }

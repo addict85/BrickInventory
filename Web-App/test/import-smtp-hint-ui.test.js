@@ -8,23 +8,23 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
 test('the skipped SMTP fields stand in one message', async () => {
   const { w, d } = await openUi({
-    '/v1/settings/import': {
+    '/v2/settings/import': {
       success: true,
       imported: 3,
       note: '',
-      smtp_uebergangen: ['smtp_host', 'smtp_insecure_tls'],
+      smtp_skipped: ['smtp_host', 'smtp_insecure_tls'],
     },
   });
   try {
-    const feld = d.getElementById('cfg-import-file');
-    Object.defineProperty(feld, 'files', { value: [new w.File(['{}'], 'konfig.json')] });
-    feld.dispatchEvent(new w.Event('change', { bubbles: true }));
-    const gefunden = await warte(() => d.body.textContent.includes('Nicht übernommen: smtp_host, smtp_insecure_tls'));
-    assert.ok(gefunden, 'keine Meldung mit den übergangenen Feldern');
+    const field = d.getElementById('cfg-import-file');
+    Object.defineProperty(field, 'files', { value: [new w.File(['{}'], 'konfig.json')] });
+    field.dispatchEvent(new w.Event('change', { bubbles: true }));
+    const found = await waitFor(() => d.body.textContent.includes('Nicht übernommen: smtp_host, smtp_insecure_tls'));
+    assert.ok(found, 'no message with the skipped fields');
   } finally {
     w.close();
   }

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * State belongs in an instance, not at file level.
@@ -17,7 +17,7 @@ import ch.brickinventoryapp.testing.Quellen
  *     private var gallerySearchJob, galleryListJob, galleryGeneration
  *
  * That is process-wide mutable state. The comment in
- * CatalogFeature.kt even said so itself: „Job-Referenz prozessweit am VM".
+ * CatalogFeature.kt even said so itself: „Job-Referenz prozessweit am VM“.
  * It only works as long as there is exactly one instance per process. Two would
  * share cancellation jobs and generation — one load would cancel the other,
  * and nobody would think of looking there.
@@ -52,15 +52,15 @@ class NoFileWideStateTest {
      * The second test below reports every entry that is no longer
      * needed. An entry here is a reminder, not a carte blanche.
      */
-    private val openStill = emptySet<String>()
+    private val stillOpen = emptySet<String>()
 
     @Test
     fun `no feature file holds mutable state at file level`() {
-        val dateien = Quellen.unter("ui")
+        val files = Sources.below("ui")
         val findings = mutableListOf<String>()
-        for (f in dateien) {
-            if (f.name in openStill) continue
-            Quellen.withoutComments(f.readText()).lines().forEachIndexed { i, z ->
+        for (f in files) {
+            if (f.name in stillOpen) continue
+            Sources.withoutComments(f.readText()).lines().forEachIndexed { i, z ->
                 // Column 0 AND no `remember`. Indentation alone is not enough in
                 // this tree: BarcodeResultDialog.kt was extracted from
                 // AppNavigation.kt without reindenting the body
@@ -75,8 +75,8 @@ class NoFileWideStateTest {
             }
         }
         assert(findings.isEmpty()) {
-            "Veraenderlicher Zustand auf Dateiebene ist prozessweit — er ueberlebt " +
-                "jede Instanz und wird zwischen allen geteilt:\n  " + findings.joinToString("\n  ")
+            "Mutable state at file level is process-wide — it survives " +
+                "every instance and is shared between all:\n  " + findings.joinToString("\n  ")
         }
     }
 
@@ -84,17 +84,17 @@ class NoFileWideStateTest {
     fun `the exception list contains nothing dead`() {
         // The same rule as in StateDomainBoundaryTest: an exception that
         // nobody needs any more is a permission that nobody checks any more.
-        val tot = openStill.filter { name ->
-            val f = Quellen.alle().firstOrNull { it.name == name } ?: return@filter true
-            Quellen.withoutComments(f.readText()).lines().none {
+        val dead = stillOpen.filter { name ->
+            val f = Sources.all().firstOrNull { it.name == name } ?: return@filter true
+            Sources.withoutComments(f.readText()).lines().none {
                 Regex("""^(?:private |internal |public )?var \w+""").containsMatchIn(it) &&
                     !it.contains("remember")
             }
         }
-        assert(tot.isEmpty()) {
-            "Diese Dateien stehen als offen in der Liste, halten aber keinen " +
-                "dateiweiten Zustand mehr — Eintrag loeschen, dann gilt die Regel " +
-                "auch fuer sie: ${tot.joinToString()}"
+        assert(dead.isEmpty()) {
+            "These files are listed as open but no longer hold any " +
+                "file-wide state — delete the entry, then the rule applies " +
+                "to them too: ${dead.joinToString()}"
         }
     }
 }

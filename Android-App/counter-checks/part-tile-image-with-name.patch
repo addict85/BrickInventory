@@ -1,0 +1,35 @@
+Gegenprobe: Bild der Teilekachel wieder mit dem Namen beschrieben
+Modul: app
+Test: ch.brickinventoryapp.app.TileReadAloudTest
+Rot: parts tile reads name once and quantity with unit
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
+@@ -108,7 +108,7 @@
+     // Growing with the tile instead of a fixed 90 dp: on the tablet a small
+     // image otherwise stood above a wide tile.
+     val canvas: @Composable (Modifier) -> Unit = { surface ->
+-        PartCardImage(surface, imageUrl, imageLoader, onImageError, colorObj, quantity.takeUnless { row })
++        PartCardImage(surface, imageUrl, imageLoader, onImageError, colorObj, quantity.takeUnless { row }, part.partName)
+     }
+ 
+     val texts: @Composable (Modifier) -> Unit = { column -> PartCardTexts(part, row, column, quantity) }
+@@ -191,6 +191,7 @@
+     onImageError: () -> Unit,
+     colorObj: Color?,
+     quantity: (@Composable () -> Unit)?,
++    name: String? = null,
+ ) {
+     val ctx = LocalContext.current
+     val soft = !movementReduced()
+@@ -198,8 +199,7 @@
+         ProductImage(
+             model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(soft).build() },
+             imageLoader = imageLoader,
+-            // Without a description: the name stands below it, TalkBack would otherwise read it twice.
+-            contentDescription = null,
++            contentDescription = name,
+             onState = { st ->
+                 if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
+             },

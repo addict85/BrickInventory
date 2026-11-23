@@ -1,0 +1,17 @@
+Gegenprobe: Mengen und Marken wieder als Zeichen vorgelesen („×12“, „✓“)
+Modul: app
+Test: ch.brickinventoryapp.app.TileReadAloudTest
+Rot: parts tile reads name once and quantity with unit
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt
+@@ -16,7 +16,7 @@
+  * Replaces what TalkBack reads for this text: abbreviations like „×12“, „✓“ or a
+  * bare year number mean nothing when read out loud.
+  */
+-fun Modifier.readAloudAs(text: String): Modifier = clearAndSetSemantics { contentDescription = text }
++fun Modifier.readAloudAs(text: String): Modifier = this
+ 
+ /** „a 1 b 2 - c 3 d 4“: read out codes character by character, not as a word („i9j0“). */
+ fun charByChar(code: String): String = code.toList().joinToString(" ")

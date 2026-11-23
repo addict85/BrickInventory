@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ui.components.AppUnlocking
-import ch.brickinventoryapp.ui.components.Entsperrschluessel
-import ch.brickinventoryapp.ui.components.Schrittfreigabe
+import ch.brickinventoryapp.ui.components.StepApproval
+import ch.brickinventoryapp.ui.components.UnlockKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.security.KeyPairGenerator
@@ -18,74 +18,74 @@ import java.security.spec.ECGenParameterSpec
  *
  * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
  *   A  any existing signature unlocks without signing → red „fremd signiert …“ and
- *      „ungueltiger Schluessel …“; gegenproben/app-sperre-ohne-krypto.patch
+ *      „ungueltiger Schluessel …“; counter-checks/app-lock-without-crypto.patch
  *   B  no new key after a failed signature → red „ungueltiger Schluessel …“;
- *      gegenproben/app-sperre-ohne-neuen-schluessel.patch
+ *      counter-checks/app-lock-without-new-key.patch
  *   C  asking without end → red „fremd signiert …“ (third retry);
- *      gegenproben/app-sperre-fragt-ohne-ende.patch
+ *      counter-checks/app-lock-asks-endlessly.patch
  */
 class AppUnlockingTest {
 
-    private fun paar() = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
+    private fun pair() = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
 
-    private fun signatur(mit: PrivateKey) =
-        Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(mit) }
+    private fun signature(with: PrivateKey) =
+        Signature.getInstance(StepApproval.SIGNATURE_SCHEME).apply { initSign(with) }
 
-    private inner class Schluessel : Entsperrschluessel {
-        var paar = paar()
-        var verworfen = 0
-        var fehlt = false
-        override fun signatur() = if (fehlt) error("kein Keystore") else signatur(paar.private)
-        override fun oeffentlich() = paar.public
-        override fun discard() { verworfen++; paar = paar() }
+    private inner class Key : UnlockKey {
+        var pair = pair()
+        var discarded = 0
+        var missing = false
+        override fun signature() = if (missing) error("no keystore") else signature(pair.private)
+        override fun public() = pair.public
+        override fun discard() { discarded++; pair = pair() }
     }
 
-    private val schluessel = Schluessel()
-    private var entsperrt = 0
+    private val key = Key()
+    private var unlocked = 0
 
     /** Answers every retry with the next answer; after that like a cancellation. */
-    private fun lauf(vararg antworten: (Signature) -> Signature?): Int {
-        var fragen = 0
-        AppUnlocking(schluessel) { s, antwort -> antworten.getOrNull(fragen++)?.let { antwort(it(s)) } ?: antwort(null) }
-            .unlock { entsperrt++ }
-        return fragen
+    private fun jobRun(vararg responses: (Signature) -> Signature?): Int {
+        var ask = 0
+        AppUnlocking(key) { s, response -> responses.getOrNull(ask++)?.let { response(it(s)) } ?: response(null) }
+            .unlock { unlocked++ }
+        return ask
     }
 
     @Test
     fun `the authorized signature unlocks`() {
-        assertEquals(1, lauf({ it }))
-        assertEquals(1, entsperrt)
+        assertEquals(1, jobRun({ it }))
+        assertEquals(1, unlocked)
     }
 
     @Test
     fun `success without a signature does not unlock and does not ask again`() {
-        assertEquals(1, lauf({ null }))
-        assertEquals(0, entsperrt)
-        assertEquals(0, schluessel.verworfen)
+        assertEquals(1, jobRun({ null }))
+        assertEquals(0, unlocked)
+        assertEquals(0, key.discarded)
     }
 
     @Test
     fun `foreign-signed does not unlock and asks only once more`() {
-        val fremd = paar()
-        assertEquals(2, lauf({ signatur(fremd.private) }, { signatur(fremd.private) }, { signatur(fremd.private) }))
-        assertEquals(0, entsperrt)
+        val foreign = pair()
+        assertEquals(2, jobRun({ signature(foreign.private) }, { signature(foreign.private) }, { signature(foreign.private) }))
+        assertEquals(0, unlocked)
     }
 
     @Test
     fun `an invalid key is replaced and asked once more`() {
         // A signature made for verifying rather than signing fails at sign() like an invalidated key.
         val canNot: (Signature) -> Signature? = {
-            Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initVerify(schluessel.paar.public) }
+            Signature.getInstance(StepApproval.SIGNATURE_SCHEME).apply { initVerify(key.pair.public) }
         }
-        assertEquals(2, lauf(canNot, { it }))
-        assertEquals(1, schluessel.verworfen)
-        assertEquals(1, entsperrt)
+        assertEquals(2, jobRun(canNot, { it }))
+        assertEquals(1, key.discarded)
+        assertEquals(1, unlocked)
     }
 
     @Test
     fun `without a key the app stays locked`() {
-        schluessel.fehlt = true
-        assertEquals(0, lauf({ it }))
-        assertEquals(0, entsperrt)
+        key.missing = true
+        assertEquals(0, jobRun({ it }))
+        assertEquals(0, unlocked)
     }
 }

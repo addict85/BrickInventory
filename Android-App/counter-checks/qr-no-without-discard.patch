@@ -1,0 +1,16 @@
+Gegenprobe: Ein Nein zum gezeigten Konto lässt die Kopplung am Server bestätigt stehen
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginViewModelTest
+Rot: a no to the shown account discards the pairing and leaves nothing behind
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+@@ -282,7 +282,6 @@
+             return
+         }
+         if (!questionAfterAccount(QrAccount(user, target.address))) {
+-            account.discardQr(pickup)
+             _loginState.update { it.copy(login = Operation.Done) }
+             return
+         }

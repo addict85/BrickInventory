@@ -1,5 +1,7 @@
 /**
  * The account switch of an entry — via the ROUTE, not via a pattern.
+ *
+ * Counter-check: in src/collection/acquisitions.ts the write target replaced by the source account (`const to = from`) → red “set: the acquisition AND the inventory row are with the child afterwards”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +10,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
@@ -52,7 +54,7 @@ async function setup() {
                 ON CONFLICT (fig_number) DO NOTHING`);
 
   // Set with one entry at the main account.
-  await holdsSet(db, MAIN, SN, 2, { preis: 100 });
+  await holdsSet(db, MAIN, SN, 2, { price: 100 });
   // Manual part and manual minifigure, one entry each.
   await db.run(
     `INSERT INTO parts (user_id,part_number,color_id,source)
@@ -82,57 +84,50 @@ test('an acquisition changes the account — all three kinds via their route', {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
 
-  const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
-  const setze = async (pfad, koerper) => {
-    const r = await fetch(base + pfad, {
+  const { base } = testServer(_req, { session: { userId: MAIN }, t });
+  const put = async (path, payload) => {
+    const r = await fetch(base + path, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(koerper),
+      body: JSON.stringify(payload),
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const entryId = async (tab, feld, wert) =>
-    (await db.get(`SELECT id FROM ${tab} WHERE ${feld} = $1 ORDER BY id LIMIT 1`, [wert])).id;
-  const besitzer = async (tab, feld, wert) =>
-    (await db.all(`SELECT user_id FROM ${tab} WHERE ${feld} = $1 ORDER BY user_id`, [wert])).map(r =>
+  const entryId = async (tab, field, value) =>
+    (await db.get(`SELECT id FROM ${tab} WHERE ${field} = $1 ORDER BY id LIMIT 1`, [value])).id;
+  const owner = async (tab, field, value) =>
+    (await db.all(`SELECT user_id FROM ${tab} WHERE ${field} = $1 ORDER BY user_id`, [value])).map(r =>
       Number(r.user_id),
     );
 
   await t.test('set: the acquisition AND the inventory row are with the child afterwards', async () => {
     const id = await entryId('set_acquisitions', 'set_number', SN);
-    const a = await setze(`/api/v1/sets/${SN}/acquisitions/${id}`, { owner_user_id: KIND });
+    const a = await put(`/api/v2/sets/${SN}/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(
-      await besitzer('set_acquisitions', 'set_number', SN),
+      await owner('set_acquisitions', 'set_number', SN),
       [KIND],
-      'Die Erfassung ist nicht beim Kind gelandet',
+      'The acquisition did not end up at the child',
     );
     assert.ok(
-      (await besitzer('sets', 'set_number', SN)).includes(KIND),
-      'Das Kind hat keine Bestandszeile bekommen — die Erfassung haengt dann in der Luft',
+      (await owner('sets', 'set_number', SN)).includes(KIND),
+      'The child got no holding row — the acquisition then hangs in the air',
     );
     // And the sender no longer holds it: it was its only entry.
-    assert.ok(
-      !(await besitzer('sets', 'set_number', SN)).includes(MAIN),
-      'Beim Absender ist die leere Set-Zeile stehengeblieben',
-    );
+    assert.ok(!(await owner('sets', 'set_number', SN)).includes(MAIN), 'The empty set row stayed behind at the sender');
   });
 
   await t.test('part: the same factory, a different address', async () => {
     const id = await entryId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
+    const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [KIND]);
-    assert.deepEqual(
-      await besitzer('parts', 'part_number', '3001'),
-      [KIND],
-      'Die Bestandszeile ist nicht mitgewandert',
-    );
+    assert.deepEqual(await owner('part_acquisitions', 'part_number', '3001'), [KIND]);
+    assert.deepEqual(await owner('parts', 'part_number', '3001'), [KIND], 'The holding row did not move along');
   });
 
   await t.test('figure: the third branch, and it is not executed anywhere else', async () => {
@@ -140,13 +135,13 @@ test('an acquisition changes the account — all three kinds via their route', {
     // contains `manualEntryReassign(tx, 'fig'`. Exactly this kind of assurance
     // passed twice today while the path was broken.
     const id = await entryId('minifig_acquisitions', 'fig_number', 'sw0001');
-    const a = await setze(`/api/v1/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });
+    const a = await put(`/api/v2/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.deepEqual(await besitzer('minifig_acquisitions', 'fig_number', 'sw0001'), [KIND]);
+    assert.deepEqual(await owner('minifig_acquisitions', 'fig_number', 'sw0001'), [KIND]);
     assert.deepEqual(
-      await besitzer('minifigs', 'fig_number', 'sw0001'),
+      await owner('minifigs', 'fig_number', 'sw0001'),
       [KIND],
-      'Die Bestandszeile der Figur ist nicht mitgewandert',
+      'The holding row of the minifig did not move along',
     );
   });
 
@@ -156,26 +151,22 @@ test('an acquisition changes the account — all three kinds via their route', {
     // applies, or a writeTargetOrNull() that allows too much.
     await setup();
     const id = await entryId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: FREMD });
+    const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: FREMD });
     assert.equal(
       a.status,
       403,
-      `Erwartet 403, bekam ${a.status}: ${JSON.stringify(a.body)}. Ein Konto ausserhalb ` +
-        'des Haushalts darf nichts bekommen — und schon gar nicht stillschweigend das ' +
-        'eigene Konto behalten.',
+      `Expected 403, got ${a.status}: ${JSON.stringify(a.body)}. An account outside ` +
+        'the household must get nothing — and certainly not silently keep its ' +
+        'own account.',
     );
     // And NOTHING is touched. Without this half the case would also be green
     // if the route first moved and then answered 403.
     assert.deepEqual(
-      await besitzer('part_acquisitions', 'part_number', '3001'),
+      await owner('part_acquisitions', 'part_number', '3001'),
       [MAIN],
-      'Trotz 403 ist die Erfassung gewandert',
+      'The acquisition moved despite 403',
     );
-    assert.deepEqual(
-      await besitzer('parts', 'part_number', '3001'),
-      [MAIN],
-      'Trotz 403 ist die Bestandszeile gewandert',
-    );
+    assert.deepEqual(await owner('parts', 'part_number', '3001'), [MAIN], 'The holding row moved despite 403');
   });
 
   await t.test('the same account means "nothing to do", not "error"', async () => {
@@ -183,9 +174,9 @@ test('an acquisition changes the account — all three kinds via their route', {
     // `unchanged`. Without this case the route could reject every switch
     // and the 403 case above would still be green.
     const id = await entryId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
+    const a = await put(`/api/v2/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.equal(a.body?.unchanged, true, 'Ein Wechsel auf das eigene Konto muss als „unveraendert" antworten');
-    assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [MAIN]);
+    assert.equal(a.body?.unchanged, true, 'A switch to the own account must answer with „unveraendert“');
+    assert.deepEqual(await owner('part_acquisitions', 'part_number', '3001'), [MAIN]);
   });
 });

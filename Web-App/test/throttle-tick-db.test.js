@@ -36,9 +36,9 @@ test('shared rhythm via the database', { concurrency: 1 }, async t => {
   await t.test('two throttles share the rhythm', async () => {
     // The own throttle lets through immediately (window 0) — every distance that
     // shows comes from the shared rhythm.
-    const apiTakt = require('./helpers/sources').testContext('externalSources').apiTakt;
-    const a = new RateLimiter(1, 0, { api: API, gapMs: GAP, apiTakt, disruptedUntil: 0 });
-    const b = new RateLimiter(1, 0, { api: API, gapMs: GAP, apiTakt, disruptedUntil: 0 });
+    const apiTick = require('./helpers/sources').testContext('externalSources').apiTick;
+    const a = new RateLimiter(1, 0, { api: API, gapMs: GAP, apiTick, disruptedUntil: 0 });
+    const b = new RateLimiter(1, 0, { api: API, gapMs: GAP, apiTick, disruptedUntil: 0 });
     const times = [];
     const start = Date.now();
     await Promise.all([a, b, a, b, a, b].map(d => d.waitForSlot().then(() => times.push(Date.now() - start))));
@@ -46,8 +46,8 @@ test('shared rhythm via the database', { concurrency: 1 }, async t => {
     // The k-th pass does not come before k beats. Late waking under load
     // is allowed; distances between wake times would not be, because a
     // late participant shortens the distance to the next punctual one.
-    const zufrueh = times.filter((z, k) => z < k * GAP - 40);
-    assert.deepEqual(zufrueh, [], `Durchlässe nach Start: ${times.join(', ')} ms`);
+    const tooEarly = times.filter((z, k) => z < k * GAP - 40);
+    assert.deepEqual(tooEarly, [], `passes after start: ${times.join(', ')} ms`);
   });
 
   await db.run('DELETE FROM api_cadence WHERE api = $1', [API]);

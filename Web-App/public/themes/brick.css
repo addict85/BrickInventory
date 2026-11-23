@@ -1,129 +1,69 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   APP-DESIGN "brick" (blau) — Stein-Look, vom Admin global wählbar.
-   ---------------------------------------------------------------------------
-   Aktiv, sobald <html data-theme="brick"> gesetzt ist (siehe applyTheme() in
-   js/01-core.js). Alle Regeln sind unter [data-theme="brick"] gescoped, das
-   File wird daher immer geladen, greift aber nur beim aktiven Design.
-
-   NEUES DESIGN HINZUFÜGEN:
-     1. Diese Datei nach themes/<name>.css kopieren und [data-theme="brick"]
-        überall durch [data-theme="<name>"] ersetzen.
-     2. In index.html ein <link rel="stylesheet" href="/themes/<name>.css">
-        ergänzen (neben brick.css).
-     3. In index.html beim Select #mon-app-theme eine <option value="<name>">
-        hinzufügen und den Namen serverseitig in routes/settings.ts
-        (POST /admin/theme, Whitelist) freischalten.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ APP THEME "brick" (blue) — brick look, chosen globally by the admin ═══
+   Active once <html data-theme="brick"> is set (applyTheme() in js/theme-boot.js). All rules are scoped under
+   [data-theme="brick"], so the file only takes effect with the active theme.
+   A new theme: copy this file, replace the scope, add it to the theme choice and to DESIGNS on the server. */
 
 [data-theme="brick"]{
-  /* Gedämpfte Schieferblau-Primärpalette */
-  /* Palette, Diagrammfarben und --brick-petrol stehen in /tokens.css —
-     erzeugt aus shared/design-tokens.json, damit die Android-App dieselben
-     Werte fuehrt. Die Begruendungen dazu sind mit umgezogen. Hier bleibt,
-     was nur das Web kennt. */
+  /* Muted slate-blue primary palette */
+  /* Palette, chart colours and --brick-petrol are in /tokens.css, generated from shared/design-tokens.json so
+     the Android app carries the same values. What only the web knows stays here. */
   --brick-petrol-dk:#316775;
   --brick-slate-lt:#8199b3;
-  --bg:#c9d5e2;                 /* Seitenhintergrund hinter der Grundplatte */
-  --screen-bg:#c9d5e2;          /* Login-/Startup-Screen (vor dem Login) */
+  --bg:#c9d5e2;                 /* Page background behind the base plate */
+  --screen-bg:#c9d5e2;          /* Login/startup screen (before login) */
   --rad:14px;
-  /* Die Grundplatte (#e6ecf2) ist dunkler als Weiss; Grau- und Gewinnschrift
-     darauf brauchen dunklere Töne, um 4,5:1 zu halten. */
+  /* The base plate (#e6ecf2) is darker than white; grey and profit text on it need darker tones to keep 4.5:1. */
   --mut:#52606f;
-  --gewinn:#136c35;
+  --profit:#136c35;
   --sh0:0 1px 2px rgba(45,71,99,.10);
   --sh1:0 3px 10px rgba(45,71,99,.12);
   --sh2:0 8px 24px rgba(45,71,99,.16);
 }
 
-/* ── Die Noppenreihe ─────────────────────────────────────────────────────────
-   Marco: „Aktuell sieht man einfach oberhalb einen blauen Balken mit Punkten.
-   Schoen waere es wenn die Kante eher nach einem Lego-Stein aussehen wuerde."
-
-   Hier stand ein radialer Verlauf: flache helle KREISE, ueber die ganze Breite
-   wiederholt. Ein Kreis ist aber nicht, was man von einer Noppe sieht — von
-   vorn ist sie ein Rechteck mit runder Oberkante, und sie sitzt OBEN AUF der
-   Kante statt darin. Die App zeichnete derweil vier abgerundete Noppen links:
-   zwei Oberflaechen, zwei Formen.
-
-   Jetzt dieselbe Maske wie im Noppe-Design (--noppen-form in styles.css), nur
-   im eigenen Takt. Die Reihe ist ein eigenes Element und nicht mehr eine
-   Fuellung der Kante — nur so kann sie ueber ihr liegen.
-
-   Die alte Regel nannte ausserdem `.brick-studs` und `.bstat::before`. Beide
-   waren WIRKUNGSLOS: Sie setzte nur Farbe, kein `content` und keine Groesse,
-   und `.brick-studs` kommt im ganzen Baum sonst nicht vor. Die Kennzahlen-
-   Kacheln bekommen ihre Noppen jetzt wirklich. */
+/* ── The stud row ──
+   Studs are rectangles with a rounded top sitting ON the edge, not flat circles in it — the same mask as the
+   noppe theme (--studs-shape in styles.css) in its own rhythm, so web and app show one shape. The row is an
+   element of its own, only so can it lie above the edge. */
 
 [data-theme="brick"] .sc::after,
 [data-theme="brick"] .bstat::before,
 [data-theme="brick"] .lcard::after{
   content:'';position:absolute;top:-6px;left:10px;right:10px;height:6px;z-index:4;
   background-color:var(--b400);
-  -webkit-mask-image:var(--noppen-form);mask-image:var(--noppen-form);
+  -webkit-mask-image:var(--studs-form);mask-image:var(--studs-form);
   -webkit-mask-size:17px 6px;mask-size:17px 6px;
   -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
 }
-/* Auf der hellen Kachel waere ein helleres Blau nicht zu sehen. */
+/* On the light tile a lighter blue would not be visible. */
 [data-theme="brick"] .bstat-light::before{background-color:#8fa8c0}
 [data-theme="brick"] .bstat-petrol::before{background-color:#7fbccb}
 
-/* ── Grundplatte: der gesamte App-Inhalt sitzt in einem hellen, runden Panel ── */
+/* ── Base plate: the whole app content sits in a light, rounded panel ── */
 [data-theme="brick"] #app{
   max-width:1200px;margin:0 auto;background:#e6ecf2;
   border-radius:24px;padding:14px 16px 22px;
 }
 [data-theme="brick"] body{background:var(--bg)}
 
-/* ── Header als schwebende blaue Stein-Kachel ────────────────────────────── */
+/* ── Header as a floating blue brick tile ── */
 [data-theme="brick"] header{
   position:static;background:var(--b600);color:#fff;
   border-radius:16px;border-bottom:none;overflow:visible;
   padding:14px 20px;margin-bottom:14px;box-shadow:var(--sh1);
 }
-/* Dunkel ist --b600 hell (Text darauf dunkel); die Kopfleiste bleibt ein
-   dunkles Blau, damit die weisse Schrift darauf stehen bleibt. */
-[data-theme="brick"][data-dunkel] header{background:var(--b200)}
-[data-theme="brick"] header .logo .marke,
-[data-theme="brick"] header .logo .marke span{color:#fff}
+/* In dark mode --b600 is light (text on it dark); the header stays a dark blue so the white text stays readable. */
+[data-theme="brick"][data-dark] header{background:var(--b200)}
+[data-theme="brick"] header .logo .brand,
+[data-theme="brick"] header .logo .brand span{color:#fff}
 [data-theme="brick"] header .logo svg{
   background:#7fa3c9;border-radius:9px;padding:6px;box-sizing:content-box;
   filter:hue-rotate(200deg) saturate(.55) brightness(1.05);
 }
 [data-theme="brick"] header .ubadge{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.8)}
-[data-theme="brick"] header .abadge{background:var(--brick-petrol);color:#fff}
-/* ── Hier stand eine Regel fuer #btn-logout, und sie war der Fehler ────────
-
-   Marcos Befund, dreimal gemeldet: „Beim Logout-Eintrag fehlt der Text."
-
-       [data-theme="brick"] header #btn-logout{
-         background:rgba(255,255,255,.14);color:#fff;
-         border-color:rgba(255,255,255,.24)}
-
-   Sie stammt aus der Zeit, als „Abmelden" ein KNOPF IN DER KOPFLEISTE war.
-   Auf dem blauen Streifen des Steindesigns war weiss auf durchscheinend
-   genau richtig.
-
-   Am 17.10. ist der Knopf in die Menueklappe gezogen — und die ist WEISS.
-   Die Regel blieb stehen und malte seither weisse Schrift auf weissen Grund.
-   Das Symbol blieb sichtbar, weil Emoji ihre eigene Farbe mitbringen; der
-   Text verschwand. Genau das Bild, das Marco geschickt hat.
-
-   Sie zielt ueber die ID. Damit wiegt sie (1,1,1) und ueberstimmt jede
-   Klassenregel in styles.css — auch den Rueckfallwert
-   `color:var(--r700,#b91c1c)`, den ich vorher eingebaut hatte. Meine erste
-   Reparatur konnte deshalb gar nicht wirken.
-
-   GEMESSEN im echten Browser, angemeldet, Klappe offen:
-     classic/noppe/hochglanz  color rgb(185,28,28)  auf rgb(255,255,255)  ok
-     brick                    color rgb(255,255,255) auf rgba(255,255,255,.14)
-
-   Ersatzlos weg: Der Eintrag ist jetzt ein Menuepunkt wie die sieben
-   darueber und holt sich seine Farbe aus `.umenu-abmelden`. Eine eigene
-   Design-Regel braeuchte er nur, wenn er wieder auf dem Streifen saesse. */
 [data-theme="brick"] header #gib-text,
 [data-theme="brick"] header #gib-chevron{color:rgba(255,255,255,.85)}
 
-/* ── Navigation als klobige Pills ────────────────────────────────────────── */
+/* ── Navigation as chunky pills ── */
 [data-theme="brick"] nav{
   position:static;background:transparent;border:none;box-shadow:none;
   padding:0;gap:9px;margin-bottom:16px;flex-wrap:wrap;
@@ -135,49 +75,30 @@
 @media (hover:hover){
 [data-theme="brick"] .ntab:hover{background:#f2f6fa}
 }
-/* Dunkel: Grundplatte und Pillen auf den dunklen Flächen statt fest hell. */
-[data-theme="brick"][data-dunkel] #app,[data-theme="brick"][data-dunkel] .lcard{background:var(--s100)}
-[data-theme="brick"][data-dunkel] .ntab{background:var(--sur);color:var(--txt);border-color:var(--bdr)}
-[data-theme="brick"][data-dunkel] .cond-new{background:var(--b100);color:var(--b700)}
-[data-theme="brick"][data-dunkel] .cond-used{background:var(--a100);color:var(--a-schrift)}
-/* Marcos Befund: „Monitoring sollte auf der gleichen Zeile sein wie die
-   restlichen Tabs." — und danach noch einmal: „Die Menues in der Webapp sind
-   nicht alle auf einer Zeile."
-
-   Dieses Design ist das einzige, das die Reiterleiste UMBRECHEN laesst
-   (flex-wrap oben); die anderen schieben sie seitlich weg.
-
-   ── Warum das OHNE Medienabfrage stehen muss ─────────────────────────────
-   Der erste Anlauf hat die Pills nur fuer mittlere Fenster verschmaelert. Das
-   griff am Kern vorbei: Eine Medienabfrage misst das FENSTER, die Reiter
-   stehen hier aber in #app — und das ist auf 1200px gedeckelt (Regel oben).
-   Auf einem breiten Bildschirm galt die Abfrage also nicht, und die vollen
-   Pills mussten sich trotzdem in dieselben 1168px draengen. Im Browser auf
-   der echten Seite gemessen:
-
-       #app 1200px  ->  nav 1168px
-       volle Pills:     1162px noetig   (sechs Pixel Luft — eine andere
-                                         Schriftauslieferung, und es bricht um)
-       schmale Pills:    950px noetig
-
-   Deshalb gelten sie IMMER. flex-wrap bleibt als Notausgang: Unter etwa
-   960px hilft keine Polsterung mehr, und ein Umbruch ist besser als ein
-   Reiter, den man nicht sieht. */
+/* Dark: base plate and pills on the dark surfaces instead of fixed light ones. */
+[data-theme="brick"][data-dark] #app,[data-theme="brick"][data-dark] .lcard{background:var(--s100)}
+[data-theme="brick"][data-dark] .ntab{background:var(--sur);color:var(--txt);border-color:var(--bdr)}
+[data-theme="brick"][data-dark] .cond-new{background:var(--b100);color:var(--b700)}
+[data-theme="brick"][data-dark] .cond-used{background:var(--a100);color:var(--a-text)}
+/* This theme is the only one that lets the tab bar WRAP (flex-wrap above); the others scroll it sideways.
+   The narrow pills apply ALWAYS, without a media query: the tabs live in #app, capped at 1200px, so a query
+   on the window width missed wide screens where the full pills (1162px) barely fit into 1168px. flex-wrap
+   stays as the emergency exit below about 960px. */
 [data-theme="brick"] nav{gap:6px}
 [data-theme="brick"] .ntab{padding:8px 9px;font-size:.82rem}
 [data-theme="brick"] .ntab.active{
-  background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600);
+  background:var(--b600);color:var(--on-primary,#fff);border-color:var(--b600);
 }
 [data-theme="brick"] .ntab.active svg{filter:brightness(0) invert(1)}
-[data-theme="brick"] .ntab.gruppe-aktiv{
-  background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600);
+[data-theme="brick"] .ntab.group-active{
+  background:var(--b600);color:var(--on-primary,#fff);border-color:var(--b600);
 }
-[data-theme="brick"] .ntab.gruppe-aktiv svg{filter:brightness(0) invert(1)}
+[data-theme="brick"] .ntab.group-active svg{filter:brightness(0) invert(1)}
 
-/* ── Buttons: primäre Aktionen in Petrol (Stein-Optik mit „Bauhöhe") ─────── */
+/* ── Buttons: primary actions in petrol (brick look with "height") ── */
 [data-theme="brick"] .btn{border-radius:10px}
-/* Petrol bleibt auch dunkel gleich; die Schrift darauf deshalb fest weiss
-   statt --auf-primaer, das dunkel für die aufgehellte Markenfarbe dunkel ist. */
+/* Petrol stays the same in dark mode, so the text on it is fixed white instead of --on-primary, which is dark
+   there for the lightened brand colour. */
 [data-theme="brick"] .bp{
   background:var(--brick-petrol);box-shadow:0 2px 0 var(--brick-petrol-dk);color:#fff;
 }
@@ -185,56 +106,38 @@
 [data-theme="brick"] .bp:hover{background:#3a7080;box-shadow:0 1px 0 var(--brick-petrol-dk)}
 }
 
-/* ── Panels/Karten etwas klobiger ────────────────────────────────────────── */
+/* ── Panels/cards a bit chunkier ────────────────────────────────────────── */
 [data-theme="brick"] .card,[data-theme="brick"] .fstat,
-[data-theme="brick"] .ssec,[data-theme="brick"] .bereich-karte,
-[data-theme="brick"] .gctrl{border-width:1.5px;border-radius:14px}
+[data-theme="brick"] .ssec{border-width:1.5px;border-radius:14px}
 
-/* ── Set-Karten: blauer Noppen-„Deckel" über dem Bild + Badges ──────────── */
-/* ── Warum die Kachel oben offen ist ─────────────────────────────────────────
-   Die Noppen sitzen bei `top:-6px`, also UEBER der Kachel — so, wie sie an
-   einem echten Stein ueber der Deckflaeche stehen. Dafuer darf die Kachel sie
-   nicht abschneiden, und `overflow:hidden` aus styles.css taete genau das.
-
-   Das kostet nichts: Das Bildfeld (.sci) bringt sein eigenes `overflow:hidden`
-   mit, die Rundung des Bildes bleibt also. Nur die farbige Kante haette ohne
-   die Kachel keine runden Ecken mehr — deshalb bekommt sie ihre eigenen
-   (16px Kachel minus 2px Rahmen = 14px).
-
-   Der Platz fuer die ueberstehenden Noppen kommt aus dem Gitter: Ohne ihn
-   raegten sie in die Zeile darueber. */
+/* ── Set cards: blue stud "lid" above the image + badges ── */
+/* ── Why the tile is open at the top ──
+   The studs sit at top:-6px, ABOVE the tile like on a real brick, so the tile must not clip them (overflow:hidden
+   from styles.css would). The image field keeps its own overflow:hidden; the coloured edge gets its own radius.
+   The grid provides the room for the protruding studs. */
 [data-theme="brick"] .sc{border-width:2px;border-radius:16px;overflow:visible}
 [data-theme="brick"] .sgrid{padding-top:6px}
 [data-theme="brick"] .bstat{overflow:visible}
 [data-theme="brick"] .brick-stats{padding-top:6px}
-/* Die Kante: die Deckflaeche des Steins. Die Noppen (oben, ::after) sitzen in
-   ihren ersten sechs Pixeln — deshalb ist sie hoeher als vorher. Der helle
-   Saum oben und die dunkle Kante unten machen aus der Flaeche einen Koerper. */
+/* The edge: the top surface of the brick. The studs (::after) sit in its first six pixels; the light seam
+   on top and the dark edge below turn the surface into a body. */
 [data-theme="brick"] .sc::before{
   content:'';position:absolute;top:0;left:0;right:0;height:22px;z-index:3;
   background-color:var(--b600);
   background-image:linear-gradient(180deg,
     rgba(255,255,255,.20) 0%,rgba(255,255,255,.05) 40%,rgba(0,0,0,.12) 100%);
   border-bottom:1px solid rgba(0,0,0,.18);
-  /* Eigene Rundung, weil die Kachel oben offen ist und nicht mehr
-     zuschneidet: 16px Kachel minus 2px Rahmen. */
+  /* Own radius, because the tile is open at the top and no longer clips: 16px tile minus 2px border. */
   border-radius:14px 14px 0 0;
 }
 [data-theme="brick"] .sc .sci{margin-top:22px}
-/* Löschen-Knopf in der Galerie über den Stein-Deckel heben (sonst verdeckt der Deckel es) */
+/* Lift the delete button above the brick lid in the gallery (otherwise the lid covers it) */
 [data-theme="brick"] .sc .ca{z-index:5}
-/* Der Knopf sitzt auf der dunkelblauen Noppenleiste (--b600, 18px hoch).
-   Das helle Grau aus styles.css wäre dort ein heller Fleck; stattdessen ein
-   heller Strich auf dem Deckel selbst — sichtbar, aber ruhig. Beim Überfahren
-   wechselt er wie im hellen Design auf Rot. */
-/* Der Knopf sitzt auf der dunkelblauen Noppenleiste (--b600). Weiss mit
-   Teiltransparenz wirkte dort ausgewaschen — jetzt volles Weiss für Symbol und
-   Rahmen, der Grund bleibt leicht durchscheinend, damit die Noppen sichtbar
-   bleiben. Beim Überfahren dreht sich das Verhältnis um: weisser Grund,
-   Symbol in der Farbe der Leiste. Dieselbe Farbwelt, kein Rot. */
-/* War: rgba(255,255,255,.22) im Ruhezustand — dadurch kaum sichtbar, solange
-   man nicht direkt über dem Knopf selbst war (nicht nur über der Kachel).
-   Jetzt derselbe volle weisse Grund wie beim Überfahren, von Anfang an. */
+/* The button sits on the dark-blue stud bar (--b600, 18px high): a light stroke on the lid instead of the
+   light grey from styles.css — visible but calm. On hover it turns red as in the light theme. */
+/* On the stud bar semi-transparent white looked washed out: full white for icon and border, the ground stays
+   slightly translucent so the studs remain visible. On hover the ratio flips: white ground, icon in the bar colour. */
+/* The same full white ground as on hover from the start: semi-transparent it was hardly visible. */
 [data-theme="brick"] .sc .delbtn{
   background:#fff;border-color:#fff;color:var(--b600);
 }
@@ -243,15 +146,15 @@
   background:#fff;border-color:#fff;color:var(--r500);
 }
 }
-[data-theme="brick"][data-dunkel] .sc .delbtn{background:var(--sur);border-color:var(--bdr)}@media (hover:hover){
-[data-theme="brick"][data-dunkel] .sc .delbtn:hover{background:var(--sur);border-color:var(--bdr)}
+[data-theme="brick"][data-dark] .sc .delbtn{background:var(--sur);border-color:var(--bdr)}@media (hover:hover){
+[data-theme="brick"][data-dark] .sc .delbtn:hover{background:var(--sur);border-color:var(--bdr)}
 }
-[data-theme="brick"] .qbadge{background:var(--b600);color:var(--auf-primaer,#fff);border-radius:7px}
-/* Zustands-Plaketten: Neu = Salbeigrün, Gebraucht = Sand (wie im Mockup) */
+[data-theme="brick"] .qbadge{background:var(--b600);color:var(--on-primary,#fff);border-radius:7px}
+/* Condition badges: new = sage green, used = sand */
 [data-theme="brick"] .cond-new{background:#e2eaf3;color:#3d6a8f}
 [data-theme="brick"] .cond-used{background:#eee7db;color:#7a5c2a}
 
-/* ── Kennzahlen-Kacheln: im Stein-Design farbig ──────────────────────────── */
+/* ── Key figure tiles: coloured in the brick theme ── */
 [data-theme="brick"] .bstat{
   position:relative;border:0;border-radius:14px;padding:14px 16px;color:#fff;
 }
@@ -259,45 +162,21 @@
 [data-theme="brick"] .bstat .bstat-v{font-size:1.7rem;font-weight:800;margin-top:2px;line-height:1.1;color:inherit}
 [data-theme="brick"] .bstat .bstat-s{color:inherit}
 [data-theme="brick"] .bstat-slate{background:var(--b600)}
-/* Dunkel leuchteten die hellen Markenflächen aus dem Raum; dort getönte
-   dunkle Kacheln mit Rand, die Farbe tragen die Noppen. */
-[data-theme="brick"][data-dunkel] .bstat{background:var(--b100);color:var(--txt);border:1px solid var(--b300)}
-[data-theme="brick"][data-dunkel] .bstat-petrol{background:#17313a;border-color:#2d5a66}
-[data-theme="brick"][data-dunkel] .bstat-light{background:var(--s200);border-color:var(--s300)}
-[data-theme="brick"][data-dunkel] .bstat::before{background-color:var(--b500)}
-[data-theme="brick"][data-dunkel] .bstat-petrol::before{background-color:#5aa3b5}
-[data-theme="brick"][data-dunkel] .bstat-light::before{background-color:var(--s400)}
+/* Dark: the light brand surfaces glowed out of the room; there tinted dark tiles with a border, the studs carry the colour. */
+[data-theme="brick"][data-dark] .bstat{background:var(--b100);color:var(--txt);border:1px solid var(--b300)}
+[data-theme="brick"][data-dark] .bstat-petrol{background:#17313a;border-color:#2d5a66}
+[data-theme="brick"][data-dark] .bstat-light{background:var(--s200);border-color:var(--s300)}
+[data-theme="brick"][data-dark] .bstat::before{background-color:var(--b500)}
+[data-theme="brick"][data-dark] .bstat-petrol::before{background-color:#5aa3b5}
+[data-theme="brick"][data-dark] .bstat-light::before{background-color:var(--s400)}
 [data-theme="brick"] .bstat-petrol{background:var(--brick-petrol)}
 [data-theme="brick"] .bstat-light{background:var(--brick-slate-lt);color:#20303f}
 
-/* ── Katalog: Von-Bis-Jahres-Slider im Stein-Look ────────────────────────── */
-/* Schiene wie die Grundplatten-Ränder, Füllung in Slate-Blau */
-[data-theme="brick"] .dual-track{background:#d4dde7;height:6px;top:10px;border-radius:3px}
-[data-theme="brick"] .dual-fill{background:var(--b600);height:6px;border-radius:3px}
-/* Griffe als Noppen: Stud-Glanzpunkt oben links + „Bauhöhe" (Schatten unten) */
-[data-theme="brick"] .dual-range input[type=range]::-webkit-slider-thumb{
-  width:18px;height:18px;margin-top:4px;
-  background:radial-gradient(circle at 35% 32%, rgba(255,255,255,.55) 3.5px, transparent 4.5px), var(--b600);
-  border:2px solid #fff;
-  box-shadow:0 2px 0 var(--b700), 0 1px 3px rgba(45,71,99,.28);
-}
-[data-theme="brick"] .dual-range input[type=range]::-moz-range-thumb{
-  width:14px;height:14px;
-  background:radial-gradient(circle at 35% 32%, rgba(255,255,255,.55) 3px, transparent 4px), var(--b600);
-  border:2px solid #fff;
-  box-shadow:0 2px 0 var(--b700), 0 1px 3px rgba(45,71,99,.28);
-}
-/* Badge + Reset-Chip erben bereits das themable .qbadge (Slate-Blau) */
 
-/* ── Login- und Startup-Screen ───────────────────────────────────────────────
-   Beide Screens laufen VOR dem Login und wurden vom Design bisher gar nicht
-   erfasst: applyTheme() lief erst in showApp(), und #login-screen hatte in
-   styles.css ein hartkodiertes background:#fff. Beides ist gefixt (siehe
-   js/theme-boot.js und --screen-bg), hier folgt der eigentliche Stein-Look.
-
-   Die Karte wird zur schwebenden Kachel mit Noppenreihe — dasselbe Motiv wie
-   .sc und .bstat im eingeloggten Zustand, damit der Übergang nach dem Login
-   nicht wie ein Designwechsel wirkt. */
+/* ── Login and startup screens ──
+   Both screens run BEFORE login (theme from js/theme-boot.js, background from --screen-bg). The card becomes a
+   floating tile with a stud row — the same motif as .sc and .bstat after login, so logging in does not look
+   like a theme change. */
 [data-theme="brick"] #startup-screen,
 [data-theme="brick"] #login-screen{
   background:var(--screen-bg);
@@ -314,7 +193,7 @@
   overflow:hidden;
 }
 
-/* Noppenreihe am oberen Rand der Karte */
+/* Stud row at the top edge of the card */
 [data-theme="brick"] .lcard::before{
   content:"";
   position:absolute;top:0;left:0;right:0;height:14px;
@@ -326,11 +205,11 @@
 [data-theme="brick"] .llogo .icon{background:var(--b600);border-radius:8px}
 [data-theme="brick"] .llogo .llogo-name span{color:var(--b600)}
 
-/* Eingabefelder und Buttons wie im App-Bereich */
+/* Inputs and buttons as in the app area */
 [data-theme="brick"] .lcard input,
 [data-theme="brick"] .lcard select{
   background:var(--sur);
-  border:1px solid var(--feldrand);
+  border:1px solid var(--field-border);
   border-radius:10px;
 }
 [data-theme="brick"] .lcard input:focus,
@@ -346,15 +225,13 @@
 @media (hover:hover){
 [data-theme="brick"] .lcard .bp:hover{background:var(--b700)}
 }
-/* Dunkel ist --b600 hell: Die Schrift darauf ist dann dunkel (--auf-primaer). */
-[data-theme="brick"][data-dunkel] .lcard .bp{color:var(--auf-primaer)}
+/* In dark mode --b600 is light: the text on it is then dark (--on-primary). */
+[data-theme="brick"][data-dark] .lcard .bp{color:var(--on-primary)}
 [data-theme="brick"] .lcard a{color:var(--b600)}
 
-/* Startup-Screen: Fortschrittsanzeige in der Primärfarbe des Designs */
-/* Die Fortschrittsbalken brauchen hier keine eigene Regel mehr: ihre
-   Inline-Styles in index.html verwenden seit diesem Fix var(--b600) bzw.
-   var(--g500) und folgen dem Design damit von allein. */
+/* Startup screen: progress indicator in the theme's primary colour */
+/* The progress bars need no own rule here: their styles use var(--b600)/var(--g500) and follow the theme. */
 [data-theme="brick"] #startup-screen .spin{border-top-color:var(--b600)}
 
-/* Fokusring auf der blauen Kopfleiste: weiss (Ring #2F4763 lag bei 1,35:1). */
-[data-theme="brick"]{--fokus-kopf:#fff}
+/* Focus ring on the blue header: white (the ring #2F4763 sat at 1.35:1). */
+[data-theme="brick"]{--focus-header:#fff}

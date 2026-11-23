@@ -30,28 +30,28 @@ const { spawnSync } = require('node:child_process');
 const YML = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'docker-publish.yml'), 'utf8');
 
 /** Cut out the run block of the step `id: p` (indentation ten spaces). */
-function pruefScript() {
-  const schritt = YML.split('\n      - id: p\n')[1]?.split(/\n {6}- /)[0] ?? '';
-  const zeilen = schritt.split('\n');
-  const start = zeilen.indexOf('        run: |');
-  assert.ok(start >= 0, 'run-Block des Prüfschritts nicht gefunden');
-  const rumpf = [];
-  for (const z of zeilen.slice(start + 1)) {
+function checkScript() {
+  const step = YML.split('\n      - id: p\n')[1]?.split(/\n {6}- /)[0] ?? '';
+  const lines = step.split('\n');
+  const start = lines.indexOf('        run: |');
+  assert.ok(start >= 0, 'run block of the check step not found');
+  const body = [];
+  for (const z of lines.slice(start + 1)) {
     if (z.trim() && !z.startsWith('          ')) break;
-    rumpf.push(z.slice(10));
+    body.push(z.slice(10));
   }
-  return rumpf.join('\n');
+  return body.join('\n');
 }
 
-function lauf(tag, { ref = 'refs/heads/main', gruen = '1' } = {}) {
-  const aus = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wf-tag-')), 'ausgabe');
-  fs.writeFileSync(aus, '');
-  const gh = path.join(path.dirname(aus), 'gh');
-  fs.writeFileSync(gh, gruen === null ? '#!/bin/sh\nexit 1\n' : `#!/bin/sh\necho ${gruen}\n`, { mode: 0o755 });
+function run(tag, { ref = 'refs/heads/main', green = '1' } = {}) {
+  const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wf-tag-')), 'ausgabe');
+  fs.writeFileSync(out, '');
+  const gh = path.join(path.dirname(out), 'gh');
+  fs.writeFileSync(gh, green === null ? '#!/bin/sh\nexit 1\n' : `#!/bin/sh\necho ${green}\n`, { mode: 0o755 });
   // git as a stand-in too: the step only asks for the commit, and the test
   // should also run in a copy without .git.
   fs.writeFileSync(
-    path.join(path.dirname(aus), 'git'),
+    path.join(path.dirname(out), 'git'),
     `#!/bin/sh
 case "$*" in
   "rev-parse HEAD") echo ${'a1'.repeat(20)} ;;
@@ -61,13 +61,13 @@ esac
 `,
     { mode: 0o755 },
   );
-  const r = spawnSync('bash', ['-e', '-c', pruefScript()], {
+  const r = spawnSync('bash', ['-e', '-c', checkScript()], {
     encoding: 'utf8',
     cwd: __dirname,
     env: {
       ...process.env,
-      PATH: `${path.dirname(aus)}:${process.env.PATH}`,
-      GITHUB_OUTPUT: aus,
+      PATH: `${path.dirname(out)}:${process.env.PATH}`,
+      GITHUB_OUTPUT: out,
       EREIGNIS: 'workflow_dispatch',
       ERGEBNIS: '',
       TAG_EINGABE: tag,
@@ -75,66 +75,66 @@ esac
       REPO: 'probe/probe',
     },
   });
-  const output = fs.readFileSync(aus, 'utf8');
-  fs.rmSync(path.dirname(aus), { recursive: true, force: true });
+  const output = fs.readFileSync(out, 'utf8');
+  fs.rmSync(path.dirname(out), { recursive: true, force: true });
   return { status: r.status, output };
 }
 
 test('valid tags go on as output', () => {
   for (const tag of ['2026.11.01', 'v1_2-rc.3', '']) {
-    const r = lauf(tag);
-    assert.equal(r.status, 0, `„${tag}" abgewiesen`);
+    const r = run(tag);
+    assert.equal(r.status, 0, `„${tag}" rejected`);
     assert.match(r.output, new RegExp(`^tag=${tag.replace(/\./g, '\\.')}$`, 'm'));
     assert.match(r.output, /^bauen=true$/m);
-    assert.match(r.output, /^kurz=a1a1a1a$/m, 'der Commit kommt aus git rev-parse');
+    assert.match(r.output, /^kurz=a1a1a1a$/m, 'the commit comes from git rev-parse');
   }
 });
 
-const BOESE = {
+const EVIL = {
   'zwei Zeilen': 'gut\ntype=raw,value=latest',
-  Leerzeichen: 'a b',
+  space: 'a b',
   Semicolon: 'a;b',
   'Bindestrich vorn': '-a',
   Umlaut: 'ä',
   'zu lang': 'a'.repeat(129),
   CarriageReturn: 'gut\r',
 };
-for (const [fall, tag] of Object.entries(BOESE)) {
+for (const [fall, tag] of Object.entries(EVIL)) {
   test(`rejected: ${fall}`, () => {
-    const r = lauf(tag);
-    assert.notEqual(r.status, 0, `abgewiesen: ${fall}`);
+    const r = run(tag);
+    assert.notEqual(r.status, 0, `rejected: ${fall}`);
     assert.doesNotMatch(r.output, /^tag=/m);
   });
 }
 
 test('without green CI no image', () => {
-  for (const [fall, gruen] of [
+  for (const [fall, green] of [
     ['keiner grün', '0'],
     ['Abfrage gescheitert', null],
     ['Unsinn', 'x'],
   ]) {
-    const r = lauf('', { gruen });
-    assert.notEqual(r.status, 0, `ohne grüne CI kein Image: ${fall}`);
+    const r = run('', { green });
+    assert.notEqual(r.status, 0, `without green CI no image: ${fall}`);
     assert.doesNotMatch(r.output, /^bauen=true$/m, fall);
   }
 });
 
 test('manual start on a side branch', () => {
-  const r = lauf('', { ref: 'refs/heads/probe' });
+  const r = run('', { ref: 'refs/heads/probe' });
   assert.notEqual(r.status, 0, 'Handstart auf einem Nebenzweig');
   assert.doesNotMatch(r.output, /^bauen=true$/m);
 });
 
 test('inputs.tag is only in env', () => {
-  const ohneKommentare = YML.split('\n')
+  const withoutComments = YML.split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');
-  const stellen = ohneKommentare.match(/.*inputs\.tag.*/g) || [];
+  const placeList = withoutComments.match(/.*inputs\.tag.*/g) || [];
   assert.deepEqual(
-    stellen.map(s => s.trim()),
+    placeList.map(s => s.trim()),
     ['TAG_EINGABE: ${{ inputs.tag }}'],
-    'inputs.tag steht nur in env',
+    'inputs.tag is only in env',
   );
-  assert.match(ohneKommentare, /APP_VERSION=\$\{\{ needs\.pruefen\.outputs\.tag/);
-  assert.match(ohneKommentare, /type=raw,value=\$\{\{ needs\.pruefen\.outputs\.tag \}\}/);
+  assert.match(withoutComments, /APP_VERSION=\$\{\{ needs\.pruefen\.outputs\.tag/);
+  assert.match(withoutComments, /type=raw,value=\$\{\{ needs\.pruefen\.outputs\.tag \}\}/);
 });

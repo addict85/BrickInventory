@@ -1,0 +1,16 @@
+Gegenprobe: Merken aus dem Katalog setzt den Preisalarm nicht
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
+Rot: remembering creates the item, sets the alert in the chosen direction and reports
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+@@ -243,7 +243,6 @@
+                 is Outcome.Failure ->
+                     messages.show(texts.messageForSnackbar(r)?.let { Message.Resource(R.string.vm_error, listOf(it)) })
+                 is Outcome.Success -> {
+-                    AlarmInput.number(w.thresholdRaw)?.let { alerts.setPriceAlarm(w.setNumber, w.direction, it, w.condition) }
+                     messages.show(Message.Resource(if (r.data) R.string.wanted_added else R.string.wanted_already))
+                 }
+             }

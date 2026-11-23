@@ -26,18 +26,18 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const auth = _req('src/account/deviceToken.js');
 const tokenCache = _req('src/account/tokenCache.js');
 const pgNotify = testAccess().notification;
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 
 test('token revocation applies immediately', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const name = `tw_${process.pid}`;
@@ -55,41 +55,41 @@ test('token revocation applies immediately', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   tokenCache.listenOnTokenRevocation();
-  assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
+  assert.ok(await until(() => pgNotify.listensTo('token_widerrufen')), 'the listen connection did not come about');
   /** A token that stands in the cache; afterwards its row is silently deleted. */
   const inCacheWithoutRow = async () => {
     const token = await auth.createToken(uid, 'Test');
-    assert.ok(await auth.nutzerZumToken(token), 'Vorbedingung: der Token gilt');
+    assert.ok(await auth.userForToken(token), 'precondition: the token is valid');
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
-    assert.ok(await auth.nutzerZumToken(token), 'Gegenprobe: der Cache bedient ihn noch');
+    assert.ok(await auth.userForToken(token), 'counter-check: the cache still serves it');
     return token;
   };
 
   await t.test('logout applies immediately', async () => {
     const token = await inCacheWithoutRow();
     tokenCache.tokenForgotten(token);
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
   });
 
   await t.test('the token administration clears the cache', async () => {
     const token = await inCacheWithoutRow();
     tokenCache.emptyTokenCache();
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
   });
 
   await t.test('a password change also revokes cached tokens', async () => {
     const token = await auth.createToken(uid, 'Test');
-    assert.ok(await auth.nutzerZumToken(token));
+    assert.ok(await auth.userForToken(token));
     await auth.revokeAllTokens(uid);
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
   });
 
   await t.test('without notification a revoked token applies at most for the cache period', async t2 => {
-    assert.ok(tokenCache.TOKEN_TTL_MS < 10_000, 'die Frist ist unter 10 s');
+    assert.ok(tokenCache.TOKEN_TTL_MS < 10_000, 'the period is below 10 s');
     const token = await inCacheWithoutRow();
     t2.mock.timers.enable({ apis: ['Date'], now: Date.now() });
     t2.mock.timers.tick(tokenCache.TOKEN_TTL_MS + 1000);
-    assert.equal(await auth.nutzerZumToken(token), null);
+    assert.equal(await auth.userForToken(token), null);
   });
 
   await t.test('without a listen connection the cache does not apply', async () => {
@@ -98,8 +98,8 @@ test('token revocation applies immediately', { concurrency: 1 }, async t => {
     // reconnecting (1 s) a revocation from another process would not arrive.
     await db.run(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
       WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE 'LISTEN "token_widerrufen"%'`);
-    assert.ok(await bis(() => !pgNotify.listensTo('token_widerrufen'), 2000), 'der Abriss kam nicht an');
-    assert.equal(await auth.nutzerZumToken(token), null);
-    assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen'), 5000), 'die Verbindung kam nicht wieder');
+    assert.ok(await until(() => !pgNotify.listensTo('token_widerrufen'), 2000), 'the teardown did not arrive');
+    assert.equal(await auth.userForToken(token), null);
+    assert.ok(await until(() => pgNotify.listensTo('token_widerrufen'), 5000), 'the connection did not come back');
   });
 });

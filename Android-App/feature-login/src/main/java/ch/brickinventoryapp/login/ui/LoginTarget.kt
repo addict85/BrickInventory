@@ -12,5 +12,5 @@ sealed interface LoginTarget {
      * The subgraph made of setup and sign-in. Not a destination but the holder of the
      * ViewModel they share; that is why it is not in the list of destinations.
      */
-    @Serializable data object Bereich
+    @Serializable data object Area
 }

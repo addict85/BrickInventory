@@ -1,0 +1,21 @@
+Gegenprobe: ein Kommentar mit sechs Zeilen Prosa
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: no comment has more than five lines of prose
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/AppViewModel.kt
+@@ -20,6 +20,12 @@
+  * tapped notification. The session's work is done by [SessionRepository]; it
+  * lives in the app's scope and starts with it (BrickInventoryApp), not with this ViewModel.
+  */
++// Eins.
++// Zwei.
++// Drei.
++// Vier.
++// Five.
++// Six.
+ @HiltViewModel
+ class AppViewModel @Inject constructor(
+     private val sessionService: SessionRepository,

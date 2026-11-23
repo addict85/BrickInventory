@@ -1,0 +1,17 @@
+Gegenprobe: zeige() überschreibt die angezeigte Meldung wieder, statt einzureihen
+Modul: core-data
+Test: ch.brickinventoryapp.data.MessageQueueTest
+Rot: the second message waits for the acknowledgement of the first
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt
+@@ -42,7 +42,7 @@
+         if (message == null) return
+         synchronized(queue) {
+             when {
+-                _message.value == null -> _message.value = message
++                _message.value == null || true -> _message.value = message
+                 message == (queue.lastOrNull() ?: _message.value) -> Unit
+                 queue.size < PLACES -> queue.addLast(message)
+             }

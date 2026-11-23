@@ -1,0 +1,16 @@
+Gegenprobe: ein ViewModel-Test schläft wieder in Echtzeit
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: real-time waiting in tests becomes less, never more
+
+diff --git a/Android-App/feature-parts/src/test/java/ch/brickinventoryapp/parts/PartsViewModelTest.kt b/Android-App/feature-parts/src/test/java/ch/brickinventoryapp/parts/PartsViewModelTest.kt
+--- a/Android-App/feature-parts/src/test/java/ch/brickinventoryapp/parts/PartsViewModelTest.kt
++++ b/Android-App/feature-parts/src/test/java/ch/brickinventoryapp/parts/PartsViewModelTest.kt
+@@ -213,6 +213,7 @@
+         assertTrue("accounts=own" in paths.requestsTo("GET /api/v2/parts?").last())
+         val before = paths.requestsTo("GET /api/v2/parts?").size
+         vm.setScope(ScopeFilter.View.GALLERY, "own")
++        Thread.sleep(200)
+         assertEquals(before, paths.requestsTo("GET /api/v2/parts?").size)
+     }
+ 

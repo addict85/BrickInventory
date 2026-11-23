@@ -5,22 +5,22 @@ import { resolveSingle, resolveViaInterface } from './bricklinkLink';
 import { forSet } from './priceComparison';
 import { newestInventory } from './rbInventory';
 import { withVersion } from '../infra/setNumber';
-import { Zwischenspeicher } from '../infra/cache';
-import { versuche } from '../infra/result';
+import { Cache } from '../infra/cache';
+import { attempts } from '../infra/result';
 import type { CatalogContext } from './context';
 
 // rb_themes changes at most daily; the tree is built once per access
 // and remembered for an hour because every filter needs it.
-type ThemeNode = repo.Thema;
+type ThemeNode = repo.Theme;
 type ThemeTree = { byId: Map<number, ThemeNode>; children: Map<number, number[]>; pathName: Map<number, string> };
 const THEME_CACHE_TTL = 60 * 60 * 1000;
 const themesStorage = (k: CatalogContext) =>
-  k.faecher.fach('themenbaum', () => new Zwischenspeicher<0, ThemeTree>(1, THEME_CACHE_TTL));
+  k.compartments.slot('themenbaum', () => new Cache<0, ThemeTree>(1, THEME_CACHE_TTL));
 
 async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
-  const gemerkt = themesStorage(k).hole(0);
-  if (gemerkt) return gemerkt;
-  const rows = await k.katalogSuche.themen();
+  const remembered = themesStorage(k).hole(0);
+  if (remembered) return remembered;
+  const rows = await k.catalogSearch.themes();
   const byId = new Map<number, ThemeNode>();
   const children = new Map<number, number[]>();
   for (const r of rows) {
@@ -33,8 +33,8 @@ async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
   // Cycle-safe.
   const pathName = new Map<number, string>();
   const resolvePath = (id: number, seen: Set<number>): string => {
-    const fertig = pathName.get(id);
-    if (fertig !== undefined) return fertig;
+    const finished = pathName.get(id);
+    if (finished !== undefined) return finished;
     const node = byId.get(id);
     if (!node) return '';
     let name = node.name || '';
@@ -47,9 +47,9 @@ async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
     return name;
   };
   for (const id of byId.keys()) resolvePath(id, new Set([id]));
-  const baum = { byId, children, pathName };
-  themesStorage(k).setze(0, baum);
-  return baum;
+  const tree = { byId, children, pathName };
+  themesStorage(k).set(0, tree);
+  return tree;
 }
 
 function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: number): number[] {
@@ -71,9 +71,9 @@ function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: n
 export async function catalogMeta(k: CatalogContext) {
   const tree = await getThemeTree(k);
   const [counts, years, yearCounts] = await Promise.all([
-    k.katalogSuche.setsJeThema(),
-    k.katalogSuche.jahresspanne(),
-    k.katalogSuche.setsJeYear(),
+    k.catalogSearch.setsPerTheme(),
+    k.catalogSearch.yearRange(),
+    k.catalogSearch.setsPerYear(),
   ]);
   const direct = new Map<number, number>();
   for (const c of counts) direct.set(c.theme_id, c.n);
@@ -104,8 +104,8 @@ async function choose(k: CatalogContext, f: CatalogFilter): Promise<repo.Catalog
 }
 
 /** NULL years come first in descending order, as in the list. */
-export async function yearDistribution(k: CatalogContext, f: CatalogFilter, absteigend: boolean) {
-  return k.katalogSuche.setsJeYearFiltered(await choose(k, { q: f.q, themeId: f.themeId }), absteigend);
+export async function yearDistribution(k: CatalogContext, f: CatalogFilter, descending: boolean) {
+  return k.catalogSearch.setsPerYearFiltered(await choose(k, { q: f.q, themeId: f.themeId }), descending);
 }
 
 export async function catalogPage(
@@ -116,10 +116,10 @@ export async function catalogPage(
   page: number,
   limit: number,
 ) {
-  const wahl = await choose(k, f);
+  const choice = await choose(k, f);
   const [total, sets] = await Promise.all([
-    k.katalogSuche.catalogCount(wahl),
-    k.katalogSuche.catalogRows(await k.household.scopeIds(userId), wahl, sortRaw, limit, (page - 1) * limit),
+    k.catalogSearch.catalogCount(choice),
+    k.catalogSearch.catalogRows(await k.household.scopeIds(userId), choice, sortRaw, limit, (page - 1) * limit),
   ]);
   const tree = await getThemeTree(k);
   // The list triggers no image work; missing images are fetched by the image proxy.
@@ -136,28 +136,28 @@ export async function catalogPage(
   };
 }
 
-export const catalogLoaded = async (k: CatalogContext) => !(await k.katalogSuche.catalogEmpty());
+export const catalogLoaded = async (k: CatalogContext) => !(await k.catalogSearch.catalogEmpty());
 
-export async function catalogSet(k: CatalogContext, userId: number, roh: string) {
-  const n = withVersion(roh.trim());
-  const set = await k.katalogSuche.catalogRow(await k.household.scopeIds(userId), n);
+export async function catalogSet(k: CatalogContext, userId: number, raw: string) {
+  const n = withVersion(raw.trim());
+  const set = await k.catalogSearch.catalogRow(await k.household.scopeIds(userId), n);
   if (!set) return null;
   const invId = await newestInventory(k, n);
-  const m = invId ? await k.katalogSuche.minifigsInInventory(invId) : undefined;
+  const m = invId ? await k.catalogSearch.minifigsInInventory(invId) : undefined;
   const tree = await getThemeTree(k);
   // Checking against BrickLink happens only here, on an opened page.
   let bricklink = await resolveSingle(k, set.set_number);
   // If the check fails, the link stays marked as unverified (resolved: false).
   if (!bricklink.resolved) {
-    const r = await versuche('katalog:bricklink', resolveViaInterface(k, set.set_number));
-    if (r.ok) bricklink = r.wert;
+    const r = await attempts('katalog:bricklink', resolveViaInterface(k, set.set_number));
+    if (r.ok) bricklink = r.value;
   }
   let image_local = imageIfPresent(set.image_local ?? `/images/sets/${fileMaster(set.set_number)}.jpg`);
   // Now store permanently; the preview and the entry in set_catalog are done by the image job.
   if (!image_local && set.image_url) {
     // Without a file the page shows image_url; the image job fetches it later.
-    const r = await versuche('katalog:setBildHerunterladen', k.images.setBildLaden(set.image_url, set.set_number));
-    image_local = r.ok ? r.wert : null;
+    const r = await attempts('katalog:setBildHerunterladen', k.images.loadSetImage(set.image_url, set.set_number));
+    image_local = r.ok ? r.value : null;
     if (image_local) k.images.rememberUsed(String(set.image_url || ''), set.set_number);
   }
   return {
@@ -166,6 +166,6 @@ export async function catalogSet(k: CatalogContext, userId: number, roh: string)
     theme_name: tree.pathName.get(set.theme_id) || null,
     minifigs: m?.n || 0,
     bricklink,
-    preisvergleich_url: forSet(set.set_number, set.name),
+    price_comparison_url: forSet(set.set_number, set.name),
   };
 }

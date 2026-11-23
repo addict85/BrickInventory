@@ -1,6 +1,6 @@
 /**
  * The dialogs of the routes with re-confirmation offer the second factor:
- * if the server reports zweiter_faktor_noetig, the UI asks for the code
+ * if the server reports second_factor_required, the UI asks for the code
  * (or, where the browser can and the account has passkeys, a
  * passkey) and repeats the request. Real bundle in jsdom.
  *
@@ -14,104 +14,104 @@
  *   D  in papierkorb.js or gutscheine.js again confirmDelete() and
  *      api() without password → red: “emptying the trash …” or “deleting a
  *      voucher …" (the password dialog does not appear)
- *   E  in gutscheinPinUmschalten() fetchPlaintext() skipped → red: “the
+ *   E  in toggleVoucherPin() fetchPlaintext() skipped → red: “the
  *      voucher list shows the mask …" (no password dialog)
- *   F  gutscheinPdfOeffnen() again openPdfViewer() directly → red: “the
+ *   F  openVoucherPdf() again openPdfViewer() directly → red: “the
  *      voucher PDF opens only after confirmation …"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, sicht } = require('./helpers/ui');
+const { openUi, waitFor, tick, view } = require('./helpers/ui');
 
-/** Answers without code with zweiter_faktor_noetig and remembers every body. */
-function withFactor(liste, passkey = false) {
+/** Answers without code with second_factor_required and remembers every body. */
+function withFactor(list, passkey = false) {
   return (_url, o) => {
     const body = JSON.parse(o.body);
-    liste.push(body);
+    list.push(body);
     return body.code || body.passkey
-      ? { success: true, sets: 0, teile: 0, figuren: 0 }
+      ? { success: true, sets: 0, parts: 0, minifigs: 0 }
       : {
           $status: 400,
           success: false,
-          code: 'zweiter_faktor_noetig',
+          code: 'second_factor_required',
           error: 'Code fehlt',
           ...(passkey ? { passkey: true } : {}),
         };
   };
 }
 
-/** @param {Document} d @param {{ passwort?: string, code?: string }} eingabe */
-async function confirm(d, { passwort, code }) {
+/** @param {Document} d @param {{ password?: string, code?: string }} input */
+async function confirm(d, { password, code }) {
   const modal = d.getElementById('confirm-modal');
   assert.ok(
-    await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
-    'der Passwortdialog erscheint',
+    await waitFor(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
+    'the password dialog appears',
   );
-  /** @type {HTMLInputElement} */ (d.getElementById('cd-pw')).value = passwort;
+  /** @type {HTMLInputElement} */ (d.getElementById('cd-pw')).value = password;
   d.getElementById('cd-confirm').click();
-  await takt(20);
+  await tick(20);
   const codeWrap = d.getElementById('cd-code-wrap');
-  assert.ok(await warte(() => !codeWrap.hidden && modal.style.display === 'flex'), 'der Code-Dialog erscheint');
+  assert.ok(await waitFor(() => !codeWrap.hidden && modal.style.display === 'flex'), 'the code dialog appears');
   if (code === undefined) return;
   /** @type {HTMLInputElement} */ (d.getElementById('cd-code')).value = code;
   d.getElementById('cd-confirm').click();
 }
 
 test('delete everything asks for the code', async () => {
-  const rufe = [];
-  const { w, d } = await openUi({ '/v1/bestand': withFactor(rufe) });
+  const callIt = [];
+  const { w, d } = await openUi({ '/v2/inventory': withFactor(callIt) });
   try {
     d.getElementById('btn-dall').click();
-    await confirm(d, { passwort: 'Mein-Passwort-1', code: '654321' });
-    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
-    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '654321' }]);
-    assert.equal(d.getElementById('cd-passkey').hidden, true, 'ohne Passkey-Fähigkeit kein Passkey-Knopf');
+    await confirm(d, { password: 'Mein-Passwort-1', code: '654321' });
+    assert.ok(await waitFor(() => callIt.length === 2), `only ${callIt.length} request(s)`);
+    assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '654321' }]);
+    assert.equal(d.getElementById('cd-passkey').hidden, true, 'no passkey button without passkey capability');
   } finally {
     w.close();
   }
 });
 
 test('creating an account asks for the code', async () => {
-  const rufe = [];
+  const callIt = [];
   const { w, d } = await openUi({
-    '/v1/auth/users': (url, o) => (o?.method === 'POST' ? withFactor(rufe)(url, o) : { success: true, users: [] }),
+    '/v2/auth/users': (url, o) => (o?.method === 'POST' ? withFactor(callIt)(url, o) : { success: true, users: [] }),
   });
   try {
     d.getElementById('nu-n').value = 'bert';
     d.getElementById('nu-p').value = 'Lang-genug-Passwort-1';
     d.getElementById('btn-cu').click();
-    await confirm(d, { passwort: 'Verwalter-Passwort-1', code: '111222' });
-    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
-    assert.equal(rufe[1].admin_password, 'Verwalter-Passwort-1');
-    assert.equal(rufe[1].code, '111222', 'die zweite Anfrage trägt den Code');
+    await confirm(d, { password: 'Verwalter-Passwort-1', code: '111222' });
+    assert.ok(await waitFor(() => callIt.length === 2), `only ${callIt.length} request(s)`);
+    assert.equal(callIt[1].admin_password, 'Verwalter-Passwort-1');
+    assert.equal(callIt[1].code, '111222', 'the second request carries the code');
   } finally {
     w.close();
   }
 });
 
 test('the passkey replaces the code', async () => {
-  const rufe = [];
-  const puffer = () => new Uint8Array([1, 2, 3]).buffer;
+  const callIt = [];
+  const buffer = () => new Uint8Array([1, 2, 3]).buffer;
   const { w, d } = await openUi(
     {
-      '/v1/bestand': withFactor(rufe, true),
-      '/v1/auth/passkey/anmelden/optionen': { success: true, optionen: { challenge: 'AAAA', allowCredentials: [] } },
+      '/v2/inventory': withFactor(callIt, true),
+      '/v2/auth/passkey/login/options': { success: true, options: { challenge: 'AAAA', allowCredentials: [] } },
     },
     {
-      vorher: fenster => {
-        fenster.PublicKeyCredential = function PublicKeyCredential() {};
-        Object.defineProperty(fenster, 'isSecureContext', { value: true });
-        Object.defineProperty(fenster.navigator, 'credentials', {
+      before: win => {
+        win.PublicKeyCredential = function PublicKeyCredential() {};
+        Object.defineProperty(win, 'isSecureContext', { value: true });
+        Object.defineProperty(win.navigator, 'credentials', {
           value: {
             get: async () => ({
               id: 'pk1',
-              rawId: puffer(),
+              rawId: buffer(),
               type: 'public-key',
               getClientExtensionResults: () => ({}),
               response: {
-                clientDataJSON: puffer(),
-                authenticatorData: puffer(),
-                signature: puffer(),
+                clientDataJSON: buffer(),
+                authenticatorData: buffer(),
+                signature: buffer(),
                 userHandle: null,
               },
             }),
@@ -122,50 +122,52 @@ test('the passkey replaces the code', async () => {
   );
   try {
     d.getElementById('btn-dall').click();
-    await confirm(d, { passwort: 'Mein-Passwort-1' });
-    const knopf = d.getElementById('cd-passkey');
-    assert.equal(knopf.hidden, false, 'der Passkey-Knopf erscheint');
-    knopf.click();
-    assert.ok(await warte(() => rufe.length === 2), `der Passkey ersetzt den Code: nur ${rufe.length} Anfrage(n)`);
-    assert.equal(rufe[1].passkey?.id, 'pk1', 'der Passkey ersetzt den Code');
-    assert.equal(rufe[1].code, undefined);
+    await confirm(d, { password: 'Mein-Passwort-1' });
+    const button = d.getElementById('cd-passkey');
+    assert.equal(button.hidden, false, 'the passkey button appears');
+    button.click();
+    assert.ok(
+      await waitFor(() => callIt.length === 2),
+      `the passkey replaces the code: only ${callIt.length} request(s)`,
+    );
+    assert.equal(callIt[1].passkey?.id, 'pk1', 'the passkey replaces the code');
+    assert.equal(callIt[1].code, undefined);
   } finally {
     w.close();
   }
 });
 
 test('emptying the trash asks for password and code', async () => {
-  const rufe = [];
+  const callIt = [];
   const { w, d } = await openUi({
-    '/v1/papierkorb': (url, o) =>
-      o?.method === 'DELETE' ? withFactor(rufe)(url, o) : { success: true, eintraege: [] },
+    '/v2/trash': (url, o) => (o?.method === 'DELETE' ? withFactor(callIt)(url, o) : { success: true, entries: [] }),
   });
   try {
-    d.getElementById('papierkorb-leeren').click();
-    await confirm(d, { passwort: 'Mein-Passwort-1', code: '246810' });
-    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
-    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '246810' }]);
+    d.getElementById('trash-empty').click();
+    await confirm(d, { password: 'Mein-Passwort-1', code: '246810' });
+    assert.ok(await waitFor(() => callIt.length === 2), `only ${callIt.length} request(s)`);
+    assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '246810' }]);
   } finally {
     w.close();
   }
 });
 
 test('deleting a voucher asks for password and code', async () => {
-  const rufe = [];
+  const callIt = [];
   const { w, d } = await openUi({
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '6123456789012', pin: '4711', amount: 50, currency: 'CHF', hat_pdf: false }],
+      vouchers: [{ id: 3, number: '6123456789012', pin: '4711', amount: 50, currency: 'CHF', has_pdf: false }],
     },
-    '/v1/vouchers/3': withFactor(rufe),
+    '/v2/vouchers/3': withFactor(callIt),
   });
   try {
-    await sicht(w, 'gutscheine');
-    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinLoeschen"]')), 'Gutscheinliste');
-    d.querySelector('[data-click="gutscheinLoeschen"]').click();
-    await confirm(d, { passwort: 'Mein-Passwort-1', code: '135790' });
-    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
-    assert.deepEqual(rufe[1], { password: 'Mein-Passwort-1', code: '135790' });
+    await view(w, 'vouchers');
+    assert.ok(await waitFor(() => d.querySelector('[data-click="deleteVoucher"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="deleteVoucher"]').click();
+    await confirm(d, { password: 'Mein-Passwort-1', code: '135790' });
+    assert.ok(await waitFor(() => callIt.length === 2), `only ${callIt.length} request(s)`);
+    assert.deepEqual(callIt[1], { password: 'Mein-Passwort-1', code: '135790' });
   } finally {
     w.close();
   }
@@ -175,69 +177,69 @@ test('the voucher PDF only opens after confirmation, with the ticket', async () 
   const releases = [],
     fetches = [];
   const { w, d } = await openUi({
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: true }],
+      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', has_pdf: true }],
     },
-    '/v1/vouchers/3/pdf-freigabe': (_u, o) => {
+    '/v2/vouchers/3/pdf-grant': (_u, o) => {
       releases.push(JSON.parse(o.body));
-      return { success: true, ticket: 'T-123', gueltig_sek: 60 };
+      return { success: true, ticket: 'T-123', valid_seconds: 60 };
     },
-    '/v1/vouchers/3/pdf': u => {
+    '/v2/vouchers/3/pdf': u => {
       fetches.push(String(u));
-      return { $status: 403, success: false, error: 'abgelehnt', code: 'kein_zugriff_konto' };
+      return { $status: 403, success: false, error: 'abgelehnt', code: 'no_account_access' };
     },
   });
   try {
-    await sicht(w, 'gutscheine');
-    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinPdfOeffnen"]')), 'Gutscheinliste');
-    d.querySelector('[data-click="gutscheinPdfOeffnen"]').click();
+    await view(w, 'vouchers');
+    assert.ok(await waitFor(() => d.querySelector('[data-click="openVoucherPdf"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="openVoucherPdf"]').click();
     const modal = d.getElementById('confirm-modal');
     assert.ok(
-      await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
-      'der Passwortdialog erscheint',
+      await waitFor(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
+      'the password dialog appears',
     );
-    assert.deepEqual(fetches, [], 'das PDF wird vor der Bestätigung abgerufen');
+    assert.deepEqual(fetches, [], 'the PDF is fetched before the confirmation');
     d.getElementById('cd-pw').value = 'Mein-Passwort-1';
     d.getElementById('cd-confirm').click();
-    assert.ok(await warte(() => fetches.length === 1), 'kein Abruf des PDFs');
+    assert.ok(await waitFor(() => fetches.length === 1), 'no fetch of the PDF');
     assert.deepEqual(releases, [{ password: 'Mein-Passwort-1' }]);
-    assert.match(fetches[0], /\/api\/v1\/vouchers\/3\/pdf\?ticket=T-123$/);
+    assert.match(fetches[0], /\/api\/v2\/vouchers\/3\/pdf\?ticket=T-123$/);
   } finally {
     w.close();
   }
 });
 
 test('the voucher list shows the mask, number and PIN only after confirmation', async () => {
-  const rufe = [];
+  const callIt = [];
   const { w, d } = await openUi({
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }],
+      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', has_pdf: false }],
     },
-    '/v1/vouchers/3/klartext': (_u, o) => {
-      rufe.push(JSON.parse(o.body));
+    '/v2/vouchers/3/plaintext': (_u, o) => {
+      callIt.push(JSON.parse(o.body));
       return { success: true, id: 3, number: '6123456789012', pin: '4711' };
     },
   });
   try {
-    await sicht(w, 'gutscheine');
-    assert.ok(await warte(() => d.querySelector('.voucher-row')), 'Gutscheinliste');
+    await view(w, 'vouchers');
+    assert.ok(await waitFor(() => d.querySelector('.voucher-row')), 'Gutscheinliste');
     assert.equal(d.querySelector('.voucher-num').textContent, '…9012');
-    d.querySelector('[data-click="gutscheinPinUmschalten"]').click();
+    d.querySelector('[data-click="toggleVoucherPin"]').click();
     const modal = d.getElementById('confirm-modal');
     assert.ok(
-      await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
-      'der Passwortdialog erscheint',
+      await waitFor(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
+      'the password dialog appears',
     );
     d.getElementById('cd-pw').value = 'Mein-Passwort-1';
     d.getElementById('cd-confirm').click();
     assert.ok(
-      await warte(() => d.querySelector('.voucher-pin code')?.textContent === '4711'),
-      'die PIN erscheint nach der Bestätigung',
+      await waitFor(() => d.querySelector('.voucher-pin code')?.textContent === '4711'),
+      'the PIN appears after the confirmation',
     );
     assert.equal(d.querySelector('.voucher-num').textContent, '6123 4567 8901 2');
-    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }]);
+    assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }]);
   } finally {
     w.close();
   }

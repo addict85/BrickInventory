@@ -1,4 +1,4 @@
-import type { Sicht } from '../household';
+import type { Viewer } from '../household';
 import { buildChartData } from './portfolio/chartData';
 import { reconstructCurve, type CurvesPoint } from './portfolio/curve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
@@ -31,13 +31,13 @@ function withStartPoint(rawPoints: CurvesPoint[], period: string, purchaseTotal:
 
 /** `db` and `getSetting` can be passed in so that the calculation stays testable
  * without a database. */
-export async function portfolioVerlauf(
+export async function portfolioHistory(
   k: FinancesContext,
   viewerId: number,
-  idsChoice: Sicht | number[],
+  idsChoice: Viewer | number[],
   period: string,
-  db: unknown = k.db,
-  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.userValue,
+  db: FinancesContext['db'] = k.db,
+  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.settings.userValue,
 ) {
   const ids = await k.household.scopeFrom(idsChoice);
   // With the filter "sub-accounts" ids does not contain the asking account; the
@@ -47,14 +47,14 @@ export async function portfolioVerlauf(
   const condition = DEFAULT_PRICE_CONDITION;
 
   // One set, ONE row, even with two owners — otherwise it would enter the sum twice.
-  const sets = await k.portfolioKurve.setsWithPurchaseTotal(uids);
+  const sets = await k.portfolioCurve.setsWithPurchaseTotal(uids);
   if (!sets.length) {
-    return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
+    return { currency, period, points: [], y_axis: [], period_change_pct: null, data_points: 0 };
   }
 
   const setNumbers = sets.map((s: { set_number: string }) => s.set_number);
   const setQty = Object.fromEntries(sets.map(s => [s.set_number, s.quantity || 1]));
-  const placeholders = setNumbers.map((_: unknown, i: number) => `$${i + 3}`).join(',');
+  const placeholders = setNumbers.map((_: string, i: number) => `$${i + 3}`).join(',');
   const purchaseTotal = sets.reduce((s: number, r) => s + (Number(r.purchase_price) || 0) * (r.quantity || 1), 0);
 
   let dateFilter = '';
@@ -69,7 +69,7 @@ export async function portfolioVerlauf(
   // The curve shows TODAY's inventory over time: otherwise every
   // capture would appear as a price jump.
 
-  const kurve = await reconstructCurve(k, {
+  const curve = await reconstructCurve(k, {
     db,
     setNumbers,
     setQty,
@@ -80,24 +80,24 @@ export async function portfolioVerlauf(
     currency,
     monthResolution,
   });
-  let rawPoints = kurve.rawPoints;
-  monthResolution = kurve.monthResolution;
-  const messpunkte = rawPoints.length;
+  let rawPoints = curve.rawPoints;
+  monthResolution = curve.monthResolution;
+  const data_points = rawPoints.length;
 
   // The labeling must know the condensing, otherwise the first point would get
   // a month abbreviation and the last one would no longer be "today".
-  const verdichtet = rawPoints.length > 120;
-  if (verdichtet) rawPoints = onMonths(rawPoints);
-  const downsampled = monthResolution || verdichtet;
+  const condensed = rawPoints.length > 120;
+  if (condensed) rawPoints = onMonths(rawPoints);
+  const downsampled = monthResolution || condensed;
 
-  const jetzt = k.uhr.datum();
-  if (rawPoints.length <= 1) rawPoints = withStartPoint(rawPoints, period, purchaseTotal, jetzt);
+  const now = k.clock.date();
+  if (rawPoints.length <= 1) rawPoints = withStartPoint(rawPoints, period, purchaseTotal, now);
 
   if (!rawPoints.length) {
-    return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
+    return { currency, period, points: [], y_axis: [], period_change_pct: null, data_points: 0 };
   }
 
-  const { points, y_axis, period_change_pct, chart } = buildChartData(rawPoints, currency, downsampled, jetzt);
+  const { points, y_axis, period_change_pct, chart } = buildChartData(rawPoints, currency, downsampled, now);
 
   return {
     currency,
@@ -105,7 +105,7 @@ export async function portfolioVerlauf(
     points,
     y_axis,
     period_change_pct,
-    messpunkte,
+    data_points,
     purchase_total: purchaseTotal.toFixed(2),
     chart,
   };

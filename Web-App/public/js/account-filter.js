@@ -5,9 +5,9 @@
  * their own numbers in the finances. Filtering happens on the server (accounts=), otherwise total and valuation would not match.
  */
 // 'merkliste' has been included since 24.09. (Marco's requirement: "Add a filter to the wishlist like for the
-// sets, including owner"). The server always understood `accounts=` on /v1/wanted — scopeIds() applies
+// sets, including owner"). The server always understood `accounts=` on /v2/wanted — scopeIds() applies
 // there as everywhere —, only neither of the two UIs sent it. So only the choice was missing.
-export const SCOPE_VIEWS = ['gallery', 'parts', 'minifigs', 'finance', 'merkliste'];
+export const SCOPE_VIEWS = ['gallery', 'parts', 'minifigs', 'finance', 'wanted'];
 
 /**
  * @param {string} view
@@ -32,7 +32,7 @@ export function resetScopeModes() {
   for (const view of SCOPE_VIEWS) localStorage.removeItem('bim_scope_' + view);
   // The storage location filter rests on the same reasoning and is therefore reset here as well — not in a
   // second call that someone forgets.
-  resetLagerModi();
+  resetLocationModi();
 }
 
 /** Append `accounts=` to a URLSearchParams — only if needed. */
@@ -56,27 +56,27 @@ export function scopeQuery(view) {
 // filtered on the server, reset at login — for the same reasons.
 
 /** Views with a storage location filter. Sets and parts — only those have one. */
-export const LAGER_VIEWS = ['gallery', 'parts'];
+export const LOCATION_VIEWS = ['gallery', 'parts'];
 
 /**
  * @param {string} view
  */
-export function lagerModus(view) {
-  return localStorage.getItem('bim_lager_' + view) || '';
+export function locationMode(view) {
+  return localStorage.getItem('bim_location_' + view) || '';
 }
 
 /**
  * @param {string} view
- * @param {string} wert
+ * @param {string} value
  */
-export function setLagerModus(view, wert) {
-  if (wert) localStorage.setItem('bim_lager_' + view, wert);
-  else localStorage.removeItem('bim_lager_' + view);
+export function setLocationMode(view, value) {
+  if (value) localStorage.setItem('bim_location_' + view, value);
+  else localStorage.removeItem('bim_location_' + view);
 }
 
 /** Reset at login — the same reasoning as for resetScopeModes(). */
-export function resetLagerModi() {
-  for (const view of LAGER_VIEWS) localStorage.removeItem('bim_lager_' + view);
+export function resetLocationModi() {
+  for (const view of LOCATION_VIEWS) localStorage.removeItem('bim_location_' + view);
 }
 
 /**
@@ -87,8 +87,8 @@ export function resetLagerModi() {
  * filter.
  */
 /** @param {URLSearchParams} p @param {string} view */
-export function addLagerParam(p, view) {
-  const m = lagerModus(view);
+export function addLocationParam(p, view) {
+  const m = locationMode(view);
   if (m) p.set('storage', m);
   return p;
 }
@@ -97,7 +97,7 @@ export function addLagerParam(p, view) {
  * Finished suffix for calls without URLSearchParams.
  * @param {string} view
  */
-export function lagerQuery(view, trenner = '&') {
-  const m = lagerModus(view);
-  return m ? `${trenner}storage=${encodeURIComponent(m)}` : '';
+export function locationQuery(view, divider = '&') {
+  const m = locationMode(view);
+  return m ? `${divider}storage=${encodeURIComponent(m)}` : '';
 }

@@ -1,0 +1,17 @@
+Gegenprobe: Die Kennzahlen der Figuren hängen wieder an der Liste aus Sets
+Modul: app
+Test: ch.brickinventoryapp.app.ManualTileDisplayTest
+Rot: the key figures of the figures stay, even without figures from sets
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/MinifigsScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/MinifigsScreen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/MinifigsScreen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/MinifigsScreen.kt
+@@ -223,7 +223,7 @@
+     ) {
+         // Asked for the content, not the loaded page: the
+         // numbers mean the whole collection, even during a search.
+-        if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
++        if (figs.isNotEmpty()) {
+             item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { MinifigsMetrics(minifigStats) }
+         }
+         if (partsState.metricsFetch is Load.Failure) {

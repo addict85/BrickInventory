@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * In a keyed list EVERY item has a key.
@@ -10,11 +10,11 @@ class LazyGridItemKeyTest {
 
     @Test
     fun `no keyless item in a keyed list`() {
-        // Lower bound via Quellen.alle(): if the file walk found
+        // Lower bound via Quellen.all(): if the file walk found
         // nothing, the violation list would stay empty and the test green without having
         // checked anything.
-        val ui = Quellen.unter("ui")
-        assert(ui.size >= 20) { "Nur ${'$'}{ui.size} Dateien unter ui/ — Pfad veraltet?" }
+        val ui = Sources.below("ui")
+        assert(ui.size >= 20) { "Only ${'$'}{ui.size} files under ui/ — path outdated?" }
         // The call can span several lines and contain nested brackets
         // (`span = { GridItemSpan(maxLineSpan) }`). A first version
         // without DOT_MATCHES_ALL stayed green in the counter-check — it did not find the
@@ -22,25 +22,25 @@ class LazyGridItemKeyTest {
         val entry = Regex(
             """(?<![\w.])item\s*\(((?:[^()]|\([^()]*\))*)\)\s*\{""",
             RegexOption.DOT_MATCHES_ALL)
-        val fehler = mutableListOf<String>()
+        val error = mutableListOf<String>()
 
         for (f in ui) {
-            val code = Quellen.strip(f.readText())
+            val code = Sources.strip(f.readText())
             // Only files that work with keys at all — otherwise there is
             // no fallback key that could change.
             if (!code.contains("key =")) continue
             for (m in entry.findAll(code)) {
                 val args = m.groupValues[1]
                 if (args.contains("key") || args.isBlank()) continue
-                val zeile = code.substring(0, m.range.first).count { it == '\n' } + 1
-                fehler += "${f.name}:$zeile — item(${args.take(40)}…) ohne key"
+                val row = code.substring(0, m.range.first).count { it == '\n' } + 1
+                error += "${f.name}:$row — item(${args.take(40)}…) ohne key"
             }
         }
-        assert(fehler.isEmpty()) {
-            "Eintrag ohne Schlüssel in einer verschlüsselten Liste:\n  " +
-                fehler.joinToString("\n  ") +
-                "\nSein Ersatzschlüssel kommt aus dem Index und wechselt, sobald die " +
-                "Liste wächst — das Raster behandelt ihn dann als anderen Eintrag."
+        assert(error.isEmpty()) {
+            "Entry without a key in an encrypted list:\n  " +
+                error.joinToString("\n  ") +
+                "\nIts fallback key comes from the index and changes as soon as the " +
+                "list grows — the grid then treats it as a different entry."
         }
     }
 }

@@ -21,7 +21,7 @@
  *      removed (i.e. an empty field again treated like silence)
  *      → `pass 6 / fail 2`. Red: “an explicitly cleared field stays
  *        empty”. That is the half that makes the star usable in the first place.
- *   C  `vorgabeVon` replaced by a version without the JOIN on storage_locations
+ *   C  `defaultOf` replaced by a version without the JOIN on storage_locations
  *      (only the number from the settings)
  *      → `pass 6 / fail 2`. Red: “a default whose place was deleted
  *        does not apply”. The healing lies in the JOIN, not here.
@@ -37,7 +37,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Set up Rebrickable (testSources): without a name in the body addManualPart/addManualMinifig asks
@@ -56,7 +56,7 @@ test('the storage location default applies to every new capture', { concurrency:
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -82,19 +82,19 @@ test('the storage location default applies to every new capture', { concurrency:
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url) VALUES
                   ('fig-000123','Chewbacca','https://cdn.example/e.jpg')`);
   await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 7'), ($1,'Kiste 3')`, [UID]);
-  const ortId = async name =>
+  const placeId = async name =>
     (await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, name])).id;
 
-  const bestand = require('./helpers/sources').testArea('inventory');
+  const holding = require('./helpers/sources').testArea('inventory');
   const { setDefault, locationForNewEntry } = {
     ..._req('src/inventory/storageLocation.js'),
-    ...bestand.locationService,
-    setDefault: bestand.setDefault,
+    ...holding.locationService,
+    setDefault: holding.setDefault,
   };
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
-  await setDefault(UID, await ortId('Kiste 7'));
+  await setDefault(UID, await placeId('Kiste 7'));
 
   const locationOfPart = async nr =>
     (
@@ -106,7 +106,7 @@ test('the storage location default applies to every new capture', { concurrency:
     )?.name ?? null;
 
   await t.test('a part without a place gets the default', async () => {
-    // Exactly like this the wanted import calls (routes/api_v1/wanted.ts, `creator`):
+    // Exactly like this the wanted import calls (routes/api/wanted.ts, `creator`):
     // number, color, quantity, condition — no storage.
     await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.equal(await locationOfPart('3001'), 'Kiste 7');
@@ -129,8 +129,8 @@ test('the storage location default applies to every new capture', { concurrency:
     assert.equal(
       await locationForNewEntry(UID, null),
       'Kiste 7',
-      'null kommt aus einem fehlenden Vorgabewert der Signatur und heisst ' +
-        'dasselbe wie undefined: niemand hat etwas gesagt',
+      'null comes from a missing default value of the signature and means ' +
+        'the same as undefined: nobody said anything',
     );
   });
 
@@ -144,9 +144,9 @@ test('the storage location default applies to every new capture', { concurrency:
     assert.equal(
       await locationOfPart('3003'),
       null,
-      'Das sendet ein Formular, in dem die vorbefuellte Vorgabe weggeraeumt ' +
-        'wurde (selectedStorage in sammlung.js). Sie wieder einzusetzen waere ' +
-        'ein Ort, den niemand wegbekommt',
+      'A form sends this when the prefilled default was cleared away ' +
+        '(selectedStorage in „sammlung.js“). Putting it back would be ' +
+        'a location nobody can get rid of',
     );
   });
 
@@ -155,7 +155,7 @@ test('the storage location default applies to every new capture', { concurrency:
     assert.equal(
       await locationForNewEntry(UID, undefined),
       null,
-      'vorgabeVon() liest ueber einen JOIN auf den Vorrat — die Vorgabe heilt sich selbst',
+      'defaultOf() reads via a JOIN on the stock — the default heals itself',
     );
     await addManualPart(UID, { part_number: '3004', color_id: 4, quantity: 1 });
     assert.equal(await locationOfPart('3004'), null);

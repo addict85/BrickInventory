@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.app.csv
 
-import ch.brickinventoryapp.model.ui.Vorgang
-import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.data.CsvImportRepository
-import ch.brickinventoryapp.data.repository.Bestandsabgleich
-import ch.brickinventoryapp.services.service.CsvImportDienst
+import ch.brickinventoryapp.data.local.StockReconciliation
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.services.service.CsvImportRunner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,43 +20,43 @@ import javax.inject.Singleton
 /**
  * Follows a CSV import and controls the foreground service for it. Separate from the
  * ViewModel because service and stock sync are side effects of the app; the
- * ViewModel only shows [zustand]. A singleton so that a new ViewModel after
+ * ViewModel only shows [condition]. A singleton so that a new ViewModel after
  * a new activity sees the same bar.
  */
 @Singleton
 class CsvImportCoordinator @Inject constructor(
     private val csvImport: CsvImportRepository,
-    private val dienst: CsvImportDienst,
-    private val sync: Bestandsabgleich,
+    private val service: CsvImportRunner,
+    private val sync: StockReconciliation,
 ) {
-    private val _zustand = MutableStateFlow(CsvImportUiState())
-    val zustand: StateFlow<CsvImportUiState> = _zustand.asStateFlow()
-    private val folgt = AtomicBoolean(false)
+    private val _uiState = MutableStateFlow(CsvImportUiState())
+    val uiState: StateFlow<CsvImportUiState> = _uiState.asStateFlow()
+    private val follows = AtomicBoolean(false)
 
     /**
-     * Follows the stream as long as [angemeldet] reports true, and ends with the caller.
+     * Follows the stream as long as [loggedIn] reports true, and ends with the caller.
      * Signed out the bar is empty and the connection closed; a running service stops.
      * If someone already follows, the call returns immediately: one connection, one bar.
      */
-    suspend fun sequence(angemeldet: Flow<Boolean>) {
-        if (!folgt.compareAndSet(false, true)) return
+    suspend fun sequence(loggedIn: Flow<Boolean>) {
+        if (!follows.compareAndSet(false, true)) return
         try {
-            angemeldet.distinctUntilChanged().collectLatest { an ->
-                if (!an && _zustand.value.lauf.laeuft) dienst.stop()
-                _zustand.value = CsvImportUiState()
+            loggedIn.distinctUntilChanged().collectLatest { an ->
+                if (!an && _uiState.value.jobRun.running) service.stop()
+                _uiState.value = CsvImportUiState()
                 if (an) csvImport.observe().collect { process(it) }
             }
         } finally {
-            folgt.set(false)
+            follows.set(false)
         }
     }
 
     private suspend fun process(s: CsvImportStatusView) {
         // Decide before overwriting — afterwards “before” would already be the new state.
-        val sequence = csvSequence(warBeforeActive = _zustand.value.lauf.laeuft, status = s.status)
-        if (sequence == CsvSequence.DIENST_STARTEN) dienst.start()
-        _zustand.value = CsvImportUiState(
-            lauf = if (importRunning(s.status)) Vorgang.Laeuft else Vorgang.Fertig,
+        val sequence = csvSequence(wasBeforeActive = _uiState.value.jobRun.running, status = s.status)
+        if (sequence == CsvSequence.SERVICE_START) service.start()
+        _uiState.value = CsvImportUiState(
+            jobRun = if (importRunning(s.status)) Operation.Running else Operation.Done,
             done = s.done,
             total = s.total,
             current = s.current,
@@ -65,23 +65,23 @@ class CsvImportCoordinator @Inject constructor(
             err = s.err,
         )
         when (sequence) {
-            CsvSequence.NACHLADEN -> {
-                sync.bestand()
-                cleanAb()
+            CsvSequence.RELOAD -> {
+                sync.stock()
+                tidyUp()
             }
-            CsvSequence.FEHLER_AUFRAEUMEN -> cleanAb()
-            CsvSequence.DIENST_STARTEN, CsvSequence.NICHTS -> {}
+            CsvSequence.ERROR_CLEAN_UP -> tidyUp()
+            CsvSequence.SERVICE_START, CsvSequence.NOTHING -> {}
         }
     }
 
     /** The bar stays briefly so that the result can be read. */
-    private suspend fun cleanAb() {
-        delay(BAR_STANDS_MS)
-        _zustand.value = CsvImportUiState()
-        dienst.stop()
+    private suspend fun tidyUp() {
+        delay(BAR_VISIBLE_MS)
+        _uiState.value = CsvImportUiState()
+        service.stop()
     }
 
     private companion object {
-        const val BAR_STANDS_MS = 5_000L
+        const val BAR_VISIBLE_MS = 5_000L
     }
 }

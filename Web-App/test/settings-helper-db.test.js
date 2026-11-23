@@ -26,10 +26,10 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { getGlobalSetting, setGlobalSetting, deleteGlobalValues } = _req('src/settings/settings.js');
-const { setzeZustand, liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+const { setState, readState, deleteState } = require('./helpers/sources').testArea('jobQueue').runState;
 
 test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   {
     const c = await db.pool.connect();
     try {
@@ -43,49 +43,49 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
   const A = 'smtp_host',
     B = 'smtp_user',
     T = 'smtp_from';
-  const alle = [A, B, T];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [alle]);
-  const bestand = async () => (await db.get(`SELECT COUNT(*)::int AS c FROM global_settings`)).c;
+  const all = [A, B, T];
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [all]);
+  const holding = async () => (await db.get(`SELECT COUNT(*)::int AS c FROM global_settings`)).c;
 
   try {
     // 1. There and back — including the conversion into a string.
     await setGlobalSetting(A, 42);
-    assert.equal(await getGlobalSetting(A), '42', 'die Spalte ist TEXT; eine Zahl muss als Zeichenkette zurückkommen');
+    assert.equal(await getGlobalSetting(A), '42', 'the column is TEXT; a number must come back as a string');
     await setGlobalSetting(A, 'zwei');
-    assert.equal(await getGlobalSetting(A), 'zwei', 'der zweite Aufruf muss überschreiben');
+    assert.equal(await getGlobalSetting(A), 'zwei', 'the second call must overwrite');
     assert.equal(await getGlobalSetting(`gibt_es_nicht_${process.pid}`, 'ersatz'), 'ersatz');
     await assert.rejects(
       setGlobalSetting(`gibt_es_nicht_${process.pid}`, 'x'),
-      { code: 'wert_ungueltig' },
-      'ein Schlüssel ohne Regel wird nicht geschrieben',
+      { code: 'value_invalid' },
+      'a key without a rule is not written',
     );
 
     // 2. Run state: deleted means the row is gone.
-    await setzeZustand(T, 'x');
-    assert.equal(await liesZustand(T), 'x');
+    await setState(T, 'x');
+    assert.equal(await readState(T), 'x');
     await deleteState(T);
-    assert.equal(await liesZustand(T), null, 'abgearbeitet heisst: die Zeile ist weg');
+    assert.equal(await readState(T), null, 'processed means: the row is gone');
     await setGlobalSetting(T, 'bleibt');
 
     // 3. Several keys in ONE call — the reason for `key = ANY($1)`.
     await setGlobalSetting(B, 'x');
     await deleteGlobalValues(A, B);
-    assert.equal(await getGlobalSetting(A), null, 'A muss weg sein');
-    assert.equal(await getGlobalSetting(B), null, 'B muss weg sein');
-    assert.ok(await getGlobalSetting(T), 'T war nicht genannt und muss stehen bleiben');
+    assert.equal(await getGlobalSetting(A), null, 'A must be gone');
+    assert.equal(await getGlobalSetting(B), null, 'B must be gone');
+    assert.ok(await getGlobalSetting(T), 'T was not named and must stay');
 
     // 4. The dangerous case: no key named. The table carries the
     //    registration lock, the API limits and the BrickLink credentials —
     //    an accidental emptying could not be undone.
-    const zahl = await bestand();
-    assert.ok(zahl > 0, 'für diese Probe muss die Tabelle etwas enthalten');
+    const num = await holding();
+    assert.ok(num > 0, 'for this probe the table must contain something');
     await deleteGlobalValues();
-    assert.equal(await bestand(), zahl, 'ein Aufruf ohne Schlüssel darf NICHTS löschen');
+    assert.equal(await holding(), num, 'a call without keys must delete NOTHING');
     await deleteGlobalValues(...[]);
-    assert.equal(await bestand(), zahl, 'auch ein leeres Array darf NICHTS löschen');
+    assert.equal(await holding(), num, 'an empty array must delete NOTHING either');
   } finally {
-    await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [alle]).catch(() => {});
-    for (const z of vorher)
+    await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [all]).catch(() => {});
+    for (const z of prior)
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]).catch(() => {});
     await deleteState(T).catch(() => {});
     await db.pool.end().catch(() => {});

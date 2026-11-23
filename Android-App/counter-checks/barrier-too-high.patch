@@ -1,0 +1,17 @@
+Gegenprobe: Die Schranke der Quelltext-Funktionen steht eins über dem Messwert
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: test functions that read source become fewer, never more
+
+diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt
+--- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt
++++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt
+@@ -113,7 +113,7 @@
+ 
+     @Test
+     fun `test functions that read source become fewer, never more`() {
+-        val FUNCTIONS = 147
++        val FUNCTIONS = 212
+         val ONLY_SOURCE_TEXT = 32
+         // Every module and build-logic, with device tests and test fixtures: a check that moves does not vanish.
+         val all = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->

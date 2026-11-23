@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.network
 
+import ch.brickinventoryapp.network.di.AccessState
+import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
-import ch.brickinventoryapp.network.di.ServerWaechter
-import ch.brickinventoryapp.network.di.Zugangslage
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
  * Counter-checks:
  *   A  in nextRedirect(), removed the origin check → red “a
  *      redirect to a different host does not reach it” (200 from B instead of 307)
- *   B  senden() follows no redirect (just `chain.proceed`) → red “a
+ *   B  send() follows no redirect (just `chain.proceed`) → red “a
  *      redirect on the same server keeps method, body and token” and
  *      “after 303 it continues with GET without a body” (307 resp. 303 reaches the caller)
  *   C  307/308 treated like 303 (always GET) → red “a redirect on the same
@@ -35,55 +35,55 @@ class RedirectTest {
     private val a = MockWebServer().apply { start() }
     private val b = MockWebServer().apply { start() }
 
-    private val situation = object : Zugangslage {
+    private val situation = object : AccessState {
         override fun serverUrl() = a.url("/").toString().trimEnd('/')
         override fun token() = "geheim"
-        override fun tokenOrigin(): String? = NetworkPolicy.herkunft(serverUrl())
+        override fun tokenOrigin(): String? = NetworkPolicy.origin(serverUrl())
         override fun generation() = 0L
     }
     private val client = OkHttpClient.Builder()
-        .addInterceptor(ServerWaechter(situation, true, entwicklung = true, sitzungAbgelaufen = {}))
+        .addInterceptor(ServerGuard(situation, true, development = true, sessionExpired = {}))
         .followRedirects(false).followSslRedirects(false)
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     @After
-    fun zu() {
+    fun tearDown() {
         a.shutdown(); b.shutdown()
     }
 
-    private fun anmelden(): Int = client.newCall(Request.Builder().url(a.url("/api/v1/auth/login"))
+    private fun logIn(): Int = client.newCall(Request.Builder().url(a.url("/api/v2/auth/login"))
         .post("""{"password":"streng-geheim"}""".toRequestBody()).build()).execute().use { it.code }
 
     @Test
     fun `a redirect to a different host does not reach it`() {
         a.enqueue(MockResponse().setResponseCode(307).setHeader("Location", b.url("/fang").toString()))
         b.enqueue(MockResponse().setBody("{}"))
-        assertEquals(307, anmelden())
-        assertEquals("B erhielt eine Anfrage", 0, b.requestCount)
+        assertEquals(307, logIn())
+        assertEquals("B received a request", 0, b.requestCount)
     }
 
     @Test
     fun `a redirect on the same server keeps method, body and token`() {
-        a.enqueue(MockResponse().setResponseCode(307).setHeader("Location", "/api/v1/auth/login2"))
+        a.enqueue(MockResponse().setResponseCode(307).setHeader("Location", "/api/v2/auth/login2"))
         a.enqueue(MockResponse().setBody("{}"))
-        assertEquals(200, anmelden())
+        assertEquals(200, logIn())
         a.takeRequest()
-        val zweite = a.takeRequest(1, TimeUnit.SECONDS)!!
-        assertEquals("/api/v1/auth/login2", zweite.path)
-        assertEquals("POST", zweite.method)
-        assertEquals("""{"password":"streng-geheim"}""", zweite.body.readUtf8())
-        assertEquals("Bearer geheim", zweite.getHeader("Authorization"))
+        val second = a.takeRequest(1, TimeUnit.SECONDS)!!
+        assertEquals("/api/v2/auth/login2", second.path)
+        assertEquals("POST", second.method)
+        assertEquals("""{"password":"streng-geheim"}""", second.body.readUtf8())
+        assertEquals("Bearer geheim", second.getHeader("Authorization"))
     }
 
     @Test
     fun `after 303 it continues with GET without a body`() {
-        a.enqueue(MockResponse().setResponseCode(303).setHeader("Location", "/api/v1/ergebnis"))
+        a.enqueue(MockResponse().setResponseCode(303).setHeader("Location", "/api/v2/ergebnis"))
         a.enqueue(MockResponse().setBody("{}"))
-        assertEquals(200, anmelden())
+        assertEquals(200, logIn())
         a.takeRequest()
-        val zweite = a.takeRequest(1, TimeUnit.SECONDS)!!
-        assertEquals("GET", zweite.method)
-        assertEquals(0L, zweite.bodySize)
-        assertNull(zweite.getHeader("Content-Type"))
+        val second = a.takeRequest(1, TimeUnit.SECONDS)!!
+        assertEquals("GET", second.method)
+        assertEquals(0L, second.bodySize)
+        assertNull(second.getHeader("Content-Type"))
     }
 }

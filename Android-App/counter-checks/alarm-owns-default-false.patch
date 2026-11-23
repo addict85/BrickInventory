@@ -1,0 +1,18 @@
+Gegenprobe: ein fehlendes besitzt-Feld gilt als „Set gibt es nicht“
+Modul: core-data
+Test: ch.brickinventoryapp.data.AlarmOverviewTest
+Rot: a missing besitzt field does not kill the row
+
+
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+@@ -1540,7 +1540,7 @@
+     @SerialName("image_local") val imageLocal: String? = null,
+     @SerialName("image_url") val imageUrl: String? = null,
+     @SerialName("set_img_url") val setImgUrl: String? = null,
+-    @SerialName("owns") val owns: Boolean = true,
++    @SerialName("owns") val owns: Boolean = false,
+ )
+ 
+ @Serializable

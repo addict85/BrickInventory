@@ -2,10 +2,10 @@
  * The day of an entry applies in the installation's time zone. With the
  * UTC day a purchase at 00:30 in Zurich (23:30 UTC on the previous day) fell on the
  * previous day and was merged with a purchase from the previous evening, but not with
- * one from the same morning (migration 0070, ERFASSUNG_ZEITZONE).
+ * one from the same morning (migration 0070, ACQUISITION_TIME_ZONE).
  *
  * Counter-checks (measured on 29.10.2026, each on a fresh database):
- *   A  the trigger erfassung_tag() computes in 'UTC' again → red: “a purchase
+ *   A  the trigger acquisition_day() computes in 'UTC' again → red: “a purchase
  *      at 00:30 belongs to the same day as one at noon”
  *   B  the branch for UPDATE removed in the trigger → red: “a changed
  *      date is the new day” (the day stayed the old one)
@@ -23,11 +23,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.ERFASSUNG_ZEITZONE = 'Europe/Zurich';
+process.env.ACQUISITION_TIME_ZONE = 'Europe/Zurich';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 test('acquisition day in the time zone of the installation', { concurrency: 1 }, async t => {
@@ -35,7 +35,7 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   const { addPurchaseAtTag } = _req('src/inventory/acquisitions.js');
@@ -44,7 +44,7 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
-  const kauf = am =>
+  const purchase = am =>
     addPurchaseAtTag('set', uid, [SN], {
       quantity: 1,
       price: 10,
@@ -52,15 +52,15 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
       currency: 'CHF',
       createdAt: am,
     });
-  const zeilen = () =>
+  const lines = () =>
     db.all(`SELECT day::text AS tag, quantity FROM set_acquisitions WHERE user_id=$1 ORDER BY day`, [uid]);
 
   try {
     await t.test('a purchase at 00:30 belongs to the same day as one at noon', async () => {
-      assert.equal((await kauf('2026-03-04T23:30:00Z')).merged, false); // 05.03. 00:30 in Zurich
-      assert.equal((await kauf('2026-03-05T11:00:00Z')).merged, true); // 05.03. 12:00
-      assert.equal((await kauf('2026-03-04T21:30:00Z')).merged, false); // 04.03. 22:30
-      assert.deepEqual(await zeilen(), [
+      assert.equal((await purchase('2026-03-04T23:30:00Z')).merged, false); // 05.03. 00:30 in Zurich
+      assert.equal((await purchase('2026-03-05T11:00:00Z')).merged, true); // 05.03. 12:00
+      assert.equal((await purchase('2026-03-04T21:30:00Z')).merged, false); // 04.03. 22:30
+      assert.deepEqual(await lines(), [
         { tag: '2026-03-04', quantity: 1 },
         { tag: '2026-03-05', quantity: 2 },
       ]);
@@ -85,7 +85,7 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
       assert.equal(
         (await db.get('SELECT day::text AS tag FROM set_acquisitions WHERE id=$1', [id])).tag,
         '2026-02-02',
-        'der Trigger rechnet den Tag neu, in Zürich',
+        'the trigger recomputes the day, in Zurich',
       );
     });
   } finally {

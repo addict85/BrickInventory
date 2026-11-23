@@ -1,22 +1,22 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.contract.mapping.alsAnsicht
 import ch.brickinventoryapp.contract.PartsValuationResponse
 import ch.brickinventoryapp.contract.PnlResponse
 import ch.brickinventoryapp.contract.PnlTotals
 import ch.brickinventoryapp.contract.ValuationResponse
-import ch.brickinventoryapp.finances.ui.finanzSummen
+import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.finances.ui.financeTotals
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 import java.math.BigDecimal
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * The app does not recompute any money amounts — it shows what the server delivers.
  *
  * ── What this check does NOT flag ─────────────────────────────────────
- * Sums over quantities (`sumOf { it.quantity }`). Those are display: „x7"
+ * Sums over quantities (`sumOf { it.quantity }`). Those are display: „x7“
  * next to a row. Only where MONEY is summed does a second version of a
  * business rule arise.
  */
@@ -24,54 +24,54 @@ class ClientRendersOnlyTest {
 
     @Test
     fun `the UI sums no money amounts itself`() {
-        val dateien = Quellen.unter("ui")
+        val files = Sources.below("ui")
         val money = Regex("""sumOf\s*\{[^}]{0,120}?\.(price|Price|value|Value|total|Total|purchase|Purchase)\w*""")
-        val treffer = mutableListOf<String>()
+        val hits = mutableListOf<String>()
         // Lower bound: a file scan that finds nothing lets
         // every batch check below it pass silently.
-        check(dateien.size >= 20) {
-            "Zu wenige Kotlin-Dateien unter ui/ (${dateien.size}) — Pfad veraltet?"
+        check(files.size >= 20) {
+            "Too few Kotlin files under ui/ (${files.size}) — path outdated?"
         }
-        for (f in dateien) {
-            val code = Quellen.strip(f.readText())
+        for (f in files) {
+            val code = Sources.strip(f.readText())
             for (m in money.findAll(code)) {
-                val zeile = code.substring(0, m.range.first).count { it == '\n' } + 1
-                treffer += "${f.name}:$zeile — ${m.value.take(60)}"
+                val row = code.substring(0, m.range.first).count { it == '\n' } + 1
+                hits += "${f.name}:$row — ${m.value.take(60)}"
             }
         }
-        assert(treffer.isEmpty()) {
-            "Die Oberfläche bildet eine Geldsumme selbst:\n  " + treffer.joinToString("\n  ") +
-                "\nDer Server liefert solche Summen fertig (total_value, totals.grand_total). " +
-                "Zwei Rechenwege bedeuten zwei Ergebnisse, sobald sich die Regel ändert."
+        assert(hits.isEmpty()) {
+            "The UI forms a money sum itself:\n  " + hits.joinToString("\n  ") +
+                "\nThe server delivers such sums ready-made (total_value, totals.grand_total). " +
+                "Two ways of calculating mean two results as soon as the rule changes."
         }
     }
 
     /**
-     * Run since 30.10.: finanzSummen() (finances/ui/Finanzzeilen.kt) chooses the
+     * Run since 30.10.: financeTotals() (finances/ui/FinanceRows.kt) chooses the
      * total value, both header cards call it. Counter-check (measured): there
      * grand_total ignored → red (0.20 instead of 4894.77).
      */
     @Test
     fun `the total value comes from the server`() {
-        val sums = finanzSummen(ValuationResponse(success = true).alsAnsicht(),
-            PartsValuationResponse(success = true, totalValue = "0.20").alsAnsicht(),
-            null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")).alsAnsicht())
-        assertEquals(0, BigDecimal("4894.77").compareTo(sums.gesamt))
-        val sections = File(Quellen.root,
+        val sums = financeTotals(ValuationResponse(success = true).asView(),
+            PartsValuationResponse(success = true, totalValue = "0.20").asView(),
+            null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")).asView())
+        assertEquals(0, BigDecimal("4894.77").compareTo(sums.total))
+        val sections = File(Sources.root,
             "finances/ui/screens/FinanceSections.kt").readText()
-        assert(Regex("""finanzSummen\(valuation, partsValuation, figsValuation, pnl\)""").findAll(sections).count() == 2) {
-            "Eine Kopfkarte liest den Gesamtwert nicht mehr über finanzSummen() — dann rechnet " +
-                "sie ihn wieder selbst, und die Webapp tut dasselbe auf ihre Art."
+        assert(Regex("""financeTotals\(valuation, partsValuation, figsValuation, pnl\)""").findAll(sections).count() == 2) {
+            "A header card no longer reads the total value via financeTotals() — then it " +
+                "calculates it itself again, and the web app does the same in its own way."
         }
         // The model field must exist, otherwise the expression above reads into nothing.
         // All model files: previously a file name stood here,
         // and since then the classes are distributed by subject area.
-        val models = File(Quellen.root, "contract")
+        val models = File(Sources.root, "contract")
             .listFiles { f -> f.extension == "kt" }
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }
         assert(models.contains("""@SerialName("grand_total")""")) {
-            "PnlTotals kennt grand_total nicht"
+            "PnlTotals does not know grand_total"
         }
     }
 }

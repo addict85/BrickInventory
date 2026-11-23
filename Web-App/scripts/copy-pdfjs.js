@@ -13,30 +13,30 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const DATEIEN = ['pdf.min.mjs', 'pdf.worker.min.mjs'];
+const FILES = ['pdf.min.mjs', 'pdf.worker.min.mjs'];
 
 /** @returns the copied version, or null without an installed pdfjs-dist */
-function copyPdfjs(ziel = ROOT, quelle = ROOT) {
-  const paket = path.join(quelle, 'node_modules', 'pdfjs-dist');
-  if (!fs.existsSync(path.join(paket, 'package.json'))) return null;
-  const fassung = JSON.parse(fs.readFileSync(path.join(paket, 'package.json'), 'utf8')).version;
-  const ordner = path.join(ziel, 'public', 'vendor', 'pdfjs');
-  fs.mkdirSync(ordner, { recursive: true });
-  for (const d of DATEIEN) fs.copyFileSync(path.join(paket, 'build', d), path.join(ordner, d));
-  const boot = path.join(ziel, 'public', 'js', 'pdfjs-boot.js');
+function copyPdfjs(target = ROOT, source = ROOT) {
+  const pkg = path.join(source, 'node_modules', 'pdfjs-dist');
+  if (!fs.existsSync(path.join(pkg, 'package.json'))) return null;
+  const version = JSON.parse(fs.readFileSync(path.join(pkg, 'package.json'), 'utf8')).version;
+  const folder = path.join(target, 'public', 'vendor', 'pdfjs');
+  fs.mkdirSync(folder, { recursive: true });
+  for (const d of FILES) fs.copyFileSync(path.join(pkg, 'build', d), path.join(folder, d));
+  const boot = path.join(target, 'public', 'js', 'pdfjs-boot.js');
   const alt = fs.readFileSync(boot, 'utf8');
-  const neu = alt.replace(/(\/vendor\/pdfjs\/[\w.]+\.mjs\?v=)[\w.-]+/g, `$1${fassung}`);
-  if (neu !== alt) fs.writeFileSync(boot, neu);
-  return fassung;
+  const fresh = alt.replace(/(\/vendor\/pdfjs\/[\w.]+\.mjs\?v=)[\w.-]+/g, `$1${version}`);
+  if (fresh !== alt) fs.writeFileSync(boot, fresh);
+  return version;
 }
 
-module.exports = { copyPdfjs, DATEIEN };
+module.exports = { copyPdfjs, FILES };
 
 if (require.main === module) {
-  const fassung = copyPdfjs(process.argv[2] ? path.resolve(process.argv[2]) : ROOT);
+  const version = copyPdfjs(process.argv[2] ? path.resolve(process.argv[2]) : ROOT);
   console.log(
-    fassung
-      ? `[pdfjs] ${fassung} → public/vendor/pdfjs/`
+    version
+      ? `[pdfjs] ${version} → public/vendor/pdfjs/`
       : '[pdfjs] pdfjs-dist nicht installiert — die eingecheckten Dateien bleiben',
   );
 }

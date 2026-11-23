@@ -1,0 +1,26 @@
+Gegenprobe: die Vorschau-Ablage schreibt und liest wieder Klartext (Stand vor sec11 N1)
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewEncryptedTest
+Rot: a thumbnail does not lie in plaintext and comes back unchanged
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+@@ -113,7 +113,7 @@
+         val f = file(address)
+         if (!f.isFile || f.length() == 0L) return null
+         val raw = runCatching { f.readBytes() }.getOrNull() ?: return null
+-        return cipher.decrypt(raw, binding(f)) ?: run { f.delete(); null }
++        return raw
+     }
+ 
+     /**
+@@ -125,7 +125,7 @@
+         runCatching {
+             val target = file(address)
+             val temp = File(folder, "${target.name}.tmp")
+-            temp.writeBytes(cipher.encrypt(bytes, binding(target)))
++            temp.writeBytes(bytes)
+             if (!temp.renameTo(target)) temp.delete()
+             // Prewarmed entries age at once; the reason is at SPECULATIVE_TIME.
+             else if (speculative) target.setLastModified(SPECULATIVE_TIME)

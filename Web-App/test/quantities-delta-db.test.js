@@ -44,7 +44,7 @@ test('quantity change without lost additions', { concurrency: 1 }, async t => {
   const { changeSet } = require('./helpers/sources').areaPage('sets');
 
   await t.test('two concurrent +1 result in +2', async () => {
-    await holdsSet(db, uid, SN, 2, { preis: 40 });
+    await holdsSet(db, uid, SN, 2, { price: 40 });
     await Promise.all([changeSet(uid, SN, { quantity_delta: 1 }), changeSet(uid, SN, { quantity_delta: 1 })]);
     assert.equal(await quantityOf(db, [uid], SN), 4);
   });
@@ -55,6 +55,6 @@ test('quantity change without lost additions', { concurrency: 1 }, async t => {
   });
 
   await t.test('an invalid step is rejected', async () => {
-    await assert.rejects(changeSet(uid, SN, { quantity_delta: 1.5 }), (/** @type {any} */ e) => e.art === 'ungueltig');
+    await assert.rejects(changeSet(uid, SN, { quantity_delta: 1.5 }), (/** @type {any} */ e) => e.kind === 'invalid');
   });
 });

@@ -1,17 +1,18 @@
 package ch.brickinventoryapp.account
 
-import ch.brickinventoryapp.model.ui.laeuft
-import ch.brickinventoryapp.update.data.UpdateLoader
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.Anmeldestand
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.data.LoginState
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.model.util.AppVersion
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.update.data.UpdateLoader
 import ch.brickinventoryapp.update.util.UPDATE_RELEASE_BASE
 import ch.brickinventoryapp.update.util.UPDATE_VERSION_URL
-import ch.brickinventoryapp.update.util.UpdateFresh
 import ch.brickinventoryapp.update.util.UpdateDevice
+import ch.brickinventoryapp.update.util.UpdateFresh
 import ch.brickinventoryapp.update.util.UpdateStatus
 import ch.brickinventoryapp.update.util.UpdateStatusStore
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,6 @@ import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.Signature
 import java.util.Base64
-import ch.brickinventoryapp.model.ui.Meldung
 
 /**
  * The self-update run: signed description, download, checksum,
@@ -49,94 +49,93 @@ import ch.brickinventoryapp.model.ui.Meldung
  * network and virtual time.
  *
  * Counter-checks:
- *   update-angebot-ohne-frische  offer with isNew instead of offerableVersion →
+ *   update-offer-without-freshness  offer with isNew instead of offerableVersion →
  *                                red "a reset description offers nothing"
- *   update-vm-abgelaufen-ohne-angebot  offer only on AKTUELL → red "eine abgelaufene,
- *                                neuere Beschreibung bietet die Fassung mit Hinweis an"
- *   update-signatur-ungeprueft   the signature check after the download removed →
+ *   update-vm-expired-without-offer  offer only on AKTUELL → red "eine abgelaufene, neuere Beschreibung bietet die Fassung mit Hinweis an"
+ *   update-signature-unchecked   the signature check after the download removed →
  *                                red "eine fremde Signatur loescht das APK …"
- *   update-zweiter-weg-ungeprueft  startInstallation() without signatureFits →
+ *   update-second-path-unchecked  startInstallation() without signatureFits →
  *                                red "ohne Erlaubnis wartet das APK …"
- *   update-ohne-obergrenze       the limit never reached in the download →
+ *   update-without-upper-limit       the limit never reached in the download →
  *                                red "more than announced is not written"
- *   update-still-mit-fehler      the silent check reports errors →
+ *   update-silent-on-error      the silent check reports errors →
  *                                red "an unsigned description reports only on button press"
- *   update-start-ohne-schalter   pruefeBeimStart() doesn't ask the switch →
+ *   update-start-without-switch   checkOnStart() doesn't ask the switch →
  *                                red "ausgeschaltet fragt der Start nicht bei GitHub"
- *   update-abmelden-behaelt      no reset on sign-out → red "beim Abmelden verfaellt …"
- *   update-ohne-anmeldefolge     the check on sign-in removed from init →
+ *   update-logout-keeps      no reset on sign-out → red "beim Abmelden verfaellt …"
+ *   update-without-login-sequence     the check on sign-in removed from init →
  *                                red "die Anmeldung prueft still"
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdateViewModelTest {
 
-    private val takt = StandardTestDispatcher()
+    private val tick = StandardTestDispatcher()
     private val folder = File(System.getProperty("java.io.tmpdir"), "bim-update-${System.nanoTime()}").apply { mkdirs() }
     private val own: KeyPair = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
-    private val jetzt = System.currentTimeMillis() / 1000
+    private val now = System.currentTimeMillis() / 1000
     private val apkAddress = "$UPDATE_RELEASE_BASE/BrickInventory.apk"
     private val apk = ByteArray(200_000) { (it % 251).toByte() }
 
     /** Response per address; the client never goes onto the network. */
-    private val antworten = mutableMapOf<String, Pair<Int, ByteArray>>()
+    private val responses = mutableMapOf<String, Pair<Int, ByteArray>>()
     /** Every request of the update client; none goes onto the network. */
-    private val angefragt = mutableListOf<String>()
-    private val client = OkHttpClient.Builder().addInterceptor { kette ->
-        angefragt += kette.request().url.toString()
-        val (code, rumpf) = antworten[kette.request().url.toString()] ?: (404 to ByteArray(0))
-        Response.Builder().request(kette.request()).protocol(Protocol.HTTP_1_1).code(code).message("x")
-            .body(rumpf.toResponseBody("application/octet-stream".toMediaType())).build()
+    private val requested = mutableListOf<String>()
+    private val client = OkHttpClient.Builder().addInterceptor { chain ->
+        requested += chain.request().url.toString()
+        val (code, body) = responses[chain.request().url.toString()] ?: (404 to ByteArray(0))
+        Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(code).message("x")
+            .body(body.toResponseBody("application/octet-stream".toMediaType())).build()
     }.build()
 
-    private inner class Geraet : UpdateDevice {
+    private inner class Device : UpdateDevice {
         var signatureGood = true
         var versionInApk: Long? = 20
-        var erlaubt = true
-        val installiert = mutableListOf<File>()
-        val datei = File(folder, "BrickInventory.apk")
+        var allowed = true
+        val installed = mutableListOf<File>()
+        val file = File(folder, "BrickInventory.apk")
         override fun descriptionKey() = listOf(own.public.encoded)
-        override fun updateFile() = datei
+        override fun updateFile() = file
         override fun signatureFits(apk: File) = signatureGood
         override fun apkVersion(apk: File) = versionInApk
-        override fun installMay() = erlaubt
-        override fun install(apk: File) { installiert += apk }
+        override fun installMay() = allowed
+        override fun install(apk: File) { installed += apk }
     }
 
-    private val ablage = object : UpdateStatusStore {
-        var stand: UpdateStatus? = null
-        override suspend fun updateStatus() = stand
-        override suspend fun rememberUpdateStatus(stand: UpdateStatus) { this.stand = stand }
+    private val store = object : UpdateStatusStore {
+        var state: UpdateStatus? = null
+        override suspend fun updateStatus() = state
+        override suspend fun rememberUpdateStatus(state: UpdateStatus) { this.state = state }
         var onStart = true
-        override fun startpruefungAn() = onStart
-        override fun setStartpruefung(an: Boolean) { onStart = an }
+        override fun startCheckEnabled() = onStart
+        override fun setStartCheck(an: Boolean) { onStart = an }
     }
     private val token = MutableStateFlow<String?>("token")
-    private val geraet = Geraet()
+    private val device = Device()
     private lateinit var vm: UpdateViewModel
 
     private fun hex(b: ByteArray) = MessageDigest.getInstance("SHA-256").digest(b).joinToString("") { "%02x".format(it) }
 
     /** Like the signing job: base64 of the description and its ECDSA signature. */
-    private fun beschreibung(
-        code: Int = 20, groesse: Long = apk.size.toLong(), sha: String = hex(apk), schluessel: KeyPair = own,
-        ausgestellt: Long = jetzt - 60, gueltigBis: Long = jetzt + 86_400,
+    private fun description(
+        code: Int = 20, size: Long = apk.size.toLong(), sha: String = hex(apk), key: KeyPair = own,
+        issued: Long = now - 60, validUntil: Long = now + 86_400,
     ): ByteArray {
-        val daten = """{"versionCode":$code,"versionName":"2.$code","apkUrl":"$apkAddress","apkSize":$groesse,""" +
-            """"apkSha256":"$sha","ausgestellt":$ausgestellt,"gueltigBis":$gueltigBis}"""
-        val signatur = Signature.getInstance("SHA256withECDSA").run {
-            initSign(schluessel.private); update(daten.toByteArray()); sign()
+        val data = """{"versionCode":$code,"versionName":"2.$code","apkUrl":"$apkAddress","apkSize":$size,""" +
+            """"apkSha256":"$sha","ausgestellt":$issued,"gueltigBis":$validUntil}"""
+        val signature = Signature.getInstance("SHA256withECDSA").run {
+            initSign(key.private); update(data.toByteArray()); sign()
         }
         val b64 = Base64.getEncoder()
-        return """{"daten":"${b64.encodeToString(daten.toByteArray())}","beschreibungssignatur":"${b64.encodeToString(signatur)}"}"""
+        return """{"daten":"${b64.encodeToString(data.toByteArray())}","beschreibungssignatur":"${b64.encodeToString(signature)}"}"""
             .toByteArray()
     }
 
-    @Before fun auf() {
-        Dispatchers.setMain(takt)
-        antworten[UPDATE_VERSION_URL] = 200 to beschreibung()
-        antworten[apkAddress] = 200 to apk
-        vm = UpdateViewModel(UpdateLoader(client, AppVersion("2.10", 10), takt),
-            object : Anmeldestand { override val authTokenState = token }, ablage, geraet, takt)
+    @Before fun setUp() {
+        Dispatchers.setMain(tick)
+        responses[UPDATE_VERSION_URL] = 200 to description()
+        responses[apkAddress] = 200 to apk
+        vm = UpdateViewModel(UpdateLoader(client, AppVersion("2.10", 10), tick),
+            object : LoginState { override val authTokenState = token }, store, device, tick)
     }
 
     @After fun ab() {
@@ -145,179 +144,179 @@ class UpdateViewModelTest {
         folder.deleteRecursively()
     }
 
-    private fun zustand(): UpdateUiState = vm.updateState.value
+    private fun condition(): UpdateUiState = vm.updateState.value
 
     @Test
-    fun `a signed, current description offers the newer version`() = runTest(takt) {
-        vm.pruefeAufUpdate(still = false)
+    fun `a signed, current description offers the newer version`() = runTest(tick) {
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        assertEquals(20, zustand().newerVersion?.versionCode)
-        assertEquals(UpdateFresh.AKTUELL, zustand().frische)
-        assertEquals("Der Stand wird fortgeschrieben", 20, ablage.stand?.highestCode)
-        assertNull(zustand().fehler)
+        assertEquals(20, condition().newerVersion?.versionCode)
+        assertEquals(UpdateFresh.CURRENT, condition().freshness)
+        assertEquals("the status is carried forward", 20, store.state?.highestCode)
+        assertNull(condition().error)
     }
 
     @Test
-    fun `an unsigned description reports only on button press`() = runTest(takt) {
-        val fremd = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
-        antworten[UPDATE_VERSION_URL] = 200 to beschreibung(schluessel = fremd)
-        vm.pruefeAufUpdate(still = true)
+    fun `an unsigned description reports only on button press`() = runTest(tick) {
+        val foreign = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
+        responses[UPDATE_VERSION_URL] = 200 to description(key = foreign)
+        vm.checkOnUpdate(still = true)
         advanceUntilIdle()
-        assertTrue(zustand().geprueft)
-        assertNull("Die stille Prüfung hinterlässt keinen Fehler", zustand().fehler)
-        assertNull(zustand().newerVersion)
-        vm.pruefeAufUpdate(still = false)
+        assertTrue(condition().checked)
+        assertNull("the silent check leaves no error behind", condition().error)
+        assertNull(condition().newerVersion)
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        assertEquals(Meldung.Resource(R.string.update_beschreibung_unsigniert), zustand().fehler)
+        assertEquals(Message.Resource(R.string.update_description_unsigned), condition().error)
     }
 
     @Test
-    fun `a reset description offers nothing`() = runTest(takt) {
-        ablage.stand = UpdateStatus(highestCode = 25, ausgestellt = 0)
-        vm.pruefeAufUpdate(still = false)
+    fun `a reset description offers nothing`() = runTest(tick) {
+        store.state = UpdateStatus(highestCode = 25, issued = 0)
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        assertEquals(UpdateFresh.ZURUECKGESETZT, zustand().frische)
-        assertNull("Eine ältere Beschreibung hält nicht auf einer Zwischenfassung fest", zustand().newerVersion)
+        assertEquals(UpdateFresh.RESET, condition().freshness)
+        assertNull("an older description does not hold on to an intermediate version", condition().newerVersion)
     }
 
     @Test
-    fun `an expired, newer description offers the version with a hint`() = runTest(takt) {
-        antworten[UPDATE_VERSION_URL] = 200 to beschreibung(ausgestellt = jetzt - 8 * 86_400, gueltigBis = jetzt - 86_400)
-        vm.pruefeAufUpdate(still = false)
+    fun `an expired, newer description offers the version with a hint`() = runTest(tick) {
+        responses[UPDATE_VERSION_URL] = 200 to description(issued = now - 8 * 86_400, validUntil = now - 86_400)
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        assertEquals(UpdateFresh.ABGELAUFEN, zustand().frische)
-        assertEquals("Sonst bliebe das Gerät auf der alten Fassung", 20, zustand().newerVersion?.versionCode)
-        assertNull("Eine abgelaufene setzt keine Messlatte", ablage.stand)
+        assertEquals(UpdateFresh.EXPIRED, condition().freshness)
+        assertEquals("otherwise the device would stay on the old version", 20, condition().newerVersion?.versionCode)
+        assertNull("an expired one sets no bar", store.state)
     }
 
     @Test
-    fun `a matching APK is installed after all checks`() = runTest(takt) {
-        vm.pruefeAufUpdate(still = false)
+    fun `a matching APK is installed after all checks`() = runTest(tick) {
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        vm.ladeUpdate()
+        vm.loadUpdate()
         advanceUntilIdle()
-        assertEquals(listOf(geraet.datei), geraet.installiert)
-        assertTrue(zustand().readyToInstallation)
-        assertNull(zustand().fortschritt)
-        assertNull(zustand().fehler)
+        assertEquals(listOf(device.file), device.installed)
+        assertTrue(condition().readyToInstallation)
+        assertNull(condition().progress)
+        assertNull(condition().error)
     }
 
     @Test
-    fun `a foreign signature deletes the APK and does not install`() = runTest(takt) {
-        // Without permission, ladeUpdate() ends before the second path: only the download has been checked then.
-        geraet.signatureGood = false
-        geraet.erlaubt = false
-        vm.pruefeAufUpdate(still = false)
+    fun `a foreign signature deletes the APK and does not install`() = runTest(tick) {
+        // Without permission, loadUpdate() ends before the second path: only the download has been checked then.
+        device.signatureGood = false
+        device.allowed = false
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        vm.ladeUpdate()
+        vm.loadUpdate()
         advanceUntilIdle()
-        assertEquals(Meldung.Resource(R.string.update_signatur_falsch), zustand().fehler)
-        assertFalse(zustand().readyToInstallation)
-        assertFalse("Ein APK unbekannter Herkunft bleibt nicht liegen", geraet.datei.exists())
-        assertTrue(geraet.installiert.isEmpty())
+        assertEquals(Message.Resource(R.string.update_signature_wrong), condition().error)
+        assertFalse(condition().readyToInstallation)
+        assertFalse("an APK of unknown origin does not stay around", device.file.exists())
+        assertTrue(device.installed.isEmpty())
     }
 
     @Test
-    fun `a wrong checksum or version does not install`() = runTest(takt) {
-        antworten[UPDATE_VERSION_URL] = 200 to beschreibung(sha = hex(byteArrayOf(1)))
-        vm.pruefeAufUpdate(still = false)
+    fun `a wrong checksum or version does not install`() = runTest(tick) {
+        responses[UPDATE_VERSION_URL] = 200 to description(sha = hex(byteArrayOf(1)))
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        vm.ladeUpdate()
+        vm.loadUpdate()
         advanceUntilIdle()
-        assertEquals(Meldung.Resource(R.string.update_pruefsumme_falsch), zustand().fehler)
-        antworten[UPDATE_VERSION_URL] = 200 to beschreibung()
-        geraet.versionInApk = 19
-        vm.pruefeAufUpdate(still = false)
+        assertEquals(Message.Resource(R.string.update_checksum_wrong), condition().error)
+        responses[UPDATE_VERSION_URL] = 200 to description()
+        device.versionInApk = 19
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        vm.ladeUpdate()
+        vm.loadUpdate()
         advanceUntilIdle()
-        assertEquals(Meldung.Resource(R.string.update_fassung_falsch), zustand().fehler)
-        assertFalse(geraet.datei.exists())
-        assertTrue(geraet.installiert.isEmpty())
+        assertEquals(Message.Resource(R.string.update_version_wrong), condition().error)
+        assertFalse(device.file.exists())
+        assertTrue(device.installed.isEmpty())
     }
 
     @Test
-    fun `more than announced is not written`() = runTest(takt) {
+    fun `more than announced is not written`() = runTest(tick) {
         // Announced 10 bytes; allowed is that plus one megabyte, more is delivered.
         val toMuch = ByteArray(1024 * 1024 + 64 * 1024)
-        antworten[apkAddress] = 200 to toMuch
-        antworten[UPDATE_VERSION_URL] = 200 to beschreibung(groesse = 10, sha = hex(toMuch))
-        vm.pruefeAufUpdate(still = false)
+        responses[apkAddress] = 200 to toMuch
+        responses[UPDATE_VERSION_URL] = 200 to description(size = 10, sha = hex(toMuch))
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        vm.ladeUpdate()
+        vm.loadUpdate()
         advanceUntilIdle()
-        assertEquals(Meldung.Resource(R.string.update_laden_fehlgeschlagen), zustand().fehler)
-        assertFalse(geraet.datei.exists())
-        assertTrue(geraet.installiert.isEmpty())
+        assertEquals(Message.Resource(R.string.update_load_failed), condition().error)
+        assertFalse(device.file.exists())
+        assertTrue(device.installed.isEmpty())
     }
 
     @Test
-    fun `without permission the APK waits, and the second path checks again`() = runTest(takt) {
-        geraet.erlaubt = false
-        vm.pruefeAufUpdate(still = false)
+    fun `without permission the APK waits, and the second path checks again`() = runTest(tick) {
+        device.allowed = false
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
-        vm.ladeUpdate()
+        vm.loadUpdate()
         advanceUntilIdle()
-        assertTrue(zustand().permissionAbsent)
-        assertTrue(zustand().readyToInstallation)
-        assertTrue(geraet.installiert.isEmpty())
+        assertTrue(condition().permissionAbsent)
+        assertTrue(condition().readyToInstallation)
+        assertTrue(device.installed.isEmpty())
         // The file sat on disk during the detour into the system settings.
-        geraet.erlaubt = true
-        geraet.signatureGood = false
+        device.allowed = true
+        device.signatureGood = false
         vm.startInstallation()
         advanceUntilIdle()
-        assertEquals(Meldung.Resource(R.string.update_signatur_falsch), zustand().fehler)
-        assertFalse(geraet.datei.exists())
-        assertTrue(geraet.installiert.isEmpty())
+        assertEquals(Message.Resource(R.string.update_signature_wrong), condition().error)
+        assertFalse(device.file.exists())
+        assertTrue(device.installed.isEmpty())
     }
 
     @Test
-    fun `on sign-out the state expires, Later only for this run`() = runTest(takt) {
-        vm.pruefeAufUpdate(still = false)
+    fun `on sign-out the state expires, Later only for this run`() = runTest(tick) {
+        vm.checkOnUpdate(still = false)
         advanceUntilIdle()
         vm.closeUpdateHint()
-        assertTrue(zustand().dialogRejected)
-        assertEquals("Der Befund bleibt, nur die Frage ist weg", 20, zustand().newerVersion?.versionCode)
+        assertTrue(condition().dialogRejected)
+        assertEquals("the finding stays, only the question is gone", 20, condition().newerVersion?.versionCode)
         token.value = ""
         advanceUntilIdle()
-        assertEquals("beim Abmelden verfaellt der Zustand", UpdateUiState(), zustand())
+        assertEquals("on sign-out the state expires", UpdateUiState(), condition())
     }
 
     @Test
-    fun `the sign-in checks silently, without sign-in nobody asks`() = runTest(takt) {
-        val anmeldung = MutableStateFlow<String?>(null)
-        val eigenes = UpdateViewModel(UpdateLoader(client, AppVersion("2.10", 10), takt),
-            object : Anmeldestand { override val authTokenState = anmeldung }, ablage, geraet, takt)
+    fun `the sign-in checks silently, without sign-in nobody asks`() = runTest(tick) {
+        val login = MutableStateFlow<String?>(null)
+        val own = UpdateViewModel(UpdateLoader(client, AppVersion("2.10", 10), tick),
+            object : LoginState { override val authTokenState = login }, store, device, tick)
         try {
             advanceUntilIdle()
-            angefragt.clear()
+            requested.clear()
             advanceUntilIdle()
-            assertEquals("Abgemeldet fragt niemand bei GitHub", emptyList<String>(), angefragt)
-            anmeldung.value = "token"
+            assertEquals("signed out, nobody asks GitHub", emptyList<String>(), requested)
+            login.value = "token"
             advanceUntilIdle()
-            assertEquals(listOf(UPDATE_VERSION_URL), angefragt)
-            assertEquals("Die Prüfung beim Start ist still", 20, eigenes.updateState.value.newerVersion?.versionCode)
-            assertNull(eigenes.updateState.value.fehler)
-            assertFalse("kein Ladebalken", eigenes.updateState.value.check.laeuft)
+            assertEquals(listOf(UPDATE_VERSION_URL), requested)
+            assertEquals("the check at start is silent", 20, own.updateState.value.newerVersion?.versionCode)
+            assertNull(own.updateState.value.error)
+            assertFalse("no loading bar", own.updateState.value.check.running)
         } finally {
-            eigenes.viewModelScope.cancel()
+            own.viewModelScope.cancel()
         }
     }
 
     @Test
-    fun `switched off the start does not ask GitHub, switched on exactly once`() = runTest(takt) {
-        // The vm from auf() is signed in and checks in init as long as the switch is still
+    fun `switched off the start does not ask GitHub, switched on exactly once`() = runTest(tick) {
+        // The vm from setUp() is signed in and checks in init as long as the switch is still
         // on; let that check expire first, otherwise it counts here too.
         advanceUntilIdle()
-        angefragt.clear()
-        vm.setStartpruefung(false)
-        assertFalse("Der Schalter steht im Zustand", vm.updateState.value.startpruefung)
-        vm.pruefeBeimStart()
+        requested.clear()
+        vm.setStartCheck(false)
+        assertFalse("the switch stands in the state", vm.updateState.value.startCheck)
+        vm.checkOnStart()
         advanceUntilIdle()
-        assertEquals("Ausgeschaltet ging eine Anfrage hinaus", emptyList<String>(), angefragt)
-        vm.setStartpruefung(true)
-        vm.pruefeBeimStart()
+        assertEquals("switched off, a request went out", emptyList<String>(), requested)
+        vm.setStartCheck(true)
+        vm.checkOnStart()
         advanceUntilIdle()
-        assertEquals(listOf(UPDATE_VERSION_URL), angefragt)
+        assertEquals(listOf(UPDATE_VERSION_URL), requested)
     }
 }

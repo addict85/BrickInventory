@@ -3,12 +3,12 @@ import type { DbInterface } from '../../db/database';
 /** `ongoing` counts checks currently in flight, so concurrent attempts can't jointly
  * jump the limit. */
 
-export type CounterRow = { count: string; wait_min: string; seit: string };
+export type CounterRow = { count: string; wait_min: string; since: string };
 
 export function read(db: DbInterface, key: string, windowMin: number) {
   return db.get<CounterRow>(
     `SELECT count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
-            EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
+            EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS since
        FROM rate_limit_attempts
       WHERE key = $1 AND first_at > NOW() - make_interval(mins => $2)`,
     [key, windowMin],
@@ -37,10 +37,10 @@ export async function increase(db: DbInterface, key: string, windowMin: number):
 export type LockState = {
   count: string;
   ongoing: string;
-  abgelaufen: boolean;
-  laufend_alt: boolean;
+  expired: boolean;
+  running_stale: boolean;
   wait_min: string;
-  seit: string;
+  since: string;
 };
 
 export async function lock(tx: DbInterface, key: string, windowMin: number, ongoingDecayS: number): Promise<LockState> {
@@ -51,10 +51,10 @@ export async function lock(tx: DbInterface, key: string, windowMin: number, ongo
   );
   return (await tx.get<LockState>(
     `SELECT count, ongoing,
-            first_at < NOW() - make_interval(mins => $2) AS abgelaufen,
-            COALESCE(ongoing_since < NOW() - make_interval(secs => $3), TRUE) AS laufend_alt,
+            first_at < NOW() - make_interval(mins => $2) AS expired,
+            COALESCE(ongoing_since < NOW() - make_interval(secs => $3), TRUE) AS running_stale,
             EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
-            EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
+            EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS since
        FROM rate_limit_attempts WHERE key = $1 FOR UPDATE`,
     [key, windowMin, ongoingDecayS],
   ))!;
@@ -117,9 +117,9 @@ export async function countUp(
 
 /** Per account and hour (balance lookups): the limit only falls after a full hour. */
 export function hourlyState(tx: DbInterface, key: string) {
-  return tx.get<{ anzahl: number; warten_sek: number }>(
-    `SELECT count AS anzahl,
-       CEIL(EXTRACT(EPOCH FROM (first_at + INTERVAL '1 hour' - NOW())))::int AS warten_sek
+  return tx.get<{ count: number; wait_sec: number }>(
+    `SELECT count AS count,
+       CEIL(EXTRACT(EPOCH FROM (first_at + INTERVAL '1 hour' - NOW())))::int AS wait_sec
      FROM rate_limit_attempts WHERE key = $1 AND first_at > NOW() - INTERVAL '1 hour'`,
     [key],
   );
@@ -144,4 +144,40 @@ export function countOncePerDay(db: DbInterface, key: string) {
      RETURNING key`,
     [key],
   );
+}
+
+export interface BudgetClaim {
+  cost: number;
+  job: boolean;
+  windowS: number;
+  budget: number;
+  jobBudget: number;
+  /** The services' clock (ms), not the database's: tests move it. */
+  nowMs: number;
+}
+export type BudgetRow = { units: number; jobs: number; allowed: boolean; rest_s: string };
+
+/** One statement under the row lock of the upsert: concurrent requests of every web process see
+ * one another. An expired window starts anew; a rejected claim adds nothing. */
+export async function claimApiBudget(db: DbInterface, uid: number, c: BudgetClaim): Promise<BudgetRow> {
+  return (await db.get<BudgetRow>(
+    `INSERT INTO api_budget AS b (user_id, window_start, units, jobs, last_allowed)
+     SELECT $1, to_timestamp($7 / 1000.0), CASE WHEN v.ok THEN $2 ELSE 0 END, CASE WHEN v.ok AND $3 THEN 1 ELSE 0 END, v.ok
+       FROM (SELECT $2::int <= $5::int AND (NOT $3::boolean OR 0 < $6::int) AS ok) v
+     ON CONFLICT (user_id) DO UPDATE SET (window_start, units, jobs, last_allowed) = (
+       SELECT y.start, y.units + CASE WHEN y.ok THEN $2 ELSE 0 END, y.jobs + CASE WHEN y.ok AND $3 THEN 1 ELSE 0 END, y.ok
+         FROM (SELECT x.start, x.units, x.jobs, x.units + $2 <= $5 AND (NOT $3 OR x.jobs < $6) AS ok
+                 FROM (SELECT CASE WHEN w.fresh THEN to_timestamp($7 / 1000.0) ELSE b.window_start END AS start,
+                              CASE WHEN w.fresh THEN 0 ELSE b.units END AS units,
+                              CASE WHEN w.fresh THEN 0 ELSE b.jobs END AS jobs
+                         FROM (SELECT b.window_start <= to_timestamp($7 / 1000.0) - make_interval(secs => $4) AS fresh) w) x) y)
+     RETURNING units, jobs, last_allowed AS allowed,
+               CEIL(EXTRACT(EPOCH FROM (window_start + make_interval(secs => $4) - to_timestamp($7 / 1000.0)))) AS rest_s`,
+    [uid, c.cost, c.job, c.windowS, c.budget, c.jobBudget, c.nowMs],
+  ))!;
+}
+
+/** Only for tests: a budget that does not depend on the previous case. */
+export async function clearApiBudget(db: DbInterface, uid: number): Promise<void> {
+  await db.run('DELETE FROM api_budget WHERE user_id = $1', [uid]);
 }

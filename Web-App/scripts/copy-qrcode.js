@@ -10,26 +10,26 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const DATEIEN = ['qrcode.min.js', 'LICENSE'];
+const FILES = ['qrcode.min.js', 'LICENSE'];
 
 /** @returns the copied version, or null without an installed qrcodejs */
-function copyQrcode(ziel = ROOT, quelle = ROOT) {
-  const paket = path.join(quelle, 'node_modules', 'qrcodejs');
-  if (!fs.existsSync(path.join(paket, 'package.json'))) return null;
-  const fassung = JSON.parse(fs.readFileSync(path.join(paket, 'package.json'), 'utf8')).version;
-  const ordner = path.join(ziel, 'public', 'vendor', 'qrcode');
-  fs.mkdirSync(ordner, { recursive: true });
-  for (const d of DATEIEN) fs.copyFileSync(path.join(paket, d), path.join(ordner, d));
-  return fassung;
+function copyQrcode(target = ROOT, source = ROOT) {
+  const pkg = path.join(source, 'node_modules', 'qrcodejs');
+  if (!fs.existsSync(path.join(pkg, 'package.json'))) return null;
+  const version = JSON.parse(fs.readFileSync(path.join(pkg, 'package.json'), 'utf8')).version;
+  const folder = path.join(target, 'public', 'vendor', 'qrcode');
+  fs.mkdirSync(folder, { recursive: true });
+  for (const d of FILES) fs.copyFileSync(path.join(pkg, d), path.join(folder, d));
+  return version;
 }
 
-module.exports = { copyQrcode, DATEIEN };
+module.exports = { copyQrcode, FILES };
 
 if (require.main === module) {
-  const fassung = copyQrcode(process.argv[2] ? path.resolve(process.argv[2]) : ROOT);
+  const version = copyQrcode(process.argv[2] ? path.resolve(process.argv[2]) : ROOT);
   console.log(
-    fassung
-      ? `[qrcode] qrcodejs ${fassung} → public/vendor/qrcode/`
+    version
+      ? `[qrcode] qrcodejs ${version} → public/vendor/qrcode/`
       : '[qrcode] qrcodejs nicht installiert — die eingecheckten Dateien bleiben',
   );
 }

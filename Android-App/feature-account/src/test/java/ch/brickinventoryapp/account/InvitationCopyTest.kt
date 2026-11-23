@@ -15,8 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import ch.brickinventoryapp.account.ui.HouseholdUiState
 import ch.brickinventoryapp.account.ui.screens.HouseholdCard
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.HouseholdStatusView
-import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.LocalSdkLevel
@@ -31,8 +31,8 @@ import org.robolectric.RobolectricTestRunner
  * system keeps the clip out of the preview and keyboard history. Below that, sharing
  * remains; the code goes to a different device anyway.
  *
- * Counter-check (patch under gegenproben/, Robolectric, measured by CI):
- *   einladung-kopieren-vor-33  the copy button without secretCopyable() → red "unter Android 13 …"
+ * Counter-check (patch under counter-checks/, Robolectric, measured by CI):
+ *   invite-copy-before-33  the copy button without secretCopyable() → red "unter Android 13 …"
  */
 @RunWith(RobolectricTestRunner::class)
 class InvitationCopyTest {
@@ -40,23 +40,23 @@ class InvitationCopyTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private val stufe = mutableStateOf(33)
+    private val level = mutableStateOf(33)
 
     private fun text(id: Int) = compose.activity.getString(id)
 
     private fun buttons(id: Int) = compose.onAllNodes(hasText(text(id)) and hasClickAction()).fetchSemanticsNodes().size
 
-    private fun zeige() {
-        val status = HouseholdStatusView(isMain = true, isSub = false, currency = Waehrung("CHF"),
-            elternkonten = emptyList(), subAccounts = emptyList(), openInvites = 1, formerLinks = emptyList())
+    private fun show() {
+        val status = HouseholdStatusView(isMain = true, isSub = false, currency = CurrencyCode("CHF"),
+            parentAccounts = emptyList(), subAccounts = emptyList(), openInvites = 1, formerLinks = emptyList())
         compose.setContent {
             BrickInventoryManagerTheme {
                 // As in the subpage: a scrollable column.
-                CompositionLocalProvider(LocalSdkLevel provides stufe.value) {
+                CompositionLocalProvider(LocalSdkLevel provides level.value) {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         HouseholdCard(HouseholdUiState(status = status, inviteCode = "ABCD-1234"),
                             onCreateInvite = {}, onRedeemInvite = { _, _, _ -> }, onUnlink = {}, onUnlinkParent = {},
-                            onVerwerfen = {})
+                            onDiscard = {})
                     }
                 }
             }
@@ -66,12 +66,12 @@ class InvitationCopyTest {
 
     @Test
     fun `below Android 13 the code can only be shared, from 13 also copied secretly`() {
-        stufe.value = 32
-        zeige()
-        assertEquals("Teilen bleibt", 1, buttons(R.string.household_invite_teilen))
-        assertEquals("Unter Android 13 kein Kopierknopf", 0, buttons(R.string.household_invite_copy))
+        level.value = 32
+        show()
+        assertEquals("sharing stays", 1, buttons(R.string.household_invite_share))
+        assertEquals("below Android 13 no copy button", 0, buttons(R.string.household_invite_copy))
 
-        stufe.value = 33
+        level.value = 33
         compose.waitForIdle()
         compose.onNode(hasText(text(R.string.household_invite_copy)) and hasClickAction()).performScrollTo().performClick()
         compose.waitForIdle()

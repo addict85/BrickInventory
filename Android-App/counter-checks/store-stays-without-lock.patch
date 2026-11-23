@@ -1,0 +1,16 @@
+Gegenprobe: Ein Ablageschlüssel unter dem Schlüssel ohne Entsperr-Bedingung wird nicht umgeschlüsselt
+Modul: core-security
+Test: ch.brickinventoryapp.security.StoreUnlockedTest
+Rot: a legacy stock without condition goes under the unlocked one on first read, the stores stay readable
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
+@@ -34,7 +34,6 @@
+             val wrapped = file.readText().trim()
+             when (val finding = vault.open(wrapped)) {
+                 is VaultFinding.Readable -> hexToBytes(finding.plaintext)?.takeIf { it.size == LENGTH }?.let {
+-                    if (vault.stale(wrapped)) wrapNew(finding.plaintext)
+                     known = it
+                     return it
+                 }

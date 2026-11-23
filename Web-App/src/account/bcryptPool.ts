@@ -7,116 +7,130 @@ import bcrypt from 'bcryptjs';
  * requests for up to 100 ms. Workers are created only on demand and keep the
  * process alive only while they compute. If the file is missing (source instead of build), the
  * main thread computes as before. */
-type Auftrag = { art: 'hash' | 'vergleich'; passwort: string; wert: string | number };
-type Offen = { auftrag: Auftrag; ok: (v: unknown) => void; fehler: (e: Error) => void };
+type Job = { kind: 'hash' | 'vergleich'; password: string; value: string | number };
+type Pending = { job: Job; ok: (v: unknown) => void; error: (e: Error) => void };
 
 export interface Pool {
-  hash(passwort: string, runden: number): Promise<string>;
-  vergleiche(passwort: string, hash: string): Promise<boolean>;
-  stand(): { worker: number; frei: number; wartend: number; hauptthread: boolean };
-  beende(): Promise<void>;
+  hash(password: string, rounds: number): Promise<string>;
+  compare(password: string, hash: string): Promise<boolean>;
+  state(): { worker: number; free: number; waiting: number; mainThread: boolean };
+  finish(): Promise<void>;
 }
 
-const imHauptthread = (a: Auftrag) =>
-  a.art === 'hash' ? bcrypt.hash(a.passwort, Number(a.wert)) : bcrypt.compare(a.passwort, String(a.wert));
+const inMainThread = (a: Job) =>
+  a.kind === 'hash' ? bcrypt.hash(a.password, Number(a.value)) : bcrypt.compare(a.password, String(a.value));
 const NO_WORKER = '[bcrypt] Worker-Thread startet nicht, Prüfungen laufen im Hauptthread:';
 
-/** idleMs: an idle worker ends after that and frees its memory. */
-export function newPool(groesse: number, datei = path.join(__dirname, 'bcryptWorker.js'), idleMs = 60_000): Pool {
-  let hauptthread = !fs.existsSync(datei);
-  const frei: Worker[] = [],
-    alle = new Set<Worker>(),
-    queue: Offen[] = [];
+/** The free workers with their idle timer: one that waits longer than idleMs ends and frees its memory. */
+function idleWorkers(idleMs: number) {
+  const free: Worker[] = [];
   const rest = new Map<Worker, NodeJS.Timeout>();
-  const laufend = new Map<Worker, { id: number; o: Offen }>();
-  let nextId = 0,
-    beendet = false;
+  const drop = (w: Worker) => {
+    clearTimeout(rest.get(w));
+    rest.delete(w);
+    if (free.includes(w)) free.splice(free.indexOf(w), 1);
+  };
+  return {
+    size: () => free.length,
+    park(w: Worker) {
+      w.unref();
+      free.push(w);
+      rest.set(
+        w,
+        setTimeout(() => {
+          drop(w);
+          void w.terminate();
+        }, idleMs).unref(),
+      );
+    },
+    take(): Worker | undefined {
+      const w = free.pop();
+      if (w) drop(w);
+      return w;
+    },
+    drop,
+  };
+}
 
-  const starte = (w: Worker, o: Offen) => {
+/** idleMs: an idle worker ends after that and frees its memory. */
+export function newPool(size: number, file = path.join(__dirname, 'bcryptWorker.js'), idleMs = 60_000): Pool {
+  let mainThread = !fs.existsSync(file);
+  const idle = idleWorkers(idleMs);
+  const all = new Set<Worker>(),
+    queue: Pending[] = [];
+  const running = new Map<Worker, { id: number; o: Pending }>();
+  let nextId = 0,
+    ended = false;
+
+  const start = (w: Worker, o: Pending) => {
     const id = ++nextId;
-    laufend.set(w, { id, o });
+    running.set(w, { id, o });
     w.ref();
-    w.postMessage({ id, ...o.auftrag });
+    w.postMessage({ id, ...o.job });
   };
-  const naechster = (w: Worker) => {
-    laufend.delete(w);
+  const next = (w: Worker) => {
+    running.delete(w);
     const o = queue.shift();
-    if (o) {
-      starte(w, o);
-      return;
-    }
-    w.unref();
-    frei.push(w);
-    rest.set(
-      w,
-      setTimeout(() => {
-        rest.delete(w);
-        frei.splice(frei.indexOf(w), 1);
-        void w.terminate();
-      }, idleMs).unref(),
-    );
+    if (o) start(w, o);
+    else idle.park(w);
   };
-  const takeFree = (): Worker | undefined => {
-    const w = frei.pop();
-    if (w) {
-      clearTimeout(rest.get(w));
-      rest.delete(w);
-    }
-    return w;
+  /** A worker that ended: out of every list; @returns the job it was running. */
+  const forget = (w: Worker) => {
+    all.delete(w);
+    idle.drop(w);
+    const l = running.get(w);
+    running.delete(w);
+    return l;
   };
-  const neu = (): Worker => {
-    const w = new Worker(datei);
-    let geantwortet = false,
-      grund: Error | null = null;
-    alle.add(w);
-    w.on('message', (m: { id: number; ergebnis?: unknown; fehler?: string }) => {
-      const l = laufend.get(w);
+  const fresh = (): Worker => {
+    const w = new Worker(file);
+    let answered = false,
+      reason: Error | null = null;
+    all.add(w);
+    w.on('message', (m: { id: number; result?: unknown; error?: string }) => {
+      const l = running.get(w);
       if (!l || l.id !== m.id) return;
-      geantwortet = true;
-      naechster(w);
-      if (m.fehler !== undefined) l.o.fehler(new Error(m.fehler));
-      else l.o.ok(m.ergebnis);
+      answered = true;
+      next(w);
+      if (m.error !== undefined) l.o.error(new Error(m.error));
+      else l.o.ok(m.result);
     });
     w.on('error', (e: Error) => {
-      grund = e;
+      reason = e;
     });
     w.on('exit', () => {
-      alle.delete(w);
-      clearTimeout(rest.get(w));
-      rest.delete(w);
-      if (frei.includes(w)) frei.splice(frei.indexOf(w), 1);
-      const l = laufend.get(w);
-      laufend.delete(w);
-      if (beendet) return;
+      const l = forget(w);
+      if (ended) return;
       // If a worker does not start at all, the next one will not start either.
-      if (!geantwortet) {
-        hauptthread = true;
-        console.warn(NO_WORKER, grund?.message ?? 'beendet');
+      if (!answered) {
+        mainThread = true;
+        console.warn(NO_WORKER, reason?.message ?? 'beendet');
       }
       if (l)
-        void (
-          hauptthread ? imHauptthread(l.o.auftrag) : Promise.reject(grund ?? new Error('bcrypt-Arbeiter beendet'))
-        ).then(l.o.ok, l.o.fehler);
-      for (const o of queue.splice(0)) void auftrag(o.auftrag).then(o.ok, o.fehler);
+        void (mainThread ? inMainThread(l.o.job) : Promise.reject(reason ?? new Error('bcrypt-Arbeiter beendet'))).then(
+          l.o.ok,
+          l.o.error,
+        );
+      for (const o of queue.splice(0)) void job(o.job).then(o.ok, o.error);
     });
     return w;
   };
-  const auftrag = (a: Auftrag): Promise<unknown> => {
-    if (hauptthread) return imHauptthread(a);
-    return new Promise((ok, fehler) => {
-      const o = { auftrag: a, ok, fehler };
-      const w = takeFree() ?? (alle.size < groesse ? neu() : undefined);
-      if (w) starte(w, o);
+  const job = (a: Job): Promise<unknown> => {
+    if (mainThread) return inMainThread(a);
+    return new Promise((ok, error) => {
+      const o = { job: a, ok, error };
+      const w = idle.take() ?? (all.size < size ? fresh() : undefined);
+      if (w) start(w, o);
       else queue.push(o);
     });
   };
   return {
-    hash: (passwort, runden) => auftrag({ art: 'hash', passwort, wert: runden }) as Promise<string>,
-    vergleiche: (passwort, hash) => auftrag({ art: 'vergleich', passwort, wert: hash }) as Promise<boolean>,
-    stand: () => ({ worker: alle.size, frei: frei.length, wartend: queue.length, hauptthread }),
-    beende: async () => {
-      beendet = true;
-      await Promise.all([...alle].map(w => w.terminate()));
+    hash: (password, rounds) => job({ kind: 'hash', password, value: rounds }) as Promise<string>,
+    compare: (password, hash) => job({ kind: 'vergleich', password, value: hash }) as Promise<boolean>,
+    state: () => ({ worker: all.size, free: idle.size(), waiting: queue.length, mainThread }),
+    finish: async () => {
+      ended = true;
+      await Promise.all([...all].map(w => w.terminate()));
     },
   };
 }

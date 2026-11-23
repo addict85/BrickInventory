@@ -45,10 +45,10 @@ test('a cleared purchase price is filled from the market price — web app AND a
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','CHF')
                 ON CONFLICT (key) DO UPDATE SET value='CHF'`);
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
+  const { base, srv } = testServer(_req, { session: { userId: mainId }, t });
 
   // Starting point: set of the SUB-ACCOUNT with two entries (used + new).
-  const aufbauen = async () => {
+  const setUp = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     await holdsSet(db, subId, SN, 0); // Quantity 0: the entry behind it carries it
@@ -88,42 +88,38 @@ test('a cleared purchase price is filled from the market price — web app AND a
 
   try {
     const results = {};
-    for (const [name, pfad] of /** @type {[string, (id: number) => string][]} */ ([
-      ['Webapp', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
-      ['Android', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
+    for (const [name, path] of /** @type {[string, (id: number) => string][]} */ ([
+      ['Webapp', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
+      ['Android', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
     ])) {
-      const id = await aufbauen();
-      const r = await fetch(`${base}${pfad(id)}`, {
+      const id = await setUp();
+      const r = await fetch(`${base}${path(id)}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ purchase_price: '' }), // field cleared
       });
-      assert.equal(r.status, 200, `${name}: das Leeren muss angenommen werden`);
+      assert.equal(r.status, 200, `${name}: the clearing must be accepted`);
 
       const acq = await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [id]);
       assert.ok(
         acq.purchase_price !== null,
-        `${name}: der Kaufpreis blieb LEER — er muss aus dem Marktpreis gefüllt werden`,
+        `${name}: the purchase price stayed EMPTY — it must be filled from the market price`,
       );
       assert.equal(
         Number(acq.purchase_price),
         12.55,
-        `${name}: es muss der NEU-Preis sein (12.55), nicht der Gebraucht-Preis der ` + 'Erfassung daneben (7.30)',
+        `${name}: it must be the NEW price (12.55), not the used price of the ` + 'acquisition next to it (7.30)',
       );
 
       // And the tile at the top — that is where Marco's dash was. Since
       // migration 0032 it computes from the entries; the stock has two here (7.30
       // used, 12.55 new, one copy each), the mean is 9.925.
-      const kachel = await _req('src/sets/read.js').zustandsAggregat(
+      const tile = await _req('src/sets/read.js').conditionAggregate(
         require('./helpers/sources').testContext('sets'),
         [subId],
         SN,
       );
-      assert.equal(
-        kachel.avg_purchase_price,
-        9.925,
-        `${name}: die Kachel muss den gefüllten Preis mitrechnen, keinen Strich zeigen`,
-      );
+      assert.equal(tile.avg_purchase_price, 9.925, `${name}: the tile must include the filled price, not show a dash`);
       results[name] = Number(acq.purchase_price);
     }
 
@@ -131,8 +127,8 @@ test('a cleared purchase price is filled from the market price — web app AND a
     assert.equal(
       results.Webapp,
       results.Android,
-      `Die beiden Clients füllen verschiedene Preise ein (Webapp ${results.Webapp}, ` +
-        `Android ${results.Android}) — die Regel existiert dann wieder zweimal`,
+      `The two clients fill in different prices (web app ${results.Webapp}, ` +
+        `Android ${results.Android}) — the rule then exists twice again`,
     );
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});

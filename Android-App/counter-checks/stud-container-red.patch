@@ -1,0 +1,17 @@
+Gegenprobe: primaryContainer von Noppe wieder das helle Rot (StudRedLight)
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.RedOnlyForWarningTest
+Rot: value and state surfaces are never red
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -203,7 +203,7 @@
+ private val StudColors = lightColorScheme(
+     primary              = StudBlue,
+     onPrimary            = Color.White,
+-    primaryContainer     = StudBlueLight,
++    primaryContainer     = StudRedLight,
+     onPrimaryContainer   = StudInk,
+     secondary            = StudInk,
+     onSecondary          = Color.White,

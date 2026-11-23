@@ -1,0 +1,17 @@
+Gegenprobe: Jede Rückkehr aus dem Hintergrund sperrt die App, auch vor Ablauf der Frist
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppLockTest
+Rot: before the deadline expires the app does not ask
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
+@@ -54,7 +54,7 @@
+         // After a device restart the clock starts at zero: whether the deadline expired is open.
+         // An unreadable counter counts as a different start; without a remembered one (older store), only the clock counts.
+         val restarted = start != null && devicesStart() != start
+-        if (deadline > 0 && (restarted || now < since || now - since >= deadline)) set(true)
++        if (deadline > 0 && (restarted || now < since || now - since >= 0)) set(true)
+     }
+ 
+     fun unlocked() = set(false)

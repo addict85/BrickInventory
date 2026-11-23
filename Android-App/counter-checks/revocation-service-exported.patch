@@ -1,0 +1,19 @@
+Gegenprobe: Der RevocationBoundService von Google-Sign-in bleibt im zusammengeführten Manifest
+Modul: app
+Test: ch.brickinventoryapp.app.LibraryComponentsTest
+Rot: the revocation service of Google sign-in is not in the manifest
+
+diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml
+--- a/Android-App/app/src/main/AndroidManifest.xml
++++ b/Android-App/app/src/main/AndroidManifest.xml
+@@ -224,10 +224,6 @@
+             android:name="androidx.profileinstaller.ProfileInstallReceiver"
+             tools:node="remove"
+             tools:ignore="MissingClass" />
+-        <service
+-            android:name="com.google.android.gms.auth.api.signin.RevocationBoundService"
+-            tools:node="remove"
+-            tools:ignore="MissingClass" />
+ 
+         <!--
+           taskAffinity="": Ohne Affinität kann keine fremde Activity, die sich die

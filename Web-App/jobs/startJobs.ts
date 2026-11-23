@@ -1,18 +1,18 @@
-import { createWorker, type Bearbeitertabelle, type WorkerOptions } from './jobWorker';
+import { createWorker, type HandlerTable, type WorkerOptions } from './jobWorker';
 import type { JobKind } from '../src/jobQueue';
-import type { Dienste } from '../src/services';
+import type { Services } from '../src/services';
 
 /** What the areas registered in the wiring (startup/wiring.ts), per kind. */
-const editor = (d: Pick<Dienste, 'jobQueue'>): Bearbeitertabelle =>
-  Object.fromEntries(d.jobQueue.signedInKinds().map(a => [a.art, a]));
+const editor = (d: Pick<Services, 'jobQueue'>): HandlerTable =>
+  Object.fromEntries(d.jobQueue.signedInKinds().map(a => [a.kind, a]));
 
 /** The worker belongs to whoever starts it (startup/jobsProcess.ts, test helpers): it holds it
  * and ends it with stoppe(); a store in the module would let two starts see each other. */
-function startJobWorker(d: Pick<Dienste, 'jobQueue'>, o: WorkerOptions & { arten?: JobKind[] } = {}) {
-  const alle = editor(d);
-  const tabelle: Bearbeitertabelle = o.arten ? Object.fromEntries(o.arten.map(a => [a, alle[a]])) : alle;
-  const worker = createWorker(d.jobQueue, tabelle, o);
-  worker.starte();
+function startJobWorker(d: Pick<Services, 'jobQueue'>, o: WorkerOptions & { kinds?: JobKind[] } = {}) {
+  const all = editor(d);
+  const table: HandlerTable = o.kinds ? Object.fromEntries(o.kinds.map(a => [a, all[a]])) : all;
+  const worker = createWorker(d.jobQueue, table, o);
+  worker.launch();
   return worker;
 }
 

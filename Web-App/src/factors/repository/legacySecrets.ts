@@ -8,9 +8,9 @@ export async function legacyFactorSecrets(db: DbInterface, all = false): Promise
 }
 
 /** `AND secret = $3`: if another process has since changed the row, it stays as is. @returns changed rows */
-export async function replaceFactorSecret(db: DbInterface, uid: number, old: string, neu: string): Promise<number> {
+export async function replaceFactorSecret(db: DbInterface, uid: number, old: string, fresh: string): Promise<number> {
   return (
-    (await db.run('UPDATE second_factor SET secret = $1 WHERE user_id = $2 AND secret = $3', [neu, uid, old]))
+    (await db.run('UPDATE second_factor SET secret = $1 WHERE user_id = $2 AND secret = $3', [fresh, uid, old]))
       .changes || 0
   );
 }

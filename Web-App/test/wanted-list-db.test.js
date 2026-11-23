@@ -13,47 +13,47 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { readWantedList } = _req('src/wanted/wantedParser.js');
 const { resolveLocalOn } = _req('src/wanted/wantedResolution.js');
-const { importiereWantedListe } = _req('src/wanted/wantedList.js');
+const { importWantedList } = _req('src/wanted/wantedList.js');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
 /** An ITEM block in Marco's notation. */
-function item(typ, id, farbe, menge = 1, zustand = 'X', preis = '-1.0000') {
+function item(kind, id, color, quantity = 1, condition = 'X', price = '-1.0000') {
   return `<ITEM>
-<ITEMTYPE>${typ}</ITEMTYPE>
+<ITEMTYPE>${kind}</ITEMTYPE>
 <ITEMID>${id}</ITEMID>
-${farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`}<MAXPRICE>${preis}</MAXPRICE>
-<MINQTY>${menge}</MINQTY>
-<CONDITION>${zustand}</CONDITION>
+${color === null ? '' : `<COLOR>${color}</COLOR>\n`}<MAXPRICE>${price}</MAXPRICE>
+<MINQTY>${quantity}</MINQTY>
+<CONDITION>${condition}</CONDITION>
 <NOTIFY>N</NOTIFY>
 </ITEM>`;
 }
-const liste = (...items) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
+const list = (...items) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
 
 test('1. every item is read individually, not the file as a whole', () => {
   // The error this case rules out: laying a pattern over the WHOLE file.
   // Then the first match per field wins, and 224 items become
   // one. Exactly this form has already gotten something wrong twice in this
   // tree (see readPageByPage in src/vouchers/pdfExport.ts).
-  const xml = liste(item('P', '41879', 7), item('P', '973pb4536c01', 36, 2), item('P', 'x126', 95, 14));
+  const xml = list(item('P', '41879', 7), item('P', '973pb4536c01', 36, 2), item('P', 'x126', 95, 14));
   const r = readWantedList(xml);
-  assert.equal(r.posten.length, 3, `${r.posten.length} Posten statt 3`);
+  assert.equal(r.items.length, 3, `${r.items.length} items instead of 3`);
   assert.deepEqual(
-    r.posten.map(p => p.blId),
+    r.items.map(p => p.blId),
     ['41879', '973pb4536c01', 'x126'],
   );
   assert.deepEqual(
-    r.posten.map(p => p.blFarbe),
+    r.items.map(p => p.blColor),
     [7, 36, 95],
   );
   assert.deepEqual(
-    r.posten.map(p => p.menge),
+    r.items.map(p => p.quantity),
     [1, 2, 14],
   );
 });
@@ -64,10 +64,10 @@ test('2. CONDITION=X means “any” and does not become N', () => {
   // something the account's setting determines — the same rule as for the
   // wishlist import.
   const r = readWantedList(
-    liste(item('P', '3001', 4, 1, 'X'), item('P', '3002', 4, 1, 'N'), item('P', '3003', 4, 1, 'U')),
+    list(item('P', '3001', 4, 1, 'X'), item('P', '3002', 4, 1, 'N'), item('P', '3003', 4, 1, 'U')),
   );
   assert.deepEqual(
-    r.posten.map(p => p.zustand),
+    r.items.map(p => p.condition),
     [null, 'N', 'U'],
   );
 });
@@ -75,9 +75,9 @@ test('2. CONDITION=X means “any” and does not become N', () => {
 test('3. MAXPRICE=-1 is not a price', () => {
   // -1.0000 is in ALL 224 items of Marco's file. Taken over as a number
   // that would give a purchase price of minus one franc.
-  const r = readWantedList(liste(item('P', '3001', 4, 1, 'X', '-1.0000'), item('P', '3002', 4, 1, 'X', '2.5000')));
-  assert.equal(r.posten[0].maxPreis, null, 'Aus -1 wurde ein Preis');
-  assert.equal(r.posten[1].maxPreis, 2.5);
+  const r = readWantedList(list(item('P', '3001', 4, 1, 'X', '-1.0000'), item('P', '3002', 4, 1, 'X', '2.5000')));
+  assert.equal(r.items[0].maxPrice, null, '-1 became a price');
+  assert.equal(r.items[1].maxPrice, 2.5);
 });
 
 test('4. foreign kinds are counted, not swallowed', () => {
@@ -85,7 +85,7 @@ test('4. foreign kinds are counted, not swallowed', () => {
   // uploads a list with accessories should READ that some of it was left behind —
   // a silent gap looks like a complete import.
   const r = readWantedList(
-    liste(
+    list(
       item('P', '3001', 4),
       item('B', '5002', null),
       item('G', '6001', null),
@@ -94,39 +94,39 @@ test('4. foreign kinds are counted, not swallowed', () => {
       item('S', '75192-1', null),
     ),
   );
-  assert.equal(r.posten.length, 3, `${r.posten.length} brauchbare Posten statt 3`);
+  assert.equal(r.items.length, 3, `${r.items.length} usable items instead of 3`);
   assert.deepEqual(
-    r.posten.map(p => p.art),
+    r.items.map(p => p.kind),
     ['part', 'fig', 'set'],
   );
   assert.deepEqual(
-    r.fremdeArten,
+    r.foreignTypes,
     { B: 2, G: 1 },
-    `Fremde Arten: ${JSON.stringify(r.fremdeArten)} — zwei Bücher und ein Zubehör`,
+    `foreign kinds: ${JSON.stringify(r.foreignTypes)} — two books and one gear item`,
   );
 });
 
 test('5. an item without ITEMID is counted, not guessed', () => {
-  const xml = liste(item('P', '3001', 4)).replace('<ITEMID>3001</ITEMID>', '');
+  const xml = list(item('P', '3001', 4)).replace('<ITEMID>3001</ITEMID>', '');
   const r = readWantedList(xml);
-  assert.equal(r.posten.length, 0);
-  assert.equal(r.ohneNummer, 1, 'Der Posten ohne Nummer wurde nicht gezählt');
+  assert.equal(r.items.length, 0);
+  assert.equal(r.withoutNumber, 1, 'The item without a number was not counted');
 });
 
 test('6. entities are resolved, and & last', () => {
   // &amp; MUST be replaced last: otherwise "&amp;lt;" first becomes "&lt;"
   // and then "<" — a string that was never there.
-  const r = readWantedList(liste(item('P', 'A&amp;B', 4)));
-  assert.equal(r.posten[0].blId, 'A&B');
-  const r2 = readWantedList(liste(item('P', 'A&amp;lt;B', 4)));
-  assert.equal(r2.posten[0].blId, 'A&lt;B', 'Aus &amp;lt; wurde „<" — die Reihenfolge der Ersetzungen stimmt nicht');
+  const r = readWantedList(list(item('P', 'A&amp;B', 4)));
+  assert.equal(r.items[0].blId, 'A&B');
+  const r2 = readWantedList(list(item('P', 'A&amp;lt;B', 4)));
+  assert.equal(r2.items[0].blId, 'A&lt;B', '&amp;lt; became „<" — the order of the replacements is wrong');
 });
 
 test('the local resolution separates mapping from guess', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -148,53 +148,52 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
   await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES
                   (4,'Red',5), (15,'White',1)`);
 
-  const posten = readWantedList(
-    liste(
+  const items = readWantedList(
+    list(
       item('P', '4162', 5), // stage 1 — mapping
       item('P', '3001', 1), // stage 2 — registered as identical
       item('P', '11111', 5), // stage 3 — catalog hit only
       item('P', '99999', 5), // nichts
       item('P', '3001', 77), // number yes, color unknown
     ),
-  ).posten;
+  ).items;
 
-  const auf = await resolveLocalOn(posten);
-  assert.equal(auf.length, 5);
+  const opened = await resolveLocalOn(items);
+  assert.equal(opened.length, 5);
 
   await t.test('stage 1: the registered deviating number', () => {
-    assert.equal(auf[0].rbId, '98765', `4162 wurde zu ${auf[0].rbId} — erwartet 98765 aus bl_mapping`);
-    assert.equal(auf[0].sicherheit, 'zuordnung');
-    assert.equal(auf[0].rbFarbe, 4, 'BL-Farbe 5 ist Rebrickable 4 (Red)');
+    assert.equal(opened[0].rbId, '98765', `4162 became ${opened[0].rbId} — expected 98765 from bl_mapping`);
+    assert.equal(opened[0].confidence, 'zuordnung');
+    assert.equal(opened[0].rbColor, 4, 'BL colour 5 is Rebrickable 4 (Red)');
   });
 
   await t.test('stage 2: “no deviating number” is also a mapping', () => {
     // Migration 0037 explicitly declares this NULL value a registration,
     // not an absence. Counting it like a catalog hit would be a
     // mapping downgraded to a guess.
-    assert.equal(auf[1].rbId, '3001');
+    assert.equal(opened[1].rbId, '3001');
     assert.equal(
-      auf[1].sicherheit,
+      opened[1].confidence,
       'gleich_vermerkt',
-      `Stufe „${auf[1].sicherheit}" — ein NULL-Vermerk in bl_mapping ist eine ` +
-        'Abbildung und kein blosser Katalogtreffer',
+      `level „${opened[1].confidence}" — a NULL note in bl_mapping is a ` + 'mapping and not a mere catalogue hit',
     );
-    assert.equal(auf[1].rbFarbe, 15);
+    assert.equal(opened[1].rbColor, 15);
   });
 
   await t.test('stage 3: the catalog hit stays marked as a guess', () => {
-    assert.equal(auf[2].rbId, '11111');
+    assert.equal(opened[2].rbId, '11111');
     assert.equal(
-      auf[2].sicherheit,
+      opened[2].confidence,
       'katalogtreffer',
-      `Stufe „${auf[2].sicherheit}" — niemand hat für 11111 bei BrickLink ` +
-        'nachgesehen. Als „zuordnung" gezählt sähe eine Vermutung wie eine ' +
-        'Abbildung aus, und genau diese Trennung soll die Vorschau zeigen.',
+      `level „${opened[2].confidence}“ — nobody looked up 11111 at BrickLink. ` +
+        'Counted as „zuordnung“, a guess would look like a ' +
+        'mapping, and exactly this separation is what the preview should show.',
     );
   });
 
   await t.test('without any hit it stays open — nothing is guessed', () => {
-    assert.equal(auf[3].rbId, null, `99999 wurde zu ${auf[3].rbId} aufgelöst`);
-    assert.equal(auf[3].sicherheit, null);
+    assert.equal(opened[3].rbId, null, `99999 was resolved to ${opened[3].rbId}`);
+    assert.equal(opened[3].confidence, null);
   });
 
   await t.test('an unknown color does not make the item fail', () => {
@@ -202,16 +201,16 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
     // would mean leaving a known part behind because of a missing color
     // mapping; creating the item without a hint would mean claiming a wrong
     // color. Hence: number yes, `farbeOffen` set.
-    assert.equal(auf[4].rbId, '3001');
-    assert.equal(auf[4].rbFarbe, null);
+    assert.equal(opened[4].rbId, '3001');
+    assert.equal(opened[4].rbColor, null);
     assert.equal(
-      auf[4].farbeOffen,
+      opened[4].colorPending,
       true,
-      'Die offene Farbe wird nicht gemeldet — dann legt der Import sie still falsch an',
+      'The open colour is not reported — then the import silently creates it wrongly',
     );
     // Opposite direction: for the four others nothing is open.
     assert.deepEqual(
-      auf.slice(0, 4).map(a => a.farbeOffen),
+      opened.slice(0, 4).map(a => a.colorPending),
       [false, false, false, false],
     );
   });
@@ -233,7 +232,7 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The same scaffolding as above — the case runs on its own.
@@ -253,96 +252,94 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   const xml = `<INVENTORY>${item('P', '3001', 5, 10)}${item('P', '3001', 85, 7)}</INVENTORY>`;
 
   /** A creator that only records. `action` like addManualPart. */
-  function zaehler(secondRun = false) {
-    const gesehen = [];
+  function counter(secondRun = false) {
+    const seen = [];
     return {
-      gesehen,
+      seen,
       creator: {
-        teil: async (_u, body) => {
-          gesehen.push(body);
+        part: async (_u, body) => {
+          seen.push(body);
           return { action: secondRun ? 'updated' : 'created' };
         },
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
     };
   }
 
-  const z1 = zaehler();
-  const bericht = await importiereWantedListe(1, xml, { creator: z1.creator });
+  const z1 = counter();
+  const report = await importWantedList(1, xml, { creator: z1.creator });
 
   await t.test('an open color is not invented', () => {
     assert.equal(
-      z1.gesehen.length,
+      z1.seen.length,
       1,
-      `Der Anleger bekam ${z1.gesehen.length} Posten statt einem. Der zweite hat ` +
-        'eine Farbe, die der Katalog nicht kennt — ihn mit `color_id: 0` zu ' +
-        'schreiben heisst SCHWARZ, und daneben steht dasselbe Teil in seiner ' +
-        'richtigen Farbe. Das ist das Doppelte aus Marcos Bildschirmfoto.',
+      `The creator got ${z1.seen.length} items instead of one. The second has ` +
+        'a colour the catalogue does not know — writing it with `color_id: 0` ' +
+        'means BLACK, and next to it is the same part in its ' +
+        "correct colour. That is the duplicate from Marco's screenshot.",
     );
-    const offen = bericht.posten.find(p => p.ausgang === 'offen');
-    assert.ok(offen, 'Der Posten mit offener Farbe steht nicht als „offen" im Bericht');
+    const open = report.items.find(p => p.outcome === 'open');
+    assert.ok(open, 'The item with an open colour is not listed as „offen“ in the report');
     assert.match(
-      offen.grund || '',
+      open.reason || '',
       /BrickLink-Farbe 85/,
-      `Der Grund nennt die Farbe nicht: „${offen.grund}" — dann weiss Marco ` + 'nicht, was er nachtragen muss.',
+      `The reason does not name the colour: „${open.reason}" — then Marco does not know ` + 'what he has to fill in.',
     );
   });
 
   await t.test('the color travels with name and color value', () => {
-    assert.equal(z1.gesehen[0].color_id, 4);
+    assert.equal(z1.seen[0].color_id, 4);
     assert.equal(
-      z1.gesehen[0].color_name,
+      z1.seen[0].color_name,
       'Red',
-      'Ohne `color_name` bleibt die Spalte leer. Die Teileliste liest den ' +
-        'Namen von dort — der Hex-Wert fällt auf den Katalog zurück, der Name ' +
-        'NICHT. Ergebnis ist ein Farbpunkt ohne Beschriftung.',
+      'Without `color_name` the column stays empty. The parts list reads the ' +
+        'name from there — the hex value falls back to the catalogue, the name ' +
+        'does NOT. The result is a colour dot without a label.',
     );
-    assert.equal(z1.gesehen[0].color_hex, 'C91A09');
+    assert.equal(z1.seen[0].color_hex, 'C91A09');
   });
 
   await t.test('MAXPRICE becomes the purchase price — and -1 stays none', async () => {
     // Marco's decision of 21.10.
-    const z = zaehler();
-    await importiereWantedListe(
-      1,
-      liste(item('P', '3001', 5, 2, 'N', '0.8578'), item('P', '3001', 5, 2, 'N', '-1.0000')),
-      { creator: z.creator },
-    );
-    assert.equal(z.gesehen.length, 2, 'Beide Posten müssen beim Anleger ankommen');
+    const z = counter();
+    await importWantedList(1, list(item('P', '3001', 5, 2, 'N', '0.8578'), item('P', '3001', 5, 2, 'N', '-1.0000')), {
+      creator: z.creator,
+    });
+    assert.equal(z.seen.length, 2, 'Both items must arrive at the creator');
     assert.equal(
-      z.gesehen[0].unit_price,
+      z.seen[0].unit_price,
       0.8578,
-      `unit_price war ${JSON.stringify(z.gesehen[0].unit_price)}. Ohne den Wert ` +
-        'holt der Anleger den Marktpreis — und in der Finanzansicht steht dann ' +
-        'nicht, was Marco bezahlt hat.',
+      `unit_price was ${JSON.stringify(z.seen[0].unit_price)}. Without the value ` +
+        'the creator fetches the market price — and the finance view then does ' +
+        'not show what Marco paid.',
     );
     assert.ok(
-      !('unit_price' in z.gesehen[1]),
-      `Bei MAXPRICE=-1 steht ${JSON.stringify(z.gesehen[1].unit_price)} im Rumpf. ` +
-        'Das Feld muss FEHLEN, nicht null sein: Die Anleger unterscheiden ' +
-        '„nichts angegeben" (dann gilt der Marktpreis) von einer ausdrücklichen Null.',
+      !('unit_price' in z.seen[1]),
+      `With MAXPRICE=-1 the body contains ${JSON.stringify(z.seen[1].unit_price)}. ` +
+        'The field must be MISSING, not null: the creators distinguish ' +
+        '„nothing given" (then the market price applies) from an explicit zero.',
     );
   });
 
   await t.test('a second run tops up instead of creating', async () => {
-    const z2 = zaehler(true);
-    const b2 = await importiereWantedListe(1, xml, { creator: z2.creator });
+    const z2 = counter(true);
+    const b2 = await importWantedList(1, xml, { creator: z2.creator });
     assert.equal(
-      b2.angelegt,
+      b2.created,
       0,
-      `angelegt: ${b2.angelegt} — der Anleger meldete „updated". Vorher zählte ` +
-        'der Import blind hoch: Ein zweiter Import derselben Liste meldete ' +
-        '„angelegt: 2, aufgestockt: 0", obwohl nichts Neues entstand.',
+      `created: ${b2.created} — the creator reported „updated“. Before, ` +
+        'the import counted up blindly: a second import of the same list reported ' +
+        '„angelegt: 2, aufgestockt: 0“ although nothing new was created.',
     );
-    assert.equal(b2.aufgestockt, 1);
+    assert.equal(b2.topped_up, 1);
   });
 
   await t.test('nothing is written in the preview', () => {
     // The opposite direction: the case above would also be green if the import
     // wrote nothing at all any more.
-    assert.equal(bericht.vorschau, false, 'Dieser Lauf war keine Vorschau');
-    assert.equal(bericht.angelegt, 1, 'Der abbildbare Posten muss angelegt werden');
+    assert.equal(report.preview, false, 'This run was not a preview');
+    assert.equal(report.created, 1, 'The mappable item must be created');
   });
 
   // Abort
@@ -350,69 +347,69 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   await t.test('an abort stops after at most ten items', async () => {
     // 25 mappable items of the same number in different quantities; the
     // mapping is in the database (see above, 3001 → color 4).
-    const viele = `<INVENTORY>${Array.from(
+    const many = `<INVENTORY>${Array.from(
       { length: 25 },
       (_, i) =>
         `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` + `<MINQTY>${i + 1}</MINQTY></ITEM>`,
     ).join('')}</INVENTORY>`;
-    const z = zaehler();
-    let gefragt = 0;
-    const b = await importiereWantedListe(1, viele, {
+    const z = counter();
+    let asked = 0;
+    const b = await importWantedList(1, many, {
       creator: z.creator,
-      abbruch: async () => {
-        gefragt++;
+      cancellation: async () => {
+        asked++;
         return true;
       },
     });
     assert.equal(
-      b.abgebrochen,
+      b.aborted,
       true,
-      'Der Bericht muss sagen, dass abgebrochen wurde — sonst sieht ein ' + 'halber Import aus wie ein vollständiger',
+      'The report must say that it was aborted — otherwise a ' + 'half import looks like a complete one',
     );
     assert.equal(
-      z.gesehen.length,
+      z.seen.length,
       10,
-      `Der Anleger bekam ${z.gesehen.length} Posten. Erwartet sind zehn: ` +
-        'Gefragt wird nach jedem zehnten, und beim ersten Ja ist Schluss.',
+      `The creator got ${z.seen.length} items. Ten are expected: ` +
+        'the question is asked at every tenth, and at the first yes it stops.',
     );
-    assert.equal(gefragt, 1, `Die Frage fiel ${gefragt}-mal statt einmal`);
-    assert.equal(b.posten.length, 10, 'Der Bericht führt nur, was bearbeitet wurde — der Rest blieb liegen');
+    assert.equal(asked, 1, `The question was asked ${asked} times instead of once`);
+    assert.equal(b.items.length, 10, 'The report lists only what was processed — the rest was left');
   });
 
   await t.test('without an abort the list runs through', async () => {
     // The opposite direction: the case above would also be green if the import
     // ALWAYS stopped after ten items.
-    const viele = `<INVENTORY>${Array.from(
+    const many = `<INVENTORY>${Array.from(
       { length: 25 },
       (_, i) =>
         `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` + `<MINQTY>${i + 1}</MINQTY></ITEM>`,
     ).join('')}</INVENTORY>`;
-    const z = zaehler();
-    const b = await importiereWantedListe(1, viele, {
+    const z = counter();
+    const b = await importWantedList(1, many, {
       creator: z.creator,
-      abbruch: async () => false,
+      cancellation: async () => false,
     });
-    assert.equal(b.abgebrochen, undefined, 'Nichts wurde abgebrochen');
-    assert.equal(z.gesehen.length, 25, `Der Anleger bekam ${z.gesehen.length} statt 25 Posten`);
+    assert.equal(b.aborted, undefined, 'Nothing was aborted');
+    assert.equal(z.seen.length, 25, `The creator got ${z.seen.length} instead of 25 items`);
   });
 
   await t.test('in the PREVIEW nothing is asked at all', async () => {
     // A preview writes nothing; there is nothing to abort, and a
     // database query every ten items would be pure load.
-    const viele = `<INVENTORY>${Array.from(
+    const many = `<INVENTORY>${Array.from(
       { length: 25 },
       (_, i) =>
         `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` + `<MINQTY>${i + 1}</MINQTY></ITEM>`,
     ).join('')}</INVENTORY>`;
-    let gefragt = 0;
-    const b = await importiereWantedListe(1, viele, {
-      vorschau: true,
-      abbruch: async () => {
-        gefragt++;
+    let asked = 0;
+    const b = await importWantedList(1, many, {
+      preview: true,
+      cancellation: async () => {
+        asked++;
         return true;
       },
     });
-    assert.equal(gefragt, 0, `Die Vorschau fragte ${gefragt}-mal nach dem Abbruch`);
-    assert.equal(b.posten.length, 25, 'Die Vorschau zeigt die ganze Liste');
+    assert.equal(asked, 0, `The preview asked ${asked} times about aborting`);
+    assert.equal(b.items.length, 25, 'The preview shows the whole list');
   });
 });

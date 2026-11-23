@@ -22,34 +22,34 @@ const { testServer } = require('./helpers/server');
 test('the contract delivers the domain format to the route', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const namen = [`fachformat_${process.pid}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = [`fachformat_${process.pid}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [n])).id);
   const [a] = ids;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const basis = testServer(_req, { sitzung: { userId: a }, t }).base;
-  const rufe = async (methode, pfad, rumpf) => {
-    const r = await fetch(`${basis}/api/v1${pfad}`, {
-      method: methode,
+  const basis = testServer(_req, { session: { userId: a }, t }).base;
+  const callIt = async (method, path, body) => {
+    const r = await fetch(`${basis}/api/v2${path}`, {
+      method: method,
       headers: { 'content-type': 'application/json' },
-      ...(rumpf ? { body: JSON.stringify(rumpf) } : {}),
+      ...(body ? { body: JSON.stringify(body) } : {}),
     });
     return { status: r.status, body: await r.json() };
   };
 
   await t.test('a lower-case condition counts as upper case', async () => {
-    const r = await rufe('POST', '/settings/user/default-condition', { condition: 'n' });
+    const r = await callIt('POST', '/settings/user/default-condition', { condition: 'n' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.condition, 'N');
-    assert.equal((await rufe('GET', '/settings/user/default-condition')).body.condition, 'N');
-    const u = await rufe('POST', '/settings/user/default-condition', { condition: 'u' });
+    assert.equal((await callIt('GET', '/settings/user/default-condition')).body.condition, 'N');
+    const u = await callIt('POST', '/settings/user/default-condition', { condition: 'u' });
     assert.equal(u.body.condition, 'U');
     // What the contract does not know it rejects; the route never sees it.
-    assert.equal((await rufe('POST', '/settings/user/default-condition', { condition: 'x' })).status, 400);
+    assert.equal((await callIt('POST', '/settings/user/default-condition', { condition: 'x' })).status, 400);
   });
 });

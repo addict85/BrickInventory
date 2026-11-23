@@ -41,10 +41,10 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
   t.after(() => db.pool.end().catch(() => {}));
   const { SET_IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
-  const angelegt = [];
-  const put = (datei, inhalt = Buffer.alloc(300, 1)) => {
-    fs.writeFileSync(datei, inhalt);
-    angelegt.push(datei);
+  const created = [];
+  const put = (file, content = Buffer.alloc(300, 1)) => {
+    fs.writeFileSync(file, content);
+    created.push(file);
   };
   const job = `7${process.pid}-1`,
     proxy = `6${process.pid}-1`;
@@ -54,10 +54,10 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
     await db.run(`UPDATE set_catalog SET image_local = NULL, image_url = $2 WHERE set_number = $1`, [sn, cdn(sn)]);
   }
   t.after(async () => {
-    for (const f of angelegt) fs.rmSync(f, { force: true });
+    for (const f of created) fs.rmSync(f, { force: true });
     await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[job, proxy]]).catch(() => {});
   });
-  const lokal = async sn =>
+  const local = async sn =>
     (await db.get('SELECT image_local FROM set_catalog WHERE set_number = $1', [sn]))?.image_local;
 
   await t.test('the image job registers the file', async () => {
@@ -68,7 +68,7 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
     IQ.rememberUsed(cdn(job), job);
     await IQ._writeBuffer();
     await IQ._workStack();
-    assert.equal(await lokal(job), `/images/sets/${job}.jpg`);
+    assert.equal(await local(job), `/images/sets/${job}.jpg`);
   });
 
   await t.test('the proxy registers existing files including source, even without a set_catalog row', async () => {
@@ -106,20 +106,20 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
     }
     assert.deepEqual(z, { image_local: `/images/sets/${proxy}.jpg`, image_url: cdn(proxy) });
     // A second fetch writes nothing new.
-    const vorher = (await db.get('SELECT updated_at FROM set_catalog WHERE set_number = $1', [proxy])).updated_at;
+    const prior = (await db.get('SELECT updated_at FROM set_catalog WHERE set_number = $1', [proxy])).updated_at;
     await (await fetch(`http://127.0.0.1:${port}/p?url=${encodeURIComponent(cdn(proxy))}`)).arrayBuffer();
     await new Promise(w => setTimeout(w, 200));
     assert.deepEqual(
       (await db.get('SELECT updated_at FROM set_catalog WHERE set_number = $1', [proxy])).updated_at,
-      vorher,
+      prior,
     );
   });
 
   await t.test('… and the catalog search then names the local address', async () => {
     const { catalogPage } = _req('src/catalog/service.js');
-    const seite = await catalogPage(1, { q: proxy, themeId: null }, 'num_asc', 1, 10);
+    const page = await catalogPage(1, { q: proxy, themeId: null }, 'num_asc', 1, 10);
     assert.deepEqual(
-      seite.sets.map(x => [x.set_number, x.image_local]),
+      page.sets.map(x => [x.set_number, x.image_local]),
       [[proxy, `/images/sets/${proxy}_thumb.jpg`]],
     );
   });

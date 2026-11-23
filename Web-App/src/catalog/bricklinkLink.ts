@@ -39,7 +39,7 @@ export function blAddress(type: BlType, number: string): string | null {
 }
 
 // Without an unambiguous mapping (e.g. collectible minifigures) a search instead of a wrong link.
-export function blSuchadresse(number: string): string {
+export function blSearchUrl(number: string): string {
   return `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(bareNumber(number))}`;
 }
 
@@ -55,7 +55,7 @@ function toLink(setNumber: string, blType: string | null | undefined): BlLink {
   // collectible minifigures, and for them the button must not disappear.
   return exactUrl
     ? { type: effective, number, url: exactUrl, exact: true, resolved: type !== null }
-    : { type: effective, number, url: blSuchadresse(setNumber), exact: false, resolved: type !== null };
+    : { type: effective, number, url: blSearchUrl(setNumber), exact: false, resolved: type !== null };
 }
 
 /** One query instead of N single queries, for list and catalog pages.
@@ -65,7 +65,7 @@ export async function resolveMany(kx: CatalogContext, setNumbers: string[]): Pro
   const keys = [...new Set((setNumbers || []).filter(Boolean).map(withVariant))];
   if (keys.length === 0) return out;
 
-  const rows = await kx.katalogCache.blTypesTheSets(keys);
+  const rows = await kx.catalogCache.blTypesTheSets(keys);
 
   const byNumber = new Map<string, string | null>();
   for (const r of rows) byNumber.set(r.set_number, r.bl_type);
@@ -86,14 +86,14 @@ export async function resolveViaInterface(k: CatalogContext, setNumber: string):
   const bare = bareNumber(setNumber);
 
   // Without access stay with the assumption, cache nothing.
-  if (!(await k.einstellungen.globalValue('bricklink_consumer_key'))) return toLink(n, null);
+  if (!(await k.settings.globalValue('bricklink_consumer_key'))) return toLink(n, null);
 
   const notFound = (e: unknown) =>
     [404, 400].includes((e as { detail?: { meta?: { code?: number } } } | null)?.detail?.meta?.code ?? 0);
 
   const probe = async (type: Exclude<BlType, 'NONE'>, no: string) => {
     try {
-      await k.externalSources.quellen.bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`);
+      await k.externalSources.sources.bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`);
       return true;
     } catch (e) {
       if (notFound(e)) return false;
@@ -114,6 +114,6 @@ export async function resolveViaInterface(k: CatalogContext, setNumber: string):
     return toLink(n, null);
   }
 
-  await k.katalogCache.rememberBlType(n, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
+  await k.catalogCache.rememberBlType(n, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

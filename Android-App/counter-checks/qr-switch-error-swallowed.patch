@@ -1,0 +1,17 @@
+Gegenprobe: Scheitert die Kopplung mit einem anderen Server, verschluckt die App den Fehler wie einen doppelten Scan
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginViewModelTest
+Rot: if pairing with another server fails, the error is shown and the sign-in stays
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+@@ -383,7 +383,7 @@
+ 
+     /** A second QR attempt after a successful sign-in is not an error (see qrError). */
+     private fun qrFailed(sentence: Message): QrPickupState? {
+-        val alreadyLoggedIn = session.state.value.isLoggedIn && !pairingWithSwitch
++        val alreadyLoggedIn = session.state.value.isLoggedIn
+         _loginState.update { it.copy(qrConfirmation = null, qrAccount = null,
+             login = ended(qrError(alreadyLoggedIn, sentence))) }
+         return null

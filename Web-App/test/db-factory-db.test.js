@@ -25,25 +25,25 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const DIST = require('./helpers/sources').DIST;
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 test('the import opens no pool', () => {
   // In its own process: here the test run has already used the access.
   const script = `
-    const pg = require('pg'); let n = 0; const Echt = pg.Pool;
-    pg.Pool = class extends Echt { constructor(...a) { n++; super(...a); } };
+    const pg = require('pg'); let n = 0; const Real = pg.Pool;
+    pg.Pool = class extends Real { constructor(...a) { n++; super(...a); } };
     const db = require(${JSON.stringify(path.join(DIST, 'db', 'database.js'))});
     const nachImport = n;
-    const eigener = db.createDb(db.dbKonfigFromEnvironment());
+    const ownOne = db.createDb(db.dbConfigFromEnvironment());
     const nachFabrik = n;
     console.log(JSON.stringify([nachImport, nachFabrik]));
-    eigener.pool.end().then(() => process.exit(0));`;
-  const aus = execFileSync(process.execPath, ['-e', script], {
+    ownOne.pool.end().then(() => process.exit(0));`;
+  const out = execFileSync(process.execPath, ['-e', script], {
     cwd: path.join(__dirname, '..'),
     encoding: 'utf8',
     env: { ...process.env, DATABASE_URL: 'postgres://niemand:x@127.0.0.1:1/keine' },
   });
-  assert.deepEqual(JSON.parse(aus.trim().split('\n').pop()), [0, 1], 'Import, Fabrik');
+  assert.deepEqual(JSON.parse(out.trim().split('\n').pop()), [0, 1], 'Import, Fabrik');
 });
 
 test('two accesses, two transactions', async t => {
@@ -51,38 +51,38 @@ test('two accesses, two transactions', async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
-  const modul = require(path.join(DIST, 'db', 'database.js'));
-  const a = modul.createDb(modul.dbKonfigFromEnvironment()),
-    b = modul.createDb(modul.dbKonfigFromEnvironment());
+  const mod = require(path.join(DIST, 'db', 'database.js'));
+  const a = mod.createDb(mod.dbConfigFromEnvironment()),
+    b = mod.createDb(mod.dbConfigFromEnvironment());
   t.after(async () => {
     await a.pool.end();
     await b.pool.end();
     await db.pool.end().catch(() => {});
   });
   assert.notEqual(a.pool, b.pool);
-  const SCHL = `fabrik-${process.pid}`;
-  await a.run('DELETE FROM global_settings WHERE key = $1', [SCHL]);
+  const SETTING_KEY = `fabrik-${process.pid}`;
+  await a.run('DELETE FROM global_settings WHERE key = $1', [SETTING_KEY]);
   await a.transaction(async tx => {
     assert.equal(a.inTransaction(), true);
-    assert.equal(b.inTransaction(), false, 'die Transaktion von a gilt nicht für b');
-    await tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [SCHL, 'x']);
-    assert.ok(await tx.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]), 'a sieht die eigene Zeile');
+    assert.equal(b.inTransaction(), false, 'the transaction of a does not apply to b');
+    await tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [SETTING_KEY, 'x']);
+    assert.ok(await tx.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]), 'a sees its own row');
     assert.equal(
-      await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]),
+      await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]),
       undefined,
-      'b sieht nichts Unfertiges',
+      'b sees nothing unfinished',
     );
   });
-  assert.ok(await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]), 'nach COMMIT sieht b sie');
-  await a.run('DELETE FROM global_settings WHERE key = $1', [SCHL]);
+  assert.ok(await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SETTING_KEY]), 'after COMMIT b sees it');
+  await a.run('DELETE FROM global_settings WHERE key = $1', [SETTING_KEY]);
 });
 
 test('db/database keeps no access of the process', () => {
-  const modul = require(path.join(DIST, 'db', 'database.js'));
-  const prozess = [
+  const mod = require(path.join(DIST, 'db', 'database.js'));
+  const proc = [
     'pool',
     'all',
     'get',
@@ -95,7 +95,7 @@ test('db/database keeps no access of the process', () => {
     'setzeStandardDb',
     'inTransaction',
     'getPoolStats',
-  ].filter(n => n in modul);
-  assert.deepEqual(prozess, []);
-  assert.equal(typeof modul.createDb, 'function', 'die Fabrik bleibt');
+  ].filter(n => n in mod);
+  assert.deepEqual(proc, []);
+  assert.equal(typeof mod.createDb, 'function', 'the factory stays');
 });

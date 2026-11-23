@@ -2,7 +2,7 @@
  * same key and gets the stored response back — without a second effect. The
  * same key with different content is a client error. */
 import { HTTP_DEADLINES } from '../infra/httpDeadlines';
-import { encrypt, decrypt, isEncrypted, kontext, umschluesseln, searchValue } from '../infra/secret';
+import { encrypt, decrypt, isEncrypted, context, rekey, searchValue } from '../infra/secret';
 import { withEffectNote as markEffect } from './repository';
 import type { IdempotencyContext } from './context';
 
@@ -12,7 +12,7 @@ export const EXPIRY_HOURS = 24;
 export const ORPHANED_AFTER_S = HTTP_DEADLINES.requestTimeout / 1000 + 60;
 
 /** User and key in the context: a stored response is only valid for its own entry. */
-export const responseContext = (uid: number, key: string) => kontext('idempotency.response', uid, key);
+export const responseContext = (uid: number, key: string) => context('idempotency.response', uid, key);
 
 export const KEY_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/;
 
@@ -45,12 +45,12 @@ export type Outcome =
 /** Without a readable body, a clear refusal beats risking a second effect. */
 export async function begin(k: IdempotencyContext, uid: number, key: string, fp: string): Promise<Outcome> {
   if (await k.repository.receipts(uid, key, fp, ORPHANED_AFTER_S)) return { kind: 'new' };
-  const e = await k.repository.eintrag(uid, key, ORPHANED_AFTER_S);
+  const e = await k.repository.entry(uid, key, ORPHANED_AFTER_S);
   // Released between claiming and reading (the first one failed): try again.
   if (!e) return (await k.repository.receipts(uid, key, fp, ORPHANED_AFTER_S)) ? { kind: 'new' } : { kind: 'running' };
   if (e.request !== fp) return { kind: 'different' };
   // Orphaned with an effect: the first run had an effect, its response got lost.
-  if (e.status === null) return e.has_effect && e.verwaist ? { kind: 'not_replayable' } : { kind: 'running' };
+  if (e.status === null) return e.has_effect && e.orphaned ? { kind: 'not_replayable' } : { kind: 'running' };
   const response = isEncrypted(e.response) ? decrypt(e.response, responseContext(uid, key)) : null;
   if (response === null) return { kind: 'not_replayable' };
   return { kind: 'replay', status: e.status, response };
@@ -66,7 +66,7 @@ export async function end(
 ): Promise<void> {
   if (status >= 500) await k.repository.deleteRunning(uid, key, status);
   else
-    await k.repository.closeAb(
+    await k.repository.finish(
       uid,
       key,
       status,
@@ -86,7 +86,7 @@ export const withEffectMark = <T>(k: IdempotencyContext, uid: number, key: strin
 export async function reencryptResponses(k: IdempotencyContext): Promise<number> {
   let n = 0;
   for (const z of await k.repository.oldResponses()) {
-    const reencrypted = umschluesseln(z.response, responseContext(z.user_id, z.key));
+    const reencrypted = rekey(z.response, responseContext(z.user_id, z.key));
     if (reencrypted) n += await k.repository.replaceResponse(z.user_id, z.key, z.response, reencrypted);
   }
   return n;

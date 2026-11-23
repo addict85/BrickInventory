@@ -108,6 +108,49 @@ function hexEnd(s: string, i: number): number {
   return -1;
 }
 
+type Operand = { end: number; text: string };
+
+/** `[…]` of a TJ: literals and hex strings in a row. null: a literal without end stops the lexer. */
+function arrayOperand(s: string, i: number): Operand | null {
+  let end = -1,
+    text = '';
+  let j = i + 1;
+  while (j < s.length && end < 0) {
+    const d = s.charCodeAt(j);
+    if (d === 93) end = j + 1;
+    else if (d === 91) break;
+    else if (d === 40) {
+      const e = literalEnd(s, j);
+      if (e < 0) return null;
+      text += readLiteral(s.slice(j + 1, e - 1));
+      j = e;
+    } else if (d === 60) {
+      const e = hexEnd(s, j);
+      if (e < 0) break;
+      text += readHex(s.slice(j + 1, e - 1));
+      j = e;
+    } else j++;
+  }
+  return { end, text };
+}
+
+/** The string operand starting at i (`end` -1: none); null: a literal without end stops the lexer. */
+function operand(s: string, i: number): Operand | null {
+  const c = s.charCodeAt(i);
+  if (c === 40) {
+    // (
+    const end = literalEnd(s, i);
+    return end < 0 ? null : { end, text: readLiteral(s.slice(i + 1, end - 1)) };
+  }
+  if (c === 60 && s.charCodeAt(i + 1) !== 60) {
+    // < but not <<
+    const end = hexEnd(s, i);
+    return { end, text: end > 0 ? readHex(s.slice(i + 1, end - 1)) : '' };
+  }
+  if (c === 91) return arrayOperand(s, i); // [
+  return { end: -1, text: '' };
+}
+
 /** A lexer instead of a pattern: `(\(\(\(…` with no end would cost quadratic
  * time with a pattern. Here every character is looked at at most twice;
  * literal strings may contain balanced parentheses. */
@@ -115,47 +158,17 @@ export function textOperators(s: string): TextOperator[] {
   const out: TextOperator[] = [];
   let i = 0;
   while (i < s.length) {
-    const c = s.charCodeAt(i);
-    let end = -1,
-      text = '';
-    if (c === 40) {
-      // (
-      end = literalEnd(s, i);
-      if (end < 0) break; // never closed
-      text = readLiteral(s.slice(i + 1, end - 1));
-    } else if (c === 60 && s.charCodeAt(i + 1) !== 60) {
-      // < but not <<
-      end = hexEnd(s, i);
-      if (end > 0) text = readHex(s.slice(i + 1, end - 1));
-    } else if (c === 91) {
-      // [
-      let j = i + 1;
-      while (j < s.length && end < 0) {
-        const d = s.charCodeAt(j);
-        if (d === 93) end = j + 1;
-        else if (d === 91) break;
-        else if (d === 40) {
-          const e = literalEnd(s, j);
-          if (e < 0) return out;
-          text += readLiteral(s.slice(j + 1, e - 1));
-          j = e;
-        } else if (d === 60) {
-          const e = hexEnd(s, j);
-          if (e < 0) break;
-          text += readHex(s.slice(j + 1, e - 1));
-          j = e;
-        } else j++;
-      }
-    }
-    if (end < 0) {
+    const o = operand(s, i);
+    if (!o) break;
+    if (o.end < 0) {
       i++;
       continue;
     }
-    let k = end;
+    let k = o.end;
     while (k < s.length && isBlank(s.charCodeAt(k))) k++;
-    const op = ['TJ', 'Tj', "'", '"'].find(o => s.startsWith(o, k));
-    if (op) out.push({ from: i, to: k + op.length, op, text });
-    i = op ? k + op.length : end;
+    const op = ['TJ', 'Tj', "'", '"'].find(x => s.startsWith(x, k));
+    if (op) out.push({ from: i, to: k + op.length, op, text: o.text });
+    i = op ? k + op.length : o.end;
   }
   return out;
 }
@@ -168,6 +181,31 @@ export const STREAMS_MAX = 2000;
 
 export class PdfTooLarge extends Error {}
 
+/** The next `stream … endstream` from `from`: content bounds and where to search on;
+ * `skip`: the word without a line break, not a stream. */
+function nextStream(raw: string, from: number): { start: number; end: number; next: number } | 'skip' | null {
+  const start0 = raw.indexOf('stream', from);
+  if (start0 < 0) return null;
+  let start = start0 + 6;
+  if (raw[start] === '\r') start++;
+  if (raw[start] !== '\n') return 'skip';
+  start++;
+  const end = raw.indexOf('endstream', start);
+  return end < 0 ? null : { start, end, next: end + 9 };
+}
+
+/** Deflated or raw; a stream that unpacks too large ends the reading. */
+function streamContent(stream: Buffer): { content: string; bytes: number } {
+  try {
+    const flat = zlib.inflateSync(stream, { maxOutputLength: STREAM_MAX_BYTES });
+    return { content: flat.toString('latin1'), bytes: flat.length };
+  } catch (e) {
+    if ((e as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE')
+      throw new PdfTooLarge(`a stream unpacks to more than ${STREAM_MAX_BYTES} bytes`);
+    return { content: stream.toString('latin1'), bytes: 0 };
+  }
+}
+
 // One line per operator: number alone.
 export function pdfText(data: Buffer): string {
   const raw = data.toString('latin1');
@@ -178,33 +216,17 @@ export function pdfText(data: Buffer): string {
   // Via indexOf instead of a lazy pattern: this ran, with many `stream` with no
   // end, from every match to the end of the file.
   for (let from = 0; ; ) {
-    const start0 = raw.indexOf('stream', from);
-    if (start0 < 0) break;
-    let start = start0 + 6;
-    if (raw[start] === '\r') start++;
-    if (raw[start] !== '\n') {
-      from = start0 + 1;
+    const found = nextStream(raw, from);
+    if (!found) break;
+    if (found === 'skip') {
+      from = raw.indexOf('stream', from) + 1;
       continue;
     }
-    start++;
-    const end0 = raw.indexOf('endstream', start);
-    if (end0 < 0) break;
-    from = end0 + 9;
+    from = found.next;
     if (++streams > STREAMS_MAX) throw new PdfTooLarge(`more than ${STREAMS_MAX} streams`);
-
-    const stream = Buffer.from(raw.slice(start, end0), 'latin1');
-    let content: string;
-    try {
-      const flat = zlib.inflateSync(stream, { maxOutputLength: STREAM_MAX_BYTES });
-      unpacked += flat.length;
-      content = flat.toString('latin1');
-    } catch (e) {
-      if ((e as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE')
-        throw new PdfTooLarge(`a stream unpacks to more than ${STREAM_MAX_BYTES} bytes`);
-      content = stream.toString('latin1');
-    }
+    const { content, bytes } = streamContent(Buffer.from(raw.slice(found.start, found.end), 'latin1'));
+    unpacked += bytes;
     if (unpacked > UNPACKED_MAX_BYTES) throw new PdfTooLarge('too much unpacked content');
-
     for (const t of textOperators(content)) if (t.text.trim()) lines.push(t.text);
   }
   return lines.join('\n');

@@ -4,7 +4,7 @@ import type { InventoryContext } from './context';
 
 export async function partsCsv(k: InventoryContext, uid: number) {
   // No fallback: if the query fails, the error should become visible.
-  const rows = (await k.bestandExport.partsForCsv(uid)).map(r => ({
+  const rows = (await k.holdingExport.partsForCsv(uid)).map(r => ({
     ...r,
     unit_price: r.unit_price ?? '',
   }));
@@ -12,8 +12,8 @@ export async function partsCsv(k: InventoryContext, uid: number) {
   return toCsv(['part_number', 'quantity', 'color_id', 'color_name', 'unit_price', 'condition', 'acquired_at'], rows);
 }
 
-export async function figurenCsv(k: InventoryContext, uid: number) {
-  const acqRows = (await k.bestandExport.minifigsForCsv(uid)).map(r => ({
+export async function minifigsCsv(k: InventoryContext, uid: number) {
+  const acqRows = (await k.holdingExport.minifigsForCsv(uid)).map(r => ({
     ...r,
     unit_price: r.unit_price ?? '',
   }));

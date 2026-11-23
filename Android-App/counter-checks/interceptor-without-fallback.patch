@@ -1,0 +1,17 @@
+Gegenprobe: der Abgriff springt ohne Server nicht mehr mit der Ablage ein
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewTapTest
+Rot: without a server the preview comes from the store
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
+@@ -259,7 +259,7 @@
+         val response = try {
+             chain.proceed(request)
+         } catch (e: java.io.IOException) {
+-            previewResponse(request, preview.read(address)) ?: throw e
++            throw e
+         }
+         when {
+             response.isSuccessful -> {

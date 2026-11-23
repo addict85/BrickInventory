@@ -16,12 +16,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.MetricsSeries
 import ch.brickinventoryapp.shared.ui.StatChipV2
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.components.CatalogNameHint
+import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import coil3.ImageLoader
 
 /**
@@ -31,37 +32,39 @@ import coil3.ImageLoader
  */
 @Composable
 internal fun PartDetailHeader(
-    bild: String?,
+    image: String?,
     imageLoader: ImageLoader,
-    titel: String?,
+    title: String?,
     metrics: List<Pair<String, String>>,
     onZoom: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(Spacing.medium)) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = Formen.chip,
-            elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
+            shape = Shapes.chip,
+            elevation = CardDefaults.cardElevation(defaultElevation = Shapes.cardElevationHigh),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
-            ProduktBild(
-                model = bild,
+            ProductImage(
+                model = image,
                 imageLoader = imageLoader,
-                contentDescription = titel,
+                contentDescription = title,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(PART_IMAGE_HEIGHT)
-                    .clip(Formen.chip)
-                    .clickable(enabled = bild != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern),
+                    .clip(Shapes.chip)
+                    .clickable(enabled = image != null, onClickLabel = stringResource(R.string.cd_image_enlarge),
                         role = Role.Button, onClick = onZoom)
-                    .padding(Abstaende.mittel),
+                    .padding(Spacing.medium),
                 contentScale = ContentScale.Fit,
                 fallbackSize = 64.dp,
             )
         }
+        // The name above (bar or sheet title) comes from the catalog and stays English.
+        if (title != null) CatalogNameHint()
         if (metrics.isNotEmpty()) MetricsSeries {
-            metrics.forEach { (label, wert) -> StatChipV2(label = label, value = wert) }
+            metrics.forEach { (label, value) -> StatChipV2(label = label, value = value) }
         }
     }
 }

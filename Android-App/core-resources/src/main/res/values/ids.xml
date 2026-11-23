@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Zähler am Fenster: wie viele Bildschirme gerade Sichtschutz wollen (ui/components/Sichtschutz.kt). -->
-    <item name="sichtschutz_anzahl" type="id" />
-    <!-- Dasselbe für den Schutz vor Überlagerung (ui/components/Ueberdeckungsschutz.kt). -->
-    <item name="ueberdeckung_anzahl" type="id" />
+    <!-- Zähler am Fenster: wie viele Bildschirme gerade Sichtschutz wollen (ui/components/PrivacyShield.kt). -->
+    <item name="privacy_shield_count" type="id" />
+    <!-- Dasselbe für den Schutz vor Überlagerung (ui/components/OverlayGuard.kt). -->
+    <item name="overlay_count" type="id" />
 </resources>

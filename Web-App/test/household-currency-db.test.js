@@ -31,10 +31,10 @@ const db = testData();
 test('household currency', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  const namen = ['eltern', 'kind', 'enkel', 'fremd', 'carl', 'dora', 'erik', 'cleo'].map(n => `hw-${n}-${process.pid}`);
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+  const names = ['eltern', 'kind', 'enkel', 'fremd', 'carl', 'dora', 'erik', 'cleo'].map(n => `hw-${n}-${process.pid}`);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
-  for (const n of namen)
+  for (const n of names)
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [n])).id);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2), ($2, $3)', [
     ids[0],
@@ -52,7 +52,7 @@ test('household currency', { concurrency: 1 }, async t => {
     await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [id]);
   // A real change pulls the scheduled price job forward; it is not executed here.
   t.after(async () => {
-    await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
+    await db.run(`DELETE FROM jobs WHERE type = 'prices'`);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'waehrung|%'");
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
     await db.pool.end().catch(() => {});
@@ -74,22 +74,22 @@ test('household currency', { concurrency: 1 }, async t => {
     assert.deepEqual(
       (await currencies()).slice(0, 4),
       ['CHF', 'CHF', 'CHF', 'EUR'],
-      'Eltern, Kind und Enkel müssen dieselbe Währung tragen; das fremde Konto bleibt',
+      'Parent, child and grandchild must carry the same currency; the foreign account stays',
     );
   });
 
   await t.test('a sub-account does not change the household currency', async () => {
-    for (const unter of [ids[1], ids[2]]) {
+    for (const sub of [ids[1], ids[2]]) {
       await assert.rejects(
-        setUserSetting(unter, 'currency', 'USD'),
-        (/** @type {any} */ e) => e.code === 'waehrung_nur_hauptkonto' && e.art === 'verboten',
+        setUserSetting(sub, 'currency', 'USD'),
+        (/** @type {any} */ e) => e.code === 'currency_main_account_only' && e.kind === 'forbidden',
       );
     }
     await setUserSetting(ids[1], 'currency', 'CHF');
     assert.deepEqual(
       (await currencies()).slice(0, 4),
       ['CHF', 'CHF', 'CHF', 'EUR'],
-      'derselbe Wert bleibt erlaubt und ändert nichts',
+      'the same value stays allowed and changes nothing',
     );
   });
 
@@ -103,17 +103,17 @@ test('household currency', { concurrency: 1 }, async t => {
     // Dragging dora along would give erik's household two currencies: rejected.
     await assert.rejects(
       setUserSetting(ids[4], 'currency', 'CHF'),
-      (/** @type {any} */ e) => e.code === 'waehrung_geteiltes_unterkonto' && e.art === 'konflikt',
+      (/** @type {any} */ e) => e.code === 'currency_shared_sub_account' && e.kind === 'conflict',
     );
-    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'ein geteiltes Unterkonto …');
+    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'a shared sub-account …');
     await setUserSetting(ids[6], 'currency', 'EUR');
-    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'derselbe Wert geht durch');
+    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'the same value goes through');
     await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [ids[6], ids[5]]);
     await setUserSetting(ids[4], 'currency', 'CHF');
     assert.deepEqual(
       (await currencies()).slice(4),
       ['CHF', 'CHF', 'EUR', 'CHF'],
-      'nach dem Lösen: carl, dora, cleo; erik bleibt',
+      'after unlinking: carl, dora, cleo; erik stays',
     );
   });
 
@@ -122,9 +122,9 @@ test('household currency', { concurrency: 1 }, async t => {
     for (const w of ['GBP', 'EUR', 'CHF', 'SEK']) await setUserSetting(ids[3], 'currency', w);
     await assert.rejects(
       setUserSetting(ids[3], 'currency', 'NOK'),
-      (/** @type {any} */ e) => e.code === 'zu_viele_anfragen' && e.art === 'zu_viele',
+      (/** @type {any} */ e) => e.code === 'too_many_requests' && e.kind === 'too_many',
     );
     await setUserSetting(ids[3], 'currency', 'SEK');
-    assert.equal((await currencies())[3], 'SEK', 'ein unveränderter Wert zählt nicht und geht durch');
+    assert.equal((await currencies())[3], 'SEK', 'an unchanged value does not count and goes through');
   });
 });

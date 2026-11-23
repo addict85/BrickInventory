@@ -8,6 +8,6 @@ export const CHECKED: ReadonlySet<string> = new Set([
   'rebrickable-direct',
 ]);
 
-export function isGuess(quelle: string | null | undefined): boolean {
-  return !quelle || !CHECKED.has(quelle);
+export function isGuess(source: string | null | undefined): boolean {
+  return !source || !CHECKED.has(source);
 }

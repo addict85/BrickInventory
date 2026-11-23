@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
  *
  * Counter-check (Robolectric, measurable only in the CI):
  *   the card removed from SetupScreen → red “setup offers the app lock …”;
- *   gegenproben/einrichtung-ohne-app-sperre.patch
+ *   counter-checks/setup-without-app-lock.patch
  */
 @RunWith(RobolectricTestRunner::class)
 class SetupAppLockTest {
@@ -30,21 +30,21 @@ class SetupAppLockTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private class Speicher : AppLock.Ablage {
-        var minuten = AppLock.DEFAULT_MINUTES
-        override fun minuten() = minuten
-        override fun setMinutes(minuten: Int) { this.minuten = minuten }
+    private class Memory : AppLock.Store {
+        var storedMinutes = AppLock.DEFAULT_MINUTES
+        override fun minutes() = storedMinutes
+        override fun setMinutes(minutes: Int) { this.storedMinutes = minutes }
         override fun backgroundSince(): Long? = null
-        override fun rememberBackground(seit: Long?) = Unit
+        override fun rememberBackground(since: Long?) = Unit
         override fun backgroundStart(): Int? = null
         override fun rememberBackgroundStart(start: Int?) = Unit
-        override fun gesperrt() = false
-        override fun setLocked(an: Boolean) = Unit
+        override fun locked() = false
+        override fun setLocked(on: Boolean) = Unit
     }
 
     @Test
     fun `the setup offers the app lock, with an explanation`() {
-        val lock = AppLock({ 0L }, Speicher())
+        val lock = AppLock({ 0L }, Memory())
         compose.setContent {
             BrickInventoryManagerTheme {
                 CompositionLocalProvider(LocalAppLock provides lock) {
@@ -53,10 +53,10 @@ class SetupAppLockTest {
             }
         }
         val ctx = compose.activity
-        compose.onNodeWithText(ctx.getString(R.string.app_sperre_einrichten)).performScrollTo()
-        compose.onNodeWithText(ctx.getString(R.string.app_sperre_titel)).assertExists()
+        compose.onNodeWithText(ctx.getString(R.string.app_lock_set_up)).performScrollTo()
+        compose.onNodeWithText(ctx.getString(R.string.app_lock_title)).assertExists()
         // The chosen level is that of the store: the same choice as in the settings.
-        compose.onNodeWithText(ctx.getString(R.string.app_sperre_minuten, AppLock.DEFAULT_MINUTES)).assertExists()
-        assertEquals(AppLock.DEFAULT_MINUTES, lock.minuten.value)
+        compose.onNodeWithText(ctx.getString(R.string.app_lock_minutes, AppLock.DEFAULT_MINUTES)).assertExists()
+        assertEquals(AppLock.DEFAULT_MINUTES, lock.minutes.value)
     }
 }

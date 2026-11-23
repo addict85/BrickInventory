@@ -7,7 +7,7 @@
  * Counter-checks (measured on 30.10.2026):
  *   A  asUploadError() not called in handleRouteError() → red:
  *      “too large: 413 with code” (500 instead of 413, voucher and wanted list)
- *   B  in the fileFilter of the vouchers again `new Error('nur_pdf')` → red:
+ *   B  in the fileFilter of the vouchers again `new Error('pdf_only')` → red:
  *      “wrong type: 415 with code” (500 instead of 415)
  *   C  in the fileFilter of the instructions again `new Error('Nur PDF, JPG oder
  *      PNG')` → red: “wrong type: 415 with code” (500 instead of 415)
@@ -39,7 +39,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
   new Promise(r => {
@@ -87,35 +87,35 @@ test('upload limits', { concurrency: 1, timeout: 180_000 }, async t => {
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
-  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
-  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++)
-    await warte(250);
+  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await sleep(250);
+  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v2/health`).catch(() => null)) === null; i++)
+    await sleep(250);
 
-  const sende = async (pfad, inhalt, typ, name) => {
+  const send = async (path, content, kind, name) => {
     const form = new FormData();
-    form.append('file', new Blob([inhalt], { type: typ }), name);
-    const r = await fetch(`http://127.0.0.1:${port}/api/v1${pfad}`, {
+    form.append('file', new Blob([content], { type: kind }), name);
+    const r = await fetch(`http://127.0.0.1:${port}/api/v2${path}`, {
       method: 'POST',
       body: form,
       headers: { Authorization: `Bearer ${token}` },
     });
-    const rumpf = await r.json().catch(() => null);
-    return { status: r.status, code: rumpf?.code, json: rumpf !== null };
+    const body = await r.json().catch(() => null);
+    return { status: r.status, code: body?.code, json: body !== null };
   };
   const pdf = bytes => Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(bytes, 0x20)]);
 
   await t.test('too large: 413 with code', async () => {
     assert.deepEqual(
       {
-        gutschein: await sende('/vouchers/pdf', pdf(3 * 1024 * 1024), 'application/pdf', 'g.pdf'),
-        wanted: await sende('/wanted-list/import/xml', Buffer.alloc(5 * 1024 * 1024, 0x20), 'text/xml', 'w.xml'),
+        voucher: await send('/vouchers/pdf', pdf(3 * 1024 * 1024), 'application/pdf', 'g.pdf'),
+        wanted: await send('/wanted-list/import/xml', Buffer.alloc(5 * 1024 * 1024, 0x20), 'text/xml', 'w.xml'),
       },
       {
-        gutschein: { status: 413, code: 'datei_zu_gross', json: true },
-        wanted: { status: 413, code: 'datei_zu_gross', json: true },
+        voucher: { status: 413, code: 'file_too_large', json: true },
+        wanted: { status: 413, code: 'file_too_large', json: true },
       },
     );
   });
@@ -123,27 +123,27 @@ test('upload limits', { concurrency: 1, timeout: 180_000 }, async t => {
   await t.test('wrong type: 415 with code', async () => {
     assert.deepEqual(
       {
-        gutschein: await sende('/vouchers/pdf', 'kein pdf', 'text/plain', 'g.txt'),
-        anleitung: await sende(`/sets/${SN}/instructions/upload`, 'kein pdf', 'text/plain', 'a.txt'),
+        voucher: await send('/vouchers/pdf', 'kein pdf', 'text/plain', 'g.txt'),
+        instruction: await send(`/sets/${SN}/instructions/upload`, 'kein pdf', 'text/plain', 'a.txt'),
       },
       {
-        gutschein: { status: 415, code: 'nur_pdf', json: true },
-        anleitung: { status: 415, code: 'datei_typ_falsch', json: true },
+        voucher: { status: 415, code: 'pdf_only', json: true },
+        instruction: { status: 415, code: 'file_type_wrong', json: true },
       },
     );
   });
 
-  const json = async (pfad, rumpf) => {
-    const r = await fetch(`http://127.0.0.1:${port}/api/v1${pfad}`, {
+  const json = async (path, body) => {
+    const r = await fetch(`http://127.0.0.1:${port}/api/v2${path}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify(rumpf),
+      body: JSON.stringify(body),
     });
     const j = await r.json().catch(() => null);
     return { status: r.status, code: j?.code ?? null };
   };
   // About 1 MB: 3000 items in the form that web and app send.
-  const teile = Array.from({ length: 3000 }, (_, i) => ({
+  const parts = Array.from({ length: 3000 }, (_, i) => ({
     part_number: `3001-${i}`,
     bl_part_number: `3001-${i}`,
     part_name: 'Brick 2 x 4 '.repeat(14),
@@ -157,31 +157,31 @@ test('upload limits', { concurrency: 1, timeout: 180_000 }, async t => {
   }));
 
   await t.test('the parts list of the PDF job may be larger than 256 KB', async () => {
-    assert.ok(JSON.stringify({ parts: teile }).length > 900 * 1024);
-    assert.deepEqual(await json('/sets/partslist-pdf', { sets: [{ set_number: SN }], parts: teile }), {
+    assert.ok(JSON.stringify({ parts: parts }).length > 900 * 1024);
+    assert.deepEqual(await json('/sets/partslist-pdf', { sets: [{ set_number: SN }], parts: parts }), {
       status: 200,
       code: null,
     });
-    const huge = Array.from({ length: 4 }, () => teile).flat();
+    const huge = Array.from({ length: 4 }, () => parts).flat();
     assert.equal(
       (await json('/sets/partslist-pdf', { sets: [], parts: huge })).status,
       413,
-      'über 4 MB bleibt zu gross',
+      'above 4 MB stays too large',
     );
   });
 
   await t.test('… other routes not', async () => {
-    assert.deepEqual(await json('/settings', { currency: 'EUR', ballast: teile }), {
+    assert.deepEqual(await json('/settings', { currency: 'EUR', ballast: parts }), {
       status: 413,
-      code: 'anfrage_zu_gross',
+      code: 'request_too_large',
     });
   });
 
-  const anonym = async (pfad, rumpf) => {
-    const r = await fetch(`http://127.0.0.1:${port}/api/v1${pfad}`, {
+  const anonym = async (path, body) => {
+    const r = await fetch(`http://127.0.0.1:${port}/api/v2${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: rumpf,
+      body: body,
     });
     const j = await r.json().catch(() => null);
     return { status: r.status, code: j?.code ?? null };
@@ -194,8 +194,8 @@ test('upload limits', { concurrency: 1, timeout: 180_000 }, async t => {
 
   await t.test('… and on the login routes at most 16 KB', async () => {
     // The ballast in the field `label`: an unknown field would already be 400 before login.
-    const mit = n => JSON.stringify({ username: 'niemand', password: 'x'.repeat(20), label: 'y'.repeat(n) });
-    assert.equal((await anonym('/auth/login', mit(10 * 1024))).status, 401, 'eine gewöhnliche Anmeldung passt');
-    assert.deepEqual(await anonym('/auth/login', mit(20 * 1024)), { status: 413, code: 'anfrage_zu_gross' });
+    const withIt = n => JSON.stringify({ username: 'niemand', password: 'x'.repeat(20), label: 'y'.repeat(n) });
+    assert.equal((await anonym('/auth/login', withIt(10 * 1024))).status, 401, 'an ordinary login fits');
+    assert.deepEqual(await anonym('/auth/login', withIt(20 * 1024)), { status: 413, code: 'request_too_large' });
   });
 });

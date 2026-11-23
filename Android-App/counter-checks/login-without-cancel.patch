@@ -1,0 +1,17 @@
+Gegenprobe: Eine Anmeldung bricht die Abrufe der vorigen nicht ab
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
+Rot: a late response of the old account does not write into the new session
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SessionService.kt
+@@ -126,7 +126,7 @@
+     private suspend fun sequenceLogin() {
+         combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
+             .distinctUntilChanged()
+-            .collectLatest { (url, token) -> coroutineScope { login(this, url, token) } }
++            .collect { (url, token) -> login(area, url, token) }
+     }
+ 
+     private suspend fun login(login: CoroutineScope, url: String, token: String) {

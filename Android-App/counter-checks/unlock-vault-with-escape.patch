@@ -1,0 +1,18 @@
+Gegenprobe: Der Entsperr-Tresor weicht bei gesperrtem Gerät wieder auf den Schlüssel ohne Bedingung aus
+Modul: core-security
+Test: ch.brickinventoryapp.security.StoreUnlockedTest
+Rot: locked the unlock vault stores nothing under the weaker key
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt
+@@ -44,7 +44,8 @@
+     private val onlyUnlocked: TokenEncryption,
+     private val legacyStock: TokenEncryption,
+ ) : TokenEncryption {
+-    override fun encrypt(plaintext: String): String = UNLOCKED_PREFIX + onlyUnlocked.encrypt(plaintext)
++    override fun encrypt(plaintext: String): String =
++        catchUnlessCancelled { UNLOCKED_PREFIX + onlyUnlocked.encrypt(plaintext) }.getOrElse { legacyStock.encrypt(plaintext) }
+ 
+     override fun decrypt(saved: String): String? = (open(saved) as? VaultFinding.Readable)?.plaintext
+ 

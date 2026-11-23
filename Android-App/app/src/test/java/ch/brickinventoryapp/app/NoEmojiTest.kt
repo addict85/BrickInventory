@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * UI texts and screens carry no emoji but Material symbols.
@@ -23,32 +23,32 @@ class NoEmojiTest {
 
     @Test
     fun `no emoji in the Kotlin source`() {
-        val fehler = Quellen.alle().flatMap { datei ->
-            Quellen.withoutComments(datei.readText()).lines().mapIndexedNotNull { i, zeile ->
-                if (emoji.containsMatchIn(zeile)) "${datei.name}:${i + 1}  ${zeile.trim()}" else null
+        val error = Sources.all().flatMap { file ->
+            Sources.withoutComments(file.readText()).lines().mapIndexedNotNull { i, row ->
+                if (emoji.containsMatchIn(row)) "${file.name}:${i + 1}  ${row.trim()}" else null
             }
         }
-        assertTrue("Emoji statt Symbol:\n  " + fehler.joinToString("\n  "), fehler.isEmpty())
+        assertTrue("Emoji instead of icon:\n  " + error.joinToString("\n  "), error.isEmpty())
     }
 
     @Test
     fun `no emoji in the texts`() {
-        val fehler = listOf("values", "values-de").flatMap { folder ->
-            File(Quellen.res, "$folder/strings.xml").readLines().mapIndexedNotNull { i, zeile ->
-                if (!zeile.trim().startsWith("<!--") && emoji.containsMatchIn(zeile))
-                    "$folder/strings.xml:${i + 1}  ${zeile.trim()}" else null
+        val error = listOf("values", "values-de").flatMap { folder ->
+            File(Sources.res, "$folder/strings.xml").readLines().mapIndexedNotNull { i, row ->
+                if (!row.trim().startsWith("<!--") && emoji.containsMatchIn(row))
+                    "$folder/strings.xml:${i + 1}  ${row.trim()}" else null
             }
         }
-        assertTrue("Emoji in Texten:\n  " + fehler.joinToString("\n  "), fehler.isEmpty())
+        assertTrue("Emoji in Texten:\n  " + error.joinToString("\n  "), error.isEmpty())
     }
 
     @Test
     fun `the pattern recognizes emoji and leaves script characters alone`() {
         listOf("📅", "⚠️", "⏳", "✅", "❌", "👷", "🔍").forEach {
-            assertTrue("nicht erkannt: $it", emoji.containsMatchIn(it))
+            assertTrue("not recognized: $it", emoji.containsMatchIn(it))
         }
         listOf("✓ ×2", "✕", "▾", "—", "€", "Größe").forEach {
-            assertFalse("fälschlich erkannt: $it", emoji.containsMatchIn(it))
+            assertFalse("wrongly recognized: $it", emoji.containsMatchIn(it))
         }
     }
 }

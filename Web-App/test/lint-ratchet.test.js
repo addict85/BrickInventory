@@ -1,6 +1,6 @@
 /**
- * npm run lint and npm run format:pruefen: Biome over the existing code, red only
- * when the number of findings rises above the limit in scripts/lint-schranken.json.
+ * npm run lint and npm run format:check: Biome over the existing code, red only
+ * when the number of findings rises above the limit in scripts/lint-limits.json.
  * Checked on the real script, once with the real limit and once
  * with one that the existing code does not keep.
  *
@@ -20,11 +20,11 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const LIMITS = require('../scripts/lint-schranken.json');
+const LIMITS = require('../scripts/lint-limits.json');
 
 /** A tree with one lint finding (`==`) and one unformatted file: on the existing code without findings
  *  one could not see whether the script counts at all. */
-function probebaum() {
+function probeTree() {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-baum-'));
   fs.copyFileSync(path.join(ROOT, 'biome.json'), path.join(d, 'biome.json'));
   fs.cpSync(path.join(ROOT, 'biome'), path.join(d, 'biome'), { recursive: true });
@@ -36,56 +36,56 @@ function probebaum() {
   return d;
 }
 
-function ratsche(art, schranken, wurzel) {
+function ratchetFn(kind, limits, root) {
   const env = { ...process.env };
-  if (wurzel) env.LINT_WURZEL = wurzel;
-  if (schranken) {
-    const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lint-')), 's.json');
-    fs.writeFileSync(datei, JSON.stringify(schranken));
-    env.LINT_SCHRANKEN = datei;
+  if (root) env.LINT_ROOT = root;
+  if (limits) {
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lint-')), 's.json');
+    fs.writeFileSync(file, JSON.stringify(limits));
+    env.LINT_LIMITS = file;
   }
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'lint-ratchet.js'), art], {
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'lint-ratchet.js'), kind], {
     cwd: ROOT,
     env,
     encoding: 'utf8',
     timeout: 120_000,
   });
-  if (wurzel) fs.rmSync(wurzel, { recursive: true, force: true });
-  return { code: r.status, aus: r.stdout + r.stderr };
+  if (root) fs.rmSync(root, { recursive: true, force: true });
+  return { code: r.status, out: r.stdout + r.stderr };
 }
 
-for (const art of ['lint', 'format']) {
-  test(`${art}: the existing code keeps the limit, and it is tight`, () => {
-    const r = ratsche(art);
-    assert.equal(r.code, 0, r.aus);
-    const ist = Number(/\] (\d+) /.exec(r.aus)?.[1]);
-    assert.ok(ist >= 0 && ist <= LIMITS[art], r.aus);
+for (const kind of ['lint', 'format']) {
+  test(`${kind}: the existing code keeps the limit, and it is tight`, () => {
+    const r = ratchetFn(kind);
+    assert.equal(r.code, 0, r.out);
+    const actual = Number(/\] (\d+) /.exec(r.out)?.[1]);
+    assert.ok(actual >= 0 && actual <= LIMITS[kind], r.out);
     // Leeway for cleanups in parallel branches; more means: tighten the limit.
-    assert.ok(LIMITS[art] - ist <= 50, `Schranke ${LIMITS[art]}, gezählt ${ist}: nachziehen`);
+    assert.ok(LIMITS[kind] - actual <= 50, `Limit ${LIMITS[kind]}, counted ${actual}: tighten it`);
   });
 
-  test(`${art}: counts the findings of a sample tree`, () => {
-    const r = ratsche(art, { lint: 1, format: 1 }, probebaum());
-    assert.equal(r.code, 0, r.aus);
-    assert.match(r.aus, new RegExp(`^\\[${art}\\] 1 .*\\(Schranke 1\\)`, 'm'));
+  test(`${kind}: counts the findings of a sample tree`, () => {
+    const r = ratchetFn(kind, { lint: 1, format: 1 }, probeTree());
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, new RegExp(`^\\[${kind}\\] 1 .*\\(Schranke 1\\)`, 'm'));
   });
 
-  test(`${art}: a limit that is too low is red`, () => {
-    const r = ratsche(art, { lint: 0, format: 0 }, probebaum());
-    assert.equal(r.code, 1, r.aus);
-    assert.match(r.aus, /erlaubt sind 0/);
+  test(`${kind}: a limit that is too low is red`, () => {
+    const r = ratchetFn(kind, { lint: 0, format: 0 }, probeTree());
+    assert.equal(r.code, 1, r.out);
+    assert.match(r.out, /erlaubt sind 0/);
   });
 }
 
 test('typecheck:tests: red above the limit, the existing code keeps it', () => {
   // The existing code has 0 messages: once green with the real limit, once red with -1,
   // so that it is visible that the script compares at all.
-  const lauf = (/** @type {number | null} */ limit) => {
+  const run = (/** @type {number | null} */ limit) => {
     const env = { ...process.env };
     if (limit !== null) {
-      const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tt-')), 's.json');
-      fs.writeFileSync(datei, JSON.stringify({ testtypen: limit }));
-      env.LINT_SCHRANKEN = datei;
+      const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tt-')), 's.json');
+      fs.writeFileSync(file, JSON.stringify({ testTypes: limit }));
+      env.LINT_LIMITS = file;
     }
     return spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'check-test-types.js')], {
       cwd: ROOT,
@@ -94,10 +94,10 @@ test('typecheck:tests: red above the limit, the existing code keeps it', () => {
       timeout: 300_000,
     });
   };
-  const echt = lauf(null);
-  assert.equal(echt.status, 0, echt.stdout + echt.stderr);
-  assert.match(echt.stdout, new RegExp(`\\] 0 Meldungen \\(Schranke ${LIMITS.testtypen}\\)`));
-  const toTight = lauf(-1);
+  const original = run(null);
+  assert.equal(original.status, 0, original.stdout + original.stderr);
+  assert.match(original.stdout, new RegExp(`\\] 0 Meldungen \\(Schranke ${LIMITS.testTypes}\\)`));
+  const toTight = run(-1);
   assert.equal(toTight.status, 1, toTight.stdout + toTight.stderr);
   assert.match(toTight.stderr, /0 Meldungen, erlaubt sind -1/);
 });

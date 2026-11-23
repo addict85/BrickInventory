@@ -1,0 +1,19 @@
+Gegenprobe: sseStrom verschluckt eine unlesbare Nutzlast wieder still
+Modul: core-data
+Test: ch.brickinventoryapp.data.SseStreamTest
+Rot: an unreadable event ends the stream visibly
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStream.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStream.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStream.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStream.kt
+@@ -50,9 +50,7 @@
+             // everything else is an error in the code and should stand out.
+             val value = try {
+                 read(data)
+-            } catch (e: IllegalArgumentException) {
+-                trySend(SseEvent.Unreadable(e.message))
+-                close()
++            } catch (_: IllegalArgumentException) {
+                 return
+             }
+             trySend(SseEvent.Data(value))

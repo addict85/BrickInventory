@@ -26,7 +26,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
-const { ARGON2_PREFIX, hashePassword, passwordFits } = _req('src/account/passwordHash.js');
+const { ARGON2_PREFIX, hashPassword, passwordFits } = _req('src/account/passwordHash.js');
 
 test('argon2id and replacing old bcrypt hashes', { concurrency: 1, timeout: 60_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -44,36 +44,36 @@ test('argon2id and replacing old bcrypt hashes', { concurrency: 1, timeout: 60_0
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { t });
-  const anmelden = async passwort =>
+  const signIn = async password =>
     (
-      await fetch(`${base}/api/v1/auth/login`, {
+      await fetch(`${base}/api/v2/auth/login`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ username: NAME, password: passwort, ohne_token: true }),
+        body: JSON.stringify({ username: NAME, password: password, without_token: true }),
       })
     ).status;
-  const gespeichert = async () => (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
+  const saved = async () => (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
 
   await t.test('new hashes are argon2id with the fixed costs', async () => {
-    const h = await hashePassword(PASS);
+    const h = await hashPassword(PASS);
     assert.ok(h.startsWith(ARGON2_PREFIX), h.slice(0, 40));
     assert.equal(await passwordFits(PASS, h), true);
     assert.equal(await passwordFits(`${PASS}x`, h), false);
     // What stands behind byte 72 counts (bcrypt cut it off).
     const lang = 'L'.repeat(80);
-    assert.equal(await passwordFits(`${lang}b`, await hashePassword(`${lang}a`)), false);
+    assert.equal(await passwordFits(`${lang}b`, await hashPassword(`${lang}a`)), false);
   });
 
   await t.test('… a failed attempt replaces nothing', async () => {
-    assert.equal(await anmelden('falsches-Passwort-1'), 401);
-    assert.match(await gespeichert(), /^\$2[aby]\$04\$/);
+    assert.equal(await signIn('falsches-Passwort-1'), 401);
+    assert.match(await saved(), /^\$2[aby]\$04\$/);
   });
 
   await t.test('a bcrypt hash is replaced at login, afterwards with argon2id', async () => {
-    assert.equal(await anmelden(PASS), 200);
-    const neu = await gespeichert();
-    assert.ok(neu.startsWith(ARGON2_PREFIX), neu.slice(0, 40));
-    assert.equal(await anmelden(PASS), 200);
-    assert.equal(await gespeichert(), neu, 'ein aktueller Hash bleibt stehen');
+    assert.equal(await signIn(PASS), 200);
+    const fresh = await saved();
+    assert.ok(fresh.startsWith(ARGON2_PREFIX), fresh.slice(0, 40));
+    assert.equal(await signIn(PASS), 200);
+    assert.equal(await saved(), fresh, 'a current hash stays');
   });
 });

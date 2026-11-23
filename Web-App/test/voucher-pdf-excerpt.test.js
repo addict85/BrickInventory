@@ -9,18 +9,18 @@ const { valuesFromPdf, valuesFromText, parseNumber, pdfText } = _req('src/vouche
 // `require('pdfkit')` and NOT via the directory path: pdfkit 0.20 has
 // no `main` any more, only `exports` — a path to the directory bypasses
 // the resolution and fails. The tree does the same at its own two
-// places (routes/api_v1/pdf.ts, src/catalog/instructions.ts).
+// places (routes/api/pdf.ts, src/catalog/instructions.ts).
 const PDFDocument = require('pdfkit');
 
 /** Build a PDF with the passed lines — one text operator per line. */
-function pdfWith(zeilen) {
-  return new Promise(fertig => {
+function pdfWith(lines) {
+  return new Promise(done => {
     const doc = new PDFDocument({ compress: true });
-    const stuecke = [];
-    doc.on('data', s => stuecke.push(s));
-    doc.on('end', () => fertig(Buffer.concat(stuecke)));
+    const pieces = [];
+    doc.on('data', s => pieces.push(s));
+    doc.on('end', () => done(Buffer.concat(pieces)));
     doc.fontSize(12);
-    for (const z of zeilen) doc.text(z);
+    for (const z of lines) doc.text(z);
     doc.end();
   });
 }
@@ -35,10 +35,10 @@ test('voucher PDF: the three values land in the right place', async t => {
       'Um Ihr Geschenk einzuloesen, gehen Sie zu shop.LEGO.com',
     ]);
     const w = valuesFromPdf(buf);
-    assert.equal(w.number, '5045076374450019999', 'die Kartennummer');
-    assert.equal(w.pin, '4711', 'der PIN');
-    assert.equal(w.amount, 250, 'der Betrag');
-    assert.equal(w.currency, 'CHF', 'die Waehrung');
+    assert.equal(w.number, '5045076374450019999', 'the card number');
+    assert.equal(w.pin, '4711', 'the PIN');
+    assert.equal(w.amount, 250, 'the amount');
+    assert.equal(w.currency, 'CHF', 'the currency');
   });
 
   await t.test('short numbers do not become the card number', async () => {
@@ -54,7 +54,7 @@ test('voucher PDF: the three values land in the right place', async t => {
       'Ihre LEGO-Geschenkkarte im Wert von 50 EUR:',
     ]);
     const w = valuesFromPdf(buf);
-    assert.equal(w.number, null, 'Postleitzahl, Jahr oder Filialnummer sind keine Kartennummer');
+    assert.equal(w.number, null, 'postcode, year or branch number are no card number');
   });
 
   await t.test('a PDF without voucher data delivers null everywhere', async () => {
@@ -121,7 +121,7 @@ test('voucher PDF: the amount is read at the named place', async t => {
       '5045076374450011166',
     ].join('\n');
     const w = valuesFromText(text);
-    assert.equal(w.amount, 400, 'der benannte Betrag, nicht der erste im Text');
+    assert.equal(w.amount, 400, 'the named amount, not the first one in the text');
     assert.equal(w.currency, 'CHF');
   });
 
@@ -148,5 +148,5 @@ test('voucher PDF: the text extract separates the operators', async () => {
   const text = pdfText(buf);
   assert.match(text, /Erste Zeile/);
   assert.match(text, /Zweite Zeile/);
-  assert.ok(!/Erste ZeileZweite/.test(text), 'zwei Operatoren duerfen nicht verkleben');
+  assert.ok(!/Erste ZeileZweite/.test(text), 'two operators must not stick together');
 });

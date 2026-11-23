@@ -1,5 +1,7 @@
 /**
  * The estimated minifigure market price is cached.
+ *
+ * Counter-check: in src/finances/marketPrice.ts the cached estimate is never used → red “a fresh cache entry replaces the recomputation”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +10,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 async function newUser(db) {
   return db.get(`INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`);
@@ -19,7 +21,7 @@ test('a fresh cache entry replaces the recomputation', async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -36,22 +38,21 @@ test('a fresh cache entry replaces the recomputation', async t => {
   );
 
   const t0 = Date.now();
-  const wert = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
+  const value = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
   const duration = Date.now() - t0;
 
   assert.equal(
-    wert,
+    value,
     3.5,
-    'Der zwischengespeicherte Wert wird nicht genommen — die Schätzung rechnet ' +
-      'wieder alles neu, mit einer Preisabfrage je Teil.',
+    'The cached value is not used — the estimate recomputes ' + 'everything again, with one price query per part.',
   );
-  assert.ok(duration < 2000, `${duration} ms — hier darf nichts über das Netz gehen`);
+  assert.ok(duration < 2000, `${duration} ms — nothing may go over the network here`);
 
   const h = await db.get('SELECT COUNT(*)::int AS c FROM minifig_price_history WHERE fig_number = $1', [fig]);
   assert.equal(
     h.c,
     0,
-    'Innerhalb der Frist darf kein zweiter Verlaufspunkt entstehen — er trüge ' + 'denselben Wert am selben Tag.',
+    'Within the period no second history point may be created — it would carry ' + 'the same value on the same day.',
   );
 
   await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [fig]);
@@ -62,7 +63,7 @@ test('an outdated entry is skipped', async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -79,12 +80,12 @@ test('an outdated entry is skipped', async t => {
 
   // Without a network the recalculation delivers null — what matters is THAT it
   // takes place instead of returning the old value.
-  const wert = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
+  const value = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
   assert.equal(
-    wert,
+    value,
     null,
-    'Ein 48 Stunden alter Eintrag wurde genommen — dann altert der Marktpreis ' +
-      'unbegrenzt und der Verlauf bekommt nie einen neuen Punkt.',
+    'A 48-hour-old entry was used — then the market price ages ' +
+      'without bound and the history never gets a new point.',
   );
 
   await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [fig]);

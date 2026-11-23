@@ -27,33 +27,33 @@ const dns = require('node:dns');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const Z = _req('src/infra/targetAddress.js');
-const { holeHttps, AbrufFehler } = _req('src/infra/fetch.js');
-const { oeffneBild } = _req('clients/imageCdn.js');
+const { holeHttps, FetchError } = _req('src/infra/fetch.js');
+const { openImage } = _req('clients/imageCdn.js');
 const { hostAllowed, ALLOWED_DOWNLOAD_HOSTS } = _req('src/infra/foreignAddresses.js');
 
-/** @param {Record<string, string[]>} antworten  host → addresses */
-function withDns(t, antworten) {
-  const echt = dns.lookup;
-  const gefragt = [];
+/** @param {Record<string, string[]>} answers  host → addresses */
+function withDns(t, answers) {
+  const original = dns.lookup;
+  const asked = [];
   /** @type {any} */ (dns).lookup = (host, opt, callback) => {
-    const liste = antworten[host];
-    if (!liste) return echt(host, opt, callback);
-    gefragt.push(host);
-    const a = liste.map(address => ({ address, family: address.includes(':') ? 6 : 4 }));
+    const list = answers[host];
+    if (!list) return original(host, opt, callback);
+    asked.push(host);
+    const a = list.map(address => ({ address, family: address.includes(':') ? 6 : 4 }));
     setImmediate(() => (opt?.all ? callback(null, a) : callback(null, a[0].address, a[0].family)));
   };
   t.after(() => {
-    dns.lookup = echt;
+    dns.lookup = original;
   });
-  return gefragt;
+  return asked;
 }
 
-async function grund(promise) {
+async function reason(promise) {
   try {
     await promise;
   } catch (e) {
-    assert.ok(e instanceof AbrufFehler, `kein AbrufFehler: ${e}`);
-    return e.grund;
+    assert.ok(e instanceof FetchError, `no AbrufFehler: ${e}`);
+    return e.reason;
   }
   return 'kein Fehler';
 }
@@ -100,57 +100,57 @@ test('the mail server may be in the own network, just not in that of the contain
     lo: [{ address: '127.0.0.1', cidr: '127.0.0.1/8', family: 'IPv4', internal: true }],
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
   };
-  const imContainer = ip => Z.mailServerAddress(ip, { imContainer: true, interfaces });
-  assert.deepEqual(['192.168.1.10', '10.0.0.25', '172.28.73.20', '127.0.0.1', '169.254.169.254'].map(imContainer), [
+  const inContainer = ip => Z.mailServerAddress(ip, { inContainer: true, interfaces });
+  assert.deepEqual(['192.168.1.10', '10.0.0.25', '172.28.73.20', '127.0.0.1', '169.254.169.254'].map(inContainer), [
     true,
     true,
     false,
     false,
     false,
   ]);
-  const withoutContainer = ip => Z.mailServerAddress(ip, { imContainer: false, interfaces });
+  const withoutContainer = ip => Z.mailServerAddress(ip, { inContainer: false, interfaces });
   assert.deepEqual(
     ['127.0.0.1', '172.28.73.20', '169.254.169.254', 'fe80::1'].map(withoutContainer),
     [true, true, false, false],
-    'ohne Container ist Loopback ein lokaler Mailserver',
+    'without a container loopback is a local mail server',
   );
 });
 
 test('mixed responses: only the allowed addresses go on', async t => {
   withDns(t, { 'ziel.fake.test': ['10.0.0.7', '104.20.1.1', '127.0.0.1'] });
-  const alle = await new Promise((fertig, scheitern) =>
-    Z.publicLookup('ziel.fake.test', { all: true }, (e, a) => (e ? scheitern(e) : fertig(a))),
+  const all = await new Promise((done, fail) =>
+    Z.publicLookup('ziel.fake.test', { all: true }, (e, a) => (e ? fail(e) : done(a))),
   );
-  assert.deepEqual(alle, [{ address: '104.20.1.1', family: 4 }]);
+  assert.deepEqual(all, [{ address: '104.20.1.1', family: 4 }]);
   assert.equal(await Z.resolveOn('ziel.fake.test', Z.publicAddress), '104.20.1.1');
 });
 
 test('an allowed host that resolves internally is not connected', async t => {
-  const gefragt = withDns(t, {
+  const asked = withDns(t, {
     'rebrickable.com': ['127.0.0.1'],
     'cdn.rebrickable.com': ['10.0.0.9', '169.254.169.254'],
   });
-  const o = { hosts: ['rebrickable.com', 'cdn.rebrickable.com'], maxBytes: 1000, zeitlimitMs: 3000 };
-  assert.equal(await grund(holeHttps('https://rebrickable.com/api/v3/x', o)), 'adresse');
+  const o = { hosts: ['rebrickable.com', 'cdn.rebrickable.com'], maxBytes: 1000, timeoutMs: 3000 };
+  assert.equal(await reason(holeHttps('https://rebrickable.com/api/v3/x', o)), 'adresse');
   assert.equal(
-    await grund(holeHttps('https://cdn.rebrickable.com/a.png', { ...o, methode: 'POST', rumpf: '{}' })),
+    await reason(holeHttps('https://cdn.rebrickable.com/a.png', { ...o, method: 'POST', body: '{}' })),
     'adresse',
   );
-  assert.deepEqual(gefragt, ['rebrickable.com', 'cdn.rebrickable.com']);
+  assert.deepEqual(asked, ['rebrickable.com', 'cdn.rebrickable.com']);
 });
 
 test('the image proxy pool also checks the address', async t => {
-  const gefragt = withDns(t, { 'cdn.rebrickable.com': ['192.168.0.10'] });
+  const asked = withDns(t, { 'cdn.rebrickable.com': ['192.168.0.10'] });
   assert.equal(
-    await grund(oeffneBild('https://cdn.rebrickable.com/media/x.jpg', { maxBytes: 1000, pool: true })),
+    await reason(openImage('https://cdn.rebrickable.com/media/x.jpg', { maxBytes: 1000, pool: true })),
     'adresse',
   );
-  assert.deepEqual(gefragt, ['cdn.rebrickable.com']);
+  assert.deepEqual(asked, ['cdn.rebrickable.com']);
 });
 
 test('from LEGO only the hosts of the instructions', () => {
-  for (const gut of ['https://lego.com/a.pdf', 'https://www.lego.com/cdn/a.pdf', 'https://assets.lego.com/a.pdf'])
-    assert.ok(hostAllowed(gut, ALLOWED_DOWNLOAD_HOSTS), gut);
+  for (const good of ['https://lego.com/a.pdf', 'https://www.lego.com/cdn/a.pdf', 'https://assets.lego.com/a.pdf'])
+    assert.ok(hostAllowed(good, ALLOWED_DOWNLOAD_HOSTS), good);
   for (const fremd of ['https://irgendwas.lego.com/a.pdf', 'https://x.www.lego.com/a.pdf'])
     assert.ok(!hostAllowed(fremd, ALLOWED_DOWNLOAD_HOSTS), fremd);
 });
@@ -164,41 +164,41 @@ test('NAT64 and IPv4-mapped addresses: the IPv4 address inside counts', () => {
     ['64:ff9b::a9fe:a9fe', '169.254.169.254'],
     ['64:ff9b::808:808', '8.8.8.8'],
   ])
-    assert.equal(Z.normalisiert(ip), v4, ip);
-  for (const ip of ['2606:4700::1111', 'fe80::1%eth0', '64:ff9b:1::1', '1.2.3.4']) assert.equal(Z.normalisiert(ip), ip);
+    assert.equal(Z.normalized(ip), v4, ip);
+  for (const ip of ['2606:4700::1111', 'fe80::1%eth0', '64:ff9b:1::1', '1.2.3.4']) assert.equal(Z.normalized(ip), ip);
   for (const ip of ['64:ff9b::7f00:1', '64:ff9b::10.0.0.1', '64:ff9b::a9fe:a9fe', '::ffff:192.168.1.1'])
-    assert.equal(Z.publicAddress(ip), false, `NAT64 zählt wie die IPv4-Adresse darin: ${ip}`);
+    assert.equal(Z.publicAddress(ip), false, `NAT64 counts like the IPv4 address inside it: ${ip}`);
   // Behind DNS64 a pure IPv4 service gets a NAT64 address; it stays reachable.
   assert.equal(Z.publicAddress('64:ff9b::808:808'), true);
 });
 
 test('6to4 and Teredo are never public', () => {
   for (const ip of ['2002:a00:1::1', '2002:7f00:1::', '2001:0:4136:e378::1'])
-    assert.equal(Z.publicAddress(ip), false, `6to4 und Teredo: ${ip}`);
+    assert.equal(Z.publicAddress(ip), false, `6to4 and Teredo: ${ip}`);
 });
 
 test('the mail server does not reach the container network via NAT64 either', () => {
   const interfaces = {
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
   };
-  const pruefe = ip => Z.mailServerAddress(ip, { imContainer: true, interfaces });
-  assert.equal(pruefe('64:ff9b::172.28.73.20'), false, 'Container-Netz auch über NAT64');
-  assert.equal(pruefe('::ffff:172.28.73.20'), false);
-  assert.equal(pruefe('64:ff9b::7f00:1'), false, 'Loopback über NAT64');
-  assert.equal(pruefe('64:ff9b::c0a8:10a'), true, 'ein Mailserver im eigenen LAN bleibt erlaubt');
+  const check = ip => Z.mailServerAddress(ip, { inContainer: true, interfaces });
+  assert.equal(check('64:ff9b::172.28.73.20'), false, 'container network via NAT64 too');
+  assert.equal(check('::ffff:172.28.73.20'), false);
+  assert.equal(check('64:ff9b::7f00:1'), false, 'loopback via NAT64');
+  assert.equal(check('64:ff9b::c0a8:10a'), true, 'a mail server in the own LAN stays allowed');
 });
 
 test('IPv4-compatible addresses (::a.b.c.d) count like the IPv4 address inside', () => {
-  assert.equal(Z.normalisiert('::127.0.0.1'), '127.0.0.1');
-  assert.equal(Z.normalisiert('::a9fe:a9fe'), '169.254.169.254');
-  for (const ip of ['::', '::1']) assert.equal(Z.normalisiert(ip), ip, `${ip} bleibt IPv6`);
+  assert.equal(Z.normalized('::127.0.0.1'), '127.0.0.1');
+  assert.equal(Z.normalized('::a9fe:a9fe'), '169.254.169.254');
+  for (const ip of ['::', '::1']) assert.equal(Z.normalized(ip), ip, `${ip} stays IPv6`);
   for (const ip of ['::127.0.0.1', '::7f00:1', '::10.0.0.1', '::a9fe:a9fe', '64:ff9b::7f00:1'])
     assert.equal(Z.publicAddress(ip), false, ip);
   const interfaces = {
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
   };
-  const pruefe = ip => Z.mailServerAddress(ip, { imContainer: true, interfaces });
-  assert.equal(pruefe('::127.0.0.1'), false, 'Loopback über ::/96');
-  assert.equal(pruefe('::172.28.73.20'), false, 'Container-Netz über ::/96');
-  assert.equal(Z.mailServerAddress('::1', { imContainer: false, interfaces }), true, '::1 ohne Container');
+  const check = ip => Z.mailServerAddress(ip, { inContainer: true, interfaces });
+  assert.equal(check('::127.0.0.1'), false, 'loopback via ::/96');
+  assert.equal(check('::172.28.73.20'), false, 'container network via ::/96');
+  assert.equal(Z.mailServerAddress('::1', { inContainer: false, interfaces }), true, '::1 without a container');
 });

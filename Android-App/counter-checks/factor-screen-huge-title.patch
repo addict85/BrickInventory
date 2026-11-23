@@ -1,0 +1,15 @@
+Gegenprobe: Überschrift der Maske in schmaler Spalte (grosser Einzug rechts)
+Modul: feature-account
+Test: ch.brickinventoryapp.account.SecondFactorMaskTest
+Rot: at 200 percent font no text wraps in the middle of a word
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
+@@ -95,5 +95,5 @@
+ @Composable
+ fun LoginTitle(text: String) {
+     Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium,
+-        modifier = Modifier.semantics { heading() })
++        modifier = Modifier.semantics { heading() }.padding(end = Spacing.huge * 8))
+ }

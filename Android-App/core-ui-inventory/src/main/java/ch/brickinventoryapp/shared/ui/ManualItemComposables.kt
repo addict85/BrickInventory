@@ -1,51 +1,51 @@
 package ch.brickinventoryapp.shared.ui
 
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.model.domain.Waehrung
-import ch.brickinventoryapp.model.domain.Zustand
-import androidx.compose.ui.graphics.luminance
-import ch.brickinventoryapp.ui.components.SmallerButton
-import ch.brickinventoryapp.ui.components.nebenKnopfFarben
-import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.domain.KaufAnsicht
-import ch.brickinventoryapp.model.domain.AccountView
-import ch.brickinventoryapp.ui.theme.Formen
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import coil3.ImageLoader
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.model.domain.AccountView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.domain.PurchaseView
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.SmallerButton
+import ch.brickinventoryapp.ui.components.WithTooltip
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.quantity
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.BrickSay
 import ch.brickinventoryapp.ui.theme.BrickSayText
+import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.stueckzahl
-import ch.brickinventoryapp.ui.components.readAloudAs
-import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.movementReduced
-import ch.brickinventoryapp.ui.components.largeFont
-import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.util.fmtMoney
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 
 /**
  * Shared composables for manually captured parts AND minifigs.
@@ -56,55 +56,55 @@ import ch.brickinventoryapp.ui.components.withFont
 
 @Composable
 fun AcquisitionSummarySection(
-    acquisitions: List<KaufAnsicht>,
-    currency: Waehrung,
+    acquisitions: List<PurchaseView>,
+    currency: CurrencyCode,
     onEditPrices: () -> Unit
 ) {
     // With large text, the purchases go UNDER the label: next to it there was
     // so little width left for „CHF 700.00“ that the amount wrapped digit by digit.
-    val untereinander = largeFont()
-    val ausrichtung = if (untereinander) Alignment.Start else Alignment.End
-    val kaeufe: @Composable () -> Unit = {
-        Column(horizontalAlignment = ausrichtung) {
+    val stacked = largeFont()
+    val alignment = if (stacked) Alignment.Start else Alignment.End
+    val purchases: @Composable () -> Unit = {
+        Column(horizontalAlignment = alignment) {
             if (acquisitions.isEmpty()) {
                 Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 acquisitions.forEach { acq -> PurchaseRow(acq, currency) }
             }
-            Spacer(Modifier.height(Abstaende.tiny))
+            Spacer(Modifier.height(Spacing.tiny))
             // Visibly small below the purchases, tapped in 48 dp.
             SmallerButton(onClick = onEditPrices,
                 form = ButtonDefaults.outlinedShape,
-                flaeche = Modifier.heightIn(min = 28.dp),
-                inhaltFarbe = nebenKnopfFarben().contentColor,
-                edge = nebenKnopfRand(),
-                innen = PaddingValues(horizontal = 10.dp, vertical = Abstaende.hairline)) {
+                surface = Modifier.heightIn(min = 28.dp),
+                contentColor = secondaryButtonColors().contentColor,
+                edge = secondaryButtonRand(),
+                inner = PaddingValues(horizontal = 10.dp, vertical = Spacing.hairline)) {
                 Icon(Icons.Default.Edit, null, Modifier.size(withFont(14.dp)))
-                Spacer(Modifier.width(Abstaende.tiny))
+                Spacer(Modifier.width(Spacing.tiny))
                 Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
             }
         }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
-        val bezeichnung: @Composable () -> Unit = {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
+        val name: @Composable () -> Unit = {
             Text(
                 stringResource(R.string.detail_purchase_price),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = Abstaende.hairline)
+                modifier = Modifier.padding(top = Spacing.hairline)
             )
         }
-        if (untereinander) {
-            bezeichnung()
-            kaeufe()
+        if (stacked) {
+            name()
+            purchases()
         } else Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
         ) {
-            bezeichnung()
-            kaeufe()
+            name()
+            purchases()
         }
         HorizontalDivider()
     }
@@ -116,17 +116,17 @@ fun AcquisitionSummarySection(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PurchaseRow(acq: KaufAnsicht, currency: Waehrung) {
+private fun PurchaseRow(acq: PurchaseView, currency: CurrencyCode) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         val middle = Modifier.align(Alignment.CenterVertically)
-        Text(mengeManuell(acq.quantity), middle.readAloudAs(stueckzahl(acq.quantity)),
+        Text(quantityManual(acq.quantity), middle.readAloudAs(quantity(acq.quantity)),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(middle) { ConditionBadge(acq.condition) }
         // Without an amount, the row says none is captured; otherwise „×2 Neu“ stood there alone.
-        val preis = acq.effectivePrice
-        if (preis != null) {
-            Text(fmtMoney(preis, currency), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
+        val price = acq.effectivePrice
+        if (price != null) {
+            Text(fmtMoney(price, currency), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1, softWrap = false, modifier = middle)
         } else {
             Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
@@ -144,16 +144,16 @@ private fun PurchaseRow(acq: KaufAnsicht, currency: Waehrung) {
  * `condition`.
  */
 @Composable
-fun ConditionBadges(conditions: List<Zustand>, fallback: Zustand? = null) {
-    val list = if (conditions.isNotEmpty()) conditions else listOf(fallback ?: Zustand.NEU)
+fun ConditionBadges(conditions: List<Condition>, fallback: Condition? = null) {
+    val list = if (conditions.isNotEmpty()) conditions else listOf(fallback ?: Condition.NEW)
     Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         list.forEach { ConditionBadge(it) }
     }
 }
 
 @Composable
-fun ConditionBadge(condition: Zustand) {
-    val isUsed = condition == Zustand.GEBRAUCHT
+fun ConditionBadge(condition: Condition) {
+    val isUsed = condition == Condition.USED
     // Sage only in the light stone theme: in the dark theme, the light pill glowed on the dark card.
     val isBrick = LocalIsBrickTheme.current && MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val bgColor = when {
@@ -167,7 +167,7 @@ fun ConditionBadge(condition: Zustand) {
         else    -> MaterialTheme.colorScheme.onPrimaryContainer
     }
     Surface(
-        shape = Formen.etikett,
+        shape = Shapes.tag,
         color = bgColor
     ) {
         Text(
@@ -186,7 +186,7 @@ fun ConditionBadge(condition: Zustand) {
  */
 @Composable
 fun SparePartBadge(modifier: Modifier = Modifier) {
-    Surface(shape = Formen.etikett, color = MaterialTheme.colorScheme.surfaceVariant, modifier = modifier) {
+    Surface(shape = Shapes.tag, color = MaterialTheme.colorScheme.surfaceVariant, modifier = modifier) {
         Text(
             stringResource(R.string.parts_spare_tag),
             Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
@@ -203,10 +203,10 @@ fun SparePartBadge(modifier: Modifier = Modifier) {
  */
 @Composable
 fun InfoBadge(text: String, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
-    Surface(shape = Formen.chip, color = MaterialTheme.colorScheme.secondaryContainer,
+    Surface(shape = Shapes.chip, color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
-        Row(Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.tiny),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+        Row(Modifier.padding(horizontal = Spacing.small, vertical = Spacing.tiny),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
             if (icon != null) Icon(icon, null, Modifier.size(withFont(16.dp)))
             Text(text, style = MaterialTheme.typography.labelMedium)
         }
@@ -226,19 +226,19 @@ fun InfoBadge(text: String, modifier: Modifier = Modifier, icon: androidx.compos
  * The first is quantity-weighted across all captured purchases; the second is only the most recently
  * written single price.
  *
- * @param preis    raw amount; null = none stored, then it says „noch kein Preis“
- * @param waehrung currency code from settings
+ * @param price    raw amount; null = none stored, then it says „noch kein Preis“
+ * @param currency currency code from settings
  */
 @Composable
-fun ManualTileFooter(preis: Geld?, waehrung: Waehrung) {
+fun ManualTileFooter(price: Money?, currency: CurrencyCode) {
     Text(
-        if (preis != null) fmtMoney(preis, waehrung) else stringResource(R.string.detail_price_none_yet),
+        if (price != null) fmtMoney(price, currency) else stringResource(R.string.detail_price_none_yet),
         style = MaterialTheme.typography.bodySmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(top = Abstaende.hairline),
+        modifier = Modifier.padding(top = Spacing.hairline),
     )
 }
 
@@ -249,27 +249,27 @@ fun ManualTileFooter(preis: Geld?, waehrung: Waehrung) {
  * stays outside: it's the real difference between the two dialogs.
  */
 @Composable
-fun ErfassungsFelder(
-    anzahl: String,
+fun EntryFields(
+    count: String,
     onCount: (String) -> Unit,
     /** What is being counted („quantity of identical parts“). */
     countHint: String,
-    preis: String,
+    price: String,
     onPrice: (String) -> Unit,
-    zustand: Zustand,
-    onZustand: (Zustand) -> Unit,
+    condition: Condition,
+    onUiState: (Condition) -> Unit,
     /**
      * Storage location and its stock — here, because it belongs to the same block as the other
      * capture fields.
      */
-    lagerort: String = "",
+    storageLocation: String = "",
     onLocation: (String) -> Unit = {},
-    lagerorte: List<String> = emptyList(),
+    storageLocations: List<String> = emptyList(),
 ) {
-    CountField(anzahl, onCount, countHint)
-    PurchasePriceField(preis, onPrice, stringResource(R.string.common_unit_price))
-    Zustandszeile(zustand = zustand, onZustand = onZustand)
-    LagerortErfassung(lagerort, lagerorte, onLocation)
+    CountField(count, onCount, countHint)
+    PurchasePriceField(price, onPrice, stringResource(R.string.common_unit_price))
+    ConditionRow(condition = condition, onUiState = onUiState)
+    StorageLocationEntry(storageLocation, storageLocations, onLocation)
 }
 
 /**
@@ -277,18 +277,18 @@ fun ErfassungsFelder(
  * stood unevenly spaced apart, and one dialog left an empty gap.
  */
 @Composable
-fun CountField(wert: String, onValue: (String) -> Unit, hinweis: String) {
+fun CountField(value: String, onValue: (String) -> Unit, hint: String) {
     OutlinedTextField(
-        value = wert, onValueChange = { onValue(NumericInput.quantity(it)) },
+        value = value, onValueChange = { onValue(NumericInput.quantity(it)) },
         label = { Text(stringResource(R.string.common_quantity)) },
-        isError = NumericInput.quantityInvalid(wert),
+        isError = NumericInput.quantityInvalid(value),
         supportingText = {
-            if (NumericInput.quantityInvalid(wert)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.announce())
-            else Text(hinweis)
+            if (NumericInput.quantityInvalid(value)) Text(stringResource(R.string.record_quantity_invalid), Modifier.announce())
+            else Text(hint)
         },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.feld,
-        keyboardOptions = NumericInput.ganzzahlTastatur(),
+        shape = Shapes.field,
+        keyboardOptions = NumericInput.integerKeyboard(),
     )
 }
 
@@ -297,21 +297,85 @@ fun CountField(wert: String, onValue: (String) -> Unit, hinweis: String) {
  * placeholder: that one disappeared on the first keystroke.
  */
 @Composable
-fun PurchasePriceField(wert: String, onValue: (String) -> Unit, beschriftung: String, onFertig: (() -> Unit)? = null) {
+fun PurchasePriceField(value: String, onValue: (String) -> Unit, label: String, onDone: (() -> Unit)? = null) {
     OutlinedTextField(
-        value = wert, onValueChange = { onValue(NumericInput.price(it)) },
-        label = { Text(beschriftung) },
-        isError = NumericInput.priceInvalid(wert),
+        value = value, onValueChange = { onValue(NumericInput.price(it)) },
+        label = { Text(label) },
+        isError = NumericInput.priceInvalid(value),
         supportingText = {
-            if (NumericInput.priceInvalid(wert)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.announce())
+            if (NumericInput.priceInvalid(value)) Text(stringResource(R.string.record_price_invalid), Modifier.announce())
             else Text(stringResource(R.string.common_unit_price_placeholder))
         },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.feld,
+        shape = Shapes.field,
         keyboardOptions = NumericInput.priceKeyboard(),
-        keyboardActions = if (onFertig != null) KeyboardActions(onDone = { onFertig() }) else KeyboardActions.Default,
+        keyboardActions = if (onDone != null) KeyboardActions(onDone = { onDone() }) else KeyboardActions.Default,
     )
 }
+
+/** The tile's image with the quantity badge, the color dot and the edit button. */
+@Composable
+private fun ManualTileImage(
+    imageUrl: String?,
+    onImageError: () -> Unit,
+    imageLoader: ImageLoader,
+    quantity: Int,
+    color: Color?,
+    onEdit: () -> Unit,
+) {
+    val ctx = LocalContext.current
+    Box(Modifier.fillMaxWidth().height(76.dp)) {
+        ProductImage(
+            model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
+            imageLoader = imageLoader,
+            // Without a description: the name sits below it, TalkBack would otherwise read it twice.
+            contentDescription = null,
+            onState = { st ->
+                if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
+            },
+            modifier = Modifier.fillMaxSize().clip(Shapes.tileImageCorners),
+            contentScale = ContentScale.Fit,
+            fallbackSize = 28.dp,
+        )
+        Surface(
+            color = MaterialTheme.colorScheme.primary,
+            shape = Shapes.brand,
+            modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
+        ) {
+            // The quantity badge: „×N" on a MANUALLY captured tile,
+            // „N×" on a tile from a set. That's not a whim,
+            // but the web app's rule — there, `man-tile` carries a
+            // `qbadge` with ×N, `part-card` a `part-qty` with N×.
+            Text(quantityManual(quantity), Modifier.padding(horizontal = Spacing.tiny, vertical = 1.dp).readAloudAs(quantity(quantity)),
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+        }
+        if (color != null) {
+            Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(3.dp)
+                .clip(CircleShape).background(color))
+        }
+        Row(Modifier.align(Alignment.TopStart).padding(Spacing.hairline)) {
+            WithTooltip(stringResource(R.string.common_edit)) {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
+                        Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        // No trash icon on the tile: the card opens the detail, and it sits there
+        // in the same spot as for the set.
+    }
+}
+
+/** What a manual tile shows of its part or figure: name, quantity, conditions, owners, price. */
+data class ManualTileItem(
+    val name: String,
+    val quantity: Int,
+    val states: List<Condition>,
+    val condition: Condition?,
+    val owner: List<AccountView>,
+    val price: Money?,
+)
 
 /**
  * The tile of a manually captured part or figure — one implementation, so
@@ -320,85 +384,40 @@ fun PurchasePriceField(wert: String, onValue: (String) -> Unit, beschriftung: St
  * and order belong to the tile.
  */
 @Composable
-fun ManuelleKachel(
-    bildUrl: String?,
-    onBildFehler: () -> Unit,
+fun ManualTile(
+    item: ManualTileItem,
+    currency: CurrencyCode,
+    imageUrl: String?,
+    onImageError: () -> Unit,
     imageLoader: ImageLoader,
-    name: String,
-    menge: Int,
-    states: List<Zustand>,
-    zustand: Zustand?,
-    besitzer: List<AccountView>,
-    preis: Geld?,
-    waehrung: Waehrung,
     onEdit: () -> Unit,
-    farbe: Color? = null,
-    farbname: String? = null,
+    color: Color? = null,
+    colorName: String? = null,
 ) {
-    val ctx = LocalContext.current
+    val quantity = item.quantity
     Card(
         onClick = onEdit,  // whole card clickable — opens the purchase-price/quantity dialog, like sets
-        modifier = Modifier.width(Formen.kachelBreite).heightIn(min = Formen.kachelHoehe),
-        shape = Formen.leiste,
-        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
+        modifier = Modifier.width(Shapes.tileWidth).heightIn(min = Shapes.tileHeight),
+        shape = Shapes.bar,
+        elevation = CardDefaults.cardElevation(defaultElevation = Shapes.cardElevation),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column {
-            Box(Modifier.fillMaxWidth().height(76.dp)) {
-                ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
-                    imageLoader = imageLoader,
-                    // Without a description: the name sits below it, TalkBack would otherwise read it twice.
-                    contentDescription = null,
-                    onState = { st ->
-                        if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
-                    },
-                    modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
-                    contentScale = ContentScale.Fit,
-                    fallbackSize = 28.dp,
-                )
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = Formen.marke,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
-                ) {
-                    // The quantity badge: „×N" on a MANUALLY captured tile,
-                    // „N×" on a tile from a set. That's not a whim,
-                    // but the web app's rule — there, `man-tile` carries a
-                    // `qbadge` with ×N, `part-card` a `part-qty` with N×.
-                    Text(mengeManuell(menge), Modifier.padding(horizontal = Abstaende.tiny, vertical = 1.dp).readAloudAs(stueckzahl(menge)),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-                if (farbe != null) {
-                    Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(3.dp)
-                        .clip(CircleShape).background(farbe))
-                }
-                Row(Modifier.align(Alignment.TopStart).padding(Abstaende.hairline)) {
-                    MitTooltip(stringResource(R.string.common_edit)) {
-                        IconButton(onClick = onEdit) {
-                            Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
-                                Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-                // No trash icon on the tile: the card opens the detail, and it sits there
-                // in the same spot as for the set.
-            }
-            Column(Modifier.padding(horizontal = 6.dp, vertical = Abstaende.tiny)) {
-                Text(name, style = MaterialTheme.typography.bodySmall,
+            ManualTileImage(imageUrl, onImageError, imageLoader, quantity, color, onEdit)
+            Column(Modifier.padding(horizontal = 6.dp, vertical = Spacing.tiny)) {
+                Text(item.name, style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (farbname != null) {
-                    Text(farbname, style = MaterialTheme.typography.bodySmall,
+                if (colorName != null) {
+                    Text(colorName, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(states, zustand) }
+                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(item.states, item.condition) }
                 // Who owns the entry? The server only attaches owners when
-                // several accounts are in the Blickfeld — in a single account, „gehört mir" would sit on
+                // several accounts are in the Blickfeld — in a single account, "mine" would sit on
                 // every single tile.
-                OwnerBadges(besitzer, Modifier.padding(top = Abstaende.hairline))
-                ManualTileFooter(preis = preis, waehrung = waehrung)
+                OwnerBadges(item.owner, Modifier.padding(top = Spacing.hairline))
+                ManualTileFooter(price = item.price, currency = currency)
             }
         }
     }

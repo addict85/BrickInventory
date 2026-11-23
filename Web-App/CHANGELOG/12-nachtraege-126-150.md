@@ -453,7 +453,7 @@ AUFTRAGSVERWALTUNG (pdf-jobs-db) — nicht das Zeichnen. Ein pdfkit, das seine A
 stillschweigend ändert, wäre grün durchgelaufen und erst bei Marcos erstem
 Export aufgefallen.
 
-Genutzt werden (ermittelt aus routes/api_v1/pdf.ts und utils/instructions.ts):
+Genutzt werden (ermittelt aus routes/api/pdf.ts und utils/instructions.ts):
 `addPage`, `circle`, `currentLineHeight`, `end`, `font`, `fontSize`, `image`,
 `moveDown`, `moveTo`, `on`, `text` — durchweg Kern-API.
 
@@ -1036,7 +1036,7 @@ Abgeräumt in Gruppen, ohne eine einzige Verhaltensentscheidung:
 `AuthedRequest`: Die Zusicherung steht einmal geschrieben und ist an die
 Middleware gebunden, statt als `!` an jeder Stelle.
 
-Zwei Kleinigkeiten fielen dabei ab. In `routes/api_v1/parts.ts` stand
+Zwei Kleinigkeiten fielen dabei ab. In `routes/api/parts.ts` stand
 `page_size: result.page_size` VOR `...result` und war damit wirkungslos. Und der
 Fortschrittszähler des Preis-Jobs hing an einem Feld, das der `finally`-Block
 nebenläufig auf null setzt — jetzt eine lokale Referenz.

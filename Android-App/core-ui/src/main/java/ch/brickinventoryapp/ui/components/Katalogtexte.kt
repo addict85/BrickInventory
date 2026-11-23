@@ -1,16 +1,21 @@
 package ch.brickinventoryapp.ui.components
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.intl.LocaleList
-import ch.brickinventoryapp.model.ui.ColorGerman
 import ch.brickinventoryapp.model.ui.CategoryGerman
+import ch.brickinventoryapp.model.ui.ColorGerman
+import ch.brickinventoryapp.resources.R
 
 /** Is the UI in German? Rebrickable's catalog data never is. */
 @Composable
-private fun deutsch(): Boolean = LocalConfiguration.current.locales[0].language == "de"
+private fun german(): Boolean = LocalConfiguration.current.locales[0].language == "de"
 
 /**
  * Color names in the app's language, as in the web app (colorName): „Trans-Klar“
@@ -18,13 +23,13 @@ private fun deutsch(): Boolean = LocalConfiguration.current.locales[0].language 
  * (filter entries in remember) get translated.
  */
 @Composable
-fun farbTranslator(): (String) -> String =
-    if (deutsch()) ColorGerman::translate else { name -> name }
+fun colorTranslator(): (String) -> String =
+    if (german()) ColorGerman::translate else { name -> name }
 
 /** Part categories in the app's language, like the colors next to them („Steine“ instead of „Bricks“). */
 @Composable
 fun categoryTranslator(): (String) -> String =
-    if (deutsch()) CategoryGerman::translate else { name -> name }
+    if (german()) CategoryGerman::translate else { name -> name }
 
 /**
  * Part and figure names stay in English: the server supplies none in German,
@@ -34,4 +39,15 @@ fun categoryTranslator(): (String) -> String =
  */
 @Composable
 fun catalogName(name: String): AnnotatedString =
-    if (deutsch()) AnnotatedString(name, SpanStyle(localeList = LocaleList("en"))) else AnnotatedString(name)
+    if (german()) AnnotatedString(name, SpanStyle(localeList = LocaleList("en"))) else AnnotatedString(name)
+
+/**
+ * „Name auf Englisch“ under a catalog name, only in a German UI: otherwise an English name
+ * among German labels reads like a missing translation. TalkBack hears it via [catalogName].
+ */
+@Composable
+fun CatalogNameHint(modifier: Modifier = Modifier) {
+    if (!german()) return
+    Text(stringResource(R.string.catalog_name_english), modifier,
+        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}

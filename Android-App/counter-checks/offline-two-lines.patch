@@ -1,0 +1,17 @@
+Gegenprobe: Ausgangsleiste auch neben dem Offline-Hinweis
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: offline hint names the pending changes in a banner
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -226,7 +226,7 @@
+ ) {
+     val offlineHints = remember { mutableIntStateOf(0) }
+     // If an offline hint is shown, it names the pending changes itself.
+-    if (offlineHints.intValue == 0) OutboxBar(pendingChanges)
++    OutboxBar(pendingChanges)
+     // Global CSV import bar: appears on all tabs (as in the
+     // web app) as soon as an import runs — no matter where it was started.
+     if (csvImport != null) {

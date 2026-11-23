@@ -6,7 +6,55 @@ import { G } from './dom.js';
 
 /** The static startup scaffold from index.html gives way once login, app or startup progress show up. */
 export function removeStartupScaffold() {
-  G('startgeruest')?.remove();
+  G('start-skeleton')?.remove();
+}
+
+/** Main bar of the startup screen. @param {NonNullable<Awaited<ReturnType<typeof startupStatus>>>} s the startup status */
+function showStartupMain(s) {
+  const pct = s.total > 0 ? Math.round((s.progress / s.total) * 100) : 0;
+  const stepEl = G('startup-step');
+  const barEl = G('startup-bar');
+  const pctEl = G('startup-pct');
+  if (stepEl) stepEl.textContent = s.step || t('startup.loading');
+  if (barEl) barEl.style.width = pct + '%';
+  if (pctEl) pctEl.textContent = pct + '%';
+}
+
+/** Sub bar: a percentage in the sub-status fills it, any other text stands in place of the number.
+ * @param {{ step?: string, sub?: string }} s */
+function showStartupSub(s) {
+  const subVal = s.sub || '';
+  const subWrap = G('startup-sub-wrap');
+  const subLabel = G('startup-sub-label');
+  if (!subWrap) return;
+  subWrap.style.display = subVal ? '' : 'none';
+  if (subLabel) subLabel.style.display = subVal ? '' : 'none';
+  if (!subVal) return;
+  const subBar = G('startup-sub-bar');
+  const subPctEl = G('startup-sub-pct');
+  const subEl = G('startup-sub');
+  const subPct = subVal.match(/(\d+)%/);
+  if (subBar) subBar.style.width = subPct ? subPct[1] + '%' : '0%';
+  if (subPctEl) subPctEl.textContent = subPct ? subPct[1] + '%' : subVal;
+  if (subEl) subEl.textContent = s.step || '';
+}
+
+/** One status poll; null while the server has no status yet. */
+async function startupStatus() {
+  const r = await apiRaw('GET', '/v2/startup-status?_=' + Date.now(), {
+    cache: 'no-store',
+    headers: { 'Cache-Control': 'no-cache' },
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+/** Only show progress once the server is actually still starting up. @param {HTMLElement | null} ss */
+function showStartupScreen(ss) {
+  if (ss && ss.style.display !== 'flex') {
+    removeStartupScaffold();
+    ss.style.display = 'flex';
+  }
 }
 
 export async function waitForStartup() {
@@ -22,52 +70,19 @@ export async function waitForStartup() {
   let errorSince = 0;
   /** @type {() => void} */
   let retryNow = () => {};
-  const button = G('start-erneut');
+  const button = G('start-again');
   if (button) button.onclick = () => retryNow();
   while (true) {
     try {
-      const r = await apiRaw('GET', '/v1/startup-status?_=' + Date.now(), {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' },
-      });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const s = await r.json();
+      const s = await startupStatus();
       errorSince = 0;
       showOffline(false);
       if (!s) {
         await new Promise(r => setTimeout(r, 600));
         continue;
       }
-      const pct = s.total > 0 ? Math.round((s.progress / s.total) * 100) : 0;
-      const stepEl = G('startup-step');
-      const barEl = G('startup-bar');
-      const pctEl = G('startup-pct');
-      if (stepEl) stepEl.textContent = s.step || t('startup.loading');
-      if (barEl) barEl.style.width = pct + '%';
-      if (pctEl) pctEl.textContent = pct + '%';
-      const subVal = s.sub || '';
-      const subWrap = G('startup-sub-wrap');
-      const subLabel = G('startup-sub-label');
-      const subBar = G('startup-sub-bar');
-      const subPctEl = G('startup-sub-pct');
-      const subEl = G('startup-sub');
-      if (subVal && subWrap) {
-        subWrap.style.display = '';
-        if (subLabel) subLabel.style.display = '';
-        const subPct = subVal.match(/(\d+)%/);
-        if (subPct) {
-          if (subBar) subBar.style.width = subPct[1] + '%';
-          if (subPctEl) subPctEl.textContent = subPct[1] + '%';
-          if (subEl) subEl.textContent = s.step || '';
-        } else {
-          if (subBar) subBar.style.width = '0%';
-          if (subPctEl) subPctEl.textContent = subVal;
-          if (subEl) subEl.textContent = s.step || '';
-        }
-      } else if (subWrap) {
-        subWrap.style.display = 'none';
-        if (subLabel) subLabel.style.display = 'none';
-      }
+      showStartupMain(s);
+      showStartupSub(s);
       // Detect progress: once step, percent or sub-status change, startup counts as active and the stall
       // timer resets.
       const sig = `${s.step}|${s.progress}|${s.total}|${s.sub || ''}`;
@@ -76,11 +91,7 @@ export async function waitForStartup() {
         lastChangeAt = Date.now();
       }
       if (s.ready) break;
-      // Only show progress once the server is actually still starting up.
-      if (ss && ss.style.display !== 'flex') {
-        removeStartupScaffold();
-        ss.style.display = 'flex';
-      }
+      showStartupScreen(ss);
       if (Date.now() - lastChangeAt > STALL_TIMEOUT) {
         console.warn('[startup] stalled — no progress');
         break;
@@ -107,17 +118,17 @@ export function showOffline(on, o = {}) {
   const el = G('start-offline');
   if (!el) return;
   if (on) {
-    G('start-offline-titel').textContent = o.title || tRaw('startup.offline_titel');
+    G('start-offline-title').textContent = o.title || tRaw('startup.offline_title');
     G('start-offline-text').textContent = o.text || tRaw('startup.offline_text');
   }
   if (el.hidden === on) el.hidden = !on;
 }
 
 /** The session check, with Retry-After: api() does not pass the response headers through.
- * @returns {Promise<{ d: import('../../frontend-types/api').ApiAntwort<'GET', '/v1/auth/me'>, waitSec: number }>} */
+ * @returns {Promise<{ d: import('../../frontend-types/api').ApiResponse<'GET', '/v2/auth/me'>, waitSec: number }>} */
 export async function checkSession() {
   try {
-    const r = await apiRaw('GET', '/v1/auth/me', { cache: 'no-store' });
+    const r = await apiRaw('GET', '/v2/auth/me', { cache: 'no-store' });
     let d = null;
     try {
       d = await r.json();
@@ -147,17 +158,17 @@ export function sessionUnresolved(d, waitSec, retry) {
   const throttled = d.status === 429;
   const render = () =>
     showOffline(true, {
-      title: tRaw(throttled ? 'startup.gedrosselt_titel' : 'startup.sitzung_offen'),
+      title: tRaw(throttled ? 'startup.throttled_title' : 'startup.session_open'),
       text: throttled
-        ? tRaw('startup.gedrosselt_text', { sek: remaining })
-        : `${reason}${/[.!?]$/.test(reason) ? '' : '.'} ${tRaw('startup.naechster_versuch', { sek: remaining })}`,
+        ? tRaw('startup.throttled_text', { sek: remaining })
+        : `${reason}${/[.!?]$/.test(reason) ? '' : '.'} ${tRaw('startup.next_attempt', { sek: remaining })}`,
     });
   const retryAgain = () => {
     clearInterval(_sessionTimer);
     retry();
   };
   render();
-  G('start-erneut').onclick = retryAgain;
+  G('start-again').onclick = retryAgain;
   _sessionTimer = setInterval(() => {
     if (--remaining <= 0) retryAgain();
     else render();

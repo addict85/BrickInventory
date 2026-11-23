@@ -1,0 +1,17 @@
+Gegenprobe: Umschalter Sets/Teile/Minifiguren auch auf dem Tablet in der App-Leiste
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: tablet has the switcher to the right of the side bar
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -152,7 +152,7 @@
+             topBar = {
+               Column {
+                 MainTopBar(title, navController, currentDest, collapse)
+-                if (kind == NavigationMode.BAR_BOTTOM && currentDest?.isOneOf(COLLECTION) == true) {
++                if (currentDest?.isOneOf(COLLECTION) == true) {
+                     CollectionToggle(collectionTarget(currentDest), onChoice = toggle,
+                         modifier = Modifier.withBarCollapse { collapse.state.collapsedFraction })
+                 }

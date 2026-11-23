@@ -27,7 +27,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import androidx.fragment.app.FragmentActivity
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /** The activity's app lock; without a provider, settings shows no choice. */
 val LocalAppLock = staticCompositionLocalOf<AppLock?> { null }
@@ -37,31 +37,31 @@ val LocalAppLock = staticCompositionLocalOf<AppLock?> { null }
  * its signature lifts the lock (AppUnlocking), not the callback alone.
  * Without a screen lock there is no such key and nothing to ask; then it just continues.
  */
-fun unlockWithDevicesLock(activity: FragmentActivity, titel: String, subtitle: String, weiter: () -> Unit) {
-    if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) return weiter()
+fun unlockWithDevicesLock(activity: FragmentActivity, title: String, subtitle: String, next: () -> Unit) {
+    if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) return next()
     // Since minSdk 30 the key can authorize both (KeystoreKey).
-    val info = BiometricPrompt.PromptInfo.Builder().setTitle(titel).setSubtitle(subtitle)
+    val info = BiometricPrompt.PromptInfo.Builder().setTitle(title).setSubtitle(subtitle)
         .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL).build()
-    AppUnlocking(AppLockKey) { signatur, antwort ->
+    AppUnlocking(AppLockKey) { signature, response ->
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) =
-                antwort(result.cryptoObject?.signature)
+                response(result.cryptoObject?.signature)
         }
         BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), callback)
-            .authenticate(info, BiometricPrompt.CryptoObject(signatur))
-    }.unlock(weiter)
+            .authenticate(info, BiometricPrompt.CryptoObject(signature))
+    }.unlock(next)
 }
 
 /** Covers the app until unlocked; asks on its own when it appears. */
 @Composable
 fun AppLockScreen(unlockOn: () -> Unit) {
-    Ueberdeckungsschutz()
+    OverlayGuard()
     LaunchedEffect(Unit) { unlockOn() }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                Text(stringResource(R.string.app_sperre_gesperrt), style = MaterialTheme.typography.titleMedium)
-                Button(onClick = unlockOn) { Text(stringResource(R.string.app_sperre_entsperren)) }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.medium)) {
+                Text(stringResource(R.string.app_lock_locked), style = MaterialTheme.typography.titleMedium)
+                Button(onClick = unlockOn) { Text(stringResource(R.string.app_lock_unlock)) }
             }
         }
     }
@@ -70,20 +70,20 @@ fun AppLockScreen(unlockOn: () -> Unit) {
 /** The choice in settings; without a screen lock only turning it off. */
 @Composable
 fun AppLockChoice(lock: AppLock) {
-    val minuten by lock.minuten.collectAsState()
+    val minutes by lock.minutes.collectAsState()
     val context = LocalContext.current
     val possible = remember(context) { context.getSystemService<KeyguardManager>()?.isDeviceSecure == true }
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        Text(stringResource(if (possible) R.string.app_sperre_hint else R.string.app_sperre_ohne_displaysperre),
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        Text(stringResource(if (possible) R.string.app_lock_hint else R.string.app_lock_without_screen_lock),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        val aus = stringResource(R.string.app_sperre_aus)
-        val withNumber = AppLock.CHOICE.associateWith { stringResource(R.string.app_sperre_minuten, it) }
+        val from = stringResource(R.string.app_lock_from)
+        val withNumber = AppLock.CHOICE.associateWith { stringResource(R.string.app_lock_minutes, it) }
         SelectionField(
-            beschriftung = stringResource(R.string.app_sperre_titel),
+            label = stringResource(R.string.app_lock_title),
             modifier = Modifier.fillMaxWidth(),
-            optionen = AppLock.CHOICE.map { it to if (it == 0) aus else withNumber.getValue(it) },
-            gewaehlt = minuten,
-            onWahl = lock::setMinutes,
+            options = AppLock.CHOICE.map { it to if (it == 0) from else withNumber.getValue(it) },
+            chosen = minutes,
+            onChoice = lock::setMinutes,
             enabled = possible,
         )
     }

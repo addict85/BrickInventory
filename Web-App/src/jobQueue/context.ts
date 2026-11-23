@@ -1,88 +1,88 @@
 /** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { Db } from '../../db/database';
-import { imSystem, mit, type Kontext } from '../infra/area';
+import { asSystem, bound, type Context } from '../infra/area';
 import type { JobsReadContract } from './readContract';
-import type { Faecher } from '../infra/cache';
+import type { Compartments } from '../infra/cache';
 import type { SettingsServices } from '../settings';
-import * as auftraege from './repository/jobs';
-import * as importStand from './repository/importStatus';
-import * as laufzustand from './repository/runState';
-import type { Uhr } from '../infra/clock';
-import type { Arten } from './kinds';
+import * as jobs from './repository/jobs';
+import * as importState from './repository/importStatus';
+import * as runState from './repository/runState';
+import type { Clock } from '../infra/clock';
+import type { Kinds } from './kinds';
 
 export interface JobsDependencies {
-  uhr: Uhr;
+  clock: Clock;
   db: Db;
-  faecher: Faecher;
-  einstellungen: SettingsServices;
+  compartments: Compartments;
+  settings: SettingsServices;
   /** The registered kinds; shared across all sets of this access. */
-  arten: Arten;
-  lesevertrag: JobsReadContract;
+  kinds: Kinds;
+  readContract: JobsReadContract;
 }
 
 /** The queue belongs to all accounts; whoever processes or manages it needs the system frame.
  * What a request reads about its own job runs under row security and filtered by account. */
-const WARTESCHLANGE = 'Job-Prozess und Einstellen: Aufträge aller Konten und solche ohne Konto';
+const QUEUE = 'Job-Prozess und Einstellen: Aufträge aller Konten und solche ohne Konto';
 const MANAGEMENT = 'Verwaltung: Übersicht über die Aufträge aller Konten';
 
-export const zugang = (db: Db, l: JobsReadContract) => ({
-  auftraege: {
-    addJobOne: imSystem(db, WARTESCHLANGE, auftraege.addJobOne),
-    addOwnJobOne: mit(db)(auftraege.addOwnJobOne),
-    addListAn: imSystem(db, WARTESCHLANGE, auftraege.addListAn),
-    belegeAuftrag: imSystem(db, WARTESCHLANGE, auftraege.belegeAuftrag),
-    rememberExclusive: imSystem(db, WARTESCHLANGE, auftraege.rememberExclusive),
-    lebenszeichen: imSystem(db, WARTESCHLANGE, auftraege.lebenszeichen),
-    belongsStill: imSystem(db, WARTESCHLANGE, auftraege.belongsStill),
-    writeProgress: imSystem(db, WARTESCHLANGE, auftraege.writeProgress),
-    setDone: imSystem(db, WARTESCHLANGE, auftraege.setDone),
-    setFailed: imSystem(db, WARTESCHLANGE, auftraege.setFailed),
-    setMoved: imSystem(db, WARTESCHLANGE, auftraege.setMoved),
-    giveBack: imSystem(db, WARTESCHLANGE, auftraege.giveBack),
-    cleanCompletedOn: imSystem(db, WARTESCHLANGE, auftraege.cleanCompletedOn),
-    liesPause: imSystem(db, WARTESCHLANGE, auftraege.liesPause),
-    pauseKind: imSystem(db, WARTESCHLANGE, auftraege.pauseKind),
-    deletePause: imSystem(db, WARTESCHLANGE, auftraege.deletePause),
-    setAborted: imSystem(db, WARTESCHLANGE, auftraege.setAborted),
-    placeAgainOne: imSystem(db, WARTESCHLANGE, auftraege.placeAgainOne),
-    emptyKind: imSystem(db, WARTESCHLANGE, auftraege.emptyKind),
-    makeDue: imSystem(db, WARTESCHLANGE, auftraege.makeDue),
-    statusNumbers: imSystem(db, MANAGEMENT, auftraege.statusNumbers),
-    accountRole: mit(l)(imSystem(db, MANAGEMENT, auftraege.accountRole)),
-    setDueDate: imSystem(db, WARTESCHLANGE, auftraege.setDueDate),
-    pullAppointmentBefore: imSystem(db, WARTESCHLANGE, auftraege.pullAppointmentBefore),
-    runningKind: imSystem(db, WARTESCHLANGE, auftraege.runningKind),
-    highestCounter: imSystem(db, WARTESCHLANGE, auftraege.highestCounter),
-    writeResubmission: imSystem(db, WARTESCHLANGE, auftraege.writeResubmission),
-    openDelete: imSystem(db, WARTESCHLANGE, auftraege.openDelete),
-    waitingTheKind: imSystem(db, WARTESCHLANGE, auftraege.waitingTheKind),
-    numbersTheKind: imSystem(db, WARTESCHLANGE, auftraege.numbersTheKind),
-    jobList: imSystem(db, MANAGEMENT, auftraege.jobList),
-    letzteJeArt: imSystem(db, MANAGEMENT, auftraege.letzteJeArt),
-    numbersJeKindAndStatus: imSystem(db, MANAGEMENT, auftraege.numbersJeKindAndStatus),
-    runningPauses: imSystem(db, WARTESCHLANGE, auftraege.runningPauses),
-    jobStatus: mit(db)(auftraege.jobStatus),
-    pullAppointmentsBefore: imSystem(db, WARTESCHLANGE, auftraege.pullAppointmentsBefore),
-    writeResult: imSystem(db, WARTESCHLANGE, auftraege.writeResult),
+export const access = (db: Db, l: JobsReadContract) => ({
+  jobs: {
+    addJobOne: asSystem(db, QUEUE, jobs.addJobOne),
+    addOwnJobOne: bound(db)(jobs.addOwnJobOne),
+    enqueueList: asSystem(db, QUEUE, jobs.enqueueList),
+    claimJob: asSystem(db, QUEUE, jobs.claimJob),
+    rememberExclusive: asSystem(db, QUEUE, jobs.rememberExclusive),
+    heartbeat: asSystem(db, QUEUE, jobs.heartbeat),
+    belongsStill: asSystem(db, QUEUE, jobs.belongsStill),
+    writeProgress: asSystem(db, QUEUE, jobs.writeProgress),
+    setDone: asSystem(db, QUEUE, jobs.setDone),
+    setFailed: asSystem(db, QUEUE, jobs.setFailed),
+    setMoved: asSystem(db, QUEUE, jobs.setMoved),
+    giveBack: asSystem(db, QUEUE, jobs.giveBack),
+    cleanCompletedOn: asSystem(db, QUEUE, jobs.cleanCompletedOn),
+    readPause: asSystem(db, QUEUE, jobs.readPause),
+    pauseKind: asSystem(db, QUEUE, jobs.pauseKind),
+    deletePause: asSystem(db, QUEUE, jobs.deletePause),
+    setAborted: asSystem(db, QUEUE, jobs.setAborted),
+    placeAgainOne: asSystem(db, QUEUE, jobs.placeAgainOne),
+    emptyKind: asSystem(db, QUEUE, jobs.emptyKind),
+    makeDue: asSystem(db, QUEUE, jobs.makeDue),
+    statusNumbers: asSystem(db, MANAGEMENT, jobs.statusNumbers),
+    accountRole: bound(l)(asSystem(db, MANAGEMENT, jobs.accountRole)),
+    setDueDate: asSystem(db, QUEUE, jobs.setDueDate),
+    pullAppointmentBefore: asSystem(db, QUEUE, jobs.pullAppointmentBefore),
+    runningKind: asSystem(db, QUEUE, jobs.runningKind),
+    highestCounter: asSystem(db, QUEUE, jobs.highestCounter),
+    writeResubmission: asSystem(db, QUEUE, jobs.writeResubmission),
+    openDelete: asSystem(db, QUEUE, jobs.openDelete),
+    waitingTheKind: asSystem(db, QUEUE, jobs.waitingTheKind),
+    numbersTheKind: asSystem(db, QUEUE, jobs.numbersTheKind),
+    jobList: asSystem(db, MANAGEMENT, jobs.jobList),
+    lastPerKind: asSystem(db, MANAGEMENT, jobs.lastPerKind),
+    countsByKindAndStatus: asSystem(db, MANAGEMENT, jobs.countsByKindAndStatus),
+    runningPauses: asSystem(db, QUEUE, jobs.runningPauses),
+    jobStatus: bound(db)(jobs.jobStatus),
+    pullAppointmentsBefore: asSystem(db, QUEUE, jobs.pullAppointmentsBefore),
+    writeResult: asSystem(db, QUEUE, jobs.writeResult),
   },
-  importStand: {
-    markOrphaned: mit(db)(importStand.markOrphaned),
-    importStand: mit(db)(importStand.importStand),
-    writeImportStatus: mit(db)(importStand.writeImportStatus),
-    changeImportStatus: mit(db)(importStand.changeImportStatus),
-    setRunFort: mit(db)(importStand.setRunFort),
+  importState: {
+    markOrphaned: bound(db)(importState.markOrphaned),
+    importState: bound(db)(importState.importState),
+    writeImportStatus: bound(db)(importState.writeImportStatus),
+    changeImportStatus: bound(db)(importState.changeImportStatus),
+    setRunProgress: bound(db)(importState.setRunProgress),
   },
-  laufzustand: {
-    liesZustand: mit(db)(laufzustand.liesZustand),
-    setzeZustand: mit(db)(laufzustand.setzeZustand),
-    deleteState: mit(db)(laufzustand.deleteState),
-    countState: mit(db)(laufzustand.countState),
+  runState: {
+    readState: bound(db)(runState.readState),
+    setState: bound(db)(runState.setState),
+    deleteState: bound(db)(runState.deleteState),
+    countState: bound(db)(runState.countState),
   },
-  eigene: {
-    ownRow: mit(db)(auftraege.ownRow),
-    countRunningRows: mit(db)(auftraege.countRunningRows),
-    deleteOwnRow: mit(db)(auftraege.deleteOwnRow),
-    deleteEndedRows: imSystem(db, 'Aufräumen über alle Konten', auftraege.deleteEndedRows),
+  ownRows: {
+    ownRow: bound(db)(jobs.ownRow),
+    countRunningRows: bound(db)(jobs.countRunningRows),
+    deleteOwnRow: bound(db)(jobs.deleteOwnRow),
+    deleteEndedRows: asSystem(db, 'Aufräumen über alle Konten', jobs.deleteEndedRows),
   },
 });
-export type JobsContext = Kontext<JobsDependencies, ReturnType<typeof zugang>>;
+export type JobsContext = Context<JobsDependencies, ReturnType<typeof access>>;

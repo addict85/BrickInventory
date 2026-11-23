@@ -1,0 +1,16 @@
+Gegenprobe: Der Start lässt Adresse und Name älterer Fassungen im Klartext stehen
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenVaultTest
+Rot: address and name lie only encrypted, old plaintexts are taken over at start
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -518,7 +518,6 @@
+                 prefs[a.secret] = device.encryptDetail(before, a.secret.name) ?: continue
+             }
+             a.old?.let { prefs.remove(it) }
+-            prefs.remove(a.clear)
+         }
+     }
+ 

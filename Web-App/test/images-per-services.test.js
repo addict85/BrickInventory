@@ -18,27 +18,27 @@ const _req = S.buildAndRequire();
 const { buildServices } = _req('startup/wiring.js');
 
 /** A set of services that records what was noted. */
-function satz() {
+function record() {
   const contexts = {};
   const d = buildServices(S.testAccess(), { contexts });
-  return { d, vorgemerkt: S.imageNotes(contexts.images).notes };
+  return { d, queued: S.imageNotes(contexts.images).notes };
 }
 
 test('a negative result only applies to its set of services', () => {
-  const a = satz().d,
-    b = satz().d;
+  const a = record().d,
+    b = record().d;
   a.images.rememberMissing('set:99901-1', 'HTTP 404 vom CDN');
   assert.equal(a.images.isKnownMissing('set:99901-1'), true);
   assert.equal(b.images.isKnownMissing('set:99901-1'), false);
 });
 
 test('every set remembers by itself what it reserved', () => {
-  const a = satz(),
-    b = satz();
+  const a = record(),
+    b = record();
   const url = 'https://cdn.rebrickable.com/media/sets/99902-1.jpg';
   a.d.images.imageOnceReserve(url, '99902-1');
   a.d.images.imageOnceReserve(url, '99902-1');
   b.d.images.imageOnceReserve(url, '99902-1');
-  assert.deepEqual(a.vorgemerkt, [[url, '99902-1']], 'innerhalb der Frist nur einmal');
-  assert.deepEqual(b.vorgemerkt, [[url, '99902-1']], 'der zweite Satz kennt die Vormerkung des ersten nicht');
+  assert.deepEqual(a.queued, [[url, '99902-1']], 'only once within the deadline');
+  assert.deepEqual(b.queued, [[url, '99902-1']], 'the second set does not know the reservation of the first');
 });

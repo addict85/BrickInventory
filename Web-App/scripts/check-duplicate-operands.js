@@ -16,20 +16,20 @@ const ALLOWED = new Map([
 /** @param {string} t */
 function tight(t) {
   let out = '',
-    grenze = null;
+    limit = null;
   for (let i = 0; i < t.length; i++) {
     // `const c = t[i]` would be `string|undefined` under noUncheckedIndexedAccess.
     // charAt() returns '' for an index outside — unreachable here,
     // but the type says so without a `!` being necessary.
     const c = t.charAt(i);
-    if (grenze) {
+    if (limit) {
       out += c;
       if (c === '\\' && i + 1 < t.length) {
         out += t[i + 1];
         i++;
-      } else if (c === grenze) grenze = null;
+      } else if (c === limit) limit = null;
     } else if (c === '"' || c === "'" || c === '`' || c === '/') {
-      grenze = c;
+      limit = c;
       out += c;
     } else if (!/\s/.test(c)) out += c;
   }
@@ -40,14 +40,14 @@ function tight(t) {
 /** @param {string} s @param {number} i */
 function links(s, i) {
   let j = i - 1,
-    tiefe = 0;
+    depth = 0;
   while (j >= 0) {
     const c = s[j];
-    if (c === ')' || c === ']' || c === '}') tiefe++;
+    if (c === ')' || c === ']' || c === '}') depth++;
     else if (c === '(' || c === '[' || c === '{') {
-      if (tiefe === 0) break;
-      tiefe--;
-    } else if (tiefe === 0 && (c === ',' || c === ';' || s.slice(j, j + 2) === '||' || s.slice(j, j + 2) === '&&'))
+      if (depth === 0) break;
+      depth--;
+    } else if (depth === 0 && (c === ',' || c === ';' || s.slice(j, j + 2) === '||' || s.slice(j, j + 2) === '&&'))
       break;
     j--;
   }
@@ -56,28 +56,28 @@ function links(s, i) {
 
 /** Expression right of position i. */
 /** @param {string} s @param {number} i */
-function rechts(s, i) {
+function right(s, i) {
   let j = i,
-    tiefe = 0;
+    depth = 0;
   while (j < s.length) {
     const c = s[j];
-    if (c === '(' || c === '[' || c === '{') tiefe++;
+    if (c === '(' || c === '[' || c === '{') depth++;
     else if (c === ')' || c === ']' || c === '}') {
-      if (tiefe === 0) break;
-      tiefe--;
-    } else if (tiefe === 0 && (c === ',' || c === ';' || s.slice(j, j + 2) === '||' || s.slice(j, j + 2) === '&&'))
+      if (depth === 0) break;
+      depth--;
+    } else if (depth === 0 && (c === ',' || c === ';' || s.slice(j, j + 2) === '||' || s.slice(j, j + 2) === '&&'))
       break;
     j++;
   }
   return s.slice(i, j);
 }
 
-/** @param {string} wurzel @param {string[]} extensions @param {string[]} aus */
-function dateien(wurzel, extensions, aus) {
+/** @param {string} root @param {string[]} extensions @param {string[]} from */
+function files(root, extensions, from) {
   /** @type {string[]} */
   const out = [];
   /** @param {string} d */
-  const lauf = d => {
+  const run = d => {
     let e;
     try {
       e = fs.readdirSync(d, { withFileTypes: true });
@@ -86,43 +86,43 @@ function dateien(wurzel, extensions, aus) {
     }
     for (const x of e) {
       const p = path.join(d, x.name);
-      if (aus.some(a => p.includes(a))) continue;
-      if (x.isDirectory()) lauf(p);
+      if (from.some(a => p.includes(a))) continue;
+      if (x.isDirectory()) run(p);
       else if (extensions.some(s => x.name.endsWith(s))) out.push(p);
     }
   };
-  lauf(wurzel);
+  run(root);
   return out;
 }
 
 // Only the web app: Kotlin source belongs in the Android suite, not in this one.
-const quellen = dateien(ROOT, ['.ts', '.js'], ['node_modules', `${path.sep}dist`, 'app.bundle', 'vendor', '.d.ts']);
-if (quellen.length < 300) {
+const sources = files(ROOT, ['.ts', '.js'], ['node_modules', `${path.sep}dist`, 'app.bundle', 'vendor', '.d.ts']);
+if (sources.length < 300) {
   console.error(
-    `❌ Nur ${quellen.length} Quelldateien gefunden — Pfad veraltet? ` +
+    `❌ Nur ${sources.length} Quelldateien gefunden — Pfad veraltet? ` +
       'Eine leere Suche wäre still grün, und genau davor warnt der Kopf dieser Datei.',
   );
   process.exit(1);
 }
 
-const fehler = [];
-let geprueft = 0;
-for (const p of quellen) {
+const error = [];
+let checked = 0;
+for (const p of sources) {
   const rel = path.relative(path.join(ROOT, '..'), p);
-  const zeilen = fs.readFileSync(p, 'utf8').split('\n');
-  for (let i = 0; i < zeilen.length; i++) {
-    const z = zeilen[i] ?? '';
+  const rows = fs.readFileSync(p, 'utf8').split('\n');
+  for (let i = 0; i < rows.length; i++) {
+    const z = rows[i] ?? '';
     const t = z.trim();
     if (!t || t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue;
 
     // A) the same operand on both sides of || or &&
     for (const m of z.matchAll(/\|\||&&/g)) {
-      geprueft++;
+      checked++;
       const l = tight(links(z, m.index));
-      const r = tight(rechts(z, m.index + 2));
+      const r = tight(right(z, m.index + 2));
       if (l.length >= 8 && l === r) {
-        const kurz = `${path.relative(ROOT, p)}:${l}`;
-        if (!ALLOWED.has(kurz)) fehler.push(`${rel}:${i + 1}  ${l} ${m[0]} ${l}`);
+        const short = `${path.relative(ROOT, p)}:${l}`;
+        if (!ALLOWED.has(short)) error.push(`${rel}:${i + 1}  ${l} ${m[0]} ${l}`);
         break;
       }
     }
@@ -130,20 +130,20 @@ for (const p of quellen) {
     // B) the same column twice in a SELECT list
     const sel = z.match(/SELECT\s+([A-Za-z_][\w\s,.]{4,200}?)\s+FROM\b/i);
     if (sel) {
-      geprueft++;
+      checked++;
       const sp = (sel[1] ?? '')
         .split(',')
         .map(x => (x.trim().split(/\s+/).pop() ?? '').split('.').pop() ?? '')
         .filter(x => x !== '');
-      const doppelt = sp.filter((x, k) => sp.indexOf(x) !== k);
-      if (doppelt.length) fehler.push(`${rel}:${i + 1}  SELECT … ${doppelt.join(', ')} zweimal`);
+      const duplicate = sp.filter((x, k) => sp.indexOf(x) !== k);
+      if (duplicate.length) error.push(`${rel}:${i + 1}  SELECT … ${duplicate.join(', ')} zweimal`);
     }
   }
 }
 
-if (fehler.length) {
+if (error.length) {
   console.error('❌ Doppelte Operanden:');
-  for (const f of fehler) {
+  for (const f of error) {
     console.error(
       `  ${f}\n     Derselbe Ausdruck zweimal ist entweder folgenlos — dann ist er ` +
         'irreführend — oder es war ein anderer gemeint. Beides gehört angesehen.',
@@ -152,6 +152,6 @@ if (fehler.length) {
   process.exit(1);
 }
 console.log(
-  `✅ Doppelte Operanden: ${quellen.length} Dateien, ${geprueft} Stellen geprüft, ` +
+  `✅ Doppelte Operanden: ${sources.length} Dateien, ${checked} Stellen geprüft, ` +
     `${ALLOWED.size} begründete Ausnahme(n).`,
 );

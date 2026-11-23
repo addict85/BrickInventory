@@ -22,17 +22,17 @@ import type { CollectionServices } from './collection';
 import type { SetsServices } from './sets';
 import type { PartsServices } from './parts';
 import type { ManagementServices } from './management';
-import * as bestandSicht from '../db/inventoryView';
-import * as bestandsmenge from '../db/stockQuantity';
-import * as haushaltSicht from '../db/householdView';
-import * as kontoSicht from '../db/accountView';
-import * as zugangSicht from '../db/accessView';
+import * as holdingView from '../db/inventoryView';
+import * as holdingQuantity from '../db/stockQuantity';
+import * as householdView from '../db/householdView';
+import * as accountView from '../db/accountView';
+import * as accessView from '../db/accessView';
 
 /** What lower areas read from tables of higher ones: each names in its read contract the shape
- * it needs and gets the SQL from here above the owner, not via import (docs/architektur.md). */
-export const LESEVERTRAG = { ...bestandSicht, ...bestandsmenge, ...haushaltSicht, ...kontoSicht, ...zugangSicht };
+ * it needs and gets the SQL from here above the owner, not via import (docs/architecture.md). */
+export const READ_CONTRACT = { ...holdingView, ...holdingQuantity, ...householdView, ...accountView, ...accessView };
 
-export interface Dienste {
+export interface Services {
   throttle: ThrottleServices;
   settings: SettingsServices;
   mail: MailServices;

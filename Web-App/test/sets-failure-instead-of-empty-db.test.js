@@ -19,36 +19,36 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
 /** Replace a built module in the require cache before the services pull it out. */
-function replace(rel, felder) {
+function replace(rel, fields) {
   const p = require.resolve(path.join(ROOT, 'dist', rel));
-  const echt = require(p);
-  require.cache[p].exports = Object.assign({}, echt, felder);
+  const original = require(p);
+  require.cache[p].exports = Object.assign({}, original, fields);
 }
 let rebrickable = 'gestoert';
-const stoerung = async () => {
+const outage = async () => {
   if (rebrickable === 'gestoert') throw new Error('Rebrickable antwortet nicht');
   return null;
 };
-replace('src/catalog/rebrickableCatalog.js', { alleTeileDesSets: stoerung });
-testSources(null, { getSetMinifigs: stoerung });
+replace('src/catalog/rebrickableCatalog.js', { allPartsOfSet: outage });
+testSources(null, { getSetMinifigs: outage });
 // The follow-up work: parts and figures succeed, two enrichments fail.
 const still = async () => {};
 replace('src/catalog/partsImport.js', { reloadBlNumbers: still });
 replace('src/sets/setContentImport.js', { importParts: still, importMinifigs: still });
-replace('src/catalog/instructionJob.js', { anleitungEinreihen: still });
+replace('src/catalog/instructionJob.js', { enqueueInstruction: still });
 replace('src/catalog/partsEnrichment.js', {
-  enrichSetParts: stoerung,
+  enrichSetParts: outage,
   enrichSetMinifigs: still,
-  downloadSetImages: stoerung,
+  downloadSetImages: outage,
 });
 
 test('result: value, substitute and reported failure', async () => {
-  const { versuche, valueOr } = _req('src/infra/result.js');
-  assert.deepEqual(await versuche('probe', Promise.resolve([])), { ok: true, wert: [] });
-  const r = await versuche('probe', async () => {
+  const { attempts, valueOr } = _req('src/infra/result.js');
+  assert.deepEqual(await attempts('probe', Promise.resolve([])), { ok: true, value: [] });
+  const r = await attempts('probe', async () => {
     throw new Error('weg');
   });
-  assert.deepEqual(r, { ok: false, fehler: { kontext: 'probe', grund: 'weg' } });
+  assert.deepEqual(r, { ok: false, error: { context: 'probe', reason: 'weg' } });
   assert.equal(valueOr(r, 'ersatz'), 'ersatz');
 });
 
@@ -66,9 +66,9 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
     assert.equal(r.source, 'quelle_gestoert');
     assert.match(r.error, /Rebrickable antwortet nicht/);
     rebrickable = 'leer';
-    const leer = await partListOfSets(require('./helpers/sources').testContext('sets'), SN, async () => {});
-    assert.equal(leer.source, 'not_found');
-    assert.equal(leer.error, undefined);
+    const empty = await partListOfSets(require('./helpers/sources').testContext('sets'), SN, async () => {});
+    assert.equal(empty.source, 'not_found');
+    assert.equal(empty.error, undefined);
   });
 
   await t.test('… also for the minifigures', async () => {
@@ -83,17 +83,17 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
     rebrickable = 'gestoert';
     const states = [];
     // Via the registered kind, as the worker executes it.
-    const nacharbeit = require('./helpers/sources')
+    const rework = require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
-      .find(a => a.art === 'nacharbeit');
+      .find(a => a.kind === 'rework');
     // With catalog and image: the follow-up work then asks no network for the master, only the steps after it.
     await require('./helpers/inventory').catalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
     try {
-      await nacharbeit.ausfuehren(
-        { set_number: SN, user_id: 0, art: 'zweit' },
+      await rework.run(
+        { set_number: SN, user_id: 0, kind: 'zweit' },
         {
-          fortschritt: async f => {
+          progress: async f => {
             states.push(f);
             return true;
           },
@@ -103,7 +103,7 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
       await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
     }
     assert.deepEqual(
-      states.map(f => f.ohne),
+      states.map(f => f.without),
       [['teile-anreichern', 'bilder']],
     );
   });

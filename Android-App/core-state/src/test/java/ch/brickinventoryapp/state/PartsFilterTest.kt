@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.model.domain.Kontoauswahl
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetFilesRepository
+import ch.brickinventoryapp.model.domain.AccountSelection
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.testSetFilesRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /** A test server for [block], shut down afterwards. */
-private fun <T> withServer(block: (PfadServer) -> T): T {
-    val paths = PfadServer()
+private fun <T> withServer(block: (PathServer) -> T): T {
+    val paths = PathServer()
     try { return block(paths) } finally { paths.server.shutdown() }
 }
 
@@ -42,12 +42,12 @@ class PartsFilterTest {
     fun `the app calls both filter lists with the view`() = withServer { paths ->
         // Both with `accounts`: otherwise they would count differently in the household than the
         // list below them — exactly the bug the server had here.
-        val teile = testPartsRepository(TestApi.fuer(paths.server))
+        val parts = testPartsRepository(TestApi.forTarget(paths.server))
         runBlocking {
-            teile.getPartsFilterColors(konten = Kontoauswahl.Eigene)
-            teile.getPartsCategories(konten = Kontoauswahl.Eigene)
+            parts.getPartsFilterColors(accounts = AccountSelection.Own)
+            parts.getPartsCategories(accounts = AccountSelection.Own)
         }
-        assertEquals(listOf("GET /api/v1/parts/colors?accounts=own", "GET /api/v1/parts/categories?accounts=own"),
+        assertEquals(listOf("GET /api/v2/parts/colors?accounts=own", "GET /api/v2/parts/categories?accounts=own"),
             paths.requests.toList())
     }
 }
@@ -59,7 +59,7 @@ class CsvAbortTest {
 
     @Test
     fun `the app calls the abort address`() = withServer { paths ->
-        runBlocking { testSetFilesRepository(TestApi.fuer(paths.server)).cancelCsvImport() }
-        assertEquals(listOf("POST /api/v1/sets/import/csv/cancel"), paths.requests.toList())
+        runBlocking { testSetFilesRepository(TestApi.forTarget(paths.server)).cancelCsvImport() }
+        assertEquals(listOf("POST /api/v2/sets/import/csv/cancel"), paths.requests.toList())
     }
 }

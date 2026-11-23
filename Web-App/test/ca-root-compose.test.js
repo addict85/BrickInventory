@@ -23,52 +23,52 @@ const ROOT = path.join(__dirname, '..');
 const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 
 /** The lines of a service without comments (like test/compose-haertung.test.js). */
-function dienst(name) {
-  const zeilen = compose.split('\n');
-  const start = zeilen.findIndex(l => new RegExp(`^  ${name}:\\s*$`).test(l));
+function serviceFn(name) {
+  const lines = compose.split('\n');
+  const start = lines.findIndex(l => new RegExp(`^  ${name}:\\s*$`).test(l));
   const block = [];
-  for (let i = start + 1; i < zeilen.length; i++) {
-    const l = zeilen[i];
+  for (let i = start + 1; i < lines.length; i++) {
+    const l = lines[i];
     if (/^\s*#/.test(l)) continue;
     if (/^ {2}\S/.test(l) || /^\S/.test(l)) break;
     block.push(l);
   }
   return block;
 }
-const einhaengungen = name =>
-  dienst(name)
+const mountings = name =>
+  serviceFn(name)
     .map(l => l.match(/^\s+-\s+([^\s:]+):(\/\S*)\s*$/))
     .filter(Boolean)
-    .map(m => ({ quelle: m[1], ziel: m[2].replace(/:ro$/, ''), readOnly: m[2].endsWith(':ro') }));
+    .map(m => ({ source: m[1], target: m[2].replace(/:ro$/, ''), readOnly: m[2].endsWith(':ro') }));
 
 /** The script behind Caddy's `command: [sh, -c, |]`, as Compose passes it ($$ → $). */
 function caddyScript() {
-  const z = dienst('caddy');
+  const z = serviceFn('caddy');
   const i = z.findIndex(l => /^\s+- \|\s*$/.test(l));
-  const rumpf = [];
+  const body = [];
   for (const l of z.slice(i + 1)) {
     if (!/^ {8}/.test(l)) break;
-    rumpf.push(l.slice(8));
+    body.push(l.slice(8));
   }
-  return rumpf.join('\n').replace(/\$\$/g, '$');
+  return body.join('\n').replace(/\$\$/g, '$');
 }
 
 test("no service except Caddy mounts Caddy's data, the app only the certificate", () => {
-  const namen = [...compose.matchAll(/^ {2}([a-z-]+):\s*$/gm)].map(m => m[1]);
-  assert.ok(namen.includes('app') && namen.includes('caddy'), `Dienste nicht gefunden: ${namen}`);
+  const names = [...compose.matchAll(/^ {2}([a-z-]+):\s*$/gm)].map(m => m[1]);
+  assert.ok(names.includes('app') && names.includes('caddy'), `Services not found: ${names}`);
   // caddy-rechte hands Caddy its folders and has no network (compose-haertung).
-  for (const n of namen.filter(n => n !== 'caddy' && n !== 'caddy-rechte')) {
+  for (const n of names.filter(n => n !== 'caddy' && n !== 'caddy-rechte')) {
     assert.deepEqual(
-      einhaengungen(n).filter(e => e.quelle.startsWith('./caddy')),
+      mountings(n).filter(e => e.source.startsWith('./caddy')),
       [],
-      `${n} sieht Caddys Daten`,
+      `${n} sees Caddy’s data`,
     );
   }
-  const ca = einhaengungen('app').find(e => e.quelle === 'ca-wurzel');
-  assert.deepEqual(ca, { quelle: 'ca-wurzel', ziel: '/caddy-ca', readOnly: true });
-  assert.ok(dienst('app').some(l => /^\s+CA_ZERTIFIKAT:\s*\/caddy-ca\/root\.crt\s*$/.test(l)));
-  assert.ok(einhaengungen('caddy').some(e => e.quelle === 'ca-wurzel' && e.ziel === '/ca-wurzel' && !e.readOnly));
-  assert.match(compose, /^volumes:\n(?:\s*#.*\n)*\s+ca-wurzel:\s*$/m, 'das Volume ca-wurzel ist nicht angelegt');
+  const ca = mountings('app').find(e => e.source === 'ca-wurzel');
+  assert.deepEqual(ca, { source: 'ca-wurzel', target: '/caddy-ca', readOnly: true });
+  assert.ok(serviceFn('app').some(l => /^\s+CA_CERTIFICATE:\s*\/caddy-ca\/root\.crt\s*$/.test(l)));
+  assert.ok(mountings('caddy').some(e => e.source === 'ca-wurzel' && e.target === '/ca-wurzel' && !e.readOnly));
+  assert.match(compose, /^volumes:\n(?:\s*#.*\n)*\s+ca-wurzel:\s*$/m, 'the volume ca-wurzel is not created');
 });
 
 test('the loop only copies root.crt, even if Caddy creates the CA only later', async t => {
@@ -77,7 +77,7 @@ test('the loop only copies root.crt, even if Caddy creates the CA only later', a
     vol = path.join(tmp, 'vol');
   fs.mkdirSync(vol);
   const script = caddyScript();
-  assert.match(script, /exec caddy run /, 'Caddy startet nicht mehr am Ende des Skripts');
+  assert.match(script, /exec caddy run /, 'Caddy no longer starts at the end of the script');
   const rerouted = script
     .replaceAll('/data/', `${tmp}/data/`)
     .replaceAll('/ca-wurzel', vol)
@@ -97,7 +97,7 @@ test('the loop only copies root.crt, even if Caddy creates the CA only later', a
   });
 
   await new Promise(r => setTimeout(r, 500));
-  assert.deepEqual(fs.readdirSync(vol), [], 'ohne CA nichts im Volume');
+  assert.deepEqual(fs.readdirSync(vol), [], 'without a CA nothing in the volume');
   // As Caddy at first start: key and certificate, readable only by root.
   fs.mkdirSync(ca, { recursive: true });
   fs.writeFileSync(path.join(ca, 'root.key'), '-----BEGIN EC PRIVATE KEY-----\ngeheim\n', { mode: 0o600 });
@@ -105,5 +105,5 @@ test('the loop only copies root.crt, even if Caddy creates the CA only later', a
   for (let i = 0; i < 80 && !fs.existsSync(path.join(vol, 'root.crt')); i++) await new Promise(r => setTimeout(r, 100));
   assert.deepEqual(fs.readdirSync(vol), ['root.crt']);
   assert.equal(fs.readFileSync(path.join(vol, 'root.crt'), 'utf8'), '-----BEGIN CERTIFICATE-----\nwurzel\n');
-  assert.equal(fs.statSync(path.join(vol, 'root.crt')).mode & 0o777, 0o644, 'die App (brickinv) kann es nicht lesen');
+  assert.equal(fs.statSync(path.join(vol, 'root.crt')).mode & 0o777, 0o644, 'the app (brickinv) cannot read it');
 });

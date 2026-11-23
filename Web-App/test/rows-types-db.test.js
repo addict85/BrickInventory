@@ -46,7 +46,7 @@ const PROBE = {
 };
 
 /** @param {unknown} v */
-function art(v) {
+function kind(v) {
   if (v instanceof Date) return 'Date';
   if (Buffer.isBuffer(v)) return 'Buffer';
   return typeof v === 'object' ? 'unknown' : typeof v;
@@ -63,10 +63,10 @@ test('row types against the database', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const db = testAccess();
   t.after(() => db.pool.end());
-  const schema = Z.tabellen(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema-stand.sql'), 'utf8'));
+  const schema = Z.tablesOf(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema-snapshot.sql'), 'utf8'));
 
   await t.test('every table and column including NULL is like this in the database', async () => {
-    const zeilen = await db.all(
+    const lines = await db.all(
       // pg_attribute instead of information_schema: the latter only shows columns that the runtime role may read.
       `SELECT c.relname AS t, a.attname AS s, NOT a.attnotnull AS n
          FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace ns ON ns.oid = c.relnamespace
@@ -74,19 +74,19 @@ test('row types against the database', { concurrency: 1 }, async t => {
           AND c.relname = ANY($1)`,
       [[...schema.keys()]],
     );
-    const echt = zeilen.map((/** @type {any} */ z) => `${z.t}.${z.s}${z.n ? '?' : ''}`);
-    const erzeugt = [...schema].flatMap(([t, sp]) => sp.map(s => `${t}.${s.name}${s.null ? '?' : ''}`));
-    assert.ok(erzeugt.length > 300, `nur ${erzeugt.length} Spalten gelesen`);
-    assert.deepEqual([...erzeugt].sort(), [...echt].sort());
+    const original = lines.map((/** @type {any} */ z) => `${z.t}.${z.s}${z.n ? '?' : ''}`);
+    const generated = [...schema].flatMap(([t, sp]) => sp.map(s => `${t}.${s.name}${s.null ? '?' : ''}`));
+    assert.ok(generated.length > 300, `only ${generated.length} columns read`);
+    assert.deepEqual([...generated].sort(), [...original].sort());
   });
 
   await t.test('every column type arrives as db/rows.ts promises', async () => {
-    const typen = new Set([...schema.values()].flatMap(sp => sp.map(s => s.typ)));
-    const fehlt = [...typen].filter(x => !(x in PROBE));
-    assert.deepEqual(fehlt, [], 'Probe für neue Spaltentypen nachtragen');
-    for (const typ of typen) {
-      const z = await db.get(`SELECT (${PROBE[/** @type {keyof typeof PROBE} */ (typ)]})::${typ} AS v`);
-      assert.equal(art(z.v), Z.jsType(typ), `${typ}: erwartet ${Z.jsType(typ)}, kam ${art(z.v)}`);
+    const types = new Set([...schema.values()].flatMap(sp => sp.map(s => s.type)));
+    const missing = [...types].filter(x => !(x in PROBE));
+    assert.deepEqual(missing, [], 'add a probe for new column types');
+    for (const typeName of types) {
+      const z = await db.get(`SELECT (${PROBE[/** @type {keyof typeof PROBE} */ (typeName)]})::${typeName} AS v`);
+      assert.equal(kind(z.v), Z.jsType(typeName), `${typeName}: expected ${Z.jsType(typeName)}, came ${kind(z.v)}`);
     }
   });
 });

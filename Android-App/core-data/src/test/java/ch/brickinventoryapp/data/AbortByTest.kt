@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -11,24 +11,24 @@ import java.io.IOException
 /**
  * Whoever swallows errors does not swallow the cancellation: a cancelled caller would
  * otherwise keep running as if nothing had happened. The common helper is checked; that nobody
- * bypasses it with a broad catch is held by QuelltextRatscheTest.
+ * bypasses it with a broad catch is held by SourceRatchetTest.
  *
  * Counter-checks:
- *   fang-schluckt-abbruch   fangeAusserAbbruch without cancellation branch → red “fangeAusserAbbruch passes …”
- *   start-schluckt-abbruch  a cleanup step with `catch (_: Exception)` → red in QuelltextRatscheTest
+ *   catch-swallows-cancellation   catchUnlessCancelled without cancellation branch → red “catchUnlessCancelled passes …”
+ *   start-swallows-cancellation  a cleanup step with `catch (_: Exception)` → red in SourceRatchetTest
  */
 class AbortByTest {
 
-    private suspend fun brichtAb(block: suspend () -> Unit): Boolean =
+    private suspend fun aborts(block: suspend () -> Unit): Boolean =
         try { block(); false } catch (_: CancellationException) { true }
 
     @Test
-    fun `fangeAusserAbbruch passes the cancellation on and catches only exceptions`() = runTest {
-        assertTrue("fangeAusserAbbruch hat das Abbrechen verschluckt",
-            brichtAb { fangeAusserAbbruch { throw CancellationException("weg") } })
-        assertTrue(fangeAusserAbbruch { throw IOException("weg") }.isFailure)
-        assertEquals(3, fangeAusserAbbruch { 3 }.getOrNull())
-        assertTrue("ein Error darf nicht gefangen werden",
-            runCatching { fangeAusserAbbruch { throw AssertionError("error") } }.exceptionOrNull() is AssertionError)
+    fun `catchUnlessCancelled passes the cancellation on and catches only exceptions`() = runTest {
+        assertTrue("catchUnlessCancelled swallowed the cancellation",
+            aborts { catchUnlessCancelled { throw CancellationException("weg") } })
+        assertTrue(catchUnlessCancelled { throw IOException("weg") }.isFailure)
+        assertEquals(3, catchUnlessCancelled { 3 }.getOrNull())
+        assertTrue("an Error must not be caught",
+            runCatching { catchUnlessCancelled { throw AssertionError("error") } }.exceptionOrNull() is AssertionError)
     }
 }

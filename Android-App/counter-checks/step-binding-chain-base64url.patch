@@ -1,0 +1,17 @@
+Gegenprobe: Die Zertifikate der Kette gehen im URL-Alphabet statt in Base64 zum Server
+Modul: core-data
+Test: ch.brickinventoryapp.data.StepBindingTest
+Rot: the chain goes to the server as Base64 per certificate
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/StepBindingImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/StepBindingImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/StepBindingImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/StepBindingImpl.kt
+@@ -48,7 +48,7 @@
+ 
+     /** The server's sentence only on its refusal: a network error after the sign-in is not worth a message. */
+     override suspend fun depositChain(chain: List<ByteArray>): StepResponse {
+-        val request = DeviceKeyRequest(chain = chain.map { Base64.getEncoder().encodeToString(it) })
++        val request = DeviceKeyRequest(chain = chain.map { Base64.getUrlEncoder().encodeToString(it) })
+         return when (val r = safeCall { api.depositChain(request) }) {
+             is Outcome.Success -> StepResponse.Free
+             is Outcome.Failure -> StepResponse.Rejected(if (r is Outcome.Failure.Server) r.message.ifBlank { null } else null)

@@ -38,24 +38,24 @@ test('acquisition and inventory', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const erfassung = (tx, menge = 1) =>
+  const acquisition = (tx, quantity = 1) =>
     tx.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1, $2, $3, 'N')`, [
       uid,
       SET,
-      menge,
+      quantity,
     ]);
 
   await t.test('an acquisition without an inventory row fails at COMMIT', async () => {
     await assert.rejects(
-      db.transaction(tx => erfassung(tx)),
-      /set_acquisitions_bestand_fkey/,
+      db.transaction(tx => acquisition(tx)),
+      /set_acquisitions_holding_fkey/,
     );
     assert.equal((await db.get('SELECT count(*)::int AS n FROM set_acquisitions WHERE user_id = $1', [uid])).n, 0);
   });
 
   await t.test('within a transaction the acquisition may come before the inventory', async () => {
     await db.transaction(async tx => {
-      await erfassung(tx);
+      await acquisition(tx);
       await tx.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);
     });
     assert.equal((await db.get('SELECT count(*)::int AS n FROM set_acquisitions WHERE user_id = $1', [uid])).n, 1);
@@ -63,22 +63,22 @@ test('acquisition and inventory', { concurrency: 1 }, async t => {
 
   await t.test('quantity zero or unknown condition are rejected', async () => {
     await assert.rejects(
-      db.transaction(tx => erfassung(tx, 0)),
-      /set_acquisitions_menge_positiv/,
+      db.transaction(tx => acquisition(tx, 0)),
+      /set_acquisitions_quantity_positive/,
     );
     await assert.rejects(
       db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1, $2, 1, 'X')`, [
         uid,
         SET,
       ]),
-      /set_acquisitions_zustand/,
+      /set_acquisitions_condition/,
     );
   });
 
   await t.test('deleting the inventory while acquisitions exist fails', async () => {
     await assert.rejects(
       db.run('DELETE FROM sets WHERE user_id = $1 AND set_number = $2', [uid, SET]),
-      /set_acquisitions_bestand_fkey/,
+      /set_acquisitions_holding_fkey/,
     );
   });
 });

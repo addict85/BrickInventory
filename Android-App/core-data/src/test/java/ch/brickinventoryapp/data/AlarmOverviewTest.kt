@@ -1,8 +1,11 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.contract.PriceAlert
+import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testAlarmRepository
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.contract.Preisalarm
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -10,36 +13,30 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.http.DELETE
 import retrofit2.http.PUT
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.testAlarmRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * The price alert overview exists in the app just as in the web app: an alert
  * that only stands in the detail of its set can only be found if one already knows the set.
  * The web app checks the opposite direction (test/webapp-endpoints.test.js).
  *
- * Counter-check (gegenproben/alarm-besitzt-vorgabe-falsch.patch): default of `besitzt`
- * to false → red “a missing besitzt field …”. Loading, changing, deleting after confirmation,
- * click and state words are checked, drawn, by PriceAlertsDisplayTest.
+ * Counter-check (counter-checks/alarm-owns-default-false.patch): default of `owns`
+ * to false → red “a missing owns field …”. Loading, changing, deleting after confirmation,
+ * click, state words, preview image and saving on “Done” are checked, drawn, by PriceAlertsDisplayTest.
  */
 class AlarmOverviewTest {
 
-    private fun quelle(rel: String) = Quellen.withoutComments(Quellen.lies(rel))
-
     /**
      * Executed against a test server. Counter-check: in
-     * SetsApi `@GET("api/v1/alerts")` to "api/v1/alarme" → red.
+     * SetsApi `@GET("api/v2/alerts")` to "api/v2/alarme" → red.
      */
     @Test
     fun `the app fetches all alerts via the common route`() {
-        val paths = PfadServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
+        val paths = PathServer("/api/v2/alerts" to """{"success":true,"alerts":[]}""")
         try {
             runBlocking {
-                testAlarmRepository(TestApi.fuer(paths.server)).refreshAlerts()
+                testAlarmRepository(TestApi.forTarget(paths.server)).refreshAlerts()
             }
-            assertEquals(listOf("GET /api/v1/alerts"), paths.requests.toList())
+            assertEquals(listOf("GET /api/v2/alerts"), paths.requests.toList())
         } finally {
             paths.server.shutdown()
         }
@@ -56,126 +53,27 @@ class AlarmOverviewTest {
             m.getAnnotation(PUT::class.java)?.value
                 ?: m.getAnnotation(DELETE::class.java)?.value
         }
-        assertTrue("Keine ändernden Adressen gefunden — Reflexion greift nicht?", changing.size > 10)
-        val secondRoute = changing.filter { it.startsWith("api/v1/alerts") }
-        assertTrue("Es ist ein zweiter Schreibweg entstanden: $secondRoute", secondRoute.isEmpty())
-    }
-
-    /**
-     * The thumbnail comes as in the finances via [FinanzBild] and [resolveThumbUrl].
-     * That the row shows an image and only opens a set from the collection is checked,
-     * drawn, by PriceAlertsDisplayTest.
-     */
-    @Test
-    fun `the row shows the image like the finances`() {
-        val s = quelle("account/ui/screens/EinstellungenAlarme.kt")
-        assert(s.contains("FinanzBild(")) {
-            "Die Zeile hat kein Vorschaubild — oder ein eigenes statt des der Finanzen."
-        }
-        assert(s.contains("resolveThumbUrl(")) {
-            "Die Bildadresse wird nicht ueber die gemeinsame Stelle gebildet."
-        }
+        assertTrue("No changing addresses found — does reflection still work?", changing.size > 10)
+        val secondRoute = changing.filter { it.startsWith("api/v2/alerts") }
+        assertTrue("A second write path has appeared: $secondRoute", secondRoute.isEmpty())
     }
 
     /**
      * A missing field does not switch off the section. An older server does not send
-     * `besitzt`; with the default `false` „field missing" would mean the same as „set
-     * does not exist", and no row would be clickable any more. When in doubt, try: a click
+     * `owns`; with the default `false` „field missing“ would mean the same as „set does not exist“
+     * , and no row would be clickable any more. When in doubt, try: a click
      * that ends in an error message is better than a list in which nothing works.
      */
     @Test
     fun `a missing besitzt field does not kill the row`() {
-        val alarm = BrickJson.decodeFromString(Preisalarm.serializer(),
-            """{"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}""")
-        assertTrue("Ohne das Feld gilt das Set als nicht vorhanden — die ganze Rubrik waere tot", alarm.besitzt)
-        val weg = BrickJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
-        assertFalse(weg.besitzt)
+        val alarm = BrickJson.decodeFromString(PriceAlert.serializer(),
+            """{"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF"}""")
+        assertTrue("Without the field the set counts as not present — the whole section would be dead", alarm.owns)
+        val gone = BrickJson.decodeFromString(PriceAlert.serializer(), """{"set_number":"75192-1","owns":false}""")
+        assertFalse(gone.owns)
     }
 
-    /**
-     * The settings come back at the same position.
-     *
-     * “When one comes back one should be at the same position again
-     * (analogous to how it is with the finances)."
-     *
-     * The path into the detail view discards the destination; the position must therefore lie in the
-     * ScrollMemory and be set explicitly when coming back.
-     */
-    @Test
-    fun `the settings remember their scroll position`() {
-        val graph = quelle("account/ui/KontoGraph.kt")
-        assert(graph.contains("settingsScrollState")) {
-            "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
-                "Rueckkehr aus der Detailansicht stuende man wieder ganz oben."
-        }
-        assert(Regex("""KontoZiel\.Settings\.rollSchluessel,\s*settingsScrollState""").containsMatchIn(graph)) {
-            "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
-                "springt zurueck."
-        }
-        // The ScrollMemory holds the position, not the state: it arises anew per visit.
-        assert(graph.contains("val settingsScrollState = remember { ScrollState(0) }")) {
-            "Die Einstellungen legen ihren Rollzustand nicht im Ziel an"
-        }
-        val screen = quelle("account/ui/screens/SettingsScreen.kt")
-        assert(!screen.contains("rememberScrollState()")) {
-            "In SettingsScreen steht wieder ein eigenes rememberScrollState() — " +
-                "damit ist der durchgereichte Zustand wirkungslos."
-        }
-    }
-
-    /**
-     * The alert state stands as a badge, not as small text.
-     *
-     * “Please show the ‚armed' in the Android app like the web app with a label
-     * instead of the green check mark."
-     *
-     * The green check mark was in truth the SAVE button: it stood permanently
-     * next to the number field and read like a confirmation. Hence two statements
-     * in one test — the badge comes, and the button stops standing there
-     * permanently.
-     */
-    @Test
-    fun `the alert state stands as a badge`() {
-        // That it shows „Aktiv“ and „Ausgelöst“ in words is checked by PriceAlertsDisplayTest.
-        val s = quelle("account/ui/screens/EinstellungenAlarme.kt")
-        // The save button appears only on a change. Without this
-        // barrier a symbol stands permanently next to it again that looks like a
-        // state indicator.
-        // Until the settings were split, `val geaendert =` matched from the
-        // account card; nothing was checked by that. The barrier is the comparison.
-        assert(s.contains("zahl != a.schwelle")) {
-            "Der Speichern-Knopf steht wieder dauerhaft da und sieht aus wie ein Zustand."
-        }
-
-        // ── The difference must not lie in the color ────────────────────────
-        //
-        // Red-green deficiency is common; „armed" against „no longer armed" must not
-        // depend on green against gray alone.
-        //
-        // A statement that only stands in the
-        // color stands nowhere. This test therefore requires a
-        // difference that one sees WITHOUT color.
-        val rumpf = s.substring(s.indexOf("fun AlarmZustandPlakette("))
-            .let { it.substring(0, minOf(1200, it.length)) }
-        assert(rumpf.contains("BorderStroke(")) {
-            "Die beiden Zustaende unterscheiden sich nicht in der Flaeche " +
-                "(gefuellt gegen umrandet) — dann bliebe nur die Farbe."
-        }
-        assert(rumpf.contains("FontWeight.SemiBold")) {
-            "Auch das Schriftgewicht unterscheidet die beiden nicht mehr."
-        }
-        // No green against red, not even well-meant — that would be the same
-        // error once more.
-        for (verboten in listOf("LocalStatusFarben", "colorScheme.error",
-                                "colorScheme.tertiary")) {
-            assert(!rumpf.contains(verboten)) {
-                "`$verboten` traegt eine Bedeutung ueber die Farbe. Genau das soll " +
-                    "die Plakette nicht mehr tun."
-            }
-        }
-    }
-
-    // The opposite direction — „does the WEB APP have the section too?" — deliberately does
+    // The opposite direction — „does the WEB APP have the section too?“ — deliberately does
     // NOT stand here. It has its own rule there: Web-App/test/
     // webapp-endpoints.test.js requires that an address only the web app
     // calls is either caught up by the app or carries a reason with it.

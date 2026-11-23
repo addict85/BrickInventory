@@ -2,24 +2,21 @@
 import { tokenDigest, type TokenScope } from './deviceToken';
 import type { AccountContext } from './context';
 
-/** Fixed upper bound from login; the swap inherits it (putSuccessorAn), the app then logs out. */
-export const APP_MAX_DURATION_DAYS = 180;
-
 /** The label appears in the device list; without a limit it could hold arbitrarily long lines. */
 const LABEL_MAX = 100;
 
-export function tokenLabel(roh: unknown, vorgabe: string): string {
-  const text = typeof roh === 'string' ? roh.trim() : '';
-  return text ? Array.from(text).slice(0, LABEL_MAX).join('') : vorgabe;
+export function tokenLabel(raw: unknown, defaultValue: string): string {
+  const text = typeof raw === 'string' ? raw.trim() : '';
+  return text ? Array.from(text).slice(0, LABEL_MAX).join('') : defaultValue;
 }
 
-export function tokenScope(roh: unknown): TokenScope {
-  return roh === 'voll' ? 'voll' : 'app';
+export function tokenScope(raw: unknown): TokenScope {
+  return raw === 'voll' ? 'voll' : 'app';
 }
 
 /** `expires_at` is the earlier of the two deadlines, `null` only for "unlimited". */
-export async function tokenDetails(k: AccountContext, klartext: string) {
-  const z = await k.konten.tokenStand(tokenDigest(klartext));
+export async function tokenDetails(k: AccountContext, plaintext: string) {
+  const z = await k.accounts.tokenState(tokenDigest(plaintext));
   return z
     ? {
         scope: z.scope,

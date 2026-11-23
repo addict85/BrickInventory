@@ -38,8 +38,8 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer, portOf } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
-const { openUi, reiter, warte } = require('./helpers/ui');
-const { bis } = require('./helpers/time');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
+const { until } = require('./helpers/time');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -53,23 +53,23 @@ let uid = 0;
 
 test('hardening against the database', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_v`]]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', ['%203.0.113.%']);
   };
-  await aufraeumen();
-  const anlegen = async (n, admin) =>
+  await cleanUp();
+  const create = async (n, admin) =>
     (
       await db.get(
         `INSERT INTO users (username, password_hash, is_active, email_verified, is_admin) VALUES ($1,$2,true,true,$3) RETURNING id`,
         [n, bcrypt.hashSync(PASS, 4), admin],
       )
     ).id;
-  uid = await anlegen(NAME, false);
-  const verwalter = await anlegen(`${NAME}_v`, true);
-  await adminWithFactor(_req, verwalter);
+  uid = await create(NAME, false);
+  const adminUser = await create(`${NAME}_v`, true);
+  await adminWithFactor(_req, adminUser);
   t.after(async () => {
-    await aufraeumen().catch(() => {});
+    await cleanUp().catch(() => {});
   });
 
   await t.test('the session ID changes on login', async () => {
@@ -81,39 +81,40 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
       req.session.visit = 1;
       res.json({});
     });
-    app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+    app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+    app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
     const srv = app.listen(0);
     t.after(() => new Promise(r => srv.close(r)));
     const base = `http://127.0.0.1:${srv.address().port}`;
     const keks = r => (r.headers.get('set-cookie') || '').split(';')[0];
     const alt = keks(await fetch(`${base}/vorher`));
-    assert.match(alt, /^connect\.sid=/, 'Vorbedingung: eine Sitzung vor der Anmeldung');
-    const login = await fetch(`${base}/api/v1/auth/login`, {
+    assert.match(alt, /^connect\.sid=/, 'Precondition: a session before the sign-in');
+    const login = await fetch(`${base}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: alt },
-      body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+      body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
     });
     assert.equal(login.status, 200, await login.text());
-    const neu = keks(login);
-    assert.match(neu, /^connect\.sid=/, 'die Anmeldung setzt kein Cookie');
-    assert.notEqual(neu, alt, 'die Sitzungs-ID von vor der Anmeldung gilt weiter');
-    const ich = async c => (await (await fetch(`${base}/api/v1/auth/me`, { headers: { cookie: c } })).json()).loggedIn;
-    assert.equal(await ich(neu), true);
-    assert.equal(await ich(alt), false, 'die alte ID ist angemeldet');
+    const fresh = keks(login);
+    assert.match(fresh, /^connect\.sid=/, 'the sign-in sets no cookie');
+    assert.notEqual(fresh, alt, 'the session ID from before the sign-in stays valid');
+    const ich = async c => (await (await fetch(`${base}/api/v2/auth/me`, { headers: { cookie: c } })).json()).loggedIn;
+    assert.equal(await ich(fresh), true);
+    assert.equal(await ich(alt), false, 'the old ID is signed in');
   });
 
   await t.test('login counter: a second process sees the lock', async () => {
     const IP = '203.0.113.7';
     const a = _req('src/account/loginLimiter.js');
-    assert.equal(await a.loginAllowed(IP, COUNTER), null, 'Vorbedingung: frei');
+    assert.equal(await a.loginAllowed(IP, COUNTER), null, 'Precondition: free');
     for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.loginFailed(IP, COUNTER);
     // A freshly loaded module has empty memory, like a second worker process.
-    const datei = path.join(ROOT, 'dist', 'src', 'account', 'loginLimiter.js');
-    delete require.cache[datei];
-    const b = require(datei);
-    assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
-    const konto = require('./helpers/sources').testArea('account');
-    assert.equal((await b.loginAllowed(konto, IP, COUNTER))?.code, 'zu_viele_fehlversuche');
+    const file = path.join(ROOT, 'dist', 'src', 'account', 'loginLimiter.js');
+    delete require.cache[file];
+    const b = require(file);
+    assert.notEqual(a, b, 'Precondition: two module instances');
+    const account = require('./helpers/sources').testArea('account');
+    assert.equal((await b.loginAllowed(account, IP, COUNTER))?.code, 'too_many_failed_attempts');
   });
 
   await t.test('login counter: without a database the memory throttles', async () => {
@@ -123,9 +124,13 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     console.warn = () => {};
     await db.run('ALTER TABLE rate_limit_attempts RENAME TO rate_limit_attempts_weg');
     try {
-      assert.equal(await l.loginAllowed(IP, COUNTER), null, 'ein Datenbankfehler sperrt die Anmeldung');
+      assert.equal(await l.loginAllowed(IP, COUNTER), null, 'a database error locks the sign-in');
       for (let i = 0; i < l.MAX_ATTEMPTS; i++) await l.loginFailed(IP, COUNTER);
-      assert.equal((await l.loginAllowed(IP, COUNTER))?.code, 'zu_viele_fehlversuche', 'ohne Datenbank keine Bremse');
+      assert.equal(
+        (await l.loginAllowed(IP, COUNTER))?.code,
+        'too_many_failed_attempts',
+        'no brake without a database',
+      );
     } finally {
       await db.run('ALTER TABLE rate_limit_attempts_weg RENAME TO rate_limit_attempts');
       console.warn = warn;
@@ -133,17 +138,17 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
   });
 
   await t.test('a token only counts in the header, not in the address bar', async () => {
-    const { base } = testServer(_req, { sitzung: {}, t });
-    const login = await fetch(`${base}/api/v1/auth/login`, {
+    const { base } = testServer(_req, { session: {}, t });
+    const login = await fetch(`${base}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: NAME, password: PASS }),
     });
     const { token } = await login.json();
-    assert.ok(token, 'Vorbedingung: ein Token');
-    assert.equal((await fetch(`${base}/api/v1/stats`, { headers: { authorization: `Bearer ${token}` } })).status, 200);
-    assert.equal((await fetch(`${base}/api/v1/stats?token=${token}`)).status, 401);
-    assert.equal((await fetch(`${base}/api/v1/stats?access_token=${token}`)).status, 401);
+    assert.ok(token, 'Precondition: a token');
+    assert.equal((await fetch(`${base}/api/v2/stats`, { headers: { authorization: `Bearer ${token}` } })).status, 200);
+    assert.equal((await fetch(`${base}/api/v2/stats?token=${token}`)).status, 401);
+    assert.equal((await fetch(`${base}/api/v2/stats?access_token=${token}`)).status, 401);
   });
 
   await t.test('only an admin clears the price cache', async () => {
@@ -152,10 +157,10 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price) VALUES ($1,'N','EUR',1)`, [
       SN,
     ]);
-    const leeren = async (id, admin) => {
-      const { base } = testServer(_req, { sitzung: { userId: id, isAdmin: !!admin }, t });
+    const clear = async (id, admin) => {
+      const { base } = testServer(_req, { session: { userId: id, isAdmin: !!admin }, t });
       return (
-        await fetch(`${base}/api/v1/admin/cache-clear`, {
+        await fetch(`${base}/api/v2/admin/cache-clear`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: '{}',
@@ -163,9 +168,9 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
       ).status;
     };
     const da = async () => !!(await db.get('SELECT 1 FROM price_cache WHERE set_number = $1', [SN]));
-    assert.equal(await leeren(uid, 0), 403);
-    assert.equal(await da(), true, 'ein gewöhnliches Konto hat den Cache geleert');
-    assert.equal(await leeren(verwalter, 1), 200);
+    assert.equal(await clear(uid, 0), 403);
+    assert.equal(await da(), true, 'an ordinary account cleared the cache');
+    assert.equal(await clear(adminUser, 1), 200);
     assert.equal(await da(), false);
   });
 
@@ -184,10 +189,10 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
         DATABASE_URL: URL_DB,
         SESSION_SECRET: 'haerte-test-geheimnis-lang-genug-1234',
         PORT: String(port),
-        ROLLE: 'web',
+        ROLE: 'web',
         NODE_ENV: 'production',
-        DB_SUPERUSER_ERLAUBT: '1',
-        APP_BASE_URL_FEHLT_OK: '1',
+        DB_SUPERUSER_ALLOWED: '1',
+        APP_BASE_URL_MISSING_OK: '1',
         COOKIE_SECURE: '0',
       },
     });
@@ -198,30 +203,30 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     srv.stderr.on('data', d => {
       log += d;
     });
-    const ende = new Promise(r => srv.on('exit', code => r(code)));
+    const end = new Promise(r => srv.on('exit', code => r(code)));
     t.after(() => {
       if (srv.exitCode === null) srv.kill('SIGKILL');
     });
     const basis = `http://127.0.0.1:${port}`;
-    assert.ok(await bis(async () => (await fetch(`${basis}/api/v1/health/live`).catch(() => null))?.ok, 60_000), log);
-    const login = await fetch(`${basis}/api/v1/auth/login`, {
+    assert.ok(await until(async () => (await fetch(`${basis}/api/v2/health/live`).catch(() => null))?.ok, 60_000), log);
+    const login = await fetch(`${basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+      body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
     });
     assert.equal(login.status, 200, `${await login.clone().text()}\n${log}`);
     const cookie = (login.headers.get('set-cookie') || '').split(';')[0];
-    const strom = await fetch(`${basis}/api/v1/sets/import/csv/stream`, { headers: { cookie } });
-    assert.equal(strom.status, 200, log);
-    assert.match(strom.headers.get('content-type') || '', /text\/event-stream/);
-    const lauf = strom.body
+    const stream = await fetch(`${basis}/api/v2/sets/import/csv/stream`, { headers: { cookie } });
+    assert.equal(stream.status, 200, log);
+    assert.match(stream.headers.get('content-type') || '', /text\/event-stream/);
+    const run = stream.body
       .getReader()
       .read()
       .catch(() => null);
     const start = Date.now();
     srv.kill('SIGTERM');
-    const code = await ende;
-    await lauf;
+    const code = await end;
+    await run;
     assert.equal(code, 0, log);
     assert.ok(Date.now() - start < 5000, `Herunterfahren dauerte ${Date.now() - start} ms:\n${log.slice(-800)}`);
     assert.match(log, /offene Ereignis-Ströme beendet/);
@@ -233,17 +238,17 @@ test('minifigures and finances request preview images', async () => {
   // Full resolution at a display size of 36–100 px made the tiles visibly trickle in.
   const IMAGE = 'https://cdn.rebrickable.com/media/sets/fig-000123.jpg';
   const { w, d } = await openUi({
-    '/v1/minifigs': {
+    '/v2/minifigs': {
       success: true,
       total: 1,
       figs: [{ fig_number: 'fig-000123', fig_name: 'Chewbacca', source: 'set', total_quantity: 1, image_url: IMAGE }],
     },
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       condition: 'N',
       total_value: '1',
-      kaufpreise_fremde_waehrung: 0,
+      foreign_currency_purchases: 0,
       totals: { min: '0', avg: '1', max: '0', qty_avg: '1' },
       sets: [
         {
@@ -251,7 +256,7 @@ test('minifigures and finances request preview images', async () => {
           name: 'Titanic',
           quantity: 1,
           avg_price: 1,
-          wert_gesamt: 1,
+          value_total: 1,
           from_cache: true,
           is_fallback: false,
           no_price: false,
@@ -263,12 +268,12 @@ test('minifigures and finances request preview images', async () => {
     },
   });
   try {
-    await reiter(w, 'minifigs');
-    assert.ok(await warte(() => d.querySelector('#figs-list img')), 'keine Figurenkachel');
+    await switchTab(w, 'minifigs');
+    assert.ok(await waitFor(() => d.querySelector('#figs-list img')), 'no minifig tile');
     assert.match(d.querySelector('#figs-list img').getAttribute('src'), /^\/api\/v1\/img-proxy\?.*&thumb=1/);
-    await reiter(w, 'finance');
-    assert.ok(await warte(() => d.querySelector('#fin-tbl .fin-bild img')), 'kein Bild in der Finanztabelle');
-    assert.match(d.querySelector('#fin-tbl .fin-bild img').getAttribute('src'), /^\/api\/v1\/img-proxy\?.*&thumb=1/);
+    await switchTab(w, 'finance');
+    assert.ok(await waitFor(() => d.querySelector('#fin-tbl .fin-image img')), 'no image in the finance table');
+    assert.match(d.querySelector('#fin-tbl .fin-image img').getAttribute('src'), /^\/api\/v1\/img-proxy\?.*&thumb=1/);
   } finally {
     w.close();
   }
@@ -278,9 +283,9 @@ test('minifigures and finances request preview images', async () => {
 
 test('the web app appends no token to an address', () => {
   // The server no longer looks at it there (test above); it would only stand in the log.
-  const { ohneKommentare, setCoreSource } = require('./helpers/sources');
+  const { withoutComments, setCoreSource } = require('./helpers/sources');
   const append = [/'\?token='\s*\+/, /\?token=\$/];
-  const dateien = [
+  const files = [
     path.join(ROOT, 'public', 'js', 'api.js'),
     path.join(ROOT, 'public', 'js', 'images.js'),
     path.join(ROOT, 'public', 'js', 'progress.js'),
@@ -288,13 +293,13 @@ test('the web app appends no token to an address', () => {
     path.join(ROOT, 'public', 'js', 'collection.js'),
     path.join(ROOT, 'public', 'js', 'settings.js'),
   ];
-  const treffer = [];
-  for (const voll of dateien) {
-    assert.ok(fs.existsSync(voll), `${path.basename(voll)} steht nicht mehr dort — Pfad im Test veraltet`);
-    const src = ohneKommentare(fs.readFileSync(voll, 'utf8'));
-    if (append.some(re => re.test(src))) treffer.push(path.basename(voll));
+  const hits = [];
+  for (const full of files) {
+    assert.ok(fs.existsSync(full), `${path.basename(full)} is no longer there — path in the test outdated`);
+    const src = withoutComments(fs.readFileSync(full, 'utf8'));
+    if (append.some(re => re.test(src))) hits.push(path.basename(full));
   }
-  assert.deepEqual(treffer, []);
+  assert.deepEqual(hits, []);
   // A second version of the guard would bypass the one rule in src/account/http/login.ts.
   assert.doesNotMatch(setCoreSource(), /function requireLoginOrToken/);
   // During an import 503 after 3 s is better than a hanging connection.
@@ -308,17 +313,17 @@ test('every price query on price_cache names the currency', () => {
   const reader = require('./helpers/sources')
     .allSources()
     .filter(d => read(d).includes('FROM price_cache'));
-  assert.ok(reader.length >= 4, `nur ${reader.length} Leser von price_cache gefunden — Suche veraltet?`);
-  const ohne = [];
-  for (const datei of reader) {
-    const src = read(datei);
+  assert.ok(reader.length >= 4, `only ${reader.length} readers of price_cache found — search outdated?`);
+  const without = [];
+  for (const file of reader) {
+    const src = read(file);
     for (let i = src.indexOf('FROM price_cache'); i !== -1; i = src.indexOf('FROM price_cache', i + 1)) {
-      const vorher = src.slice(Math.max(0, i - 400), i);
-      const auf = vorher[Math.max(vorher.lastIndexOf('`'), vorher.lastIndexOf("'"), vorher.lastIndexOf('"'))] || '`';
-      const block = src.slice(i, i + 400).split(auf)[0];
-      if (!/COUNT\(\*\)[^`'"]*$/.test(vorher) && /\bWHERE\b/.test(block) && !/currency_code/.test(block))
-        ohne.push(datei);
+      const prior = src.slice(Math.max(0, i - 400), i);
+      const opened = prior[Math.max(prior.lastIndexOf('`'), prior.lastIndexOf("'"), prior.lastIndexOf('"'))] || '`';
+      const block = src.slice(i, i + 400).split(opened)[0];
+      if (!/COUNT\(\*\)[^`'"]*$/.test(prior) && /\bWHERE\b/.test(block) && !/currency_code/.test(block))
+        without.push(file);
     }
   }
-  assert.deepEqual(ohne, []);
+  assert.deepEqual(without, []);
 });

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import android.content.Context
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,36 +13,35 @@ import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.*
-import ch.brickinventoryapp.login.ui.loginGraph
-import ch.brickinventoryapp.login.ui.LoginTarget
-import ch.brickinventoryapp.finances.ui.FinanzZiel
-import ch.brickinventoryapp.finances.ui.financesGraph
-import ch.brickinventoryapp.catalog.ui.KatalogZiel
-import ch.brickinventoryapp.catalog.ui.catalogGraph
 import ch.brickinventoryapp.account.ui.accountGraph
-import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.collection.ui.SammlungZiel
+import ch.brickinventoryapp.account.ui.dialogs.UpdateRoute
+import ch.brickinventoryapp.app.nav.ActivityState
+import ch.brickinventoryapp.app.nav.AppTarget
+import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.app.nav.TargetEnvironment
+import ch.brickinventoryapp.app.nav.moreTarget
+import ch.brickinventoryapp.catalog.ui.CatalogTarget
+import ch.brickinventoryapp.catalog.ui.catalogGraph
+import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.collection.ui.collectionGraph
-import ch.brickinventoryapp.parts.ui.partsGraph
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.finances.ui.FinanceTarget
+import ch.brickinventoryapp.finances.ui.financesGraph
+import ch.brickinventoryapp.login.ui.LoginTarget
+import ch.brickinventoryapp.login.ui.loginGraph
 import ch.brickinventoryapp.management.ui.managementGraph
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.parts.ui.partsGraph
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.StartTarget
 import ch.brickinventoryapp.state.ui.startTarget
-import coil3.ImageLoader
-import ch.brickinventoryapp.resources.R
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.app.nav.ActivityState
-import ch.brickinventoryapp.network.util.NetworkPolicy
-import ch.brickinventoryapp.data.util.LanguageManager
-import android.content.Context
-import androidx.compose.ui.platform.LocalContext
-import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.app.nav.TargetEnvironment
 import ch.brickinventoryapp.ui.components.TransitionFrame
-import ch.brickinventoryapp.account.ui.dialogs.UpdateRoute
-import ch.brickinventoryapp.app.nav.AppTarget
-import ch.brickinventoryapp.app.nav.moreTarget
+import coil3.ImageLoader
 
 /**
  * App navigation and main scaffold: the NavHost with all routes, the dialogs that
@@ -51,14 +51,14 @@ import ch.brickinventoryapp.app.nav.moreTarget
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrickInventoryRoute(
-    aktivitaet: ActivityState,
+    activity: ActivityState,
     imageLoader: coil3.ImageLoader,
 ) {
-    val vm = aktivitaet.app
+    val vm = activity.app
     // collectAsStateWithLifecycle: collection stops when the app is in the
     // background — no unnecessary recomposition/state processing any more.
     val state by vm.state.collectAsStateWithLifecycle()
-    val selbstUpdate = aktivitaet.update
+    val selfUpdate = activity.update
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     // Only the ScrollMemory holds scroll positions: every destination creates its list state
@@ -79,8 +79,8 @@ fun BrickInventoryRoute(
     // activity (CsvImportViewModel, UpdateViewModel, MainActivity.onResume), not
     // by the composition.
 
-    val startDest = startRoute(startTarget(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung))
-    val root: Any = if (startDest == SammlungZiel.Gallery) SammlungZiel.Gallery else LoginTarget.Bereich
+    val startDest = startRoute(startTarget(state.serverUrl, state.isLoggedIn, NetworkPolicy.development))
+    val root: Any = if (startDest == CollectionTarget.Gallery) CollectionTarget.Gallery else LoginTarget.Area
     // The start of the sign-in stays as long as it runs: another one would rebuild the graph
     // and end its ViewModel in the middle of the QR sign-in.
     val loginStart = remember(root) { startDest as? LoginTarget ?: LoginTarget.Setup }
@@ -91,16 +91,16 @@ fun BrickInventoryRoute(
     // A hint at start with yes/no, because a dot in the settings is easily
     // overlooked. Here, because the question concerns the whole app; the triggering check
     // is a few lines further up.
-    UpdateRoute(selbstUpdate)
+    UpdateRoute(selfUpdate)
 
     // A tapped price alert notification opens its set — here, because the
     // NavController only exists in this composition. Only signed in; otherwise
     // the target stays and is redeemed after the sign-in.
     val messageTarget by vm.messageTarget.collectAsStateWithLifecycle()
-    LaunchedEffect(messageTarget.setNummer, startDest) {
-        val sn = messageTarget.setNummer
-        if (sn != null && startDest == SammlungZiel.Gallery) {
-            navController.navigate(SammlungZiel.SetDetail(sn))
+    LaunchedEffect(messageTarget.setNumber, startDest) {
+        val sn = messageTarget.setNumber
+        if (sn != null && startDest == CollectionTarget.Gallery) {
+            navController.navigate(CollectionTarget.SetDetail(sn))
             // Acknowledge immediately, otherwise the app jumps again on the next
             // recomposition — the same rule as for manual
             // adding after an unsuccessful scan.
@@ -122,7 +122,7 @@ fun BrickInventoryRoute(
         // No state passed in: the NavHost builder runs only once, a passed-in
         // value would stay the snapshot of the first frame. The destinations read themselves.
         allTargets(TargetEnvironment(navController, imageLoader, bottomNavItems,
-            snackbarHostState) { aktivitaet }, loginStart)
+            snackbarHostState) { activity }, loginStart)
     }
     }
 }
@@ -143,10 +143,10 @@ internal fun androidx.navigation.NavGraphBuilder.allTargets(u: TargetEnvironment
 }
 
 /** Where the app starts, depending on whether server and sign-in already exist. */
-internal fun startRoute(ziel: StartTarget): Any = when (ziel) {
-    StartTarget.EINRICHTUNG -> LoginTarget.Setup
+internal fun startRoute(target: StartTarget): Any = when (target) {
+    StartTarget.SETUP -> LoginTarget.Setup
     StartTarget.LOGIN   -> LoginTarget.Login
-    StartTarget.SAMMLUNG    -> SammlungZiel.Gallery
+    StartTarget.COLLECTION    -> CollectionTarget.Gallery
 }
 
 /**
@@ -155,35 +155,35 @@ internal fun startRoute(ziel: StartTarget): Any = when (ziel) {
  * otherwise TalkBack reads twice. Wishlist before the catalog, as in the web app.
  */
 @Composable
-internal fun tabTheBar(): List<Reiter> {
-    val sammlung = stringResource(R.string.nav_collection)
-    val finanzen = stringResource(R.string.nav_finance)
-    val merkliste = stringResource(R.string.nav_wanted)
-    val katalog = stringResource(R.string.nav_catalog)
-    val mehr = stringResource(R.string.nav_more)
-    return remember(sammlung, finanzen, merkliste, katalog, mehr) {
+internal fun tabTheBar(): List<Tab> {
+    val collection = stringResource(R.string.nav_collection)
+    val finances = stringResource(R.string.nav_finance)
+    val wantedList = stringResource(R.string.nav_wanted)
+    val catalog = stringResource(R.string.nav_catalog)
+    val more = stringResource(R.string.nav_more)
+    return remember(collection, finances, wantedList, catalog, more) {
         listOf(
-            Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, sammlung),
-            Reiter(FinanzZiel.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finanzen),
-            Reiter(SammlungZiel.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, merkliste),
-            Reiter(KatalogZiel.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, katalog),
-            Reiter(AppTarget.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
+            Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, collection),
+            Tab(FinanceTarget.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finances),
+            Tab(CollectionTarget.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, wantedList),
+            Tab(CatalogTarget.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, catalog),
+            Tab(AppTarget.More, { Icon(Icons.Default.MoreHoriz, null) }, more),
         )
     }
 }
 
 /**
  * The UI forms the snackbar sentence, in the app's language (LanguageManager);
- * outside the composition, hence not via [ch.brickinventoryapp.ui.satz]. A value
+ * outside the composition, hence not via [ch.brickinventoryapp.ui.sentence]. A value
  * that is itself a message is formed first.
  */
-internal fun Meldung.asSet(ctx: Context): String {
+internal fun Message.asSet(ctx: Context): String {
     val c = LanguageManager.localizedContext(ctx)
     return when (this) {
-        is Meldung.Text -> text
-        is Meldung.Resource ->
-            if (werte.isEmpty()) c.getString(id) else c.getString(id, *werte.map { w -> if (w is Meldung) w.asSet(ctx) else w }.toTypedArray())
-        is Meldung.Menge -> c.resources.getQuantityString(id, anzahl, *werte.map { w -> if (w is Meldung) w.asSet(ctx) else w }.toTypedArray())
+        is Message.Text -> text
+        is Message.Resource ->
+            if (values.isEmpty()) c.getString(id) else c.getString(id, *values.map { w -> if (w is Message) w.asSet(ctx) else w }.toTypedArray())
+        is Message.Quantity -> c.resources.getQuantityString(id, count, *values.map { w -> if (w is Message) w.asSet(ctx) else w }.toTypedArray())
     }
 }
 

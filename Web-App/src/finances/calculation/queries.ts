@@ -1,10 +1,10 @@
 // What valuation and profit both read.
 
-export function zaehle(
-  zeilen: Iterable<{ kaufpreis_fremd?: unknown; kaufpreis_umgerechnet?: unknown }>,
-  feature: 'kaufpreis_fremd' | 'kaufpreis_umgerechnet',
+export function countFlagged(
+  rows: Iterable<{ purchase_price_foreign?: unknown; purchase_price_converted?: unknown }>,
+  feature: 'purchase_price_foreign' | 'purchase_price_converted',
 ): number {
   let n = 0;
-  for (const z of zeilen) if (z[feature]) n++;
+  for (const z of rows) if (z[feature]) n++;
   return n;
 }

@@ -6,10 +6,10 @@
  * (“✅ …", “╔══…") follows a frame directly in the same read chunk, the … computes
  */
 if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
-  const roh = process.stdout.write.bind(process.stdout);
+  const raw = process.stdout.write.bind(process.stdout);
   process.stdout.write = /** @type {typeof process.stdout.write} */ (
-    (stueck, ...rest) => {
-      return typeof stueck === 'string' ? process.stderr.write(stueck, ...rest) : roh(stueck, ...rest);
+    (piece, ...rest) => {
+      return typeof piece === 'string' ? process.stderr.write(piece, ...rest) : raw(piece, ...rest);
     }
   );
 }

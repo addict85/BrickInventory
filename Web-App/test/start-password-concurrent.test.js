@@ -4,7 +4,7 @@
  * symlink at the target place does not redirect the password.
  *
  * Counter-checks (measured 11.11.2026, each on its own):
- *   A  writeStartpasswort() (src/infra/startpasswort.ts) again as rmSync + writeFileSync
+ *   A  writeStartPassword() (src/infra/startPassword.ts) again as rmSync + writeFileSync
  *      with flag 'wx' on the target file → red: “all processes write the file” (EEXIST)
  *   B  writeFileSync directly on the target file with flag 'w' → red: “the symlink redirects nothing”
  */
@@ -15,47 +15,47 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
-const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'startpasswort-gleich-'));
-process.env.APP_ROOT = wurzel;
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'startpasswort-gleich-'));
+process.env.APP_ROOT = root;
 const _req = require('./helpers/sources').buildAndRequire();
-const modul = require.resolve(path.join(__dirname, '..', 'dist', 'src', 'infra', 'startpasswort.js'));
+const mod = require.resolve(path.join(__dirname, '..', 'dist', 'src', 'infra', 'startPassword.js'));
 
-test.after(() => fs.rmSync(wurzel, { recursive: true, force: true }));
+test.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
-function schreiber(nr) {
-  const code = `const s = require(${JSON.stringify(modul)});
-    for (let i = 0; i < 40; i++) s.writeStartpasswort('admin', 'p${nr}-' + i);`;
-  return new Promise(fertig => {
+function writer(nr) {
+  const code = `const s = require(${JSON.stringify(mod)});
+    for (let i = 0; i < 40; i++) s.writeStartPassword('admin', 'p${nr}-' + i);`;
+  return new Promise(done => {
     const k = spawn(process.execPath, ['-e', code], {
-      env: { ...process.env, APP_ROOT: wurzel },
+      env: { ...process.env, APP_ROOT: root },
       stdio: ['ignore', 'ignore', 'pipe'],
     });
-    let fehler = '';
+    let error = '';
     k.stderr.on('data', d => {
-      fehler += d;
+      error += d;
     });
-    k.on('exit', code => fertig({ code, fehler }));
+    k.on('exit', code => done({ code, error }));
   });
 }
 
 test('all processes write the file', async () => {
-  const results = await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(schreiber));
-  for (const e of results) assert.equal(e.code, 0, e.fehler.split('\n').find(z => z.includes('Error')) ?? e.fehler);
-  const datei = _req('src/infra/startpasswort.js').startpasswortFile();
-  assert.match(fs.readFileSync(datei, 'utf8'), /^admin\np\d-\d+\n$/);
-  const reste = fs.readdirSync(path.dirname(datei)).filter(n => n.startsWith('admin-startpasswort.txt.'));
-  assert.deepEqual(reste, [], 'keine halben Dateien bleiben liegen');
+  const results = await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(writer));
+  for (const e of results) assert.equal(e.code, 0, e.error.split('\n').find(z => z.includes('Error')) ?? e.error);
+  const file = _req('src/infra/startPassword.js').startPasswordFile();
+  assert.match(fs.readFileSync(file, 'utf8'), /^admin\np\d-\d+\n$/);
+  const remainders = fs.readdirSync(path.dirname(file)).filter(n => n.startsWith('admin-startpasswort.txt.'));
+  assert.deepEqual(remainders, [], 'no half-written files stay behind');
 });
 
 test('the symlink redirects nothing', () => {
-  const s = _req('src/infra/startpasswort.js');
-  const datei = s.startpasswortFile();
-  const fremd = path.join(wurzel, 'fremd.txt');
+  const s = _req('src/infra/startPassword.js');
+  const file = s.startPasswordFile();
+  const fremd = path.join(root, 'fremd.txt');
   fs.writeFileSync(fremd, 'unberuehrt');
-  fs.rmSync(datei, { force: true });
-  fs.symlinkSync(fremd, datei);
-  s.writeStartpasswort('admin', 'geheim');
+  fs.rmSync(file, { force: true });
+  fs.symlinkSync(fremd, file);
+  s.writeStartPassword('admin', 'geheim');
   assert.equal(fs.readFileSync(fremd, 'utf8'), 'unberuehrt');
-  assert.equal(fs.lstatSync(datei).isSymbolicLink(), false);
-  assert.equal(fs.statSync(datei).mode & 0o777, 0o600);
+  assert.equal(fs.lstatSync(file).isSymbolicLink(), false);
+  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
 });

@@ -1,0 +1,16 @@
+{
+  "count": 2,
+  "next": null,
+  "results": [
+    {
+      "id": 0,
+      "name": "Black",
+      "rgb": "05131D"
+    },
+    {
+      "id": 15,
+      "name": "White",
+      "rgb": "FFFFFF"
+    }
+  ]
+}

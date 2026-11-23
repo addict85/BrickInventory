@@ -13,11 +13,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-const { BUENDEL, placeBundleSafe } = require('./helpers/bundle');
+const { BUNDLE_FILE, placeBundleSafe } = require('./helpers/bundle');
 placeBundleSafe();
-const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
+const BUNDLE = fs.readFileSync(BUNDLE_FILE, 'utf8');
 
-async function fenster() {
+async function win() {
   const dom = new jsdom.JSDOM(HTML, { runScripts: 'outside-only', url: 'http://localhost/' });
   const w = dom.window;
   w.fetch = async () => ({
@@ -33,18 +33,18 @@ async function fenster() {
 
 function setup(w) {
   const d = w.document,
-    ziel = d.createElement('div');
-  ziel.innerHTML = `
+    target = d.createElement('div');
+  target.innerHTML = `
     <div class="sc" id="karte" tabindex="0" role="button" data-click="stopEvent">
       <button id="innen" data-click="stopEvent">x</button></div>
     <table><tbody><tr id="zeile" tabindex="0" data-click="stopEvent"><td>1</td></tr></tbody></table>`;
-  d.body.appendChild(ziel);
-  const klicks = { karte: 0, zeile: 0 };
+  d.body.appendChild(target);
+  const klicks = { card: 0, row: 0 };
   d.getElementById('karte').addEventListener('click', e => {
-    if (e.target.id === 'karte') klicks.karte++;
+    if (e.target.id === 'karte') klicks.card++;
   });
   d.getElementById('zeile').addEventListener('click', () => {
-    klicks.zeile++;
+    klicks.row++;
   });
   return klicks;
 }
@@ -52,26 +52,26 @@ const taste = (w, el, key) =>
   el.dispatchEvent(new w.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
 
 test('cards and rows via keyboard', async t => {
-  const w = await fenster();
+  const w = await win();
   t.after(() => w.close());
   const d = w.document,
     k = setup(w);
 
   await t.test('Enter on a card', () => {
     taste(w, d.getElementById('karte'), 'Enter');
-    assert.equal(k.karte, 1);
+    assert.equal(k.card, 1);
   });
   await t.test('space bar on role="button"', () => {
     taste(w, d.getElementById('karte'), ' ');
-    assert.equal(k.karte, 2);
+    assert.equal(k.card, 2);
   });
   await t.test('table row: Enter yes, space bar no', () => {
     taste(w, d.getElementById('zeile'), 'Enter');
     taste(w, d.getElementById('zeile'), ' ');
-    assert.equal(k.zeile, 1);
+    assert.equal(k.row, 1);
   });
   await t.test('a button in the card does not trigger the card', () => {
     taste(w, d.getElementById('innen'), 'Enter');
-    assert.equal(k.karte, 2);
+    assert.equal(k.card, 2);
   });
 });

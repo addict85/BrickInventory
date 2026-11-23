@@ -1,5 +1,7 @@
 /**
  * jobs/ to TypeScript (item 10).
+ *
+ * Counter-check: `module.exports = {}` appended to jobs/startJobs.ts → red “named exports instead of module.exports”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,8 +17,8 @@ test('all jobs are TypeScript', () => {
     .readdirSync(JOBS)
     .filter(f => f.endsWith('.js'))
     .filter(f => !fs.existsSync(path.join(JOBS, f.replace(/\.js$/, '.ts'))));
-  assert.equal(jsOnly.length, 0, `Nicht migriert: ${jsOnly.join(', ')}`);
-  assert.ok(ts.length >= 3, `Nur ${ts.length} .ts-Dateien gefunden`);
+  assert.equal(jsOnly.length, 0, `Not migrated: ${jsOnly.join(', ')}`);
+  assert.ok(ts.length >= 3, `Only ${ts.length} .ts files found`);
 });
 
 test('the build script covers jobs/', () => {
@@ -24,7 +26,7 @@ test('the build script covers jobs/', () => {
   assert.match(
     build,
     /SRC_DIRS = \[[^\]]*'jobs'/,
-    "Ohne 'jobs' in SRC_DIRS entstehen keine .js-Dateien und die require-Aufrufe schlagen fehl",
+    "Without 'jobs' in SRC_DIRS no .js files are created and the require calls fail",
   );
 });
 
@@ -36,12 +38,12 @@ test('the Dockerfile builds jobs/ instead of copying it raw', () => {
   assert.match(
     df,
     /--outdir dist/,
-    'Der Build muss nach dist/ schreiben, sonst liegen Quelle und Erzeugnis wieder nebeneinander',
+    'The build must write to dist/, otherwise source and output lie next to each other again',
   );
   assert.match(
     df,
     /COPY --from=builder \/app\/dist \.\/dist\//,
-    'dist/ muss transpiliert aus dem Build-Stage kommen, sonst landen .ts-Dateien im Image',
+    'dist/ must come transpiled from the build stage, otherwise .ts files end up in the image',
   );
 
   const runtime = df.slice(df.lastIndexOf('FROM '));
@@ -49,22 +51,22 @@ test('the Dockerfile builds jobs/ instead of copying it raw', () => {
     assert.doesNotMatch(
       runtime,
       new RegExp(`^COPY ${dir}/`, 'm'),
-      `Der Runtime-Stage darf ${dir}/ nicht roh kopieren — dort lägen sonst .ts-Dateien`,
+      `The runtime stage must not copy ${dir}/ raw — otherwise .ts files would lie there`,
     );
   }
-  assert.doesNotMatch(runtime, /^COPY server\.ts/m, 'server.ts gehört nicht ins Laufzeit-Image');
+  assert.doesNotMatch(runtime, /^COPY server\.ts/m, 'server.ts does not belong in the runtime image');
 });
 
 test('named exports instead of module.exports', () => {
   // In .ts module.exports creates no named exports — but callers like
-  // src/sets/afterAdd.ts import by name (`import { preisFuerSetHolen }`).
+  // src/sets/afterAdd.ts import by name (`import { fetchPriceForSet }`).
   // csvImportWorker is the entry point of its own process
   // (process.on('message')) and deliberately exports nothing.
-  const ENTRYPOINTS = new Set(['csvImportWorker.ts']);
+  const ENTRY_POINTS = new Set(['csvImportWorker.ts']);
   for (const f of fs.readdirSync(JOBS).filter(f => f.endsWith('.ts'))) {
     const src = fs.readFileSync(path.join(JOBS, f), 'utf8');
-    assert.doesNotMatch(src, /^module\.exports = /m, `${f}: noch module.exports`);
-    if (!ENTRYPOINTS.has(f)) assert.match(src, /^export \{/m, `${f}: kein benannter Export`);
+    assert.doesNotMatch(src, /^module\.exports = /m, `${f}: still module.exports`);
+    if (!ENTRY_POINTS.has(f)) assert.match(src, /^export \{/m, `${f}: no named export`);
   }
 });
 
@@ -74,7 +76,7 @@ test('every job module can be loaded', () => {
   const DIST_JOBS = path.join(ROOT, 'dist', 'jobs');
   assert.ok(
     fs.existsSync(DIST_JOBS),
-    'dist/jobs fehlt — bitte zuerst `npm run build` ausführen (in CI ist das ein eigener Schritt)',
+    'dist/jobs is missing — please run `npm run build` first (in CI that is a separate step)',
   );
 
   const built = fs.readdirSync(DIST_JOBS).filter(f => f.endsWith('.js'));
@@ -82,11 +84,11 @@ test('every job module can be loaded', () => {
   assert.equal(
     built.length,
     sources.length,
-    `dist/jobs hat ${built.length} Dateien, jobs/ ${sources.length} Quellen — Build veraltet?`,
+    `dist/jobs has ${built.length} files, jobs/ ${sources.length} sources — build outdated?`,
   );
 
   for (const f of built) {
     const m = require(path.join(DIST_JOBS, f));
-    assert.equal(typeof m, 'object', `${f} exportiert kein Objekt`);
+    assert.equal(typeof m, 'object', `${f} exports no object`);
   }
 });

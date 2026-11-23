@@ -1,0 +1,20 @@
+Gegenprobe: „Erweitert“ ohne Zustand und ohne Auf-/Zuklappen für TalkBack
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginEdgeTest
+Rot: Advanced reports whether the area is open
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
+@@ -149,10 +149,7 @@
+     var extended by rememberSaveable { mutableStateOf(fullAccess) }
+     // The state for TalkBack: whether the section is open was otherwise only visible.
+     val condition = stringResource(if (extended) R.string.state_expanded else R.string.state_collapsed)
+-    TextButton(onClick = { extended = !extended }, modifier = Modifier.semantics {
+-        stateDescription = condition
+-        if (extended) collapse { extended = false; true } else expand { extended = true; true }
+-    }) {
++    TextButton(onClick = { extended = !extended }) {
+         Text(stringResource(R.string.login_extended))
+         Icon(if (extended) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+     }

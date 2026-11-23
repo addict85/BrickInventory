@@ -1,0 +1,40 @@
+Gegenprobe: Aufnehmen und Merken wieder nebeneinander, je eine Zeile mit Auslassung
+Modul: app
+Test: ch.brickinventoryapp.app.WrapGuardTest
+Rot: catalog detail at 100 percent without character wrapping and truncation
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
+@@ -354,18 +354,19 @@
+     // more frequent action and sits on top, filled, watchlisting below, outlined.
+     // At most control width: on the tablet the buttons otherwise ran across the whole column.
+     val button = Modifier.widthIn(max = ReadingWidth.controls).fillMaxWidth()
+-    Button(onClick = captureOn, modifier = button) {
+-        Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
+-        Spacer(Modifier.width(Spacing.small))
+-        Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
+-            textAlign = TextAlign.Center)
+-    }
+-    // Watchlisted: go to the watchlist item instead of watchlisting a second time.
+-    OutlinedButton(onClick = rememberOn, modifier = button, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+-        Icon(if (wanted != null) Icons.Default.Bookmark else Icons.Default.BookmarkAdd, null, Modifier.size(withFont(18.dp)))
+-        Spacer(Modifier.width(Spacing.small))
+-        Text(stringResource(if (wanted != null) R.string.catalog_wanted_item_open else R.string.wanted_add_submit),
+-            textAlign = TextAlign.Center)
++    Row(button, horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
++        Button(onClick = captureOn, modifier = Modifier.weight(1f)) {
++            Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
++            Spacer(Modifier.width(Spacing.small))
++            Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
++                textAlign = TextAlign.Center, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
++        }
++        OutlinedButton(onClick = rememberOn, modifier = Modifier.weight(1f), colors = secondaryButtonColors(), border = secondaryButtonRand()) {
++            Icon(if (wanted != null) Icons.Default.Bookmark else Icons.Default.BookmarkAdd, null, Modifier.size(withFont(18.dp)))
++            Spacer(Modifier.width(Spacing.small))
++            Text(stringResource(if (wanted != null) R.string.catalog_wanted_item_open else R.string.wanted_add_submit),
++                textAlign = TextAlign.Center, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
++        }
+     }
+     if (detail.owned) {
+         OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = button, colors = secondaryButtonColors(), border = secondaryButtonRand()) {

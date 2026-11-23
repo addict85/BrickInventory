@@ -8,4 +8,4 @@ export interface DbInterface {
 }
 
 /** A row whose fields nobody reads: `SELECT 1 …` as a probe whether it exists. */
-export type Treffer = Record<string, unknown>;
+export type Hit = Record<string, unknown>;

@@ -1,0 +1,17 @@
+Gegenprobe: Erfassen-Knopf ohne Beschreibung
+Modul: app
+Test: ch.brickinventoryapp.app.TipTargetAndNameTest
+Rot: gallery
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Record.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Record.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Record.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Record.kt
+@@ -52,7 +52,7 @@
+         containerColor = if (brick) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+         contentColor = if (brick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
+         shape = Shapes.fab,
+-    ) { Icon(Icons.Default.Add, description) }
++    ) { Icon(Icons.Default.Add, null) }
+ }
+ 
+ /** Scanning as an icon button next to an input field — with a border in `outline` (≥ 3:1). */

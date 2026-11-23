@@ -1,0 +1,5679 @@
+{
+  "note": "Erzeugt von Android-App/tools/contract/app-interface.js aus dem Quelltext der App; nicht von Hand ändern.",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/v2/admin/api-limits",
+      "type": "ApiLimitsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/admin/api-limits",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/admin/brickset-queue",
+      "type": "BricksetQueueResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/admin/brickset-queue/{setNumber}",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/brickset-queue/{setNumber}/retry",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/cache-clear",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/admin/cache-stats",
+      "type": "CacheStatsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/admin/cache-ttl",
+      "type": "CacheTtlResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/cache-ttl",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/catalog-images",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/default-condition",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/admin/job-queue",
+      "type": "JobQueueResponse",
+      "query": [
+        {
+          "name": "status",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/job-queue/{id}/cancel",
+      "type": "JobChange",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/job-queue/{id}/retry",
+      "type": "JobChange",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/admin/job-queue/kind/{kind}",
+      "type": "JobKindDrain",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/job-queue/kind/{kind}/now",
+      "type": "JobKindStart",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/job-schedule",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": "JsonObject",
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/admin/jobs",
+      "type": "JobsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/admin/logs",
+      "type": "LogResponse",
+      "query": [
+        {
+          "name": "minutes",
+          "required": true
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/redownload-missing-images",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/reimport-instructions",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/trigger-csv-sync",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/admin/trigger-price-job",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/alerts",
+      "type": "PriceAlertsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/alerts/import/csv",
+      "type": "CsvImportResult",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/alerts/pending",
+      "type": "PendingAlertsResponse",
+      "query": [
+        {
+          "name": "since",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/change-password",
+      "type": "GenericResponse",
+      "query": [],
+      "body": "PasswordChange",
+      "body_fields": [
+        "newPassword",
+        "passkeys_revoked",
+        "current",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/forgot-password",
+      "type": "ForgotPasswordResponse",
+      "query": [],
+      "body": "ForgotPasswordRequest",
+      "body_fields": [
+        "email"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/login",
+      "type": "LoginResponse",
+      "query": [],
+      "body": "LoginRequest",
+      "body_fields": [
+        "username",
+        "password",
+        "code",
+        "without_token",
+        "label",
+        "never_expires",
+        "scope",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/login",
+      "type": "LoginResponse",
+      "query": [],
+      "body": "LoginRequest",
+      "body_fields": [
+        "username",
+        "password",
+        "code",
+        "without_token",
+        "label",
+        "never_expires",
+        "scope",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/logout",
+      "type": "GenericResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/auth/me",
+      "type": "MeResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/passkey/login",
+      "type": "LoginResponse",
+      "query": [],
+      "body": "PasskeyLoginRequest",
+      "body_fields": [
+        "response",
+        "with_token",
+        "label",
+        "never_expires",
+        "scope"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/passkey/login/options",
+      "type": "PasskeyOptions",
+      "query": [],
+      "body": "PasskeyOptionsRequest",
+      "body_fields": [
+        "purpose"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/auth/profile",
+      "type": "ProfileResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/auth/profile",
+      "type": "ProfileSavedResponse",
+      "query": [],
+      "body": "ProfileRequest",
+      "body_fields": [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "password",
+        "password_current",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/qr-login",
+      "type": "QrMessage",
+      "query": [],
+      "body": "QrLoginRequest",
+      "body_fields": [
+        "token",
+        "label"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/qr-login/collect",
+      "type": "QrPickup",
+      "query": [],
+      "body": "QrCollectRequest",
+      "body_fields": [
+        "pickup",
+        "preview"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/qr-login/discard",
+      "type": "Done",
+      "query": [],
+      "body": "QrDiscard",
+      "body_fields": [
+        "pickup"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/register",
+      "type": "RegisterResponse",
+      "query": [],
+      "body": "RegisterRequest",
+      "body_fields": [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "password",
+        "language"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/auth/registration-status",
+      "type": "RegistrationStatusResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/rotate-token",
+      "type": "TokenRotation",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/auth/second-factor",
+      "type": "SecondFactorStateResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/second-factor/codes",
+      "type": "SecondFactorCodes",
+      "query": [],
+      "body": "SecondFactorRequest",
+      "body_fields": [
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/second-factor/confirm",
+      "type": "SecondFactorCodes",
+      "query": [],
+      "body": "SecondFactorRequest",
+      "body_fields": [
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/second-factor/disable",
+      "type": "GenericResponse",
+      "query": [],
+      "body": "SecondFactorRequest",
+      "body_fields": [
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/auth/second-factor/setup",
+      "type": "SecondFactorSetupResponse",
+      "query": [],
+      "body": "SecondFactorRequest",
+      "body_fields": [
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/catalog/meta",
+      "type": "CatalogMetaResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/catalog/sets",
+      "type": "CatalogSetsResponse",
+      "query": [
+        {
+          "name": "q",
+          "required": false
+        },
+        {
+          "name": "theme_id",
+          "required": false
+        },
+        {
+          "name": "year_from",
+          "required": false
+        },
+        {
+          "name": "year_to",
+          "required": false
+        },
+        {
+          "name": "sort",
+          "required": false
+        },
+        {
+          "name": "page",
+          "required": false
+        },
+        {
+          "name": "page_size",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/catalog/sets/{setNumber}",
+      "type": "CatalogSetDetailResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/catalog/year-distribution",
+      "type": "CatalogYearDistributionResponse",
+      "query": [
+        {
+          "name": "q",
+          "required": false
+        },
+        {
+          "name": "theme_id",
+          "required": false
+        },
+        {
+          "name": "sort",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/device/key",
+      "type": "Done",
+      "query": [],
+      "body": "DeviceKeyRequest",
+      "body_fields": [
+        "public_key",
+        "chain"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/device/key/nonce",
+      "type": "KeyNonceResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/device/step/approval",
+      "type": "StepApprovalResponse",
+      "query": [],
+      "body": "StepApprovalRequest",
+      "body_fields": [
+        "challenge",
+        "signature"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/device/step/challenge",
+      "type": "StepChallengeResponse",
+      "query": [],
+      "body": "StepChallengeRequest",
+      "body_fields": [
+        "action"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/finance/minifigs-valuation",
+      "type": "FigsValuationResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/finance/parts-valuation",
+      "type": "PartsValuationResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/finance/pnl",
+      "type": "PnlResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/finance/portfolio-history",
+      "type": "PortfolioHistoryResponse",
+      "query": [
+        {
+          "name": "period",
+          "required": false
+        },
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/finance/valuation",
+      "type": "ValuationResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/minifigs",
+      "type": "MinifigsResponse",
+      "query": [
+        {
+          "name": "source",
+          "required": false
+        },
+        {
+          "name": "set_number",
+          "required": false
+        },
+        {
+          "name": "accounts",
+          "required": false
+        },
+        {
+          "name": "search",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/minifigs",
+      "type": "AddMinifigResponse",
+      "query": [],
+      "body": "AddMinifigRequest",
+      "body_fields": [
+        "fig_number",
+        "quantity",
+        "condition",
+        "unit_price",
+        "fig_name",
+        "image_url",
+        "bl_fig_number",
+        "owner_user_id",
+        "storage",
+        "acquired_at"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/minifigs/{figNumber}",
+      "type": "GenericResponse",
+      "query": [
+        {
+          "name": "owner",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/minifigs/{figNumber}",
+      "type": "GenericResponse",
+      "query": [
+        {
+          "name": "owner",
+          "required": false
+        }
+      ],
+      "body": "UpdateManualItemRequest",
+      "body_fields": [
+        "quantity",
+        "quantity_delta",
+        "unit_price",
+        "condition",
+        "bl_fig_number"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/minifigs/{figNumber}/acquisitions",
+      "type": "AcquisitionsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/minifigs/{figNumber}/acquisitions/{id}",
+      "type": "DeleteWithQuantityResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/minifigs/{figNumber}/acquisitions/{id}",
+      "type": "GenericResponse",
+      "query": [],
+      "body": "UpdateAcquisitionRequest",
+      "body_fields": [
+        "quantity",
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "date",
+        "owner_user_id",
+        "from_user_id"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/minifigs/{figNumber}/price-history",
+      "type": "PriceHistoryResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/minifigs/{figNumber}/sets",
+      "type": "UsingSetsResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/minifigs/{figNumber}/storage",
+      "type": "StorageResponse",
+      "query": [],
+      "body": "StorageRequest",
+      "body_fields": [
+        "storage"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/minifigs/import/csv",
+      "type": "CsvImportResult",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/minifigs/manual",
+      "type": "ManualFigsResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        },
+        {
+          "name": "search",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/minifigs/stats",
+      "type": "MinifigStatsResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/parts",
+      "type": "PartsResponse",
+      "query": [
+        {
+          "name": "search",
+          "required": false
+        },
+        {
+          "name": "color",
+          "required": false
+        },
+        {
+          "name": "category",
+          "required": false
+        },
+        {
+          "name": "page",
+          "required": false
+        },
+        {
+          "name": "page_size",
+          "required": false
+        },
+        {
+          "name": "set_number",
+          "required": false
+        },
+        {
+          "name": "exclude_manual",
+          "required": false
+        },
+        {
+          "name": "accounts",
+          "required": false
+        },
+        {
+          "name": "spare",
+          "required": false
+        },
+        {
+          "name": "with_sets",
+          "required": false
+        },
+        {
+          "name": "storage",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/parts",
+      "type": "AddPartResponse",
+      "query": [],
+      "body": "AddPartRequest",
+      "body_fields": [
+        "part_number",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "quantity",
+        "condition",
+        "unit_price",
+        "part_name",
+        "image_url",
+        "category_name",
+        "owner_user_id",
+        "storage",
+        "acquired_at"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/parts/{partNumber}/{colorId}",
+      "type": "GenericResponse",
+      "query": [
+        {
+          "name": "owner",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/parts/{partNumber}/{colorId}",
+      "type": "GenericResponse",
+      "query": [
+        {
+          "name": "owner",
+          "required": false
+        }
+      ],
+      "body": "UpdateManualItemRequest",
+      "body_fields": [
+        "quantity",
+        "quantity_delta",
+        "unit_price",
+        "condition",
+        "bl_fig_number"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/parts/{partNumber}/{colorId}/acquisitions",
+      "type": "AcquisitionsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/parts/{partNumber}/{colorId}/acquisitions/{id}",
+      "type": "DeleteWithQuantityResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/parts/{partNumber}/{colorId}/acquisitions/{id}",
+      "type": "GenericResponse",
+      "query": [],
+      "body": "UpdateAcquisitionRequest",
+      "body_fields": [
+        "quantity",
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "date",
+        "owner_user_id",
+        "from_user_id"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/parts/{partNumber}/{colorId}/color",
+      "type": "PartColorResponse",
+      "query": [
+        {
+          "name": "owner",
+          "required": false
+        }
+      ],
+      "body": "PartColorRequest",
+      "body_fields": [
+        "color_id",
+        "color_name",
+        "color_hex"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/parts/{partNumber}/{colorId}/price-history",
+      "type": "PriceHistoryResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/parts/{partNumber}/{colorId}/sets",
+      "type": "UsingSetsResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/parts/{partNumber}/{colorId}/storage",
+      "type": "StorageResponse",
+      "query": [],
+      "body": "StorageRequest",
+      "body_fields": [
+        "storage"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/parts/brick-colors",
+      "type": "BrickColorsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/parts/categories",
+      "type": "PartsCategoriesResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/parts/colors",
+      "type": "PartsFilterColorsResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/parts/import/csv",
+      "type": "CsvImportResult",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/parts/manual",
+      "type": "ManualPartsResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        },
+        {
+          "name": "search",
+          "required": false
+        },
+        {
+          "name": "storage",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/parts/owned",
+      "type": "HoldingResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": "HoldingRequest",
+      "body_fields": [
+        "parts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/parts/stats",
+      "type": "PartsStatsResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets",
+      "type": "SetsResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        },
+        {
+          "name": "search",
+          "required": false
+        },
+        {
+          "name": "theme",
+          "required": false
+        },
+        {
+          "name": "sort",
+          "required": false
+        },
+        {
+          "name": "page",
+          "required": false
+        },
+        {
+          "name": "page_size",
+          "required": false
+        },
+        {
+          "name": "storage",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/sets",
+      "type": "AddSetResponse",
+      "query": [],
+      "body": "AddSetRequest",
+      "body_fields": [
+        "set_number",
+        "quantity",
+        "purchase_price",
+        "condition",
+        "owner_user_id",
+        "storage",
+        "currency",
+        "date"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/sets/{setNumber}",
+      "type": "GenericResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/{setNumber}",
+      "type": "SetResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/{setNumber}",
+      "type": "SetResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/sets/{setNumber}",
+      "type": "QuantityChanged",
+      "query": [],
+      "body": "UpdateQuantityRequest",
+      "body_fields": [
+        "quantity",
+        "quantity_delta",
+        "purchase_price",
+        "condition",
+        "owner_user_id"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/{setNumber}/acquisitions",
+      "type": "AcquisitionsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/sets/{setNumber}/acquisitions/{acqId}",
+      "type": "GenericResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/sets/{setNumber}/acquisitions/{acqId}",
+      "type": "GenericResponse",
+      "query": [],
+      "body": "UpdateAcquisitionRequest",
+      "body_fields": [
+        "quantity",
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "date",
+        "owner_user_id",
+        "from_user_id"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/sets/{setNumber}/alert",
+      "type": "PriceAlertResponse",
+      "query": [
+        {
+          "name": "condition",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/{setNumber}/alert",
+      "type": "PriceAlertsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/sets/{setNumber}/alert",
+      "type": "PriceAlertResponse",
+      "query": [],
+      "body": "PriceAlertRequest",
+      "body_fields": [
+        "direction",
+        "threshold",
+        "condition"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/sets/{setNumber}/instructions/{instrId}",
+      "type": "GenericResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/sets/{setNumber}/instructions/upload",
+      "type": "GenericResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/{setNumber}/minifigs-list",
+      "type": "MinifigsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/sets/{setNumber}/move",
+      "type": "MoveSetResponse",
+      "query": [],
+      "body": "MoveSetRequest",
+      "body_fields": [
+        "from_user_id",
+        "to_user_id",
+        "acquisition_ids"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/{setNumber}/parts-list",
+      "type": "PartsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/{setNumber}/price",
+      "type": "SetPriceResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/{setNumber}/price-history",
+      "type": "PriceHistoryResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/sets/{setNumber}/storage",
+      "type": "StorageResponse",
+      "query": [],
+      "body": "StorageRequest",
+      "body_fields": [
+        "storage"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/barcode/{barcode}",
+      "type": "BarcodeResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/exists/{setNumber}",
+      "type": "SetExistsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/household-members",
+      "type": "HouseholdMembersResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/sets/import/csv",
+      "type": "CsvImportResult",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/sets/import/csv/cancel",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/import/csv/status",
+      "type": "CsvImportStatus",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/info/{setNumber}",
+      "type": "SetInfoResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/sets/partslist-pdf",
+      "type": "PdfJobResponse",
+      "query": [],
+      "body": "PdfJobRequest",
+      "body_fields": [
+        "sets",
+        "parts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/partslist-pdf/download/{jobId}",
+      "type": "ResponseBody",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/sets/partslist-pdf/status/{jobId}",
+      "type": "PdfJobState",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/settings",
+      "type": "SettingsResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/settings",
+      "type": "GenericResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/settings/admin/theme",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/settings/default-condition",
+      "type": "DefaultConditionResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/settings/household",
+      "type": "HouseholdStatusResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/settings/household/former/dismiss",
+      "type": "GenericResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/settings/household/invite",
+      "type": "HouseholdInviteResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/settings/household/redeem",
+      "type": "GenericResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/settings/household/unlink",
+      "type": "GenericResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/settings/sessions/end-others",
+      "type": "OthersEnded",
+      "query": [],
+      "body": "EndOthersRequest",
+      "body_fields": [
+        "accesses",
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/settings/theme",
+      "type": "AppThemeResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/settings/tokens",
+      "type": "TokensResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/settings/tokens/{tokenId}",
+      "type": "TokenRevocation",
+      "query": [],
+      "body": "SecondFactorRequest",
+      "body_fields": [
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/settings/user/default-condition",
+      "type": "GenericAdminResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/settings/user/theme",
+      "type": "AppThemeResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/startup-status",
+      "type": "StartupStatus",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/stats",
+      "type": "StatsResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/storage",
+      "type": "StoragesResponse",
+      "query": [
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/storage/default",
+      "type": "StorageDefaultResponse",
+      "query": [],
+      "body": "StorageDefaultRequest",
+      "body_fields": [
+        "id"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/storage/locations",
+      "type": "StorageStockResponse",
+      "query": [
+        {
+          "name": "owner",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/storage/locations",
+      "type": "StorageEntryResponse",
+      "query": [],
+      "body": "StorageNameRequest",
+      "body_fields": [
+        "name",
+        "owner"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/storage/locations/{id}",
+      "type": "StorageResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/storage/locations/{id}",
+      "type": "StorageEntryResponse",
+      "query": [],
+      "body": "StorageNameRequest",
+      "body_fields": [
+        "name",
+        "owner"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/vouchers",
+      "type": "VoucherList",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/vouchers",
+      "type": "VoucherReply",
+      "query": [],
+      "body": "VoucherRequest",
+      "body_fields": [
+        "number",
+        "pin",
+        "amount",
+        "currency"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/vouchers/{id}",
+      "type": "GenericResponse",
+      "query": [],
+      "body": "SecondFactorRequest",
+      "body_fields": [
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/vouchers/{id}",
+      "type": "VoucherReply",
+      "query": [],
+      "body": "VoucherRequest",
+      "body_fields": [
+        "number",
+        "pin",
+        "amount",
+        "currency"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/vouchers/{id}/balance",
+      "type": "BalanceReply",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/vouchers/{id}/pdf-grant",
+      "type": "VoucherPdfGrant",
+      "query": [],
+      "body": "SecondFactorRequest",
+      "body_fields": [
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/vouchers/{id}/plaintext",
+      "type": "VoucherPlaintext",
+      "query": [],
+      "body": "SecondFactorRequest",
+      "body_fields": [
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/vouchers/{id}/restore",
+      "type": "VoucherReply",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/vouchers/export/pdf-grant",
+      "type": "VoucherPdfGrant",
+      "query": [],
+      "body": "SecondFactorRequest",
+      "body_fields": [
+        "password",
+        "code",
+        "passkey"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/vouchers/pdf",
+      "type": "VoucherReply",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/wanted",
+      "type": "WantedListResponse",
+      "query": [
+        {
+          "name": "search",
+          "required": false
+        },
+        {
+          "name": "condition",
+          "required": false
+        },
+        {
+          "name": "sort",
+          "required": false
+        },
+        {
+          "name": "accounts",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/wanted",
+      "type": "WantedItemReply",
+      "query": [],
+      "body": "WantedItemRequest",
+      "body_fields": [
+        "set_number",
+        "condition",
+        "owner_user_id"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v2/wanted/{setNumber}/{condition}",
+      "type": "GenericResponse",
+      "query": [
+        {
+          "name": "owner_user_id",
+          "required": false
+        }
+      ],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v2/wanted/{setNumber}/{condition}/owner",
+      "type": "WantedItemOwnerReply",
+      "query": [],
+      "body": "WantedItemOwnerRequest",
+      "body_fields": [
+        "owner_user_id",
+        "new_owner"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/wanted/{setNumber}/{condition}/take-over",
+      "type": "WantedItemTakeoverResponse",
+      "query": [],
+      "body": "WantedItemTakeoverRequest",
+      "body_fields": [
+        "quantity",
+        "purchase_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/wanted/{setNumber}/prices",
+      "type": "WantedItemPricesResponse",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/wanted/import/csv",
+      "type": "CsvImportResult",
+      "query": [],
+      "body": null,
+      "body_fields": []
+    }
+  ],
+  "addresses": [
+    "/api/v1/img-proxy",
+    "/api/v2/auth/logout",
+    "/api/v2/auth/rotate-token",
+    "/api/v2/sets/add-stream",
+    "/api/v2/sets/import/csv/stream",
+    "/api/v2/sets/partslist-pdf/stream/",
+    "/api/v2/vouchers/",
+    "/api/v2/vouchers/export/pdf"
+  ],
+  "without_token": [
+    "GET /api/v2/auth/registration-status",
+    "POST /api/v2/auth/forgot-password",
+    "POST /api/v2/auth/login",
+    "POST /api/v2/auth/passkey/login",
+    "POST /api/v2/auth/passkey/login/options",
+    "POST /api/v2/auth/qr-login",
+    "POST /api/v2/auth/qr-login/collect",
+    "POST /api/v2/auth/qr-login/discard",
+    "POST /api/v2/auth/register"
+  ],
+  "response_fields": [
+    "N",
+    "U",
+    "aborted",
+    "accesses",
+    "account_count",
+    "account_currency",
+    "account_price",
+    "acq_count",
+    "acquired_at",
+    "acquisition_ids",
+    "acquisitions",
+    "action",
+    "active",
+    "added",
+    "added_at",
+    "address",
+    "age_seconds",
+    "ago",
+    "alarm",
+    "alert",
+    "alerts",
+    "amount",
+    "anfrage",
+    "announced",
+    "api",
+    "apkSha256",
+    "apkSize",
+    "apkUrl",
+    "app_theme",
+    "applied",
+    "asked",
+    "attempts",
+    "ausgestellt",
+    "auth",
+    "available",
+    "avg",
+    "avg_price",
+    "avg_purchase_price",
+    "awaiting_confirmation",
+    "balance_checked_at",
+    "base_url",
+    "baseline_cost",
+    "baseline_market_value",
+    "baseline_pnl_amount",
+    "baseline_pnl_pct",
+    "baseline_pnl_percent",
+    "baseline_price",
+    "besitzer",
+    "blColor",
+    "blId",
+    "bl_color_id",
+    "bl_fig_number",
+    "bl_part_number",
+    "bl_unknown",
+    "bricklink",
+    "brickset",
+    "by_condition",
+    "bytes",
+    "ca",
+    "cache_ttl_hours",
+    "cached",
+    "canRedownload",
+    "catalog",
+    "catalog_image",
+    "catalog_pending",
+    "categories",
+    "category_name",
+    "cert_sha256",
+    "chain",
+    "challenge",
+    "change_password",
+    "changed",
+    "chart",
+    "code",
+    "codes",
+    "codes_left",
+    "colorHex",
+    "colorId",
+    "colorName",
+    "colorPending",
+    "color_hex",
+    "color_id",
+    "color_name",
+    "colors",
+    "combined",
+    "commit",
+    "condition",
+    "condition_used",
+    "conditions",
+    "confidence",
+    "configured",
+    "console_mode",
+    "converted_purchase_prices",
+    "cookie_missing",
+    "corrections",
+    "cost_without_market_price",
+    "count",
+    "created",
+    "created_at",
+    "currency",
+    "currency_adjusted",
+    "currency_changed",
+    "currency_code",
+    "currency_note",
+    "current",
+    "current_price",
+    "data_points",
+    "database",
+    "date",
+    "db",
+    "db_pool",
+    "deadline_at",
+    "defaultCondition",
+    "default_condition",
+    "default_price_condition",
+    "degraded",
+    "deleted",
+    "deleted_at",
+    "depth",
+    "description",
+    "device",
+    "direction",
+    "discarded",
+    "display_value",
+    "displayed",
+    "done",
+    "download",
+    "downloaded_at",
+    "dropped",
+    "due_at",
+    "duration_minutes",
+    "effective_at",
+    "effective_condition",
+    "email",
+    "emailChanged",
+    "emailSent",
+    "email_sent",
+    "email_verified",
+    "enabled",
+    "endpoints",
+    "enqueued",
+    "entries",
+    "err",
+    "error",
+    "error_code",
+    "error_message",
+    "errors",
+    "etaSeconds",
+    "exact",
+    "existing",
+    "existing_numbers",
+    "exists",
+    "expires_at",
+    "expires_in",
+    "exported_at",
+    "exported_by",
+    "failed",
+    "fetched_at",
+    "figNumber",
+    "fig_name",
+    "fig_number",
+    "figs",
+    "figs_purchase",
+    "file_currency",
+    "filterIneffective",
+    "finished_at",
+    "firstRealIndex",
+    "first_name",
+    "foreignTypes",
+    "foreign_currency_purchases",
+    "forgot_password",
+    "former_links",
+    "found",
+    "fp",
+    "fp_hex",
+    "frac",
+    "from_cache",
+    "from_user_id",
+    "gesamt",
+    "gesamtProzent",
+    "global",
+    "grand_total",
+    "gueltigBis",
+    "guide_type",
+    "hard_expires_at",
+    "has_pdf",
+    "heartbeat",
+    "heute",
+    "heuteProzent",
+    "hex",
+    "hint",
+    "hints",
+    "history_new",
+    "history_used",
+    "holding",
+    "https",
+    "id",
+    "image",
+    "image_demand",
+    "image_local",
+    "image_url",
+    "imported",
+    "in_catalog",
+    "in_sets",
+    "instruction",
+    "instructions",
+    "inviter",
+    "ip",
+    "ip_range",
+    "isAdmin",
+    "isWarning",
+    "is_active",
+    "is_admin",
+    "is_fallback",
+    "is_fig",
+    "is_main",
+    "is_manual",
+    "is_purchase_price",
+    "is_self",
+    "is_spare",
+    "is_sub",
+    "item",
+    "items",
+    "job",
+    "jobId",
+    "job_id",
+    "job_process",
+    "jobs",
+    "key",
+    "key_nonce",
+    "kind",
+    "label",
+    "language",
+    "lastDuration",
+    "lastErrors",
+    "lastRun",
+    "lastUpdated",
+    "last_error",
+    "last_name",
+    "last_price",
+    "last_purchase",
+    "last_triggered_at",
+    "last_used",
+    "level",
+    "levels",
+    "limit",
+    "limits",
+    "linked_to",
+    "links",
+    "local",
+    "local_path",
+    "location",
+    "locations",
+    "log",
+    "loggedIn",
+    "logged_at",
+    "logs",
+    "loose",
+    "mail_delivery",
+    "manual",
+    "manual_parts",
+    "map",
+    "marker",
+    "market_price",
+    "market_value_without_purchase_price",
+    "max",
+    "maxPrice",
+    "max_attempts",
+    "max_price",
+    "max_purchase_price",
+    "members",
+    "merged",
+    "message",
+    "min",
+    "min_price",
+    "minifigs",
+    "minutes",
+    "missingImages",
+    "mixed",
+    "mode",
+    "moved",
+    "multiple",
+    "mustChangePassword",
+    "n",
+    "name",
+    "nameGuessed",
+    "never_expires",
+    "newPassword",
+    "new_email",
+    "new_owner",
+    "new_quantity",
+    "nextRun",
+    "no_price",
+    "nonce",
+    "note",
+    "now",
+    "num_parts",
+    "number",
+    "ok",
+    "old_codes_until",
+    "old_valid_until",
+    "open",
+    "open_invites",
+    "options",
+    "origin",
+    "original",
+    "original_purchase_price",
+    "otpauth",
+    "outcome",
+    "overlap_seconds",
+    "own",
+    "owned",
+    "owned_quantity",
+    "owner",
+    "owner_ids",
+    "owner_user_id",
+    "owners",
+    "owns",
+    "page",
+    "page_size",
+    "pages",
+    "pairing",
+    "parents",
+    "parsed",
+    "partNumber",
+    "part_name",
+    "part_number",
+    "parts",
+    "parts_purchase",
+    "passkey",
+    "passkeys",
+    "passkeys_revoked",
+    "password",
+    "password_current",
+    "path",
+    "pauses",
+    "pending",
+    "period",
+    "period_change_pct",
+    "pickup",
+    "pieces",
+    "pin",
+    "pnl_abs",
+    "pnl_amount",
+    "pnl_current",
+    "pnl_pct",
+    "pnl_percent",
+    "pnl_purchase",
+    "points",
+    "positions",
+    "positions_valued",
+    "positions_without_market_price",
+    "positions_without_purchase_price",
+    "preset",
+    "preview",
+    "price_cache_ttl",
+    "price_comparison_url",
+    "price_condition",
+    "price_estimated",
+    "price_from_condition",
+    "price_pending",
+    "price_stale",
+    "priced_rows",
+    "prices",
+    "prices_pending",
+    "progress",
+    "proxy",
+    "proxy_hint",
+    "public_key",
+    "purchase",
+    "purchase_currency",
+    "purchase_price",
+    "purchase_price_estimated",
+    "purchase_total",
+    "purge_at",
+    "purpose",
+    "qty_avg",
+    "qty_avg_price",
+    "quantity",
+    "quantity_delta",
+    "queue",
+    "queueLastRun",
+    "queued",
+    "rate_limit",
+    "rate_limits",
+    "rbColor",
+    "rbId",
+    "ready",
+    "reason",
+    "reasonCode",
+    "rebrickable",
+    "recorded_at",
+    "rejected",
+    "remaining",
+    "removed",
+    "required",
+    "resolved",
+    "response",
+    "results",
+    "retry_after",
+    "rotated_at",
+    "rotation_due",
+    "row",
+    "running",
+    "scheduled",
+    "schedules",
+    "schritt",
+    "scope",
+    "secondFactorRequired",
+    "second_factor",
+    "secret",
+    "set",
+    "setNumber",
+    "set_added_at",
+    "set_count",
+    "set_img_url",
+    "set_name",
+    "set_number",
+    "set_parts",
+    "sets",
+    "sets_purchase",
+    "settings",
+    "signature",
+    "since",
+    "skipped",
+    "skipped_hint",
+    "smtp_skipped",
+    "source",
+    "source_emptied",
+    "sources",
+    "stand",
+    "started",
+    "started_at",
+    "startup",
+    "state",
+    "stats",
+    "status",
+    "step",
+    "steps",
+    "storage",
+    "storage_id",
+    "sub",
+    "sub_accounts",
+    "sub_parts",
+    "subject",
+    "subsets",
+    "success",
+    "summary",
+    "supplement",
+    "text",
+    "theme",
+    "theme_id",
+    "theme_name",
+    "themes",
+    "threshold",
+    "ticket",
+    "tile_pnl_pct",
+    "tile_price",
+    "tile_source",
+    "time",
+    "title",
+    "to_user_id",
+    "token",
+    "token_days",
+    "token_expires",
+    "token_id",
+    "token_info",
+    "token_last_used",
+    "token_prefix",
+    "tokens",
+    "topped_up",
+    "total",
+    "total_avg",
+    "total_instructions",
+    "total_minifigs",
+    "total_parts",
+    "total_pieces",
+    "total_qty_avg",
+    "total_quantity",
+    "total_sets",
+    "total_value",
+    "totals",
+    "transports",
+    "trash",
+    "triggered",
+    "ttl",
+    "ttl_hours",
+    "type",
+    "types",
+    "uncertain",
+    "unchanged",
+    "unique_colors",
+    "unique_figs",
+    "unique_parts",
+    "unit_price",
+    "united",
+    "until_at",
+    "updated",
+    "updated_at",
+    "uptime_seconds",
+    "url",
+    "used_count",
+    "user",
+    "userId",
+    "user_default_condition",
+    "user_id",
+    "user_settings",
+    "username",
+    "users",
+    "valid_seconds",
+    "valid_until",
+    "value",
+    "value_total",
+    "values",
+    "vars",
+    "version",
+    "versionCode",
+    "versionName",
+    "via",
+    "view",
+    "voucher",
+    "vouchers",
+    "waehrung",
+    "waitSeconds",
+    "waiting",
+    "warn",
+    "was_new",
+    "wert",
+    "with_token",
+    "withoutNumber",
+    "without_rate",
+    "without_token",
+    "x",
+    "x_label",
+    "y",
+    "y_axis",
+    "y_frac",
+    "year",
+    "year_counts",
+    "year_max",
+    "year_min",
+    "years",
+    "zustand"
+  ],
+  "models": {
+    "AccountActive": {
+      "fields": [
+        "success",
+        "is_active",
+        "effective_at"
+      ],
+      "required": []
+    },
+    "AccountInList": {
+      "fields": [
+        "id",
+        "username",
+        "is_admin",
+        "is_active",
+        "created_at",
+        "second_factor",
+        "awaiting_confirmation",
+        "announced"
+      ],
+      "required": []
+    },
+    "AccountInListAnnouncedEntry": {
+      "fields": [
+        "type",
+        "effective_at"
+      ],
+      "required": []
+    },
+    "AccountList": {
+      "fields": [
+        "success",
+        "users"
+      ],
+      "required": []
+    },
+    "AccountName": {
+      "fields": [
+        "id",
+        "username"
+      ],
+      "required": []
+    },
+    "Acquisition": {
+      "fields": [
+        "id",
+        "quantity",
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "created_at",
+        "owner_user_id",
+        "price_estimated",
+        "currency",
+        "account_price"
+      ],
+      "required": [
+        "id",
+        "quantity"
+      ]
+    },
+    "AcquisitionManagement": {
+      "fields": [
+        "kind",
+        "id",
+        "colorId",
+        "title"
+      ],
+      "required": [
+        "kind",
+        "id",
+        "title"
+      ]
+    },
+    "AcquisitionsResponse": {
+      "fields": [
+        "success",
+        "owner_user_id",
+        "acquisitions",
+        "totals",
+        "degraded"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "AcquisitionTotals": {
+      "fields": [
+        "quantity",
+        "amount",
+        "priced_rows",
+        "currency",
+        "without_rate"
+      ],
+      "required": []
+    },
+    "AddMinifigRequest": {
+      "fields": [
+        "fig_number",
+        "quantity",
+        "condition",
+        "unit_price",
+        "fig_name",
+        "image_url",
+        "bl_fig_number",
+        "owner_user_id",
+        "storage",
+        "acquired_at"
+      ],
+      "required": [
+        "fig_number"
+      ]
+    },
+    "AddMinifigResponse": {
+      "fields": [
+        "success",
+        "action",
+        "fig_number",
+        "fig_name",
+        "price_from_condition"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "AddPartRequest": {
+      "fields": [
+        "part_number",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "quantity",
+        "condition",
+        "unit_price",
+        "part_name",
+        "image_url",
+        "category_name",
+        "owner_user_id",
+        "storage",
+        "acquired_at"
+      ],
+      "required": [
+        "part_number"
+      ]
+    },
+    "AddPartResponse": {
+      "fields": [
+        "success",
+        "action",
+        "part_number",
+        "part_name",
+        "price_from_condition"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "AddSetRequest": {
+      "fields": [
+        "set_number",
+        "quantity",
+        "purchase_price",
+        "condition",
+        "owner_user_id",
+        "storage",
+        "currency",
+        "date"
+      ],
+      "required": [
+        "set_number"
+      ]
+    },
+    "AddSetResponse": {
+      "fields": [
+        "success",
+        "action",
+        "set_number",
+        "name",
+        "catalog_pending",
+        "supplement",
+        "owner_user_id",
+        "is_self"
+      ],
+      "required": []
+    },
+    "ApiLimits": {
+      "fields": [
+        "rebrickable",
+        "bricklink",
+        "brickset"
+      ],
+      "required": []
+    },
+    "ApiLimitsResponse": {
+      "fields": [
+        "success",
+        "limits"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "AppThemeResponse": {
+      "fields": [
+        "success",
+        "theme",
+        "preset",
+        "own"
+      ],
+      "required": []
+    },
+    "AppToken": {
+      "fields": [
+        "token_id",
+        "label",
+        "created_at",
+        "last_used",
+        "expires_at",
+        "never_expires",
+        "current",
+        "token_prefix",
+        "hard_expires_at",
+        "scope",
+        "ip_range",
+        "rotated_at"
+      ],
+      "required": [
+        "token_id"
+      ]
+    },
+    "Backup": {
+      "fields": [
+        "version",
+        "exported_at",
+        "exported_by",
+        "global",
+        "user_settings"
+      ],
+      "required": []
+    },
+    "BackupRestored": {
+      "fields": [
+        "success",
+        "imported",
+        "note",
+        "smtp_skipped"
+      ],
+      "required": []
+    },
+    "BalanceReply": {
+      "fields": [
+        "success",
+        "voucher",
+        "displayed",
+        "currency_changed",
+        "reason",
+        "waitSeconds",
+        "error",
+        "code"
+      ],
+      "required": []
+    },
+    "BarcodeResponse": {
+      "fields": [
+        "success",
+        "set_number",
+        "name",
+        "year",
+        "pieces",
+        "theme",
+        "minifigs",
+        "image_url",
+        "image_local",
+        "source",
+        "uncertain"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "BarcodeScanner": {
+      "fields": [
+        "origin"
+      ],
+      "required": [
+        "origin"
+      ]
+    },
+    "BlColorTable": {
+      "fields": [
+        "success",
+        "source",
+        "map",
+        "degraded"
+      ],
+      "required": []
+    },
+    "BrickColor": {
+      "fields": [
+        "id",
+        "name",
+        "hex"
+      ],
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "BrickColorsResponse": {
+      "fields": [
+        "success",
+        "colors"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "BricklinkLinks": {
+      "fields": [
+        "success",
+        "links"
+      ],
+      "required": []
+    },
+    "BrickLinkRef": {
+      "fields": [
+        "type",
+        "number",
+        "url",
+        "exact",
+        "resolved"
+      ],
+      "required": []
+    },
+    "BricksetQueueEntry": {
+      "fields": [
+        "created_at",
+        "set_number",
+        "name",
+        "attempts",
+        "retry_after",
+        "last_error"
+      ],
+      "required": [
+        "set_number"
+      ]
+    },
+    "BricksetQueueResponse": {
+      "fields": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "count",
+        "entries"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "CacheStatsResponse": {
+      "fields": [
+        "db_pool",
+        "success",
+        "prices",
+        "subsets",
+        "catalog",
+        "price_stale",
+        "rate_limits",
+        "degraded"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "CacheTtlResponse": {
+      "fields": [
+        "success",
+        "ttl"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "CatalogDetail": {
+      "fields": [
+        "setNumber"
+      ],
+      "required": [
+        "setNumber"
+      ]
+    },
+    "CatalogMetaResponse": {
+      "fields": [
+        "success",
+        "themes",
+        "year_min",
+        "year_max",
+        "year_counts"
+      ],
+      "required": []
+    },
+    "CatalogSetDetail": {
+      "fields": [
+        "set_number",
+        "name",
+        "year",
+        "theme_id",
+        "theme_name",
+        "num_parts",
+        "image_url",
+        "image_local",
+        "minifigs",
+        "owned",
+        "owned_quantity",
+        "bricklink",
+        "price_comparison_url"
+      ],
+      "required": [
+        "set_number"
+      ]
+    },
+    "CatalogSetDetailResponse": {
+      "fields": [
+        "success",
+        "set"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "CatalogSetItem": {
+      "fields": [
+        "set_number",
+        "name",
+        "year",
+        "theme_id",
+        "theme_name",
+        "num_parts",
+        "image_url",
+        "image_local",
+        "owned",
+        "owned_quantity"
+      ],
+      "required": []
+    },
+    "CatalogSetsResponse": {
+      "fields": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "pages",
+        "sets"
+      ],
+      "required": []
+    },
+    "CatalogTheme": {
+      "fields": [
+        "id",
+        "name",
+        "set_count"
+      ],
+      "required": []
+    },
+    "CatalogYearCount": {
+      "fields": [
+        "year",
+        "n"
+      ],
+      "required": []
+    },
+    "CatalogYearDistributionResponse": {
+      "fields": [
+        "success",
+        "years"
+      ],
+      "required": []
+    },
+    "ChartPoint": {
+      "fields": [
+        "x_label",
+        "value",
+        "y_frac"
+      ],
+      "required": []
+    },
+    "ChartYAxis": {
+      "fields": [
+        "label",
+        "value",
+        "frac"
+      ],
+      "required": []
+    },
+    "ComponentHeader": {
+      "fields": [
+        "number",
+        "name",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "category_name",
+        "image_local",
+        "image_url",
+        "is_spare",
+        "storage",
+        "owner_ids",
+        "total_quantity"
+      ],
+      "required": [
+        "number"
+      ]
+    },
+    "ConditionValuation": {
+      "fields": [
+        "market_price",
+        "purchase_price",
+        "pnl_pct",
+        "pnl_percent"
+      ],
+      "required": []
+    },
+    "ConfigExport": {
+      "fields": [
+        "version",
+        "exported_at",
+        "exported_by",
+        "global",
+        "user_settings"
+      ],
+      "required": []
+    },
+    "CreateWantedItem": {
+      "fields": [
+        "anfrage"
+      ],
+      "required": [
+        "anfrage"
+      ]
+    },
+    "CsvImportResult": {
+      "fields": [
+        "success",
+        "total",
+        "added",
+        "updated",
+        "errors",
+        "results",
+        "skipped",
+        "skipped_hint",
+        "currency_note",
+        "started",
+        "existing",
+        "existing_numbers"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "CsvImportRow": {
+      "fields": [
+        "set_number",
+        "row",
+        "success",
+        "action",
+        "isWarning",
+        "error",
+        "code",
+        "quantity",
+        "catalog_pending",
+        "part_number",
+        "fig_number",
+        "fig_name",
+        "condition",
+        "vars",
+        "currency_adjusted",
+        "file_currency",
+        "account_currency"
+      ],
+      "required": []
+    },
+    "CsvImportStatus": {
+      "fields": [
+        "code",
+        "results",
+        "success",
+        "status",
+        "total",
+        "done",
+        "current",
+        "ok",
+        "warn",
+        "err",
+        "error",
+        "finished_at"
+      ],
+      "required": []
+    },
+    "CurrentByCondition": {
+      "fields": [
+        "N",
+        "U"
+      ],
+      "required": []
+    },
+    "CurrentPrice": {
+      "fields": [
+        "condition",
+        "avg_price",
+        "min_price",
+        "max_price",
+        "fetched_at"
+      ],
+      "required": []
+    },
+    "DashboardStats": {
+      "fields": [
+        "currency",
+        "default_condition",
+        "user_default_condition",
+        "total_sets",
+        "total_quantity",
+        "total_pieces",
+        "total_instructions",
+        "total_parts",
+        "set_parts",
+        "manual_parts",
+        "total_minifigs"
+      ],
+      "required": [
+        "total_sets",
+        "total_quantity",
+        "total_pieces",
+        "total_instructions",
+        "total_parts",
+        "total_minifigs"
+      ]
+    },
+    "DefaultConditionResponse": {
+      "fields": [
+        "success",
+        "condition"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "Deleted": {
+      "fields": [
+        "success",
+        "deleted"
+      ],
+      "required": []
+    },
+    "DeleteFigure": {
+      "fields": [
+        "figNumber",
+        "besitzer"
+      ],
+      "required": [
+        "figNumber"
+      ]
+    },
+    "DeletePart": {
+      "fields": [
+        "partNumber",
+        "colorId",
+        "besitzer"
+      ],
+      "required": [
+        "partNumber",
+        "colorId"
+      ]
+    },
+    "DeleteWantedItem": {
+      "fields": [
+        "setNumber",
+        "zustand",
+        "besitzer"
+      ],
+      "required": [
+        "setNumber",
+        "zustand"
+      ]
+    },
+    "DeleteWithQuantityResponse": {
+      "fields": [
+        "success",
+        "new_quantity"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "DeviceKeyRequest": {
+      "fields": [
+        "public_key",
+        "chain"
+      ],
+      "required": [
+        "chain"
+      ]
+    },
+    "Done": {
+      "fields": [
+        "success"
+      ],
+      "required": []
+    },
+    "EditFigure": {
+      "fields": [
+        "figNumber",
+        "anfrage",
+        "besitzer"
+      ],
+      "required": [
+        "figNumber",
+        "anfrage"
+      ]
+    },
+    "EditPart": {
+      "fields": [
+        "partNumber",
+        "colorId",
+        "anfrage",
+        "besitzer"
+      ],
+      "required": [
+        "partNumber",
+        "colorId",
+        "anfrage"
+      ]
+    },
+    "EmailPreview": {
+      "fields": [
+        "success",
+        "username"
+      ],
+      "required": []
+    },
+    "EndOthersRequest": {
+      "fields": [
+        "accesses",
+        "password",
+        "code",
+        "passkey"
+      ],
+      "required": []
+    },
+    "Endpoints": {
+      "fields": [
+        "auth",
+        "api",
+        "version",
+        "endpoints"
+      ],
+      "required": []
+    },
+    "ErrorResponse": {
+      "fields": [
+        "success",
+        "error",
+        "code"
+      ],
+      "required": []
+    },
+    "FigsValuationResponse": {
+      "fields": [
+        "converted_purchase_prices",
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "currency",
+        "figs",
+        "total_value",
+        "value_total",
+        "prices_pending",
+        "foreign_currency_purchases"
+      ],
+      "required": [
+        "success",
+        "total_value"
+      ]
+    },
+    "FigValuationItem": {
+      "fields": [
+        "id",
+        "quantity",
+        "image_url",
+        "image_local",
+        "purchase_price",
+        "avg_price",
+        "condition",
+        "conditions",
+        "user_id",
+        "owners",
+        "fig_number",
+        "bl_fig_number",
+        "fig_name",
+        "set_number",
+        "source",
+        "storage_id",
+        "pending",
+        "from_cache",
+        "max_price",
+        "min_price",
+        "qty_avg_price",
+        "pnl_pct",
+        "pnl_percent",
+        "display_value",
+        "total_value",
+        "value_total",
+        "acquisitions",
+        "acq_count",
+        "used_count",
+        "avg_purchase_price",
+        "storage",
+        "unit_price"
+      ],
+      "required": []
+    },
+    "ForgotPasswordRequest": {
+      "fields": [
+        "email"
+      ],
+      "required": [
+        "email"
+      ]
+    },
+    "ForgotPasswordResponse": {
+      "fields": [
+        "success",
+        "message",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "GenericAdminResponse": {
+      "fields": [
+        "success",
+        "condition",
+        "message",
+        "set_number",
+        "started",
+        "theme",
+        "ttl",
+        "queued",
+        "pending",
+        "skipped",
+        "discarded",
+        "duration_minutes",
+        "enqueued"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "GenericResponse": {
+      "fields": [
+        "success",
+        "new_quantity",
+        "from_user_id",
+        "to_user_id",
+        "merged",
+        "unchanged",
+        "acquisitions",
+        "instructions",
+        "set",
+        "parts",
+        "minifigs",
+        "source_emptied",
+        "quantity",
+        "degraded",
+        "trash",
+        "linked_to",
+        "removed",
+        "instruction",
+        "updated",
+        "deleted"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "Health": {
+      "fields": [
+        "status",
+        "startup",
+        "db_pool",
+        "uptime_seconds"
+      ],
+      "required": []
+    },
+    "Heartbeat": {
+      "fields": [
+        "status"
+      ],
+      "required": []
+    },
+    "HoldingCleared": {
+      "fields": [
+        "success",
+        "sets",
+        "parts",
+        "minifigs",
+        "trash"
+      ],
+      "required": []
+    },
+    "HoldingEntry": {
+      "fields": [
+        "total",
+        "loose"
+      ],
+      "required": []
+    },
+    "HoldingPart": {
+      "fields": [
+        "part_number",
+        "color_id"
+      ],
+      "required": [
+        "part_number",
+        "color_id"
+      ]
+    },
+    "HoldingRequest": {
+      "fields": [
+        "parts"
+      ],
+      "required": [
+        "parts"
+      ]
+    },
+    "HoldingResponse": {
+      "fields": [
+        "success",
+        "holding"
+      ],
+      "required": []
+    },
+    "HouseholdInviteCheckResponse": {
+      "fields": [
+        "success",
+        "inviter"
+      ],
+      "required": []
+    },
+    "HouseholdInviteCheckResponseInviter": {
+      "fields": [
+        "id",
+        "username"
+      ],
+      "required": []
+    },
+    "HouseholdInviteResponse": {
+      "fields": [
+        "success",
+        "code",
+        "expires_in"
+      ],
+      "required": []
+    },
+    "HouseholdMember": {
+      "fields": [
+        "depth",
+        "id",
+        "username",
+        "is_self"
+      ],
+      "required": []
+    },
+    "HouseholdMembersResponse": {
+      "fields": [
+        "success",
+        "members"
+      ],
+      "required": []
+    },
+    "HouseholdStatusResponse": {
+      "fields": [
+        "view",
+        "success",
+        "is_main",
+        "is_sub",
+        "currency",
+        "linked_to",
+        "parents",
+        "sub_accounts",
+        "open_invites",
+        "former_links",
+        "degraded"
+      ],
+      "required": []
+    },
+    "ImageDiagnosis": {
+      "fields": [
+        "success",
+        "set_number",
+        "hints",
+        "database",
+        "local",
+        "proxy",
+        "marker"
+      ],
+      "required": []
+    },
+    "ImageDiagnosisDatabase": {
+      "fields": [
+        "account_count",
+        "image_local",
+        "image_url",
+        "catalog_image"
+      ],
+      "required": []
+    },
+    "ImageDiagnosisLocal": {
+      "fields": [
+        "original",
+        "preview"
+      ],
+      "required": []
+    },
+    "ImageDiagnosisLocalOriginal": {
+      "fields": [
+        "existing",
+        "bytes",
+        "changed"
+      ],
+      "required": []
+    },
+    "ImageDiagnosisLocalPreview": {
+      "fields": [
+        "existing",
+        "bytes",
+        "changed"
+      ],
+      "required": []
+    },
+    "ImageDiagnosisMarker": {
+      "fields": [
+        "since",
+        "reason"
+      ],
+      "required": []
+    },
+    "ImageDiagnosisProxy": {
+      "fields": [
+        "cached",
+        "address"
+      ],
+      "required": []
+    },
+    "ImageMarkerForgotten": {
+      "fields": [
+        "success",
+        "removed",
+        "hint"
+      ],
+      "required": []
+    },
+    "Instruction": {
+      "fields": [
+        "downloaded_at",
+        "fetched_at",
+        "set_number",
+        "user_id",
+        "id",
+        "url",
+        "description",
+        "local_path",
+        "is_manual"
+      ],
+      "required": [
+        "url"
+      ]
+    },
+    "InstructionsLoaded": {
+      "fields": [
+        "success",
+        "count",
+        "instructions",
+        "job_id"
+      ],
+      "required": []
+    },
+    "InstructionUploadedInstruction": {
+      "fields": [
+        "url",
+        "description",
+        "local_path"
+      ],
+      "required": []
+    },
+    "Job": {
+      "fields": [
+        "id",
+        "type",
+        "status",
+        "attempts",
+        "max_attempts",
+        "due_at",
+        "deadline_at",
+        "started_at",
+        "created_at",
+        "updated_at",
+        "progress",
+        "error_message",
+        "scheduled",
+        "waiting",
+        "set_number"
+      ],
+      "required": [
+        "id",
+        "type",
+        "status",
+        "attempts",
+        "max_attempts",
+        "due_at",
+        "deadline_at",
+        "started_at",
+        "created_at",
+        "updated_at",
+        "progress",
+        "error_message",
+        "scheduled",
+        "set_number"
+      ]
+    },
+    "JobChange": {
+      "fields": [
+        "success",
+        "id",
+        "status"
+      ],
+      "required": [
+        "success",
+        "id",
+        "status"
+      ]
+    },
+    "JobCounter": {
+      "fields": [
+        "type",
+        "status",
+        "count"
+      ],
+      "required": [
+        "type",
+        "status",
+        "count"
+      ]
+    },
+    "JobKindDrain": {
+      "fields": [
+        "success",
+        "kind",
+        "removed"
+      ],
+      "required": [
+        "success",
+        "kind",
+        "removed"
+      ]
+    },
+    "JobKindStart": {
+      "fields": [
+        "success",
+        "kind",
+        "started"
+      ],
+      "required": [
+        "success",
+        "kind",
+        "started"
+      ]
+    },
+    "JobPause": {
+      "fields": [
+        "type",
+        "until_at",
+        "reason"
+      ],
+      "required": [
+        "type",
+        "until_at",
+        "reason"
+      ]
+    },
+    "JobProcess": {
+      "fields": [
+        "heartbeat",
+        "age_seconds",
+        "running"
+      ],
+      "required": [
+        "heartbeat",
+        "age_seconds",
+        "running"
+      ]
+    },
+    "JobProgress": {
+      "fields": [
+        "done",
+        "total",
+        "text"
+      ],
+      "required": []
+    },
+    "JobQueueResponse": {
+      "fields": [
+        "success",
+        "jobs",
+        "summary",
+        "pauses",
+        "image_demand",
+        "job_process"
+      ],
+      "required": [
+        "success",
+        "jobs",
+        "summary",
+        "pauses",
+        "image_demand",
+        "job_process"
+      ]
+    },
+    "JobSchedule": {
+      "fields": [
+        "type",
+        "time",
+        "minutes"
+      ],
+      "required": []
+    },
+    "JobsResponse": {
+      "fields": [
+        "db",
+        "success",
+        "jobs",
+        "schedules",
+        "degraded",
+        "proxy_hint"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "JobsResponseProxyHint": {
+      "fields": [
+        "kind",
+        "vars"
+      ],
+      "required": []
+    },
+    "JobsResponseProxyHintVars": {
+      "fields": [
+        "ip",
+        "minutes",
+        "count"
+      ],
+      "required": []
+    },
+    "JobStatus": {
+      "fields": [
+        "lastRun",
+        "canRedownload",
+        "queue",
+        "queueLastRun",
+        "label",
+        "status",
+        "progress",
+        "total",
+        "sub",
+        "sub_parts"
+      ],
+      "required": []
+    },
+    "JobStatusSubPartsEntry": {
+      "fields": [
+        "code",
+        "values",
+        "ago"
+      ],
+      "required": []
+    },
+    "KeyNonceResponse": {
+      "fields": [
+        "success",
+        "nonce"
+      ],
+      "required": [
+        "success",
+        "nonce"
+      ]
+    },
+    "LogEntries": {
+      "fields": [
+        "success",
+        "entries"
+      ],
+      "required": []
+    },
+    "LoginRequest": {
+      "fields": [
+        "username",
+        "password",
+        "code",
+        "without_token",
+        "label",
+        "never_expires",
+        "scope",
+        "passkey"
+      ],
+      "required": [
+        "username",
+        "password"
+      ]
+    },
+    "LoginResponse": {
+      "fields": [
+        "success",
+        "token",
+        "user",
+        "error",
+        "second_factor",
+        "never_expires",
+        "token_info",
+        "cookie_missing"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "LogResponse": {
+      "fields": [
+        "success",
+        "minutes",
+        "count",
+        "logs"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "LogRow": {
+      "fields": [
+        "id",
+        "level",
+        "message",
+        "logged_at"
+      ],
+      "required": []
+    },
+    "ManualFigsResponse": {
+      "fields": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "figs",
+        "degraded"
+      ],
+      "required": []
+    },
+    "ManualItemDetail": {
+      "fields": [
+        "kind",
+        "id",
+        "colorId",
+        "title"
+      ],
+      "required": [
+        "kind",
+        "id",
+        "title"
+      ]
+    },
+    "ManualPartsResponse": {
+      "fields": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "parts",
+        "degraded"
+      ],
+      "required": []
+    },
+    "MeResponse": {
+      "fields": [
+        "success",
+        "loggedIn",
+        "user",
+        "token_expires",
+        "token_last_used",
+        "token_info"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "Minifig": {
+      "fields": [
+        "id",
+        "in_sets",
+        "set_number",
+        "storage",
+        "unit_price",
+        "fig_number",
+        "condition",
+        "conditions",
+        "owners",
+        "owner_ids",
+        "avg_purchase_price",
+        "fig_name",
+        "quantity",
+        "total_quantity",
+        "image_url",
+        "image_local",
+        "source",
+        "set_added_at"
+      ],
+      "required": [
+        "fig_number"
+      ]
+    },
+    "MinifigParts": {
+      "fields": [
+        "success",
+        "source",
+        "parts"
+      ],
+      "required": []
+    },
+    "MinifigsResponse": {
+      "fields": [
+        "success",
+        "total",
+        "figs",
+        "source",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "MinifigStats": {
+      "fields": [
+        "unique_figs",
+        "types",
+        "total_quantity",
+        "manual"
+      ],
+      "required": []
+    },
+    "MinifigStatsResponse": {
+      "fields": [
+        "success",
+        "stats"
+      ],
+      "required": []
+    },
+    "MoveSetRequest": {
+      "fields": [
+        "from_user_id",
+        "to_user_id",
+        "acquisition_ids"
+      ],
+      "required": [
+        "to_user_id"
+      ]
+    },
+    "MoveSetResponse": {
+      "fields": [
+        "success",
+        "set_number",
+        "quantity",
+        "acquisitions",
+        "merged",
+        "parts",
+        "minifigs",
+        "instructions",
+        "source_emptied",
+        "from_user_id",
+        "to_user_id"
+      ],
+      "required": []
+    },
+    "OthersEnded": {
+      "fields": [
+        "success",
+        "deleted",
+        "accesses"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "ParsedVoucher": {
+      "fields": [
+        "number",
+        "pin",
+        "amount",
+        "currency"
+      ],
+      "required": []
+    },
+    "Part": {
+      "fields": [
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "image_url",
+        "total_quantity",
+        "is_spare",
+        "condition",
+        "storage",
+        "category_name",
+        "image_local",
+        "in_sets",
+        "bl_color_id"
+      ],
+      "required": [
+        "part_number"
+      ]
+    },
+    "PartColorRequest": {
+      "fields": [
+        "color_id",
+        "color_name",
+        "color_hex"
+      ],
+      "required": [
+        "color_id"
+      ]
+    },
+    "PartColorResponse": {
+      "fields": [
+        "image",
+        "success",
+        "combined",
+        "moved",
+        "united"
+      ],
+      "required": []
+    },
+    "PartsCategoriesResponse": {
+      "fields": [
+        "success",
+        "categories"
+      ],
+      "required": []
+    },
+    "PartsCategory": {
+      "fields": [
+        "category_name",
+        "label",
+        "unique_parts",
+        "total_quantity"
+      ],
+      "required": []
+    },
+    "PartsFilterColor": {
+      "fields": [
+        "color_name",
+        "color_hex",
+        "unique_parts",
+        "total_quantity"
+      ],
+      "required": []
+    },
+    "PartsFilterColorsResponse": {
+      "fields": [
+        "success",
+        "colors"
+      ],
+      "required": []
+    },
+    "PartsLoaded": {
+      "fields": [
+        "success",
+        "count"
+      ],
+      "required": []
+    },
+    "PartsResponse": {
+      "fields": [
+        "source",
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "parts",
+        "degraded",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "PartsStats": {
+      "fields": [
+        "unique_parts",
+        "unique_colors",
+        "total_parts",
+        "manual_parts"
+      ],
+      "required": []
+    },
+    "PartsStatsResponse": {
+      "fields": [
+        "success",
+        "stats"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "PartsValuationResponse": {
+      "fields": [
+        "converted_purchase_prices",
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "currency",
+        "parts",
+        "total_value",
+        "value_total",
+        "prices_pending",
+        "foreign_currency_purchases"
+      ],
+      "required": [
+        "success",
+        "total_value"
+      ]
+    },
+    "PartValuationItem": {
+      "fields": [
+        "id",
+        "quantity",
+        "image_url",
+        "image_local",
+        "purchase_price",
+        "avg_price",
+        "condition",
+        "conditions",
+        "user_id",
+        "owners",
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "unit_price",
+        "acq_count",
+        "used_count",
+        "avg_purchase_price",
+        "storage",
+        "category_name",
+        "created_at",
+        "source",
+        "pending",
+        "from_cache",
+        "max_price",
+        "min_price",
+        "qty_avg_price",
+        "pnl_pct",
+        "pnl_percent",
+        "display_value",
+        "total_value",
+        "value_total",
+        "acquisitions"
+      ],
+      "required": []
+    },
+    "Passkey": {
+      "fields": [
+        "id",
+        "name",
+        "transports",
+        "created_at",
+        "last_used"
+      ],
+      "required": []
+    },
+    "PasskeyCreated": {
+      "fields": [
+        "success",
+        "passkey"
+      ],
+      "required": []
+    },
+    "PasskeyCreatedPasskey": {
+      "fields": [
+        "id",
+        "name"
+      ],
+      "required": []
+    },
+    "PasskeyList": {
+      "fields": [
+        "success",
+        "available",
+        "passkeys"
+      ],
+      "required": []
+    },
+    "PasskeyLoginRequest": {
+      "fields": [
+        "response",
+        "with_token",
+        "label",
+        "never_expires",
+        "scope"
+      ],
+      "required": []
+    },
+    "PasskeyOptions": {
+      "fields": [
+        "success",
+        "options"
+      ],
+      "required": []
+    },
+    "PasskeyOptionsRequest": {
+      "fields": [
+        "purpose"
+      ],
+      "required": [
+        "purpose"
+      ]
+    },
+    "PasswordChange": {
+      "fields": [
+        "newPassword",
+        "passkeys_revoked",
+        "current",
+        "code",
+        "passkey"
+      ],
+      "required": [
+        "newPassword",
+        "current"
+      ]
+    },
+    "PasswordSet": {
+      "fields": [
+        "success",
+        "effective_at"
+      ],
+      "required": []
+    },
+    "PdfInput": {
+      "fields": [
+        "sets",
+        "parts"
+      ],
+      "required": []
+    },
+    "PdfInputPartsEntry": {
+      "fields": [
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_name",
+        "color_hex",
+        "color_id",
+        "quantity",
+        "is_fig",
+        "image_url",
+        "image_local"
+      ],
+      "required": []
+    },
+    "PdfInputSetsEntry": {
+      "fields": [
+        "set_number",
+        "name"
+      ],
+      "required": []
+    },
+    "PdfJobPart": {
+      "fields": [
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_name",
+        "color_hex",
+        "color_id",
+        "quantity",
+        "is_fig",
+        "image_url",
+        "image_local"
+      ],
+      "required": [
+        "part_number",
+        "quantity"
+      ]
+    },
+    "PdfJobRequest": {
+      "fields": [
+        "sets",
+        "parts"
+      ],
+      "required": []
+    },
+    "PdfJobResponse": {
+      "fields": [
+        "success",
+        "jobId"
+      ],
+      "required": []
+    },
+    "PdfJobSet": {
+      "fields": [
+        "set_number",
+        "name"
+      ],
+      "required": [
+        "set_number"
+      ]
+    },
+    "PdfJobState": {
+      "fields": [
+        "success",
+        "status",
+        "error",
+        "etaSeconds",
+        "missingImages"
+      ],
+      "required": []
+    },
+    "PdfViewer": {
+      "fields": [
+        "key"
+      ],
+      "required": [
+        "key"
+      ]
+    },
+    "PendingAlertsResponse": {
+      "fields": [
+        "success",
+        "alerts",
+        "now"
+      ],
+      "required": []
+    },
+    "PnlResponse": {
+      "fields": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "currency",
+        "totals",
+        "sets"
+      ],
+      "required": [
+        "success",
+        "totals"
+      ]
+    },
+    "PnlSetRow": {
+      "fields": [
+        "added_at",
+        "condition",
+        "image_local",
+        "image_url",
+        "name",
+        "pnl_abs",
+        "purchase_price",
+        "year",
+        "set_number",
+        "quantity",
+        "current_price",
+        "baseline_price",
+        "pnl_pct",
+        "baseline_pnl_pct",
+        "pnl_amount",
+        "pnl_percent",
+        "baseline_pnl_percent",
+        "tile_price",
+        "tile_pnl_pct",
+        "tile_source"
+      ],
+      "required": [
+        "set_number"
+      ]
+    },
+    "PnlTotals": {
+      "fields": [
+        "converted_purchase_prices",
+        "pnl_current",
+        "pnl_purchase",
+        "purchase",
+        "current",
+        "pnl_pct",
+        "pnl_percent",
+        "foreign_currency_purchases",
+        "sets_purchase",
+        "parts_purchase",
+        "figs_purchase",
+        "grand_total",
+        "positions",
+        "positions_valued",
+        "positions_without_market_price",
+        "positions_without_purchase_price",
+        "baseline_cost",
+        "baseline_market_value",
+        "baseline_pnl_amount",
+        "cost_without_market_price",
+        "market_value_without_purchase_price"
+      ],
+      "required": [
+        "purchase",
+        "current"
+      ]
+    },
+    "PortfolioHistoryResponse": {
+      "fields": [
+        "chart",
+        "data_points",
+        "success",
+        "currency",
+        "period",
+        "points",
+        "y_axis",
+        "period_change_pct",
+        "purchase_total"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "PriceAlert": {
+      "fields": [
+        "set_number",
+        "condition",
+        "direction",
+        "threshold",
+        "currency_code",
+        "triggered",
+        "last_triggered_at",
+        "last_price",
+        "name",
+        "image_local",
+        "image_url",
+        "set_img_url",
+        "owns"
+      ],
+      "required": []
+    },
+    "PriceAlertRequest": {
+      "fields": [
+        "direction",
+        "threshold",
+        "condition"
+      ],
+      "required": [
+        "direction",
+        "threshold"
+      ]
+    },
+    "PriceAlertResponse": {
+      "fields": [
+        "success",
+        "alert",
+        "removed"
+      ],
+      "required": []
+    },
+    "PriceAlertsResponse": {
+      "fields": [
+        "success",
+        "alerts"
+      ],
+      "required": []
+    },
+    "PriceByCondition": {
+      "fields": [
+        "N",
+        "U"
+      ],
+      "required": []
+    },
+    "PriceChartData": {
+      "fields": [
+        "values",
+        "x"
+      ],
+      "required": []
+    },
+    "PriceChartPoint": {
+      "fields": [
+        "x",
+        "y"
+      ],
+      "required": []
+    },
+    "PriceChartSeries": {
+      "fields": [
+        "name",
+        "values",
+        "firstRealIndex"
+      ],
+      "required": []
+    },
+    "PriceHistoryPoint": {
+      "fields": [
+        "is_purchase_price",
+        "recorded_at",
+        "qty_avg_price",
+        "avg_price",
+        "min_price",
+        "max_price"
+      ],
+      "required": []
+    },
+    "PriceHistoryResponse": {
+      "fields": [
+        "condition",
+        "current",
+        "success",
+        "set_number",
+        "currency",
+        "history_new",
+        "history_used",
+        "by_condition",
+        "chart",
+        "pnl_pct",
+        "pnl_percent",
+        "purchase_price"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "PriceJobState": {
+      "fields": [
+        "success",
+        "job",
+        "rate_limit"
+      ],
+      "required": []
+    },
+    "PriceJobStateJob": {
+      "fields": [
+        "running",
+        "lastRun",
+        "nextRun",
+        "lastErrors",
+        "log",
+        "lastDuration",
+        "lastUpdated",
+        "progress"
+      ],
+      "required": []
+    },
+    "PriceJobStateJobProgress": {
+      "fields": [
+        "current",
+        "total",
+        "set"
+      ],
+      "required": []
+    },
+    "PriceJobStateRateLimit": {
+      "fields": [
+        "count",
+        "limit",
+        "remaining",
+        "date"
+      ],
+      "required": []
+    },
+    "Profile": {
+      "fields": [
+        "id",
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "email_verified",
+        "new_email"
+      ],
+      "required": [
+        "id",
+        "username"
+      ]
+    },
+    "ProfileRequest": {
+      "fields": [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "password",
+        "password_current",
+        "code",
+        "passkey"
+      ],
+      "required": [
+        "username",
+        "email"
+      ]
+    },
+    "ProfileResponse": {
+      "fields": [
+        "success",
+        "user",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "ProfileSavedResponse": {
+      "fields": [
+        "success",
+        "emailChanged",
+        "emailSent"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "QrCollectRequest": {
+      "fields": [
+        "pickup",
+        "preview"
+      ],
+      "required": [
+        "pickup"
+      ]
+    },
+    "QrDiscard": {
+      "fields": [
+        "pickup"
+      ],
+      "required": [
+        "pickup"
+      ]
+    },
+    "QrLoginRequest": {
+      "fields": [
+        "token",
+        "label"
+      ],
+      "required": [
+        "token"
+      ]
+    },
+    "QrMessage": {
+      "fields": [
+        "success",
+        "waiting",
+        "pickup",
+        "code",
+        "expires_in"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "QrPairingState": {
+      "fields": [
+        "success",
+        "state",
+        "device",
+        "ip_range"
+      ],
+      "required": []
+    },
+    "QrPickup": {
+      "fields": [
+        "success",
+        "token",
+        "user",
+        "error",
+        "second_factor",
+        "never_expires",
+        "token_info",
+        "waiting",
+        "username",
+        "isAdmin",
+        "userId",
+        "preview",
+        "key_nonce"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "QrToken": {
+      "fields": [
+        "success",
+        "token",
+        "pairing",
+        "expires_in",
+        "url",
+        "token_days",
+        "fp",
+        "cert_sha256"
+      ],
+      "required": []
+    },
+    "QuantityChanged": {
+      "fields": [
+        "success",
+        "quantity",
+        "trash",
+        "degraded",
+        "dropped"
+      ],
+      "required": []
+    },
+    "QuantityChangedDroppedEntry": {
+      "fields": [
+        "id",
+        "quantity",
+        "purchase_price",
+        "currency",
+        "price_estimated",
+        "condition",
+        "date"
+      ],
+      "required": []
+    },
+    "RateLimit": {
+      "fields": [
+        "date",
+        "count",
+        "limit",
+        "remaining"
+      ],
+      "required": []
+    },
+    "RateLimits": {
+      "fields": [
+        "bricklink",
+        "rebrickable",
+        "brickset"
+      ],
+      "required": []
+    },
+    "RawSettings": {
+      "fields": [
+        "success",
+        "settings"
+      ],
+      "required": []
+    },
+    "RecordFigure": {
+      "fields": [
+        "anfrage"
+      ],
+      "required": [
+        "anfrage"
+      ]
+    },
+    "RecordPart": {
+      "fields": [
+        "anfrage"
+      ],
+      "required": [
+        "anfrage"
+      ]
+    },
+    "RecordSet": {
+      "fields": [
+        "anfrage"
+      ],
+      "required": [
+        "anfrage"
+      ]
+    },
+    "RegisterRequest": {
+      "fields": [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "password",
+        "language"
+      ],
+      "required": [
+        "username",
+        "email",
+        "password"
+      ]
+    },
+    "RegisterResponse": {
+      "fields": [
+        "success",
+        "message",
+        "email_sent",
+        "console_mode",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "RegistrationStatusResponse": {
+      "fields": [
+        "enabled",
+        "passkey",
+        "forgot_password",
+        "mail_delivery"
+      ],
+      "required": []
+    },
+    "Restored": {
+      "fields": [
+        "success",
+        "type",
+        "number",
+        "user_id"
+      ],
+      "required": []
+    },
+    "SecondFactorCodes": {
+      "fields": [
+        "success",
+        "codes",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "SecondFactorRequest": {
+      "fields": [
+        "password",
+        "code",
+        "passkey"
+      ],
+      "required": []
+    },
+    "SecondFactorSetupResponse": {
+      "fields": [
+        "success",
+        "secret",
+        "otpauth",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "SecondFactorStateResponse": {
+      "fields": [
+        "success",
+        "active",
+        "codes_left",
+        "old_codes_until",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "SeparatedAccount": {
+      "fields": [
+        "id",
+        "username",
+        "via"
+      ],
+      "required": [
+        "id"
+      ]
+    },
+    "SetAggregate": {
+      "fields": [
+        "set_number",
+        "condition",
+        "acq_count",
+        "used_count",
+        "conditions",
+        "max_purchase_price",
+        "avg_purchase_price"
+      ],
+      "required": []
+    },
+    "SetDetail": {
+      "fields": [
+        "setNumber"
+      ],
+      "required": [
+        "setNumber"
+      ]
+    },
+    "SetExistsResponse": {
+      "fields": [
+        "success",
+        "exists",
+        "set_number",
+        "owner_user_id",
+        "is_self"
+      ],
+      "required": []
+    },
+    "SetInfoResponse": {
+      "fields": [
+        "image_local",
+        "image_url",
+        "minifigs",
+        "pieces",
+        "theme",
+        "year",
+        "success",
+        "set_number",
+        "name",
+        "in_catalog"
+      ],
+      "required": []
+    },
+    "SetItem": {
+      "fields": [
+        "acq_count",
+        "last_purchase",
+        "owner_ids",
+        "id",
+        "storage_id",
+        "updated_at",
+        "user_id",
+        "set_number",
+        "name",
+        "year",
+        "theme",
+        "pieces",
+        "minifigs",
+        "quantity",
+        "image_url",
+        "image_local",
+        "added_at",
+        "condition",
+        "storage",
+        "conditions",
+        "owners",
+        "max_purchase_price",
+        "avg_purchase_price",
+        "purchase_price_estimated",
+        "used_count",
+        "instructions",
+        "bricklink",
+        "price_comparison_url"
+      ],
+      "required": [
+        "set_number"
+      ]
+    },
+    "SetPriceResponse": {
+      "fields": [
+        "from_cache",
+        "success",
+        "set_number",
+        "currency",
+        "avg_price",
+        "min_price",
+        "max_price",
+        "qty_avg_price",
+        "no_price",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "SetQuantity": {
+      "fields": [
+        "setNumber",
+        "schritt"
+      ],
+      "required": [
+        "setNumber",
+        "schritt"
+      ]
+    },
+    "SetResponse": {
+      "fields": [
+        "success",
+        "set"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "SetsResponse": {
+      "fields": [
+        "success",
+        "count",
+        "sets",
+        "total",
+        "themes"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "SettingsResponse": {
+      "fields": [
+        "success",
+        "settings"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "Setup": {
+      "fields": [
+        "success",
+        "open",
+        "change_password",
+        "sources"
+      ],
+      "required": []
+    },
+    "SetupSources": {
+      "fields": [
+        "rebrickable",
+        "bricklink",
+        "brickset"
+      ],
+      "required": []
+    },
+    "SetupState": {
+      "fields": [
+        "success",
+        "done",
+        "configured",
+        "steps",
+        "ca",
+        "base_url",
+        "https",
+        "degraded"
+      ],
+      "required": []
+    },
+    "SetupStateCa": {
+      "fields": [
+        "existing",
+        "fp_hex",
+        "cert_sha256",
+        "valid_until",
+        "download"
+      ],
+      "required": []
+    },
+    "SetupStateStepsEntry": {
+      "fields": [
+        "id",
+        "ok",
+        "required"
+      ],
+      "required": []
+    },
+    "SmtpProbe": {
+      "fields": [
+        "mode",
+        "success"
+      ],
+      "required": []
+    },
+    "StartupStatus": {
+      "fields": [
+        "error",
+        "path",
+        "ready",
+        "step",
+        "progress",
+        "total",
+        "sub"
+      ],
+      "required": []
+    },
+    "StatsResponse": {
+      "fields": [
+        "success",
+        "stats"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "StepApprovalRequest": {
+      "fields": [
+        "challenge",
+        "signature"
+      ],
+      "required": [
+        "challenge",
+        "signature"
+      ]
+    },
+    "StepApprovalResponse": {
+      "fields": [
+        "success",
+        "action",
+        "valid_until"
+      ],
+      "required": [
+        "success",
+        "action",
+        "valid_until"
+      ]
+    },
+    "StepChallengeRequest": {
+      "fields": [
+        "action"
+      ],
+      "required": [
+        "action"
+      ]
+    },
+    "StepChallengeResponse": {
+      "fields": [
+        "success",
+        "challenge",
+        "message",
+        "valid_until"
+      ],
+      "required": [
+        "success",
+        "challenge",
+        "message",
+        "valid_until"
+      ]
+    },
+    "Storage": {
+      "fields": [
+        "minifigs",
+        "location",
+        "sets",
+        "parts"
+      ],
+      "required": [
+        "location"
+      ]
+    },
+    "StorageDefaultRequest": {
+      "fields": [
+        "id"
+      ],
+      "required": []
+    },
+    "StorageDefaultResponse": {
+      "fields": [
+        "success",
+        "preset"
+      ],
+      "required": []
+    },
+    "StorageEntry": {
+      "fields": [
+        "id",
+        "user_id",
+        "name"
+      ],
+      "required": []
+    },
+    "StorageEntryResponse": {
+      "fields": [
+        "success",
+        "location"
+      ],
+      "required": []
+    },
+    "StorageNameRequest": {
+      "fields": [
+        "name",
+        "owner"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    "StorageRequest": {
+      "fields": [
+        "storage"
+      ],
+      "required": [
+        "storage"
+      ]
+    },
+    "StorageResponse": {
+      "fields": [
+        "success",
+        "storage",
+        "changed"
+      ],
+      "required": []
+    },
+    "StoragesResponse": {
+      "fields": [
+        "success",
+        "locations"
+      ],
+      "required": []
+    },
+    "StorageStockResponse": {
+      "fields": [
+        "success",
+        "locations",
+        "preset"
+      ],
+      "required": []
+    },
+    "TlsState": {
+      "fields": [
+        "success",
+        "https",
+        "fp",
+        "fp_hex",
+        "cert_sha256",
+        "subject",
+        "valid_until",
+        "download"
+      ],
+      "required": []
+    },
+    "TokenCreated": {
+      "fields": [
+        "success",
+        "token",
+        "label",
+        "never_expires",
+        "token_info"
+      ],
+      "required": []
+    },
+    "TokenInfo": {
+      "fields": [
+        "scope",
+        "expires_at",
+        "hard_expires_at",
+        "never_expires",
+        "rotated_at",
+        "rotation_due"
+      ],
+      "required": [
+        "scope",
+        "never_expires"
+      ]
+    },
+    "TokenRevocation": {
+      "fields": [
+        "success",
+        "deleted"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "TokenRotation": {
+      "fields": [
+        "success",
+        "token",
+        "token_info",
+        "old_valid_until",
+        "overlap_seconds"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "TokensResponse": {
+      "fields": [
+        "success",
+        "tokens",
+        "error"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "Totals": {
+      "fields": [
+        "min",
+        "avg",
+        "max",
+        "qty_avg"
+      ],
+      "required": []
+    },
+    "Trash": {
+      "fields": [
+        "success",
+        "entries"
+      ],
+      "required": []
+    },
+    "TrashEmptied": {
+      "fields": [
+        "success",
+        "removed"
+      ],
+      "required": []
+    },
+    "TrashEntry": {
+      "fields": [
+        "id",
+        "type",
+        "number",
+        "color_id",
+        "label",
+        "count",
+        "user_id",
+        "deleted_at",
+        "purge_at"
+      ],
+      "required": []
+    },
+    "UpdateAcquisitionRequest": {
+      "fields": [
+        "quantity",
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "date",
+        "owner_user_id",
+        "from_user_id"
+      ],
+      "required": []
+    },
+    "UpdateDescription": {
+      "fields": [
+        "versionCode",
+        "versionName",
+        "apkUrl",
+        "commit",
+        "apkSize",
+        "apkSha256",
+        "ausgestellt",
+        "gueltigBis"
+      ],
+      "required": [
+        "versionCode",
+        "versionName",
+        "apkUrl"
+      ]
+    },
+    "UpdateManualItemRequest": {
+      "fields": [
+        "quantity",
+        "quantity_delta",
+        "unit_price",
+        "condition",
+        "bl_fig_number"
+      ],
+      "required": [
+        "quantity"
+      ]
+    },
+    "UpdateQuantityRequest": {
+      "fields": [
+        "quantity",
+        "quantity_delta",
+        "purchase_price",
+        "condition",
+        "owner_user_id"
+      ],
+      "required": []
+    },
+    "User": {
+      "fields": [
+        "id",
+        "username",
+        "is_admin",
+        "mustChangePassword",
+        "secondFactorRequired"
+      ],
+      "required": [
+        "id",
+        "username"
+      ]
+    },
+    "UserSettings": {
+      "fields": [
+        "currency",
+        "price_condition",
+        "price_cache_ttl",
+        "default_price_condition",
+        "user_default_condition",
+        "effective_condition",
+        "app_theme"
+      ],
+      "required": []
+    },
+    "UsingSet": {
+      "fields": [
+        "set_number",
+        "set_name",
+        "quantity",
+        "image_local",
+        "image_url",
+        "owner_user_id"
+      ],
+      "required": [
+        "set_number"
+      ]
+    },
+    "UsingSetsResponse": {
+      "fields": [
+        "success",
+        "item",
+        "sets"
+      ],
+      "required": []
+    },
+    "ValuationAcquisition": {
+      "fields": [
+        "id",
+        "condition",
+        "quantity",
+        "purchase_price",
+        "avg_price",
+        "total_avg",
+        "value_total",
+        "pnl_pct",
+        "pnl_percent",
+        "created_at",
+        "original_purchase_price",
+        "purchase_currency",
+        "price_estimated"
+      ],
+      "required": []
+    },
+    "ValuationResponse": {
+      "fields": [
+        "converted_purchase_prices",
+        "guide_type",
+        "ttl_hours",
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "total_value",
+        "value_total",
+        "prices_pending",
+        "currency",
+        "condition",
+        "cache_ttl_hours",
+        "foreign_currency_purchases",
+        "sets",
+        "totals"
+      ],
+      "required": [
+        "success"
+      ]
+    },
+    "ValuationSet": {
+      "fields": [
+        "bl_unknown",
+        "condition",
+        "conditions",
+        "error_code",
+        "pnl_pct",
+        "user_id",
+        "set_number",
+        "added_at",
+        "name",
+        "year",
+        "quantity",
+        "image_local",
+        "image_url",
+        "min_price",
+        "avg_price",
+        "max_price",
+        "qty_avg_price",
+        "total_qty_avg",
+        "price_pending",
+        "total_avg",
+        "value_total",
+        "pnl_percent",
+        "purchase_price",
+        "from_cache",
+        "is_fallback",
+        "condition_used",
+        "no_price",
+        "acquisitions",
+        "mixed",
+        "owners",
+        "error"
+      ],
+      "required": [
+        "set_number"
+      ]
+    },
+    "Voucher": {
+      "fields": [
+        "id",
+        "number",
+        "pin",
+        "amount",
+        "currency",
+        "has_pdf",
+        "created_at",
+        "updated_at",
+        "balance_checked_at"
+      ],
+      "required": []
+    },
+    "VoucherBatch": {
+      "fields": [
+        "results",
+        "added",
+        "updated",
+        "errors",
+        "total"
+      ],
+      "required": []
+    },
+    "VoucherList": {
+      "fields": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "vouchers"
+      ],
+      "required": []
+    },
+    "VoucherPdfGrant": {
+      "fields": [
+        "success",
+        "ticket",
+        "valid_seconds"
+      ],
+      "required": []
+    },
+    "VoucherPlaintext": {
+      "fields": [
+        "success",
+        "id",
+        "number",
+        "pin"
+      ],
+      "required": []
+    },
+    "VoucherReply": {
+      "fields": [
+        "success",
+        "voucher",
+        "multiple",
+        "parsed",
+        "error",
+        "code"
+      ],
+      "required": []
+    },
+    "VoucherRequest": {
+      "fields": [
+        "number",
+        "pin",
+        "amount",
+        "currency"
+      ],
+      "required": [
+        "number",
+        "amount"
+      ]
+    },
+    "WantedItem": {
+      "fields": [
+        "theme_id",
+        "set_number",
+        "condition",
+        "created_at",
+        "user_id",
+        "name",
+        "year",
+        "num_parts",
+        "image_url",
+        "image_local",
+        "market_price",
+        "currency",
+        "owned",
+        "alarm",
+        "price_comparison_url"
+      ],
+      "required": []
+    },
+    "WantedItemAlert": {
+      "fields": [
+        "direction",
+        "threshold",
+        "triggered"
+      ],
+      "required": []
+    },
+    "WantedItemDetail": {
+      "fields": [
+        "setNumber",
+        "condition"
+      ],
+      "required": [
+        "setNumber",
+        "condition"
+      ]
+    },
+    "WantedItemOwnerReply": {
+      "fields": [
+        "success",
+        "moved",
+        "merged",
+        "owner_user_id"
+      ],
+      "required": []
+    },
+    "WantedItemOwnerRequest": {
+      "fields": [
+        "owner_user_id",
+        "new_owner"
+      ],
+      "required": [
+        "owner_user_id",
+        "new_owner"
+      ]
+    },
+    "WantedItemPricesResponse": {
+      "fields": [
+        "success",
+        "set_number",
+        "currency",
+        "current",
+        "degraded"
+      ],
+      "required": []
+    },
+    "WantedItemReply": {
+      "fields": [
+        "success",
+        "was_new",
+        "item"
+      ],
+      "required": []
+    },
+    "WantedItemRequest": {
+      "fields": [
+        "set_number",
+        "condition",
+        "owner_user_id"
+      ],
+      "required": [
+        "set_number"
+      ]
+    },
+    "WantedItemTakeoverRequest": {
+      "fields": [
+        "quantity",
+        "purchase_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ],
+      "required": []
+    },
+    "WantedItemTakeoverResponse": {
+      "fields": [
+        "catalog_pending",
+        "name",
+        "success",
+        "action",
+        "set_number"
+      ],
+      "required": []
+    },
+    "WantedListResponse": {
+      "fields": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "item"
+      ],
+      "required": []
+    },
+    "WantedXmlResult": {
+      "fields": [
+        "success",
+        "preview",
+        "parsed",
+        "created",
+        "topped_up",
+        "failed",
+        "items",
+        "open",
+        "foreignTypes",
+        "withoutNumber",
+        "levels",
+        "colorPending",
+        "defaultCondition",
+        "aborted",
+        "corrections",
+        "rebrickable"
+      ],
+      "required": []
+    },
+    "WantedXmlResultCorrections": {
+      "fields": [
+        "applied",
+        "rejected"
+      ],
+      "required": []
+    },
+    "WantedXmlResultItemsEntry": {
+      "fields": [
+        "kind",
+        "blId",
+        "quantity",
+        "outcome",
+        "blColor",
+        "rbId",
+        "rbColor",
+        "colorName",
+        "colorHex",
+        "confidence",
+        "condition",
+        "maxPrice",
+        "name",
+        "nameGuessed",
+        "image",
+        "reason",
+        "reasonCode"
+      ],
+      "required": []
+    },
+    "WantedXmlResultOpenEntry": {
+      "fields": [
+        "kind",
+        "blId",
+        "blColor"
+      ],
+      "required": []
+    },
+    "WantedXmlResultRebrickable": {
+      "fields": [
+        "asked",
+        "found",
+        "filterIneffective",
+        "aborted"
+      ],
+      "required": []
+    },
+    "WidgetNumbers": {
+      "fields": [
+        "waehrung",
+        "wert",
+        "gesamt",
+        "gesamtProzent",
+        "heute",
+        "heuteProzent",
+        "stand"
+      ],
+      "required": [
+        "waehrung"
+      ]
+    },
+    "YearCount": {
+      "fields": [
+        "year",
+        "n"
+      ],
+      "required": []
+    }
+  }
+}

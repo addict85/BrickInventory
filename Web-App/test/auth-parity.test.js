@@ -10,7 +10,7 @@
  * Switched to behavior on 11.11.2026: administrator sets a foreign password and
  * every password path ends the accesses → auth-sessions-db; equal bcrypt cost
  * on all paths → passwort-regel-db; sliding period and count of the cleanup →
- * token-gleitfrist-db. Counter-check: `ladeKonfig` accepts TOKEN_IDLE_DAYS=0 → red
+ * token-gleitfrist-db. Counter-check: `loadConfig` accepts TOKEN_IDLE_DAYS=0 → red
  * “the sliding period cannot be switched off”.
  */
 const test = require('node:test');
@@ -25,32 +25,32 @@ const { assertLoginAllowed } = _req('src/account/loginCheck.js');
 const { ARGON2_COST } = _req('src/account/passwordHash.js');
 const { USERNAME_RE } = _req('src/account/nameRules.js');
 const { escapeLike } = _req('src/account/deviceToken.js');
-const { ohneKommentare } = require('./helpers/sources');
+const { withoutComments } = require('./helpers/sources');
 
 /**
  * SEARCH every login handler instead of enumerating two.
  */
 function loginHandler() {
-  const dateien = dir =>
+  const files = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
-      return e.isDirectory() ? dateien(p) : e.name.endsWith('.ts') ? [p] : [];
+      return e.isDirectory() ? files(p) : e.name.endsWith('.ts') ? [p] : [];
     });
-  const alle = [...dateien(path.join(ROOT, 'routes')), path.join(ROOT, 'server.ts')];
-  const treffer = [];
-  for (const datei of alle) {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  const all = [...files(path.join(ROOT, 'routes')), path.join(ROOT, 'server.ts')];
+  const hits = [];
+  for (const file of all) {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const m of src.matchAll(
-      /(?:router|app)\.(?:(?:post|put)\(\s*'|endpunkt\(\s*'(?:POST|PUT) )([^']*login[^']*)'/g,
+      /(?:router|app)\.(?:(?:post|put)\(\s*'|endpoint\(\s*'(?:POST|PUT) )([^']*login[^']*)'/g,
     )) {
       // The body extends to the next route definition. Comments are
       // already gone — otherwise an explanatory text mentioning “password" would count.
       const rel = src.slice(m.index + 1).search(/\n\s*(?:router|app)\.[a-z]+\(/);
-      const koerper = rel < 0 ? src.slice(m.index) : src.slice(m.index, m.index + 1 + rel);
-      treffer.push({ datei: path.relative(ROOT, datei), pfad: m[1], koerper });
+      const payload = rel < 0 ? src.slice(m.index) : src.slice(m.index, m.index + 1 + rel);
+      hits.push({ file: path.relative(ROOT, file), path: m[1], payload });
     }
   }
-  return treffer;
+  return hits;
 }
 
 test('an active, confirmed account may log in', () => {
@@ -63,7 +63,7 @@ test('an active, confirmed account may log in', () => {
 test('a deactivated account is rejected — whether 0 or false', () => {
   for (const v of [0, false]) {
     const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
-    assert.equal(r?.art, 'verboten', `is_active=${v} muss verboten ergeben`);
+    assert.equal(r?.kind, 'forbidden', `is_active=${v} must result in forbidden`);
   }
 });
 
@@ -75,7 +75,7 @@ test('an open registration is rejected, admins excepted', () => {
     is_admin: 0,
     registration_pending: true,
   });
-  assert.equal(r?.art, 'verboten');
+  assert.equal(r?.kind, 'forbidden');
   assert.equal(r?.unverified, true);
   assert.equal(
     assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registration_pending: true }),
@@ -84,36 +84,36 @@ test('an open registration is rejected, admins excepted', () => {
   assert.equal(
     assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registration_pending: false }),
     null,
-    'ein vom Verwalter angelegtes Konto ohne Adresse',
+    'an account created by an admin without an address',
   );
 });
 
 test('every login with password goes through the same check', () => {
-  const gefunden = loginHandler();
+  const found = loginHandler();
   // Self-proof: if the pattern finds nothing, the error list would be empty and the
   // test green without having checked anything.
-  assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
-  const withPassword = gefunden.filter(h => /password/.test(h.koerper));
+  assert.ok(found.length >= 2, `Only ${found.length} sign-in routes found — pattern outdated?`);
+  const withPassword = found.filter(h => /password/.test(h.payload));
   assert.equal(
     withPassword.length,
     1,
-    `${withPassword.length} passwortbasierte Anmeldungen: ` +
-      withPassword.map(h => `${h.datei} ${h.pfad}`).join(', ') +
-      ' — es soll genau eine geben.',
+    `${withPassword.length} password-based sign-ins: ` +
+      withPassword.map(h => `${h.file} ${h.path}`).join(', ') +
+      ' — there should be exactly one.',
   );
 
   const outlier = withPassword
-    .filter(h => !/\b(checkCredentials|anmelden)\(/.test(h.koerper))
-    .map(h => `${h.datei}  ${h.pfad}`);
+    .filter(h => !/\b(checkCredentials|login)\(/.test(h.payload))
+    .map(h => `${h.file}  ${h.path}`);
   assert.deepEqual(
     outlier,
     [],
-    'Diese Anmeldungen prüfen die Zugangsdaten selbst statt über ' +
-      'checkCredentials() aus src/account/loginCheck.ts:\n  ' +
+    'These sign-ins check the credentials themselves instead of via ' +
+      'checkCredentials() from src/account/loginCheck.ts:\n  ' +
       outlier.join('\n  ') +
-      '\nEine zweite Fassung ist schon zweimal auseinandergelaufen: erst fehlten ' +
-      'die Konto-Vorbedingungen, dann der Vergleich gegen den Dummy-Hash ' +
-      '(415 ms Unterschied, siehe test/login-time-equal-db.test.js).',
+      '\nA second version has already drifted apart twice: first the account ' +
+      'preconditions were missing, then the comparison against the dummy hash ' +
+      '(415 ms difference, see test/login-time-equal-db.test.js).',
   );
 });
 
@@ -121,44 +121,40 @@ test('the brute-force counter is only served in one place', () => {
   // Whoever increments the counter themselves has also built the password check
   // themselves — the call is thus the most reliable fingerprint of a
   // second login version, regardless of what its route is called.
-  const zaehler = /\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/;
-  const erlaubt = new Set(['src/account/loginCheck.ts', 'src/account/loginLimiter.ts']);
+  const counter = /\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/;
+  const allowed = new Set(['src/account/loginCheck.ts', 'src/account/loginLimiter.ts']);
 
   const collect = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
       return e.isDirectory() ? collect(p) : e.name.endsWith('.ts') ? [p] : [];
     });
-  const alle = [
-    ...collect(path.join(ROOT, 'routes')),
-    ...collect(path.join(ROOT, 'src')),
-    path.join(ROOT, 'server.ts'),
-  ];
-  assert.ok(alle.length >= 30, `Nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
+  const all = [...collect(path.join(ROOT, 'routes')), ...collect(path.join(ROOT, 'src')), path.join(ROOT, 'server.ts')];
+  assert.ok(all.length >= 30, `Only ${all.length} files searched — paths outdated?`);
 
-  const fremd = alle
+  const fremd = all
     .map(d => path.relative(ROOT, d))
-    .filter(rel => !erlaubt.has(rel))
-    .filter(rel => zaehler.test(ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'))));
+    .filter(rel => !allowed.has(rel))
+    .filter(rel => counter.test(withoutComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'))));
   assert.deepEqual(
     fremd,
     [],
-    'Diese Dateien bedienen den Anmelde-Zähler selbst: ' +
+    'These files operate the sign-in counter themselves: ' +
       fremd.join(', ') +
-      ' — die Anmeldung gehört ganz in checkCredentials() (src/account/loginCheck.ts).',
+      ' — the sign-in belongs entirely in checkCredentials() (src/account/loginCheck.ts).',
   );
 
   // Counter-check of the rule: the allowed place must really serve it too.
   const central = require('./helpers/sources').serviceSource('src/account/loginCheck.ts');
   for (const name of ['loginAllowed', 'loginFailed', 'loginSucceeded'])
-    assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/account/loginCheck.ts ruft ${name} nicht auf`);
+    assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/account/loginCheck.ts does not call ${name}`);
 });
 
 test('the username rule', () => {
   assert.ok(USERNAME_RE.test('marco_1'));
   assert.ok(!USERNAME_RE.test('ma'));
   assert.ok(!USERNAME_RE.test('a b'));
-  assert.ok(!USERNAME_RE.test('a@b.c'), 'E-Mail-Adresse darf kein Benutzername sein');
+  assert.ok(!USERNAME_RE.test('a@b.c'), 'An e-mail address must not be a user name');
 
   // That PUT /profile applies it (also upper/lower case) is checked by login-rules-db.test.js.
 });
@@ -173,8 +169,8 @@ test('the sliding deadline cannot be switched off', () => {
   // “Never” no longer exists since migration 0080: without expiry only per device,
   // over HTTPS and with rotation (token-scope-rotation-db). That the period comes from
   // the configuration and the cleanup counts is shown by token-gleitfrist-db.
-  const { ladeKonfig } = _req('src/infra/config.js');
-  assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
-  assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenIdleDays, 23);
+  const { loadConfig } = _req('src/infra/config.js');
+  assert.throws(() => loadConfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
+  assert.equal(loadConfig({ TOKEN_IDLE_DAYS: '23' }).tokenIdleDays, 23);
   assert.ok(ARGON2_COST.memoryCost >= 19_456 && ARGON2_COST.timeCost >= 2);
 });

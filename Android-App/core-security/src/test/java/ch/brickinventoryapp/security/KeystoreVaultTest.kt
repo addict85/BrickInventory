@@ -12,8 +12,8 @@ import org.robolectric.annotation.Config
  * The Keystore keys themselves: the token's only works on an unlocked device,
  * and whatever the Keystore can't open never comes back as plaintext.
  *
- * Counter-checks (Robolectric, measured by CI; job `gegenproben`):
- *   token-schluessel-ohne-sperre    vaultSpec() without setUnlockedDeviceRequired → red
+ * Counter-checks (Robolectric, measured by CI; job `counter-checks`):
+ *   token-key-without-lock    vaultSpec() without setUnlockedDeviceRequired → red
  *                                   „der Schluessel des Tokens arbeitet nur entsperrt …“
  */
 @RunWith(RobolectricTestRunner::class)
@@ -23,7 +23,7 @@ class KeystoreVaultTest {
     @Test
     fun `the token's key works only unlocked, those of the stores always`() {
         assertTrue(vaultSpec("token", onlyUnlocked = true).build().isUnlockedDeviceRequired)
-        assertFalse("Ausgang und Pins brauchen ihre Schlüssel im Hintergrund",
+        assertFalse("outbox and pins need their keys in the background",
             vaultSpec("ablage", onlyUnlocked = false).build().isUnlockedDeviceRequired)
     }
 
@@ -31,6 +31,6 @@ class KeystoreVaultTest {
     fun `the keystore vault never returns unreadable data as plaintext`() {
         // Robolectric has no AndroidKeyStore: every attempt fails, and that may
         // only mean „unreadable“, never the input value.
-        assertNull(KeystoreTokenVault("test_alias").entschluessle("klartext-statt-geheimtext"))
+        assertNull(KeystoreTokenVault("test_alias").decrypt("klartext-statt-geheimtext"))
     }
 }

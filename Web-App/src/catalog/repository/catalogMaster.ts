@@ -1,10 +1,10 @@
 import type { DbInterface } from '../../../db/database';
-export type Schreiber = { run: (sql: string, params?: unknown[]) => Promise<unknown> };
+export type Writer = { run: (sql: string, params?: unknown[]) => Promise<unknown> };
 
-export async function inventoryAfterCandidates(db: DbInterface, kandidaten: string[]): Promise<number | null> {
+export async function inventoryAfterCandidates(db: DbInterface, candidates: string[]): Promise<number | null> {
   const row = await db.get<{ id: number }>(
     'SELECT id FROM rb_inventories WHERE set_num = ANY($1) ORDER BY version DESC LIMIT 1',
-    [kandidaten],
+    [candidates],
   );
   return row ? row.id : null;
 }
@@ -17,7 +17,7 @@ export async function loadedColors(db: DbInterface): Promise<{ id: number; name:
 }
 
 // The shared catalog keeps the first verified value; COALESCE holds it against later sources.
-export function writePartCatalog(dbh: Schreiber, partNumber: string, name: string | null, kategorie: string | null) {
+export function writePartCatalog(dbh: Writer, partNumber: string, name: string | null, category: string | null) {
   return dbh.run(
     `
     INSERT INTO part_catalog (part_number, part_name, category_name)
@@ -26,18 +26,18 @@ export function writePartCatalog(dbh: Schreiber, partNumber: string, name: strin
       part_name = COALESCE(part_catalog.part_name, EXCLUDED.part_name),
       category_name = COALESCE(part_catalog.category_name, EXCLUDED.category_name),
       updated_at = NOW()`,
-    [partNumber, name, kategorie],
+    [partNumber, name, category],
   );
 }
 
 export function writePartColor(
-  dbh: Schreiber,
+  dbh: Writer,
   partNumber: string,
-  farbe: number,
+  color: number,
   name: string | null,
   code: string | null,
-  bild: string | null,
-  lokal: string | null,
+  image: string | null,
+  local: string | null,
 ) {
   return dbh.run(
     `
@@ -49,16 +49,16 @@ export function writePartColor(
       image_url = COALESCE(part_color_catalog.image_url, EXCLUDED.image_url),
       image_local = COALESCE(part_color_catalog.image_local, EXCLUDED.image_local),
       updated_at  = NOW()`,
-    [partNumber, farbe, name, code, bild, lokal],
+    [partNumber, color, name, code, image, local],
   );
 }
 
 export function writeMinifigCatalog(
-  dbh: Schreiber,
+  dbh: Writer,
   figNumber: string,
   name: string | null,
-  bild: string | null,
-  lokal: string | null,
+  image: string | null,
+  local: string | null,
 ) {
   return dbh.run(
     `
@@ -69,19 +69,19 @@ export function writeMinifigCatalog(
       image_url = COALESCE(minifigs_catalog.image_url, EXCLUDED.image_url),
       image_local = COALESCE(minifigs_catalog.image_local, EXCLUDED.image_local),
       updated_at  = NOW()`,
-    [figNumber, name, bild, lokal],
+    [figNumber, name, image, local],
   );
 }
 
 /** Own details: the newest input applies, an empty field leaves the old one standing. */
 export function writePartOwn(
-  dbh: Schreiber,
+  dbh: Writer,
   uid: number,
   partNumber: string,
   name: string | null,
-  kategorie: string | null,
+  category: string | null,
 ) {
-  if (name === null && kategorie === null) return Promise.resolve();
+  if (name === null && category === null) return Promise.resolve();
   return dbh.run(
     `
     INSERT INTO part_custom (user_id, part_number, part_name, category_name) VALUES ($1, $2, $3, $4)
@@ -89,20 +89,20 @@ export function writePartOwn(
       part_name     = COALESCE(EXCLUDED.part_name, part_custom.part_name),
       category_name = COALESCE(EXCLUDED.category_name, part_custom.category_name),
       updated_at    = NOW()`,
-    [uid, partNumber, name, kategorie],
+    [uid, partNumber, name, category],
   );
 }
 
 export function writePartColorOwn(
-  dbh: Schreiber,
+  dbh: Writer,
   uid: number,
   partNumber: string,
-  farbe: number,
+  color: number,
   name: string | null,
   code: string | null,
-  bild: string | null,
+  image: string | null,
 ) {
-  if (name === null && code === null && bild === null) return Promise.resolve();
+  if (name === null && code === null && image === null) return Promise.resolve();
   return dbh.run(
     `
     INSERT INTO part_color_custom (user_id, part_number, color_id, color_name, color_hex, image_url) VALUES ($1, $2, $3, $4, $5, $6)
@@ -111,18 +111,18 @@ export function writePartColorOwn(
       color_hex  = COALESCE(EXCLUDED.color_hex, part_color_custom.color_hex),
       image_url  = COALESCE(EXCLUDED.image_url, part_color_custom.image_url),
       updated_at = NOW()`,
-    [uid, partNumber, farbe, name, code, bild],
+    [uid, partNumber, color, name, code, image],
   );
 }
 
 export function writeMinifigOwn(
-  dbh: Schreiber,
+  dbh: Writer,
   uid: number,
   figNumber: string,
   name: string | null,
-  bild: string | null,
+  image: string | null,
 ) {
-  if (name === null && bild === null) return Promise.resolve();
+  if (name === null && image === null) return Promise.resolve();
   return dbh.run(
     `
     INSERT INTO minifig_custom (user_id, fig_number, fig_name, image_url) VALUES ($1, $2, $3, $4)
@@ -130,12 +130,12 @@ export function writeMinifigOwn(
       fig_name   = COALESCE(EXCLUDED.fig_name, minifig_custom.fig_name),
       image_url  = COALESCE(EXCLUDED.image_url, minifig_custom.image_url),
       updated_at = NOW()`,
-    [uid, figNumber, name, bild],
+    [uid, figNumber, name, image],
   );
 }
 
 export function writeSetPart(
-  dbh: Schreiber,
+  dbh: Writer,
   setNumber: string,
   partNumber: string,
   colorId: number,
@@ -153,10 +153,10 @@ export function writeSetPart(
 }
 
 export function writePartsCatalog(
-  dbh: Schreiber,
-  nummern: string[],
-  namen: (string | null)[],
-  kategorien: (string | null)[],
+  dbh: Writer,
+  numbers: string[],
+  names: (string | null)[],
+  categories: (string | null)[],
 ) {
   return dbh.run(
     `
@@ -166,18 +166,18 @@ export function writePartsCatalog(
       part_name = COALESCE(part_catalog.part_name, EXCLUDED.part_name),
       category_name = COALESCE(part_catalog.category_name, EXCLUDED.category_name),
       updated_at = NOW()`,
-    [nummern, namen, kategorien],
+    [numbers, names, categories],
   );
 }
 
 export function writePartColors(
-  dbh: Schreiber,
-  nummern: string[],
-  farben: number[],
-  namen: (string | null)[],
+  dbh: Writer,
+  numbers: string[],
+  colors: number[],
+  names: (string | null)[],
   codes: (string | null)[],
-  bilder: (string | null)[],
-  lokale: (string | null)[],
+  images: (string | null)[],
+  local: (string | null)[],
 ) {
   return dbh.run(
     `
@@ -189,17 +189,17 @@ export function writePartColors(
       image_url = COALESCE(part_color_catalog.image_url, EXCLUDED.image_url),
       image_local = COALESCE(part_color_catalog.image_local, EXCLUDED.image_local),
       updated_at  = NOW()`,
-    [nummern, farben, namen, codes, bilder, lokale],
+    [numbers, colors, names, codes, images, local],
   );
 }
 
 export function writeSetParts(
-  dbh: Schreiber,
+  dbh: Writer,
   setNumber: string,
-  nummern: string[],
-  farben: number[],
-  mengen: number[],
-  ersatz: boolean[],
+  numbers: string[],
+  colors: number[],
+  quantities: number[],
+  spare: boolean[],
 ) {
   return dbh.run(
     `
@@ -207,15 +207,15 @@ export function writeSetParts(
     SELECT $1, p, f, q, s FROM unnest($2::text[], $3::int[], $4::int[], $5::boolean[]) AS x(p, f, q, s)
     ON CONFLICT (set_number, part_number, color_id) DO UPDATE
       SET quantity = EXCLUDED.quantity, is_spare = EXCLUDED.is_spare, updated_at = NOW()`,
-    [setNumber, nummern, farben, mengen, ersatz],
+    [setNumber, numbers, colors, quantities, spare],
   );
 }
 
 export function writeMinifigsCatalog(
-  dbh: Schreiber,
-  nummern: string[],
-  namen: (string | null)[],
-  bilder: (string | null)[],
+  dbh: Writer,
+  numbers: string[],
+  names: (string | null)[],
+  images: (string | null)[],
 ) {
   return dbh.run(
     `
@@ -225,11 +225,11 @@ export function writeMinifigsCatalog(
       fig_name = COALESCE(minifigs_catalog.fig_name, EXCLUDED.fig_name),
       image_url = COALESCE(minifigs_catalog.image_url, EXCLUDED.image_url),
       updated_at  = NOW()`,
-    [nummern, namen, bilder],
+    [numbers, names, images],
   );
 }
 
-export function writePartImageLocal(dbh: Schreiber, partNumber: string, colorId: number, imageLocal: string) {
+export function writePartImageLocal(dbh: Writer, partNumber: string, colorId: number, imageLocal: string) {
   return dbh.run(
     `
     INSERT INTO part_color_catalog (part_number, color_id, image_local)
@@ -240,17 +240,17 @@ export function writePartImageLocal(dbh: Schreiber, partNumber: string, colorId:
   );
 }
 
-export function writeSetMinifigs(dbh: Schreiber, setNumber: string, nummern: string[], mengen: number[]) {
+export function writeSetMinifigs(dbh: Writer, setNumber: string, numbers: string[], quantities: number[]) {
   return dbh.run(
     `
     INSERT INTO set_minifigs (set_number, fig_number, quantity)
     SELECT $1, * FROM unnest($2::text[], $3::int[])
     ON CONFLICT (set_number, fig_number) DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
-    [setNumber, nummern, mengen],
+    [setNumber, numbers, quantities],
   );
 }
 
-export function writeMinifigImageAddress(dbh: Schreiber, figNumber: string, imageUrl: string) {
+export function writeMinifigImageAddress(dbh: Writer, figNumber: string, imageUrl: string) {
   return dbh.run(
     `
     INSERT INTO minifigs_catalog (fig_number, image_url) VALUES ($1, $2)
@@ -259,7 +259,7 @@ export function writeMinifigImageAddress(dbh: Schreiber, figNumber: string, imag
   );
 }
 
-export function writeMinifigImageLocal(dbh: Schreiber, figNumber: string, imageLocal: string) {
+export function writeMinifigImageLocal(dbh: Writer, figNumber: string, imageLocal: string) {
   return dbh.run(
     `
     INSERT INTO minifigs_catalog (fig_number, image_local)
@@ -271,31 +271,31 @@ export function writeMinifigImageLocal(dbh: Schreiber, figNumber: string, imageL
 }
 
 /** The verified value, otherwise `fuer`'s own detail; others' inputs are not in the catalog. */
-export function partFromCatalog(db: DbInterface, partNumber: string, colorId: number | null, fuer: number | null) {
+export function partFromCatalog(db: DbInterface, partNumber: string, colorId: number | null, forUser: number | null) {
   return db.get<{
     name: string | null;
-    kategorie: string | null;
-    bild_allgemein: string | null;
-    farb_url: string | null;
-    farb_datei: string | null;
+    category: string | null;
+    image_generic: string | null;
+    color_url: string | null;
+    color_file: string | null;
   }>(
     `
     SELECT COALESCE(pc.part_name, rp.name, te.part_name)   AS name,
-           COALESCE(pc.category_name, te.category_name)     AS kategorie,
-           rp.part_img_url                                  AS bild_allgemein,
-           COALESCE(pcc.image_url, tfe.image_url)           AS farb_url,
-           pcc.image_local                                  AS farb_datei
+           COALESCE(pc.category_name, te.category_name)     AS category,
+           rp.part_img_url                                  AS image_generic,
+           COALESCE(pcc.image_url, tfe.image_url)           AS color_url,
+           pcc.image_local                                  AS color_file
       FROM (SELECT $1::text AS nr) q
       LEFT JOIN part_catalog       pc  ON pc.part_number  = q.nr
       LEFT JOIN rb_parts           rp  ON rp.part_num     = q.nr
       LEFT JOIN part_color_catalog pcc ON pcc.part_number = q.nr AND pcc.color_id = $2
       LEFT JOIN part_custom         te  ON te.user_id = $3 AND te.part_number = q.nr
       LEFT JOIN part_color_custom   tfe ON tfe.user_id = $3 AND tfe.part_number = q.nr AND tfe.color_id = $2`,
-    [partNumber, colorId, fuer],
+    [partNumber, colorId, forUser],
   );
 }
 
-export function minifigFromCatalog(db: DbInterface, figNumber: string, fuer: number | null) {
+export function minifigFromCatalog(db: DbInterface, figNumber: string, forUser: number | null) {
   return db.get<{ fig_name: string | null; image_url: string | null; image_local: string | null }>(
     `
     SELECT COALESCE(mc.fig_name, fe.fig_name)   AS fig_name,
@@ -305,6 +305,6 @@ export function minifigFromCatalog(db: DbInterface, figNumber: string, fuer: num
       LEFT JOIN minifigs_catalog mc ON mc.fig_number = q.nr
       LEFT JOIN minifig_custom fe ON fe.user_id = $2 AND fe.fig_number = q.nr
      WHERE mc.fig_number IS NOT NULL OR fe.fig_number IS NOT NULL`,
-    [figNumber, fuer],
+    [figNumber, forUser],
   );
 }

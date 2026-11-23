@@ -37,7 +37,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Bremsen-Passwort-1';
 
-async function konto(name) {
+async function account(name) {
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   return (
     await db.get(
@@ -52,15 +52,15 @@ test('brakes of the confirmation', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `bb_${process.pid}`,
     KARL = `bb_karl_${process.pid}`;
-  const uid = await konto(NAME),
-    karl = await konto(KARL);
-  const leeren = () =>
+  const uid = await account(NAME),
+    karl = await account(KARL);
+  const clear = () =>
     db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [
       `%-bestaetigen|${uid}|%`,
       `%-bestaetigen|${karl}|%`,
     ]);
   t.after(async () => {
-    await leeren().catch(() => {});
+    await clear().catch(() => {});
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, karl]]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -71,8 +71,8 @@ test('brakes of the confirmation', { concurrency: 1 }, async t => {
     uid,
     zf.hotp(zf.fromBase32(decrypt(z.secret, zf.secondFactorContext(uid))), zf.timeStep()),
   );
-  let naechster = 0;
-  const richtig = () => codes[naechster++];
+  let nextOne = 0;
+  const right = () => codes[nextOne++];
 
   // Per header `x-sitzung` its own session (as express-session provides it), without it a token.
   const app = express();
@@ -83,94 +83,95 @@ test('brakes of the confirmation', { concurrency: 1 }, async t => {
     if (sid) req.sessionID = String(sid);
     next();
   });
-  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const base = `http://localhost:${srv.address().port}`;
-  const ruf = async (methode, weg, body, kopf) => {
-    const r = await fetch(base + weg, {
-      method: methode,
-      headers: { 'content-type': 'application/json', ...kopf },
+  const callFn = async (method, route, body, head) => {
+    const r = await fetch(base + route, {
+      method: method,
+      headers: { 'content-type': 'application/json', ...head },
       body: JSON.stringify(body),
     });
     return { status: r.status, code: (await r.json().catch(() => ({}))).code };
   };
   const A = { 'x-sitzung': 'sitzung-angreifer' },
     O = { 'x-sitzung': 'sitzung-inhaber' };
-  const passkeyLoeschen = (code, kopf = A) =>
-    ruf('DELETE', '/api/v1/auth/passkeys/999999', { password: PASS, code }, kopf);
+  const passkeyDelete = (code, head = A) =>
+    callFn('DELETE', '/api/v2/auth/passkeys/999999', { password: PASS, code }, head);
 
   await t.test('the password does not reset the code counter', async () => {
-    await leeren();
+    await clear();
     // Every attempt carries the correct password; in between the former reset path (password without code).
-    for (let i = 0; i < 4; i++) assert.equal((await passkeyLoeschen(String(100000 + i))).code, 'zweiter_faktor_falsch');
+    for (let i = 0; i < 4; i++) assert.equal((await passkeyDelete(String(100000 + i))).code, 'second_factor_wrong');
     assert.equal(
-      (await ruf('POST', '/api/v1/auth/zweiter-faktor/einrichten', { password: PASS }, A)).code,
-      'zweiter_faktor_noetig',
+      (await callFn('POST', '/api/v2/auth/second-factor/setup', { password: PASS }, A)).code,
+      'second_factor_required',
     );
-    assert.equal((await passkeyLoeschen('100004')).code, 'zweiter_faktor_falsch');
-    const sixth = await passkeyLoeschen(richtig());
-    assert.equal(sixth.status, 429, `das Passwort setzt den Codezähler zurück: ${JSON.stringify(sixth)}`);
+    assert.equal((await passkeyDelete('100004')).code, 'second_factor_wrong');
+    const sixth = await passkeyDelete(right());
+    assert.equal(sixth.status, 429, `the password resets the code counter: ${JSON.stringify(sixth)}`);
   });
 
   await t.test('a correct code resets it', async () => {
-    await leeren();
-    for (let i = 0; i < 4; i++) await passkeyLoeschen(String(200000 + i));
-    assert.equal((await passkeyLoeschen(richtig())).status, 200);
-    for (let i = 0; i < 4; i++) assert.equal((await passkeyLoeschen(String(210000 + i))).code, 'zweiter_faktor_falsch');
+    await clear();
+    for (let i = 0; i < 4; i++) await passkeyDelete(String(200000 + i));
+    assert.equal((await passkeyDelete(right())).status, 200);
+    for (let i = 0; i < 4; i++) assert.equal((await passkeyDelete(String(210000 + i))).code, 'second_factor_wrong');
   });
 
   await t.test('a foreign session does not lock the emergency brakes', async () => {
-    await leeren();
-    const kopf = { 'x-sitzung': 'karl-fremd', 'x-konto': String(karl) };
+    await clear();
+    const head = { 'x-sitzung': 'karl-fremd', 'x-konto': String(karl) };
     for (let i = 0; i < 5; i++)
-      await ruf('POST', '/api/v1/settings/sessions/andere-beenden', { password: `falsch${i}` }, kopf);
+      await callFn('POST', '/api/v2/settings/sessions/end-others', { password: `falsch${i}` }, head);
     assert.equal(
-      (await ruf('POST', '/api/v1/settings/sessions/andere-beenden', { password: PASS }, kopf)).status,
+      (await callFn('POST', '/api/v2/settings/sessions/end-others', { password: PASS }, head)).status,
       429,
-      'Vorbedingung: die fremde Sitzung ist gesperrt',
+      'Precondition: the foreign session is locked',
     );
-    const eigen = { 'x-sitzung': 'karl-eigen', 'x-konto': String(karl) };
+    const own = { 'x-sitzung': 'karl-eigen', 'x-konto': String(karl) };
     assert.equal(
-      (await ruf('POST', '/api/v1/settings/sessions/andere-beenden', { password: PASS }, eigen)).status,
+      (await callFn('POST', '/api/v2/settings/sessions/end-others', { password: PASS }, own)).status,
       200,
-      'eine fremde Sitzung sperrt die Notbremsen',
+      'a foreign session locks the emergency brakes',
     );
-    const wechsel = await ruf(
+    const change = await callFn(
       'POST',
-      '/api/v1/auth/change-password',
+      '/api/v2/auth/change-password',
       { current: PASS, newPassword: 'Neues-Passwort-77' },
-      eigen,
+      own,
     );
-    assert.equal(wechsel.status, 200, `eine fremde Sitzung sperrt die Notbremsen: ${JSON.stringify(wechsel)}`);
+    assert.equal(change.status, 200, `a foreign session locks the emergency brakes: ${JSON.stringify(change)}`);
     await db.run('UPDATE users SET password_hash = $2 WHERE id = $1', [karl, await bcrypt.hash(PASS, 4)]);
   });
 
   await t.test('wrong codes of a foreign session do not lock out the owner', async () => {
-    await leeren();
-    for (let i = 0; i < 5; i++) await passkeyLoeschen(String(300000 + i), A);
-    assert.equal((await passkeyLoeschen(richtig(), A)).status, 429, 'Vorbedingung: Angreifer gesperrt');
-    assert.equal(
-      (await passkeyLoeschen(richtig(), O)).status,
-      200,
-      'falsche Codes einer fremden Sitzung sperren den Inhaber',
-    );
+    await clear();
+    for (let i = 0; i < 5; i++) await passkeyDelete(String(300000 + i), A);
+    assert.equal((await passkeyDelete(right(), A)).status, 429, 'Precondition: attacker locked');
+    assert.equal((await passkeyDelete(right(), O)).status, 200, 'wrong codes of a foreign session lock the owner');
   });
 
   await t.test('swapping the token does not reset the brake', async () => {
-    await leeren();
+    await clear();
     const token = await createToken(karl, 'Probe', true);
-    const mit = tk => ({ authorization: `Bearer ${tk}` });
-    for (let i = 0; i < 5; i++) await ruf('DELETE', '/api/v1/bestand', { password: `falsch${i}` }, mit(token));
-    assert.equal((await ruf('DELETE', '/api/v1/bestand', { password: PASS }, mit(token))).status, 429, 'Vorbedingung');
-    const r = await fetch(`${base}/api/v1/auth/token-rotieren`, { method: 'POST', headers: mit(token) });
-    const neu = (await r.json()).token;
-    assert.ok(neu, 'Vorbedingung: getauscht');
+    const withIt = tk => ({ authorization: `Bearer ${tk}` });
+    for (let i = 0; i < 5; i++) await callFn('DELETE', '/api/v2/inventory', { password: `falsch${i}` }, withIt(token));
     assert.equal(
-      (await ruf('DELETE', '/api/v1/bestand', { password: PASS }, mit(neu))).status,
+      (await callFn('DELETE', '/api/v2/inventory', { password: PASS }, withIt(token))).status,
       429,
-      'der Tausch des Tokens setzt die Bremse zurück',
+      'Vorbedingung',
+    );
+    const r = await fetch(`${base}/api/v2/auth/rotate-token`, { method: 'POST', headers: withIt(token) });
+    const fresh = (await r.json()).token;
+    assert.ok(fresh, 'Precondition: rotated');
+    assert.equal(
+      (await callFn('DELETE', '/api/v2/inventory', { password: PASS }, withIt(fresh))).status,
+      429,
+      'rotating the token resets the brake',
     );
   });
 });

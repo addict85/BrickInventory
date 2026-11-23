@@ -19,7 +19,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
 test('import without a price leaves the same as capturing without a price', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   importWorker(t, _req);
 
   const name = `imp_${process.pid}`;
@@ -32,7 +32,7 @@ test('import without a price leaves the same as capturing without a price', { co
   );
   const uid = u.id;
 
-  const { base, schliessen } = testServer(_req, { sitzung: { userId: uid } });
+  const { base, close } = testServer(_req, { session: { userId: uid } });
 
   try {
     // part_name stands in the file so that no Rebrickable lookup is
@@ -40,10 +40,10 @@ test('import without a price leaves the same as capturing without a price', { co
     const csv = `part_number,part_name,quantity\n${IMPORTED},Testteil,3\n`;
     const fd = new FormData();
     fd.append('file', new Blob([csv], { type: 'text/csv' }), 'teile.csv');
-    const antwort = await fetch(`${base}/api/v1/parts/import/csv`, { method: 'POST', body: fd });
-    const ergebnis = await antwort.json();
-    assert.equal(ergebnis.success, true, `Import fehlgeschlagen: ${JSON.stringify(ergebnis)}`);
-    assert.equal(ergebnis.added, 1, `Es wurde nichts angelegt: ${JSON.stringify(ergebnis)}`);
+    const response = await fetch(`${base}/api/v2/parts/import/csv`, { method: 'POST', body: fd });
+    const outcome = await response.json();
+    assert.equal(outcome.success, true, `import failed: ${JSON.stringify(outcome)}`);
+    assert.equal(outcome.added, 1, `nothing was created: ${JSON.stringify(outcome)}`);
 
     // The same case by hand, via the same route as the web app.
     const { addManualPart } = _req('src/parts/manualParts.js');
@@ -52,38 +52,38 @@ test('import without a price leaves the same as capturing without a price', { co
     );
 
     // Read from the ACQUISITION
-    const spalten = 'unit_price, condition, quantity';
-    const imp = await db.get(`SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
+    const columns = 'unit_price, condition, quantity';
+    const imp = await db.get(`SELECT ${columns} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
       uid,
       IMPORTED,
     ]);
-    const hand = await db.get(`SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
+    const hand = await db.get(`SELECT ${columns} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
       uid,
       OF_HAND,
     ]);
-    assert.ok(imp, 'Zum importierten Teil wurde keine Erfassung angelegt');
-    assert.ok(hand, 'Zum von Hand erfassten Teil wurde keine Erfassung angelegt');
+    assert.ok(imp, 'No acquisition was created for the imported part');
+    assert.ok(hand, 'No acquisition was created for the manually recorded part');
 
     // The actual error: without a value in the file nothing may stand in the
     // field „Preis/Stk".
     assert.equal(
       imp.unit_price,
       null,
-      `Der Import hat ${imp.unit_price} als Preis/Stk eingetragen, obwohl in der ` +
-        'Datei keiner stand. Das Feld bedeutet „was der Mensch bezahlt hat" — ' +
-        'src/inventory/purchasePriceBackfill.ts liest es genau so.',
+      `The import entered ${imp.unit_price} as price/piece although the ` +
+        'file had none. The field means „what the human paid" — ' +
+        'src/inventory/purchasePriceBackfill.ts reads it exactly that way.',
     );
 
     // And the rule behind it: BOTH paths leave behind the same.
     assert.deepEqual(
       { unit_price: imp.unit_price, condition: imp.condition, quantity: imp.quantity },
       { unit_price: hand.unit_price, condition: hand.condition, quantity: hand.quantity },
-      'CSV-Import und Erfassen von Hand hinterlassen verschiedene Erfassungen für ' +
-        'denselben Fall. Beide rechnen über manualPartPurchase — weichen ' +
-        'sie ab, rechnet einer der beiden wieder selbst.',
+      'CSV import and manual entry leave different acquisitions for ' +
+        'the same case. Both compute via manualPartPurchase — if they ' +
+        'differ, one of the two computes on its own again.',
     );
   } finally {
-    await schliessen();
+    await close();
     await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM parts WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM users WHERE id=$1`, [uid]).catch(() => {});

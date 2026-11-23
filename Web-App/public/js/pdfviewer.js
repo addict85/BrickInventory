@@ -1,10 +1,10 @@
 // The PDF viewer is a file of its own: it only depends on G and esc and is called via openPdfViewer().
 import { registerActions } from './registry.js';
-import { G, setzeHtml } from './dom.js';
+import { G, setHtml } from './dom.js';
 import { tRaw } from '../i18n.js';
 import { html } from './escaping.js';
 
-/** @type {PdfDokument | null} */
+/** @type {PdfDocument | null} */
 let _pdfDoc = null;
 /** @type {IntersectionObserver | null} */
 let _pdfObserver = null;
@@ -39,21 +39,21 @@ let _pdfZoomGen = 0;
  * <script> in a <template> in index.html: that way it carries the server's stamp like every other asset.
  * @returns {Promise<PdfJs | undefined>}
  */
-async function ladePdfjs() {
+async function loadPdfjs() {
   if (window.pdfjsLib) return window.pdfjsLib;
-  const vorlage = document.getElementById('pdfjs-quelle');
-  const quelle =
+  const vorlage = document.getElementById('pdfjs-source');
+  const source =
     vorlage instanceof HTMLTemplateElement ? vorlage.content.querySelector('script')?.getAttribute('src') : null;
-  if (!quelle) return undefined;
+  if (!source) return undefined;
   try {
-    await import(quelle);
+    await import(source);
   } catch (e) {
-    console.error('[pdf] PDF.js nicht geladen:', e);
+    console.error('[pdf] PDF.js not loaded:', e);
   }
   return window.pdfjsLib;
 }
 
-/** @param {{ daten?: ArrayBuffer, fileName?: string }} [opt] already loaded bytes (voucher PDF with
+/** @param {{ data?: ArrayBuffer, fileName?: string }} [opt] already loaded bytes (voucher PDF with
  * a one-time ticket: a second fetch would fail), `url` then only serves the download.
  * @param {string} url @param {string} title */
 export async function openPdfViewer(url, title, opt = {}) {
@@ -77,23 +77,20 @@ export async function openPdfViewer(url, title, opt = {}) {
   }
   if (loading) {
     loading.style.display = 'flex';
-    setzeHtml(
-      loading,
-      html`${html`<div class="spin"></div><span>`}${tRaw('pdf.loading') || 'PDF wird geladen…'}${html`</span>`}`,
-    );
+    setHtml(loading, html`${html`<div class="spin"></div><span>`}${tRaw('pdf.loading')}${html`</span>`}`);
   }
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 
-  const pdfjsLib = await ladePdfjs();
+  const pdfjsLib = await loadPdfjs();
   if (!pdfjsLib) {
-    if (loading) setzeHtml(loading, html`<span data-stil="color:#f88;padding:20px">${tRaw('pdf.lib_missing')}</span>`);
+    if (loading) setHtml(loading, html`<span data-style="color:#f88;padding:20px">${tRaw('pdf.lib_missing')}</span>`);
     return;
   }
   try {
     const task = pdfjsLib.getDocument(
-      opt.daten
-        ? { data: new Uint8Array(opt.daten), isEvalSupported: false, enableScripting: false }
+      opt.data
+        ? { data: new Uint8Array(opt.data), isEvalSupported: false, enableScripting: false }
         : {
             url,
             disableAutoFetch: true, // do not load the whole file up front
@@ -113,16 +110,16 @@ export async function openPdfViewer(url, title, opt = {}) {
   } catch (e) {
     if (loading) {
       loading.style.display = 'flex';
-      setzeHtml(
+      setHtml(
         loading,
-        html`<span data-stil="color:#f88;padding:20px;text-align:center">${tRaw('pdf.error') || 'Fehler beim Laden'}: ${e instanceof Error ? e.message : String(e)}</span>`,
+        html`<span data-style="color:#f88;padding:20px;text-align:center">${tRaw('pdf.error')}: ${e instanceof Error ? e.message : String(e)}</span>`,
       );
     }
   }
 }
 
 /** Placeholder size at the current zoom, in CSS pixels. */
-function _pdfMasse() {
+function _pdfMeasures() {
   return {
     w: Math.round(_pdfPageW * _pdfBaseScale * _pdfZoom),
     h: Math.round(_pdfPageH * _pdfBaseScale * _pdfZoom),
@@ -135,12 +132,12 @@ function _pdfMasse() {
  * @param {HTMLElement} ph
  */
 function _pdfMassPlaceholder(ph) {
-  const m = _pdfMasse();
+  const m = _pdfMeasures();
   ph.style.width = m.w + 'px';
   ph.style.height = m.h + 'px';
 }
 
-/** @param {PdfDokument} pdf @param {HTMLElement} container */
+/** @param {PdfDocument} pdf @param {HTMLElement} container */
 async function _renderPdfLazy(pdf, container) {
   const first = await pdf.getPage(1);
   const vp1 = first.getViewport({ scale: 1 });
@@ -155,7 +152,7 @@ async function _renderPdfLazy(pdf, container) {
     ph.dataset.page = String(n);
     // The page is an image without a text layer; its name at least tells screen readers where they are.
     ph.setAttribute('role', 'img');
-    ph.setAttribute('aria-label', tRaw('pdf.seite_von', { n, m: pdf.numPages }));
+    ph.setAttribute('aria-label', tRaw('pdf.page_of', { n, m: pdf.numPages }));
     ph.style.cssText = 'background:var(--s200);box-shadow:0 1px 5px rgba(0,0,0,.35);flex-shrink:0;margin:0 auto';
     _pdfMassPlaceholder(ph);
     container.appendChild(ph);
@@ -185,7 +182,7 @@ function _pdfObserveAll(container) {
   });
 }
 
-/** @param {PdfDokument} pdf @param {number} n @param {HTMLElement} ph */
+/** @param {PdfDocument} pdf @param {number} n @param {HTMLElement} ph */
 async function _renderPdfPage(pdf, n, ph) {
   if (ph.querySelector('canvas') || ph.dataset.rendering === '1') return;
   ph.dataset.rendering = '1';
@@ -196,8 +193,8 @@ async function _renderPdfPage(pdf, n, ph) {
     // The bar acts on the AREA, not on a side length: a landscape page has the same
     // pixel count as a portrait one, only distributed differently.
     let scale = _pdfBaseScale * _pdfZoom * dpr;
-    const flaeche = _pdfPageW * scale * (_pdfPageH * scale);
-    if (flaeche > PDF_CANVAS_MAX_PX) scale *= Math.sqrt(PDF_CANVAS_MAX_PX / flaeche);
+    const surface = _pdfPageW * scale * (_pdfPageH * scale);
+    if (surface > PDF_CANVAS_MAX_PX) scale *= Math.sqrt(PDF_CANVAS_MAX_PX / surface);
     const vp = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(vp.width);
@@ -249,40 +246,40 @@ function _unloadPdfPage(n, ph) {
 /**
  * Set the zoom and keep one point in place.
  *
- * @param {number} neu desired factor; clamped to [MIN, MAX].
- * @param {number|null} ankerX point in the viewport that should stay in place, in
+ * @param {number} newValue desired factor; clamped to [MIN, MAX].
+ * @param {number|null} anchorX point in the viewport that should stay in place, in
  *        CSS pixels from the left container edge. null = center of the viewport.
- * @param {number|null} ankerY like ankerX, vertically.
+ * @param {number|null} anchorY like anchorX, vertically.
  *
  * Without an anchor the display jumps to another page when zooming: whoever zooms in at
  * page 12 lands at page 40, because the same scrollTop gets four times less far in a
  * document four times as tall.
  */
-function _pdfSetZoom(neu, ankerX, ankerY) {
+function _pdfSetZoom(newValue, anchorX, anchorY) {
   const container = G('pdf-viewer-pages');
   if (!container) return;
   const alt = _pdfZoom;
-  const ziel = Math.min(PDF_ZOOM_MAX, Math.max(PDF_ZOOM_MIN, neu));
-  if (Math.abs(ziel - alt) < 1e-4) return;
+  const target = Math.min(PDF_ZOOM_MAX, Math.max(PDF_ZOOM_MIN, newValue));
+  if (Math.abs(target - alt) < 1e-4) return;
 
-  const ax = ankerX == null ? container.clientWidth / 2 : ankerX;
-  const ay = ankerY == null ? container.clientHeight / 2 : ankerY;
+  const ax = anchorX == null ? container.clientWidth / 2 : anchorX;
+  const ay = anchorY == null ? container.clientHeight / 2 : anchorY;
   // Position of the anchor in the document, in units of zoom 1.
-  const dokX = (container.scrollLeft + ax) / alt;
-  const dokY = (container.scrollTop + ay) / alt;
+  const docX = (container.scrollLeft + ax) / alt;
+  const docY = (container.scrollTop + ay) / alt;
 
-  _pdfZoom = ziel;
+  _pdfZoom = target;
   _pdfZoomGen++;
 
   // First remove all canvases, then resize the placeholders: a canvas with width:100% would otherwise briefly
-  // stand distorted.
+  // state distorted.
   /** @type {NodeListOf<HTMLElement>} */ (container.querySelectorAll('.pdf-page-ph')).forEach(ph => {
     _unloadPdfPage(parseInt(ph.dataset.page ?? '', 10), ph);
     _pdfMassPlaceholder(ph);
   });
 
-  container.scrollLeft = dokX * ziel - ax;
-  container.scrollTop = dokY * ziel - ay;
+  container.scrollLeft = docX * target - ax;
+  container.scrollTop = docY * target - ay;
 
   // The observer does NOT report by itself when an observed element only changes size and
   // stays visible — the visible pages would stay empty. observe() however always delivers a first
@@ -339,7 +336,7 @@ function _pdfRad(ev) {
 
 /** Keyboard: + / − / 0, while the PDF window is open. */
 /** @param {KeyboardEvent} ev */
-function _pdfTaste(ev) {
+function _pdfKey(ev) {
   const modal = G('pdf-viewer-modal');
   if (modal?.style.display !== 'flex') return;
   // In an input field + has a different meaning.
@@ -389,11 +386,11 @@ function _pdfTouchMove(ev) {
   const container = G('pdf-viewer-pages');
   if (!container) return;
   const r = container.getBoundingClientRect();
-  const jetzt = _pdfGap(ev.touches[0], ev.touches[1]);
+  const now = _pdfGap(ev.touches[0], ev.touches[1]);
   // The anchor is the middle between the fingers — the point both enclose.
   const mx = (ev.touches[0].clientX + ev.touches[1].clientX) / 2 - r.left;
   const my = (ev.touches[0].clientY + ev.touches[1].clientY) / 2 - r.top;
-  _pdfSetZoom(_pdfPinchZoom * (jetzt / _pdfPinchGap), mx, my);
+  _pdfSetZoom(_pdfPinchZoom * (now / _pdfPinchGap), mx, my);
 }
 
 /** @param {TouchEvent} ev */
@@ -407,14 +404,14 @@ function _pdfTouchEnd(ev) {
  */
 function _pdfAttachListenerOne() {
   const container = G('pdf-viewer-pages');
-  if (!container || container.dataset.zoomBereit === '1') return;
-  container.dataset.zoomBereit = '1';
+  if (!container || container.dataset.zoomReady === '1') return;
+  container.dataset.zoomReady = '1';
   container.addEventListener('wheel', _pdfRad, { passive: false });
   container.addEventListener('touchstart', _pdfTouchStart, { passive: true });
   container.addEventListener('touchmove', _pdfTouchMove, { passive: false });
   container.addEventListener('touchend', _pdfTouchEnd, { passive: true });
   container.addEventListener('touchcancel', _pdfTouchEnd, { passive: true });
-  document.addEventListener('keydown', _pdfTaste);
+  document.addEventListener('keydown', _pdfKey);
 }
 
 if (typeof document !== 'undefined') {

@@ -1,0 +1,17 @@
+Gegenprobe: entryValues liest den Preis wieder mit replace statt nach der Sprache
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.EntryValuesTest
+Rot: adding reads the price like the field and reports unreadable input
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/EntryValues.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/EntryValues.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/EntryValues.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/EntryValues.kt
+@@ -31,7 +31,7 @@
+     household: List<MemberView>,
+ ): EntryValues = EntryValues(
+     count = count.toIntOrNull() ?: 1,
+-    price = NumericInput.readMoney(price),
++    price = Money.fromText(price.replace(',', '.')),
+     condition = condition,
+     owner = if (household.size > 1) owner else null,
+ )

@@ -2,98 +2,137 @@
 import express from 'express';
 import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
-import { konfig } from '../infra/config';
-import { routeZu, type Schluessel, type ResponseBody, type Eingabe, type Abfrage } from '../contract';
-import { unbekannteFelder } from '../contract/unknownFields';
-import { FLAT_INPUT, Fehler, PATH, type PathOf, type Route } from '../contract/base';
-import { LARGEST_ID, idWert } from '../infra/validate';
+import { config } from '../infra/config';
+import { routeFor, type Key, type ResponseBody, type Input, type Query } from '../contract';
+import { unknownFields } from '../contract/unknownFields';
+import { FLAT_INPUT, ErrorBody, PATH, type PathOf, type Route } from '../contract/base';
+import { LARGEST_ID, idValue } from '../infra/validate';
 import { handleRouteError, sendError } from './httpResponse';
+import { bodyToV2 } from './apiV1Alias';
 
 /** The type of `res` in a route: tsc reports where the response deviates from the contract. */
-export type Antwort<K extends Schluessel> = [ResponseBody<K>] extends [never]
+export type Reply<K extends Key> = [ResponseBody<K>] extends [never]
   ? Response
-  : Response<ResponseBody<K> | z.input<typeof Fehler>>;
-/** The type of `req` in a route: `eingabe`, `abfrage` and `pfad` as the contract checked them. */
-export type Anfrage<K extends Schluessel, R extends Request = AuthedRequest> = R & {
-  eingabe: Eingabe<K>;
-  abfrage: Abfrage<K>;
-  pfad: PathOf<K>;
+  : Response<ResponseBody<K> | z.input<typeof ErrorBody>>;
+/** The type of `req` in a route: `input`, `queryArgs` and `pathArgs` as the contract checked them. */
+export type Request0<K extends Key, R extends Request = AuthedRequest> = R & {
+  input: Input<K>;
+  queryArgs: Query<K>;
+  pathArgs: PathOf<K>;
 };
 /** The same without requireToken. */
-export type OpenRequest<K extends Schluessel> = Anfrage<K, Request>;
+export type OpenRequest<K extends Key> = Request0<K, Request>;
 
 /** A query value is a text: repeated (?a=1&a=2) it becomes a list, and
  * `.trim()` or a regex on it would mistake the type. */
 const QUERY_AT_MOST = 4000;
 
 /** Immediately before the route: it gets query and body as the schema converts them
- * (req.abfrage, req.eingabe), never raw. */
+ * (req.queryArgs, req.input), never raw. */
 const IDS = new Set(['id', 'acqId', 'instrId']);
+type Checked = { input: unknown; queryArgs: unknown; pathArgs: Record<string, unknown> };
 
-function validateInput(route: Route, req: Request, res: Response, next: NextFunction): void {
-  for (const [name, wert] of Object.entries(req.query ?? {}))
-    if (typeof wert !== 'string' || wert.length > QUERY_AT_MOST) {
-      sendError(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: name.slice(0, 40) });
-      return;
+/** Each step sends its own error and then answers false. */
+function queryTextsOk(req: Request, res: Response): boolean {
+  for (const [name, value] of Object.entries(req.query ?? {}))
+    if (typeof value !== 'string' || value.length > QUERY_AT_MOST) {
+      sendError(req, res, 'invalid', 'input_invalid', { field: name.slice(0, 40) });
+      return false;
     }
-  const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown; pfad: Record<string, unknown> };
-  geprueft.pfad = Object.create(null) as Record<string, unknown>;
-  // Writing only happens under names from PATH, never under one from the request.
+  return true;
+}
+
+/** Writing only happens under names from PATH, never under one from the request. */
+function pathArgsOk(req: Request, res: Response, checked: Checked): boolean {
+  checked.pathArgs = Object.create(null) as Record<string, unknown>;
   for (const [name, schema] of Object.entries(PATH as Record<string, z.ZodType>)) {
     if (!Object.hasOwn(req.params ?? {}, name)) continue;
     const r = schema.safeParse(req.params[name]);
     if (!r.success) {
-      if (IDS.has(name)) sendError(req, res, 'ungueltig', 'id_ungueltig');
-      else sendError(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: name });
-      return;
+      if (IDS.has(name)) sendError(req, res, 'invalid', 'id_invalid');
+      else sendError(req, res, 'invalid', 'input_invalid', { field: name });
+      return false;
     }
-    geprueft.pfad[name] = r.data;
+    checked.pathArgs[name] = r.data;
   }
   const fremd = Object.keys(req.params ?? {}).find(name => !Object.hasOwn(PATH, name));
-  if (fremd) {
-    sendError(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: fremd.slice(0, 40) });
-    return;
+  if (fremd) sendError(req, res, 'invalid', 'input_invalid', { field: fremd.slice(0, 40) });
+  return !fremd;
+}
+
+function queryArgsOk(route: Route, req: Request, res: Response, checked: Checked): boolean {
+  if (!route.query) {
+    checked.queryArgs = {};
+    return true;
   }
-  if (route.abfrage) {
-    const q = route.abfrage.safeParse(req.query ?? {});
-    if (!q.success) {
-      reportDeviation(req, res, q.error);
-      return;
-    }
-    geprueft.abfrage = q.data;
-  } else geprueft.abfrage = {};
-  geprueft.eingabe = {};
-  if (!route.eingabe && (route.formular || req.method === 'GET')) {
+  const q = route.query.safeParse(req.query ?? {});
+  if (!q.success) {
+    reportDeviation(req, res, q.error);
+    return false;
+  }
+  checked.queryArgs = q.data;
+  return true;
+}
+
+function validateInput(route: Route, req: Request, res: Response, next: NextFunction): void {
+  bodyToV2(route, req, res);
+  const checked = req as unknown as Checked;
+  if (!queryTextsOk(req, res) || !pathArgsOk(req, res, checked) || !queryArgsOk(route, req, res, checked)) return;
+  checked.input = {};
+  if (!route.input && (route.form || req.method === 'GET')) {
     next();
     return;
   }
-  const r = (route.eingabe ?? FLAT_INPUT).safeParse(req.body ?? {});
+  const r = (route.input ?? FLAT_INPUT).safeParse(req.body ?? {});
   if (!r.success) {
     reportDeviation(req, res, r.error);
     return;
   }
-  geprueft.eingabe = r.data;
+  checked.input = r.data;
   next();
 }
 
 /** The validators from validate.ts report their own error, an unknown field its code. */
-function reportDeviation(req: Request, res: Response, fehler: z.ZodError): void {
-  const erste = fehler.issues[0];
-  const eigener = (erste as { params?: { fehler?: unknown } } | undefined)?.params?.fehler;
-  if (eigener) {
-    handleRouteError(res, eigener, 400, req);
+function reportDeviation(req: Request, res: Response, error: z.ZodError): void {
+  const first = error.issues[0];
+  const own = (first as { params?: { error?: unknown } } | undefined)?.params?.error;
+  if (own) {
+    handleRouteError(res, own, 400, req);
     return;
   }
-  if (erste?.code === 'unrecognized_keys') {
-    sendError(req, res, 'ungueltig', 'feld_unbekannt', {
-      feld: [...(erste.path ?? []), erste.keys[0] ?? ''].join('.').slice(0, 40),
+  if (first?.code === 'unrecognized_keys') {
+    sendError(req, res, 'invalid', 'field_unknown', {
+      field: [...(first.path ?? []), first.keys[0] ?? ''].join('.').slice(0, 40),
     });
     return;
   }
-  sendError(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: (erste?.path ?? []).join('.').slice(0, 40) || '$' });
+  sendError(req, res, 'invalid', 'input_invalid', { field: (first?.path ?? []).join('.').slice(0, 40) || '$' });
 }
 
-/** Only in tests (VERTRAG_PRUEFEN=1): a 2xx response outside its schema becomes a 500. In
+/** What a response (and the request behind it) breaks of the contract. */
+function contractErrors(req: Request, status: number, key: string, body: unknown): string[] {
+  const route = status < 300 && req.route ? routeFor(key) : undefined;
+  const error: string[] = [];
+  const check = (part: string, schema: import('zod').ZodType | undefined, value: unknown) => {
+    const r = schema?.safeParse(value);
+    if (r && !r.success)
+      error.push(...r.error.issues.slice(0, 8).map(i => `${part} ${i.path.join('.') || '$'}: ${i.message}`));
+  };
+  if (route) {
+    // What goes out is checked: a Date only becomes ISO text in res.json.
+    const sent = JSON.parse(JSON.stringify(body ?? null));
+    check('Antwort', route.response, sent);
+    // Strict only here: a field outside the contract would be missing in OpenAPI and the UI's types.
+    const fremd = !error.length && route.response ? unknownFields(route.response, sent) : [];
+    if (fremd.length) error.push(`Antwort: nicht im Vertrag: ${fremd.join(', ')}`);
+    if (!route.form) check('Anfrage', route.input, req.body ?? {});
+  }
+  // The error path has a shape too; without a check a 404 without a code went unnoticed.
+  if (status >= 400) check('Fehlerantwort', ErrorBody, JSON.parse(JSON.stringify(body ?? null)));
+  return error;
+}
+
+/** Only in tests (CHECK_CONTRACT=1): a 2xx response outside its schema becomes a 500. In
  * production this would cost a pass over whole lists per response; there tsc upholds the contract. */
 function responseAgainstContract(req: Request, res: Response, next: NextFunction): void {
   if (res.locals.contractChecked) {
@@ -101,35 +140,18 @@ function responseAgainstContract(req: Request, res: Response, next: NextFunction
     return;
   }
   res.locals.contractChecked = true;
-  const senden = res.json.bind(res);
-  res.json = (rumpf: unknown) => {
-    const schluessel = String(res.locals.contractKey ?? `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`);
-    const route = res.statusCode < 300 && req.route ? routeZu(schluessel) : undefined;
-    const fehler: string[] = [];
-    const pruefe = (teil: string, schema: import('zod').ZodType | undefined, wert: unknown) => {
-      const r = schema?.safeParse(wert);
-      if (r && !r.success)
-        fehler.push(...r.error.issues.slice(0, 8).map(i => `${teil} ${i.path.join('.') || '$'}: ${i.message}`));
-    };
-    if (route) {
-      // What goes out is checked: a Date only becomes ISO text in res.json.
-      const gesendet = JSON.parse(JSON.stringify(rumpf ?? null));
-      pruefe('Antwort', route.antwort, gesendet);
-      // Strict only here: a field outside the contract would be missing in OpenAPI and the UI's types.
-      const fremd = !fehler.length && route.antwort ? unbekannteFelder(route.antwort, gesendet) : [];
-      if (fremd.length) fehler.push(`Antwort: nicht im Vertrag: ${fremd.join(', ')}`);
-      if (!route.formular) pruefe('Anfrage', route.eingabe, req.body ?? {});
-    }
-    // The error path has a shape too; without a check a 404 without a code went unnoticed.
-    if (res.statusCode >= 400) pruefe('Fehlerantwort', Fehler, JSON.parse(JSON.stringify(rumpf ?? null)));
-    if (!fehler.length) return senden(rumpf);
-    console.error(`[vertrag] ${schluessel}: ${fehler.join(' | ')}`);
+  const send = res.json.bind(res);
+  res.json = (body: unknown) => {
+    const key = String(res.locals.contractKey ?? `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`);
+    const error = contractErrors(req, res.statusCode, key, body);
+    if (!error.length) return send(body);
+    console.error(`[vertrag] ${key}: ${error.join(' | ')}`);
     res.status(500);
-    return senden({
+    return send({
       success: false,
-      error: `API-Vertrag verletzt: ${schluessel}`,
-      code: 'vertrag_verletzt',
-      deviations: fehler,
+      error: `API-Vertrag verletzt: ${key}`,
+      code: 'contract_violated',
+      deviations: error,
     });
   };
   next();
@@ -138,28 +160,28 @@ function responseAgainstContract(req: Request, res: Response, next: NextFunction
 /** Decided when the router is built, not per request: in production
  * the check is not even part of the chain. */
 export function checkContract(): ((req: Request, res: Response, next: NextFunction) => void) | null {
-  return konfig().checkContract ? responseAgainstContract : null;
+  return config().checkContract ? responseAgainstContract : null;
 }
 
 /** Middleware that guarantees the rest of the chain a narrower request (AuthedRequest behind requireToken);
  * only what waechter() builds has the brand `sichert`, not any function in first position. */
-export type Waechter<R extends Request> = ((req: Request, res: Response, next: NextFunction) => void) & {
-  readonly sichert: (r: R) => R;
+export type Guard<R extends Request> = ((req: Request, res: Response, next: NextFunction) => void) & {
+  readonly ensures: (r: R) => R;
 };
-export function guard<R extends Request>(f: (req: Request, res: Response, next: NextFunction) => void): Waechter<R> {
-  return Object.assign(f, { sichert: (r: R) => r });
+export function guard<R extends Request>(f: (req: Request, res: Response, next: NextFunction) => void): Guard<R> {
+  return Object.assign(f, { ensures: (r: R) => r });
 }
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 /** The keys whose path lies under the router's prefix: any other does not compile. */
-export type KeyBelow<P extends string> = Schluessel extends infer K
+export type KeyBelow<P extends string> = Key extends infer K
   ? K extends `${Method} ${P}/${string}` | `${Method} ${P}`
     ? K
     : never
   : never;
 /** What a route returns is put by the router into the envelope `{ success: true, … }`. Only
  * routes whose contract names `success` have one; the others answer themselves. */
-export type Ergebnis<K extends Schluessel> =
+export type Result<K extends Key> =
   ResponseBody<K> extends infer R
     ? [keyof R] extends [never]
       ? [R] extends [never]
@@ -170,84 +192,81 @@ export type Ergebnis<K extends Schluessel> =
         : never
     : never;
 // biome-ignore lint/suspicious/noConfusingVoidType: a route also answers itself (`return sendError(…)`), and that is void.
-type ReturnValue<K extends Schluessel> = Ergebnis<K> | Response | undefined | void;
+type ReturnValue<K extends Key> = Result<K> | Response | undefined | void;
 /** An event of a stream in the same envelope as the query's response (contract: `ereignis`). */
-export const inShell = <T extends object>(daten: T) => ({ success: true as const, ...daten });
+export const inShell = <T extends object>(data: T) => ({ success: true as const, ...data });
 
-export type Handler<K extends Schluessel, R extends Request> = (
-  req: Anfrage<K, R>,
-  res: Antwort<K>,
+export type Handler<K extends Key, R extends Request> = (
+  req: Request0<K, R>,
+  res: Reply<K>,
 ) => ReturnValue<K> | Promise<ReturnValue<K>>;
 type IntermediateStep = (req: Request, res: Response, next: NextFunction) => unknown;
 
-interface Vertragswege<P extends string> {
-  readonly praefix: P;
+interface ContractRoutes<P extends string> {
+  readonly prefix: P;
   /** Registers the route of the contract key: method, path and types come from it.
    * If a guard comes first, the route gets its request type. */
-  endpunkt<K extends KeyBelow<P>, R extends Request>(
-    schluessel: K,
-    w: Waechter<R>,
-    ...schritte: [...IntermediateStep[], Handler<K, R>]
-  ): VertragsRouter<P>;
-  endpunkt<K extends KeyBelow<P>>(
-    schluessel: K,
-    ...schritte: [...IntermediateStep[], Handler<K, Request>]
-  ): VertragsRouter<P>;
+  endpoint<K extends KeyBelow<P>, R extends Request>(
+    key: K,
+    w: Guard<R>,
+    ...steps: [...IntermediateStep[], Handler<K, R>]
+  ): ContractRouter<P>;
+  endpoint<K extends KeyBelow<P>>(key: K, ...steps: [...IntermediateStep[], Handler<K, Request>]): ContractRouter<P>;
   /** Mounts a router with the same or a longer prefix. */
-  attachOne<Q extends `${P}${string}`>(kind: VertragsRouter<Q>): VertragsRouter<P>;
+  attachOne<Q extends `${P}${string}`>(kind: ContractRouter<Q>): ContractRouter<P>;
 }
-/** Like express.Router, but routes only via `endpunkt`: a path without a contract key does not compile. */
-export type VertragsRouter<P extends string> = Omit<
+/** Like express.Router, but routes only via `endpoint`: a path without a contract key does not compile. */
+export type ContractRouter<P extends string> = Omit<
   express.Router,
   'get' | 'post' | 'put' | 'patch' | 'delete' | 'route'
 > &
   express.RequestHandler &
-  Vertragswege<P>;
+  ContractRoutes<P>;
 
 /** A router under a different prefix than that of its keys: its routes would be
  * reachable under a path the contract does not know. */
 export class WrongMounted extends Error {
-  constructor(praefix: string, basis: string) {
-    super(`Vertragsrouter für ${praefix} ist unter ${basis || '/'} eingehängt`);
+  constructor(prefix: string, basis: string) {
+    super(`Vertragsrouter für ${prefix} ist unter ${basis || '/'} eingehängt`);
   }
 }
 
-/** Checks inputs in production and responses in tests, even without being mounted in routes/api_v1/index.ts. */
-export function vertragsRouter<P extends string>(praefix: P, o: { largeIds?: boolean } = {}): VertragsRouter<P> {
+/** Checks inputs in production and responses in tests, even without being mounted in routes/api/index.ts. */
+export function contractRouter<P extends string>(prefix: P, o: { largeIds?: boolean } = {}): ContractRouter<P> {
   // As in the contract: a different spelling is a different route (404), not the same one without an entry.
   const router = express.Router({ caseSensitive: true });
   const check = checkContract();
   if (check) router.use(check);
   // A path ID that is too large would otherwise come out of PostgreSQL as a 500; jobs count in bigint (largeIds).
-  const hoechstens = o.largeIds ? Number.MAX_SAFE_INTEGER : LARGEST_ID;
+  const atMost = o.largeIds ? Number.MAX_SAFE_INTEGER : LARGEST_ID;
   for (const name of ['id', 'acqId', 'instrId']) {
-    router.param(name, (req, res, next, wert) =>
-      idWert(wert, hoechstens) === null ? sendError(req, res, 'ungueltig', 'id_ungueltig') : next(),
+    router.param(name, (req, res, next, value) =>
+      idValue(value, atMost) === null ? sendError(req, res, 'invalid', 'id_invalid') : next(),
     );
   }
-  const anmelden = (methode: string, pfad: string, schritte: unknown[]) =>
-    (router as unknown as Record<string, (p: string, ...s: unknown[]) => unknown>)[methode.toLowerCase()]?.(
-      pfad,
-      ...schritte,
+  const login = (method: string, path: string, steps: unknown[]) =>
+    (router as unknown as Record<string, (p: string, ...s: unknown[]) => unknown>)[method.toLowerCase()]?.(
+      path,
+      ...steps,
     );
   return Object.assign(router, {
-    praefix,
-    endpunkt(schluessel: string, ...schritte: unknown[]) {
-      const route = routeZu(schluessel);
-      const [methode = '', pfad = ''] = schluessel.split(' ');
-      if (!route || !(pfad === praefix || pfad.startsWith(`${praefix}/`)))
-        throw new Error(`${schluessel} steht nicht im Vertrag unter ${praefix}`);
-      const handler = schritte.pop() as (req: Request, res: Response) => unknown;
+    prefix,
+    endpoint(key: string, ...steps: unknown[]) {
+      const route = routeFor(key);
+      const [method = '', path = ''] = key.split(' ');
+      if (!route || !(path === prefix || path.startsWith(`${prefix}/`)))
+        throw new Error(`${key} steht nicht im Vertrag unter ${prefix}`);
+      const handler = steps.pop() as (req: Request, res: Response) => unknown;
       // As the last step before the route: responses from login and throttle (401, 429) stay.
-      anmelden(methode, pfad.slice(praefix.length) || '/', [
-        ...schritte,
+      login(method, path.slice(prefix.length) || '/', [
+        ...steps,
         (req: Request, res: Response, next: NextFunction) => {
-          if (req.baseUrl.toLowerCase() !== praefix.toLowerCase()) throw new WrongMounted(praefix, req.baseUrl);
-          res.locals.contractKey = schluessel;
-          // If the step guard at the entrance (res.locals.schritt set) assigned this route to a different
+          if (req.baseUrl.toLowerCase() !== prefix.toLowerCase()) throw new WrongMounted(prefix, req.baseUrl);
+          res.locals.contractKey = key;
+          // If the step guard at the entrance (res.locals.step set) assigned this route to a different
           // brand than Express did, its approval does not apply: closed instead of open.
-          if (route.schritt && res.locals.schritt !== undefined && res.locals.schritt !== route.schritt)
-            return sendError(req, res, 'verboten', 'schritt_freigabe_noetig');
+          if (route.step && res.locals.step !== undefined && res.locals.step !== route.step)
+            return sendError(req, res, 'forbidden', 'step_approval_required');
           validateInput(route, req, res, next);
         },
         async (req: Request, res: Response) => {
@@ -258,12 +277,12 @@ export function vertragsRouter<P extends string>(praefix: P, o: { largeIds?: boo
       ]);
       return router;
     },
-    attachOne(kind: VertragsRouter<string>) {
-      if (!kind.praefix.startsWith(praefix)) throw new WrongMounted(kind.praefix, praefix);
-      const rest = kind.praefix.slice(praefix.length);
+    attachOne(kind: ContractRouter<string>) {
+      if (!kind.prefix.startsWith(prefix)) throw new WrongMounted(kind.prefix, prefix);
+      const rest = kind.prefix.slice(prefix.length);
       if (rest) router.use(rest, kind);
       else router.use(kind);
       return router;
     },
-  }) as unknown as VertragsRouter<P>;
+  }) as unknown as ContractRouter<P>;
 }

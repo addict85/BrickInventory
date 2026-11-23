@@ -1,0 +1,17 @@
+Gegenprobe: Die Preisalarm-Meldung schreibt Beträge wieder fest mit Locale.US
+Modul: core-services
+Test: ch.brickinventoryapp.services.AlarmFetchTest
+Rot: the amounts are in the number format of the app language
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt
+@@ -76,7 +76,7 @@
+      */
+     fun text(a: PriceAlertView, below: String, over: String, numbers: Locale): String {
+         val direction = if (a.direction == AlarmDirection.BELOW) below else over
+-        val format = NumberFormat.getCurrencyInstance(numbers).apply {
++        val format = NumberFormat.getCurrencyInstance(Locale.US).apply {
+             runCatching { currency = Currency.getInstance(a.currencyCode.code) }
+             minimumFractionDigits = 2
+             maximumFractionDigits = 2

@@ -7,10 +7,10 @@ interface Window {
   I18N_EN: Record<string, string>;
   __APP_VERSION: string;
   __bimApplyTheme: (name: string) => void;
-  __bimDunkel: ((wert: string) => void) | undefined;
-  __bimDunkelWert: (() => 'server' | 'system' | 'immer') | undefined;
-  __bimNurDunkel: (theme: string) => boolean;
-  __bimLabelTables: ((tabelle: Element | null) => void) | undefined;
+  __bimDark: ((value: string) => void) | undefined;
+  __bimDarkValue: (() => 'server' | 'system' | 'always') | undefined;
+  __bimOnlyDark: (theme: string) => boolean;
+  __bimLabelTables: ((table: Element | null) => void) | undefined;
   pdfjsLib: PdfJs | undefined;
 }
 
@@ -22,42 +22,42 @@ interface Element {
   _tabBound?: boolean;
   _mobileScrollBound?: boolean;
   _fk?: number | null;
-  _punkte?: { x: number; y: (number | null)[]; t: string[] }[];
+  _dots?: { x: number; y: (number | null)[]; t: string[] }[];
 }
 
 // What G(id) delivers. The identifier determines whether an input, select or link
 // stands behind it; the type covers the fields the UI reads from it.
-type Feld = HTMLInputElement &
+type Field = HTMLInputElement &
   Pick<HTMLSelectElement, 'options' | 'selectedIndex' | 'selectedOptions'> &
   Pick<HTMLAnchorElement, 'href' | 'download'>;
 
 // Entries of the manual parts and figure lists: shared by parts.js, minifigs.js and purchase-dialogs.js.
 // As global types, so that no file imports another because of them (no type cycle).
-type ManuellesTeil = import('../frontend-types/contract').ManualPartsResponse['parts'][number];
-type ManuelleFigur = import('../frontend-types/contract').ManualFigsResponse['figs'][number];
+type ManualPart = import('../frontend-types/contract').ManualPartsResponse['parts'][number];
+type ManualMinifig = import('../frontend-types/contract').ManualFigsResponse['figs'][number];
 
 // The part of PDF.js the viewer (pdfviewer.js) uses. PDF.js
 // comes as an ES module of its own from public/vendor (pdfjs-boot.js).
-interface PdfAnsicht {
+interface PdfView {
   width: number;
   height: number;
 }
-interface PdfSeite {
-  getViewport(o: { scale: number }): PdfAnsicht;
-  render(o: { canvasContext: CanvasRenderingContext2D | null; viewport: PdfAnsicht; background?: string }): {
+interface PdfPage {
+  getViewport(o: { scale: number }): PdfView;
+  render(o: { canvasContext: CanvasRenderingContext2D | null; viewport: PdfView; background?: string }): {
     promise: Promise<void>;
     cancel(): void;
   };
   cleanup(): void;
 }
-interface PdfDokument {
+interface PdfDocument {
   numPages: number;
-  getPage(n: number): Promise<PdfSeite>;
+  getPage(n: number): Promise<PdfPage>;
   destroy(): void;
 }
 interface PdfJs {
   GlobalWorkerOptions: { workerSrc: string };
-  getDocument(quelle: object): { promise: Promise<PdfDokument>; destroy(): void };
+  getDocument(source: object): { promise: Promise<PdfDocument>; destroy(): void };
 }
 declare module '/vendor/pdfjs/*' {
   export const GlobalWorkerOptions: PdfJs['GlobalWorkerOptions'];
@@ -66,10 +66,10 @@ declare module '/vendor/pdfjs/*' {
 
 // qrcode.js from public/vendor, loaded as a classic script.
 declare const QRCode: {
-  new (ziel: HTMLElement, optionen: Record<string, unknown>): unknown;
+  new (target: HTMLElement, options: Record<string, unknown>): unknown;
   CorrectLevel: Record<'L' | 'M' | 'Q' | 'H', number>;
 };
-declare const __ERLAUBTE_STILE__: string[];
+declare const __ALLOWED_STYLES__: string[];
 
 // A timer that never ran or has already been cleared stands as null;
 // clearTimeout/clearInterval accept null in the browser without error.

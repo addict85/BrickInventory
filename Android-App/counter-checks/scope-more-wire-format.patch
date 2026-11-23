@@ -1,0 +1,26 @@
+Gegenprobe: ein Bereich bindet core-contract wieder ein und importiert einen Antworttyp
+Modul: app
+Test: ch.brickinventoryapp.app.LayerRulesTest
+Rot: an area does not know the Retrofit interfaces, only core-data knows the wire format
+
+diff --git a/Android-App/feature-catalog/build.gradle.kts b/Android-App/feature-catalog/build.gradle.kts
+--- a/Android-App/feature-catalog/build.gradle.kts
++++ b/Android-App/feature-catalog/build.gradle.kts
+@@ -10,6 +10,7 @@
+ dependencies {
+     implementation(project(":core-model"))
+     implementation(project(":core-data"))
++    implementation(project(":core-contract"))
+     // openExtern.
+     implementation(project(":core-network"))
+     implementation(project(":core-ui"))
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+@@ -1,4 +1,6 @@
+ package ch.brickinventoryapp.catalog.ui.viewmodel
++
++import ch.brickinventoryapp.contract.CatalogSetItem
+ 
+ import androidx.lifecycle.ViewModel
+ import androidx.lifecycle.viewModelScope

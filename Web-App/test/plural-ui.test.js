@@ -14,10 +14,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
-const TEILE = {
-  '/v1/parts': {
+const PARTS = {
+  '/v2/parts': {
     success: true,
     total: 3,
     parts: [
@@ -52,17 +52,17 @@ const TEILE = {
   },
 };
 
-for (const [sprache, eins, zwei] of [
+for (const [language, one, two] of [
   ['de', '1 Sorte', '2 Sorten'],
   ['en', '1 kind', '2 kinds'],
 ]) {
-  test(`${sprache}: groups of the parts`, async () => {
-    const { w, d } = await openUi(TEILE, { sprache });
+  test(`${language}: groups of the parts`, async () => {
+    const { w, d } = await openUi(PARTS, { language });
     try {
-      await reiter(w, 'parts');
-      await warte(() => d.querySelectorAll('#parts-main .parts-group').length === 2);
-      const zaehler = [...d.querySelectorAll('#parts-main .parts-group .group-sub')].map(e => e.textContent.trim());
-      assert.deepEqual(zaehler, [eins, zwei]);
+      await switchTab(w, 'parts');
+      await waitFor(() => d.querySelectorAll('#parts-main .parts-group').length === 2);
+      const counter = [...d.querySelectorAll('#parts-main .parts-group .group-sub')].map(e => e.textContent.trim());
+      assert.deepEqual(counter, [one, two]);
     } finally {
       w.close();
     }
@@ -71,7 +71,7 @@ for (const [sprache, eins, zwei] of [
 
 test('finances: a position without a price', async () => {
   const { w, d } = await openUi({
-    '/v1/finance/valuation': {
+    '/v2/finance/valuation': {
       success: true,
       currency: 'EUR',
       totals: { min: '0', avg: '0', max: '0', qty_avg: '0' },
@@ -88,9 +88,9 @@ test('finances: a position without a price', async () => {
     },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.getElementById('fin-wert').textContent.includes('Marktpreis'));
-    assert.equal(d.getElementById('fin-wert').textContent.trim(), 'Marktpreis fehlt für 1 Position');
+    await switchTab(w, 'finance');
+    await waitFor(() => d.getElementById('fin-value').textContent.includes('Marktpreis'));
+    assert.equal(d.getElementById('fin-value').textContent.trim(), 'Marktpreis fehlt für 1 Position');
   } finally {
     w.close();
   }

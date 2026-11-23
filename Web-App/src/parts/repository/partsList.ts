@@ -1,8 +1,8 @@
-import { lagerorte } from '../../../db/inventoryView';
-import type { DbInterface, Treffer } from '../../../db/database';
-import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/stockQuantity';
-import { blJoin, blNummerSql } from '../../../db/blMappingSql';
-import { teilSichtJoin, TEIL } from '../../../db/catalogView';
+import { storages } from '../../../db/inventoryView';
+import type { DbInterface, Hit } from '../../../db/database';
+import { setQuantityJoin, quantityFrom, quantityJoin, subsetFrom } from '../../../db/stockQuantity';
+import { blJoin, blNumberSql } from '../../../db/blMappingSql';
+import { partViewJoin, PART } from '../../../db/catalogView';
 import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
 
 /** Both paths (summary and live) return the same shape, so the UIs don't need to
@@ -18,21 +18,21 @@ export interface PartsFilter {
   withoutManual?: boolean;
 }
 
-export type PartsOrder = 'farbe' | 'name' | 'menge';
+export type PartsOrder = 'color' | 'name' | 'quantity';
 /** Fixed list, because the value goes into the query as SQL. */
-export function partsOrder(wert: unknown): PartsOrder {
-  return wert === 'name' || wert === 'menge' ? wert : 'farbe';
+export function partsOrder(value: unknown): PartsOrder {
+  return value === 'name' || value === 'quantity' ? value : 'color';
 }
 /** The last key makes the pages stable. */
-function orderSql(o: PartsOrder, sp: { farbe: string; name: string; menge: string; nummer: string }): string {
-  if (o === 'name') return `${sp.name} ASC, ${sp.farbe} ASC, ${sp.nummer} ASC`;
-  if (o === 'menge') return `${sp.menge} DESC, ${sp.name} ASC, ${sp.nummer} ASC`;
-  return `${sp.farbe} ASC, ${sp.name} ASC`;
+function orderSql(o: PartsOrder, sp: { color: string; name: string; quantity: string; number: string }): string {
+  if (o === 'name') return `${sp.name} ASC, ${sp.color} ASC, ${sp.number} ASC`;
+  if (o === 'quantity') return `${sp.quantity} DESC, ${sp.name} ASC, ${sp.number} ASC`;
+  return `${sp.color} ASC, ${sp.name} ASC`;
 }
 
 /** `pi` is the placeholder for `%text%`. */
-function partsSearch(nummer: string, name: string, blNumber: string, pi: number) {
-  return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E} OR ${blNumber} ILIKE $${pi}${E})`;
+function partsSearch(number: string, name: string, blNumber: string, pi: number) {
+  return `(${number} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E} OR ${blNumber} ILIKE $${pi}${E})`;
 }
 
 export interface PartRow {
@@ -52,16 +52,16 @@ export interface PartRow {
 }
 
 export interface Page {
-  groesse: number;
-  versatz: number;
-  mitSets: boolean;
-  ordnung: PartsOrder;
+  size: number;
+  offset: number;
+  withSets: boolean;
+  order: PartsOrder;
 }
 
 export function stockColors(db: DbInterface, uids: number[], fromSummary: boolean) {
-  type Farbe = { color_name: string | null; color_hex: string | null; unique_parts: number; total_quantity: number };
+  type Color = { color_name: string | null; color_hex: string | null; unique_parts: number; total_quantity: number };
   if (fromSummary)
-    return db.all<Farbe>(
+    return db.all<Color>(
       `
       SELECT ps.color_name, COALESCE(ps.color_hex, rc.rgb) AS color_hex,
              -- DISTINCT on part_key: within a household the same part appears once per account.
@@ -74,15 +74,15 @@ export function stockColors(db: DbInterface, uids: number[], fromSummary: boolea
       ORDER BY total_quantity DESC`,
       [uids],
     );
-  return db.all<Farbe>(
+  return db.all<Color>(
     `
-    SELECT ${TEIL.farbname} AS color_name, COALESCE(${TEIL.farbcode}, rc.rgb) AS color_hex,
+    SELECT ${PART.colorName} AS color_name, COALESCE(${PART.colorHex}, rc.rgb) AS color_hex,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
-           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
+           SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})::int AS total_quantity
     FROM parts p
-    ${mengeJoin('p', 'sm', '= ANY($1)')}
-    ${teilmengeJoin('p', 'part')}
-    ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
+    ${setQuantityJoin('p', 'sm', '= ANY($1)')}
+    ${quantityJoin('p', 'part')}
+    ${partViewJoin('p.user_id', 'p.part_number', 'p.color_id')}
     LEFT JOIN rb_colors rc ON rc.id = p.color_id
     WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
     GROUP BY 1, 2 ORDER BY total_quantity DESC`,
@@ -123,17 +123,22 @@ export async function pageFromSummary(db: DbInterface, uids: number[], f: PartsF
        MIN(image_local) AS image_local, bool_or(is_spare) AS is_spare,
        SUM(total_quantity)::int AS total_quantity,
        NULLIF(STRING_AGG(DISTINCT storage, ', '), '') AS storage` +
-      (s.mitSets ? ", STRING_AGG(DISTINCT in_sets, ',') AS in_sets" : '')
+      (s.withSets ? ", STRING_AGG(DISTINCT in_sets, ',') AS in_sets" : '')
     : `part_number, bl_part_number, color_id, part_name, color_name, color_hex,
-       category_name, image_url, image_local, is_spare, total_quantity::int, storage` + (s.mitSets ? ', in_sets' : '');
+       category_name, image_url, image_local, is_spare, total_quantity::int, storage` + (s.withSets ? ', in_sets' : '');
   const groupSql = multi ? ' GROUP BY part_key, color_id' : '';
   const orderSqlStr = orderSql(
-    s.ordnung,
+    s.order,
     multi
-      ? { farbe: 'MIN(color_name)', name: 'MIN(part_name)', menge: 'SUM(total_quantity)', nummer: 'part_key, color_id' }
-      : { farbe: 'color_name', name: 'part_name', menge: 'total_quantity', nummer: 'part_key, color_id' },
+      ? {
+          color: 'MIN(color_name)',
+          name: 'MIN(part_name)',
+          quantity: 'SUM(total_quantity)',
+          number: 'part_key, color_id',
+        }
+      : { color: 'color_name', name: 'part_name', quantity: 'total_quantity', number: 'part_key, color_id' },
   );
-  const [anzahl, zeilen] = await Promise.all([
+  const [count, rows] = await Promise.all([
     multi
       ? db.get<{ c: number }>(
           `SELECT COUNT(*)::int AS c FROM (
@@ -144,11 +149,11 @@ export async function pageFromSummary(db: DbInterface, uids: number[], f: PartsF
       : db.get<{ c: number }>(`SELECT COUNT(*)::int AS c FROM parts_summary WHERE ${where}`, params),
     db.all<PartRow>(
       `SELECT ${cols} FROM parts_summary WHERE ${where}${groupSql}
-            ORDER BY ${orderSqlStr} LIMIT ${Number(s.groesse)} OFFSET ${Number(s.versatz)}`,
+            ORDER BY ${orderSqlStr} LIMIT ${Number(s.size)} OFFSET ${Number(s.offset)}`,
       params,
     ),
   ]);
-  return { total: anzahl?.c ?? 0, zeilen };
+  return { total: count?.c ?? 0, rows };
 }
 
 function partsWhere(uids: number[], f: PartsFilter) {
@@ -160,15 +165,15 @@ function partsWhere(uids: number[], f: PartsFilter) {
     params.push(f.set_number);
   }
   // Color, category and name live in the catalog views (pc/pcc), the spare-part
-  // flag in the set list (tm_k from teilmengeJoin).
+  // flag in the set list (tm_k from quantityJoin).
   if (f.color) {
-    where += ` AND ${TEIL.farbname} = $${pi++}`;
+    where += ` AND ${PART.colorName} = $${pi++}`;
     params.push(f.color);
   }
   // Category also via rb_parts: Rebrickable's set-parts response often has
   // none, so the filter list shows the resolved ID.
   if (f.category) {
-    where += ` AND (${TEIL.kategorie} = $${pi}
+    where += ` AND (${PART.category} = $${pi}
                     OR EXISTS (SELECT 1 FROM rb_parts rp
                                 WHERE rp.part_num = p.part_number
                                   AND rp.part_cat_id::text = $${pi}))`;
@@ -180,7 +185,7 @@ function partsWhere(uids: number[], f: PartsFilter) {
   if (f.spare === '1') where += ' AND COALESCE(tm_k.is_spare, false)';
   if (f.withoutManual) where += " AND COALESCE(p.source,'set') <> 'manual'";
   if (f.search) {
-    where += ` AND ${partsSearch('p.part_number', TEIL.name, blNummerSql('p.part_number'), pi)}`;
+    where += ` AND ${partsSearch('p.part_number', PART.name, blNumberSql('p.part_number'), pi)}`;
     params.push(containsPattern(f.search));
     pi++;
   }
@@ -197,71 +202,71 @@ export async function pageLive(db: DbInterface, uids: number[], f: PartsFilter, 
   const { where, params, pi } = partsWhere(uids, f);
   // ::int: total_quantity's JSON type must not depend on the branch.
   const qtyExpr = f.set_number
-    ? `SUM(${teilmengeAus('p', 'part')})::int`
-    : `SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int`;
+    ? `SUM(${subsetFrom('p', 'part')})::int`
+    : `SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})::int`;
   const joinClause =
-    (f.set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`) +
-    ` ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}` +
+    (f.set_number ? 'FROM parts p' : `FROM parts p ${setQuantityJoin('p')}`) +
+    ` ${quantityJoin('p', 'part', 'tm', '= ANY($1)')}` +
     ` ${blJoin('p.part_number', 'part', 'p.user_id')}` +
-    ` LEFT JOIN ${lagerorte()} lo ON lo.id = p.storage_id` +
-    ` ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}`;
+    ` LEFT JOIN ${storages()} lo ON lo.id = p.storage_id` +
+    ` ${partViewJoin('p.user_id', 'p.part_number', 'p.color_id')}`;
   // Same joins as the main query: each hangs off the primary key and doesn't change the count.
   const countSql = `SELECT COUNT(*)::int AS c FROM (
        SELECT 1 ${joinClause} WHERE ${where}
-       GROUP BY ${blNummerSql('p.part_number')}, p.color_id
+       GROUP BY ${blNumberSql('p.part_number')}, p.color_id
      ) g`;
   const partsSql = `
     SELECT
-      ${blNummerSql('p.part_number')} AS part_number,
-      ${blNummerSql('p.part_number')} AS bl_part_number,
+      ${blNumberSql('p.part_number')} AS part_number,
+      ${blNumberSql('p.part_number')} AS bl_part_number,
       -- The group combines several Rebrickable numbers under the same BrickLink number.
-      MIN(${TEIL.name})      AS part_name,
+      MIN(${PART.name})      AS part_name,
       p.color_id,
-      MIN(${TEIL.farbname})  AS color_name,
-      MIN(${TEIL.farbcode})  AS color_hex,
-      MIN(${TEIL.kategorie}) AS category_name,
-      MIN(${TEIL.bild})      AS image_url,
-      MIN(${TEIL.bildDatei}) AS image_local,
+      MIN(${PART.colorName})  AS color_name,
+      MIN(${PART.colorHex})  AS color_hex,
+      MIN(${PART.category}) AS category_name,
+      MIN(${PART.image})      AS image_url,
+      MIN(${PART.imageFile}) AS image_local,
       bool_or(COALESCE(tm_k.is_spare, false)) AS is_spare,
       -- All storage locations: the same part sits in different bins coming from different sets.
       NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
       ${qtyExpr}          AS total_quantity${
-        s.mitSets
+        s.withSets
           ? `,
       STRING_AGG(DISTINCT p.set_number, ',') AS in_sets`
           : ''
       }
     ${joinClause}
     WHERE ${where}
-    GROUP BY ${blNummerSql('p.part_number')}, p.color_id
-    ORDER BY ${orderSql(s.ordnung, {
-      farbe: `MIN(${TEIL.farbname})`,
-      name: `MIN(${TEIL.name})`,
-      menge: qtyExpr,
-      nummer: `${blNummerSql('p.part_number')}, p.color_id`,
+    GROUP BY ${blNumberSql('p.part_number')}, p.color_id
+    ORDER BY ${orderSql(s.order, {
+      color: `MIN(${PART.colorName})`,
+      name: `MIN(${PART.name})`,
+      quantity: qtyExpr,
+      number: `${blNumberSql('p.part_number')}, p.color_id`,
     })} LIMIT $${pi} OFFSET $${pi + 1}`;
-  const [anzahl, zeilen] = await Promise.all([
+  const [count, rows] = await Promise.all([
     db.get<{ c: number }>(countSql, params),
-    db.all<PartRow>(partsSql, [...params, s.groesse, s.versatz]),
+    db.all<PartRow>(partsSql, [...params, s.size, s.offset]),
   ]);
-  return { total: anzahl?.c ?? 0, zeilen };
+  return { total: count?.c ?? 0, rows };
 }
 
 export function usedManualParts(db: DbInterface, uids: number[]) {
   return db.all<{ pid: string; color_id: number; any_used: number }>(
-    `SELECT ${blNummerSql('p.part_number')} AS pid, p.color_id,
+    `SELECT ${blNumberSql('p.part_number')} AS pid, p.color_id,
             MAX(CASE WHEN pa.condition='U' THEN 1 ELSE 0 END) AS any_used
      FROM parts p
      ${blJoin('p.part_number', 'part', 'p.user_id')}
      JOIN part_acquisitions pa ON pa.user_id=p.user_id AND pa.part_number=p.part_number AND pa.color_id=p.color_id
      WHERE p.user_id = ANY($1) AND p.source='manual'
-     GROUP BY ${blNummerSql('p.part_number')}, p.color_id`,
+     GROUP BY ${blNumberSql('p.part_number')}, p.color_id`,
     [uids],
   );
 }
 
 export async function hasUnseenBlNumber(db: DbInterface, uids: number[]): Promise<boolean> {
-  return !!(await db.get<Treffer>(
+  return !!(await db.get<Hit>(
     `SELECT 1 FROM parts p
      LEFT JOIN bl_mapping m ON m.type = 'part' AND m.rb_id = p.part_number
      WHERE p.user_id = ANY($1) AND m.rb_id IS NULL LIMIT 1`,
@@ -291,11 +296,11 @@ export function inventoryAsParts(db: DbInterface, inventoryId: number, setNumber
 }
 
 export function categories(db: DbInterface, uids: number[], fromSummary: boolean) {
-  type Kategorie = { category_name: string | null; label: string | null; unique_parts: number; total_quantity: number };
-  const categoryJoin = (spalte: string, nummer: string) => `
+  type Category = { category_name: string | null; label: string | null; unique_parts: number; total_quantity: number };
+  const categoryJoin = (column: string, number: string) => `
       LEFT JOIN rb_part_categories rc
-             ON rc.id = (CASE WHEN ${spalte} ~ '^[0-9]+$' THEN ${spalte}::int ELSE NULL END)
-      LEFT JOIN rb_parts rp ON rp.part_num = ${nummer}
+             ON rc.id = (CASE WHEN ${column} ~ '^[0-9]+$' THEN ${column}::int ELSE NULL END)
+      LEFT JOIN rb_parts rp ON rp.part_num = ${number}
       LEFT JOIN rb_part_categories rp_cat ON rp_cat.id = rp.part_cat_id`;
   // Without a catalog entry a saved name remains ("Bricks"); anything with none shows as ONE unnamed entry.
   const name = (k: string) =>
@@ -304,7 +309,7 @@ export function categories(db: DbInterface, uids: number[], fromSummary: boolean
     `CASE WHEN ${name(k)} IS NULL THEN NULL ELSE COALESCE(rc.id::text, rp_cat.id::text, ${k}) END`;
   const groupBy = 'GROUP BY 1, 2 ORDER BY total_quantity DESC';
   if (fromSummary)
-    return db.all<Kategorie>(
+    return db.all<Category>(
       `
       SELECT ${key('ps.category_name')}                         AS category_name,
              ${name('ps.category_name')}                                AS label,
@@ -316,17 +321,17 @@ export function categories(db: DbInterface, uids: number[], fromSummary: boolean
       ${groupBy}`,
       [uids],
     );
-  return db.all<Kategorie>(
+  return db.all<Category>(
     `
-    SELECT ${key(TEIL.kategorie)}                             AS category_name,
-           ${name(TEIL.kategorie)}                                    AS label,
+    SELECT ${key(PART.category)}                             AS category_name,
+           ${name(PART.category)}                                    AS label,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
-           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
+           SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})::int AS total_quantity
     FROM parts p
-    ${mengeJoin('p', 'sm', '= ANY($1)')}
-    ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}
-    ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
-    ${categoryJoin(TEIL.kategorie, 'p.part_number')}
+    ${setQuantityJoin('p', 'sm', '= ANY($1)')}
+    ${quantityJoin('p', 'part', 'tm', '= ANY($1)')}
+    ${partViewJoin('p.user_id', 'p.part_number', 'p.color_id')}
+    ${categoryJoin(PART.category, 'p.part_number')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
     ${groupBy}`,
     [uids],
@@ -358,11 +363,11 @@ export async function stats(db: DbInterface, uids: number[], fromSummary: boolea
         `
     SELECT COUNT(DISTINCT p.part_number) AS unique_parts,
            COUNT(DISTINCT p.color_id)    AS unique_colors,
-           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})
+           SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)})
              FILTER (WHERE COALESCE(p.source, 'set') <> 'manual') AS total_parts
     FROM parts p
-    ${mengeJoin('p', 'sm', '= ANY($1)')}
-    ${teilmengeJoin('p', 'part')}
+    ${setQuantityJoin('p', 'sm', '= ANY($1)')}
+    ${quantityJoin('p', 'part')}
     WHERE p.user_id = ANY($1)`,
         [uids],
       );
@@ -371,19 +376,19 @@ export async function stats(db: DbInterface, uids: number[], fromSummary: boolea
   // total so the collection tab and the parts tab show the same number.
   const individual = await db.get<{ t: string | number | null }>(
     `
-    SELECT SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS t
+    SELECT SUM(${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)}) AS t
     FROM parts p
-    ${mengeJoin('p', 'sm', '= ANY($1)')}
-    ${teilmengeJoin('p', 'part')}
+    ${setQuantityJoin('p', 'sm', '= ANY($1)')}
+    ${quantityJoin('p', 'part')}
     WHERE p.user_id = ANY($1) AND p.source = 'manual'`,
     [uids],
   );
-  const zahl = (v: string | number | null) => parseInt(String(v ?? 0), 10) || 0;
+  const number = (v: string | number | null) => parseInt(String(v ?? 0), 10) || 0;
   return {
-    unique_parts: zahl(r.unique_parts),
-    unique_colors: zahl(r.unique_colors),
-    total_parts: zahl(r.total_parts),
-    manual_parts: zahl(individual?.t ?? null),
+    unique_parts: number(r.unique_parts),
+    unique_colors: number(r.unique_colors),
+    total_parts: number(r.total_parts),
+    manual_parts: number(individual?.t ?? null),
   };
 }
 
@@ -412,32 +417,32 @@ export function manualParts(
   db: DbInterface,
   uids: number[],
   f: { search?: string | null; storage?: string | null },
-  seite: { groesse: number; versatz: number } | null,
+  page: { size: number; offset: number } | null,
 ) {
   const params: unknown[] = [uids];
   let filter = '';
   if (f.search) {
     params.push(containsPattern(f.search));
-    filter = ` AND ${partsSearch('t.part_number', TEIL.name, blNummerSql('t.part_number'), params.length)}`;
+    filter = ` AND ${partsSearch('t.part_number', PART.name, blNumberSql('t.part_number'), params.length)}`;
   }
   if (f.storage) {
     params.push(String(f.storage));
     filter += ` AND lo.name = $${params.length}`;
   }
   let limit = '';
-  if (seite) {
-    params.push(seite.groesse, seite.versatz);
+  if (page) {
+    params.push(page.size, page.offset);
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   return db.all<ManualPart>(
     `
     SELECT t.id, t.user_id, t.part_number,
-           ${blNummerSql('t.part_number')} AS bl_part_number,
-           ${TEIL.name} AS part_name, t.color_id,
-           ${TEIL.farbname} AS color_name, ${TEIL.farbcode} AS color_hex,
-           ${TEIL.kategorie} AS category_name,
-           ${teilmengeAus('t', 'part')} AS quantity,
-           ${TEIL.bild} AS image_url, ${TEIL.bildDatei} AS image_local,
+           ${blNumberSql('t.part_number')} AS bl_part_number,
+           ${PART.name} AS part_name, t.color_id,
+           ${PART.colorName} AS color_name, ${PART.colorHex} AS color_hex,
+           ${PART.category} AS category_name,
+           ${subsetFrom('t', 'part')} AS quantity,
+           ${PART.image} AS image_url, ${PART.imageFile} AS image_local,
            -- unit_price is the entered price and may be empty, purchase_price
            -- is the display value (0 means "nothing known"), see src/finances/priceRule.ts.
            neu.unit_price,
@@ -448,10 +453,10 @@ export function manualParts(
            -- The name stays as-is externally, so UIs and the app read it unchanged.
            t.added_at AS created_at
     FROM parts t
-    ${teilmengeJoin('t', 'part')}
+    ${quantityJoin('t', 'part')}
     ${blJoin('t.part_number', 'part', 't.user_id')}
-    ${teilSichtJoin('t.user_id', 't.part_number', 't.color_id')}
-    LEFT JOIN ${lagerorte()} lo ON lo.id = t.storage_id
+    ${partViewJoin('t.user_id', 't.part_number', 't.color_id')}
+    LEFT JOIN ${storages()} lo ON lo.id = t.storage_id
     -- The latest acquisition: same ordering as everywhere else, otherwise
     -- "latest price" and "latest acquisition" would mean two different things.
     LEFT JOIN LATERAL (
@@ -463,51 +468,51 @@ export function manualParts(
        LIMIT 1
     ) neu ON TRUE
     WHERE t.user_id = ANY($1) AND t.source = 'manual'${filter}
-    ORDER BY ${TEIL.name} ASC, t.part_number ASC${limit}`,
+    ORDER BY ${PART.name} ASC, t.part_number ASC${limit}`,
     params,
   );
 }
 
-type Bestand = { gesamt: number; lose: number };
+type Holding = { total: number; loose: number };
 
 /** gesamt includes the set multiplier, lose only from manual acquisitions. */
-export function ownedParts(db: DbInterface, uids: number[], nummern: string[], farbIds: number[]) {
-  return db.all<Bestand & { part_number: string; color_id: number }>(
+export function ownedParts(db: DbInterface, uids: number[], numbers: string[], colorIds: number[]) {
+  return db.all<Holding & { part_number: string; color_id: number }>(
     `SELECT p.part_number,
             p.color_id,
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
-                              THEN ${teilmengeAus('p', 'part')}
-                              ELSE ${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}
-                         END), 0)::int                                AS gesamt,
+                              THEN ${subsetFrom('p', 'part')}
+                              ELSE ${subsetFrom('p', 'part')} * ${quantityFrom('sm', 1)}
+                         END), 0)::int                                AS total,
             COALESCE(SUM(CASE WHEN COALESCE(p.source,'set') = 'manual'
-                              THEN ${teilmengeAus('p', 'part')} ELSE 0 END), 0)::int AS lose
+                              THEN ${subsetFrom('p', 'part')} ELSE 0 END), 0)::int AS loose
        FROM parts p
-       ${mengeJoin('p', 'sm', '= ANY($1)')}
-       ${teilmengeJoin('p', 'part')}
+       ${setQuantityJoin('p', 'sm', '= ANY($1)')}
+       ${quantityJoin('p', 'part')}
        JOIN unnest($2::text[], $3::int[]) AS g(part_number, color_id)
          ON g.part_number = p.part_number AND g.color_id = p.color_id
       WHERE p.user_id = ANY($1)
       GROUP BY p.part_number, p.color_id`,
-    [uids, nummern, farbIds],
+    [uids, numbers, colorIds],
   );
 }
 
-export function ownedMinifigs(db: DbInterface, uids: number[], nummern: string[]) {
-  return db.all<Bestand & { part_number: string }>(
+export function ownedMinifigs(db: DbInterface, uids: number[], numbers: string[]) {
+  return db.all<Holding & { part_number: string }>(
     `SELECT m.fig_number                                                AS part_number,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
-                              THEN ${teilmengeAus('m', 'fig')}
-                              ELSE ${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)}
-                         END), 0)::int                                  AS gesamt,
+                              THEN ${subsetFrom('m', 'fig')}
+                              ELSE ${subsetFrom('m', 'fig')} * ${quantityFrom('sm', 1)}
+                         END), 0)::int                                  AS total,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'
-                              THEN ${teilmengeAus('m', 'fig')} ELSE 0 END), 0)::int AS lose
+                              THEN ${subsetFrom('m', 'fig')} ELSE 0 END), 0)::int AS loose
        FROM minifigs m
-       ${mengeJoin('m', 'sm', '= ANY($1)')}
-       ${teilmengeJoin('m', 'fig')}
+       ${setQuantityJoin('m', 'sm', '= ANY($1)')}
+       ${quantityJoin('m', 'fig')}
        JOIN unnest($2::text[]) AS g(fig_number)
          ON g.fig_number = m.fig_number
       WHERE m.user_id = ANY($1)
       GROUP BY m.fig_number`,
-    [uids, nummern],
+    [uids, numbers],
   );
 }

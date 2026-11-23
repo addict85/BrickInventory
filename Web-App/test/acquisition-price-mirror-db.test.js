@@ -27,7 +27,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test('the changed purchase price reaches the tile — web app AND app', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const USER = `spiegel-${process.pid}`;
   const SN = `31142-${process.pid}`;
@@ -35,10 +35,10 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid }, t });
 
   // Recreate the starting point fresh every time — including the entries.
-  const aufbauen = async () => {
+  const setUp = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     await holdsSet(db, uid, SN, 0); // Quantity 0: the entry behind it carries it
@@ -50,37 +50,37 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
     return (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])).id;
   };
   // What the tile shows: the aggregate from the entries, not a mirrored column.
-  const kachel = async () =>
-    (await _req('src/sets/read.js').zustandsAggregat(require('./helpers/sources').testContext('sets'), [uid], SN))
+  const tile = async () =>
+    (await _req('src/sets/read.js').conditionAggregate(require('./helpers/sources').testContext('sets'), [uid], SN))
       .avg_purchase_price;
 
   try {
-    for (const [name, pfad] of /** @type {[string, (id: number) => string][]} */ ([
-      ['Webapp', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
-      ['Android', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
+    for (const [name, path] of /** @type {[string, (id: number) => string][]} */ ([
+      ['Webapp', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
+      ['Android', id => `/api/v2/sets/${SN}/acquisitions/${id}`],
     ])) {
-      const id = await aufbauen();
-      const r = await fetch(`${base}${pfad(id)}`, {
+      const id = await setUp();
+      const r = await fetch(`${base}${path(id)}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ purchase_price: 107.0 }),
       });
-      assert.equal(r.status, 200, `${name}: die Änderung muss angenommen werden`);
+      assert.equal(r.status, 200, `${name}: the change must be accepted`);
 
-      const erfasst = parseFloat(
+      const recorded = parseFloat(
         (await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [id])).purchase_price,
       );
-      assert.equal(erfasst, 107.0, `${name}: die Erfassung muss den neuen Preis tragen`);
+      assert.equal(recorded, 107.0, `${name}: the acquisition must carry the new price`);
       assert.equal(
-        await kachel(),
+        await tile(),
         107.0,
-        `${name}: die Kachel zieht den neuen Preis nicht mit — Galerie, Finanzübersicht und ` +
-          'Detail-Kachel rechnen aus den Erfassungen und zeigen dann den alten Wert',
+        `${name}: the tile does not take over the new price — gallery, finance overview and ` +
+          'detail tile compute from the acquisitions and then show the old value',
       );
     }
 
     // Opposite direction — and here lies the difference to before.
-    const alt = await aufbauen();
+    const alt = await setUp();
     // Another DAY, not merely an hour later: the index
     // idx_set_acq_tag_zustand allows only ONE entry per day and set. With
     // “+1 hour" the test depended on the time of the run — in the evening the
@@ -91,17 +91,17 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
                   VALUES ($1,$2,200.00,'U',1, NOW() + INTERVAL '1 day')`,
       [uid, SN],
     );
-    const r2 = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${alt}`, {
+    const r2 = await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${alt}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ purchase_price: 50.0 }),
     });
     assert.equal(r2.status, 200);
     assert.equal(
-      await kachel(),
+      await tile(),
       125.0,
-      'Die Kachel muss den Mittelwert über BEIDE Erfassungen zeigen (50 und 200). ' +
-        'Bei 200 zählt weiterhin nur die neueste — die Regel der gelöschten Spalte.',
+      'The tile must show the mean over BOTH acquisitions (50 and 200). ' +
+        'At 200 only the newest still counts — the rule of the deleted column.',
     );
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});

@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import ch.brickinventoryapp.login.ui.QrLoginPayload
-import ch.brickinventoryapp.login.ui.screens.QrVorschlagDialog
+import ch.brickinventoryapp.login.ui.screens.QrSuggestionDialog
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
@@ -21,9 +21,9 @@ import org.robolectric.RobolectricTestRunner
  * The dialog after a scanned code: the destination stands out highlighted, and
  * „Übernehmen“ only works after the checkbox „Ja, <host> ist mein Server“.
  *
- * Counter-check (Robolectric, measurable only in the CI; job `gegenproben`):
+ * Counter-check (Robolectric, measurable only in the CI; job `counter-checks`):
  *   (a) the button free again without the checkbox → red “taken over only after the yes …”
- *       (gegenproben/qr-dialog-ohne-ja.patch)
+ *       (counter-checks/qr-dialog-without-yes.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class QrSuggestionDialogTest {
@@ -35,26 +35,26 @@ class QrSuggestionDialogTest {
 
     @Test
     fun `it is taken over only after the yes to the named server`() {
-        var uebernommen = 0
+        var adopted = 0
         compose.setContent {
             BrickInventoryManagerTheme {
-                QrVorschlagDialog(
-                    vorschlag = QrLoginPayload("https://brick.example.org", "bim:abc"),
+                QrSuggestionDialog(
+                    suggestion = QrLoginPayload("https://brick.example.org", "bim:abc"),
                     currentUrl = "",
-                    entwicklung = false,
-                    bisherigerPin = { _, _ -> null },
-                    mussAbtippen = { _, _ -> false },
-                    onAbbrechen = {},
-                    onUebernehmen = { uebernommen++ },
+                    development = false,
+                    previousPin = { _, _ -> null },
+                    mustTypeIn = { _, _ -> false },
+                    onCancel = {},
+                    onAdopt = { adopted++ },
                 )
             }
         }
         compose.waitForIdle()
-        val button = compose.onNodeWithText(ctx.getString(R.string.setup_qr_uebernehmen))
+        val button = compose.onNodeWithText(ctx.getString(R.string.setup_qr_adopt))
         button.assertIsNotEnabled()
-        compose.onNodeWithText(ctx.getString(R.string.setup_qr_ziel_bestaetigen, "brick.example.org"))
+        compose.onNodeWithText(ctx.getString(R.string.setup_qr_target_confirm, "brick.example.org"))
             .performScrollTo().performClick()
         button.assertIsEnabled().performClick()
-        assertEquals(1, uebernommen)
+        assertEquals(1, adopted)
     }
 }

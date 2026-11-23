@@ -3,12 +3,14 @@
  * frontend modules must exist in index.html. Exactly this class of error
  * (JS accesses renamed/removed IDs) otherwise only shows at runtime
  * as a silent TypeError.
+ *
+ * Counter-check: `G('zz-missing-id')` appended to public/js/init.js → red “G('...') IDs from init.js exist in index.html”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare } = require('./helpers/sources');
+const { withoutComments } = require('./helpers/sources');
 
 const PUB = path.join(__dirname, '..', 'public');
 // app.bundle.js is a BUILD RESULT (scripts/build-frontend.js concatenates the
@@ -30,8 +32,8 @@ const collect = src => {
   for (const m of src.matchAll(/\.id\s*=\s*'([^']+)'/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/\.id\s*=\s*"([^"]+)"/g)) knownIds.add(m[1]);
   // And the fourth path: the view building block sets the id as an OPTION.
-  for (const m of src.matchAll(/wertId:\s*'([^']+)'/g)) knownIds.add(m[1]);
-  for (const m of src.matchAll(/wertId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
+  for (const m of src.matchAll(/valueId:\s*'([^']+)'/g)) knownIds.add(m[1]);
+  for (const m of src.matchAll(/valueId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
   // And the fifth path: the storage location building block creates TWO elements from
   // one identifier — the text field `id` and the select `id-sel`
   // (admin.js, locationBlock). Since the field is a select with
@@ -53,10 +55,10 @@ for (const file of JS_FILES) {
     // describes which G('…') stood here before and why it is gone is
     // not a use — without this step the test reports an ID that
     // nobody fetches anymore. The same trap against which helpers/sources.js …
-    const src = ohneKommentare(fs.readFileSync(path.join(PUB, 'js', file), 'utf8'));
+    const src = withoutComments(fs.readFileSync(path.join(PUB, 'js', file), 'utf8'));
     const ids = [...src.matchAll(/G\(\s*'([^'+]+)'\s*\)/g)].map(m => m[1]);
     const missing = [...new Set(ids)].filter(id => !knownIds.has(id) && !ALLOWED_MISSING.has(id));
-    assert.deepEqual(missing, [], `Fehlende IDs: ${missing.join(', ')}`);
+    assert.deepEqual(missing, [], `Missing IDs: ${missing.join(', ')}`);
   });
 }
 
@@ -67,5 +69,5 @@ test('every module file hangs in the bundle graph', () => {
   const imported = new Set([...entry.matchAll(/from\s+'\.\/([^']+)'|import\s+'\.\/([^']+)'/g)].map(m => m[1] || m[2]));
   const actual = fs.readdirSync(path.join(PUB, 'js')).filter(f => f.endsWith('.js'));
   const orphans = actual.filter(f => !STANDALONE.has(f) && !imported.has(f) && f !== 'registry.js');
-  assert.deepEqual(orphans, [], `Nicht im Modulgraphen und damit nie ausgeliefert: ${orphans.join(', ')}`);
+  assert.deepEqual(orphans, [], `Not in the module graph and thus never shipped: ${orphans.join(', ')}`);
 });

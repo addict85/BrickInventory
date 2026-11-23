@@ -1,0 +1,17 @@
+Gegenprobe: Ein unlesbarer Posten wird wie eine Ablehnung ohne Grund gemeldet
+Modul: core-state
+Test: ch.brickinventoryapp.state.OutboxNotifierTest
+Rot: an item unreadable after the update is reported as such
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/OutboxNotifier.kt
+@@ -66,7 +66,7 @@
+ 
+     /** Only acknowledges once the hint has had its turn and been cleared away; until then the store holds it. */
+     private suspend fun reportDiscarded(v: DiscardedChange) {
+-        val reason = if (v.unreadable) Message.Resource(R.string.offline_discarded_unreadable)
++        val reason = if (false) Message.Resource(R.string.offline_discarded_unreadable)
+             else v.message.ifBlank { null } ?: Message.Resource(R.string.offline_discarded_without_reason)
+         val hint = Message.Resource(R.string.offline_discarded, listOf(v.target, reason))
+         messages.show(hint)

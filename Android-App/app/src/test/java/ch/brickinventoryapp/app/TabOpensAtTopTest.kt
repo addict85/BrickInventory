@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.app.nav.Reiter
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
@@ -17,14 +15,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.app.nav.Tab
+import ch.brickinventoryapp.collection.ui.CollectionTarget
+import ch.brickinventoryapp.finances.ui.FinanceTarget
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.app.csv.CsvImportUiState
-import ch.brickinventoryapp.finances.ui.FinanzZiel
-import ch.brickinventoryapp.collection.ui.SammlungZiel
-import ch.brickinventoryapp.parts.ui.TeileZiel
-import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -39,10 +37,10 @@ import org.robolectric.annotation.GraphicsMode
  * navigates, so that the scroll memory discards the position before the screen reads it.
  * “I come back” keeps the position; this can only be distinguished in the scaffold.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
- *   reiter-meldet-nach-navigation      onTabAngetippt only after toTab → red “the bottom bar reports …”
- *   umschalter-meldet-nach-navigation  likewise in the collection switcher → red “the collection switcher reports …”
- *   geruest-vergisst-nicht             ReiterGeruest does not discard the scroll position → red “no tab destination …”
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
+ *   tab-reports-after-navigation      onTabTapped only after toTab → red “the bottom bar reports …”
+ *   toggle-reports-after-navigation  likewise in the collection switcher → red “the collection switcher reports …”
+ *   scaffold-does-not-forget             TabScaffold does not discard the scroll position → red “no tab destination …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -55,29 +53,27 @@ class TabOpensAtTopTest {
     private val ctx: Context = ApplicationProvider.getApplicationContext()
 
     /** Reported destination and whether the gallery was still open when reporting. */
-    private val gemeldet = mutableListOf<Pair<Any, Boolean>>()
+    private val reported = mutableListOf<Pair<Any, Boolean>>()
     private lateinit var nav: NavHostController
 
-    private fun zeige() {
+    private fun show() {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 nav = rememberNavController()
                 val tab = remember {
                     listOf(
-                        Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                        Reiter(FinanzZiel.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+                        Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                        Tab(FinanceTarget.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
                 }
                 MainScaffold(
                     title = "Sammlung", navController = nav, bottomNavItems = tab,
                     snackbarHostState = remember { SnackbarHostState() },
-                    csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                    onCsvAbbrechen = {},
-                    onTabAngetippt = { ziel -> gemeldet += ziel to (nav.currentDestination?.hasRoute<SammlungZiel.Gallery>() == true) },
+                    onTabTapped = { target -> reported += target to (nav.currentDestination?.hasRoute<CollectionTarget.Gallery>() == true) },
                 ) {
-                    NavHost(nav, startDestination = SammlungZiel.Gallery) {
-                        composable<SammlungZiel.Gallery> { }
-                        composable<TeileZiel.Parts> { }
-                        composable<FinanzZiel.Finance> { }
+                    NavHost(nav, startDestination = CollectionTarget.Gallery) {
+                        composable<CollectionTarget.Gallery> { }
+                        composable<PartsTarget.Parts> { }
+                        composable<FinanceTarget.Finance> { }
                     }
                 }
             }
@@ -87,33 +83,33 @@ class TabOpensAtTopTest {
 
     @Test
     fun `the bottom bar reports the tab before it navigates`() {
-        zeige()
+        show()
         compose.onNodeWithText("Finanzen").performClick()
         compose.waitForIdle()
-        assertEquals(listOf(FinanzZiel.Finance to true), gemeldet)
-        assertTrue("Die Leiste navigiert nicht mehr", nav.currentDestination?.hasRoute<FinanzZiel.Finance>() == true)
+        assertEquals(listOf(FinanceTarget.Finance to true), reported)
+        assertTrue("the bar no longer navigates", nav.currentDestination?.hasRoute<FinanceTarget.Finance>() == true)
     }
 
     @Test
     fun `the collection switcher reports the tab before it navigates`() {
-        zeige()
+        show()
         compose.onNodeWithText(ctx.getString(R.string.nav_parts)).performClick()
         compose.waitForIdle()
-        assertEquals(listOf(TeileZiel.Parts to true), gemeldet)
-        assertTrue("Der Umschalter navigiert nicht mehr", nav.currentDestination?.hasRoute<TeileZiel.Parts>() == true)
+        assertEquals(listOf(PartsTarget.Parts to true), reported)
+        assertTrue("the switcher no longer navigates", nav.currentDestination?.hasRoute<PartsTarget.Parts>() == true)
     }
 
     @Test
     fun `no tab destination builds the scaffold itself`() {
-        // Structure: ReiterGeruest sets the callback once; a destination that builds MainScaffold
+        // Structure: TabScaffold sets the callback once; a destination that builds MainScaffold
         // itself would have to pass it through by hand again.
-        val targets = Quellen.unter("nav")
-        assertTrue("Nur ${targets.size} Dateien unter nav/ — Pfad veraltet?", targets.size >= 3)
-        val direkt = targets.filter { Quellen.withoutComments(it.readText()).contains("MainScaffold(") }
-        assertTrue("Diese Ziele bauen MainScaffold selbst statt ReiterGeruest: ${direkt.joinToString { it.name }}",
-            direkt.isEmpty())
-        val geruest = Quellen.withoutComments(Quellen.lies("app/MainScaffold.kt"))
-        assertTrue("Das Gerüst verwirft die Rollposition des angetippten Reiters nicht mehr",
-            geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(rollSchluessel(ziel)) }"))
+        val targets = Sources.below("nav")
+        assertTrue("Only ${targets.size} files under nav/ — path outdated?", targets.size >= 3)
+        val direct = targets.filter { Sources.withoutComments(it.readText()).contains("MainScaffold(") }
+        assertTrue("These destinations build MainScaffold themselves instead of TabScaffold: ${direct.joinToString { it.name }}",
+            direct.isEmpty())
+        val scaffold = Sources.withoutComments(Sources.read("app/MainScaffold.kt"))
+        assertTrue("the scaffold no longer discards the scroll position of the tapped tab",
+            scaffold.contains("onTabTapped = { target -> vm.scrollMemory.forgetTab(rollKey(target)) }"))
     }
 }

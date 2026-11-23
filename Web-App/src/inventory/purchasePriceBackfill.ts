@@ -1,6 +1,6 @@
 import { setEstimatedPrice } from './acquisitions';
-import { versuche } from '../infra/result';
-import { setTimeout as warte } from 'node:timers/promises';
+import { attempts } from '../infra/result';
+import { setTimeout as sleep } from 'node:timers/promises';
 import type { InventoryContext } from './context';
 
 function log(msg: string) {
@@ -9,33 +9,33 @@ function log(msg: string) {
 
 /** Acquisitions without a purchase price (BrickLink at the daily limit) get the market price. Every row is
  * attempted; failed ones make the step fail at the end so that run() reports it. */
-async function jeRow<Z>(art: string, rows: Z[], f: (z: Z) => Promise<boolean>): Promise<void> {
+async function perRow<Z>(kind: string, rows: Z[], f: (z: Z) => Promise<boolean>): Promise<void> {
   if (!rows.length) return;
-  log(`${art} ohne Kaufpreis: ${rows.length}`);
+  log(`${kind} ohne Kaufpreis: ${rows.length}`);
   let done = 0;
-  const fehler: unknown[] = [];
+  const error: unknown[] = [];
   for (const row of rows) {
     try {
       if (await f(row)) done++;
     } catch (e) {
-      fehler.push(e);
+      error.push(e);
     }
-    await warte(1500); // spare BrickLink's daily quota
+    await sleep(1500); // spare BrickLink's daily quota
   }
-  log(`${art} nachgetragen: ${done} von ${rows.length}`);
-  if (fehler.length) throw new AggregateError(fehler, `${art}: ${fehler.length} von ${rows.length} gescheitert`);
+  log(`${kind} nachgetragen: ${done} von ${rows.length}`);
+  if (error.length) throw new AggregateError(error, `${kind}: ${error.length} von ${rows.length} gescheitert`);
 }
 
 async function backfillAcquisitions(k: InventoryContext) {
-  await jeRow('Erfassungen', await k.nachtrag.setEntriesWithoutPrice(), async row => {
-    const price = await k.finances.aktuellerMarktpreis(row.set_number, row.user_id, row.condition || null);
+  await perRow('Erfassungen', await k.backfill.setEntriesWithoutPrice(), async row => {
+    const price = await k.finances.currentMarketPrice(row.set_number, row.user_id, row.condition || null);
     return !!price && (await setEstimatedPrice(k, 'set', row.id, price));
   });
 }
 
 // The same gap as for the sets, for part and figure acquisitions.
 async function backfillPartsEntries(k: InventoryContext) {
-  await jeRow('Teile-Erfassungen', await k.nachtrag.partEntriesWithoutPrice(), async row => {
+  await perRow('Teile-Erfassungen', await k.backfill.partEntriesWithoutPrice(), async row => {
     const price = await k.finances.currentPartMarketPrice(
       row.part_number,
       row.color_id,
@@ -47,7 +47,7 @@ async function backfillPartsEntries(k: InventoryContext) {
 }
 
 async function backfillMinifigsEntries(k: InventoryContext) {
-  await jeRow('Figuren-Erfassungen', await k.nachtrag.minifigEntriesWithoutPrice(), async row => {
+  await perRow('Figuren-Erfassungen', await k.backfill.minifigEntriesWithoutPrice(), async row => {
     // The account's own BrickLink number before the shared one.
     const price = await k.finances.currentMinifigMarketPrice(
       row.fig_number,
@@ -62,16 +62,15 @@ async function backfillMinifigsEntries(k: InventoryContext) {
 /** Every step runs; afterwards the run throws so that the job repeats and shows it. */
 async function run(k: InventoryContext) {
   log('Starte Migration bestehender Elemente ohne Kaufpreis…');
-  const schritte: [string, () => Promise<unknown>][] = [
+  const steps: [string, () => Promise<unknown>][] = [
     ['set-erfassungen', () => backfillAcquisitions(k)],
     ['figuren-erfassungen', () => backfillMinifigsEntries(k)],
     ['teile-erfassungen', () => backfillPartsEntries(k)],
     ['teilfarbenbilder', () => k.catalog.backfillPartColorsImages()],
   ];
-  const ohne: string[] = [];
-  for (const [name, schritt] of schritte)
-    if (!(await versuche(`kaufpreis-nachtrag:${name}`, schritt)).ok) ohne.push(name);
-  if (ohne.length) throw new Error(`Kaufpreis-Nachtrag gescheitert: ${ohne.join(', ')}`);
+  const without: string[] = [];
+  for (const [name, step] of steps) if (!(await attempts(`kaufpreis-nachtrag:${name}`, step)).ok) without.push(name);
+  if (without.length) throw new Error(`Kaufpreis-Nachtrag gescheitert: ${without.join(', ')}`);
   log('Migration abgeschlossen.');
 }
 

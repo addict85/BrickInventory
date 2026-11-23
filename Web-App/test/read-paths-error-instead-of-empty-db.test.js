@@ -22,10 +22,10 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { catalogSet: putCatalogSetAn } = require('./helpers/inventory');
+const { catalogSet: putCatalogSetTo } = require('./helpers/inventory');
 
-const FARBE = 990000 + (process.pid % 9000);
-const TEIL = `lpf${process.pid}`;
+const COLOR = 990000 + (process.pid % 9000);
+const PART = `lpf${process.pid}`;
 const SET = `LPF${process.pid}-1`;
 const NAME = `lesepfade_${process.pid}`;
 
@@ -41,52 +41,52 @@ test('read error in the catalog: error instead of empty', { concurrency: 1 }, as
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
   await db.run(
     `INSERT INTO rb_colors (id, name, rgb) VALUES ($1, 'Probefarbe', 'ABCDEF') ON CONFLICT (id) DO NOTHING`,
-    [FARBE],
+    [COLOR],
   );
   await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, $2) ON CONFLICT DO NOTHING`, [
-    TEIL,
-    `${TEIL}bl`,
+    PART,
+    `${PART}bl`,
   ]);
   await db.run(`INSERT INTO shared_instructions (set_number, url) VALUES ($1, 'https://example.invalid/a.pdf')`, [SET]);
-  await putCatalogSetAn(db, SET, { name: 'Probeset' });
+  await putCatalogSetTo(db, SET, { name: 'Probeset' });
   t.after(async () => {
-    await db.run('DELETE FROM rb_colors WHERE id = $1', [FARBE]).catch(() => {});
-    await db.run('DELETE FROM bl_mapping WHERE rb_id = $1', [TEIL]).catch(() => {});
+    await db.run('DELETE FROM rb_colors WHERE id = $1', [COLOR]).catch(() => {});
+    await db.run('DELETE FROM bl_mapping WHERE rb_id = $1', [PART]).catch(() => {});
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
   /** The table comes back in finally, even if an assertion fails. */
-  const ohne = async (tabelle, work) => {
-    await db.run(`ALTER TABLE ${tabelle} RENAME TO ${tabelle}_weg`);
+  const without = async (table, work) => {
+    await db.run(`ALTER TABLE ${table} RENAME TO ${table}_weg`);
     try {
       await work();
     } finally {
-      await db.run(`ALTER TABLE IF EXISTS ${tabelle}_weg RENAME TO ${tabelle}`);
+      await db.run(`ALTER TABLE IF EXISTS ${table}_weg RENAME TO ${table}`);
     }
   };
 
   await t.test('color list', async () => {
     assert.ok(
-      (await colorList()).some(f => f.id === FARBE),
-      'die Probefarbe fehlt — die Prüfung darunter bewiese nichts',
+      (await colorList()).some(f => f.id === COLOR),
+      'the probe colour is missing — the check below would prove nothing',
     );
-    await ohne('rb_colors', () => assert.rejects(colorList(), /rb_colors/));
+    await without('rb_colors', () => assert.rejects(colorList(), /rb_colors/));
   });
 
   await t.test('BrickLink mapping', async () => {
-    assert.equal(await blNumberOf('part', TEIL), `${TEIL}bl`);
-    await ohne('bl_mapping', () => assert.rejects(blNumberOf('part', TEIL), /bl_mapping/));
+    assert.equal(await blNumberOf('part', PART), `${PART}bl`);
+    await without('bl_mapping', () => assert.rejects(blNumberOf('part', PART), /bl_mapping/));
   });
 
   await t.test('instructions of a set', async () => {
     assert.equal((await instructionsToSet(SET)).length, 1);
-    await ohne('shared_instructions', () => assert.rejects(instructionsToSet(SET), /shared_instructions/));
+    await without('shared_instructions', () => assert.rejects(instructionsToSet(SET), /shared_instructions/));
   });
 
   await t.test('Set-Detail', async () => {
     assert.equal((await catalogSet(uid, SET))?.set_number, SET);
-    await ohne('rb_inventories', () => assert.rejects(catalogSet(uid, SET), /rb_inventories/));
+    await without('rb_inventories', () => assert.rejects(catalogSet(uid, SET), /rb_inventories/));
   });
 });

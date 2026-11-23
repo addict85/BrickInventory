@@ -552,11 +552,11 @@ die Ausgangsmenge über das Blickfeld SUMMIERT wird.
 ## Nachtrag 86 — Aufräum-Skripte für die Altbestände mit Menge 0
 
 Der Fix aus hardened-180 verhindert NEUE Geistereinträge. Für die, die schon in
-der Datenbank liegen, gibt es jetzt zwei Skripte unter `scripts/` (seit 05.11.2026 unter `docs/einmalig/`):
+der Datenbank liegen, gibt es jetzt zwei Skripte unter `scripts/` (seit 05.11.2026 unter `docs/one-off/`):
 
-* `befund-menge-null.sql` — reines Lesen. Zeigt je Konto, welche Zeilen
+* `finding-quantity-zero.sql` — reines Lesen. Zeigt je Konto, welche Zeilen
   betroffen sind, was daran hängt und wie viele es insgesamt sind.
-* `korrektur-menge-null.sql` — die Bereinigung, in EINER Transaktion.
+* `fix-quantity-zero.sql` — die Bereinigung, in EINER Transaktion.
 
 Die Trennung ist Absicht: Ein Skript, das löscht, sollte man vorher gelesen
 haben, und die Ausgabe des Befunds sagt genau, was passieren wird.
@@ -810,7 +810,7 @@ derselben Datei, zeigte korrekt auf `/v1/…` — dieselbe Handlung, zwei
 Schreibweisen. Korrigiert.
 
 Ein quelltextlesender Test verlangte `await triggerNow()` in `routes/finance.ts`
-UND `routes/api_v1/admin.ts` — die Doppelung, bei der eine Seite das `await`
+UND `routes/api/admin.ts` — die Doppelung, bei der eine Seite das `await`
 verlieren kann, ohne dass es auffällt. Jetzt nur noch die eine Stelle.
 
 ### 2. Der Katalog-Scrollbalken

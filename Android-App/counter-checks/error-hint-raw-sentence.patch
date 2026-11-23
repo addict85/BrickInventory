@@ -1,0 +1,17 @@
+Gegenprobe: Der Satz der Datenschicht steht in jeder Fehlerklasse unter der Überschrift
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: error hint names the class and the sentence only where it says more
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/LoadState.kt
+@@ -110,7 +110,7 @@
+         ErrorClass.LOGIN -> Triple(Icons.Default.Lock, R.string.error_login_title, R.string.error_login_text)
+         ErrorClass.UNKNOWN, null -> Triple(Icons.Default.ErrorOutline, R.string.common_load_failed, null)
+     }
+-    val showSet = kind == null || kind == ErrorClass.SERVER || kind == ErrorClass.UNKNOWN
++    val showSet = true
+     Column(
+         Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+         horizontalAlignment = Alignment.CenterHorizontally,

@@ -1,0 +1,17 @@
+Gegenprobe: Sets | Teile | Minifiguren auch bei 200 % in einer Zeile
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: the collection switcher shows all three views as segments at 200 percent
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt
+@@ -135,7 +135,7 @@
+     onChoice: (T) -> Unit,
+     modifier: Modifier = Modifier,
+ ) {
+-    if (LocalDensity.current.fontScale >= LARGE_FONT_SCALE_MIN) {
++    if (LocalDensity.current.fontScale >= LARGE_FONT_SCALE_MIN * 2) {
+         SegmentColumn(options, chosen, onChoice, modifier)
+         return
+     }

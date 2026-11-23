@@ -1,0 +1,17 @@
+Gegenprobe: Containerstufen wieder ungestaucht bis zur höchsten Stufe (05.11.2026, thema.py lokal)
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.TextContrastTest
+Rot: every text role reaches 4,5 to 1 on its surface
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -440,7 +440,7 @@
+     // error and onSurfaceVariant; the steps are compressed until all hold 4.5:1.
+     val font = listOf(s.primary, s.error, s.onSurfaceVariant)
+     var mass = 1f
+-    while (mass > 0.3f && font.any { contrast(it, level(LEVEL_HIGHEST * mass)) < TEXT_CONTRAST }) mass -= 0.05f
++    while (false && font.any { contrast(it, level(LEVEL_HIGHEST * mass)) < TEXT_CONTRAST }) mass -= 0.05f
+     fun container(share: Float) = level(share * mass)
+     return s.copy(
+         onBackground = s.onSurface,

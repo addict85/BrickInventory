@@ -1,0 +1,16 @@
+Gegenprobe: die JSON-Form (Set schon da) gilt wieder als Abbruch
+Modul: core-data
+Test: ch.brickinventoryapp.data.SetCreateStreamTest
+Rot: the JSON form is a finished creation, the existing set comes as a domain value
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
+@@ -112,7 +112,6 @@
+         val code = e.code
+         return when {
+             code == null -> if (e.noConnection) SetCreateStep.NoConnection else SetCreateStep.Failure("")
+-            code in HTTP_SUCCESS && e.body != null -> done(e.body)
+             else -> SetCreateStep.Failure(errorTextFrom(e.body))
+         }
+     }

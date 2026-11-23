@@ -3,11 +3,12 @@ package ch.brickinventoryapp.shared.ui
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.Shapes
 
 /**
  * The storage-location field: choose or type a new one, in one control — an
@@ -28,52 +29,52 @@ import ch.brickinventoryapp.ui.theme.Formen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationField(
-    wert: String,
+    value: String,
     stock: List<String>,
     onValue: (String) -> Unit,
     modifier: Modifier = Modifier,
     /**
      * What sits in the empty field. In the detail views „Kein Lagerort“ — an example
      * like „z. B. Kiste 3“ in the choice frame read there like a set location; the
-     * example only appears during capture (LagerortErfassung).
+     * example only appears during capture (StorageLocationEntry).
      */
-    platzhalter: String = stringResource(R.string.detail_storage_none),
+    placeholder: String = stringResource(R.string.detail_storage_none),
     /** Label in the field; with it, the example sits as help text below it instead of as a placeholder. */
-    beschriftung: String? = null,
+    label: String? = null,
 ) {
     // Schluessel is the value from outside: if a different one arrives (a different set, or
     // the normalized value after saving), the field should show it
     // instead of keeping the old text.
-    var text by rememberSaveable(wert) { mutableStateOf(wert) }
+    var text by rememberSaveable(value) { mutableStateOf(value) }
     // rememberSaveable, not remember: whoever rotates the phone while choosing a
     // location should still see the list open. That it only
     // appears when there are matching locations makes this harmless.
-    var offen by rememberSaveable { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(false) }
     // What's available to choose while typing: only the matching ones. With
     // thirty shelves, an unfiltered list is no longer a help.
-    val passend = stock.filter { it.contains(text.trim(), ignoreCase = true) }
+    val matching = stock.filter { it.contains(text.trim(), ignoreCase = true) }
 
     ExposedDropdownMenuBox(
-        expanded = offen && passend.isNotEmpty(),
-        onExpandedChange = { offen = it },
+        expanded = open && matching.isNotEmpty(),
+        onExpandedChange = { open = it },
         modifier = modifier,
     ) {
         OutlinedTextField(
-            shape = Formen.feld,
+            shape = Shapes.field,
             value = text,
             onValueChange = {
-                if (it.length <= 60) { text = it; offen = true; onValue(it) }
+                if (it.length <= 60) { text = it; open = true; onValue(it) }
             },
             singleLine = true,
-            label = beschriftung?.let { { Text(it) } },
-            placeholder = if (beschriftung == null) {
+            label = label?.let { { Text(it) } },
+            placeholder = if (label == null) {
                 // Field text like any input field: smaller than the label next to it,
                 // „Kein Lagerort“ looked like a footnote.
-                { Text(platzhalter, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             } else null,
-            supportingText = beschriftung?.let { { Text(platzhalter) } },
+            supportingText = label?.let { { Text(placeholder) } },
             trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen)
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = open)
             },
             // As wide as the caller dictates: without a width the field stuck at Materials'
             // 280 dp — narrower than the others in the dialog, half as wide in the detail.
@@ -82,13 +83,13 @@ fun LocationField(
                 .fillMaxWidth(),
         )
         ExposedDropdownMenu(
-            expanded = offen && passend.isNotEmpty(),
-            onDismissRequest = { offen = false },
+            expanded = open && matching.isNotEmpty(),
+            onDismissRequest = { open = false },
         ) {
-            for (ort in passend) {
+            for (location in matching) {
                 DropdownMenuItem(
-                    text = { Text(ort, style = MaterialTheme.typography.labelLarge) },
-                    onClick = { text = ort; offen = false; onValue(ort) },
+                    text = { Text(location, style = MaterialTheme.typography.labelLarge) },
+                    onClick = { text = location; open = false; onValue(location) },
                 )
             }
         }
@@ -102,15 +103,15 @@ fun LocationField(
  * detail views the field sits narrow next to its label.
  */
 @Composable
-fun LagerortErfassung(
-    wert: String,
+fun StorageLocationEntry(
+    value: String,
     stock: List<String>,
     onValue: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // A hint for every capture, with and without stock: two different strings for the same field
     // would make the dialogs look different.
-    LocationField(wert = wert, stock = stock, onValue = onValue,
-                 modifier = modifier.fillMaxWidth(), platzhalter = stringResource(R.string.detail_storage_ph),
-                 beschriftung = stringResource(R.string.detail_storage))
+    LocationField(value = value, stock = stock, onValue = onValue,
+                 modifier = modifier.fillMaxWidth(), placeholder = stringResource(R.string.detail_storage_ph),
+                 label = stringResource(R.string.detail_storage))
 }

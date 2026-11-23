@@ -1,5 +1,7 @@
 /**
  * Money amounts: exact instead of „almost".
+ *
+ * Counter-check: db/migrate.ts skips migration 0007 → red “the migration catches up an old database”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -9,15 +11,15 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { holdsSet } = require('./helpers/inventory');
 
 /**
  * All columns that carry money.
  */
-const GELDSPALTEN = `
-  SELECT table_name || '.' || column_name AS spalte, data_type
+const MONEY_COLUMNS = `
+  SELECT table_name || '.' || column_name AS "column", data_type
     FROM information_schema.columns
    WHERE table_schema = 'public'
      AND (column_name LIKE '%\\_price' OR column_name LIKE '%\\_price\\_%'
@@ -29,7 +31,7 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
     await db.get('SELECT 1');
   } catch (e) {
     await db.pool.end().catch(() => {});
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -44,13 +46,13 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
   }
 
   await t.test('a new installation has no money column as REAL', async () => {
-    const spalten = await db.all(GELDSPALTEN);
-    assert.ok(spalten.length > 15, `nur ${spalten.length} Geldspalten gefunden — die Prüfung liefe ins Leere`);
-    const real = spalten.filter(s => s.data_type === 'real' || s.data_type === 'double precision');
+    const columns = await db.all(MONEY_COLUMNS);
+    assert.ok(columns.length > 15, `only ${columns.length} money columns found — the check would test nothing`);
+    const real = columns.filter(s => s.data_type === 'real' || s.data_type === 'double precision');
     assert.deepEqual(
-      real.map(s => s.spalte),
+      real.map(s => s.column),
       [],
-      'Gleitkomma für Geld — Summen driften und die Anzeige bekommt Nachkomma-Schwänze',
+      'Floating point for money — totals drift and the display gets trailing decimals',
     );
   });
 
@@ -71,11 +73,11 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       condition TEXT, qty_avg_price REAL, min_price REAL, max_price REAL)`);
     await db.run('ALTER TABLE set_acquisitions ALTER COLUMN purchase_price TYPE REAL');
     await db.run("DELETE FROM schema_migrations WHERE name LIKE '0007%'");
-    const vorher = await db.get(
+    const prior = await db.get(
       `SELECT data_type FROM information_schema.columns
         WHERE table_schema='public' AND table_name='set_acquisitions' AND column_name='purchase_price'`,
     );
-    assert.equal(vorher.data_type, 'real', 'Vorbedingung: Spalte ist wieder REAL');
+    assert.equal(prior.data_type, 'real', 'precondition: column is REAL again');
 
     const c2 = await db.pool.connect();
     try {
@@ -84,11 +86,11 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       c2.release();
     }
 
-    const nachher = await db.get(
+    const later = await db.get(
       `SELECT data_type FROM information_schema.columns
         WHERE table_schema='public' AND table_name='set_acquisitions' AND column_name='purchase_price'`,
     );
-    assert.equal(nachher.data_type, 'numeric', 'Migration hat die Spalte nicht umgestellt');
+    assert.equal(later.data_type, 'numeric', 'The migration did not convert the column');
 
     // And restore the final state
     for (const [tab, sp] of [
@@ -109,10 +111,12 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       'utf8',
     );
     const index = /CREATE UNIQUE INDEX idx_set_acq_erfassungstag[^;]+;/.exec(mig);
-    assert.ok(index, 'Tagesindex in 0070 nicht gefunden');
-    await db.run('DROP INDEX IF EXISTS idx_set_acq_erfassungstag');
-    // 0070 still knows the column under its old name (before 0124).
-    await db.run(index[0].replace(/\btag\b/, 'day'));
+    assert.ok(index, 'Day index not found in 0070');
+    await db.run('DROP INDEX IF EXISTS idx_set_acq_acquisition_day');
+    // 0070 still knows the column and the index under their old names (before 0124 and 0127).
+    await db.run(
+      index[0].replace(/\btag\b/, 'day').replace('idx_set_acq_erfassungstag', 'idx_set_acq_acquisition_day'),
+    );
   });
 
   await t.test('a thousand amounts add up exactly', async () => {
@@ -127,8 +131,8 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       [uid],
     );
 
-    const summe = await db.get(`SELECT SUM(purchase_price) AS s FROM set_acquisitions WHERE user_id=$1`, [uid]);
-    assert.equal(Number(summe.s), 70, `Summe ${summe.s} statt exakt 70`);
+    const sum = await db.get(`SELECT SUM(purchase_price) AS s FROM set_acquisitions WHERE user_id=$1`, [uid]);
+    assert.equal(Number(sum.s), 70, `total ${sum.s} instead of exactly 70`);
   });
 
   await t.test('a stored purchase price comes back unchanged', async () => {
@@ -140,20 +144,24 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
       [uid],
     );
 
-    const { setsLesen } = require('./helpers/sources').handlerModule(_req);
-    const r = await setsLesen([uid], { search: '99002' });
-    const satz = r.sets.find(s => s.set_number === '99002-1');
-    assert.ok(satz, 'Set nicht gefunden');
+    const { readSets } = require('./helpers/sources').handlerModule(_req);
+    const r = await readSets([uid], { search: '99002' });
+    const record = r.sets.find(s => s.set_number === '99002-1');
+    assert.ok(record, 'set not found');
 
     // `purchase_price` stood here in the list too. Since migration 0032 the set response
     // no longer carries the field (the column is gone); the purchase price
     // is delivered by the two aggregates from the acquisitions. Without this change
     // the loop checked a missing field and reported `NaN !== 49.9`.
-    for (const feld of ['avg_purchase_price', 'max_purchase_price']) {
-      const wert = Number(satz[feld]);
-      assert.equal(wert, 49.9, `${feld} = ${satz[feld]} — genau dieser Gleitkomma-Schwanz ging bisher an den Client`);
+    for (const field of ['avg_purchase_price', 'max_purchase_price']) {
+      const value = Number(record[field]);
+      assert.equal(
+        value,
+        49.9,
+        `${field} = ${record[field]} — exactly this floating-point tail used to go to the client`,
+      );
       // And the value survives the way through JSON in the same form.
-      assert.equal(JSON.parse(JSON.stringify({ v: wert })).v, 49.9);
+      assert.equal(JSON.parse(JSON.stringify({ v: value })).v, 49.9);
     }
   });
 
@@ -163,14 +171,13 @@ test('money amounts are exact', { concurrency: 1 }, async t => {
     // in hundreds of places, and a price of 0 would be true as
     // "0.0000" in every if query.
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    const zeile = await db.get(
-      `SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number='99002-1'`,
-      [uid],
-    );
+    const row = await db.get(`SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number='99002-1'`, [
+      uid,
+    ]);
     assert.equal(
-      typeof zeile.purchase_price,
+      typeof row.purchase_price,
       'number',
-      `purchase_price kommt als ${typeof zeile.purchase_price} — der Typ-Parser fehlt`,
+      `purchase_price arrives as ${typeof row.purchase_price} — the type parser is missing`,
     );
   });
 

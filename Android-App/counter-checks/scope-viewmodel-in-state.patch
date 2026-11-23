@@ -1,0 +1,15 @@
+Gegenprobe: Ein ViewModel nur eines Bereichs liegt ohne Grund in core-state
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/MerklisteProbeViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/MerklisteProbeViewModel.kt
+new file mode 100644
+--- /dev/null
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/MerklisteProbeViewModel.kt
+@@ -0,0 +1,5 @@
++package ch.brickinventoryapp.state.ui.viewmodel
++
++import androidx.lifecycle.ViewModel
++
++class MerklisteProbeViewModel : ViewModel()

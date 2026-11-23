@@ -1,24 +1,24 @@
 package ch.brickinventoryapp.app
 
 import android.app.Notification
+import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.services.alarm.PreisalarmWorker
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.services.alarm.PriceAlarmWorker
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import android.content.Context
 
 /**
  * A price alert names set and price only when unlocked; on the lock screen a
  * public version without either stands.
  *
- * Counter-check (Robolectric, measurable only in CI; job `gegenproben`):
+ * Counter-check (Robolectric, measurable only in CI; job `counter-checks`):
  *   setVisibility(VISIBILITY_PRIVATE) and setPublicVersion() removed → red
- *   “on the lock screen …” (gegenproben/preisalarm-oeffentlich.patch)
+ *   “on the lock screen …” (counter-checks/price-alarm-public.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class PriceAlertMessageTest {
@@ -27,13 +27,13 @@ class PriceAlertMessageTest {
 
     @Test
     fun `on the lock screen neither set nor price is shown`() {
-        val n = PreisalarmWorker.meldung(ctx, "75192-1: CHF 612.00 (unter CHF 650.00)", null)
+        val n = PriceAlarmWorker.message(ctx, "75192-1: CHF 612.00 (unter CHF 650.00)", null)
         assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
-        val oeffentlich = n.publicVersion
-        assertNotNull("Ohne Ersatzfassung zeigt Android nur „Inhalt ausgeblendet“ oder alles", oeffentlich)
-        val sichtbar = listOf(Notification.EXTRA_TITLE, Notification.EXTRA_TEXT)
-            .joinToString(" ") { oeffentlich!!.extras.getCharSequence(it)?.toString().orEmpty() }
-        assertFalse(sichtbar, sichtbar.contains("75192") || sichtbar.contains("612"))
-        assertEquals(ctx.getString(R.string.alert_gesperrt), oeffentlich!!.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        val public = n.publicVersion
+        assertNotNull("without a fallback version Android only shows “content hidden” or everything", public)
+        val visible = listOf(Notification.EXTRA_TITLE, Notification.EXTRA_TEXT)
+            .joinToString(" ") { public!!.extras.getCharSequence(it)?.toString().orEmpty() }
+        assertFalse(visible, visible.contains("75192") || visible.contains("612"))
+        assertEquals(ctx.getString(R.string.alert_locked), public!!.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
     }
 }

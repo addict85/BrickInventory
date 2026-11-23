@@ -1,0 +1,16 @@
+Gegenprobe: dieselbe Meldung hintereinander wird mehrfach eingereiht
+Modul: core-data
+Test: ch.brickinventoryapp.data.MessageQueueTest
+Rot: the same message in a row comes once, null shows nothing
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt
+@@ -43,7 +43,6 @@
+         synchronized(queue) {
+             when {
+                 _message.value == null -> _message.value = message
+-                message == (queue.lastOrNull() ?: _message.value) -> Unit
+                 queue.size < PLACES -> queue.addLast(message)
+             }
+         }

@@ -25,7 +25,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     SUB = `ms-${process.pid}`;
   const SN = `78${(process.pid % 900) + 100}-1`;
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const tab of ['sets', 'set_acquisitions', 'price_cache'])
       await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [SN]).catch(() => {});
   };
@@ -38,7 +38,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     mainId,
     subId,
   ]);
-  await aufraeumen();
+  await cleanUp();
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','EUR')
                 ON CONFLICT (key) DO UPDATE SET value='EUR'`);
   await db.run(
@@ -54,11 +54,11 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     [subId, SN],
   );
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
+  const { base, srv } = testServer(_req, { session: { userId: mainId }, t });
 
-  const detail = async () => (await (await fetch(`${base}/api/v1/sets/${SN}`)).json()).set;
-  const setzen = async n => {
-    const r = await fetch(`${base}/api/v1/sets/${SN}`, {
+  const detail = async () => (await (await fetch(`${base}/api/v2/sets/${SN}`)).json()).set;
+  const put = async n => {
+    const r = await fetch(`${base}/api/v2/sets/${SN}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ quantity: n }),
@@ -66,7 +66,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     return { status: r.status, body: await r.json() };
   };
   // From the acquisitions (migration 0036 deleted sets.quantity).
-  const menge = async uid => await quantityOf(db, uid, SN);
+  const quantity = async uid => await quantityOf(db, uid, SN);
 
   try {
     await t.test('the detail shows the quantity of all accounts', async () => {
@@ -74,63 +74,64 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
       assert.equal(
         d.quantity,
         1,
-        'Das Detail zeigt die Zeile eines einzelnen Kontos statt der Summe — genau ' + 'so entstand Marcos „Anzahl 0"',
+        "The detail shows a single account's row instead of the total — that is exactly " +
+          "how Marco's „Anzahl 0“ came about",
       );
     });
 
     await t.test('increasing creates in the OWN account, with market price', async () => {
-      const r = await setzen(2);
+      const r = await put(2);
       assert.equal(r.status, 200);
-      assert.equal(await menge(mainId), 1, 'die Differenz gehört dem eigenen Konto');
-      assert.equal(await menge(subId), 1, 'der fremde Bestand bleibt unberührt');
+      assert.equal(await quantity(mainId), 1, 'the difference belongs to the own account');
+      assert.equal(await quantity(subId), 1, 'the foreign stock stays untouched');
       const acq = await db.get(
         `SELECT quantity, purchase_price, condition FROM set_acquisitions
           WHERE user_id=$1 AND set_number=$2`,
         [mainId, SN],
       );
-      assert.ok(acq, 'im eigenen Konto ist keine Erfassung entstanden');
+      assert.ok(acq, 'no acquisition was created in the own account');
       assert.equal(acq.quantity, 1);
       assert.equal(
         Number(acq.purchase_price),
         3.94,
-        'die Erfassung braucht den MARKTPREIS — „analog der bestehenden Logik"',
+        'the acquisition needs the MARKET PRICE — „analog der bestehenden Logik“',
       );
-      assert.equal(acq.condition, 'U', 'der Zustand kommt aus derselben Ermittlung wie beim Erfassen');
+      assert.equal(acq.condition, 'U', 'the condition comes from the same determination as when recording');
       assert.equal((await detail()).quantity, 2);
-      assert.equal(r.body.quantity, 2, 'die Antwort trägt die neue Gesamtmenge');
+      assert.equal(r.body.quantity, 2, 'the response carries the new total quantity');
     });
 
     await t.test('increasing again merges on the same day', async () => {
       // The daily rule applies unchanged: one acquisition per account, set and day.
-      await setzen(4);
-      const zeilen = await db.all(`SELECT quantity FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [
+      await put(4);
+      const lines = await db.all(`SELECT quantity FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [
         mainId,
         SN,
       ]);
-      assert.equal(zeilen.length, 1, `${zeilen.length} Erfassungen — die Tagesregel greift nicht`);
-      assert.equal(zeilen[0].quantity, 3);
-      assert.equal(await menge(mainId), 3);
+      assert.equal(lines.length, 1, `${lines.length} acquisitions — the per-day rule does not apply`);
+      assert.equal(lines[0].quantity, 3);
+      assert.equal(await quantity(mainId), 3);
     });
 
     await t.test('decreasing takes the own copies first', async () => {
-      await setzen(1);
-      assert.equal(await menge(mainId), 0, 'die eigenen Exemplare gehen zuerst');
-      assert.equal(await menge(subId), 1, 'das fremde bleibt');
+      await put(1);
+      assert.equal(await quantity(mainId), 0, 'the own copies go first');
+      assert.equal(await quantity(subId), 1, 'the foreign one stays');
       // If nothing remains, the own row disappears entirely.
-      const eigene = await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [mainId, SN]);
-      assert.equal(eigene.c, 0, 'eine eigene Zeile mit Menge 0 bleibt zurück');
+      const owned = await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [mainId, SN]);
+      assert.equal(owned.c, 0, 'an own row with quantity 0 stays behind');
     });
 
     await t.test('it cannot go below the own stock', async () => {
       // The copies of another account are not mine. Instead of taking
       // them away, the server caps — and says in the response what
       // actually applies.
-      const r = await setzen(0);
-      assert.equal(await menge(subId), 1, 'das fremde Exemplar wurde weggenommen');
-      assert.equal(r.body.quantity, 1, 'die Antwort muss die WIRKLICHE Menge nennen, nicht die gesendete');
+      const r = await put(0);
+      assert.equal(await quantity(subId), 1, 'the foreign copy was taken away');
+      assert.equal(r.body.quantity, 1, 'the response must name the REAL quantity, not the one sent');
     });
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await new Promise(r => srv.close(r));

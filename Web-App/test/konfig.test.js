@@ -14,16 +14,16 @@
  * Since 30.10. ONLY src/infra/config.ts reads the environment; an invalid value
  * ends the start with one message per variable. Counter-checks (D–F measured in one
  * run):
- *   D  in src/http/fileUpload.ts again `Number(process.env.UPLOAD_KONTINGENT_MB)`
+ *   D  in src/http/fileUpload.ts again `Number(process.env.UPLOAD_QUOTA_MB)`
  *      → red: “nobody except the configuration reads process.env”
  *   E  in ganzzahl() the bounds check `n < min || n > max` removed → red:
  *      “invalid values: all at once, with names” (PORT=0 got through)
  *   F  the import of startup/checkConfig removed from server.ts → red:
  *      “the server does not start with a wrong value” (stack trace from
  *      src/account/sessionDeadline instead of the message)
- *   G  (30.10.) in ladeKonfig `veraltet` always empty → red: “invalid values:
+ *   G  (30.10.) in loadConfig `veraltet` always empty → red: “invalid values:
  *      all at once, with names” (WEB_WORKERS was no longer named)
- *   H  (11.11.2026) in attestationWurzeln() the check for developmentEnvironment
+ *   H  (11.11.2026) in attestationRoots() the check for developmentEnvironment
  *      deleted → red: “own attestation roots only in development and test”
  *   I  (15.11.2026) in legacyKeyUntil() the comparison with the cutoff date deleted
  *      (every valid date applies) → red in the same test (2099-12-31 got through)
@@ -35,8 +35,8 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { databaseConnection, standardPasswordInUse, ladeKonfig, KonfigFehler, VARIABLES } = _req('src/infra/config.js');
-const { ohneKommentare } = require('./helpers/sources');
+const { databaseConnection, standardPasswordInUse, loadConfig, ConfigError, VARIABLES } = _req('src/infra/config.js');
+const { withoutComments } = require('./helpers/sources');
 const { spawnSync } = require('node:child_process');
 
 test('without values the same defaults as compose.yaml', () => {
@@ -65,12 +65,12 @@ test('DATABASE_URL takes precedence', () => {
 });
 
 test('nobody else reads the connection variables', () => {
-  const funde = [];
-  const durch = dir => {
+  const findings = [];
+  const via = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) {
-        if (!['node_modules', 'dist', 'test', 'public', '.git'].includes(e.name)) durch(p);
+        if (!['node_modules', 'dist', 'test', 'public', '.git'].includes(e.name)) via(p);
         continue;
       }
       if (!e.name.endsWith('.ts')) continue;
@@ -78,77 +78,77 @@ test('nobody else reads the connection variables', () => {
       if (rel === path.join('src/infra/config.ts')) continue;
       const s = fs.readFileSync(p, 'utf8');
       for (const m of s.matchAll(/process\.env\.(PGHOST|PGPORT|PGUSER|PGPASSWORD|PGDATABASE|DATABASE_URL)\b/g))
-        funde.push(`${rel}: ${m[1]}`);
+        findings.push(`${rel}: ${m[1]}`);
     }
   };
-  durch(ROOT);
-  assert.deepEqual(funde, []);
+  via(ROOT);
+  assert.deepEqual(findings, []);
 });
 
 test('nobody except the configuration reads process.env', () => {
-  const funde = [];
-  const durch = dir => {
+  const findings = [];
+  const via = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) {
-        if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(e.name)) durch(p);
+        if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(e.name)) via(p);
         continue;
       }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
       if (rel === path.join('src/infra/config.ts')) continue;
-      const zeilen = ohneKommentare(fs.readFileSync(p, 'utf8')).split('\n');
-      zeilen.forEach((z, i) => {
-        if (/process\.env\b/.test(z.replace(/\/\/.*$/, ''))) funde.push(`${rel}:${i + 1}`);
+      const lines = withoutComments(fs.readFileSync(p, 'utf8')).split('\n');
+      lines.forEach((z, i) => {
+        if (/process\.env\b/.test(z.replace(/\/\/.*$/, ''))) findings.push(`${rel}:${i + 1}`);
       });
     }
   };
-  durch(ROOT);
-  assert.deepEqual(funde, []);
+  via(ROOT);
+  assert.deepEqual(findings, []);
 });
 
 test('invalid values: all at once, with names', () => {
   assert.throws(
     () =>
-      ladeKonfig({ PORT: '0', SESSION_IDLE_MINUTES: 'viel', COOKIE_SECURE: 'ja', APP_BASE_URL: 'lego.example.org' }),
+      loadConfig({ PORT: '0', SESSION_IDLE_MINUTES: 'viel', COOKIE_SECURE: 'ja', APP_BASE_URL: 'lego.example.org' }),
     (/** @type {any} */ e) => {
-      assert.ok(e instanceof KonfigFehler);
+      assert.ok(e instanceof ConfigError);
       assert.deepEqual(
-        e.fehler.map(f => f.split('=')[0]),
+        e.error.map(f => f.split('=')[0]),
         ['APP_BASE_URL', 'PORT', 'COOKIE_SECURE', 'SESSION_IDLE_MINUTES'],
       );
       assert.match(e.message, /PORT="0" ist keine ganze Zahl von 1 bis 65535/);
       return true;
     },
   );
-  const k = ladeKonfig({
+  const k = loadConfig({
     PORT: '8080',
-    ROLLE: 'Jobs',
+    ROLE: 'Jobs',
     WEB_WORKERS: '3',
     COOKIE_SECURE: '0',
     APP_BASE_URL: 'https://lego.example.org//',
   });
   assert.equal(k.port, 8080);
-  assert.equal(k.rolle, 'jobs');
-  assert.deepEqual(k.veraltet, ['WEB_WORKERS'], 'WEB_WORKERS wirkt nicht mehr, der Start nennt es');
-  assert.equal(ladeKonfig({}).rolle, 'beides', 'ohne Angabe ein Prozess für alles');
-  assert.throws(() => ladeKonfig({ ROLLE: 'primary' }), /ROLLE="primary" ist weder web noch jobs noch beides/);
+  assert.equal(k.role, 'jobs');
+  assert.deepEqual(k.deprecated, ['WEB_WORKERS'], 'WEB_WORKERS no longer has an effect, the startup names it');
+  assert.equal(loadConfig({}).role, 'both', 'without a setting one process for everything');
+  assert.throws(() => loadConfig({ ROLE: 'primary' }), /ROLE="primary" ist weder web noch jobs noch both/);
   assert.equal(k.cookieSecure, false);
   assert.equal(k.appBaseUrl, 'https://lego.example.org');
-  assert.equal(ladeKonfig({}).sitzungLeerlaufMin, 240, 'ohne Angabe die Vorgabe');
+  assert.equal(loadConfig({}).sessionIdleMin, 240, 'without a setting the default');
 });
 
 test('own attestation roots only in development and test; the cutoff date is a date', () => {
-  assert.throws(() => ladeKonfig({ ATTESTATION_WURZELN: 'PEM' }), /ATTESTATION_WURZELN gilt nur mit NODE_ENV/);
-  assert.throws(() => ladeKonfig({ NODE_ENV: 'production', ATTESTATION_WURZELN: 'PEM' }), KonfigFehler);
-  assert.equal(ladeKonfig({ NODE_ENV: 'test', ATTESTATION_WURZELN: 'PEM' }).attestationWurzeln, 'PEM');
-  assert.equal(ladeKonfig({}).attestationWurzeln, null);
-  assert.equal(ladeKonfig({}).geraeteschluesselAltBis.toISOString(), '2027-02-01T00:00:00.000Z');
-  assert.equal(ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: '2026-01-01' }).geraeteschluesselAltBis.getUTCFullYear(), 2026);
-  assert.throws(() => ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: 'bald' }), /GERAETESCHLUESSEL_ALT_BIS="bald"/);
-  assert.equal(ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: '2027-02-01' }).geraeteschluesselAltBis.getUTCMonth(), 1);
-  for (const spaeter of ['2027-02-02', '2099-12-31'])
-    assert.throws(() => ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: spaeter }), /liegt nach 2027-02-01/, spaeter);
+  assert.throws(() => loadConfig({ ATTESTATION_ROOTS: 'PEM' }), /ATTESTATION_ROOTS gilt nur mit NODE_ENV/);
+  assert.throws(() => loadConfig({ NODE_ENV: 'production', ATTESTATION_ROOTS: 'PEM' }), ConfigError);
+  assert.equal(loadConfig({ NODE_ENV: 'test', ATTESTATION_ROOTS: 'PEM' }).attestationRoots, 'PEM');
+  assert.equal(loadConfig({}).attestationRoots, null);
+  assert.equal(loadConfig({}).deviceKeyLegacyUntil.toISOString(), '2027-02-01T00:00:00.000Z');
+  assert.equal(loadConfig({ DEVICE_KEY_OLD_UNTIL: '2026-01-01' }).deviceKeyLegacyUntil.getUTCFullYear(), 2026);
+  assert.throws(() => loadConfig({ DEVICE_KEY_OLD_UNTIL: 'bald' }), /DEVICE_KEY_OLD_UNTIL="bald"/);
+  assert.equal(loadConfig({ DEVICE_KEY_OLD_UNTIL: '2027-02-01' }).deviceKeyLegacyUntil.getUTCMonth(), 1);
+  for (const subsequent of ['2027-02-02', '2099-12-31'])
+    assert.throws(() => loadConfig({ DEVICE_KEY_OLD_UNTIL: subsequent }), /liegt nach 2027-02-01/, subsequent);
 });
 
 test('the server does not start with a wrong value', () => {
@@ -167,7 +167,7 @@ test('the server does not start with a wrong value', () => {
 });
 
 test('.env.example names every variable', () => {
-  const beispiel = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
-  const fehlt = VARIABLES.filter(v => !new RegExp(`^#? ?${v}=`, 'm').test(beispiel));
-  assert.deepEqual(fehlt, []);
+  const example = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
+  const missing = VARIABLES.filter(v => !new RegExp(`^#? ?${v}=`, 'm').test(example));
+  assert.deepEqual(missing, []);
 });

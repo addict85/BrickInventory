@@ -7,37 +7,37 @@ import type { PartsContext } from './context';
 const currentVersion = (k: PartsContext, userId: number) => k.summary.rawState(userId);
 
 export async function rebuildSummary(k: PartsContext, userId: number, version?: { v: number }): Promise<void> {
-  const stand = version ?? (await currentVersion(k, userId));
+  const state = version ?? (await currentVersion(k, userId));
   // Whether THIS call built it: if another call holds the lock, there is nothing to catch up on.
-  let gebaut = false;
-  await k.transaktion(async t => {
+  let built = false;
+  await k.transact(async t => {
     // Lock via the database, not only via _rebuilding: several processes.
     if (!(await repo.lockAccount(t.db, userId))) {
       return;
     }
-    await repo.rebuildAll(t.db, userId, stand.v);
-    gebaut = true;
+    await repo.rebuildAll(t.db, userId, state.v);
+    built = true;
   });
 
   // Without fresh statistics the planner picks the wrong index after the bulk insert.
   // At most every ten minutes, because ANALYZE scans the table across all accounts.
-  const z = state(k);
-  if (gebaut && k.uhr.jetzt() - z.lastAnalyse > 10 * 60_000) {
-    z.lastAnalyse = k.uhr.jetzt();
+  const z = processState(k);
+  if (built && k.clock.now() - z.lastAnalyse > 10 * 60_000) {
+    z.lastAnalyse = k.clock.now();
     await k.summary.analyze().catch((e: unknown) => reportError('parts-summary:analyze', e));
   }
 }
 
 /** Per access: account IDs, rebuilds and the follow-up belong to the database they run in. */
-const state = (k: PartsContext) =>
-  k.faecher.fach('partsSummary', () => ({
+const processState = (k: PartsContext) =>
+  k.compartments.slot('partsSummary', () => ({
     lastAnalyse: 0,
-    neuaufbau: new Map<number, Promise<void>>(),
+    rebuild: new Map<number, Promise<void>>(),
     followUp: null as ReturnType<typeof runCatalogFollowUp> | null,
   }));
 
 function rebuildInBackground(k: PartsContext, userId: number, v: { v: number }) {
-  const _rebuilding = state(k).neuaufbau;
+  const _rebuilding = processState(k).rebuild;
   if (_rebuilding.has(userId)) return;
   const p = rebuildSummary(k, userId, v)
     .catch((e: unknown) => reportError('parts-summary:background', e))
@@ -85,10 +85,10 @@ export async function summaryFresh(
  * as a job, because the web system role can't reach other accounts' stock; until then, stale BL numbers. */
 async function catalogFollowUpOnce(k: PartsContext) {
   if (rowsContext().web) {
-    await k.jobQueue.placeJobOne('katalog_nachzug', {}, { schluessel: 'katalog_nachzug' });
-    return { konten: 0, gruppen: 0 };
+    await k.jobQueue.placeJobOne('catalog_followup', {}, { key: 'catalog_followup' });
+    return { accounts: 0, groups: 0 };
   }
-  const z = state(k);
+  const z = processState(k);
   z.followUp ??= runCatalogFollowUp(k).finally(() => {
     z.followUp = null;
   });
@@ -99,31 +99,31 @@ const CATALOG_INDIVIDUAL_UP_TO = 5000;
 
 /** Groups with a changed BL number, before and after. Runs in system scope: the queue
  * is global, whoever drains it follows up for all accounts. @returns null if another run is already catching up */
-export function runCatalogFollowUp(k: PartsContext): Promise<{ konten: number; gruppen: number } | null> {
+export function runCatalogFollowUp(k: PartsContext): Promise<{ accounts: number; groups: number } | null> {
   return inSystemContext('catalog-follow-up', () => runCatalogFollowUpInScope(k));
 }
 
-async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ konten: number; gruppen: number } | null> {
-  return k.transaktion(async t => {
+async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ accounts: number; groups: number } | null> {
+  return k.transact(async t => {
     if (!(await repo.lockCatalogFollowUp(t.db))) return null;
-    const nummern = await repo.pendingNumbers(t.db);
-    if (!nummern.length) return { konten: 0, gruppen: 0 };
-    if (nummern.length > CATALOG_INDIVIDUAL_UP_TO) return { konten: await repo.discardAllStates(t.db), gruppen: -1 };
-    const betroffen = await repo.affectedGroups(t.db, nummern);
-    const jeAccount = new Map<number, string[]>();
-    for (const b of betroffen) jeAccount.set(b.user_id, [...(jeAccount.get(b.user_id) ?? []), b.part_key]);
-    for (const [uid, gruppen] of jeAccount) {
+    const numbers = await repo.pendingNumbers(t.db);
+    if (!numbers.length) return { accounts: 0, groups: 0 };
+    if (numbers.length > CATALOG_INDIVIDUAL_UP_TO) return { accounts: await repo.discardAllStates(t.db), groups: -1 };
+    const affected = await repo.affectedGroups(t.db, numbers);
+    const perAccount = new Map<number, string[]>();
+    for (const b of affected) perAccount.set(b.user_id, [...(perAccount.get(b.user_id) ?? []), b.part_key]);
+    for (const [uid, groups] of perAccount) {
       // An in-progress rebuild is waited out so it doesn't overwrite with a stale catalog.
       await repo.waitForAccount(t.db, uid);
-      await repo.rebuildGroups(t.db, uid, gruppen);
+      await repo.rebuildGroups(t.db, uid, groups);
     }
-    return { konten: jeAccount.size, gruppen: betroffen.length };
+    return { accounts: perAccount.size, groups: affected.length };
   });
 }
 
 /** For call sites that need guaranteed current numbers right after (end of a CSV import). */
 export async function rebuildNow(k: PartsContext, userId: number): Promise<void> {
-  const _rebuilding = state(k).neuaufbau;
+  const _rebuilding = processState(k).rebuild;
   const running = _rebuilding.get(userId);
   if (running) return running;
   const v = await currentVersion(k, userId);

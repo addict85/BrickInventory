@@ -37,23 +37,23 @@ const FROM_PUSH = `sha256:${crypto.createHash('sha256').update(INDEX).digest('he
 
 /** The run block of the step with `id: <id>`. */
 function script(id) {
-  const zeilen = YML.split('\n');
-  const ab = zeilen.indexOf(`        id: ${id}`);
-  assert.ok(ab >= 0, `Schritt ${id} nicht gefunden`);
-  const start = zeilen.findIndex((z, i) => i > ab && z === '        run: |');
-  const rumpf = [];
-  for (const z of zeilen.slice(start + 1)) {
+  const lines = YML.split('\n');
+  const ab = lines.indexOf(`        id: ${id}`);
+  assert.ok(ab >= 0, `step ${id} not found`);
+  const start = lines.findIndex((z, i) => i > ab && z === '        run: |');
+  const body = [];
+  for (const z of lines.slice(start + 1)) {
     if (z.trim() && !z.startsWith('          ')) break;
-    rumpf.push(z.slice(10));
+    body.push(z.slice(10));
   }
-  return rumpf.join('\n');
+  return body.join('\n');
 }
 
 function sandbox(t, metaWithDigest = true, { pushed = FROM_PUSH, inspection = REASSIGNED } = {}) {
-  const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'signatur-'));
-  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
-  const bin = path.join(ort, 'bin'),
-    digests = path.join(ort, 'digests');
+  const location = fs.mkdtempSync(path.join(os.tmpdir(), 'signatur-'));
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
+  const bin = path.join(location, 'bin'),
+    digests = path.join(location, 'digests');
   fs.mkdirSync(bin);
   fs.mkdirSync(digests);
   fs.writeFileSync(path.join(digests, 'c'.repeat(64)), '');
@@ -61,7 +61,7 @@ function sandbox(t, metaWithDigest = true, { pushed = FROM_PUSH, inspection = RE
   fs.writeFileSync(
     path.join(bin, 'docker'),
     `#!/bin/sh
-echo "docker $*" >> "${ort}/aufrufe"
+echo "docker $*" >> "${location}/aufrufe"
 if [ "$2" = imagetools ] && [ "$3" = create ]; then
   case " $* " in (*" --dry-run "*) printf '%s' '${INDEX}'; exit 0 ;; esac
   while [ $# -gt 0 ]; do [ "$1" = --metadata-file ] && printf '%s' '${meta}' > "$2"; shift; done
@@ -72,76 +72,76 @@ exit 0
 `,
     { mode: 0o755 },
   );
-  fs.writeFileSync(path.join(bin, 'cosign'), `#!/bin/sh\necho "cosign $*" >> "${ort}/aufrufe"\n`, { mode: 0o755 });
-  return { ort, bin, digests };
+  fs.writeFileSync(path.join(bin, 'cosign'), `#!/bin/sh\necho "cosign $*" >> "${location}/aufrufe"\n`, { mode: 0o755 });
+  return { location, bin, digests };
 }
 
-function lauf(s, id, ersatz = {}, moreEnv = {}) {
+function runIt(s, id, spare = {}, moreEnv = {}) {
   let text = script(id).replaceAll('${{ env.IMAGE }}', IMAGE).replaceAll(`$\{{ env.CADDY_IMAGE }}`, CADDY);
-  for (const [k, v] of Object.entries(ersatz)) text = text.replaceAll(k, v);
-  const output = path.join(s.ort, `ausgabe-${id}`);
+  for (const [k, v] of Object.entries(spare)) text = text.replaceAll(k, v);
+  const output = path.join(s.location, `ausgabe-${id}`);
   fs.writeFileSync(output, '');
   const r = spawnSync('bash', ['-c', text], {
     cwd: s.digests,
     encoding: 'utf8',
     env: {
       PATH: `${s.bin}:${process.env.PATH}`,
-      RUNNER_TEMP: s.ort,
+      RUNNER_TEMP: s.location,
       GITHUB_OUTPUT: output,
-      GITHUB_STEP_SUMMARY: path.join(s.ort, 'summary'),
+      GITHUB_STEP_SUMMARY: path.join(s.location, 'summary'),
       DOCKER_METADATA_OUTPUT_JSON: JSON.stringify({ tags: [`${IMAGE}:latest`, `${IMAGE}:sha-1a2b3c4`] }),
       ...moreEnv,
     },
   });
-  const aus = Object.fromEntries(
+  const out = Object.fromEntries(
     fs
       .readFileSync(output, 'utf8')
       .split('\n')
       .filter(Boolean)
       .map(z => z.split('=')),
   );
-  return { code: r.status, log: r.stdout + r.stderr, aus };
+  return { code: r.status, log: r.stdout + r.stderr, out };
 }
 
 test('the digest from the push is signed, not the moved tag', t => {
   const s = sandbox(t);
-  const m = lauf(s, 'manifest');
+  const m = runIt(s, 'manifest');
   assert.equal(m.code, 0, m.log);
-  assert.equal(m.aus.digest, FROM_PUSH);
-  const sig = lauf(s, 'signatur', { '${{ steps.manifest.outputs.digest }}': m.aus.digest });
+  assert.equal(m.out.digest, FROM_PUSH);
+  const sig = runIt(s, 'signatur', { '${{ steps.manifest.outputs.digest }}': m.out.digest });
   assert.equal(sig.code, 0, sig.log);
-  const signiert = fs
-    .readFileSync(path.join(s.ort, 'aufrufe'), 'utf8')
+  const signed = fs
+    .readFileSync(path.join(s.location, 'aufrufe'), 'utf8')
     .split('\n')
     .filter(z => z.startsWith('cosign sign'));
-  assert.deepEqual(signiert, [`cosign sign --yes --recursive ${IMAGE}@${FROM_PUSH}`]);
-  assert.equal(sig.aus.digest, FROM_PUSH, 'die Nachweise hängen am selben Digest');
+  assert.deepEqual(signed, [`cosign sign --yes --recursive ${IMAGE}@${FROM_PUSH}`]);
+  assert.equal(sig.out.digest, FROM_PUSH, 'the attestations hang on the same digest');
 });
 
 test('without a digest from the push the step aborts', t => {
   const s = sandbox(t, false);
-  const m = lauf(s, 'manifest');
+  const m = runIt(s, 'manifest');
   assert.equal(m.code, 1, m.log);
   assert.match(m.log, /Kein Digest in der Ausgabe des Pushs/);
 });
 
 /** The block of a step, looked up by its name, up to the next step. */
-function schritt(name) {
+function step(name) {
   const ab = YML.indexOf(`      - name: ${name}\n`);
-  assert.ok(ab >= 0, `Schritt „${name}“ nicht gefunden`);
-  const ende = YML.indexOf('\n      - ', ab + 1);
-  return YML.slice(ab, ende < 0 ? undefined : ende);
+  assert.ok(ab >= 0, `step „${name}“ not found`);
+  const end = YML.indexOf('\n      - ', ab + 1);
+  return YML.slice(ab, end < 0 ? undefined : end);
 }
 
 /** Pattern of the app download and name of the Caddy artifacts (without platform). */
 function artifacts() {
   return {
-    muster: YML.match(/path: \/tmp\/digests\n\s+pattern: (\S+)/)?.[1],
+    pattern: YML.match(/path: \/tmp\/digests\n\s+pattern: (\S+)/)?.[1],
     caddy: YML.match(/name: (\S*)\$\{\{ env\.PAAR \}\}\n\s+path: \/tmp\/digests-caddy/)?.[1],
   };
 }
 
-const callsIn = s => fs.readFileSync(path.join(s.ort, 'aufrufe'), 'utf8').split('\n');
+const callsIn = s => fs.readFileSync(path.join(s.location, 'aufrufe'), 'utf8').split('\n');
 
 // Counter-checks (measured 11.11.2026, each individually): in the step `signatur-caddy`
 // `${{ env.IMAGE }}` instead of `${{ env.CADDY_IMAGE }}` → red „signiert wird das
@@ -150,48 +150,48 @@ const callsIn = s => fs.readFileSync(path.join(s.ort, 'aufrufe'), 'utf8').split(
 // `digest-caddy-…` → red „das App-Manifest mischt die Caddy-Digests“.
 test('Caddy is built, signed and attested like the app image, on the digest from its push', t => {
   const s = sandbox(t);
-  const m = lauf(s, 'manifest-caddy', {}, { META: JSON.stringify({ tags: [`${CADDY}:latest`] }) });
+  const m = runIt(s, 'manifest-caddy', {}, { META: JSON.stringify({ tags: [`${CADDY}:latest`] }) });
   assert.equal(m.code, 0, m.log);
-  assert.equal(m.aus.digest, FROM_PUSH);
-  const aufrufe = () => callsIn(s);
+  assert.equal(m.out.digest, FROM_PUSH);
+  const calls = () => callsIn(s);
   assert.ok(
-    aufrufe().some(
+    calls().some(
       z =>
         z.startsWith(`docker buildx imagetools create --metadata-file`) &&
         z.includes(`-t ${CADDY}@${FROM_PUSH}`) &&
         z.includes(`${CADDY}@sha256:${'c'.repeat(64)}`),
     ),
-    aufrufe().join('\n'),
+    calls().join('\n'),
   );
-  const sig = lauf(s, 'signatur-caddy', { '${{ steps.manifest-caddy.outputs.digest }}': m.aus.digest });
+  const sig = runIt(s, 'signatur-caddy', { '${{ steps.manifest-caddy.outputs.digest }}': m.out.digest });
   assert.equal(sig.code, 0, sig.log);
   assert.deepEqual(
-    aufrufe().filter(z => z.startsWith('cosign sign')),
+    calls().filter(z => z.startsWith('cosign sign')),
     [`cosign sign --yes --recursive ${CADDY}@${FROM_PUSH}`],
-    'signiert wird das Caddy-Image am Digest aus seinem Push',
+    'the Caddy image is signed at the digest from its push',
   );
   for (const name of ['Caddy-Herkunft bescheinigen', 'Caddy-Stückliste bescheinigen']) {
-    const b = schritt(name);
+    const b = step(name);
     assert.match(b, /subject-name: index\.docker\.io\/\$\{\{ env\.CADDY_IMAGE \}\}/, name);
     assert.match(
       b,
       /subject-digest: \$\{\{ steps\.signatur-caddy\.outputs\.digest \}\}/,
-      `${name}: nicht am signierten Caddy-Digest`,
+      `${name}: not at the signed Caddy digest`,
     );
   }
-  const bau = schritt('Caddy bauen und als Digest hochladen');
-  for (const zeile of [
+  const build = step('Caddy bauen und als Digest hochladen');
+  for (const row of [
     /file: \$\{\{ env\.CONTEXT \}\}\/Dockerfile\.caddy/,
     /no-cache: true/,
     /provenance: mode=max/,
     /sbom: generator=\S+@sha256:[0-9a-f]{64}/,
   ])
-    assert.match(bau, zeile);
+    assert.match(build, row);
   // The app manifest collects its digests via a pattern; the Caddy artifacts must not fall under it.
-  const { muster, caddy: caddyName } = artifacts();
-  assert.ok(muster && caddyName, `${muster} / ${caddyName}`);
-  assert.equal(path.matchesGlob(`${caddyName}linux-amd64`, muster), false, 'das App-Manifest mischt die Caddy-Digests');
-  assert.equal(path.matchesGlob('digest-linux-amd64', muster), true);
+  const { pattern, caddy: caddyName } = artifacts();
+  assert.ok(pattern && caddyName, `${pattern} / ${caddyName}`);
+  assert.equal(path.matchesGlob(`${caddyName}linux-amd64`, pattern), false, 'the app manifest mixes the Caddy digests');
+  assert.equal(path.matchesGlob('digest-linux-amd64', pattern), true);
 });
 
 /** The `-t` targets of all real (not dry-run) calls of `imagetools create`. */
@@ -207,30 +207,30 @@ test('before the signature the image carries no tag', t => {
     ['manifest-caddy', CADDY],
   ]) {
     const s = sandbox(t);
-    const m = lauf(s, id, {}, { META: JSON.stringify({ tags: [`${img}:latest`] }) });
+    const m = runIt(s, id, {}, { META: JSON.stringify({ tags: [`${img}:latest`] }) });
     assert.equal(m.code, 0, m.log);
-    assert.deepEqual(tagsInPush(s), [`${img}@${FROM_PUSH}`], `${id}: vor der Signatur trägt das Image keinen Tag`);
+    assert.deepEqual(tagsInPush(s), [`${img}@${FROM_PUSH}`], `${id}: before the signature the image carries no tag`);
   }
 });
 
 test('a digest other than in the dry run aborts', t => {
   for (const id of ['manifest', 'manifest-caddy']) {
     const s = sandbox(t, true, { pushed: REASSIGNED });
-    const m = lauf(s, id);
-    assert.equal(m.code, 1, `${id}: ein anderer Digest als im Probelauf bricht ab\n${m.log}`);
-    assert.equal(m.aus.digest, undefined);
+    const m = runIt(s, id);
+    assert.equal(m.code, 1, `${id}: a digest different from the dry run aborts\n${m.log}`);
+    assert.equal(m.out.digest, undefined);
   }
 });
 
 /** Position of a step in the workflow, looked up via `id:` or `name:`. */
-const place = marke => {
-  const i = YML.indexOf(marke);
-  assert.ok(i >= 0, `${marke} nicht gefunden`);
+const place = mark => {
+  const i = YML.indexOf(mark);
+  assert.ok(i >= 0, `${mark} not found`);
   return i;
 };
 
 test('tags come after Trivy, signature and attestation', t => {
-  for (const [id, sig, img, vorher] of [
+  for (const [id, sig, img, prior] of [
     ['tags', 'signatur', IMAGE, ['Lücken im veröffentlichten Digest', 'Image signieren', 'Stückliste bescheinigen']],
     [
       'tags-caddy',
@@ -239,14 +239,14 @@ test('tags come after Trivy, signature and attestation', t => {
       ['Lücken im veröffentlichten Caddy-Digest', 'Caddy signieren', 'Caddy-Stückliste bescheinigen'],
     ],
   ]) {
-    for (const name of vorher)
+    for (const name of prior)
       assert.ok(
         place(`        id: ${id}\n`) > place(`      - name: ${name}\n`),
-        `${id}: Tags kommen nach Trivy, Signatur und Bescheinigung (${name})`,
+        `${id}: tags come after Trivy, signature and attestation (${name})`,
       );
     const s = sandbox(t, true, { inspection: FROM_PUSH });
     const tags = [`${img}:latest`, `${img}:sha-1a2b3c4`];
-    const r = lauf(s, id, { [`\${{ steps.${sig}.outputs.digest }}`]: FROM_PUSH }, { META: JSON.stringify({ tags }) });
+    const r = runIt(s, id, { [`\${{ steps.${sig}.outputs.digest }}`]: FROM_PUSH }, { META: JSON.stringify({ tags }) });
     assert.equal(r.code, 0, r.log);
     const call = callsIn(s).find(z => z.startsWith('docker buildx imagetools create'));
     assert.equal(call, `docker buildx imagetools create ${tags.map(x => `-t ${x}`).join(' ')} ${img}@${FROM_PUSH}`);
@@ -255,13 +255,13 @@ test('tags come after Trivy, signature and attestation', t => {
 
 test('a moved tag aborts', t => {
   const s = sandbox(t, true, { inspection: REASSIGNED });
-  const r = lauf(
+  const r = runIt(
     s,
     'tags',
     { '${{ steps.signatur.outputs.digest }}': FROM_PUSH },
     { META: JSON.stringify({ tags: [`${IMAGE}:latest`] }) },
   );
-  assert.equal(r.code, 1, `ein umgehängter Tag bricht ab\n${r.log}`);
+  assert.equal(r.code, 1, `a moved tag aborts\n${r.log}`);
   assert.match(r.log, /zeigt auf sha256:b+ statt auf/);
 });
 
@@ -271,26 +271,30 @@ test('a moved tag aborts', t => {
 // message back to „Secrets and variables -> Actions“ → red „… nennt die Environment-Secrets“.
 test('Docker Hub credentials only in jobs with the docker-hub environment', () => {
   const jobs = YML.slice(YML.indexOf('\njobs:\n'));
-  const bloecke = jobs.split(/^ {2}(?=[\w-]+:\s*$)/m).slice(1);
-  const withSecret = bloecke.filter(b => /secrets\.DOCKERHUB_/.test(b));
-  assert.ok(withSecret.length >= 2, `zu wenige Jobs mit DOCKERHUB_* gefunden (${withSecret.length})`);
+  const blockList = jobs.split(/^ {2}(?=[\w-]+:\s*$)/m).slice(1);
+  const withSecret = blockList.filter(b => /secrets\.DOCKERHUB_/.test(b));
+  assert.ok(withSecret.length >= 2, `too few jobs with DOCKERHUB_* found (${withSecret.length})`);
   for (const b of withSecret) {
     const name = b.split(':')[0];
-    assert.match(b, /^ {4}environment: docker-hub\s*$/m, `${name} liest DOCKERHUB_* ohne Umgebung docker-hub`);
+    assert.match(
+      b,
+      /^ {4}environment: docker-hub\s*$/m,
+      `${name} reads DOCKERHUB_* without the docker-hub environment`,
+    );
   }
-  const zeilen = YML.split('\n');
-  const ab = zeilen.findIndex(z => z.trim() === '- name: Zugangsdaten vorhanden?');
-  const run = zeilen.findIndex((z, i) => i > ab && z.trim() === 'run: |');
-  const rumpf = [];
-  for (let i = run + 1; i < zeilen.length && (zeilen[i].startsWith('          ') || !zeilen[i].trim()); i++)
-    rumpf.push(zeilen[i].slice(10));
-  const pruefe = (nutzer, token) =>
-    spawnSync('bash', ['-c', rumpf.join('\n')], {
+  const lines = YML.split('\n');
+  const ab = lines.findIndex(z => z.trim() === '- name: Zugangsdaten vorhanden?');
+  const run = lines.findIndex((z, i) => i > ab && z.trim() === 'run: |');
+  const body = [];
+  for (let i = run + 1; i < lines.length && (lines[i].startsWith('          ') || !lines[i].trim()); i++)
+    body.push(lines[i].slice(10));
+  const check = (user, token) =>
+    spawnSync('bash', ['-c', body.join('\n')], {
       encoding: 'utf8',
-      env: { PATH: process.env.PATH, NUTZER: nutzer, TOKEN: token },
+      env: { PATH: process.env.PATH, NUTZER: user, TOKEN: token },
     });
-  assert.equal(pruefe('n', 't').status, 0, 'mit beiden Secrets geht es weiter');
-  const ohne = pruefe('', '');
-  assert.equal(ohne.status, 1, 'ohne Secrets bricht der Schritt ab');
-  assert.match(ohne.stdout, /Environments -> docker-hub/, 'die Meldung nennt die Environment-Secrets');
+  assert.equal(check('n', 't').status, 0, 'with both secrets it continues');
+  const without = check('', '');
+  assert.equal(without.status, 1, 'without secrets the step aborts');
+  assert.match(without.stdout, /Environments -> docker-hub/, 'the message names the environment secrets');
 });

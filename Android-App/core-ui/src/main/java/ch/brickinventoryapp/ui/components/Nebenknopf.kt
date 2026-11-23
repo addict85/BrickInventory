@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.lockedColors
 
 /**
@@ -22,9 +22,9 @@ import ch.brickinventoryapp.ui.theme.lockedColors
  * itself looked locked.
  */
 @Composable
-fun nebenKnopfFarben(): ButtonColors = ButtonDefaults.outlinedButtonColors(
+fun secondaryButtonColors(): ButtonColors = ButtonDefaults.outlinedButtonColors(
     contentColor = MaterialTheme.colorScheme.primary,
-    disabledContentColor = lockedColors(MaterialTheme.colorScheme).schrift,
+    disabledContentColor = lockedColors(MaterialTheme.colorScheme).font,
 )
 
 /**
@@ -32,17 +32,17 @@ fun nebenKnopfFarben(): ButtonColors = ButtonDefaults.outlinedButtonColors(
  * barely stood out from the background; locked lighter, but still recognizable as a button at 3:1.
  */
 @Composable
-fun nebenKnopfRand(aktiv: Boolean = true): BorderStroke =
-    BorderStroke(1.dp, if (aktiv) MaterialTheme.colorScheme.outline
+fun secondaryButtonRand(active: Boolean = true): BorderStroke =
+    BorderStroke(1.dp, if (active) MaterialTheme.colorScheme.outline
                        else lockedColors(MaterialTheme.colorScheme).edge)
 
 /**
- * Stacked buttons equally wide, as wide as the widest one: „Set merken" stood
- * narrower above „Barcode scannen", and the group looked uneven. Every button in it
+ * Stacked buttons equally wide, as wide as the widest one: "Remember set" stood
+ * narrower above "Scan barcode", and the group looked uneven. Every button in it
  * takes `Modifier.fillMaxWidth()`.
  */
 @Composable
-fun ButtonStack(inhalt: @Composable ColumnScope.() -> Unit) {
+fun ButtonStack(content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.width(IntrinsicSize.Max), horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Abstaende.klein), content = inhalt)
+        verticalArrangement = Arrangement.spacedBy(Spacing.small), content = content)
 }

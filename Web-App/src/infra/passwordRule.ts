@@ -1,28 +1,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ErrorCode } from './errorTexts';
-import { prozessweit } from './prozessweit';
+import { processWide } from './processWide';
 
 /** One constant for all paths that set a password. Existing passwords
  * stay valid; the rule applies on the next set. */
 export const PASSWORD_MIN_CHARS = 12;
 
-export function passwordToShort(passwort: unknown): boolean {
-  return String(passwort ?? '').length < PASSWORD_MIN_CHARS;
+export function passwordToShort(password: unknown): boolean {
+  return String(password ?? '').length < PASSWORD_MIN_CHARS;
 }
 
 /** argon2id reads the whole password; the limit only keeps oversized inputs away
  * (the same as in the API contract, src/contract/account.ts). */
 export const PASSWORD_MAX_CHARS = 1024;
 
-/** Shipped along (haeufige-passwoerter.txt next to this file), without a network query. */
-function haeufige(): Set<string> {
-  return prozessweit(
-    'haeufigePasswoerter',
+/** Shipped along (common-passwords.txt next to this file), without a network query. */
+function common(): Set<string> {
+  return processWide(
+    'commonPasswords',
     () =>
       new Set(
         fs
-          .readFileSync(path.join(__dirname, 'haeufige-passwoerter.txt'), 'utf8')
+          .readFileSync(path.join(__dirname, 'common-passwords.txt'), 'utf8')
           .split('\n')
           .map(z => z.trim())
           .filter(z => z && !z.startsWith('#')),
@@ -31,12 +31,12 @@ function haeufige(): Set<string> {
 }
 
 /** For every path that sets a password: the reason for rejection or null. */
-export function passwordLack(passwort: unknown, benutzername?: unknown): ErrorCode | null {
-  if (passwordToShort(passwort)) return 'passwort_zu_kurz';
-  const p = String(passwort);
-  if (p.length > PASSWORD_MAX_CHARS) return 'passwort_zu_lang';
-  const klein = p.toLowerCase();
-  if (haeufige().has(klein) || (typeof benutzername === 'string' && klein === benutzername.toLowerCase()))
-    return 'passwort_zu_haeufig';
+export function passwordLack(password: unknown, username?: unknown): ErrorCode | null {
+  if (passwordToShort(password)) return 'password_too_short';
+  const p = String(password);
+  if (p.length > PASSWORD_MAX_CHARS) return 'password_too_long';
+  const small = p.toLowerCase();
+  if (common().has(small) || (typeof username === 'string' && small === username.toLowerCase()))
+    return 'password_too_common';
   return null;
 }

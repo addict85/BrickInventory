@@ -37,7 +37,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/jobs');
 const { catalogSet } = require('./helpers/inventory');
 const db = testData();
@@ -49,41 +49,41 @@ test.after(async () => {
 
 let MAIN = 0;
 
-function item(typ, id, farbe, menge = 1) {
+function item(kind, id, color, quantity = 1) {
   return (
-    `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
-    (farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`) +
-    `<MAXPRICE>-1.0000</MAXPRICE>\n<MINQTY>${menge}</MINQTY>\n` +
+    `<ITEM>\n<ITEMTYPE>${kind}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
+    (color === null ? '' : `<COLOR>${color}</COLOR>\n`) +
+    `<MAXPRICE>-1.0000</MAXPRICE>\n<MINQTY>${quantity}</MINQTY>\n` +
     `<CONDITION>X</CONDITION>\n<NOTIFY>N</NOTIFY>\n</ITEM>`
   );
 }
-const liste = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${i.join('\n')}\n</INVENTORY>\n`;
+const list = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${i.join('\n')}\n</INVENTORY>\n`;
 
 /** The test's file: two resolvable parts, one open. */
-const XML = liste(
+const XML = list(
   item('P', '3001', 5, 3), // bl_mapping: NULL registration → stage 2
   item('P', '4162', 1, 2), // bl_mapping: deviating number → stage 1
   item('P', '99999', 5, 1), // nothing → open
 );
 
-async function hochladen(base, xml, abfrage = '') {
+async function uploadIt(base, xml, query = '') {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
+  const r = await fetch(`${base}/api/v2/wanted-list/import/xml${query}`, { method: 'POST', body: fd });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
 /** The same address, but the response read LINE BY LINE (NDJSON). */
-async function uploadStream(base, xml, abfrage) {
+async function uploadStream(base, xml, query) {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
-  const roh = await r.text();
-  const zeilen = roh
+  const r = await fetch(`${base}/api/v2/wanted-list/import/xml${query}`, { method: 'POST', body: fd });
+  const raw = await r.text();
+  const lines = raw
     .split('\n')
     .filter(z => z.trim())
     .map(z => JSON.parse(z));
-  return { status: r.status, typ: r.headers.get('content-type') || '', zeilen };
+  return { status: r.status, kind: r.headers.get('content-type') || '', lines };
 }
 
 async function setup() {
@@ -112,31 +112,31 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   await setup();
 
   importWorker(t, _req);
-  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const srv = testServer(_req, { session: { userId: MAIN }, t });
 
   await t.test('1. a file without <INVENTORY> is rejected beforehand', async () => {
-    const { status, body } = await hochladen(srv.base, '<?xml version="1.0"?>\n<FOO/>\n');
-    assert.equal(status, 422, `Erwartet 422, bekam ${status}`);
+    const { status, body } = await uploadIt(srv.base, '<?xml version="1.0"?>\n<FOO/>\n');
+    assert.equal(status, 422, `expected 422, got ${status}`);
     assert.match(
       String(body.error || ''),
       /Wanted-Liste/,
-      `Abgelehnt mit „${body.error}" — der Text soll sagen, DASS es keine Liste ist. ` +
-        '„0 Posten gelesen" wäre mehrdeutig: Das kann auch eine leere Liste sein.',
+      `Rejected with „${body.error}“ — the text should say THAT it is not a list. ` +
+        '„0 Posten gelesen“ would be ambiguous: that can also be an empty list.',
     );
   });
 
   await t.test('2. the preview writes NOTHING', async () => {
-    const { status, body } = await hochladen(srv.base, XML);
-    assert.equal(status, 200, `Erwartet 200, bekam ${status}: ${JSON.stringify(body)}`);
-    assert.equal(body.vorschau, true, 'Ohne schreiben=1 ist das keine Vorschau');
-    assert.equal(body.gelesen, 3, `${body.gelesen} Posten gelesen statt 3`);
-    assert.equal(body.angelegt, 0, `${body.angelegt} angelegt — die Vorschau schreibt nicht`);
+    const { status, body } = await uploadIt(srv.base, XML);
+    assert.equal(status, 200, `expected 200, got ${status}: ${JSON.stringify(body)}`);
+    assert.equal(body.preview, true, 'Without write=1 this is not a preview');
+    assert.equal(body.parsed, 3, `${body.parsed} items read instead of 3`);
+    assert.equal(body.created, 0, `${body.created} created — the preview does not write`);
 
     // Checked against the TABLE and not the response: a route that
     // reports "vorschau: true" and writes anyway would look right in the
@@ -144,63 +144,63 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM parts WHERE user_id=$1', [MAIN])).c,
       0,
-      'Die Vorschau hat Teile angelegt',
+      'The preview created parts',
     );
   });
 
   await t.test('3. the preview names the stages separately and the open items', async () => {
-    const { body } = await hochladen(srv.base, XML);
+    const { body } = await uploadIt(srv.base, XML);
     assert.deepEqual(
-      body.stufen,
+      body.levels,
       { gleich_vermerkt: 1, zuordnung: 1 },
-      `Stufen: ${JSON.stringify(body.stufen)} — erwartet je eine aus bl_mapping`,
+      `levels: ${JSON.stringify(body.levels)} — expected one each from bl_mapping`,
     );
-    assert.equal(body.offen.length, 1, `${body.offen.length} offen statt 1`);
+    assert.equal(body.open.length, 1, `${body.open.length} open instead of 1`);
     assert.equal(
-      body.offen[0].blId,
+      body.open[0].blId,
       '99999',
-      'Der offene Posten wird nicht mit seiner BrickLink-Nummer genannt — dann kann ' + 'ihn niemand nachsehen',
+      'The open item is not named with its BrickLink number — then ' + 'nobody can look it up',
     );
     // Rebrickable was NOT asked: without rebrickable=1 the import costs
     // no quota.
-    assert.equal(body.rebrickable, undefined, 'Es wurde bei Rebrickable gefragt, obwohl rebrickable=1 fehlte');
+    assert.equal(body.rebrickable, undefined, 'Rebrickable was asked although rebrickable=1 was missing');
   });
 
-  await t.test('4. with schreiben=1 manual parts are created — with quantity and color', async () => {
-    const { body } = await hochladen(srv.base, XML, '?schreiben=1');
-    assert.equal(body.vorschau, false);
-    assert.equal(body.angelegt, 2, `${body.angelegt} angelegt statt 2: ${JSON.stringify(body.posten)}`);
-    assert.equal(body.fehler, 0, `${body.fehler} Fehler: ${JSON.stringify(body.posten)}`);
+  await t.test('4. with write=1 manual parts are created — with quantity and color', async () => {
+    const { body } = await uploadIt(srv.base, XML, '?write=1');
+    assert.equal(body.preview, false);
+    assert.equal(body.created, 2, `${body.created} created instead of 2: ${JSON.stringify(body.items)}`);
+    assert.equal(body.failed, 0, `${body.failed} errors: ${JSON.stringify(body.items)}`);
 
     // Stage 2: the number stays, the color is mapped (BL 5 → RB 4).
     const a = await db.get(
-      `SELECT p.color_id, COALESCE(SUM(pa.quantity),0)::int AS menge
+      `SELECT p.color_id, COALESCE(SUM(pa.quantity),0)::int AS quantity
          FROM parts p LEFT JOIN part_acquisitions pa
            ON pa.user_id=p.user_id AND pa.part_number=p.part_number AND pa.color_id=p.color_id
         WHERE p.user_id=$1 AND p.part_number='3001' GROUP BY p.color_id`,
       [MAIN],
     );
-    assert.ok(a, '3001 wurde nicht angelegt');
-    assert.equal(Number(a.color_id), 4, `Farbe ${a.color_id} statt 4 (BL 5 = Rebrickable 4)`);
-    assert.equal(a.menge, 3, `Menge ${a.menge} statt 3 — MINQTY war 3`);
+    assert.ok(a, '3001 was not created');
+    assert.equal(Number(a.color_id), 4, `colour ${a.color_id} instead of 4 (BL 5 = Rebrickable 4)`);
+    assert.equal(a.quantity, 3, `quantity ${a.quantity} instead of 3 — MINQTY was 3`);
 
     // Stage 1: the deviating number must be CONVERTED, not taken over.
     assert.ok(
       await db.get(`SELECT 1 FROM parts WHERE user_id=$1 AND part_number='98765'`, [MAIN]),
-      'Die BrickLink-Nummer 4162 wurde nicht auf 98765 abgebildet',
+      'The BrickLink number 4162 was not mapped to 98765',
     );
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='4162'`, [MAIN])).c,
       0,
-      'Die BrickLink-Nummer 4162 steht roh im Bestand — sie ist KEINE ' +
-        'Rebrickable-Nummer, und ein Teil darunter findet keinen Katalogeintrag',
+      'The BrickLink number 4162 is stored raw in the stock — it is NOT a ' +
+        'Rebrickable number, and a part under it finds no catalogue entry',
     );
 
     // The open item was NOT created.
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='99999'`, [MAIN])).c,
       0,
-      'Ein Posten ohne bekannte Rebrickable-Nummer wurde trotzdem angelegt',
+      'An item without a known Rebrickable number was created anyway',
     );
   });
 
@@ -209,133 +209,131 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     // even a real value must not end up as purchase price — otherwise the
     // finance view would show an amount nobody spent.
     // The column is called `unit_price`, not `price` — looked up after my …
-    const preise = await db.all('SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [MAIN]);
-    assert.ok(preise.length > 0, 'Vorbedingung: es gibt Erfassungen');
-    for (const p of preise) {
+    const prices = await db.all('SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [MAIN]);
+    assert.ok(prices.length > 0, 'precondition: there are acquisitions');
+    for (const p of prices) {
       assert.ok(
         p.unit_price === null || Number(p.unit_price) >= 0,
-        `Ein Kaufpreis von ${p.unit_price} ist aus MAXPRICE entstanden — MAXPRICE ist ` +
-          'eine Suchgrenze, kein bezahlter Preis',
+        `A purchase price of ${p.unit_price} came from MAXPRICE — MAXPRICE is ` + 'a search limit, not a price paid',
       );
     }
   });
 
   await t.test('6. foreign kinds are in the report', async () => {
-    const mit = liste(item('P', '3001', 5), item('B', '5002', null), item('G', '6001', null));
-    const { body } = await hochladen(srv.base, mit);
+    const withIt = list(item('P', '3001', 5), item('B', '5002', null), item('G', '6001', null));
+    const { body } = await uploadIt(srv.base, withIt);
     assert.deepEqual(
-      body.fremdeArten,
+      body.foreignTypes,
       { B: 1, G: 1 },
-      `fremdeArten: ${JSON.stringify(body.fremdeArten)} — ein Buch und ein Zubehör`,
+      `foreignTypes: ${JSON.stringify(body.foreignTypes)} — one book and one gear item`,
     );
   });
 
   // The progress
 
-  await t.test('7. with strom=1 progress lines come, finally the report', async () => {
-    const { status, typ, zeilen } = await uploadStream(srv.base, XML, '?schreiben=1&strom=1');
+  await t.test('7. with stream=1 progress lines come, finally the report', async () => {
+    const { status, kind, lines } = await uploadStream(srv.base, XML, '?write=1&stream=1');
     assert.equal(status, 200);
     assert.match(
-      typ,
+      kind,
       /ndjson/,
-      `Content-Type „${typ}" — eine Zeilen-Antwort darf nicht als application/json ` +
-        'ausgegeben werden, sonst versucht der Browser sie als EIN Dokument zu lesen',
+      `Content-Type „${kind}" — a line-based response must not be served as application/json, ` +
+        'otherwise the browser tries to read it as ONE document',
     );
 
     // The import runs as a job; the request reads its state at intervals,
     // so intermediate states can coincide. The last one always arrives.
-    const melde = zeilen.filter(z => z.fortschritt);
-    assert.ok(melde.length >= 1, 'keine Fortschrittszeile');
-    const fertig = melde.map(z => z.fortschritt.fertig);
+    const notify = lines.filter(z => z.progress);
+    assert.ok(notify.length >= 1, 'no progress line');
+    const done = notify.map(z => z.progress.done);
     assert.deepEqual(
-      fertig,
-      [...fertig].sort((a, b) => a - b),
-      'Die Zählung muss aufsteigen',
+      done,
+      [...done].sort((a, b) => a - b),
+      'The count must ascend',
     );
-    assert.equal(fertig.at(-1), 3, 'Der letzte Stand nennt alle Posten (sonst bliebe der Balken vor dem Ende stehen)');
-    for (const z of melde) {
-      assert.equal(z.fortschritt.gesamt, 3, 'Der Nenner ist die Zahl der Posten');
-      assert.equal(z.fortschritt.phase, 'schreiben');
+    assert.equal(done.at(-1), 3, 'The last state names all items (otherwise the bar would stop before the end)');
+    for (const z of notify) {
+      assert.equal(z.progress.total, 3, 'The denominator is the number of items');
+      assert.equal(z.progress.phase, 'write');
     }
 
-    const letzte = zeilen[zeilen.length - 1];
-    assert.equal(letzte.success, true, 'Die letzte Zeile ist der Bericht');
-    assert.equal(letzte.vorschau, false, 'mit schreiben=1 ist es kein Probelauf');
-    assert.equal(letzte.gelesen, 3);
-    assert.ok(!letzte.fortschritt, 'Der Bericht ist keine Fortschrittszeile');
+    const last = lines[lines.length - 1];
+    assert.equal(last.success, true, 'The last line is the report');
+    assert.equal(last.preview, false, 'with write=1 it is not a dry run');
+    assert.equal(last.parsed, 3);
+    assert.ok(!last.progress, 'The report is not a progress line');
   });
 
   // The same bar as for the set import
 
   await t.test('9. an import leaves a completed job', async () => {
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
-    const { body } = await hochladen(srv.base, XML, '?schreiben=1');
+    const { body } = await uploadIt(srv.base, XML, '?write=1');
     assert.equal(body.success, true);
 
     const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
     assert.ok(
       job,
-      'Ohne Auftragszeile zeigt weder die App noch eine zweite ' + 'Sitzung etwas an — genau darum geht es',
+      'Without a job row neither the app nor a second ' + 'session shows anything — that is the whole point',
     );
     assert.equal(
       job.status,
       'done',
-      `Status „${job.status}" — nach dem Import muss der Auftrag ZU sein, sonst ` +
-        'steht der Balken in der App auf „läuft", bis jemand einen neuen startet',
+      `status „${job.status}“ — after the import the job must be CLOSED, otherwise ` +
+        'the bar in the app shows „läuft“ until someone starts a new one',
     );
-    assert.equal(Number(job.total), 3, 'Der Nenner ist die Zahl der Posten');
-    assert.equal(Number(job.done), Number(job.total), 'Am Ende muss der Balken voll sein');
-    assert.equal(job.current, null, 'Was „gerade dran" ist, gibt es nicht mehr');
+    assert.equal(Number(job.total), 3, 'The denominator is the number of items');
+    assert.equal(Number(job.done), Number(job.total), 'At the end the bar must be full');
+    assert.equal(job.current, null, 'What is „gerade dran" no longer exists');
     // buildJobStatus computes ok/warn/err from `results` — without the list the
     // bar would say "0 ok" after the end although two items were created.
     const results = Array.isArray(job.results) ? job.results : JSON.parse(job.results || '[]');
     assert.equal(
       results.filter(r => r.success).length,
-      body.angelegt + body.aufgestockt,
-      `results zählt ${results.length} Einträge, der Bericht nennt ` +
-        `${body.angelegt} angelegt und ${body.aufgestockt} aufgestockt`,
+      body.created + body.topped_up,
+      `results counts ${results.length} entries, the report names ` +
+        `${body.created} created and ${body.topped_up} topped up`,
     );
 
     // Every line NAMES its item (Marco's finding of 21.10.)
-    assert.equal(results.length, 3, 'Je Posten eine Zeile, auch für den offenen');
+    assert.equal(results.length, 3, 'One row per item, also for the open one');
     for (const r of results) {
       assert.ok(
         r.set_number,
-        `Ein Eintrag ohne set_number: ${JSON.stringify(r)}. Daraus wird im ` + 'Protokoll „undefined – updated_at"',
+        `An entry without set_number: ${JSON.stringify(r)}. In the log that becomes ` + '„undefined – updated_at"',
       );
     }
     assert.deepEqual(
       results.map(r => r.set_number).sort(),
       ['3001', '4162', '99999'],
-      'Die BrickLink-Nummern aus der Datei — das sind die Zeilen, die Marco ' +
-        'hochgeladen hat. 4162 trägt bei Rebrickable eine ANDERE Nummer; im ' +
-        'Protokoll steht die aus seiner Datei',
+      'The BrickLink numbers from the file — those are the rows Marco ' +
+        'uploaded. 4162 carries a DIFFERENT number at Rebrickable; the ' +
+        'log shows the one from his file',
     );
-    const angelegt = results.filter(r => r.success);
+    const created = results.filter(r => r.success);
     assert.ok(
-      angelegt.every(r => r.action === 'added' || r.action === 'updated'),
-      `action muss 'added' oder 'updated' sein, sonst schreibt die Anzeige ` +
-        `„updated_at" für alles: ${JSON.stringify(angelegt)}`,
+      created.every(r => r.action === 'added' || r.action === 'updated'),
+      `action must be 'added' or 'updated', otherwise the display writes ` +
+        `„updated_at" for everything: ${JSON.stringify(created)}`,
     );
-    const offen = results.find(r => r.set_number === '99999');
+    const open = results.find(r => r.set_number === '99999');
     assert.equal(
-      offen.isWarning,
+      open.isWarning,
       true,
-      'Ein offener Posten ist eine Anmerkung, kein Fehler — dieselbe ' + 'Einteilung wie bei den Zahlen darüber',
+      'An open item is a remark, not an error — the same ' + 'grouping as for the numbers above',
     );
-    assert.ok(offen.error, 'Ohne Grund steht in der Zeile nur die Nummer');
+    assert.ok(open.error, 'Without a reason the row shows only the number');
   });
 
   await t.test('10. a PREVIEW creates no job', async () => {
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
-    const { body } = await hochladen(srv.base, XML);
-    assert.equal(body.vorschau, true, 'Vorbedingung: das ist eine Vorschau');
+    const { body } = await uploadIt(srv.base, XML);
+    assert.equal(body.preview, true, 'precondition: this is a preview');
     const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
     assert.equal(
       job,
       undefined,
-      'Eine Vorschau ändert nichts. Ein Balken „Import läuft" dafür wäre eine ' +
-        'Lüge in drei Oberflächen gleichzeitig.',
+      'A preview changes nothing. A „Import läuft“ bar for it would be a ' + 'lie in three interfaces at once.',
     );
   });
 
@@ -351,49 +349,47 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
       [MAIN],
     );
 
-    const { body } = await hochladen(srv.base, XML, '?schreiben=1');
-    assert.equal(body.success, true, 'Der Import selbst läuft weiter');
+    const { body } = await uploadIt(srv.base, XML, '?write=1');
+    assert.equal(body.success, true, 'The import itself keeps running');
 
     const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
-    assert.equal(job.status, 'running', 'Der fremde Auftrag muss unberührt bleiben');
-    assert.equal(Number(job.total), 380, `total=${job.total} — der Wanted-Import hat den CSV-Auftrag überschrieben`);
-    assert.equal(Number(job.done), 42, 'auch die Zählung gehört dem anderen Import');
+    assert.equal(job.status, 'running', 'The foreign job must stay untouched');
+    assert.equal(Number(job.total), 380, `total=${job.total} — the wanted import overwrote the CSV job`);
+    assert.equal(Number(job.done), 42, 'the count belongs to the other import too');
     assert.equal(job.current, '10256-1');
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
   });
 
-  await t.test('8. without strom=1 the address responds unchanged as JSON', async () => {
+  await t.test('8. without stream=1 the address responds unchanged as JSON', async () => {
     // The path of the Android app and all other checks. It must NOT have
     // changed because of the stream.
     const r = await (async () => {
       const fd = new FormData();
       fd.append('file', new Blob([XML], { type: 'text/xml' }), 'wanted.xml');
-      return fetch(`${srv.base}/api/v1/wanted-list/import/xml`, { method: 'POST', body: fd });
+      return fetch(`${srv.base}/api/v2/wanted-list/import/xml`, { method: 'POST', body: fd });
     })();
     assert.match(r.headers.get('content-type') || '', /application\/json/);
-    const roh = await r.text();
-    assert.ok(!roh.includes('"progress"'), 'Ohne strom=1 darf keine Fortschrittszeile in der Antwort stehen');
-    const body = JSON.parse(roh);
+    const raw = await r.text();
+    assert.ok(!raw.includes('"progress"'), 'Without stream=1 no progress line may be in the response');
+    const body = JSON.parse(raw);
     assert.equal(body.success, true);
-    assert.equal(body.gelesen, 3);
+    assert.equal(body.parsed, 3);
   });
 
-  await t.test('9. a set goes through setErfassen: created, then topped up, with follow-up work', async () => {
+  await t.test('9. a set goes through acquireSet: created, then topped up, with follow-up work', async () => {
     const SN = '76001-1';
     await catalogSet(db, SN, { name: 'Wanted-Set', minifigs: 0 });
-    const datei = liste(item('S', SN, null, 2));
-    const erst = (await hochladen(srv.base, datei, '?schreiben=1')).body;
-    assert.equal(erst.angelegt, 1, JSON.stringify(erst));
-    const dann = (await hochladen(srv.base, datei, '?schreiben=1')).body;
-    assert.equal(dann.aufgestockt, 1, JSON.stringify(dann));
-    const menge = await db.get(
+    const file = list(item('S', SN, null, 2));
+    const erst = (await uploadIt(srv.base, file, '?write=1')).body;
+    assert.equal(erst.created, 1, JSON.stringify(erst));
+    const then = (await uploadIt(srv.base, file, '?write=1')).body;
+    assert.equal(then.topped_up, 1, JSON.stringify(then));
+    const quantity = await db.get(
       'SELECT SUM(quantity)::int AS n FROM set_acquisitions WHERE user_id = $1 AND set_number = $2',
       [MAIN, SN],
     );
-    assert.equal(menge.n, 4);
-    const nacharbeit = await db.all("SELECT 1 FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [
-      SN,
-    ]);
-    assert.ok(nacharbeit.length >= 1, 'ohne Nacharbeit bliebe das Set ohne Katalog');
+    assert.equal(quantity.n, 4);
+    const rework = await db.all("SELECT 1 FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1", [SN]);
+    assert.ok(rework.length >= 1, 'without follow-up work the set would stay without a catalogue');
   });
 });

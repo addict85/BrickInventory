@@ -2,7 +2,7 @@
  * The server answers in the language that the requester SHOWS.
  *
  * Counter-checks (measured 10.11.2026, each on its own, reverted):
- *   A  in the German text of einladungen_zu_viele `{n}` replaced by `n` → red:
+ *   A  in the German text of too_many_invites `{n}` replaced by `n` → red:
  *      “every entry of the table has both languages and the same placeholders”
  *   B  in api() (api.js) the header Accept-Language deleted (bundle rebuilt)
  *      → red: “the web app tells the server which language it shows”
@@ -19,30 +19,30 @@ const ROOT = path.join(__dirname, '..');
 const ALLOWED = {};
 
 /** All .ts under the given folders, also in subfolders. */
-function tsFiles(dir, praefix = '') {
-  const gefunden = [];
+function tsFiles(dir, prefix = '') {
+  const found = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) gefunden.push(...tsFiles(path.join(dir, e.name), praefix + e.name + '/'));
-    else if (e.name.endsWith('.ts')) gefunden.push([praefix + e.name, path.join(dir, e.name)]);
+    if (e.isDirectory()) found.push(...tsFiles(path.join(dir, e.name), prefix + e.name + '/'));
+    else if (e.name.endsWith('.ts')) found.push([prefix + e.name, path.join(dir, e.name)]);
   }
-  return gefunden;
+  return found;
 }
 
 test('no route sends a fixed error sentence', () => {
-  const dateien = [
+  const files = [
     ...tsFiles(path.join(ROOT, 'routes')).map(([r, p]) => [r, p]),
     ...tsFiles(path.join(ROOT, 'src')).map(([r, p]) => [r, p]),
     ...tsFiles(path.join(ROOT, 'jobs')).map(([r, p]) => [r, p]),
   ];
-  assert.ok(dateien.length >= 30, `Nur ${dateien.length} Dateien gefunden — dann prüft der Rest nichts.`);
+  assert.ok(files.length >= 30, `Only ${files.length} files found — then the rest checks nothing.`);
 
   const violations = [];
-  const gebraucht = new Set();
-  for (const [, voll] of dateien) {
+  const used = new Set();
+  for (const [, full] of files) {
     // The key in ALLOWED is the path from Web-App/ — assemble it here.
-    const belowFolder = path.relative(ROOT, voll).split(path.sep).join('/');
+    const belowFolder = path.relative(ROOT, full).split(path.sep).join('/');
     const src = fs
-      .readFileSync(voll, 'utf8')
+      .readFileSync(full, 'utf8')
       .split('\n')
       .filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*'))
       .join('\n');
@@ -55,13 +55,13 @@ test('no route sends a fixed error sentence', () => {
       // Variables and empty values are not sentences.
       if (!text || text.length < 4) continue;
       if (/^[a-z_.]+$/.test(text)) continue;
-      const zeile = src.slice(0, m.index).split('\n').length;
+      const row = src.slice(0, m.index).split('\n').length;
       // An allowed file is SEARCHED nevertheless — only its hit does not end up
       // in the violations, but proves that the exception is still
       // needed. If one skips it right away instead, its entry can
       // remain for years without describing anything any more.
-      if (belowFolder in ALLOWED) gebraucht.add(belowFolder);
-      else violations.push(`${belowFolder}:${zeile}  ${text.slice(0, 60)}`);
+      if (belowFolder in ALLOWED) used.add(belowFolder);
+      else violations.push(`${belowFolder}:${row}  ${text.slice(0, 60)}`);
     }
   }
 
@@ -70,45 +70,45 @@ test('no route sends a fixed error sentence', () => {
   // as `{ de: '…', en: '…' }`, never as `error: '…'`. So the entry hid
   // nothing, but of all files exempted the one in which ALL error texts
   // stand from this check. So that this does not come back:
-  const veraltet = Object.keys(ALLOWED)
-    .filter(k => !gebraucht.has(k))
+  const stale = Object.keys(ALLOWED)
+    .filter(k => !used.has(k))
     .sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
-    'Diese Eintraege in ALLOWED beschreiben nichts mehr:\n  ' +
-      veraltet.join('\n  ') +
-      '\nDie Datei enthaelt keinen festen Fehlersatz (mehr). Der Eintrag nimmt sie ' +
-      'trotzdem von der Pruefung aus — raus damit.',
+    'These entries in ALLOWED no longer describe anything:\n  ' +
+      stale.join('\n  ') +
+      '\nThe file no longer contains a fixed error sentence. The entry still exempts it ' +
+      'from the check — remove it.',
   );
 
   assert.deepEqual(
     violations,
     [],
-    'Diese Stellen schicken einen festen Satz statt sendError(req, res, …, code):\n  ' +
+    'These places send a fixed sentence instead of sendError(req, res, …, code):\n  ' +
       violations.join('\n  ') +
-      '\nDamit steht die Meldung nur in einer Sprache da — in einer Oberfläche, ' +
-      'die es in zweien gibt.',
+      '\nThat way the message exists in only one language — in an interface ' +
+      'that exists in two.',
   );
 });
 
 test('every entry of the table has both languages and the same placeholders', () => {
   // A missing placeholder means that in one language „{name}" stands on the screen.
-  const { FEHLER, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
-  const codes = Object.keys(FEHLER);
-  assert.ok(codes.length >= 60, `Nur ${codes.length} Einträge — greift die Tabelle noch?`);
+  const { ERRORS, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
+  const codes = Object.keys(ERRORS);
+  assert.ok(codes.length >= 60, `Only ${codes.length} entries — does the table still work?`);
   const skewed = [];
   for (const code of codes) {
     const vars = {};
-    for (const sprache of ['de', 'en']) {
-      if (!String(FEHLER[code][sprache] || '').trim()) skewed.push(`${code}: ${sprache} fehlt`);
-      for (const [, n] of String(FEHLER[code][sprache] || '').matchAll(/\{(\w+)\}/g)) vars[n] = `«${n}»`;
+    for (const language of ['de', 'en']) {
+      if (!String(ERRORS[code][language] || '').trim()) skewed.push(`${code}: ${language} fehlt`);
+      for (const [, n] of String(ERRORS[code][language] || '').matchAll(/\{(\w+)\}/g)) vars[n] = `«${n}»`;
     }
     // Filled with all placeholders of both languages, no brace remains in either.
-    for (const sprache of ['de', 'en']) {
-      const text = errorText(code, sprache, vars);
-      if (/\{\w+\}/.test(text)) skewed.push(`${code}/${sprache}: ${text}`);
-      for (const n of Object.keys(vars)) if (!text.includes(`«${n}»`)) skewed.push(`${code}/${sprache}: {${n}} fehlt`);
+    for (const language of ['de', 'en']) {
+      const text = errorText(code, language, vars);
+      if (/\{\w+\}/.test(text)) skewed.push(`${code}/${language}: ${text}`);
+      for (const n of Object.keys(vars)) if (!text.includes(`«${n}»`)) skewed.push(`${code}/${language}: {${n}} fehlt`);
     }
   }
   assert.deepEqual(skewed, []);
@@ -117,15 +117,15 @@ test('every entry of the table has both languages and the same placeholders', ()
 test('the web app tells the server which language it shows', async () => {
   // Without this header the server would fall back to German, and the table above would be ineffective.
   const { openUi } = require('./helpers/ui');
-  for (const sprache of ['en', 'de']) {
-    const { w, aufrufe } = await openUi({}, { sprache });
+  for (const language of ['en', 'de']) {
+    const { w, calls } = await openUi({}, { language });
     try {
-      const api = aufrufe.filter(a => a.url.includes('/api/v1/'));
-      assert.ok(api.length >= 5, `nur ${api.length} Anfragen`);
+      const api = calls.filter(a => a.url.includes('/api/v2/'));
+      assert.ok(api.length >= 5, `only ${api.length} requests`);
       assert.deepEqual(
-        api.filter(a => a.headers['Accept-Language'] !== sprache).map(a => a.url),
+        api.filter(a => a.headers['Accept-Language'] !== language).map(a => a.url),
         [],
-        `ohne Sprache ${sprache}`,
+        `without language ${language}`,
       );
     } finally {
       w.close();

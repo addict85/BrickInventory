@@ -1,6 +1,6 @@
 // CSV with correct quoting, so that an export can be read back unchanged with the matching import.
 import { parse } from 'csv-parse/sync';
-import { errorText, type Sprache } from './errorTexts';
+import { errorText, type Language } from './errorTexts';
 
 /** Tab and carriage return belong to it: Excel reads them as separators
  * and treats the following field as a formula again. Also after whitespace and in
@@ -52,7 +52,7 @@ export function toCsv(headers: string[], rows: Record<string, unknown>[]) {
 }
 
 /** @returns ISO date or null if nothing usable is in it */
-export function csvDatum(raw: unknown) {
+export function csvDate(raw: unknown) {
   const s = String(raw ?? '').trim();
   if (!s) return null;
 
@@ -77,25 +77,25 @@ export function csvDatum(raw: unknown) {
 /** Hit the prototype chain instead of a data field. */
 const DANGEROUS_COLUMNS = new Set(['__proto__', 'constructor', 'prototype']);
 
-/** `zeilen[i]` is the line of the file in which `records[i]` stands: blank lines would otherwise shift the count. */
+/** `rows[i]` is the line of the file in which `records[i]` stands: blank lines would otherwise shift the count. */
 export function csvReadIn(csvText: string): {
   records: CsvRow[];
   delimiter: string;
-  uebersprungen: number[];
-  zeilen: number[];
+  skipped: number[];
+  rows: number[];
 } {
   const text = String(csvText || '').replace(/^\uFEFF/, '');
   const firstLine = text.split('\n')[0] || '';
   const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
 
-  const uebersprungen: number[] = [];
+  const skipped: number[] = [];
   const records = parse(text, {
     // Filter the header row: `columns: true` turns `__proto__` into a
     // key that writes into the prototype chain.
-    columns: (kopf: string[]) =>
-      kopf.map(name => {
-        const rein = String(name || '').trim();
-        return DANGEROUS_COLUMNS.has(rein) ? false : rein;
+    columns: (header: string[]) =>
+      header.map(name => {
+        const clean = String(name || '').trim();
+        return DANGEROUS_COLUMNS.has(clean) ? false : clean;
       }),
     skip_empty_lines: true,
     trim: true,
@@ -107,44 +107,52 @@ export function csvReadIn(csvText: string): {
   }) as { record: CsvRow; info: { lines: number } }[];
 
   // Rows without content count as skipped — that is what `relax_column_count` makes of a crooked row.
-  const brauchbar: CsvRow[] = [];
-  const zeilen: number[] = [];
+  const usable: CsvRow[] = [];
+  const rows: number[] = [];
   records.forEach(({ record: r, info }) => {
-    const werte = Object.values(r).map(v => String(v ?? '').trim());
-    if (werte.some(v => v !== '')) {
-      brauchbar.push(r);
-      zeilen.push(info.lines);
-    } else uebersprungen.push(info.lines);
+    const values = Object.values(r).map(v => String(v ?? '').trim());
+    if (values.some(v => v !== '')) {
+      usable.push(r);
+      rows.push(info.lines);
+    } else skipped.push(info.lines);
   });
 
-  return { records: brauchbar, delimiter, uebersprungen, zeilen };
+  return { records: usable, delimiter, skipped, rows };
 }
 
 /** At most ten line numbers, otherwise the message gets longer than helpful. */
-export function rowsList(zeilen: number[]): string {
-  return zeilen.slice(0, 10).join(', ') + (zeilen.length > 10 ? ', …' : '');
+export function rowsList(rows: number[]): string {
+  return rows.slice(0, 10).join(', ') + (rows.length > 10 ? ', …' : '');
 }
 
-export function skippedHint(zeilen: number[], sprache: Sprache = 'de'): string | null {
-  if (!zeilen.length) return null;
-  return errorText('csv_uebersprungen', sprache, { anzahl: zeilen.length, zeilen: rowsList(zeilen) });
+export function skippedHint(rows: number[], language: Language = 'de'): string | null {
+  if (!rows.length) return null;
+  return errorText('csv_skipped', language, { count: rows.length, rows: rowsList(rows) });
 }
+
+/** Older exports and hand-made files name the columns in German: the first of the
+ * given headers that is present (`??`) or filled (`||`) wins. As strings, the German
+ * headers stay what they are, values from outside. */
+export const csvAny = (row: CsvRow, ...headers: string[]): string | undefined =>
+  headers.map(h => row[h]).find(v => v != null);
+export const csvFirst = (row: CsvRow, ...headers: string[]): string | undefined =>
+  headers.map(h => row[h]).find(v => !!v);
 
 // The shared columns read once, so that every fix hits all imports.
 export function csvSharedFields(row: CsvRow): {
-  menge: number;
-  preis: number | null;
+  quantity: number;
+  price: number | null;
   recordedAt: string | null;
-  zustand: string;
+  condition: string;
 } {
-  const rawPrice = row.unit_price ?? row.Preis ?? '';
-  let preis: number | null = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
-  if (preis !== null && Number.isNaN(preis)) preis = null;
+  const rawPrice = csvAny(row, 'unit_price', 'Preis') ?? '';
+  let price: number | null = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
+  if (price !== null && Number.isNaN(price)) price = null;
   return {
-    menge: parseInt(String(row.quantity || row.Anzahl || '1').replace(/[^0-9]/g, ''), 10) || 1,
-    preis,
-    recordedAt: csvDatum(row.acquired_at || row.erfassungsdatum),
-    zustand: (row.condition || row.zustand || '').trim().toUpperCase(),
+    quantity: parseInt(String(csvFirst(row, 'quantity', 'Anzahl') || '1').replace(/[^0-9]/g, ''), 10) || 1,
+    price,
+    recordedAt: csvDate(csvFirst(row, 'acquired_at', 'erfassungsdatum')),
+    condition: (csvFirst(row, 'condition', 'zustand') || '').trim().toUpperCase(),
   };
 }
 
@@ -152,14 +160,14 @@ export function csvSharedFields(row: CsvRow): {
 export function csvRowsFromRequest(text: string): {
   records: CsvRow[];
   cleaned: CsvRow[];
-  uebersprungen: number[];
+  skipped: number[];
 } {
-  const gelesen = csvReadIn(text);
+  const read = csvReadIn(text);
   return {
-    records: gelesen.records,
+    records: read.records,
     // The apostrophe before formula characters is set by the own export; it is removed here.
-    cleaned: csvRowsClean(gelesen.records),
-    uebersprungen: gelesen.uebersprungen,
+    cleaned: csvRowsClean(read.records),
+    skipped: read.skipped,
   };
 }
 
@@ -171,7 +179,7 @@ export interface ImportRowsResult {
   error?: string | null;
   isWarning?: boolean;
   success?: boolean;
-  [feld: string]: unknown;
+  [field: string]: unknown;
 }
 export function csvImportReport(d: {
   added: number;
@@ -179,7 +187,7 @@ export function csvImportReport(d: {
   errors: number;
   records: unknown[];
   results: ImportRowsResult[];
-  uebersprungen: number[];
+  skipped: number[];
 }) {
   return {
     added: d.added,
@@ -187,8 +195,8 @@ export function csvImportReport(d: {
     errors: d.errors,
     total: d.records.length,
     results: d.results,
-    skipped: d.uebersprungen.length || undefined,
-    skipped_hint: skippedHint(d.uebersprungen) || undefined,
+    skipped: d.skipped.length || undefined,
+    skipped_hint: skippedHint(d.skipped) || undefined,
   };
 }
 export type CsvImportReport = ReturnType<typeof csvImportReport>;

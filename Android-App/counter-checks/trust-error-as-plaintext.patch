@@ -1,0 +1,17 @@
+Gegenprobe: merkePin() legt bei gescheitertem Verschlüsseln den Klartext ab statt nur im Speicher
+Modul: core-data
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
+Rot: without a key nothing stays in plaintext and nothing counts as allowed
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -343,7 +343,7 @@
+             designMirror.edit { putString(entry, secret); remove(PIN_SECRET_PREFIX + key) }
+             unsecured.remove(key)
+         } else {
+-            unsecured[key] = fingerprint
++            designMirror.edit { putString(PIN_PREFIX + key, fingerprint) }
+         }
+         retained.remove(key)
+     }

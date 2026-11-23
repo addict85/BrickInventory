@@ -3,6 +3,8 @@
  * (Android app) must deliver the same for the same route. Duplicate routes
  * no longer exist; what is checked is that no route depends on only one kind
  * of credential.
+ *
+ * Counter-check: in routes/api/finance.ts total_value taken from totals.avg instead of totals.qty_avg → red “v1 valuation: total_value is an alias of totals.qty_avg”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,8 +16,8 @@ process.env.DATABASE_URL = DB_URL;
 
 // Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
-const { routerEinhaengungen, testData } = require('./helpers/sources');
+const { noDb } = require('./helpers/db');
+const { routerMounts, testData } = require('./helpers/sources');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 
 const db = testData();
@@ -80,10 +82,10 @@ async function seed() {
     .catch(() => {});
 
   // Parts + minifigures (per set source and manual item)
-  await holdsPart(db, USER.id, '3001', { setNumber: '75192-1', menge: 10, colorId: 4, anywayIfDa: true });
-  await holdsPart(db, USER.id, '3020', { menge: 0, colorId: 0, anywayIfDa: true }); // Quantity 0: the entry behind it carries it
-  await holdsMinifig(db, USER.id, 'sw0850', { setNumber: '75192-1', menge: 1, anywayIfDa: true });
-  await holdsMinifig(db, USER.id, 'sw0001', { menge: 0, anywayIfDa: true }); // Quantity 0: the entry behind it carries it
+  await holdsPart(db, USER.id, '3001', { setNumber: '75192-1', quantity: 10, colorId: 4, anywayIfDa: true });
+  await holdsPart(db, USER.id, '3020', { quantity: 0, colorId: 0, anywayIfDa: true }); // Quantity 0: the entry behind it carries it
+  await holdsMinifig(db, USER.id, 'sw0850', { setNumber: '75192-1', quantity: 1, anywayIfDa: true });
+  await holdsMinifig(db, USER.id, 'sw0001', { quantity: 0, anywayIfDa: true }); // Quantity 0: the entry behind it carries it
 
   // Entries for parts/minifigures (own acquisition endpoints)
   await db.run(
@@ -153,7 +155,7 @@ function core(body) {
 test('API parity web app ↔ Android', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t, DB_URL);
+    noDb(t, DB_URL);
     return;
   }
   await seed();
@@ -166,8 +168,9 @@ test('API parity web app ↔ Android', async t => {
     next();
   });
   // The mount points come from server.ts
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
-  for (const r of routerEinhaengungen())
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
+  for (const r of routerMounts())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, 'routes/' + r.name + '.js'));
 
   const srv = app.listen(0);
@@ -178,61 +181,61 @@ test('API parity web app ↔ Android', async t => {
   };
 
   // Merged routes: ONE address, BOTH credentials
-  for (const [name, pfad] of [
-    ['Set-Erfassungen', '/api/v1/sets/75192-1/acquisitions'],
-    ['Teil-Erfassungen', '/api/v1/parts/3020/0/acquisitions'],
-    ['Minifig-Erfassungen', '/api/v1/minifigs/sw0001/acquisitions'],
+  for (const [name, path] of [
+    ['Set-Erfassungen', '/api/v2/sets/75192-1/acquisitions'],
+    ['Teil-Erfassungen', '/api/v2/parts/3020/0/acquisitions'],
+    ['Minifig-Erfassungen', '/api/v2/minifigs/sw0001/acquisitions'],
     // The minifigure list and manual minifigures are likewise
     // merged — previously they stood above as a PAIR, now they belong
     // here, where “one route, both credentials" is checked.
-    ['Minifiguren-Liste', '/api/v1/minifigs'],
-    ['Manuelle Minifiguren', '/api/v1/minifigs/manual'],
+    ['Minifiguren-Liste', '/api/v2/minifigs'],
+    ['Manuelle Minifiguren', '/api/v2/minifigs/manual'],
     // the same conversion for the sets.
-    ['Sets-Liste', '/api/v1/sets'],
-    ['Set-Detail', '/api/v1/sets/75192-1'],
+    ['Sets-Liste', '/api/v2/sets'],
+    ['Set-Detail', '/api/v2/sets/75192-1'],
     // the same conversion for the parts.
-    ['Teile-Liste', '/api/v1/parts'],
-    ['Teile-Liste (Suche)', '/api/v1/parts?search=Brick&page=1'],
-    ['Teile-Farben', '/api/v1/parts/colors'],
-    ['Teile-Statistik', '/api/v1/parts/stats'],
-    ['Brick-Farbliste', '/api/v1/parts/brick-colors'],
-    ['BL-Farb-Mapping', '/api/v1/parts/bl-color-map'],
-    ['Manuelle Teile', '/api/v1/parts/manual'],
+    ['Teile-Liste', '/api/v2/parts'],
+    ['Teile-Liste (Suche)', '/api/v2/parts?search=Brick&page=1'],
+    ['Teile-Farben', '/api/v2/parts/colors'],
+    ['Teile-Statistik', '/api/v2/parts/stats'],
+    ['Brick-Farbliste', '/api/v2/parts/brick-colors'],
+    ['BL-Farb-Mapping', '/api/v2/parts/bl-color-map'],
+    ['Manuelle Teile', '/api/v2/parts/manual'],
     // Stage 5: valuation, gain/loss, portfolio history and the three
     // price history routes. They stood above as a PAIR — the duplication was the
     // place where most recently the view for the minifigure history was missing on both
     // paths at once.
-    ['Bewertung Sets', '/api/v1/finance/valuation'],
-    ['Bewertung Teile', '/api/v1/finance/parts-valuation'],
-    ['Bewertung Minifiguren', '/api/v1/finance/minifigs-valuation'],
-    ['GuV', '/api/v1/finance/pnl'],
-    ['Portfolio-Verlauf', '/api/v1/finance/portfolio-history'],
-    ['Preisverlauf Set', '/api/v1/sets/75192-1/price-history'],
-    ['Preisverlauf Teil', '/api/v1/parts/3001/4/price-history'],
-    ['Preisverlauf Minifigur', '/api/v1/minifigs/sw0001/price-history'],
+    ['Bewertung Sets', '/api/v2/finance/valuation'],
+    ['Bewertung Teile', '/api/v2/finance/parts-valuation'],
+    ['Bewertung Minifiguren', '/api/v2/finance/minifigs-valuation'],
+    ['GuV', '/api/v2/finance/pnl'],
+    ['Portfolio-Verlauf', '/api/v2/finance/portfolio-history'],
+    ['Preisverlauf Set', '/api/v2/sets/75192-1/price-history'],
+    ['Preisverlauf Teil', '/api/v2/parts/3001/4/price-history'],
+    ['Preisverlauf Minifigur', '/api/v2/minifigs/sw0001/price-history'],
     // Stage 6: statistics, default condition and the household.
-    ['Statistik', '/api/v1/stats'],
-    ['Standard-Zustand (global)', '/api/v1/settings/default-condition'],
-    ['Standard-Zustand (effektiv)', '/api/v1/settings/user/default-condition'],
-    ['Haushalt', '/api/v1/settings/household'],
+    ['Statistik', '/api/v2/stats'],
+    ['Standard-Zustand (global)', '/api/v2/settings/default-condition'],
+    ['Standard-Zustand (effektiv)', '/api/v2/settings/user/default-condition'],
+    ['Haushalt', '/api/v2/settings/household'],
   ]) {
     await t.test(`merged: ${name} — session and token equivalent`, async () => {
-      const withSession = await get(pfad);
-      const withToken = await get(pfad, { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
+      const withSession = await get(path);
+      const withToken = await get(path, { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
       assert.equal(
         withSession.status,
         200,
-        `${pfad} mit Sitzung -> ${withSession.status}: ${JSON.stringify(withSession.body)}`,
+        `${path} with session -> ${withSession.status}: ${JSON.stringify(withSession.body)}`,
       );
       assert.equal(
         withToken.status,
         200,
-        `${pfad} mit Token -> ${withToken.status}: ${JSON.stringify(withToken.body)}`,
+        `${path} with token -> ${withToken.status}: ${JSON.stringify(withToken.body)}`,
       );
       assert.deepEqual(
         core(withToken.body),
         core(withSession.body),
-        `${pfad}: Sitzung und Token liefern Verschiedenes — die Route hängt an der Auth-Art`,
+        `${path}: session and token deliver different things — the route depends on the auth type`,
       );
     });
   }
@@ -274,8 +277,8 @@ test('API parity web app ↔ Android', async t => {
       assert.equal(
         r.status,
         404,
-        `${alt} antwortet wieder — dann existiert die Logik erneut doppelt, und ` +
-          'genau das sollte der Umbau beenden',
+        `${alt} answers again — then the logic exists twice again, and ` +
+          'that is exactly what the rework was meant to end',
       );
     }
   });
@@ -285,8 +288,8 @@ test('API parity web app ↔ Android', async t => {
     // merged, and that on purpose: the one carries the global
     // keys and the admin fields that the app neither needs nor should
     // get. Two different responses, not two versions of the same — …
-    const web = (await get('/api/v1/settings/raw')).body.settings;
-    const v1 = (await get('/api/v1/settings')).body.settings;
+    const web = (await get('/api/v2/settings/raw')).body.settings;
+    const v1 = (await get('/api/v2/settings')).body.settings;
     assert.equal(v1.currency, web.currency);
     assert.equal(v1.price_cache_ttl, web.price_cache_ttl);
     assert.equal(v1.user_default_condition, web.user_default_condition);
@@ -301,38 +304,38 @@ test('API parity web app ↔ Android', async t => {
     assert.equal(
       v1.price_cache_ttl,
       '48',
-      'Ein GLOBAL gesetzter Wert erreicht die App nicht — liest die v1-Route ' +
-        'wieder selbst auf user_settings statt über readSettings()?',
+      'A GLOBALLY set value does not reach the app — does the v1 route ' +
+        'read user_settings itself again instead of going through readSettings()?',
     );
-    assert.equal(v1.currency, 'CHF', 'Der Wert des Nutzers muss den globalen überschreiben (global steht USD)');
+    assert.equal(v1.currency, 'CHF', 'The user value must override the global one (global is USD)');
   });
 
   await t.test('v1 valuation: total_value is an alias of totals.qty_avg', async () => {
-    const r = await get('/api/v1/finance/valuation');
+    const r = await get('/api/v2/finance/valuation');
     assert.equal(r.body.total_value, r.body.totals.qty_avg);
   });
 
   await t.test('valuation: same response shape with both credentials', async () => {
     // What stood here before, and why it is gone
-    const withSession = (await get('/api/v1/finance/valuation')).body;
+    const withSession = (await get('/api/v2/finance/valuation')).body;
     const withToken = (
-      await get('/api/v1/finance/valuation', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })
+      await get('/api/v2/finance/valuation', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })
     ).body;
     assert.deepEqual(
       Object.keys(withToken).sort(),
       Object.keys(withSession).sort(),
-      'Sitzung und Token liefern verschiedene Felder — dann sieht die App etwas ' +
-        'anderes als die Webapp, je nachdem womit sie sich ausweist',
+      'Session and token deliver different fields — then the app sees something ' +
+        'different from the web app, depending on how it authenticates',
     );
     assert.equal(withToken.total_value, withSession.total_value);
     assert.ok(
       !('rate_limit' in withToken),
-      'rate_limit ist wieder in der Bewertung — es liest niemand, und es kostet ' + 'drei Abfragen je Aufruf',
+      'rate_limit is back in the rating — nobody reads it, and it costs ' + 'three queries per call',
     );
   });
 
   await t.test('v1 additional fields are consistent (count = sets.length)', async () => {
-    const r = await get('/api/v1/sets');
+    const r = await get('/api/v2/sets');
     assert.equal(r.body.count, r.body.sets.length);
   });
 
@@ -341,23 +344,24 @@ test('API parity web app ↔ Android', async t => {
     // merging there is only one; the equivalence of the credentials
     // is above. What remains here is the statement of CONTENT: the history
     // delivers points at all, separated per condition (since …
-    const b = (await get('/api/v1/sets/75192-1/price-history')).body;
+    const b = (await get('/api/v2/sets/75192-1/price-history')).body;
     const pts = h => (h || []).filter(x => !x.is_purchase_price);
     assert.equal(b.success, true);
-    assert.ok(pts(b.history_new).length + pts(b.history_used).length >= 2, 'kein Verlauf geliefert');
-    assert.ok(b.chart && Array.isArray(b.chart.values), 'chart fehlt');
+    assert.ok(pts(b.history_new).length + pts(b.history_used).length >= 2, 'no history delivered');
+    assert.ok(b.chart && Array.isArray(b.chart.values), 'chart is missing');
   });
 
   await t.test('price history part and minifigure: same shape as for the set', async () => {
     // All three kinds share src/finances/priceHistory.ts. What is checked therefore
     // is that they deliver the same FIELDS — if one kind drifts out of shape, it
     // shows here, even without a second route to compare.
-    const felder = ['currency', 'by_condition', 'history_new', 'history_used', 'chart'];
-    const set = (await get('/api/v1/sets/75192-1/price-history')).body;
-    for (const pfad of ['/api/v1/parts/3001/4/price-history', '/api/v1/minifigs/sw0001/price-history']) {
-      const b = (await get(pfad)).body;
-      assert.equal(b.success, true, `${pfad} antwortet nicht`);
-      for (const k of felder) assert.ok(k in b, `${pfad}: Feld ${k} fehlt (das Set liefert es: ${typeof set[k]})`);
+    const fields = ['currency', 'by_condition', 'history_new', 'history_used', 'chart'];
+    const set = (await get('/api/v2/sets/75192-1/price-history')).body;
+    for (const path of ['/api/v2/parts/3001/4/price-history', '/api/v2/minifigs/sw0001/price-history']) {
+      const b = (await get(path)).body;
+      assert.equal(b.success, true, `${path} does not answer`);
+      for (const k of fields)
+        assert.ok(k in b, `${path}: field ${k} is missing (the set delivers it: ${typeof set[k]})`);
     }
   });
 
@@ -369,84 +373,88 @@ test('API parity web app ↔ Android', async t => {
     // is that it has the same effect via BOTH credentials — with a session on one
     // set, with a token on the other.
     const put = (p, extra = {}) => fetch(base + p, { method: 'PUT', headers: { ...hdr, ...extra }, body });
-    assert.equal((await put('/api/v1/sets/40567-1')).status, 200, 'Schreiben mit Sitzung');
+    assert.equal((await put('/api/v2/sets/40567-1')).status, 200, 'Writing with session');
     assert.equal(
-      (await put('/api/v1/sets/40568-1', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).status,
+      (await put('/api/v2/sets/40568-1', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).status,
       200,
-      'Schreiben mit Token',
+      'Writing with token',
     );
-    const a = (await get('/api/v1/sets/40567-1')).body.set;
-    const b = (await get('/api/v1/sets/40568-1')).body.set;
+    const a = (await get('/api/v2/sets/40567-1')).body.set;
+    const b = (await get('/api/v2/sets/40568-1')).body.set;
     for (const k of ['quantity', 'purchase_price', 'condition'])
-      assert.deepEqual(a[k], b[k], `Feld ${k} weicht ab — Sitzung und Token bewirken Verschiedenes`);
+      assert.deepEqual(a[k], b[k], `Field ${k} differs — session and token have different effects`);
     assert.equal(a.quantity, 4);
   });
 
   await t.test('PUT acquisition: web app and Android route have the same effect', async () => {
-    const idOf = async sn => (await get(`/api/v1/sets/${sn}/acquisitions`)).body.acquisitions[0].id;
+    const idOf = async sn => (await get(`/api/v2/sets/${sn}/acquisitions`)).body.acquisitions[0].id;
     const hdr = { 'content-type': 'application/json' };
     const body = JSON.stringify({ quantity: 2, purchase_price: 30, condition: 'U' });
     // Merged: there is only ONE write route left. What is checked
     // therefore is that it has the same effect via BOTH credentials — with
     // a session on one set, with a token on the other; afterwards both sets must
     // show the same state. That is the statement that counts after the rebuild: …
-    const rA = await fetch(base + `/api/v1/sets/40567-1/acquisitions/${await idOf('40567-1')}`, {
+    const rA = await fetch(base + `/api/v2/sets/40567-1/acquisitions/${await idOf('40567-1')}`, {
       method: 'PUT',
       headers: hdr,
       body,
     });
-    const rB = await fetch(base + `/api/v1/sets/40568-1/acquisitions/${await idOf('40568-1')}`, {
+    const rB = await fetch(base + `/api/v2/sets/40568-1/acquisitions/${await idOf('40568-1')}`, {
       method: 'PUT',
       headers: { ...hdr, authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' },
       body,
     });
-    assert.equal(rA.status, 200, 'Schreiben mit Sitzung');
-    assert.equal(rB.status, 200, 'Schreiben mit Token');
+    assert.equal(rA.status, 200, 'Writing with session');
+    assert.equal(rB.status, 200, 'Writing with token');
     const strip = a => a.map(({ quantity, purchase_price, condition }) => ({ quantity, purchase_price, condition }));
-    const a = (await get('/api/v1/sets/40567-1/acquisitions')).body.acquisitions;
-    const b = (await get('/api/v1/sets/40568-1/acquisitions')).body.acquisitions;
-    assert.deepEqual(strip(a), strip(b), 'Sitzung und Token bewirken Verschiedenes auf derselben Route');
+    const a = (await get('/api/v2/sets/40567-1/acquisitions')).body.acquisitions;
+    const b = (await get('/api/v2/sets/40568-1/acquisitions')).body.acquisitions;
+    assert.deepEqual(strip(a), strip(b), 'Session and token have different effects on the same route');
   });
 
   await t.test('DELETE set: web app and Android route have the same effect', async () => {
     // Likewise one route, both credentials.
-    assert.equal((await fetch(base + '/api/v1/sets/40567-1', { method: 'DELETE' })).status, 200, 'Löschen mit Sitzung');
+    assert.equal(
+      (await fetch(base + '/api/v2/sets/40567-1', { method: 'DELETE' })).status,
+      200,
+      'Deleting with session',
+    );
     assert.equal(
       (
-        await fetch(base + '/api/v1/sets/40568-1', {
+        await fetch(base + '/api/v2/sets/40568-1', {
           method: 'DELETE',
           headers: { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' },
         })
       ).status,
       200,
-      'Löschen mit Token',
+      'Deleting with token',
     );
-    assert.equal((await get('/api/v1/sets/40567-1')).status, 404);
-    assert.equal((await get('/api/v1/sets/40568-1')).status, 404);
+    assert.equal((await get('/api/v2/sets/40567-1')).status, 404);
+    assert.equal((await get('/api/v2/sets/40568-1')).status, 404);
     // Cleanup behavior identical: no orphaned entries
     for (const sn of ['40567-1', '40568-1']) {
       const left = await db.get('SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [
         USER.id,
         sn,
       ]);
-      assert.equal(left.n, 0, `verwaiste Erfassungen bei ${sn}`);
+      assert.equal(left.n, 0, `orphaned acquisitions for ${sn}`);
     }
   });
 
   await t.test('bearer token (Android auth) delivers the same as the session', async () => {
-    const viaSession = await get('/api/v1/sets');
-    const viaToken = await get('/api/v1/sets', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
-    assert.equal(viaToken.status, 200, `Bearer-Auth fehlgeschlagen: ${JSON.stringify(viaToken.body)}`);
+    const viaSession = await get('/api/v2/sets');
+    const viaToken = await get('/api/v2/sets', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
+    assert.equal(viaToken.status, 200, `Bearer auth failed: ${JSON.stringify(viaToken.body)}`);
     assert.deepEqual(core(viaToken.body), core(viaSession.body));
   });
 
   await t.test('without auth: both guards reject', async () => {
     // There is only ONE address space (/api/v1): an address outside it would answer
     // with 404, and that would look like a passed rejection.
-    const withToken = await get('/api/v1/sets', { 'x-no-session': '1' });
-    const onlySession = await get('/api/v1/settings/raw', { 'x-no-session': '1' });
-    assert.equal(withToken.status, 401, 'requireToken laesst ohne Ausweis durch');
-    assert.equal(onlySession.status, 401, 'requireLogin laesst ohne Sitzung durch');
+    const withToken = await get('/api/v2/sets', { 'x-no-session': '1' });
+    const onlySession = await get('/api/v2/settings/raw', { 'x-no-session': '1' });
+    assert.equal(withToken.status, 401, 'requireToken lets through without credentials');
+    assert.equal(onlySession.status, 401, 'requireLogin lets through without a session');
   });
 
   srv.close();

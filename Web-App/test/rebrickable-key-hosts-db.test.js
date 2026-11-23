@@ -3,7 +3,7 @@
  * host of the API list when a response points there with `next`.
  *
  * Counter-checks (measured on 08.11.2026):
- *   A  the check of `next` removed in holeSetTeile AND httpsGetRobust again with
+ *   A  the check of `next` removed in fetchSetParts AND httpsGetRobust again with
  *      ALLOWED_API_HOSTS → red: “next on api.upcitemdb.com …” (fetch with key seen)
  *   B  only the host choice in httpsGetRobust back to ALLOWED_API_HOSTS (next check stays)
  *      → red: “fetches with key …” (the next check alone does not catch this path)
@@ -29,12 +29,12 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-/** @type {Array<{ url: string, kopf: Record<string, string> }>} */
+/** @type {Array<{ url: string, head: Record<string, string> }>} */
 const fetches = [];
 let responseFor = (/** @type {string} */ _url) => ({ status: 404, body: '' });
 // @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
 https.get = (url, opt, cb) => {
-  fetches.push({ url: String(url), kopf: { .../** @type {Record<string, string>} */ (opt?.headers) } });
+  fetches.push({ url: String(url), head: { .../** @type {Record<string, string>} */ (opt?.headers) } });
   const { status, body } = responseFor(String(url));
   const req = new EventEmitter();
   setImmediate(() => {
@@ -55,15 +55,15 @@ https.get = (url, opt, cb) => {
 test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const S = _req('src/settings/settings.js');
-  const vorher = await S.getGlobalSetting('rebrickable_api_key');
+  const prior = await S.getGlobalSetting('rebrickable_api_key');
   await S.setGlobalSetting('rebrickable_api_key', 'geheim-123');
   t.after(async () => {
-    if (vorher) await S.setGlobalSetting('rebrickable_api_key', vorher);
+    if (prior) await S.setGlobalSetting('rebrickable_api_key', prior);
     else await S.deleteGlobalValues('rebrickable_api_key');
   });
-  const { holeSetTeile, httpsGetRobust, rebrickableRaw } =
-    require('./helpers/sources').testServices().externalSources.quellen;
-  const withKey = () => fetches.filter(a => Object.keys(a.kopf).some(k => k.toLowerCase() === 'authorization'));
+  const { fetchSetParts, httpsGetRobust, rebrickableRaw } =
+    require('./helpers/sources').testServices().externalSources.sources;
+  const withKey = () => fetches.filter(a => Object.keys(a.head).some(k => k.toLowerCase() === 'authorization'));
 
   await t.test('next on api.upcitemdb.com is not followed', async () => {
     fetches.length = 0;
@@ -77,12 +77,12 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
             }),
           }
         : { status: 200, body: '{}' };
-    await holeSetTeile('10294-1');
-    assert.ok(fetches.length >= 1, 'die Attrappe sah keinen Abruf — die Gegenprobe bewiese nichts');
+    await fetchSetParts('10294-1');
+    assert.ok(fetches.length >= 1, 'the dummy saw no fetch — the counter-check would prove nothing');
     assert.deepEqual(
       fetches.filter(a => new URL(a.url).hostname !== 'rebrickable.com').map(a => a.url),
       [],
-      'ein Abruf ging an einen anderen Host',
+      'a fetch went to another host',
     );
   });
 
@@ -101,15 +101,15 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
               next: 'https://rebrickable.com/api/v3/lego/sets/10294-1/parts/?page=2',
             }),
           };
-    const r = await holeSetTeile('10294-1');
-    assert.equal(r.teile.length, 2, 'die zweite Seite fehlt');
+    const r = await fetchSetParts('10294-1');
+    assert.equal(r.parts.length, 2, 'the second page is missing');
   });
 
   await t.test('rebrickableRaw reaches no other host', async () => {
     fetches.length = 0;
     const r = await rebrickableRaw('https://lego.brickinstructions.com/x', 'geheim-123');
     assert.equal(r.status, 0);
-    assert.equal(fetches.length, 0, 'der Abruf mit Schlüssel ging hinaus');
+    assert.equal(fetches.length, 0, 'the fetch with a key went out');
   });
 
   await t.test(
@@ -118,12 +118,12 @@ test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async
       fetches.length = 0;
       responseFor = () => ({ status: 200, body: '{}' });
       await httpsGetRobust('https://api.upcitemdb.com/prod/trial/lookup?upc=1', {}, 3000);
-      assert.equal(fetches.length, 1, 'die EAN-Suche ohne Schlüssel muss weiter gehen');
+      assert.equal(fetches.length, 1, 'the EAN search without a key must keep working');
       fetches.length = 0;
       await httpsGetRobust('https://api.upcitemdb.com/prod/x', { Authorization: 'key geheim-123' }, 3000).catch(
         () => null,
       );
-      assert.deepEqual(withKey(), [], 'ein Abruf mit Schlüssel ging an upcitemdb');
+      assert.deepEqual(withKey(), [], 'a fetch with a key went to upcitemdb');
     },
   );
 });

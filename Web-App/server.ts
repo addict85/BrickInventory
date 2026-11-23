@@ -1,31 +1,31 @@
 // First: an invalid value ends the start with a message before any module reads it.
-import { konfig } from './startup/checkConfig';
+import { config } from './startup/checkConfig';
 // Logging first: from here on every console line is a JSON line and goes
 // to app_logs as soon as the pool is up.
-import { installLog, logInDieDatabase, emptyLog } from './src/infra/log';
+import { installLog, logToDatabase, emptyLog } from './src/infra/log';
 installLog();
 
 import http, { type Server } from 'node:http';
 import type { Db } from './db/database';
-import { fehlertext, logAndContinue } from './src/infra/error';
+import { errorMessage, logAndContinue } from './src/infra/error';
 import { startBans, startWarnings } from './src/infra/config';
-import { hintWithoutBaseUrl } from './src/infra/basisUrl';
+import { hintWithoutBaseUrl } from './src/infra/baseUrl';
 import { prepareDatabaseBefore } from './startup/database';
-import { startJobs, stopJobs, type JobsLauf } from './startup/jobsProcess';
-import { wireProcess, type Dienste } from './startup/wiring';
-import { baueApp } from './startup/app';
+import { startJobs, stopJobs, type JobsRun } from './startup/jobsProcess';
+import { wireProcess, type Services } from './startup/wiring';
+import { buildApp } from './startup/app';
 import { HTTP_DEADLINES } from './src/infra/httpDeadlines';
 import { closeAllSse } from './src/http/sseRegistry';
 
 import { closeBufferAndTicks } from './startup/shutdown';
-import { holdWebLock } from './startup/singleInstance';
+import { registerCollectors, startMetricsServer } from './startup/metrics';
 import { inSystemContext } from './src/infra/accountContext';
 
 // Only log: a rejected promise is usually a side task without catch;
 // requests and jobs keep their state in the database. A restart would tear
 // down all running requests and streams for it (unlike uncaughtException).
 process.on('unhandledRejection', (reason: unknown) => {
-  console.error('[unhandledRejection] Unhandled promise rejection:', fehlertext(reason));
+  console.error('[unhandledRejection] Unhandled promise rejection:', errorMessage(reason));
 });
 process.on('uncaughtException', err => {
   // The state is uncertain afterwards (half-open transactions); Docker takes care of the restart.
@@ -44,22 +44,22 @@ const PLACEHOLDER_SECRETS = [
 
 /** The development secret only with an explicit NODE_ENV=development/test;
  * without NODE_ENV the same rules as in production apply. */
-function sitzungsGeheimnis(): string {
-  const gesetzt = konfig().sessionSecret?.trim();
-  if (konfig().entwicklung) return gesetzt || 'brickinventory-manager-dev-secret';
-  const grund = !gesetzt
+function sessionSecret(): string {
+  const assigned = config().sessionSecret?.trim();
+  if (config().development) return assigned || 'brickinventory-manager-dev-secret';
+  const reason = !assigned
     ? 'SESSION_SECRET ist nicht gesetzt — Start verweigert. Bitte in compose.yaml/ENV setzen' +
-      (konfig().production ? '.' : ', oder für die Entwicklung NODE_ENV=development.')
-    : PLACEHOLDER_SECRETS.includes(gesetzt)
+      (config().production ? '.' : ', oder für die Entwicklung NODE_ENV=development.')
+    : PLACEHOLDER_SECRETS.includes(assigned)
       ? 'SESSION_SECRET steht noch auf dem Beispielwert aus compose.yaml — Start verweigert. Bitte einen eigenen Zufallswert eintragen, z. B. `openssl rand -base64 48`.'
-      : gesetzt.length < 32
+      : assigned.length < 32
         ? 'SESSION_SECRET ist zu kurz (nötig sind mindestens 32 Zeichen) — Start verweigert.'
         : null;
-  if (grund) {
-    console.error(`❌ [session] ${grund}`);
+  if (reason) {
+    console.error(`❌ [session] ${reason}`);
     process.exit(1);
   }
-  return konfig().sessionSecret!;
+  return config().sessionSecret!;
 }
 
 /** End SSE streams first: they never end by themselves and would hold up close().
@@ -67,22 +67,21 @@ function sitzungsGeheimnis(): string {
 const SHUTDOWN_TIMEOUT_MS = 8000;
 
 /** What the start holds and the shutdown needs; a second signal finds `endedBecomes`. */
-interface Lauf {
-  endedBecomes: boolean;
-  jobs: JobsLauf | null;
+interface Run {
+  ending: boolean;
+  jobs: JobsRun | null;
 }
 
 async function shutdown(
-  lauf: Lauf,
+  run: Run,
   signal: string,
   httpServer: Server | null,
   jobs: boolean,
-  zugang: Db,
-  dienste: Dienste,
-  webLockFree: (() => Promise<void>) | null,
+  access: Db,
+  services: Services,
 ): Promise<void> {
-  if (lauf.endedBecomes) return;
-  lauf.endedBecomes = true;
+  if (run.ending) return;
+  run.ending = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
   // Emergency brake for a hanging connection; exit code 0, because it is not an error.
   const emergencyBrake = setTimeout(() => {
@@ -92,28 +91,27 @@ async function shutdown(
   emergencyBrake.unref();
   try {
     if (httpServer) {
-      const beendet = closeAllSse();
-      if (beendet) console.log(`[shutdown] ${beendet} offene Ereignis-Ströme beendet`);
+      const ended = closeAllSse();
+      if (ended) console.log(`[shutdown] ${ended} offene Ereignis-Ströme beendet`);
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
     }
     // Running jobs stop safely and go back into the table.
-    if (jobs && lauf.jobs) await stopJobs(dienste, lauf.jobs);
-    await closeBufferAndTicks(zugang, dienste);
-    await webLockFree?.();
-    await zugang.pool.end().catch(logAndContinue('server:end'));
+    if (jobs && run.jobs) await stopJobs(services, run.jobs);
+    await closeBufferAndTicks(access, services);
+    await access.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(emergencyBrake);
     process.exit(0);
   } catch (e) {
-    console.error('[shutdown] Fehler beim Beenden:', fehlertext(e));
+    console.error('[shutdown] Fehler beim Beenden:', errorMessage(e));
     process.exit(1);
   }
 }
 
-/** One process per role (ROLLE=web|jobs|beides); initSchemaOnce lets only one migrate. */
-async function starte(): Promise<void> {
-  const k = konfig();
+/** One process per role (ROLE=web|jobs|beides); initSchemaOnce lets only one migrate. */
+/** Bans end the start in operation; warnings, renamed and dropped variables only go to the log. */
+function startChecks(k: ReturnType<typeof config>, web: boolean): void {
   if (k.operation) {
     const bans = startBans();
     if (bans.length) {
@@ -122,77 +120,84 @@ async function starte(): Promise<void> {
     }
     for (const w of startWarnings()) console.warn(`⚠️ ${w}`);
   }
-  for (const v of k.veraltet)
+  for (const v of k.renamed) console.warn(`⚠️ [start] Variable umbenannt: ${v}, bitte .env umstellen (UPGRADE.md 70).`);
+  for (const v of k.deprecated)
     console.warn(`⚠️ [start] ${v} wird nicht mehr ausgewertet und kann weg (siehe UPGRADE.md).`);
   if (!k.appBaseUrl)
     hintWithoutBaseUrl(
       'start',
       'Mails enthalten keine Links (Bestätigung, Passwort vergessen), Passkeys und QR-Code der App sind aus.',
     );
-  const web = k.rolle !== 'jobs',
-    jobs = k.rolle !== 'web';
   if (!k.appBaseUrl && k.operation && web)
     console.error(
-      '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): ' +
+      '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_MISSING_OK=1): ' +
         'Der Host-Filter gegen DNS-Rebinding nimmt nur Loopback und IP-Adressen an, jeder Name bekommt 421.',
     );
-  const geheimnis = web ? sitzungsGeheimnis() : ''; // before the database: a start ban should not wait for it
-  console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
+}
+
+async function startListeners(services: Services, web: boolean): Promise<void> {
+  // Hints into the log: one that fails holds up neither the start nor the others.
+  const hints: [string, () => Promise<unknown>][] = [
+    ['start:smtp-altlast', () => services.mail.reportSmtpLegacySetting()],
+    ...services.account.addressHints(),
+  ];
+  if (web) for (const [where, hint] of hints) await hint().catch(logAndContinue(where));
+  if (web) services.account.listenOnRevocation();
+  // Web and jobs (also separate processes) clear their household memory on every change.
+  services.household.listenOnChanges();
+  // A global value from another process (follow-up run, second web process) clears the setup state.
+  if (web) services.settings.listenForGlobalChanges();
+}
+
+async function start(): Promise<void> {
+  const k = config();
+  const web = k.role !== 'jobs',
+    jobs = k.role !== 'web';
+  startChecks(k, web);
+  const secret = web ? sessionSecret() : ''; // before the database: a start ban should not wait for it
+  console.log(`[start] Prozess ${process.pid}, Rolle ${k.role}`);
   // Database access and wiring are created here, not on import of a module;
   // acquisitions and settings trigger their follow-up work in every process.
-  const { db: zugang, dienste } = wireProcess();
+  const { db: access, services } = wireProcess();
 
   try {
     // Migrations, first start and re-keying go across all accounts.
-    await inSystemContext('start', () => prepareDatabaseBefore(zugang, dienste, { jobs }));
+    await inSystemContext('start', () => prepareDatabaseBefore(access, services, { jobs }));
   } catch (e) {
-    console.error('❌ Database initialisation failed:', fehlertext(e));
+    console.error('❌ Database initialisation failed:', errorMessage(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
     process.exit(1);
   }
-  logInDieDatabase(zugang.pool);
-  const webLockFree = web
-    ? await holdWebLock(zugang).catch((e: unknown) => {
-        console.error(`❌ [start] ${fehlertext(e)}`);
-        process.exit(1);
-      })
-    : null;
-  // Hints into the log: one that fails holds up neither the start nor the others.
-  const hinweise: [string, () => Promise<unknown>][] = [
-    ['start:smtp-altlast', () => dienste.mail.reportSmtpLegacySetting()],
-    ...dienste.account.adressHints(),
-  ];
-  if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));
-  if (web) dienste.account.listenOnRevocation();
-  // Web and jobs (also separate processes) clear their household memory on every change.
-  dienste.household.listenOnChanges();
-  // A global value from another process (follow-up run, second web process) clears the setup state.
-  if (web) dienste.settings.listenForGlobalChanges();
+  logToDatabase(access.pool);
+  registerCollectors(access, services.jobQueue);
+  // The web process serves /metrics itself (startup/app.ts); the jobs-only one has no HTTP server.
+  if (!web && k.metricsPort) startMetricsServer(k.metricsPort, k.metricsToken);
+  await startListeners(services, web);
 
   // Accept requests only after the schema: the session store needs user_sessions.
   const httpServer = web
     ? http
         .createServer(
           { ...HTTP_DEADLINES },
-          baueApp({ pool: zugang.systemWebPool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
+          buildApp({ pool: access.systemWebPool, config: k, sessionSecret: secret, services }),
         )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
         })
     : null;
-  const lauf: Lauf = { endedBecomes: false, jobs: null };
+  const run: Run = { ending: false, jobs: null };
   process.on('SIGTERM', () => {
-    void shutdown(lauf, 'SIGTERM', httpServer, jobs, zugang, dienste, webLockFree);
+    void shutdown(run, 'SIGTERM', httpServer, jobs, access, services);
   });
   process.on('SIGINT', () => {
-    void shutdown(lauf, 'SIGINT', httpServer, jobs, zugang, dienste, webLockFree);
+    void shutdown(run, 'SIGINT', httpServer, jobs, access, services);
   });
   // Without frame: queue and jobs enter it themselves (src/jobQueue/context.ts, service.ts).
-  if (jobs) lauf.jobs = await startJobs(dienste);
+  if (jobs) run.jobs = await startJobs(services);
 }
 
 // Continuing without a worker would fake a service.
-starte().catch((e: unknown) => {
-  console.error('❌ [start] Start gescheitert:', fehlertext(e));
+start().catch((e: unknown) => {
+  console.error('❌ [start] Start gescheitert:', errorMessage(e));
   process.exit(1);
 });

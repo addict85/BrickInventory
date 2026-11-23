@@ -10,9 +10,9 @@ export const MAX_PAGES = 200;
 const TIMEOUT_MS = 30_000;
 
 export type PdfReadResult =
-  | { art: 'zu_viele_seiten'; seiten: number }
-  | { art: 'unlesbar' }
-  | { art: 'gelesen'; seiten: number; stapel: ParsedVoucher[]; einzeln: ParsedVoucher | 'zu_gross' | 'fehler' };
+  | { kind: 'zu_viele_seiten'; pages: number }
+  | { kind: 'unlesbar' }
+  | { kind: 'gelesen'; pages: number; batch: ParsedVoucher[]; single: ParsedVoucher | 'too_large' | 'fehler' };
 
 export async function readUploadedPdf(data: Buffer): Promise<PdfReadResult> {
   let pages: number;
@@ -21,15 +21,15 @@ export async function readUploadedPdf(data: Buffer): Promise<PdfReadResult> {
   } catch {
     pages = 1;
   } // What pdf-lib cannot load, valuesFromPdf still reads as text.
-  if (pages > MAX_PAGES) return { art: 'zu_viele_seiten', seiten: pages };
-  const stapel = await pagesOrNone(data);
-  let einzeln: ParsedVoucher | 'zu_gross' | 'fehler';
+  if (pages > MAX_PAGES) return { kind: 'zu_viele_seiten', pages: pages };
+  const batch = await pagesOrNone(data);
+  let single: ParsedVoucher | 'too_large' | 'fehler';
   try {
-    einzeln = valuesFromPdf(data);
+    single = valuesFromPdf(data);
   } catch (e) {
-    einzeln = e instanceof PdfTooLarge ? 'zu_gross' : 'fehler';
+    single = e instanceof PdfTooLarge ? 'too_large' : 'fehler';
   }
-  return { art: 'gelesen', seiten: pages, stapel, einzeln };
+  return { kind: 'gelesen', pages: pages, batch, single };
 }
 
 /** In a worker; when the server runs from sources (tsx) there is no .js and it stays in-process. */
@@ -43,12 +43,12 @@ export function readInBackground(data: Buffer): Promise<PdfReadResult> {
     const timer = setTimeout(() => {
       void w.terminate();
     }, TIMEOUT_MS);
-    let result: PdfReadResult = { art: 'unlesbar' };
+    let result: PdfReadResult = { kind: 'unlesbar' };
     w.once('message', (m: PdfReadResult) => {
       result = m;
     });
     w.once('error', () => {
-      result = { art: 'unlesbar' };
+      result = { kind: 'unlesbar' };
     });
     w.once('exit', () => {
       clearTimeout(timer);
@@ -61,6 +61,6 @@ if (!isMainThread && (workerData as { voucherPdf?: Uint8Array } | null)?.voucher
   const raw = (workerData as { voucherPdf: Uint8Array }).voucherPdf;
   void readUploadedPdf(Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength)).then(
     r => parentPort!.postMessage(r),
-    () => parentPort!.postMessage({ art: 'unlesbar' }),
+    () => parentPort!.postMessage({ kind: 'unlesbar' }),
   );
 }

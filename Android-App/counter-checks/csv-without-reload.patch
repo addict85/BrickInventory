@@ -1,0 +1,16 @@
+Gegenprobe: Nach einem fertigen CSV-Import holt die Ablage den Bestand nicht
+Modul: app
+Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
+Rot: a running import starts the service once, finished reloads and clears after five seconds
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
+@@ -66,7 +66,6 @@
+         )
+         when (sequence) {
+             CsvSequence.RELOAD -> {
+-                sync.stock()
+                 tidyUp()
+             }
+             CsvSequence.ERROR_CLEAN_UP -> tidyUp()

@@ -1,10 +1,10 @@
 /** The Wanted XML import as a job: it creates parts, figures and sets and
  * asks Rebrickable on request — neither belongs in the web process. */
-import type { Nutzlast, JobContext } from '../jobQueue';
+import type { Payload, JobContext } from '../jobQueue';
 import { logAndContinue } from '../infra/error';
 import type { CollectionContext } from './context';
 
-export type WantedXmlInput = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
+export type WantedXmlInput = Extract<Payload<'csv_import'>, { source: 'wanted_xml' }>['eingabe'];
 
 async function importWantedXml(
   kx: CollectionContext,
@@ -17,95 +17,94 @@ async function importWantedXml(
   let jobRunning = false;
   // Via a chain, because the callback is synchronous and the writing is not;
   // otherwise the bar would show a smaller number after a larger one.
-  let kette: Promise<unknown> = Promise.resolve();
+  let chain: Promise<unknown> = Promise.resolve();
   // Bar and state are display only: a failed step holds up neither the import nor the next ones.
-  const danach = (wo: string, schritt: () => Promise<unknown>) => {
-    kette = kette.then(schritt).catch(logAndContinue(wo));
+  const after = (where: string, step: () => Promise<unknown>) => {
+    chain = chain.then(step).catch(logAndContinue(where));
   };
   // Wait for the chain first, then close: otherwise the bar would still show "running" elsewhere.
   const closeBar = async (
-    angaben: Parameters<CollectionContext['jobQueue']['beendeAuftrag']>[1],
-    zeilen?: Parameters<CollectionContext['jobQueue']['beendeAuftrag']>[2],
+    details: Parameters<CollectionContext['jobQueue']['finishJob']>[1],
+    rows?: Parameters<CollectionContext['jobQueue']['finishJob']>[2],
   ) => {
-    await kette;
-    if (jobRunning)
-      await kx.jobQueue.beendeAuftrag(uid, angaben, zeilen).catch(logAndContinue('wanted-import:auftrag-ende'));
+    await chain;
+    if (jobRunning) await kx.jobQueue.finishJob(uid, details, rows).catch(logAndContinue('wanted-import:auftrag-ende'));
   };
-  let zuletzt = 0,
+  let lastUsed = 0,
     lastPhase = '';
-  const anDenBar = (stand: { fertig: number; gesamt: number }, unbedingt = false) => {
+  const toBar = (state: { done: number; total: number }, unconditional = false) => {
     if (!jobRunning) return;
-    danach('wanted-import:auftrag', () =>
-      kx.jobQueue.reportJob(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt),
+    after('wanted-import:auftrag', () =>
+      kx.jobQueue.reportJob(uid, { done: state.done, total: state.total }, unconditional),
     );
   };
   try {
-    const bericht = await kx.wanted.importWantedList(uid, e.xml, {
-      vorschau: !e.schreiben,
+    const report = await kx.wanted.importWantedList(uid, e.xml, {
+      preview: !e.write,
       viaRebrickable: e.viaRebrickable,
-      ...(e.korrekturen ? { korrekturen: e.korrekturen } : {}),
+      ...(e.corrections ? { corrections: e.corrections } : {}),
       // An account's correction applies only to it; shared only what Rebrickable has confirmed.
-      rememberNumber: (art, rbId, blId, quelle) =>
-        quelle === 'korrigiert'
-          ? kx.catalog.rememberOwnBlNumber(uid, art, rbId, blId)
-          : kx.catalog.rememberBlNumber(art, rbId, blId),
-      fortschritt: stand => {
+      rememberNumber: (kind, rbId, blId, source) =>
+        source === 'korrigiert'
+          ? kx.catalog.rememberOwnBlNumber(uid, kind, rbId, blId)
+          : kx.catalog.rememberBlNumber(kind, rbId, blId),
+      progress: state => {
         // The state travels via the job to the waiting request (and its stream);
         // at most five times per second, the last one of each phase always.
-        const jetzt = kx.uhr.jetzt();
-        if (jetzt - zuletzt >= 200 || stand.fertig === stand.gesamt || stand.phase !== lastPhase) {
-          zuletzt = jetzt;
-          lastPhase = stand.phase;
-          const f = { ...stand, erledigt: stand.fertig };
-          danach('wanted-import:stand', () => k.fortschritt(f));
+        const now = kx.clock.now();
+        if (now - lastUsed >= 200 || state.done === state.total || state.phase !== lastPhase) {
+          lastUsed = now;
+          lastPhase = state.phase;
+          const f = { ...state };
+          after('wanted-import:stand', () => k.progress(f));
         }
         // Created on the FIRST write progress: before that the denominator is unknown.
-        if (e.schreiben && !jobRequested && stand.phase === 'schreiben') {
+        if (e.write && !jobRequested && state.phase === 'write') {
           jobRequested = true;
-          danach('wanted-import:auftrag', async () => {
-            jobRunning = await kx.jobQueue.startJob(uid, { total: stand.gesamt, current: e.fileName });
+          after('wanted-import:auftrag', async () => {
+            jobRunning = await kx.jobQueue.startJob(uid, { total: state.total, current: e.fileName });
           });
         }
-        anDenBar(stand);
+        toBar(state);
       },
-      ...(e.schreiben ? { abbruch: async () => jobRunning && (await kx.jobQueue.isAborted(uid)) } : {}),
+      ...(e.write ? { cancellation: async () => jobRunning && (await kx.jobQueue.isAborted(uid)) } : {}),
       creator: {
-        teil: (u, body) => kx.parts.addManualPart(u, body),
-        figur: (u, body) => kx.minifigs.addManualMinifig(u, body),
+        part: (u, body) => kx.parts.addManualPart(u, body),
+        minifig: (u, body) => kx.minifigs.addManualMinifig(u, body),
         // The purchase price is MAXPRICE from the file.
-        set: (u, sn, menge, zustand, kaufpreis) =>
-          kx.sets.setErfassen({
+        set: (u, sn, quantity, condition, purchasePrice) =>
+          kx.sets.acquireSet({
             requester: u,
             setNumber: sn,
-            menge,
-            kaufpreis,
-            zustand,
+            quantity,
+            purchasePrice,
+            condition,
             ifPresent: 'aufstocken',
           }),
       },
     });
     await closeBar(
       {
-        ok: bericht.angelegt + bericht.aufgestockt,
+        ok: report.created + report.topped_up,
         // Open items are a note (⚠), neither created nor failed.
-        warn: bericht.posten.filter(p => p.ausgang === 'offen').length,
-        fehler: bericht.fehler,
+        warn: report.items.filter(p => p.outcome === 'open').length,
+        error: report.failed,
         // The PROCESSED items, otherwise the bar would stop before the end.
-        done: bericht.posten.length,
-        abgebrochen: !!bericht.abgebrochen,
+        done: report.items.length,
+        aborted: !!report.aborted,
       },
       // One readable line per item for the bar's log.
-      bericht.posten.map(p =>
-        p.ausgang === 'angelegt' || p.ausgang === 'aufgestockt'
-          ? { success: true, set_number: p.blId, action: p.ausgang === 'angelegt' ? 'added' : 'updated' }
-          : { success: false, isWarning: p.ausgang === 'offen', set_number: p.blId, error: p.grund || '' },
+      report.items.map(p =>
+        p.outcome === 'created' || p.outcome === 'topped_up'
+          ? { success: true, set_number: p.blId, action: p.outcome === 'created' ? 'added' : 'updated' }
+          : { success: false, isWarning: p.outcome === 'open', set_number: p.blId, error: p.reason || '' },
       ),
     );
-    return { ...bericht };
+    return { ...report };
   } catch (f) {
     // The bar MUST be closed, even after an error, otherwise it would show everywhere
     // an import that no longer exists.
-    await closeBar({ ok: 0, fehler: 0, done: 0, abgebrochen: true });
+    await closeBar({ ok: 0, error: 0, done: 0, aborted: true });
     throw f;
   }
 }

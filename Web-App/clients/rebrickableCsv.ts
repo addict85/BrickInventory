@@ -4,57 +4,57 @@ import fs from 'node:fs';
 import { createGunzip } from 'node:zlib';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { openHttps, AbrufFehler } from '../src/infra/fetch';
+import { openHttps, FetchError } from '../src/infra/fetch';
 
 const CSV_BASIS = 'https://cdn.rebrickable.com/media/downloads/';
 const CSV_HOSTS = ['cdn.rebrickable.com'] as const;
 /** inventory_parts.csv.gz is about 30 MB packed, about 1 GB unpacked. */
 const PACKED_AT_MOST = 256 * 1024 * 1024;
 const UNPACKED_AT_MOST = 4 * 1024 * 1024 * 1024;
-const FRIST_MS = 30 * 60_000;
+const DEADLINE_MS = 30 * 60_000;
 
-export interface CsvLaden {
+export interface CsvDownload {
   signal?: AbortSignal;
   /** Packed bytes read and the announced total (0: unknown). */
-  atProgress?: (bytes: number, gesamt: number) => void;
+  atProgress?: (bytes: number, total: number) => void;
 }
 
 /** Loads `datei` (e.g. parts.csv.gz) unpacked into `ziel`. */
-export async function loadCatalogCsv(datei: string, ziel: string, o: CsvLaden = {}): Promise<void> {
-  if (!/^[a-z_]+\.csv\.gz$/.test(datei))
-    throw new AbrufFehler('adresse', `Unbekannte Katalogdatei: ${datei.slice(0, 60)}`);
-  const a = await openHttps(CSV_BASIS + datei, {
+export async function loadCatalogCsv(file: string, target: string, o: CsvDownload = {}): Promise<void> {
+  if (!/^[a-z_]+\.csv\.gz$/.test(file))
+    throw new FetchError('adresse', `Unbekannte Katalogdatei: ${file.slice(0, 60)}`);
+  const a = await openHttps(CSV_BASIS + file, {
     hosts: CSV_HOSTS,
     maxBytes: PACKED_AT_MOST,
-    zeitlimitMs: FRIST_MS,
+    timeoutMs: DEADLINE_MS,
     ...(o.signal ? { signal: o.signal } : {}),
   });
   if (a.status !== 200) {
-    a.verwerfen();
-    throw new AbrufFehler('netz', `HTTP ${a.status} für ${datei}`);
+    a.discard();
+    throw new FetchError('netz', `HTTP ${a.status} für ${file}`);
   }
-  const gesamt = Number(a.kopf['content-length']) || 0;
-  let gelesen = 0,
-    entpackt = 0;
-  const zaehler = new Transform({
-    transform(stueck: Buffer, _k, weiter) {
-      gelesen += stueck.length;
-      o.atProgress?.(gelesen, gesamt);
-      weiter(null, stueck);
+  const total = Number(a.head['content-length']) || 0;
+  let read = 0,
+    unpacked = 0;
+  const counter = new Transform({
+    transform(piece: Buffer, _k, next) {
+      read += piece.length;
+      o.atProgress?.(read, total);
+      next(null, piece);
     },
   });
   // A gzip bomb ends at the cap, not at the disk.
   const deckel = new Transform({
-    transform(stueck: Buffer, _k, weiter) {
-      entpackt += stueck.length;
-      weiter(
-        entpackt > UNPACKED_AT_MOST
-          ? new AbrufFehler('zu-gross', `${datei} entpackt über ${UNPACKED_AT_MOST} Byte`)
+    transform(piece: Buffer, _k, next) {
+      unpacked += piece.length;
+      next(
+        unpacked > UNPACKED_AT_MOST
+          ? new FetchError('zu-gross', `${file} entpackt über ${UNPACKED_AT_MOST} Byte`)
           : null,
-        stueck,
+        piece,
       );
     },
   });
   // An abort ends the request (fetch.ts) and thereby the whole chain.
-  await pipeline(a.strom(), zaehler, createGunzip(), deckel, fs.createWriteStream(ziel));
+  await pipeline(a.stream(), counter, createGunzip(), deckel, fs.createWriteStream(target));
 }

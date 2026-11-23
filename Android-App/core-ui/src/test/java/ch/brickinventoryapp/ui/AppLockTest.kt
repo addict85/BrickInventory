@@ -12,88 +12,88 @@ import org.junit.Test
  * unlock it on its own.
  *
  * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
- *   A  in inForeground() every return locked (`jetzt - seit >= 0`) → red „vor Ablauf
- *      der Frist fragt die App nicht“; gegenproben/app-sperre-sofort.patch
- *   B  state only in memory (`MutableStateFlow(false)`) → red „eine neue Activity
- *      entsperrt nicht“; gegenproben/app-sperre-vergisst-beim-drehen.patch
+ *   A  in inForeground() every return locked (`now - since >= 0`) → red „vor Ablauf der Frist fragt die App nicht“
+ * ; counter-checks/app-lock-immediate.patch
+ *   B  state only in memory (`MutableStateFlow(false)`) → red „eine neue Activity entsperrt nicht“
+ * ; counter-checks/app-lock-forgets-on-rotation.patch
  *   C  in inForeground() the device-boot comparison removed (`restarted = false`)
  *      → red „locked after a reboot, even if the clock is already further“;
- *      gegenproben/app-sperre-ohne-geraetestart.patch
- *   D  (kotlinc) hiddenWidget() only `ablage.gesperrt()` → red „das Widget
- *      verdeckt seine Betraege, sobald die Sperre greifen kann“; gegenproben/widget-trotz-sperre.patch
- *   E  (kotlinc) vorgabe() always 0 → red „neu installiert mit Displaysperre …“;
- *      gegenproben/app-sperre-vorgabe-aus.patch
+ *      counter-checks/app-lock-without-device-boot.patch
+ *   D  (kotlinc) hiddenWidget() only `store.locked()` → red „das Widget verdeckt seine Betraege, sobald die Sperre greifen kann“
+ * ; counter-checks/widget-despite-lock.patch
+ *   E  (kotlinc) default() always 0 → red „neu installiert mit Displaysperre …“;
+ *      counter-checks/app-lock-default-off.patch
  */
 class AppLockTest {
 
-    private class Speicher : AppLock.Ablage {
-        var minuten = 0
-        var seit: Long? = null
+    private class Memory : AppLock.Store {
+        var storedMinutes = 0
+        var since: Long? = null
         var start: Int? = null
-        var gesperrt = false
-        override fun minuten() = minuten
-        override fun setMinutes(minuten: Int) { this.minuten = minuten }
-        override fun backgroundSince() = seit
-        override fun rememberBackground(seit: Long?) { this.seit = seit }
+        var lockedState = false
+        override fun minutes() = storedMinutes
+        override fun setMinutes(minutes: Int) { this.storedMinutes = minutes }
+        override fun backgroundSince() = since
+        override fun rememberBackground(since: Long?) { this.since = since }
         override fun backgroundStart() = start
         override fun rememberBackgroundStart(start: Int?) { this.start = start }
-        override fun gesperrt() = gesperrt
-        override fun setLocked(an: Boolean) { gesperrt = an }
+        override fun locked() = lockedState
+        override fun setLocked(on: Boolean) { lockedState = on }
     }
 
-    private var jetzt = 1_000_000L
+    private var now = 1_000_000L
     private var starts: Int? = 7
-    private val ablage = Speicher()
-    private fun lock() = AppLock({ jetzt }, ablage) { starts }
+    private val store = Memory()
+    private fun lock() = AppLock({ now }, store) { starts }
 
-    private fun AppLock.weg(ms: Long) {
+    private fun AppLock.gone(ms: Long) {
         inBackground()
-        jetzt += ms
+        now += ms
         inForeground()
     }
 
     @Test
     fun `off by default`() {
         val s = lock()
-        s.weg(24 * 60 * AppLock.MINUTE_MS)
-        assertFalse(s.gesperrt.value)
+        s.gone(24 * 60 * AppLock.MINUTE_MS)
+        assertFalse(s.locked.value)
     }
 
     @Test
     fun `before the deadline expires the app does not ask`() {
         val s = lock().apply { setMinutes(5) }
-        s.weg(5 * AppLock.MINUTE_MS - 1)
-        assertFalse(s.gesperrt.value)
-        s.weg(1_000)
-        assertFalse("Jede Rückkehr beginnt die Frist neu", s.gesperrt.value)
+        s.gone(5 * AppLock.MINUTE_MS - 1)
+        assertFalse(s.locked.value)
+        s.gone(1_000)
+        assertFalse("every return restarts the deadline", s.locked.value)
     }
 
     @Test
     fun `after expiry locked until unlocked`() {
         val s = lock().apply { setMinutes(1) }
-        s.weg(AppLock.MINUTE_MS)
-        assertTrue(s.gesperrt.value)
-        s.weg(1_000)
-        assertTrue("Kurz weg und zurück entsperrt nicht", s.gesperrt.value)
-        s.entsperrt()
-        assertFalse(s.gesperrt.value)
+        s.gone(AppLock.MINUTE_MS)
+        assertTrue(s.locked.value)
+        s.gone(1_000)
+        assertTrue("briefly away and back does not unlock", s.locked.value)
+        s.unlocked()
+        assertFalse(s.locked.value)
     }
 
     @Test
     fun `a new activity does not unlock`() {
-        lock().apply { setMinutes(15) }.weg(16 * AppLock.MINUTE_MS)
-        val neu = lock()
-        neu.inForeground()
-        assertTrue(neu.gesperrt.value)
+        lock().apply { setMinutes(15) }.gone(16 * AppLock.MINUTE_MS)
+        val newValue = lock()
+        newValue.inForeground()
+        assertTrue(newValue.locked.value)
     }
 
     @Test
     fun `locked after a reboot of the device`() {
         val s = lock().apply { setMinutes(30) }
         s.inBackground()
-        jetzt = 5_000L
+        now = 5_000L
         s.inForeground()
-        assertTrue(s.gesperrt.value)
+        assertTrue(s.locked.value)
     }
 
     @Test
@@ -101,46 +101,46 @@ class AppLockTest {
         val s = lock().apply { setMinutes(30) }
         s.inBackground()
         starts = 8
-        jetzt += AppLock.MINUTE_MS
+        now += AppLock.MINUTE_MS
         s.inForeground()
-        assertTrue("Ein neuer Gerätestart sperrt, auch vor Ablauf der Frist", s.gesperrt.value)
+        assertTrue("a new device boot locks, even before the deadline expires", s.locked.value)
     }
 
     @Test
     fun `an unreadable boot counter locks, an equal one does not`() {
         val s = lock().apply { setMinutes(30) }
-        s.weg(AppLock.MINUTE_MS)
-        assertFalse("Derselbe Start und kurz weg: keine Rückfrage", s.gesperrt.value)
+        s.gone(AppLock.MINUTE_MS)
+        assertFalse("the same boot and briefly away: no confirmation", s.locked.value)
         s.inBackground()
         starts = null
-        jetzt += AppLock.MINUTE_MS
+        now += AppLock.MINUTE_MS
         s.inForeground()
-        assertTrue("Ist der Zähler nicht mehr lesbar, ist ein Neustart nicht ausgeschlossen", s.gesperrt.value)
+        assertTrue("if the counter is no longer readable, a reboot is not ruled out", s.locked.value)
     }
 
     @Test
     fun `the widget hides its amounts as soon as the lock can apply`() {
         val s = lock()
         s.inBackground()
-        assertFalse("Ohne Sperre zeigt es sie", AppLock.hiddenWidget(ablage))
+        assertFalse("without a lock it shows them", AppLock.hiddenWidget(store))
         s.inForeground()
         s.setMinutes(15)
-        assertFalse("Im Vordergrund und entsperrt", AppLock.hiddenWidget(ablage))
+        assertFalse("in the foreground and unlocked", AppLock.hiddenWidget(store))
         s.inBackground()
-        assertTrue("Im Hintergrund, auch vor Ablauf der Frist", AppLock.hiddenWidget(ablage))
-        jetzt += 15 * AppLock.MINUTE_MS
+        assertTrue("in the background, even before the deadline expires", AppLock.hiddenWidget(store))
+        now += 15 * AppLock.MINUTE_MS
         s.inForeground()
-        assertTrue(s.gesperrt.value)
-        assertTrue("Gesperrt im Vordergrund", AppLock.hiddenWidget(ablage))
-        s.entsperrt()
-        assertFalse(AppLock.hiddenWidget(ablage))
+        assertTrue(s.locked.value)
+        assertTrue("locked in the foreground", AppLock.hiddenWidget(store))
+        s.unlocked()
+        assertFalse(AppLock.hiddenWidget(store))
     }
 
     @Test
     fun `newly installed with a screen lock the lock is on, otherwise it stays off`() {
         assertTrue(AppLock.DEFAULT_MINUTES in AppLock.CHOICE && AppLock.DEFAULT_MINUTES > 0)
-        assertEquals(AppLock.DEFAULT_MINUTES, AppLock.vorgabe(newInstalled = true, deviceSecured = true))
-        assertEquals("Ohne Displaysperre liesse sich nicht entsperren", 0, AppLock.vorgabe(newInstalled = true, deviceSecured = false))
-        assertEquals("Ein Update stellt nichts um", 0, AppLock.vorgabe(newInstalled = false, deviceSecured = true))
+        assertEquals(AppLock.DEFAULT_MINUTES, AppLock.default(newInstalled = true, deviceSecured = true))
+        assertEquals("without a screen lock it could not be unlocked", 0, AppLock.default(newInstalled = true, deviceSecured = false))
+        assertEquals("an update changes nothing", 0, AppLock.default(newInstalled = false, deviceSecured = true))
     }
 }

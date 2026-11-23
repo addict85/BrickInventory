@@ -1,0 +1,17 @@
+Gegenprobe: Ein Helfer, der Quelltext liest, zählt für die Funktionen nicht mehr
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: a reading helper counts for every function that uses it
+
+diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt
+--- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt
++++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt
+@@ -96,7 +96,7 @@
+             val piece = c.substring(m.range.first, minOf(c.length, m.range.first + 400)).substringBefore("\n\n")
+             // A function, or a value computed in a block (`by lazy {`), reads if its block does.
+             val block = m.value.startsWith("fun") || m.value.trimEnd().endsWith("{") || m.value.trimEnd().endsWith("=")
+-            readsSource.containsMatchIn(m.value) || (block && readsSource.containsMatchIn(piece))
++            false
+         }.map { it.groupValues[1] }.toSet()
+         val bodies = c.split(Regex("""@Test\b""")).drop(1).map { it.substringBefore("\n    }\n") }
+         val reading = bodies.filter { body ->

@@ -16,50 +16,50 @@ const { patternCollection } = require('./helpers/inventory');
 
 const messen = `(() => {
   const k = document.querySelector('#gallery .sc')?.getBoundingClientRect();
-  const leiste = document.querySelector('nav').getBoundingClientRect();
+  const bar = document.querySelector('nav').getBoundingClientRect();
   const ueberlapp = [...document.querySelectorAll('#gallery .price-badge:not([hidden])')].flatMap(b => {
     // Die Textfläche, nicht die Box: Überlaufender Text ragt über seine Box hinaus.
     const flaeche = (e) => { if (!e) return null; const r = document.createRange(); r.selectNodeContents(e); return r.getBoundingClientRect(); };
-    const preis = flaeche(b.querySelector('.preis'));
-    const neighbor = flaeche(b.querySelector('.preis-pnl, .pnl-geschenk, .pnl-pos, .pnl-neg'));
-    if (!preis || !neighbor) return [];
-    const quer = preis.right > neighbor.left + 0.5 && preis.left < neighbor.right && preis.bottom > neighbor.top + 0.5 && preis.top < neighbor.bottom;
-    return quer ? [b.textContent.trim()] : [];
+    const price = flaeche(b.querySelector('.price'));
+    const neighbor = flaeche(b.querySelector('.price-pnl, .pnl-gift, .pnl-pos, .pnl-neg'));
+    if (!price || !neighbor) return [];
+    const landscape = price.right > neighbor.left + 0.5 && price.left < neighbor.right && price.bottom > neighbor.top + 0.5 && price.top < neighbor.bottom;
+    return landscape ? [b.textContent.trim()] : [];
   });
-  return { oben: k ? Math.round(k.top) : null, leiste: Math.round(leiste.top),
+  return { upper: k ? Math.round(k.top) : null, bar: Math.round(bar.top),
            karten: document.querySelectorAll('#gallery .price-badge:not([hidden])').length, ueberlapp,
            breit: document.documentElement.scrollWidth };
 })()`;
 
 test('collection on the phone: card above the fold, prices without overlap', { timeout: 120_000 }, async t => {
-  const app = await startApp(t, { name: `falz_${process.pid}`, bestand: patternCollection, telefon: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `falz_${process.pid}`, holding: patternCollection, phone: true });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
-  for (const [breite, hoehe] of [
+  for (const [width, height] of [
     [320, 640],
     [360, 740],
     [390, 844],
   ]) {
     await app.b.tab('Emulation.setDeviceMetricsOverride', {
-      width: breite,
-      height: hoehe,
+      width: width,
+      height: height,
       deviceScaleFactor: 2,
       mobile: true,
     });
-    await app.ruhig();
-    await app.bis(
+    await app.settle();
+    await app.until(
       `document.querySelectorAll('#gallery .price-badge:not([hidden])').length > 0`,
       'Marktpreise auf den Karten',
     );
-    const m = await app.b.auswerten(messen);
+    const m = await app.b.evaluate(messen);
     assert.ok(
-      m.oben !== null && m.oben + 60 < m.leiste,
-      `${breite}: erste Karte über der Falz (oben ${m.oben}, Leiste ${m.leiste})`,
+      m.upper !== null && m.upper + 60 < m.bar,
+      `${width}: first card above the fold (top ${m.upper}, bar ${m.bar})`,
     );
-    assert.ok(m.karten >= 2, `${breite}: zu wenig Preiszeilen geprüft (${m.karten})`);
-    assert.deepEqual(m.ueberlapp, [], `${breite}: Preis und Nachbar überlappen`);
-    assert.equal(m.breit, breite, `${breite}: waagrechtes Scrollen`);
+    assert.ok(m.karten >= 2, `${width}: too few price rows checked (${m.karten})`);
+    assert.deepEqual(m.ueberlapp, [], `${width}: price and neighbour overlap`);
+    assert.equal(m.breit, width, `${width}: waagrechtes Scrollen`);
   }
 });

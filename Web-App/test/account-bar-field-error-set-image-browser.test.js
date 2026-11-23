@@ -5,17 +5,17 @@
  * contrast under the text in the “hochglanz” design.
  *
  * Counter-checks (measured 15.11.2026, each alone, bundle rebuilt):
- *   A  .konto-nav without position:sticky → red: “M2 …” all cases with account and background jobs (“bar
+ *   A  .account-nav without position:sticky → red: “M2 …” all cases with account and background jobs (“bar
  *      scrolls away”); the mobile rule of the settings back to position:static → red: “M2 390 px … settings”
  *   B  background jobs without jump bar → red: “M2 …” (no bar); without tabindex on the titles → red:
  *      same place (focus)
  *   C  errorPlace() without the branch for grid cells → red: “N2 …” (message not below its field)
- *   D  finanzen-fehler hides nothing → red: “N3 …” (period and chips visible)
+ *   D  finances-error hides nothing → red: “N3 …” (period and chips visible)
  *   E  the rule for 601–640 px removed (names hidden only up to 640 px again) → red: “N4 …” (640 × 450)
- *   F  .besitzer-badge back to overflow:hidden → red: “N5 …” (badges offset by 4–6 px)
+ *   F  .owner-badge back to overflow:hidden → red: “N5 …” (badges offset by 4–6 px)
  *   G  set image without a button again (img with role=button, no button) → red: “N7 …” (no button around the image)
  *   H  hochglanz.css: badges again with the light of the buttons → red: “contrast …” (#fin-tbl .cond-new 3.03:1);
- *      --mut back to #5a6270 from noppe → red: same place (.fin-fussnote 4.21:1)
+ *      --mut back to #5a6270 from noppe → red: same place (.fin-footnote 4.21:1)
  *
  * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -25,200 +25,200 @@ const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 const { patternHousehold } = require('./helpers/inventory');
 
-async function groesse(b, breite, hoehe, telefon) {
+async function size(b, width, height, phone) {
   await b.tab('Emulation.setDeviceMetricsOverride', {
-    width: breite,
-    height: hoehe,
+    width: width,
+    height: height,
     deviceScaleFactor: 1,
-    mobile: telefon,
+    mobile: phone,
   });
 }
-const sichtbar = sel => `[...document.querySelectorAll(${JSON.stringify(sel)})].map(e => e.checkVisibility())`;
+const visible = sel => `[...document.querySelectorAll(${JSON.stringify(sel)})].map(e => e.checkVisibility())`;
 
 test('account bar, field error in the grid, bottom bar, set image', { concurrency: 1, timeout: 420_000 }, async t => {
   const app = await startApp(t, {
     name: `r27_${process.pid}`,
-    bestand: async (db, uid) => {
+    holding: async (db, uid) => {
       await patternHousehold(db, uid);
       // An image delivered by the own server: only with an image is the zoom button usable.
       await db.run(`UPDATE set_catalog SET image_local = '/favicon.svg' WHERE set_number = '10294-1'`);
     },
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
-  const zu = async hash => {
-    await b.auswerten(`location.hash = ${JSON.stringify(hash)}; scrollTo(0, 0); true`);
-    await ruhig();
+  const { b, until, settle } = app;
+  const closed = async hash => {
+    await b.evaluate(`location.hash = ${JSON.stringify(hash)}; scrollTo(0, 0); true`);
+    await settle();
   };
 
   // First: only without a loaded list and curve does the error land in the chart box.
   await t.test('N3 finance error: period, chips and search gone, back after success', async () => {
-    const kaputt = JSON.stringify({ success: false, error: 'interner Fehler', code: 'interner_fehler' });
+    const broken = JSON.stringify({ success: false, error: 'interner Fehler', code: 'internal_error' });
     const intercept = d => {
       if (d.method !== 'Fetch.requestPaused') return;
       b.tab('Fetch.fulfillRequest', {
         requestId: d.params.requestId,
         responseCode: 500,
         responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
-        body: Buffer.from(kaputt).toString('base64'),
+        body: Buffer.from(broken).toString('base64'),
       }).catch(() => {});
     };
     b.listener.push(intercept);
-    await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/finance/valuation*', requestStage: 'Request' }] });
-    const ELEMENTS = '.zeitraum-wahl .period-btn, #fin-filter button, #fin-suche';
+    await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/api/v2/finance/valuation*', requestStage: 'Request' }] });
+    const ELEMENTS = '.period-choice .period-btn, #fin-filter button, #fin-search';
     try {
-      await groesse(b, 1280, 900, false);
-      await zu('#/finanzen');
-      await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Fehlerzustand');
-      const fehler = await b.auswerten(sichtbar(ELEMENTS));
-      assert.equal(fehler.length, 9);
-      assert.deepEqual(fehler, Array(9).fill(false), 'im Fehlerfall sichtbar');
+      await size(b, 1280, 900, false);
+      await closed('#/finanzen');
+      await until(`!!document.querySelector('#portfolio-chart .error-state')`, 'Fehlerzustand');
+      const error = await b.evaluate(visible(ELEMENTS));
+      assert.equal(error.length, 9);
+      assert.deepEqual(error, Array(9).fill(false), 'visible on error');
     } finally {
       await b.tab('Fetch.disable');
       b.listener.splice(b.listener.indexOf(intercept), 1);
     }
-    await b.auswerten(`document.querySelector('#portfolio-chart .fehler-zustand button[data-click]').click(); true`);
-    await bis(`!!document.querySelector('#fin-tbl table')`, 'Tabelle nach „Erneut versuchen“');
-    await ruhig();
-    assert.deepEqual(await b.auswerten(sichtbar(ELEMENTS)), Array(9).fill(true), 'nach Erfolg');
+    await b.evaluate(`document.querySelector('#portfolio-chart .error-state button[data-click]').click(); true`);
+    await until(`!!document.querySelector('#fin-tbl table')`, 'Table after „Erneut versuchen“');
+    await settle();
+    assert.deepEqual(await b.evaluate(visible(ELEMENTS)), Array(9).fill(true), 'after success');
   });
 
-  for (const [breite, telefon] of [
+  for (const [width, phone] of [
     [390, true],
     [1280, false],
   ])
-    for (const dunkel of [false, true])
-      for (const [ansicht, hash, leiste] of [
-        ['Konto', '#/konto', '#tab-profil .konto-nav'],
-        ['Hintergrundarbeiten', '#/hintergrund', '#tab-monitor .konto-nav'],
-        ...(telefon ? [['Einstellungen', '#/einstellungen/benutzer', '#global-settings-grid > .einst-nav']] : []),
+    for (const dark of [false, true])
+      for (const [viewName, hash, bar] of [
+        ['Konto', '#/konto', '#tab-profile .account-nav'],
+        ['Hintergrundarbeiten', '#/hintergrund', '#tab-monitor .account-nav'],
+        ...(phone ? [['Einstellungen', '#/einstellungen/benutzer', '#global-settings-grid > .settings-nav']] : []),
       ])
-        await t.test(`M2 ${breite} px ${dunkel ? 'dark' : 'light'}: jump bar ${ansicht} sticks`, async () => {
-          await groesse(b, breite, telefon ? 844 : 900, telefon);
+        await t.test(`M2 ${width} px ${dark ? 'dark' : 'light'}: jump bar ${viewName} sticks`, async () => {
+          await size(b, width, phone ? 844 : 900, phone);
           await b.tab('Emulation.setEmulatedMedia', {
-            features: [{ name: 'prefers-color-scheme', value: dunkel ? 'dark' : 'light' }],
+            features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }],
           });
-          await zu(hash);
-          await bis(`!!document.querySelector(${JSON.stringify(leiste)})?.checkVisibility()`, `Leiste ${ansicht}`);
-          await b.auswerten(`scrollTo(0, document.documentElement.scrollHeight); true`);
-          await ruhig(400);
-          const m = await b.auswerten(`(() => {
-            const nav = document.querySelector(${JSON.stringify(leiste)});
+          await closed(hash);
+          await until(`!!document.querySelector(${JSON.stringify(bar)})?.checkVisibility()`, `Bar ${viewName}`);
+          await b.evaluate(`scrollTo(0, document.documentElement.scrollHeight); true`);
+          await settle(400);
+          const m = await b.evaluate(`(() => {
+            const nav = document.querySelector(${JSON.stringify(bar)});
             const r = nav.getBoundingClientRect();
-            const unten = [...document.querySelectorAll('nav')].find(n => getComputedStyle(n).position === 'fixed');
+            const lower = [...document.querySelectorAll('nav')].find(n => getComputedStyle(n).position === 'fixed');
             return {
-              gerollt: scrollY,
-              oben: Math.round(r.top), unten: Math.round(r.bottom),
-              soll: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--leiste-oben')) || 0,
-              lowerBar: unten ? Math.round(unten.getBoundingClientRect().top) : innerHeight,
-              grund: getComputedStyle(nav).backgroundColor,
+              scrolled: scrollY,
+              upper: Math.round(r.top), lower: Math.round(r.bottom),
+              want: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-top')) || 0,
+              lowerBar: lower ? Math.round(lower.getBoundingClientRect().top) : innerHeight,
+              reason: getComputedStyle(nav).backgroundColor,
               pageWider: document.documentElement.scrollWidth > innerWidth,
             };
           })()`);
-          assert.ok(m.gerollt > 300, `Seite zu kurz zum Rollen (${m.gerollt} px)`);
-          assert.ok(Math.abs(m.oben - m.soll) <= 1, `Leiste rollt weg: oben ${m.oben} px statt ${m.soll} px`);
-          assert.ok(m.unten < m.lowerBar, 'Leiste über der unteren Navigation');
-          assert.notEqual(m.grund, 'rgba(0, 0, 0, 0)', 'Leiste ohne eigenen Grund: Inhalt scheint durch');
-          assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
-          if (ansicht !== 'Hintergrundarbeiten') return;
+          assert.ok(m.scrolled > 300, `Page too short to scroll (${m.scrolled} px)`);
+          assert.ok(Math.abs(m.upper - m.want) <= 1, `Bar scrolls away: top ${m.upper} px instead of ${m.want} px`);
+          assert.ok(m.lower < m.lowerBar, 'Bar above the bottom navigation');
+          assert.notEqual(m.reason, 'rgba(0, 0, 0, 0)', 'Bar without its own background: content shows through');
+          assert.equal(m.pageWider, false, 'Page wider than the window');
+          if (viewName !== 'Hintergrundarbeiten') return;
           // A jump to the very top: the heading is in view and not below the bar.
-          await b.auswerten(`document.querySelector('${leiste} a[data-arg="mon-t-kontingente"]').click(); true`);
-          await ruhig(400);
+          await b.evaluate(`document.querySelector('${bar} a[data-arg="mon-t-quotas"]').click(); true`);
+          await settle(400);
           const z =
-            await b.auswerten(`(() => { const h = document.getElementById('mon-t-kontingente').getBoundingClientRect();
-            return { fokus: document.activeElement.id, oben: h.top, unten: h.bottom,
-              leiste: document.querySelector(${JSON.stringify(leiste)}).getBoundingClientRect().bottom, h: innerHeight }; })()`);
-          assert.equal(z.fokus, 'mon-t-kontingente', 'Fokus auf der Überschrift');
-          assert.ok(
-            z.oben >= z.leiste - 1 && z.unten <= z.h,
-            `Überschrift verdeckt oder nicht im Bild: ${JSON.stringify(z)}`,
-          );
+            await b.evaluate(`(() => { const h = document.getElementById('mon-t-quotas').getBoundingClientRect();
+            return { focused: document.activeElement.id, upper: h.top, lower: h.bottom,
+              bar: document.querySelector(${JSON.stringify(bar)}).getBoundingClientRect().bottom, h: innerHeight }; })()`);
+          assert.equal(z.focused, 'mon-t-quotas', 'Focus on the heading');
+          assert.ok(z.upper >= z.bar - 1 && z.lower <= z.h, `Heading covered or not in view: ${JSON.stringify(z)}`);
         });
 
   await t.test('N2 field errors in the two-column dialog below their field', async () => {
-    await groesse(b, 1280, 900, false);
+    await size(b, 1280, 900, false);
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
-    await zu('#/sammlung');
-    await b.auswerten(`document.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
-    await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
-    await b.auswerten(`document.getElementById('add-qty').value = '0'; document.getElementById('add-price').value = 'abc';
+    await closed('#/sammlung');
+    await b.evaluate(`document.querySelector('[data-click="openCapture"][data-arg="set"]').click(); true`);
+    await until(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog open');
+    await b.evaluate(`document.getElementById('add-qty').value = '0'; document.getElementById('add-price').value = 'abc';
       document.getElementById('btn-add').click(); true`);
-    await bis(`!document.getElementById('add-price-fehler')?.hidden`, 'Feldfehler');
-    const m = await b.auswerten(`['add-num', 'add-qty', 'add-price'].map(id => {
-      const f = (document.getElementById(id).closest('.preis-mit-waehrung') ?? document.getElementById(id)).getBoundingClientRect();
-      const e = document.getElementById(id + '-fehler').getBoundingClientRect();
+    await until(`!document.getElementById('add-price-error')?.hidden`, 'Feldfehler');
+    const m = await b.evaluate(`['add-num', 'add-qty', 'add-price'].map(id => {
+      const f = (document.getElementById(id).closest('.price-with-currency') ?? document.getElementById(id)).getBoundingClientRect();
+      const e = document.getElementById(id + '-error').getBoundingClientRect();
       return { id, links: Math.round(e.left - f.left), abstand: Math.round(e.top - f.bottom), breiter: e.width > f.width + 1 };
     })`);
     for (const x of m) {
-      assert.equal(x.links, 0, `${x.id}: Meldung nicht unter ihrem Feld (${x.links} px versetzt)`);
-      assert.ok(x.abstand >= 0 && x.abstand < 12, `${x.id}: ${x.abstand} px unter dem Feld`);
-      assert.equal(x.breiter, false, `${x.id}: Meldung breiter als ihre Spalte`);
+      assert.equal(x.links, 0, `${x.id}: message not below its field (${x.links} px offset)`);
+      assert.ok(x.abstand >= 0 && x.abstand < 12, `${x.id}: ${x.abstand} px below the field`);
+      assert.equal(x.breiter, false, `${x.id}: message wider than its column`);
     }
-    await b.auswerten(`document.querySelector('[data-click="schliesseErfassen"][data-arg="set"]').click(); true`);
+    await b.evaluate(`document.querySelector('[data-click="closeCapture"][data-arg="set"]').click(); true`);
   });
 
   await t.test('N4 bottom bar at low height: names up to 601 px', async () => {
     const BAR = `(() => { const tabs = [...document.querySelectorAll('nav .ntab')].filter(x => x.checkVisibility());
       return { n: tabs.length, pageWider: document.documentElement.scrollWidth > innerWidth,
-        namen: tabs.map(x => { const t = x.getBoundingClientRect(), l = x.querySelector('.tab-label').getBoundingClientRect();
-          return { breit: l.width > 20, innen: l.left >= t.left - 0.5 && l.right <= t.right + 0.5 }; }) }; })()`;
-    await zu('#/sammlung');
-    for (const [breite, hoehe, namen] of /** @type {[number, number, boolean][]} */ ([
+        names: tabs.map(x => { const t = x.getBoundingClientRect(), l = x.querySelector('.tab-label').getBoundingClientRect();
+          return { breit: l.width > 20, inner: l.left >= t.left - 0.5 && l.right <= t.right + 0.5 }; }) }; })()`;
+    await closed('#/sammlung');
+    for (const [width, height, names] of /** @type {[number, number, boolean][]} */ ([
       [640, 450, true],
       [610, 450, true],
       [600, 450, false],
       [390, 844, true],
       [320, 700, true],
     ])) {
-      await groesse(b, breite, hoehe, breite < 600);
-      await ruhig(300);
-      const m = await b.auswerten(BAR);
-      assert.equal(m.n, 5, `${breite} × ${hoehe}: Reiter`);
-      assert.equal(m.pageWider, false, `${breite} × ${hoehe}: Seite breiter als das Fenster`);
-      for (const x of m.namen) {
-        assert.equal(x.breit, namen, `${breite} × ${hoehe}: Namen ${namen ? 'fehlen' : 'stehen da'}`);
-        if (namen) assert.ok(x.innen, `${breite} × ${hoehe}: Name ragt aus dem Reiter`);
+      await size(b, width, height, width < 600);
+      await settle(300);
+      const m = await b.evaluate(BAR);
+      assert.equal(m.n, 5, `${width} × ${height}: Reiter`);
+      assert.equal(m.pageWider, false, `${width} × ${height}: page wider than the window`);
+      for (const x of m.names) {
+        assert.equal(x.breit, names, `${width} × ${height}: names ${names ? 'missing' : 'present'}`);
+        if (names) assert.ok(x.inner, `${width} × ${height}: name sticks out of the tab`);
       }
     }
   });
 
   await t.test('N5 finance table: condition and account on one baseline', async () => {
-    await groesse(b, 1280, 900, false);
-    await zu('#/finanzen');
-    await bis(`!!document.querySelector('#fin-tbl .besitzer-badge')`, 'Abzeichen');
-    const m = await b.auswerten(`[...document.querySelectorAll('#fin-tbl td.fin-name')].flatMap(td => {
-      const a = td.querySelector('.cond-new, .cond-used'), k = td.querySelector('.besitzer-badge');
+    await size(b, 1280, 900, false);
+    await closed('#/finanzen');
+    await until(`!!document.querySelector('#fin-tbl .owner-badge')`, 'Abzeichen');
+    const m = await b.evaluate(`[...document.querySelectorAll('#fin-tbl td.fin-name')].flatMap(td => {
+      const a = td.querySelector('.cond-new, .cond-used'), k = td.querySelector('.owner-badge');
       if (!a || !k) return [];
-      const unten = x => { const r = document.createRange(); r.selectNodeContents(x); return r.getBoundingClientRect().bottom; };
+      const lower = x => { const r = document.createRange(); r.selectNodeContents(x); return r.getBoundingClientRect().bottom; };
       // Nur Abzeichen auf derselben Zeile; ein umbrochenes steht zu Recht tiefer.
       if (Math.abs(a.getBoundingClientRect().top - k.getBoundingClientRect().top) > 12) return [];
-      return [Math.round((unten(k) - unten(a)) * 10) / 10];
+      return [Math.round((lower(k) - lower(a)) * 10) / 10];
     })`);
-    assert.ok(m.length >= 3, `zu wenige Zeilen mit beiden Abzeichen: ${m.length}`);
+    assert.ok(m.length >= 3, `too few rows with both badges: ${m.length}`);
     assert.deepEqual(
       m.filter(x => Math.abs(x) > 0.5),
       [],
-      `Versatz der Grundlinie in px: ${m.join(', ')}`,
+      `Baseline offset in px: ${m.join(', ')}`,
     );
   });
 
   await t.test('N7 set image: button, can be opened with the keyboard', async () => {
-    await groesse(b, 1280, 900, false);
-    await zu('#/sammlung');
-    await b.auswerten(`document.querySelector('#gallery [data-click="openModal"][data-arg="10294-1"]').click(); true`);
-    await bis(`/favicon\\.svg/.test(document.getElementById('m-img').getAttribute('src') || '')`, 'Set-Bild');
-    const k = await b.auswerten(`(() => { const k = document.getElementById('m-img').parentElement; k.focus();
-      return { tag: k.tagName, fokus: document.activeElement === k, name: k.getAttribute('aria-label') }; })()`);
-    assert.deepEqual(k, { tag: 'BUTTON', fokus: true, name: 'Bild vergrössern' }, 'kein Knopf um das Bild');
+    await size(b, 1280, 900, false);
+    await closed('#/sammlung');
+    await b.evaluate(`document.querySelector('#gallery [data-click="openModal"][data-arg="10294-1"]').click(); true`);
+    await until(`/favicon\\.svg/.test(document.getElementById('m-img').getAttribute('src') || '')`, 'Set-Bild');
+    const k = await b.evaluate(`(() => { const k = document.getElementById('m-img').parentElement; k.focus();
+      return { tag: k.tagName, focused: document.activeElement === k, name: k.getAttribute('aria-label') }; })()`);
+    assert.deepEqual(k, { tag: 'BUTTON', focused: true, name: 'Bild vergrössern' }, 'no button around the image');
     const enter = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 };
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...enter });
     await b.tab('Input.dispatchKeyEvent', { type: 'char', text: '\r', ...enter });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...enter });
-    await bis(`/favicon\\.svg/.test(document.getElementById('lightbox-img').getAttribute('src') || '')`, 'Bildansicht');
-    await b.auswerten(`document.getElementById('img-lightbox').click();
+    await until(
+      `/favicon\\.svg/.test(document.getElementById('lightbox-img').getAttribute('src') || '')`,
+      'Bildansicht',
+    );
+    await b.evaluate(`document.getElementById('img-lightbox').click();
       document.querySelector('#set-modal [data-click="closeModal"]').click(); true`);
   });
 
@@ -226,7 +226,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
   // The computed background color does not know the gradient above it.
   await t.test('contrast "hochglanz" light (390 px): badge and quiet text on their gradient', async () => {
     const sharp = require('sharp');
-    const bild = async r =>
+    const image = async r =>
       (
         await sharp(
           Buffer.from(
@@ -249,40 +249,45 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       return (h + 0.05) / (d + 0.05);
     };
     // On the phone the footnote sits in the darker foot of the card gradient.
-    await groesse(b, 390, 844, true);
+    await size(b, 390, 844, true);
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
-    await zu('#/finanzen');
-    await b.auswerten(`window.__bimApplyTheme('hochglanz'); true`);
-    await bis(
+    await closed('#/finanzen');
+    await b.evaluate(`window.__bimApplyTheme('hochglanz'); true`);
+    await until(
       `document.documentElement.dataset.theme === 'hochglanz' &&
       getComputedStyle(document.querySelector('#fin-tbl .cond-new')).fontWeight === '800'`,
-      'Design hochglanz',
+      'Design „hochglanz“',
     );
-    await ruhig();
+    await settle();
     try {
-      for (const sel of ['#fin-tbl .cond-new', '.fin-fussnote']) {
+      for (const sel of ['#fin-tbl .cond-new', '.fin-footnote']) {
         const r =
-          await b.auswerten(`(() => { const e = document.querySelector('${sel}'); e.scrollIntoView({ block: 'center' });
+          await b.evaluate(`(() => { const e = document.querySelector('${sel}'); e.scrollIntoView({ block: 'center' });
           const r = e.getBoundingClientRect();
           return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height,
             farbe: getComputedStyle(e).color.match(/[\\d.]+/g).slice(0, 3).map(Number) }; })()`);
-        const { farbe, ...excerpt } = r;
-        const mit = await bild(excerpt);
-        await b.auswerten(
+        const { farbe: color, ...excerpt } = r;
+        const withIt = await image(excerpt);
+        await b.evaluate(
           `document.querySelector('${sel}').style.setProperty('color', 'transparent', 'important'); true`,
         );
-        const ohne = await bild(excerpt);
-        await b.auswerten(`document.querySelector('${sel}').style.removeProperty('color'); true`);
-        const werte = [];
-        for (let i = 0; i < ohne.length; i += 3)
-          if (Math.abs(mit[i] - ohne[i]) + Math.abs(mit[i + 1] - ohne[i + 1]) + Math.abs(mit[i + 2] - ohne[i + 2]) > 60)
-            werte.push(kontrast(farbe, [ohne[i], ohne[i + 1], ohne[i + 2]]));
-        assert.ok(werte.length > 20, `${sel}: keine Schriftpixel gefunden (${werte.length})`);
-        const min = Math.min(...werte);
-        assert.ok(min >= 4.5, `${sel}: ${min.toFixed(2)}:1 unter der Schrift`);
+        const without = await image(excerpt);
+        await b.evaluate(`document.querySelector('${sel}').style.removeProperty('color'); true`);
+        const values = [];
+        for (let i = 0; i < without.length; i += 3)
+          if (
+            Math.abs(withIt[i] - without[i]) +
+              Math.abs(withIt[i + 1] - without[i + 1]) +
+              Math.abs(withIt[i + 2] - without[i + 2]) >
+            60
+          )
+            values.push(kontrast(color, [without[i], without[i + 1], without[i + 2]]));
+        assert.ok(values.length > 20, `${sel}: no text pixels found (${values.length})`);
+        const min = Math.min(...values);
+        assert.ok(min >= 4.5, `${sel}: ${min.toFixed(2)}:1 below the text`);
       }
     } finally {
-      await b.auswerten(`window.__bimApplyTheme('classic'); true`);
+      await b.evaluate(`window.__bimApplyTheme('classic'); true`);
     }
   });
 });

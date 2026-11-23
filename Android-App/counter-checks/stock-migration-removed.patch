@@ -1,0 +1,17 @@
+Gegenprobe: MIGRATION_1_2 fehlt in BestandDatenbank.MIGRATIONEN
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.StockMigrationTest
+Rot: every earlier version becomes the newest without loss, every item has its own key, every row its filters
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt
+@@ -170,7 +170,7 @@
+         const val NAME = "bestand.db"
+ 
+         /** All migrations, in the order of the versions. */
+-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
++        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_2_3)
+     }
+ }
+ 

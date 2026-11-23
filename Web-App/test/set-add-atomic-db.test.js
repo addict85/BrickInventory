@@ -21,7 +21,7 @@
  * (asAccount, route via testServer) as the runtime role; test data via the owner role.
  *   B' (13.11.) B repeated via the set-up sources → red: “the request asks
  *      no network …” (name „Testset“ already in the request) and “the job …”
- *   G  (13.11.) in setAngaben() (rebrickableKatalog.ts) again the imported holeSet
+ *   G  (13.11.) in setAngaben() (rebrickableCatalog.ts) again the imported holeSet
  *      instead of quellen(k) → red: “the job completes …” (no network call counted)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -40,22 +40,22 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   // Every source in the network set up and counted.
-  const netz = [];
+  const net = [];
   testSources(t, {
     holeSet: async sn => {
-      netz.push(`rebrickable ${sn}`);
+      net.push(`rebrickable ${sn}`);
       return { set_num: sn, name: 'Testset', year: 2020, theme_id: 990001, num_parts: 10, set_img_url: null };
     },
     getThemeName: async () => 'Test',
-    setAngaben: async () => null,
-    bricklinkRequest: async (_m, pfad) => {
-      netz.push(`preis ${pfad.split('/')[3]}`);
+    setDetails: async () => null,
+    bricklinkRequest: async (_m, path) => {
+      net.push(`preis ${path.split('/')[3]}`);
       return { avg_price: '42', qty_avg_price: '42', currency_code: 'EUR' };
     },
   });
   testImageWorker(t, {
-    setBildLaden: async (_u, sn) => {
-      netz.push(`bild ${sn}`);
+    loadSetImage: async (_u, sn) => {
+      net.push(`bild ${sn}`);
       return null;
     },
   });
@@ -65,53 +65,53 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
     KIND = `erf-kind-${P}`;
   const SN = `${70000 + (P % 9000)}-1`,
     SN2 = `${80000 + (P % 9000)}-1`;
-  const weg = async () => {
+  const route = async () => {
     for (const sn of [SN, SN2]) {
       await db.run('DELETE FROM set_acquisitions WHERE set_number = $1', [sn]);
       await db.run('DELETE FROM sets WHERE set_number = $1', [sn]);
       await db.run('DELETE FROM rb_sets WHERE set_num = $1', [sn]);
-      await db.run("DELETE FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [sn]);
+      await db.run("DELETE FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1", [sn]);
     }
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, KIND]]);
   };
-  await weg();
+  await route();
   // Without BrickLink access the price run did not ask at all; the fetch itself is set up.
   await _req('src/settings/settings.js').setGlobalSetting('bricklink_consumer_key', 'test');
   await db.run("INSERT INTO rb_themes (id, name) VALUES (990001, 'Test') ON CONFLICT (id) DO NOTHING");
-  const neu = async n =>
+  const fresh = async n =>
     (await db.get("INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id", [n])).id;
-  const haupt = await neu(MAIN),
-    kind = await neu(KIND);
-  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, kind]);
+  const main = await fresh(MAIN),
+    kind = await fresh(KIND);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [main, kind]);
   t.after(async () => {
-    await weg().catch(() => {});
+    await route().catch(() => {});
     await db.run("DELETE FROM global_settings WHERE key = 'bricklink_consumer_key'").catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
   await t.test('added concurrently, created exactly once', async () => {
     // The main account sees both accounts; it creates partly for itself, partly for the child.
-    const fuer = [haupt, kind, haupt, kind, haupt, kind, haupt, kind];
+    const forWhom = [main, kind, main, kind, main, kind, main, kind];
     const r = await Promise.all(
-      fuer.map(b =>
-        asAccount(haupt, () => sets.setErfassen({ requester: haupt, ownerWish: b, setNumber: SN, kaufpreis: null })),
+      forWhom.map(b =>
+        asAccount(main, () => sets.acquireSet({ requester: main, ownerWish: b, setNumber: SN, purchasePrice: null })),
       ),
     );
     assert.equal(r.filter(x => x.action === 'added').length, 1, JSON.stringify(r.map(x => x.action)));
-    const zeilen = await db.all('SELECT user_id FROM sets WHERE set_number = $1', [SN]);
-    assert.equal(zeilen.length, 1, 'Das Set steht mehrfach im Haushalt');
+    const lines = await db.all('SELECT user_id FROM sets WHERE set_number = $1', [SN]);
+    assert.equal(lines.length, 1, 'The set is in the household several times');
     const erf = await db.all('SELECT quantity, purchase_price FROM set_acquisitions WHERE set_number = $1', [SN]);
     assert.deepEqual(
       erf.map(z => [z.quantity, z.purchase_price]),
       [[1, null]],
-      'genau eine Erfassung, noch ohne Preis',
+      'exactly one acquisition, still without a price',
     );
   });
 
   await t.test('the request asks no network and enqueues the job', async () => {
-    netz.length = 0;
-    const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
-    const r = await fetch(`${base}/api/v1/sets`, {
+    net.length = 0;
+    const { base } = testServer(_req, { session: { userId: main }, t });
+    const r = await fetch(`${base}/api/v2/sets`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ set_number: SN2, condition: 'U' }),
@@ -123,12 +123,12 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
         action: j.action,
         set_number: j.set_number,
         name: j.name,
-        katalog_offen: j.katalog_offen,
-        ergaenzung: j.ergaenzung,
+        catalog_pending: j.catalog_pending,
+        supplement: j.supplement,
       },
-      { action: 'added', set_number: SN2, name: `Set ${SN2}`, katalog_offen: true, ergaenzung: 'ausstehend' },
+      { action: 'added', set_number: SN2, name: `Set ${SN2}`, catalog_pending: true, supplement: 'pending' },
     );
-    assert.deepEqual(netz, [], 'Netzaufrufe in der Anfrage');
+    assert.deepEqual(net, [], 'network calls in the request');
     // rb_sets does not know the set: the capture creates it as 'api', including the set_catalog row.
     assert.deepEqual(
       await db.get(
@@ -139,39 +139,39 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       { name: `Set ${SN2}`, source: 'api', katalog: true },
     );
     const a = await db.get(
-      "SELECT payload, dedupe_key FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1",
+      "SELECT payload, dedupe_key FROM jobs WHERE type = 'rework' AND payload->>'set_number' = $1",
       [SN2],
     );
-    assert.ok(a, 'kein Auftrag eingestellt');
-    assert.equal(a.payload.art, 'ergaenzen');
-    assert.equal(a.dedupe_key, `nacharbeit:${haupt}:${SN2}`);
+    assert.ok(a, 'no job queued');
+    assert.equal(a.payload.kind, 'ergaenzen');
+    assert.equal(a.dedupe_key, `rework:${main}:${SN2}`);
   });
 
   await t.test('the job completes catalog and purchase price', async () => {
-    netz.length = 0;
-    await asAccount(haupt, () => sets.setSupplement(SN2, haupt));
+    net.length = 0;
+    await asAccount(main, () => sets.setSupplement(SN2, main));
     const kat = await db.get(
-      `SELECT r.name, r.year, t.name AS thema, r.source FROM rb_sets r
+      `SELECT r.name, r.year, t.name AS theme, r.source FROM rb_sets r
                                 LEFT JOIN rb_themes t ON t.id = r.theme_id WHERE r.set_num = $1`,
       [SN2],
     );
-    assert.deepEqual(kat, { name: 'Testset', year: 2020, thema: 'Test', source: 'api' });
+    assert.deepEqual(kat, { name: 'Testset', year: 2020, theme: 'Test', source: 'api' });
     // The collection reads name, year and theme via rb_sets.
-    const liste = await _req('src/sets/repository/sets.js').setList(db, [haupt], { seite: null, themen: false });
-    const z = liste.sets.find(x => x.set_number === SN2);
+    const list = await _req('src/sets/repository/sets.js').setList(db, [main], { page: null, themes: false });
+    const z = list.sets.find(x => x.set_number === SN2);
     assert.deepEqual({ name: z.name, year: z.year, theme: z.theme }, { name: 'Testset', year: 2020, theme: 'Test' });
     const erf = await db.get(
       'SELECT purchase_price, price_estimated, condition FROM set_acquisitions WHERE user_id = $1 AND set_number = $2',
-      [haupt, SN2],
+      [main, SN2],
     );
     assert.deepEqual(
-      { preis: Number(erf.purchase_price), geschaetzt: erf.price_estimated, zustand: erf.condition },
-      { preis: 42, geschaetzt: true, zustand: 'U' },
+      { price: Number(erf.purchase_price), estimated: erf.price_estimated, condition: erf.condition },
+      { price: 42, estimated: true, condition: 'U' },
     );
-    assert.ok(netz.includes(`rebrickable ${SN2}`) && netz.includes(`preis ${SN2}`), JSON.stringify(netz));
+    assert.ok(net.includes(`rebrickable ${SN2}`) && net.includes(`preis ${SN2}`), JSON.stringify(net));
     // A second run does not ask the catalog again: stream and job do not interfere.
-    netz.length = 0;
-    await asAccount(haupt, () => sets.setSupplement(SN2, haupt));
-    assert.equal(netz.filter(x => x.startsWith('preis')).length, 0, 'der Preis wurde doppelt geholt');
+    net.length = 0;
+    await asAccount(main, () => sets.setSupplement(SN2, main));
+    assert.equal(net.filter(x => x.startsWith('preis')).length, 0, 'the price was fetched twice');
   });
 });

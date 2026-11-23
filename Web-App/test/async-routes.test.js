@@ -9,10 +9,10 @@ const assert = require('node:assert/strict');
 const express = require('express');
 const http = require('node:http');
 
-function probe(app, pfad) {
+function probe(app, path) {
   return new Promise(resolve => {
     const srv = app.listen(0, () => {
-      const req = http.get({ port: srv.address().port, path: pfad, timeout: 800 }, res => {
+      const req = http.get({ port: srv.address().port, path: path, timeout: 800 }, res => {
         res.resume();
         res.on('end', () => {
           srv.close();
@@ -36,11 +36,11 @@ function app() {
   const a = express();
   const r = express.Router();
   r.get('/boom', async () => {
-    throw new Error('kaputt');
+    throw new Error('broken');
   });
   const m = express.Router();
   m.use(async () => {
-    throw new Error('auch kaputt');
+    throw new Error('also broken');
   });
   a.use('/api', r);
   a.use('/mw', m);

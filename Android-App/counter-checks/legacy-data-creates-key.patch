@@ -1,0 +1,17 @@
+Gegenprobe: auch der Altbestand legt einen fehlenden Schlüssel neu an (Stand vor and-sec-r3 N2)
+Modul: core-security
+Test: ch.brickinventoryapp.security.KeystoreLegacyStockTest
+Rot: the legacy stock creates no key and reports gone
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt
+@@ -65,7 +65,7 @@
+ ) : TokenEncryption {
+ 
+     private fun key(): SecretKey? =
+-        bund.fetch(alias) ?: if (readOnly) null else bund.generate(alias, onlyUnlocked)
++        bund.fetch(alias) ?: bund.generate(alias, onlyUnlocked)
+ 
+     override fun encrypt(plaintext: String): String {
+         check(!readOnly) { "Altbestand verschlüsselt nicht" }

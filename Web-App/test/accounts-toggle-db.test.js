@@ -26,14 +26,14 @@ const db = testData();
 test('account switches and unique address', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const K = `schalter${process.pid}`;
-  const leeren = () => db.run('DELETE FROM users WHERE username LIKE $1', [`${K}%`]);
-  const put = (n, extra = '', werte = []) =>
+  const clear = () => db.run('DELETE FROM users WHERE username LIKE $1', [`${K}%`]);
+  const put = (n, extra = '', values = []) =>
     db.get(
       `INSERT INTO users (username, password_hash${extra ? ', ' + extra : ''})
-            VALUES ($1, 'x'${werte.map((_, i) => `, $${i + 2}`).join('')}) RETURNING *`,
-      [`${K}${n}`, ...werte],
+            VALUES ($1, 'x'${values.map((_, i) => `, $${i + 2}`).join('')}) RETURNING *`,
+      [`${K}${n}`, ...values],
     );
-  await leeren();
+  await clear();
 
   try {
     await t.test('without a value the defaults apply', async () => {
@@ -55,10 +55,10 @@ test('account switches and unique address', { concurrency: 1 }, async t => {
         (/** @type {any} */ e) => e.code === '23505',
       );
       assert.ok(await put('h', 'email', [null]));
-      assert.ok(await put('i', 'email', [null]), 'ohne Adresse dürfen es mehrere sein');
+      assert.ok(await put('i', 'email', [null]), 'without an address there may be several');
     });
   } finally {
-    await leeren();
+    await clear();
     await db.pool.end().catch(() => {});
   }
 });

@@ -12,14 +12,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const TABBAR = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]';
-const tabbar = wurzel => [...wurzel.querySelectorAll(TABBAR)].filter(el => el.getAttribute('tabindex') !== '-1');
+const tabbar = root => [...root.querySelectorAll(TABBAR)].filter(el => el.getAttribute('tabindex') !== '-1');
 
 test('gallery: the trash is not in the tab order', async () => {
   const { w, d } = await openUi({
-    '/v1/sets': {
+    '/v2/sets': {
       success: true,
       total: 2,
       themes: [],
@@ -30,22 +30,14 @@ test('gallery: the trash is not in the tab order', async () => {
     },
   });
   try {
-    await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
-    const galerie = d.getElementById('gallery');
-    assert.equal(galerie.querySelectorAll('.delbtn').length, 2, 'die Kacheln tragen keinen Papierkorb');
-    const imTab = tabbar(galerie);
-    assert.deepEqual(
-      imTab.filter(el => el.classList.contains('delbtn')).length,
-      0,
-      'ein Papierkorb steht in der Tab-Folge',
-    );
-    assert.equal(imTab.length, 2, 'je Kachel genau ein Halt');
-    for (const b of galerie.querySelectorAll('.delbtn'))
-      assert.equal(
-        b.getAttribute('aria-hidden'),
-        'true',
-        'der Papierkorb steckt als zweite Schaltfläche in der Kachel',
-      );
+    await waitFor(() => d.querySelectorAll('#gallery .sc').length === 2);
+    const gallery = d.getElementById('gallery');
+    assert.equal(gallery.querySelectorAll('.delbtn').length, 2, 'the tiles carry no trash can');
+    const inTab = tabbar(gallery);
+    assert.deepEqual(inTab.filter(el => el.classList.contains('delbtn')).length, 0, 'a trash can is in the tab order');
+    assert.equal(inTab.length, 2, 'exactly one stop per tile');
+    for (const b of gallery.querySelectorAll('.delbtn'))
+      assert.equal(b.getAttribute('aria-hidden'), 'true', 'the trash can sits in the tile as a second button');
   } finally {
     w.close();
   }
@@ -53,27 +45,25 @@ test('gallery: the trash is not in the tab order', async () => {
 
 test('wishlist: without a name the number appears once, space stays on the right', async () => {
   const { w, d } = await openUi({
-    '/v1/wanted': {
+    '/v2/wanted': {
       success: true,
-      merkposten: [
-        { set_number: '99999-1', name: null, condition: 'N', user_id: 1, marktpreis: 12.5, waehrung: 'EUR' },
-      ],
+      item: [{ set_number: '99999-1', name: null, condition: 'N', user_id: 1, market_price: 12.5, currency: 'EUR' }],
     },
   });
   try {
-    await reiter(w, 'wanted');
-    await warte(() => d.querySelector('.mk-zeile'));
-    const zeile = d.querySelector('.mk-zeile');
-    const n = (zeile.textContent.match(/99999-1/g) || []).length;
-    assert.equal(n, 1, `Merkliste: Nummer einmal — steht ${n}-mal da`);
+    await switchTab(w, 'wanted');
+    await waitFor(() => d.querySelector('.mk-row'));
+    const row = d.querySelector('.mk-row');
+    const n = (row.textContent.match(/99999-1/g) || []).length;
+    assert.equal(n, 1, `wanted list: number once — it appears ${n} times`);
     // Since 29.10. the class (styles.css) holds the space; the row carries no inline style any more.
-    assert.equal(zeile.getAttribute('style'), null, 'die Zeile trägt wieder einen Inline-Stil');
+    assert.equal(row.getAttribute('style'), null, 'the row carries an inline style again');
     assert.match(
       require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'styles.css'), 'utf8'),
-      /\.mk-zeile\{[^}]*padding:10px 44px 10px 10px/,
-      'rechts kein Platz für den Papierkorb',
+      /\.mk-row\{[^}]*padding:10px 44px 10px 10px/,
+      'no room on the right for the trash can',
     );
-    assert.equal(tabbar(zeile).filter(el => el !== zeile).length, 0, 'der Papierkorb steht in der Tab-Folge');
+    assert.equal(tabbar(row).filter(el => el !== row).length, 0, 'the trash can is in the tab order');
   } finally {
     w.close();
   }

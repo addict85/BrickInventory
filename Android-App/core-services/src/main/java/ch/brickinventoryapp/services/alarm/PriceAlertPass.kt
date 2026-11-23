@@ -8,13 +8,13 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import ch.brickinventoryapp.data.Alarmablage
-import ch.brickinventoryapp.data.Startziel
+import ch.brickinventoryapp.data.AlarmStore
 import ch.brickinventoryapp.data.Credentials
+import ch.brickinventoryapp.data.StartDestination
+import ch.brickinventoryapp.data.collection.AlarmRepository
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.model.util.numbersLocale
 import ch.brickinventoryapp.model.domain.PriceAlertView
-import ch.brickinventoryapp.data.repository.AlarmRepository
+import ch.brickinventoryapp.model.util.numbersLocale
 import ch.brickinventoryapp.resources.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
@@ -31,9 +31,9 @@ interface PriceAlertRepository {
 internal class PriceAlertPass @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val alerts: AlarmRepository,
-    private val alarm: Alarmablage,
+    private val alarm: AlarmStore,
     private val access: Credentials,
-    private val startziel: Startziel,
+    private val startDestination: StartDestination,
 ) : PriceAlertRepository {
     /**
      * One run: query, display, set marker. Here instead of in doWork(), because
@@ -46,24 +46,24 @@ internal class PriceAlertPass @Inject constructor(
      *         would keep trying in vain.
      */
     override suspend fun pass(): Boolean {
-        if (!alarm.alarmMessagesAn.first()) return true
-        if (access.tokenJetzt().isBlank()) return true
+        if (!alarm.alarmMessagesEnabled.first()) return true
+        if (access.tokenNow().isBlank()) return true
 
-        val marke = alarm.alarmBrand.first()
-        return when (val e = Alarmabholung.fetch(marke) { seit -> alerts.getPendingAlerts(seit) }) {
-            is Alarmabholung.Ergebnis.Fehlgeschlagen -> false
+        val brand = alarm.alarmBrand.first()
+        return when (val e = AlarmFetch.fetch(brand) { since -> alerts.getPendingAlerts(since) }) {
+            is AlarmFetch.Outcome.Failed -> false
 
-            is Alarmabholung.Ergebnis.Markiert -> {
-                alarm.setAlarmBrand(e.neueMarke)
+            is AlarmFetch.Outcome.Marked -> {
+                alarm.setAlarmBrand(e.newBrand)
                 true
             }
 
-            is Alarmabholung.Ergebnis.Geholt -> {
-                zeige(e.meldungen)
+            is AlarmFetch.Outcome.Fetched -> {
+                show(e.messages)
                 // ALWAYS store it, even without a notification — otherwise the
                 // next run would query from the old timestamp again and
                 // bring in the same notification a second time.
-                alarm.setAlarmBrand(e.neueMarke)
+                alarm.setAlarmBrand(e.newBrand)
                 true
             }
         }
@@ -73,8 +73,8 @@ internal class PriceAlertPass @Inject constructor(
      * Show the notifications — one per crossed threshold, grouped under a
      * summary: you want to know which alert fired without opening the app.
      */
-    private fun zeige(meldungen: List<PriceAlertView>) {
-        if (meldungen.isEmpty()) return
+    private fun show(messages: List<PriceAlertView>) {
+        if (messages.isEmpty()) return
         // From Android 13, POST_NOTIFICATIONS is a runtime permission.
         // Without it notify() doesn't throw, it simply does nothing —
         // which is why this checks it rather than relying on the absence of a crash.
@@ -87,7 +87,7 @@ internal class PriceAlertPass @Inject constructor(
         val mgr = context.getSystemService(NotificationManager::class.java) ?: return
         mgr.createNotificationChannel(
             NotificationChannel(
-                PreisalarmWorker.CHANNEL,
+                PriceAlarmWorker.CHANNEL,
                 context.getString(R.string.alert_channel_name),
                 // DEFAULT, not HIGH: a price alert is important, but
                 // not urgent — it shouldn't slide over the screen
@@ -98,34 +98,34 @@ internal class PriceAlertPass @Inject constructor(
 
         // In the app's language: before Android 13 the background would otherwise see the system's.
         val texts = LanguageManager.localizedContext(context)
-        val unter = texts.getString(R.string.detail_alert_below)
-        val ueber = texts.getString(R.string.detail_alert_above)
-        val zahlen = numbersLocale(texts.resources.configuration.locales[0], Locale.getDefault())
+        val below = texts.getString(R.string.detail_alert_below)
+        val over = texts.getString(R.string.detail_alert_above)
+        val numbers = numbersLocale(texts.resources.configuration.locales[0], Locale.getDefault())
         val nm = NotificationManagerCompat.from(context)
-        for ((i, a) in meldungen.withIndex()) {
+        for ((i, a) in messages.withIndex()) {
             // ── Tapping opens the set ──
             //
             // The target is the app's own, non-exported entry point (launch target); it passes it on to the
             // running app. One requestCode per set, otherwise the system would deliver the same
             // PendingIntent and an older notification would open the wrong set. The class comes in
             // as a class, not as a name via Class.forName(), so R8 keeps it without a keep rule.
-            val ziel = Intent(context, startziel.aktivitaet).apply {
+            val target = Intent(context, startDestination.activity).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                putExtra(PreisalarmWorker.EXTRA_SET, a.setNumber)
+                putExtra(PriceAlarmWorker.EXTRA_SET, a.setNumber)
             }
-            val tippen = PendingIntent.getActivity(
+            val tap = PendingIntent.getActivity(
                 context,
                 (a.setNumber + a.condition).hashCode(),
-                ziel,
+                target,
                 // IMMUTABLE is mandatory from Android 12 unless
                 // MUTABLE is explicitly requested. We fill the
                 // intent completely, so there's nothing left to add.
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-            val n = PreisalarmWorker.meldung(context, Alarmabholung.text(a, unter, ueber, zahlen), tippen)
+            val n = PriceAlarmWorker.message(context, AlarmFetch.text(a, below, over, numbers), tap)
             // The set number as the ID: two notifications for the same set
             // overwrite each other instead of stacking.
-            nm.notify(PreisalarmWorker.CHANNEL + a.setNumber + a.condition, i + 1, n)
+            nm.notify(PriceAlarmWorker.CHANNEL + a.setNumber + a.condition, i + 1, n)
         }
     }
 }

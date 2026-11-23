@@ -1,17 +1,17 @@
-import { setBestand } from '../../../db/inventoryView';
-import type { DbInterface, Treffer } from '../../../db/database';
-import { marktpreisSql } from '../../../db/geldSql';
+import { setHoldings } from '../../../db/inventoryView';
+import type { DbInterface, Hit } from '../../../db/database';
+import { marketPriceSql } from '../../../db/moneySql';
 import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSearch';
 import { fromTable } from '../../infra/validate';
 
-export function markSetWanted(db: DbInterface, userId: number, sn: string, c: string, seit: Date | string | null) {
-  return db.get<{ war_neu: boolean }>(
+export function markSetWanted(db: DbInterface, userId: number, sn: string, c: string, since: Date | string | null) {
+  return db.get<{ was_new: boolean }>(
     `INSERT INTO wanted (user_id, set_number, condition, created_at)
      VALUES ($1,$2,$3, COALESCE($4::timestamptz, NOW()))
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
         SET condition = wanted.condition
-     RETURNING (xmax = 0) AS war_neu`,
-    [userId, sn, c, seit],
+     RETURNING (xmax = 0) AS was_new`,
+    [userId, sn, c, since],
   );
 }
 
@@ -19,13 +19,13 @@ export function removeWantedEntry(db: DbInterface, userId: number, setNumber: st
   return db.run('DELETE FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [userId, setNumber, c]);
 }
 
-export function isWanted(db: DbInterface, zuId: number, sn: string, c: string) {
-  return db.get<Treffer>('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
+export function isWanted(db: DbInterface, toId: number, sn: string, c: string) {
+  return db.get<Hit>('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [toId, sn, c]);
 }
 
-export function transferWantedEntry(db: DbInterface, zuId: number, ofId: number, sn: string, c: string) {
+export function transferWantedEntry(db: DbInterface, toId: number, ofId: number, sn: string, c: string) {
   return db.run('UPDATE wanted SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [
-    zuId,
+    toId,
     ofId,
     sn,
     c,
@@ -39,8 +39,8 @@ const WANTED_SORTS = {
   name_asc: 'rb.name ASC NULLS LAST',
   num_asc: 'w.set_number ASC',
   year_desc: 'rb.year DESC NULLS LAST',
-  price_desc: `${marktpreisSql('pc')} DESC NULLS LAST`,
-  price_asc: `${marktpreisSql('pc')} ASC NULLS LAST`,
+  price_desc: `${marketPriceSql('pc')} DESC NULLS LAST`,
+  price_asc: `${marketPriceSql('pc')} ASC NULLS LAST`,
 };
 
 export interface WantedSelection {
@@ -63,39 +63,39 @@ export type WantedRow = {
   alarm_direction: string | null;
   alarm_threshold: number | null;
   alarm_triggered: boolean | null;
-  marktpreis: number | null;
+  market_price: number | null;
   owned: boolean;
 };
 
-export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedSelection, waehrung: string) {
-  const werte: unknown[] = [userIds];
-  let wo = '';
+export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedSelection, currency: string) {
+  const values: unknown[] = [userIds];
+  let where = '';
   if (f.setOnly) {
-    werte.push(f.setOnly);
-    wo += ` AND w.set_number = $${werte.length}`;
+    values.push(f.setOnly);
+    where += ` AND w.set_number = $${values.length}`;
   }
   // Number AND name, as in the gallery; the name comes from the JOIN on rb_sets.
   if (f.search) {
-    werte.push(containsPattern(f.search));
-    wo +=
-      ` AND (w.set_number ILIKE $${werte.length}${LIKE_ESCAPE}` + ` OR rb.name ILIKE $${werte.length}${LIKE_ESCAPE})`;
+    values.push(containsPattern(f.search));
+    where +=
+      ` AND (w.set_number ILIKE $${values.length}${LIKE_ESCAPE}` + ` OR rb.name ILIKE $${values.length}${LIKE_ESCAPE})`;
   }
   if (f.condition) {
-    werte.push(f.condition);
-    wo += ` AND w.condition = $${werte.length}`;
+    values.push(f.condition);
+    where += ` AND w.condition = $${values.length}`;
   }
   // fromTable(): direct access would also find inherited properties like "constructor".
-  const ordnung = fromTable(WANTED_SORTS, f.sort, WANTED_SORTS.added_desc);
-  werte.push(waehrung);
-  const pWaehrung = `$${werte.length}`;
+  const order = fromTable(WANTED_SORTS, f.sort, WANTED_SORTS.added_desc);
+  values.push(currency);
+  const pCurrency = `$${values.length}`;
   return db.all<WantedRow>(
     `SELECT w.set_number, w.condition, w.created_at, w.user_id,
             rb.name, rb.year, rb.theme_id, rb.num_parts,
             sc.image_url,
             pa.direction AS alarm_direction, pa.threshold AS alarm_threshold,
             pa.triggered AS alarm_triggered,
-            ${marktpreisSql('pc')} AS marktpreis,
-            EXISTS (SELECT 1 FROM ${setBestand('= ANY($1)')} s
+            ${marketPriceSql('pc')} AS market_price,
+            EXISTS (SELECT 1 FROM ${setHoldings('= ANY($1)')} s
                      WHERE s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
@@ -109,10 +109,10 @@ export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedS
        -- booked a used price as a new acquisition in addSet().
        LEFT JOIN price_cache pc ON pc.set_number = w.set_number
                                AND pc.condition = w.condition
-                               AND pc.currency_code = ${pWaehrung}
-      WHERE w.user_id = ANY($1)${wo}
-      ORDER BY ${ordnung}, w.set_number, w.condition`,
-    werte,
+                               AND pc.currency_code = ${pCurrency}
+      WHERE w.user_id = ANY($1)${where}
+      ORDER BY ${order}, w.set_number, w.condition`,
+    values,
   );
 }
 

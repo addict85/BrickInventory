@@ -3,7 +3,7 @@
  * correctly right away. */
 import { asFetchError } from '../externalSources';
 import { withVersion, withoutBricklinkPrice, withoutVersion } from '../infra/setNumber';
-import { fachfehler } from '../infra/errorTexts';
+import { failDomain } from '../infra/errorTexts';
 import type { CatalogEntry } from './repository/catalogCache';
 import type { CatalogContext } from './context';
 
@@ -18,19 +18,19 @@ export function marketPriceFrom(row: PriceRecord): number | null {
   return qty > 0 ? qty : null;
 }
 
-export function hatPrice(row: PriceRecord): boolean {
+export function hasPrice(row: PriceRecord): boolean {
   return marketPriceFrom(row) !== null;
 }
 
 export type { CatalogEntry };
 
 export function setKnownInCatalog(k: CatalogContext, setNumber: string): Promise<boolean> {
-  return k.katalogCache.setInCatalog(withVersion(setNumber));
+  return k.catalogCache.setInCatalog(withVersion(setNumber));
 }
 
 /** Under the spelling it is stored under. */
 export function catalogEntry(k: CatalogContext, setNumber: string): Promise<CatalogEntry | null> {
-  return k.katalogCache.catalogEntryTo(withVersion(setNumber));
+  return k.catalogCache.catalogEntryTo(withVersion(setNumber));
 }
 
 /** Not found or invalid: then the next kind. */
@@ -52,29 +52,29 @@ async function getPriceGuideRaw(
   const params = { guide_type: guideType, new_or_used: condition, currency_code: currencyCode, vat: 'N' };
   const cached = await catalogEntry(k, n);
   if (cached?.bl_type === 'GEAR')
-    return await k.externalSources.quellen.bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
+    return await k.externalSources.sources.bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
   if (cached?.bl_type === 'BOOK')
-    return await k.externalSources.quellen.bricklinkRequest('GET', `/items/book/${bare}/price`, params);
-  if (withoutBricklinkPrice(cached)) fachfehler('nicht_gefunden', 'kein_bricklink_preis');
+    return await k.externalSources.sources.bricklinkRequest('GET', `/items/book/${bare}/price`, params);
+  if (withoutBricklinkPrice(cached)) failDomain('not_found', 'no_bricklink_price');
   try {
-    return await k.externalSources.quellen.bricklinkRequest('GET', `/items/set/${n}/price`, params);
+    return await k.externalSources.sources.bricklinkRequest('GET', `/items/set/${n}/price`, params);
   } catch (e) {
     if (!tryNext(e)) throw e;
   }
-  for (const art of ['GEAR', 'BOOK'] as const) {
+  for (const kind of ['GEAR', 'BOOK'] as const) {
     try {
-      const result = await k.externalSources.quellen.bricklinkRequest(
+      const result = await k.externalSources.sources.bricklinkRequest(
         'GET',
-        `/items/${art.toLowerCase()}/${bare}/price`,
+        `/items/${kind.toLowerCase()}/${bare}/price`,
         params,
       );
-      await k.katalogCache.rememberBricklinkKind(n, art);
+      await k.catalogCache.rememberBricklinkKind(n, kind);
       return result;
     } catch (e) {
       if (!tryNext(e)) throw e;
     }
   }
-  await k.katalogCache.rememberBricklinkKind(n, 'NONE');
+  await k.catalogCache.rememberBricklinkKind(n, 'NONE');
   throw new Error(`${n} nicht auf BrickLink gefunden (Set/Gear/Book) — kein Preis`);
 }
 
@@ -87,13 +87,13 @@ export async function priceGuideQuery(
   currencyCode = 'EUR',
 ) {
   const first = await getPriceGuideRaw(k, setNumber, condition, guideType, currencyCode);
-  if (hatPrice(first) || guideType !== 'sold') {
+  if (hasPrice(first) || guideType !== 'sold') {
     return { ...first, guide_used: guideType };
   }
   // No sale in six months → use current offers.
   try {
     const alt = await getPriceGuideRaw(k, setNumber, condition, 'stock', currencyCode);
-    if (hatPrice(alt)) return { ...alt, guide_used: 'stock', guide_fallback: true };
+    if (hasPrice(alt)) return { ...alt, guide_used: 'stock', guide_fallback: true };
   } catch (_) {
     /* Fallback is optional — then the result stays empty */
   }
@@ -102,11 +102,11 @@ export async function priceGuideQuery(
 
 // Without a number, the whole store.
 export async function clearSubsetsCache(k: CatalogContext, sn: string | null = null) {
-  await k.katalogCache.emptySubsetsCache(sn ? withVersion(sn) : null);
+  await k.catalogCache.emptySubsetsCache(sn ? withVersion(sn) : null);
 }
 
 export async function clearCatalogCache(k: CatalogContext, sn: string | null = null) {
-  await k.katalogCache.emptyCatalogCache(sn ? withVersion(sn) : null);
+  await k.catalogCache.emptyCatalogCache(sn ? withVersion(sn) : null);
 }
 
-export const getCacheStats = (k: CatalogContext) => k.katalogCache.cacheNumbers();
+export const getCacheStats = (k: CatalogContext) => k.catalogCache.cacheNumbers();

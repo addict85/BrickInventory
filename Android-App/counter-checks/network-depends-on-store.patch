@@ -1,0 +1,102 @@
+Gegenprobe: core-network bindet Room ein und hängt damit wieder an der Ablage
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: layering of the core modules
+
+diff --git a/Android-App/core-network/build.gradle.kts b/Android-App/core-network/build.gradle.kts
+--- a/Android-App/core-network/build.gradle.kts
++++ b/Android-App/core-network/build.gradle.kts
+@@ -19,4 +19,5 @@
+     api(project(":core-model"))
+     // OkHttp only as implementation: no module above shall see it (as in core-data).
+     implementation(libs.okhttp)
++    implementation(libs.androidx.room.runtime)
+ }
+diff --git a/Android-App/core-network/gradle.lockfile b/Android-App/core-network/gradle.lockfile
+--- a/Android-App/core-network/gradle.lockfile
++++ b/Android-App/core-network/gradle.lockfile
+@@ -2,10 +2,25 @@
+ # Manual edits can break the build and are not advised.
+ # This file is expected to be part of source control.
+ # To regenerate this file, run: ./gradlew :core-network:dependencies --write-locks
++androidx.annotation:annotation-experimental:1.5.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ androidx.annotation:annotation-jvm:1.10.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.annotation:annotation-jvm:1.9.1=debugAndroidTestCompileClasspath,debugCompileClasspath,debugUnitTestCompileClasspath,releaseCompileClasspath
+ androidx.annotation:annotation:1.10.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.annotation:annotation:1.9.1=debugAndroidTestCompileClasspath,debugCompileClasspath,debugUnitTestCompileClasspath,releaseCompileClasspath
++androidx.arch.core:core-common:2.2.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.arch.core:core-runtime:2.2.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.collection:collection-jvm:1.5.0=debugAndroidTestCompileClasspath,debugCompileClasspath,debugUnitTestCompileClasspath,releaseCompileClasspath
+ androidx.collection:collection-jvm:1.6.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.collection:collection:1.5.0=debugAndroidTestCompileClasspath,debugCompileClasspath,debugUnitTestCompileClasspath,releaseCompileClasspath
+ androidx.collection:collection:1.6.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.room:room-common-jvm:2.8.5=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++androidx.room:room-common:2.8.5=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++androidx.room:room-runtime-android:2.8.5=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++androidx.room:room-runtime:2.8.5=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++androidx.sqlite:sqlite-android:2.6.2=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++androidx.sqlite:sqlite-framework-android:2.6.2=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++androidx.sqlite:sqlite-framework:2.6.2=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++androidx.sqlite:sqlite:2.6.2=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ androidx.startup:startup-runtime:1.2.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ androidx.tracing:tracing-android:2.0.5=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ androidx.tracing:tracing:2.0.5=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+@@ -19,11 +34,17 @@ javax.inject:javax.inject:1=debugAndroidTestRuntimeClasspath,debugRuntimeClasspa
+ junit:junit:4.13.2=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
+ org.hamcrest:hamcrest-core:1.3=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
+ org.jetbrains.kotlin:kotlin-stdlib:2.4.21=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
++org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1=debugAndroidTestCompileClasspath,debugCompileClasspath,releaseCompileClasspath
++org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.11.0=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
++org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.8.1=debugAndroidTestCompileClasspath,debugCompileClasspath,releaseCompileClasspath
+ org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.9.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
++org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1=debugAndroidTestCompileClasspath,debugCompileClasspath,releaseCompileClasspath
+ org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.9.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
++org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1=debugAndroidTestCompileClasspath,debugCompileClasspath,releaseCompileClasspath
+ org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm:1.11.0=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
+ org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
+@@ -32,8 +53,7 @@ org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.12.0=debugAndroidTestComp
+ org.jetbrains.kotlinx:kotlinx-serialization-core:1.12.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.12.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+-org.jetbrains:annotations:13.0=debugAndroidTestCompileClasspath,debugCompileClasspath,releaseCompileClasspath
+-org.jetbrains:annotations:23.0.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++org.jetbrains:annotations:23.0.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ org.json:json:20260814=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
+-org.jspecify:jspecify:1.0.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++org.jspecify:jspecify:1.0.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ empty=
+diff --git a/Android-App/core-security/gradle.lockfile b/Android-App/core-security/gradle.lockfile
+--- a/Android-App/core-security/gradle.lockfile
++++ b/Android-App/core-security/gradle.lockfile
+@@ -3,7 +3,8 @@
+ # This file is expected to be part of source control.
+ # To regenerate this file, run: ./gradlew :core-security:dependencies --write-locks
+ androidx.activity:activity:1.5.1=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+-androidx.annotation:annotation-experimental:1.4.1=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++androidx.annotation:annotation-experimental:1.4.1=debugAndroidTestCompileClasspath,debugCompileClasspath,debugUnitTestCompileClasspath,releaseCompileClasspath
++androidx.annotation:annotation-experimental:1.5.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ androidx.annotation:annotation-jvm:1.10.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ androidx.annotation:annotation:1.10.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ androidx.arch.core:core-common:2.2.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+@@ -33,8 +34,16 @@ androidx.lifecycle:lifecycle-viewmodel-savedstate:2.10.0=debugAndroidTestCompile
+ androidx.lifecycle:lifecycle-viewmodel:2.10.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ androidx.loader:loader:1.0.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ androidx.profileinstaller:profileinstaller:1.4.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.room:room-common-jvm:2.8.5=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.room:room-common:2.8.5=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.room:room-runtime-android:2.8.5=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.room:room-runtime:2.8.5=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ androidx.savedstate:savedstate-android:1.4.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
+ androidx.savedstate:savedstate:1.4.0=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
++androidx.sqlite:sqlite-android:2.6.2=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.sqlite:sqlite-framework-android:2.6.2=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.sqlite:sqlite-framework:2.6.2=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
++androidx.sqlite:sqlite:2.6.2=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ androidx.startup:startup-runtime:1.2.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+ androidx.test.espresso:espresso-idling-resource:3.7.0=debugUnitTestRuntimeClasspath
+ androidx.test.ext:junit:1.3.0=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath

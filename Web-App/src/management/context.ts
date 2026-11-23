@@ -2,7 +2,7 @@
 import type { MailServices } from '../mail';
 import type { VoucherServices } from '../vouchers';
 import type { Db } from '../../db/database';
-import { imSystem, mit, type Kontext } from '../infra/area';
+import { asSystem, bound, type Context } from '../infra/area';
 import * as management from './repository/management';
 import type { SettingsServices } from '../settings';
 import type { JobsServices } from '../jobQueue';
@@ -16,10 +16,10 @@ import type { FinancesServices } from '../finances';
 import type { InventoryServices } from '../inventory';
 import type { SetsServices } from '../sets';
 import type { WantedServices } from '../wanted';
-import type { Uhr } from '../infra/clock';
+import type { Clock } from '../infra/clock';
 
 export interface ManagementDependencies {
-  uhr: Uhr;
+  clock: Clock;
   db: Db;
   settings: SettingsServices;
   jobQueue: JobsServices;
@@ -37,37 +37,37 @@ export interface ManagementDependencies {
   mail: MailServices;
 }
 
-export const zugang = (db: Db) => ({
+export const access = (db: Db) => ({
   // Diagnostics and counts span all accounts; the routes themselves run without a system frame.
   management: {
-    holdingMinifigImagesOpen: imSystem(db, 'management', management.holdingMinifigImagesOpen),
-    accountImageRows: imSystem(db, 'management', management.accountImageRows),
-    bricklinkParts: imSystem(db, 'management', management.bricklinkParts),
-    thumbnailImageMiss: imSystem(db, 'management', management.thumbnailImageMiss),
-    setImageMiss: imSystem(db, 'management', management.setImageMiss),
-    catalogImage: imSystem(db, 'management', management.catalogImage),
-    catalogImageCandidates: imSystem(db, 'management', management.catalogImageCandidates),
-    catalogImagesOpen: imSystem(db, 'management', management.catalogImagesOpen),
-    lastRunOfType: imSystem(db, 'management', management.lastRunOfType),
-    openImageJobs: imSystem(db, 'management', management.openImageJobs),
-    samplePriceCache: imSystem(db, 'management', management.samplePriceCache),
-    samplePriceHistory: imSystem(db, 'management', management.samplePriceHistory),
-    logSince: imSystem(db, 'management', management.logSince),
-    rbInventoryParts: imSystem(db, 'management', management.rbInventoryParts),
-    rbParts: imSystem(db, 'management', management.rbParts),
-    setImageMisses: imSystem(db, 'management', management.setImageMisses),
-    setImageMissesWithout404: imSystem(db, 'management', management.setImageMissesWithout404),
-    setMinifigImagesOpen: imSystem(db, 'management', management.setMinifigImagesOpen),
-    setsWithoutInstructions: imSystem(db, 'management', management.setsWithoutInstructions),
-    partImagesDone: imSystem(db, 'management', management.partImagesDone),
-    partImagesOpen: imSystem(db, 'management', management.partImagesOpen),
-    stalePrices: imSystem(db, 'management', management.stalePrices),
-    pricesInCache: imSystem(db, 'management', management.pricesInCache),
-    thumbnailImageMisses: imSystem(db, 'management', management.thumbnailImageMisses),
-    mappedParts: imSystem(db, 'management', management.mappedParts),
+    holdingMinifigImagesOpen: asSystem(db, 'management', management.holdingMinifigImagesOpen),
+    accountImageRows: asSystem(db, 'management', management.accountImageRows),
+    bricklinkParts: asSystem(db, 'management', management.bricklinkParts),
+    thumbnailImageMiss: asSystem(db, 'management', management.thumbnailImageMiss),
+    setImageMiss: asSystem(db, 'management', management.setImageMiss),
+    catalogImage: asSystem(db, 'management', management.catalogImage),
+    catalogImageCandidates: asSystem(db, 'management', management.catalogImageCandidates),
+    catalogImagesOpen: asSystem(db, 'management', management.catalogImagesOpen),
+    lastRunOfType: asSystem(db, 'management', management.lastRunOfType),
+    openImageJobs: asSystem(db, 'management', management.openImageJobs),
+    samplePriceCache: asSystem(db, 'management', management.samplePriceCache),
+    samplePriceHistory: asSystem(db, 'management', management.samplePriceHistory),
+    logSince: asSystem(db, 'management', management.logSince),
+    rbInventoryParts: asSystem(db, 'management', management.rbInventoryParts),
+    rbParts: asSystem(db, 'management', management.rbParts),
+    setImageMisses: asSystem(db, 'management', management.setImageMisses),
+    setImageMissesWithout404: asSystem(db, 'management', management.setImageMissesWithout404),
+    setMinifigImagesOpen: asSystem(db, 'management', management.setMinifigImagesOpen),
+    setsWithoutInstructions: asSystem(db, 'management', management.setsWithoutInstructions),
+    partImagesDone: asSystem(db, 'management', management.partImagesDone),
+    partImagesOpen: asSystem(db, 'management', management.partImagesOpen),
+    stalePrices: asSystem(db, 'management', management.stalePrices),
+    pricesInCache: asSystem(db, 'management', management.pricesInCache),
+    thumbnailImageMisses: asSystem(db, 'management', management.thumbnailImageMisses),
+    mappedParts: asSystem(db, 'management', management.mappedParts),
     // The price probe only sees the admin's own inventory: under row security.
-    sampleAcquisitions: mit(db)(management.sampleAcquisitions),
-    sampleSet: mit(db)(management.sampleSet),
+    sampleAcquisitions: bound(db)(management.sampleAcquisitions),
+    sampleSet: bound(db)(management.sampleSet),
   },
 });
-export type ManagementContext = Kontext<ManagementDependencies, ReturnType<typeof zugang>>;
+export type ManagementContext = Context<ManagementDependencies, ReturnType<typeof access>>;

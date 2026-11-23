@@ -23,7 +23,7 @@ on:
       - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/contract-kotlin-dtos.js'
       - 'Web-App/scripts/contract-kotlin-mapping.js'
-      - 'Web-App/docs/openapi.json'
+      - 'Web-App/docs/openapi-v2.json'
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
   pull_request:
@@ -36,11 +36,11 @@ on:
       - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/contract-kotlin-dtos.js'
       - 'Web-App/scripts/contract-kotlin-mapping.js'
-      - 'Web-App/docs/openapi.json'
+      - 'Web-App/docs/openapi-v2.json'
       # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf.
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
-  # Nachts alle Gegenproben (Job `gegenproben`); auf einem Push nur die betroffenen.
+  # Nachts alle Gegenproben (Job `counter-checks`); auf einem Push nur die betroffenen.
   schedule:
     - cron: '23 3 * * *'
   workflow_dispatch:
@@ -49,7 +49,7 @@ on:
         description: 'Prüfsummen der Gradle-Abhängigkeiten neu erzeugen (verification-metadata.xml als Artefakt)'
         type: boolean
         default: false
-      bildschirmfotos:
+      screenshots:
         description: 'Bildschirmfotos neu aufnehmen und als Referenz einchecken (nicht auf main)'
         type: boolean
         default: false
@@ -60,14 +60,14 @@ on:
 concurrency:
   # Prüfsummen, Referenzbilder und der Nachtlauf haben eigene Gruppen: Ein Push
   # bräche sie sonst ab.
-  group: android-${{ github.ref }}${{ inputs.pruefsummen && '-pruefsummen' || '' }}${{ inputs.bildschirmfotos && '-bildschirmfotos' || '' }}${{ github.event_name == 'schedule' && '-nacht' || '' }}
+  group: android-${{ github.ref }}${{ inputs.pruefsummen && '-pruefsummen' || '' }}${{ inputs.screenshots && '-screenshots' || '' }}${{ github.event_name == 'schedule' && '-nacht' || '' }}
   cancel-in-progress: true
 
 jobs:
   build:
     # Ein Lauf nur für die Prüfsummen, die Referenzbilder oder die nächtlichen
     # Gegenproben (Jobs unten) baut nicht mit.
-    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.screenshots }}
     # Festes Image wie im Signierjob: Ein Wechsel des Runner-Images ändert sonst still die Werkzeuge.
     runs-on: ubuntu-24.04
     # Grün 15–23 min; mehr als 60 heisst: Gradle hängt.
@@ -99,7 +99,7 @@ jobs:
           # abgelegter Token wäre für jeden davon lesbar. Gebraucht wird er nicht.
           persist-credentials: false
 
-      # JDK 17 wie Java- und Kotlin-Ziel der Konventionen (build-logic, Gemeinsam.kt).
+      # JDK 17 wie Java- und Kotlin-Ziel der Konventionen (build-logic, Shared.kt).
       # Verlangt AGP eine neuere Fassung, steht das im Protokoll; dann hier '21'.
       - name: JDK einrichten
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
@@ -138,6 +138,12 @@ jobs:
       - name: Gradle-Prüfsumme gegen die amtliche
         run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
 
+      # Krypto-, Netz- und Sicherheitsbibliotheken nur mit Prüfsumme und Schlüssel je
+      # Artefakt, nie über einen Schlüssel für die ganze Gruppe: Eine neue Fassung braucht
+      # so einen eigenen, geprüften Eintrag. Die Fassungen selbst halten die gradle.lockfile fest.
+      - name: Kritische Bibliotheken einzeln festgehalten?
+        run: python3 tools/verification-pin.py --check gradle/verification-metadata.xml
+
       # Ein Etikett baut, was ausgeliefert wird: mit leerem Gradle-Benutzerverzeichnis,
       # denn Transform-Ausgaben, instrumentierte Jars und übersetzte Skripte nimmt Gradle
       # von dort ungeprüft. Ein Cache aus einem anderen Lauf käme so ins APK (sec17 M1).
@@ -152,23 +158,34 @@ jobs:
         with:
           cache-disabled: ${{ startsWith(github.ref, 'refs/tags/android-v') }}
 
+      # Robolectric lädt seine Android-Bibliothek (~200 MB) zur Testzeit selbst von Maven
+      # Central, am Gradle-Cache vorbei; ohne eigenen Cache antwortete Central mit 429.
+      # Nur dieser Job schreibt ihn, ein Etikett nutzt ihn nicht.
+      - name: Robolectric-Bibliothek zwischenspeichern
+        if: ${{ !startsWith(github.ref, 'refs/tags/android-v') }}
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('Android-App/gradle/libs.versions.toml') }}
+          restore-keys: robolectric-
+
       # Auf Windows committete Dateien tragen das Ausführbar-Bit oft nicht.
       - name: gradlew ausführbar machen
         run: chmod +x gradlew
 
       # Bildschirmfotos: Liegen Referenzbilder im Repository, vergleicht der
       # Testlauf gegen sie und wird bei einer Abweichung rot; sonst nimmt er nur
-      # auf. Eingecheckt werden sie mit workflow_dispatch bildschirmfotos=true
-      # (Jobs `bildschirmfotos` und `bildschirmfotos-einchecken` unten).
+      # auf. Eingecheckt werden sie mit workflow_dispatch screenshots=true
+      # (Jobs `screenshots` und `screenshots-commit` unten).
       - name: Bildschirmfotos vergleichen oder aufnehmen?
         id: fotos
         run: |
-          if [ -n "$(git ls-files 'app/src/test/bildschirmfotos/*.png')" ]; then
+          if [ -n "$(git ls-files 'app/src/test/screenshots/*.png')" ]; then
             echo "aufgabe=verifyRoborazziDebug" >> "$GITHUB_OUTPUT"
             echo "Referenzbilder eingecheckt: verglichen wird."
           else
             echo "aufgabe=recordRoborazziDebug" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Bildschirmfotos::Keine Referenzbilder eingecheckt — nur aufgenommen. Einchecken: Workflow von Hand mit bildschirmfotos=true starten."
+            echo "::notice title=Bildschirmfotos::Keine Referenzbilder eingecheckt — nur aufgenommen. Einchecken: Workflow von Hand mit screenshots=true starten."
           fi
 
       # Zuerst die Tests (JVM, Robolectric, Bildschirmfotos): Sie fangen das meiste ab,
@@ -189,7 +206,7 @@ jobs:
           for neu in app/build/outputs/roborazzi/*_actual.png; do
             [ -f "$neu" ] || continue
             name=$(basename "$neu" _actual.png)
-            ref="app/src/test/bildschirmfotos/$name.png"
+            ref="app/src/test/screenshots/$name.png"
             [ -f "$ref" ] || continue
             pixel=$(compare -metric AE "$ref" "$neu" null: 2>&1 || true)
             feld=$(compare "$ref" "$neu" -compose src -highlight-color white -lowlight-color black miff:- 2>/dev/null \
@@ -198,9 +215,9 @@ jobs:
           done
 
       # Gradle bricht nur bei einem Zyklus ab, nicht bei einer Kante in die falsche
-      # Richtung; die Regel steht in build-logic (kanten/Modulkanten.kt).
+      # Richtung; die Regel steht in build-logic (edges/ModuleEdges.kt).
       - name: Modulkanten prüfen
-        run: ./gradlew --no-daemon modulkantenPruefen
+        run: ./gradlew --no-daemon moduleEdgesCheck
 
       # Room schreibt das Schema beim Übersetzen nach core-offline/schemas und lässt eine
       # Datei stehen, solange ihr Aufbau gleich bleibt. Steht danach etwas
@@ -354,9 +371,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: bildschirmfotos
+          name: screenshots
           path: |
-            Android-App/app/src/test/bildschirmfotos/
+            Android-App/app/src/test/screenshots/
             Android-App/app/build/outputs/roborazzi/
           if-no-files-found: warn
           retention-days: 30
@@ -442,7 +459,7 @@ jobs:
   # Die Typen in core-contract sind aus dem Vertrag erzeugt; ein Android-Lauf soll selbst rot
   # sein, wenn die Datei veraltet ist oder eine Route nicht den erzeugten Typ nimmt.
   vertrag:
-    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.screenshots }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -461,13 +478,13 @@ jobs:
           cache-dependency-path: Web-App/package-lock.json
       - name: Abhängigkeiten installieren
         run: npm ci --ignore-scripts && npm rebuild esbuild
-      # Was die App vom Server braucht (shared/app-schnittstelle.json) und wie sie es liest,
-      # gegen docs/openapi.json; dazu die Release-Wege. Die Web-Suite liest keinen Kotlin-Quelltext.
+      # Was die App vom Server braucht (shared/app-interface.json) und wie sie es liest,
+      # gegen docs/openapi-v2.json; dazu die Release-Wege. Die Web-Suite liest keinen Kotlin-Quelltext.
       - name: Routen nehmen die erzeugten Typen, Schnittstelle und Release-Wege
         run: node --test ../Android-App/tools/contract/contract-kotlin.test.js ../Android-App/tools/release-paths.test.js
       - name: Erzeugte Design-Tokens aktuell
         run: node scripts/generate-design-tokens.js --pruefen
-      # Die erzeugten Antworttypen (core-contract, vertrag.erzeugt) passen zu docs/openapi.json.
+      # Die erzeugten Antworttypen (core-contract, Contract.kt) passen zu docs/openapi-v2.json.
       - name: Erzeugte Kotlin-Typen aktuell
         run: node --test test/contract-kotlin-dtos.test.js
 
@@ -475,7 +492,7 @@ jobs:
   # Device pixel6Api34, ATD-Abbild): Hilt, Room mit SQLCipher und Keystore laufen nur
   # auf Android. Nur die Debug-Fassung, nichts wird signiert oder veröffentlicht.
   geraetetests:
-    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.screenshots }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -514,12 +531,32 @@ jobs:
           name: geraetetests-berichte
           path: Android-App/app/build/outputs/androidTest-results
 
+  # ── Gegenproben passen ─────────────────────────────────────────────────────
+  # Without Gradle, in seconds: every patch under counter-checks/ still applies and names
+  # an existing module and test class. A rename that strands a patch shows on the push
+  # itself, not only in the nightly measurement below.
+  counter-checks-fit:
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.screenshots }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Gegenproben passen auf den Stand
+        run: python3 tools/counter-checks.py --check counter-checks
+
   # ── Gegenproben ────────────────────────────────────────────────────────────
-  # Jeder Patch unter gegenproben/ macht etwas kaputt; die Testklasse aus seinem Kopf
-  # muss danach ROT sein (tools/gegenproben.py). Auf einem Push nur die Patches, deren
+  # Jeder Patch unter counter-checks/ macht etwas kaputt; die Testklasse aus seinem Kopf
+  # muss danach ROT sein (tools/counter-checks.py). Auf einem Push nur die Patches, deren
   # Ziel, Test oder Patch sich geändert hat; nachts und von Hand (workflow_dispatch) alle.
-  gegenproben:
-    if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
+  counter-checks:
+    if: ${{ !inputs.pruefsummen && !inputs.screenshots }}
     runs-on: ubuntu-24.04
     # Vier Teile mit je jedem vierten Patch; seriell dauerte der Volllauf über 180 min.
     strategy:
@@ -547,12 +584,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           cache-read-only: true
+      # Nur lesen, wie beim Gradle-Cache: Robolectric holt sonst je Teil ~200 MB von Central (429).
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('Android-App/gradle/libs.versions.toml') }}
+          restore-keys: robolectric-
       - name: Gegenproben messen
         env:
-          GEGENPROBE_BASIS: ${{ github.event_name == 'push' && github.event.before || github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          COUNTER_CHECK_BASIS: ${{ github.event_name == 'push' && github.event.before || github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
         run: |
           chmod +x gradlew
-          GEGENPROBE_TEIL="${{ matrix.teil }}/4" python3 tools/gegenproben.py gegenproben
+          COUNTER_CHECK_TEIL="${{ matrix.teil }}/4" python3 tools/counter-checks.py counter-checks
 
   # ── Prüfsummen der Abhängigkeiten ──────────────────────────────────────────
   # verification-metadata.xml hält die SHA-256 jeder Abhängigkeit fest. Erzeugen lässt
@@ -588,9 +631,9 @@ jobs:
       - name: Prüfsummen erzeugen
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys \
+          ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys --write-locks \
             testDebugUnitTest :core-model:test :core-contract:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
-            :app:assembleDebugAndroidTest \
+            :app:assembleDebugAndroidTest resolveLockedClasspaths \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys
@@ -603,6 +646,13 @@ jobs:
           path: |
             Android-App/gradle/verification-metadata.xml
             Android-App/gradle/verification-keyring.*
+          if-no-files-found: error
+      # Die Sperrdateien je Modul (build-logic, lockClasspaths) im selben Lauf erneuert.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: ${{ !cancelled() }}
+        with:
+          name: gradle-lockfiles
+          path: Android-App/*/gradle.lockfile
           if-no-files-found: error
 
   # Die Zusammenfassung, auf die sich das Review verlässt, entsteht ohne Gradle:
@@ -627,6 +677,9 @@ jobs:
         run: |
           set -euo pipefail
           git show HEAD:Android-App/gradle/verification-metadata.xml > "$RUNNER_TEMP/alt.xml" 2>/dev/null || true
+          # Wie im Vorschlag: kritische Bibliotheken je Artefakt statt über den Gruppen-Schlüssel.
+          python3 Android-App/tools/verification-pin.py "$RUNNER_TEMP/neu/verification-metadata.xml" ||
+            echo "::warning title=Prüfsumme fehlt::Eine kritische Bibliothek hat keine SHA-256 (siehe oben); der Bau wird sie ablehnen."
           python3 Android-App/tools/checksum-compare.py "$RUNNER_TEMP/alt.xml" "$RUNNER_TEMP/neu/verification-metadata.xml" \
             > "$RUNNER_TEMP/pruefsummen-zusammenfassung.md"
           cat "$RUNNER_TEMP/pruefsummen-zusammenfassung.md" >> "$GITHUB_STEP_SUMMARY"
@@ -634,6 +687,11 @@ jobs:
         with:
           name: pruefsummen-zusammenfassung
           path: ${{ runner.temp }}/pruefsummen-zusammenfassung.md
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: verification-metadata-festgehalten
+          path: ${{ runner.temp }}/neu/verification-metadata.xml
           if-no-files-found: error
 
   # Neue Prüfsummen kommen als Pull-Request, nie als Push: Sie entscheiden, welche
@@ -656,6 +714,14 @@ jobs:
         with:
           name: pruefsummen-zusammenfassung
           path: ${{ runner.temp }}/pruefsummen
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: gradle-lockfiles
+          path: ${{ runner.temp }}/sperren
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: verification-metadata-festgehalten
+          path: ${{ runner.temp }}/festgehalten
       # Ein eigener Zweig je Lauf; der Zweig des Laufs bleibt unberührt. Ein mit
       # GITHUB_TOKEN angelegter Pull-Request startet keine CI von selbst.
       - name: Zweig und Pull-Request anlegen
@@ -664,9 +730,15 @@ jobs:
         run: |
           set -euo pipefail
           NEU="$RUNNER_TEMP/pruefsummen"
-          install -m 644 "$NEU/verification-metadata.xml" Android-App/gradle/verification-metadata.xml
+          # Die festgehaltene Fassung aus pruefsummen-zusammenfassen (ohne Schreibrecht erzeugt).
+          install -m 644 "$RUNNER_TEMP/festgehalten/verification-metadata.xml" Android-App/gradle/verification-metadata.xml
           for f in "$NEU"/verification-keyring.*; do install -m 644 "$f" Android-App/gradle/; done
-          git add Android-App/gradle/verification-metadata.xml Android-App/gradle/verification-keyring.*
+          # Nur Sperrdateien bestehender Module; ein fremder Pfad im Artefakt bleibt draussen.
+          for f in "$RUNNER_TEMP"/sperren/*/gradle.lockfile; do
+            m=$(basename "$(dirname "$f")")
+            if [ -d "Android-App/$m" ] && printf '%s' "$m" | grep -Eq '^[a-z-]+$'; then install -m 644 "$f" "Android-App/$m/gradle.lockfile"; fi
+          done
+          git add Android-App/gradle/verification-metadata.xml Android-App/gradle/verification-keyring.* Android-App/*/gradle.lockfile
           if git diff --cached --quiet; then echo "Prüfsummen unverändert." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
           git diff --cached -U2 -- Android-App/gradle/verification-metadata.xml
           ZWEIG="pruefsummen/$GITHUB_RUN_ID"
@@ -688,8 +760,8 @@ jobs:
   # Der erste Job nimmt mit Lesezugriff auf, der zweite checkt die PNGs auf dem Zweig
   # ein, nie auf main. Ohne eigenen Pull-Request: Ein Bild wird nie ausgeführt und
   # entscheidet nicht, was der Bau annimmt; der Merge nach main zeigt es im Review.
-  bildschirmfotos:
-    if: github.event_name == 'workflow_dispatch' && inputs.bildschirmfotos
+  screenshots:
+    if: github.event_name == 'workflow_dispatch' && inputs.screenshots
     runs-on: ubuntu-24.04
     # Gemessen 8–17 min; doppelt so lange heisst: hängt.
     timeout-minutes: 40
@@ -715,40 +787,40 @@ jobs:
       - name: Bildschirmfotos aufnehmen
         run: |
           chmod +x gradlew
-          rm -f app/src/test/bildschirmfotos/*.png
+          rm -f app/src/test/screenshots/*.png
           ./gradlew --no-daemon :app:recordRoborazziDebug
-          anzahl=$(ls app/src/test/bildschirmfotos/*.png 2>/dev/null | wc -l)
+          anzahl=$(ls app/src/test/screenshots/*.png 2>/dev/null | wc -l)
           echo "$anzahl Bilder aufgenommen."
           test "$anzahl" -gt 0
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: bildschirmfotos-referenz
-          path: Android-App/app/src/test/bildschirmfotos/*.png
+          name: screenshots-reference
+          path: Android-App/app/src/test/screenshots/*.png
           if-no-files-found: error
 
-  bildschirmfotos-einchecken:
-    needs: bildschirmfotos
-    if: github.event_name == 'workflow_dispatch' && inputs.bildschirmfotos && github.ref != 'refs/heads/main'
+  screenshots-commit:
+    needs: screenshots
+    if: github.event_name == 'workflow_dispatch' && inputs.screenshots && github.ref != 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Alte Referenzen entfernen
-        run: git rm -q --ignore-unmatch 'Android-App/app/src/test/bildschirmfotos/*.png'
+        run: git rm -q --ignore-unmatch 'Android-App/app/src/test/screenshots/*.png'
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: bildschirmfotos-referenz
-          path: Android-App/app/src/test/bildschirmfotos
+          name: screenshots-reference
+          path: Android-App/app/src/test/screenshots
       - name: Einchecken
         run: |
           set -euo pipefail
-          for f in Android-App/app/src/test/bildschirmfotos/*; do
+          for f in Android-App/app/src/test/screenshots/*; do
             [ "$(head -c 8 "$f" | od -An -tx1 | tr -d ' \n')" = "89504e470d0a1a0a" ] || { echo "::error::$f ist kein PNG"; exit 1; }
           done
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Android-App/app/src/test/bildschirmfotos/*.png
+          git add Android-App/app/src/test/screenshots/*.png
           if git diff --cached --quiet; then echo "Bildschirmfotos unverändert."; exit 0; fi
           echo "## Bildschirmfotos" >> "$GITHUB_STEP_SUMMARY"
           git diff --cached --stat >> "$GITHUB_STEP_SUMMARY"

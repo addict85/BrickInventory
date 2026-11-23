@@ -1,12 +1,12 @@
 import type { DbInterface } from '../../../db/database';
 import { LIKE_ESCAPE, likeLiteral } from '../../../db/likeSearch';
-import { mengeSkalar } from '../../../db/stockQuantity';
-import type { Spalten } from '../../../db/rows';
+import { quantityScalar } from '../../../db/stockQuantity';
+import type { Columns } from '../../../db/rows';
 
 /** The route does not talk to db/ itself. */
 
 type ImageRow = { image_url: string | null; image_local: string | null };
-export type AccountImageRow = { anzahl_konten: number } & ImageRow;
+export type AccountImageRow = { account_count: number } & ImageRow;
 type ImageMissRow = { checked_at: Date; reason: string | null };
 type CacheKeyRow = { cache_key: string };
 
@@ -26,51 +26,51 @@ export function stalePrices(db: DbInterface): Promise<number> {
 /** Only the number of accounts (function from 0119): which one holds a set is none of the admin's business either. */
 export async function accountImageRows(db: DbInterface, sn: string): Promise<AccountImageRow> {
   const z = await db.get<AccountImageRow>(
-    `SELECT n.anzahl AS anzahl_konten, CASE WHEN n.anzahl > 0 THEN c.image_local END AS image_local,
-            CASE WHEN n.anzahl > 0 THEN c.image_url END AS image_url
-       FROM (SELECT konten_mit_set($1) AS anzahl) n LEFT JOIN set_catalog c ON c.set_number = $1`,
+    `SELECT n.count AS account_count, CASE WHEN n.count > 0 THEN c.image_local END AS image_local,
+            CASE WHEN n.count > 0 THEN c.image_url END AS image_url
+       FROM (SELECT accounts_with_set($1) AS count) n LEFT JOIN set_catalog c ON c.set_number = $1`,
     [sn],
   );
-  return z ?? { anzahl_konten: 0, image_local: null, image_url: null };
+  return z ?? { account_count: 0, image_local: null, image_url: null };
 }
 
 export function catalogImage(db: DbInterface, sn: string): Promise<ImageRow | undefined> {
-  return db.get<Spalten<'set_catalog', 'image_url' | 'image_local'>>(
+  return db.get<Columns<'set_catalog', 'image_url' | 'image_local'>>(
     `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`,
     [sn],
   );
 }
 
 export function setImageMiss(db: DbInterface, sn: string): Promise<ImageMissRow | undefined> {
-  return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
+  return db.get<Columns<'image_misses', 'checked_at' | 'reason'>>(
     `SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`,
     ['set:' + sn],
   );
 }
 
-/** @param datei the file name without extension, as the image storage forms it */
-export function thumbnailImageMiss(db: DbInterface, datei: string): Promise<ImageMissRow | undefined> {
-  return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
+/** @param file the file name without extension, as the image storage forms it */
+export function thumbnailImageMiss(db: DbInterface, file: string): Promise<ImageMissRow | undefined> {
+  return db.get<Columns<'image_misses', 'checked_at' | 'reason'>>(
     `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`,
-    ['thumb:%' + likeLiteral(datei + '_thumb.jpg')],
+    ['thumb:%' + likeLiteral(file + '_thumb.jpg')],
   );
 }
 
 export function setImageMisses(db: DbInterface): Promise<CacheKeyRow[]> {
-  return db.all<Spalten<'image_misses', 'cache_key'>>(
+  return db.all<Columns<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`,
   );
 }
 
 export function thumbnailImageMisses(db: DbInterface): Promise<CacheKeyRow[]> {
-  return db.all<Spalten<'image_misses', 'cache_key'>>(
+  return db.all<Columns<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`,
   );
 }
 
 /** A 404 from the CDN stays recorded: a new attempt changes nothing about it. */
 export function setImageMissesWithout404(db: DbInterface): Promise<CacheKeyRow[]> {
-  return db.all<Spalten<'image_misses', 'cache_key'>>(
+  return db.all<Columns<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses
             WHERE cache_key LIKE 'set:%'
               AND (reason IS NULL OR reason NOT LIKE '%404%')`,
@@ -107,7 +107,7 @@ export function setsWithoutInstructions(db: DbInterface): Promise<{ set_number: 
 
 export function logSince(
   db: DbInterface,
-  minuten: number,
+  minutes: number,
 ): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
   return db.all<{ id: number; level: string; message: string; logged_at: Date }>(
     // bigint would come as text; the contract (and the log window) names a number.
@@ -116,7 +116,7 @@ export function logSince(
        WHERE logged_at >= NOW() - ($1 || ' minutes')::INTERVAL
        ORDER BY logged_at ASC
        LIMIT 5000`,
-    [minuten],
+    [minutes],
   );
 }
 
@@ -169,7 +169,7 @@ export function holdingMinifigImagesOpen(db: DbInterface): Promise<number> {
 /** The quantity from the acquisitions — the same sum the valuation sees. */
 export function sampleSet(db: DbInterface, uid: number, setNumber: string) {
   return db.get<{ set_number: string; quantity: number }>(
-    `SELECT s.set_number, ${mengeSkalar('s')} AS quantity
+    `SELECT s.set_number, ${quantityScalar('s')} AS quantity
               FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`,
     [uid, setNumber],
   );
@@ -180,7 +180,7 @@ export function sampleAcquisitions(
   uid: number,
   setNumber: string,
 ): Promise<{ quantity: number; condition: string; purchase_price: number | null; created_at: Date }[]> {
-  return db.all<Spalten<'set_acquisitions', 'quantity' | 'condition' | 'purchase_price' | 'created_at'>>(
+  return db.all<Columns<'set_acquisitions', 'quantity' | 'condition' | 'purchase_price' | 'created_at'>>(
     'SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at',
     [uid, setNumber],
   );
@@ -209,5 +209,5 @@ export function lastRunOfType(db: DbInterface) {
     due_at: Date;
     progress: Record<string, unknown> | null;
   }>(`SELECT status, due_at, progress FROM jobs
-      WHERE type = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, due_at LIMIT 1`);
+      WHERE type = 'prices' AND status IN ('pending', 'running') ORDER BY status = 'running' DESC, due_at LIMIT 1`);
 }

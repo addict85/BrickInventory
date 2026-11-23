@@ -1,0 +1,17 @@
+Gegenprobe: beobachteTeile reicht die Farbwahl nicht an die Filterspalten
+Modul: core-data
+Test: ch.brickinventoryapp.data.WithoutNetworkFilterTest
+Rot: color, category, spare parts and search of the parts list work offline
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
+@@ -67,7 +67,7 @@
+ 
+     /** The local lists by the display's filters; they also change through things edited offline. */
+     override fun observeParts(search: String?, color: ColorPicker, category: CategoryChoice, spareParts: SparePartChoice): Flow<Local<PartView>> =
+-        store.observe(Slots.PARTS, FilterColumns(searchText = search?.ifBlank { null }, color = color.value,
++        store.observe(Slots.PARTS, FilterColumns(searchText = search?.ifBlank { null }, color = null,
+             category = category.value, sparePart = spareParts.asFeature()))
+ 
+     override fun observeManualParts(search: String?): Flow<Local<ManualPartView>> =

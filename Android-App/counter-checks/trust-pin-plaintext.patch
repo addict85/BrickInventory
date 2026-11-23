@@ -1,0 +1,17 @@
+Gegenprobe: merkePin() legt den Fingerabdruck zusätzlich im Klartext ab
+Modul: core-data
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
+Rot: pin and switch do not lie in plaintext and survive the restart
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -340,7 +340,7 @@
+         val entry = pinEntry(key)
+         val secret = trustCipher.encrypt(fingerprint, PIN_PREFIX + key)
+         if (entry != null && secret != null) {
+-            designMirror.edit { putString(entry, secret); remove(PIN_SECRET_PREFIX + key) }
++            designMirror.edit { putString(entry, secret); remove(PIN_SECRET_PREFIX + key); putString(PIN_PREFIX + key, fingerprint) }
+             unsecured.remove(key)
+         } else {
+             unsecured[key] = fingerprint

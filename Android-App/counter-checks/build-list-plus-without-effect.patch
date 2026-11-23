@@ -1,0 +1,17 @@
+Gegenprobe: „+“ im Setnummernfeld nimmt das Set nicht auf
+Modul: app
+Test: ch.brickinventoryapp.app.SubpagesTest
+Rot: build list takes sets via the plus in the field and resets them only after confirmation
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsListScreen.kt
+@@ -308,7 +308,7 @@
+             shape = MaterialTheme.shapes.large,
+             trailingIcon = {
+                 if (setInput.isNotBlank()) WithTooltip(stringResource(R.string.partslist_add_set)) {
+-                    IconButton(onClick = { onAdd(setInput) }) {
++                    IconButton(onClick = { }) {
+                         Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
+                     }
+                 }

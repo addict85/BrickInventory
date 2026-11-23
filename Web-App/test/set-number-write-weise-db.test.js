@@ -22,9 +22,9 @@ const db = testData();
 // real client throws in exactly this situation — here it is only COUNTED how
 // often it is asked at all.
 const blPath = require.resolve(path.join(ROOT, 'dist', 'src/catalog/bricklinkPrices.js'));
-const echt = require(blPath);
+const original = require(blPath);
 let fetches = [];
-require.cache[blPath].exports = Object.assign({}, echt, {
+require.cache[blPath].exports = Object.assign({}, original, {
   priceGuideQuery: async (_k, sn, cond) => {
     fetches.push(`${sn}|${cond}`);
     throw new Error(`${sn} — kein BrickLink-Preis verfuegbar`);
@@ -41,20 +41,20 @@ test('the spelling of a set number is one rule', () => {
 });
 
 test('the catalog answers the same no matter how the number is written', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const BLANK = `g${process.pid}`; // this is how the caller asks
-  const MITV = `${BLANK}-1`; // this is how clients/bricklink.ts stores it
-  const aufraeumen = () =>
-    db.run('DELETE FROM catalog_cache WHERE set_number = ANY($1)', [[BLANK, MITV]]).catch(() => {});
-  await aufraeumen();
+  const WITH_V = `${BLANK}-1`; // this is how clients/bricklink.ts stores it
+  const cleanUp = () =>
+    db.run('DELETE FROM catalog_cache WHERE set_number = ANY($1)', [[BLANK, WITH_V]]).catch(() => {});
+  await cleanUp();
 
   try {
     // Write the marker exactly as clients/bricklink.ts writes it.
     await db.run(
       `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,'NONE',true)
        ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=true`,
-      [MITV],
+      [WITH_V],
     );
 
     const { fetchAndCachePrice } = _req('src/finances/priceRun.js');
@@ -62,46 +62,46 @@ test('the catalog answers the same no matter how the number is written', { concu
 
     // Counter-check: in src/infra/setNumber.ts the withVersion() removed from catalogEntry()
     // -> the row with „without version suffix" turns red.
-    for (const nummer of [BLANK, MITV]) {
+    for (const number of [BLANK, WITH_V]) {
       fetches = [];
-      const r = await fetchAndCachePrice(nummer, 'N', 'sold', 'EUR', 24);
+      const r = await fetchAndCachePrice(number, 'N', 'sold', 'EUR', 24);
       assert.equal(
         r,
         'skipped_gear',
-        `„${nummer}": Der Job fragt BrickLink, obwohl im Katalog steht, dass es ` +
-          'keinen Preis gibt — und zaehlt das Ergebnis als Fehler statt als uebersprungen',
+        `„${number}": the job asks BrickLink although the catalogue says there is ` +
+          'no price — and counts the result as an error instead of as skipped',
       );
-      assert.equal(fetches.length, 0, `„${nummer}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
+      assert.equal(fetches.length, 0, `„${number}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
 
       fetches = [];
-      const p = await fetchPrice(nummer, 'N', 'sold', 'EUR', 24);
-      assert.equal(p.no_price, true, `„${nummer}": Der Anfrageweg meldet keinen preislosen Eintrag`);
-      assert.equal(fetches.length, 0, `„${nummer}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
+      const p = await fetchPrice(number, 'N', 'sold', 'EUR', 24);
+      assert.equal(p.no_price, true, `„${number}": the request path reports no priceless entry`);
+      assert.equal(fetches.length, 0, `„${number}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
     }
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end();
   }
 });
 
 test('the spelling is not computed again anywhere', () => {
   // Found, not enumerated.
-  const dateien = [];
-  const gehen = d => {
+  const files = [];
+  const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts'].includes(e.name) || e.name.startsWith('.')) continue;
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) gehen(abs);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+      if (e.isDirectory()) go(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) files.push(abs);
     }
   };
-  gehen(ROOT);
+  go(ROOT);
   // Self-proof: if the search found nothing, the rule would be vacuously true.
-  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(files.length >= 40, `Only ${files.length} source files found — the search no longer works`);
 
-  const eigene = [],
-    vorpruefer = [];
-  for (const f of dateien) {
+  const owned = [],
+    prechecker = [];
+  for (const f of files) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -115,21 +115,21 @@ test('the spelling is not computed again anywhere', () => {
       /\.replace\(\/-(?:\\\\d|\[0-9\])\+\$\//,
     ]) // and the truncation
       if (m.test(code)) {
-        eigene.push(rel);
+        owned.push(rel);
         break;
       }
-    if (/SELECT is_gear, bl_type(?:, fetched_at)? FROM catalog_cache/.test(code)) vorpruefer.push(rel);
+    if (/SELECT is_gear, bl_type(?:, fetched_at)? FROM catalog_cache/.test(code)) prechecker.push(rel);
   }
   // No exceptions: two places that compute the same notation drift apart.
   assert.deepEqual(
-    eigene,
+    owned,
     ['src/infra/setNumber.ts'],
-    'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
-      'zwei Stellen auseinander, die dasselbe meinen',
+    'The spelling is computed once more elsewhere — that is exactly how ' +
+      'two places that mean the same thing drift apart',
   );
   assert.deepEqual(
-    vorpruefer,
+    prechecker,
     ['src/catalog/repository/catalogCache.ts'],
-    'Der Katalog wird an mehr als einer Stelle gelesen',
+    'The catalogue is read in more than one place',
   );
 });

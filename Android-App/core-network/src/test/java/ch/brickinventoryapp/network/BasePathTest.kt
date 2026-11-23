@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.network
 
+import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
-import ch.brickinventoryapp.network.di.ServerWaechter
-import ch.brickinventoryapp.network.di.Zugangslage
+import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.network.util.ownAddress
 import ch.brickinventoryapp.network.util.pdfInViewer
@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * The token belongs to the server under its path, not the whole host: behind a
- * shared reverse proxy, a different application lives under `/andere-app`. One
+ * shared reverse proxy, a different application lives under `/other-app`. One
  * test server, the app under `/brick`.
  *
  * Counter-checks:
@@ -38,19 +38,19 @@ class BasePathTest {
     private val server = MockWebServer().apply { start() }
     private val basis = server.url("/brick").toString().trimEnd('/')
 
-    private val situation = object : Zugangslage {
+    private val situation = object : AccessState {
         override fun serverUrl() = basis
         override fun token() = "geheim"
-        override fun tokenOrigin(): String? = NetworkPolicy.herkunft(basis)
+        override fun tokenOrigin(): String? = NetworkPolicy.origin(basis)
         override fun generation() = 0L
     }
     private val client = OkHttpClient.Builder()
-        .addInterceptor(ServerWaechter(situation, true, entwicklung = true, sitzungAbgelaufen = {}))
+        .addInterceptor(ServerGuard(situation, true, development = true, sessionExpired = {}))
         .followRedirects(false).followSslRedirects(false)
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     @After
-    fun zu() {
+    fun tearDown() {
         server.shutdown()
     }
 
@@ -60,19 +60,19 @@ class BasePathTest {
     @Test
     fun `an API request goes under the path and with a token`() {
         server.enqueue(MockResponse().setBody("{}"))
-        assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v1/sets"))
+        assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v2/sets"))
         val a = server.takeRequest(1, TimeUnit.SECONDS)!!
-        assertEquals("/brick/api/v1/sets", a.path)
+        assertEquals("/brick/api/v2/sets", a.path)
         assertEquals("Bearer geheim", a.getHeader("Authorization"))
     }
 
     @Test
     fun `a request outside the path goes without a token`() {
-        for (pfad in listOf("/andere-app/x", "/brickfremd/x", "/")) {
+        for (path in listOf("/andere-app/x", "/brickfremd/x", "/")) {
             server.enqueue(MockResponse().setBody("{}"))
-            assertEquals(200, fetch(server.url(pfad).toString(), withHeader = true))
+            assertEquals(200, fetch(server.url(path).toString(), withHeader = true))
             val a = server.takeRequest(1, TimeUnit.SECONDS)!!
-            assertNull("Token an $pfad", a.getHeader("Authorization"))
+            assertNull("Token an $path", a.getHeader("Authorization"))
         }
         server.enqueue(MockResponse().setBody("{}"))
         fetch(server.url("/brick/uploads/a.jpg").toString())
@@ -83,20 +83,20 @@ class BasePathTest {
     fun `a redirect out of the path is not followed`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/andere-app/x"))
         server.enqueue(MockResponse().setBody("{}"))
-        assertEquals(302, fetch(PLACEHOLDER_BASE + "api/v1/h"))
+        assertEquals(302, fetch(PLACEHOLDER_BASE + "api/v2/h"))
         server.takeRequest()
-        assertEquals("Nur eine Anfrage, keine an /andere-app", 1, server.requestCount)
+        assertEquals("only one request, none to /andere-app", 1, server.requestCount)
     }
 
     @Test
     fun `a redirect under the path is followed with the token`() {
-        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brick/api/v1/h2"))
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brick/api/v2/h2"))
         server.enqueue(MockResponse().setBody("{}"))
-        assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v1/h"))
+        assertEquals(200, fetch(PLACEHOLDER_BASE + "api/v2/h"))
         server.takeRequest()
-        val zweite = server.takeRequest(1, TimeUnit.SECONDS)!!
-        assertEquals("/brick/api/v1/h2", zweite.path)
-        assertEquals("Bearer geheim", zweite.getHeader("Authorization"))
+        val second = server.takeRequest(1, TimeUnit.SECONDS)!!
+        assertEquals("/brick/api/v2/h2", second.path)
+        assertEquals("Bearer geheim", second.getHeader("Authorization"))
     }
 
     @Test
@@ -106,7 +106,7 @@ class BasePathTest {
         assertNull(ownAddress(s, "//fremd.example/x"))
         assertNull(ownAddress(s, "../andere-app/x"))
         assertNull(ownAddress(s, "%2e%2e/andere-app/x"))
-        assertTrue(pdfInViewer("https://s.example/brick/api/v1/vouchers/7/pdf", s))
+        assertTrue(pdfInViewer("https://s.example/brick/api/v2/vouchers/7/pdf", s))
         assertFalse(pdfInViewer("https://s.example/andere-app/a.pdf", s))
     }
 

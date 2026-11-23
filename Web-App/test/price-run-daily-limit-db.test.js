@@ -25,7 +25,7 @@ test('price run at the daily limit', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { setGlobalSetting } = _req('src/settings/settings.js');
-  const { kontingentPruefenUndZaehlen } = _req('src/externalSources/apiQuota.js');
+  const { checkAndCountQuota } = _req('src/externalSources/apiQuota.js');
   const { runPriceRefresh } = _req('src/finances/priceRun.js');
 
   const uid = (
@@ -34,20 +34,20 @@ test('price run at the daily limit', { concurrency: 1 }, async t => {
   for (const sn of ['10305-1', '21318-1', '75192-1']) await holdsSet(db, uid, sn);
   await setGlobalSetting('bricklink_consumer_key', 'schluessel');
   await setGlobalSetting('api_limit_bricklink', '1');
-  await kontingentPruefenUndZaehlen('bricklink');
+  await checkAndCountQuota('bricklink');
 
-  const zeilen = [];
-  t.mock.method(console, 'log', (...teile) => {
-    zeilen.push(teile.join(' '));
+  const lines = [];
+  t.mock.method(console, 'log', (...parts) => {
+    lines.push(parts.join(' '));
   });
   await runPriceRefresh();
   t.mock.restoreAll();
 
   await t.test('one line instead of one per set', () => {
-    assert.equal(zeilen.filter(z => /Tageslimit erreicht/.test(z)).length, 1, zeilen.join('\n'));
+    assert.equal(lines.filter(z => /Tageslimit erreicht/.test(z)).length, 1, lines.join('\n'));
   });
   await t.test('the closing line names the skipped sets', () => {
-    const ende = zeilen.find(z => z.includes('Done:')) ?? '';
-    assert.match(ende, /0 errors, [3-9]\d* wegen Tageslimit ausgelassen/, ende);
+    const end = lines.find(z => z.includes('Done:')) ?? '';
+    assert.match(end, /0 errors, [3-9]\d* wegen Tageslimit ausgelassen/, end);
   });
 });

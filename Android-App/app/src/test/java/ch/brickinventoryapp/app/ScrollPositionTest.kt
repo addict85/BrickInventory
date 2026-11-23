@@ -1,0 +1,77 @@
+package ch.brickinventoryapp.app
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.ui.ScrollPositionKeeper
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotSame
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+/**
+ * The scroll position has one source, the ScrollMemory: a destination creates its list state
+ * anew per visit, and after the excursion into the detail the list is still back at
+ * its position. Executed with a real NavHost, as the app's tabs have it.
+ *
+ * Counter-check (counter-checks/role-without-return.patch): the keeper for LazyColumn no longer
+ * jumps back → red “the list is back at its position after the excursion”.
+ */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
+class ScrollPositionTest {
+
+    @get:Rule
+    val compose = createComposeRule()
+
+    @Test
+    fun `the list is back at its position after the excursion, without hoisted state`() {
+        val memory = ScrollMemory()
+        lateinit var nav: NavHostController
+        val states = mutableListOf<LazyListState>()
+        compose.setContent {
+            nav = rememberNavController()
+            NavHost(nav, startDestination = "liste") {
+                composable("liste") {
+                    val listState = remember { LazyListState() }
+                    if (states.lastOrNull() !== listState) states += listState
+                    ScrollPositionKeeper("probe", listState, ready = true, memory = memory)
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                        items(200) { Text("Zeile $it", Modifier.height(48.dp)) }
+                    }
+                }
+                composable("detail") { Text("Detail") }
+            }
+        }
+        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(60)
+        compose.waitForIdle()
+        assertEquals("the keeper records the position", 60, memory.read("probe").first)
+
+        compose.runOnIdle { nav.navigate("detail") }
+        compose.waitForIdle()
+        compose.runOnIdle { nav.popBackStack() }
+        compose.waitForIdle()
+
+        assertEquals("a new visit, a new state", 2, states.size)
+        assertNotSame(states[0], states[1])
+        assertEquals("the list stands at its position again after the trip", 60, states[1].firstVisibleItemIndex)
+    }
+}

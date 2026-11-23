@@ -36,7 +36,7 @@ async function seed() {
   } finally {
     client.release();
   }
-  for (const name of ['von', 'zu']) {
+  for (const name of ['sender', 'receiver']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
@@ -54,84 +54,84 @@ async function seed() {
       FOR EACH ROW EXECUTE FUNCTION alarm_bremse();`);
 }
 
-const schalte = an =>
+const toggle = an =>
   db.exec(`CREATE OR REPLACE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT ${an} $$`);
 async function withBrake(fn) {
-  await schalte(true);
+  await toggle(true);
   try {
     return await fn();
   } finally {
-    await schalte(false);
+    await toggle(false);
   }
 }
 
 test('wishlist writes all or nothing', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   await seed();
   const W = _req('src/wanted/wanted.js');
   const alarm = uid =>
     db.run(
       `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code)
-                                  VALUES ($1, '75192-1', 'N', 'unter', 500, 'EUR')`,
+                                  VALUES ($1, '75192-1', 'N', 'below', 500, 'EUR')`,
       [uid],
     );
-  const merk = async uid =>
+  const wish = async uid =>
     (await db.all(`SELECT user_id FROM wanted WHERE set_number='75192-1' AND condition='N' AND user_id=$1`, [uid]))
       .length;
-  const alarme = async uid =>
+  const alertsOf = async uid =>
     (await db.all(`SELECT 1 FROM price_alerts WHERE set_number='75192-1' AND condition='N' AND user_id=$1`, [uid]))
       .length;
 
   await t.test('move: the error arrives', async () => {
-    await W.addWantedItem(U.von, '75192-1', 'N');
-    await alarm(U.von);
-    await withBrake(() => assert.rejects(W.moveWantedItem(U.von, '75192-1', 'N', U.zu), /erzwungen/));
+    await W.addWantedItem(U.sender, '75192-1', 'N');
+    await alarm(U.sender);
+    await withBrake(() => assert.rejects(W.moveWantedItem(U.sender, '75192-1', 'N', U.receiver), /erzwungen/));
   });
 
   await t.test('move: the wishlist item stays with the old account', async () => {
-    assert.equal(await merk(U.von), 1, 'Merkposten ist trotz Fehler gewandert');
-    assert.equal(await merk(U.zu), 0);
-    assert.equal(await alarme(U.von), 1);
+    assert.equal(await wish(U.sender), 1, 'wanted item moved despite an error');
+    assert.equal(await wish(U.receiver), 0);
+    assert.equal(await alertsOf(U.sender), 1);
   });
 
   await t.test('move without error takes wishlist item and alert along', async () => {
-    const r = await W.moveWantedItem(U.von, '75192-1', 'N', U.zu);
-    assert.deepEqual(r, { verschoben: true, zusammengefuehrt: false });
-    assert.equal(await merk(U.zu), 1);
-    assert.equal(await alarme(U.zu), 1);
-    assert.equal(await alarme(U.von), 0);
+    const r = await W.moveWantedItem(U.sender, '75192-1', 'N', U.receiver);
+    assert.deepEqual(r, { moved: true, merged: false });
+    assert.equal(await wish(U.receiver), 1);
+    assert.equal(await alertsOf(U.receiver), 1);
+    assert.equal(await alertsOf(U.sender), 0);
   });
 
   await t.test('target with its own alert: its alert applies, the wishlist item moves', async () => {
-    await W.moveWantedItem(U.zu, '75192-1', 'N', U.von);
+    await W.moveWantedItem(U.receiver, '75192-1', 'N', U.sender);
     await db.run(`DELETE FROM price_alerts`);
-    await alarm(U.von);
-    await alarm(U.zu);
-    await db.run(`UPDATE price_alerts SET threshold = 123 WHERE user_id=$1`, [U.zu]);
-    const r = await W.moveWantedItem(U.von, '75192-1', 'N', U.zu);
-    assert.equal(r.verschoben, true);
-    const zeilen = await db.all(`SELECT user_id, threshold::float AS s FROM price_alerts`);
-    assert.deepEqual(zeilen, [{ user_id: U.zu, s: 123 }]);
+    await alarm(U.sender);
+    await alarm(U.receiver);
+    await db.run(`UPDATE price_alerts SET threshold = 123 WHERE user_id=$1`, [U.receiver]);
+    const r = await W.moveWantedItem(U.sender, '75192-1', 'N', U.receiver);
+    assert.equal(r.moved, true);
+    const lines = await db.all(`SELECT user_id, threshold::float AS s FROM price_alerts`);
+    assert.deepEqual(lines, [{ user_id: U.receiver, s: 123 }]);
   });
 
   await t.test('take over: no set in stock, the wishlist item still stands', async () => {
     await withBrake(() =>
-      assert.rejects(W.fulfillWantedItem(U.zu, U.zu, '75192-1', 'N', { quantity: 1 }), /erzwungen/),
+      assert.rejects(W.fulfillWantedItem(U.receiver, U.receiver, '75192-1', 'N', { quantity: 1 }), /erzwungen/),
     );
     assert.equal(
-      (await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.zu])).length,
+      (await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.receiver])).length,
       0,
-      'Das Set ist erfasst, obwohl das Streichen scheiterte',
+      'The set is recorded although removing failed',
     );
-    assert.equal(await merk(U.zu), 1);
+    assert.equal(await wish(U.receiver), 1);
   });
 
   await t.test('take over without error: set entered, wishlist item and alert gone', async () => {
-    const r = await W.fulfillWantedItem(U.zu, U.zu, '75192-1', 'N', { quantity: 1 });
+    const r = await W.fulfillWantedItem(U.receiver, U.receiver, '75192-1', 'N', { quantity: 1 });
     assert.equal(r.action, 'added');
-    assert.equal((await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.zu])).length, 1);
-    assert.equal(await merk(U.zu), 0);
-    assert.equal(await alarme(U.zu), 0);
+    assert.equal((await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.receiver])).length, 1);
+    assert.equal(await wish(U.receiver), 0);
+    assert.equal(await alertsOf(U.receiver), 0);
   });
 });

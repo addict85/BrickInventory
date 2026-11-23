@@ -2,7 +2,7 @@
  * Which condition does the price run fetch for a wishlist item?
  *
  * ── Counter-checks (performed, result in the commit) ─────────────────────────
- *   a) The wanted query removed from statesJeSet() → red in line 68,
+ *   a) The wanted query removed from statesPerSet() → red in line 68,
  *      „der Merkposten desselben Sets bei einem anderen Nutzer als gebraucht".
  *      NOT in the line before: without a wishlist the function falls back to
  *      'N' here, and the first wishlist item happens to be 'N' too. That is why
@@ -26,16 +26,16 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
-const { statesJeSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
+const { statesPerSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
 
 /** Compare sorted: the order within the set is not a statement. */
-const sortiert = a => [...a].sort();
+const sortedList = a => [...a].sort();
 
 test('price run: the condition of a wishlist item is that of the user', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   // Own users per process — the test runs alongside others on the same DB.
-  const anlegen = async suffix =>
+  const create = async suffix =>
     (
       await db.get(
         `INSERT INTO users (username, password_hash) VALUES ($1,'x')
@@ -44,8 +44,8 @@ test('price run: the condition of a wishlist item is that of the user', { concur
         [`wzp_${process.pid}_${suffix}`],
       )
     ).id;
-  const a = await anlegen('a');
-  const b = await anlegen('b');
+  const a = await create('a');
+  const b = await create('b');
 
   try {
     // ── Two users, the SAME set, different wishlist items ─────────────────────
@@ -55,15 +55,15 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'10305-1','U')`, [b]);
 
     assert.deepEqual(
-      (await statesJeSet(a, ['10305-1'])).get('10305-1'),
+      (await statesPerSet(a, ['10305-1'])).get('10305-1'),
       ['N'],
-      'ein Merkposten auf ein NEUES Set muss als neu geholt werden — vorher ergab die ' +
-        'Vorgabe DEFAULT_PRICE_CONDITION hier still ein "U"',
+      'a wanted item for a NEW set must be fetched as new — before, the ' +
+        'default DEFAULT_PRICE_CONDITION silently yielded a "U" here',
     );
     assert.deepEqual(
-      (await statesJeSet(b, ['10305-1'])).get('10305-1'),
+      (await statesPerSet(b, ['10305-1'])).get('10305-1'),
       ['U'],
-      'und der Merkposten desselben Sets bei einem anderen Nutzer als gebraucht',
+      'and the wanted item for the same set at another user as used',
     );
 
     // ── Both conditions wanted: both prices are needed ──────────────────────
@@ -71,9 +71,9 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       a,
     ]);
     assert.deepEqual(
-      sortiert((await statesJeSet(a, ['21318-1'])).get('21318-1')),
+      sortedList((await statesPerSet(a, ['21318-1'])).get('21318-1')),
       ['N', 'U'],
-      'neu und gebraucht sind zwei Merkposten — für beide braucht das Detail einen Preis',
+      'new and used are two wanted items — the detail needs a price for both',
     );
 
     // Holding without a wishlist item: the condition comes from the acquisition
@@ -83,9 +83,9 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       [a],
     );
     assert.deepEqual(
-      (await statesJeSet(a, ['75192-1'])).get('75192-1'),
+      (await statesPerSet(a, ['75192-1'])).get('75192-1'),
       ['U'],
-      'der Zustand der Erfassung eines eigenen Sets entscheidet',
+      'the condition of the acquisition of an own set decides',
     );
 
     // ── Holding AND wishlist item in the other condition: both ────────────────
@@ -98,9 +98,9 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     );
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'42100-1','U')`, [a]);
     assert.deepEqual(
-      sortiert((await statesJeSet(a, ['42100-1'])).get('42100-1')),
+      sortedList((await statesPerSet(a, ['42100-1'])).get('42100-1')),
       ['N', 'U'],
-      'Bestand und Merkposten in verschiedenen Zuständen ergeben beide Abrufe',
+      'stock and wanted item in different conditions yield both fetches',
     );
 
     // ── The condition comes from the acquisition ────────────────────────────
@@ -115,9 +115,9 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       [a],
     );
     assert.deepEqual(
-      (await statesJeSet(a, ['10276-1'])).get('10276-1'),
+      (await statesPerSet(a, ['10276-1'])).get('10276-1'),
       ['U'],
-      'die Erfassung entscheidet ueber den zu holenden Preis',
+      'the acquisition decides the price to fetch',
     );
 
     // ── And a set row WITHOUT an acquisition falls back to 'N' ──────────────
@@ -128,17 +128,17 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     // at all would be fetched for this set, and nobody would notice.
     await holdsSet(db, a, '31203-1', 1);
     assert.deepEqual(
-      (await statesJeSet(a, ['31203-1'])).get('31203-1'),
+      (await statesPerSet(a, ['31203-1'])).get('31203-1'),
       ['N'],
-      'ohne Erfassung bleibt es beim Neu-Preis — eine leere Liste hiesse, ' +
-        'dass fuer dieses Set gar kein Preis geholt wird',
+      'without an acquisition it stays at the new price — an empty list would mean ' +
+        'that no price at all is fetched for this set',
     );
 
     // ── A set this user keeps nowhere ───────────────────────────────────────
     assert.deepEqual(
-      (await statesJeSet(b, ['75192-1'])).get('75192-1'),
+      (await statesPerSet(b, ['75192-1'])).get('75192-1'),
       ['N'],
-      'was dieser Nutzer weder besitzt noch wünscht, fällt auf "neu" zurück',
+      'what this user neither owns nor wants falls back to "neu"',
     );
 
     // ── Bundled and single are the SAME rule ────────────────────────────────
@@ -146,30 +146,30 @@ test('price run: the condition of a wishlist item is that of the user', { concur
     // wishlist. This assertion holds them together.
     for (const sn of ['10305-1', '21318-1', '75192-1', '42100-1', '10276-1', '31203-1']) {
       assert.deepEqual(
-        sortiert(await conditionsNeededFor(sn, a)),
-        sortiert((await statesJeSet(a, [sn])).get(sn)),
-        `conditionsNeededFor(${sn}) muss dasselbe sagen wie der Lauf`,
+        sortedList(await conditionsNeededFor(sn, a)),
+        sortedList((await statesPerSet(a, [sn])).get(sn)),
+        `conditionsNeededFor(${sn}) must say the same as the run`,
       );
     }
 
     // ── The hint (acquisition that does not exist yet) ──────────────────────
     assert.deepEqual(
-      sortiert(await conditionsNeededFor('99999-1', a, 'U')),
+      sortedList(await conditionsNeededFor('99999-1', a, 'U')),
       ['U'],
-      'ohne Bestand entscheidet der Hinweis — sonst bekäme ein als gebraucht ' +
-        'erfasstes Set den Neupreis als Kaufpreis',
+      'without stock the hint decides — otherwise a set recorded ' +
+        'as used would get the new price as purchase price',
     );
     assert.deepEqual(
-      sortiert(await conditionsNeededFor('10276-1', a, 'N')),
+      sortedList(await conditionsNeededFor('10276-1', a, 'N')),
       ['N', 'U'],
-      'der Hinweis tritt neben die vorhandenen Erfassungen, er ersetzt sie nicht',
+      'the hint joins the existing acquisitions, it does not replace them',
     );
 
     // ── An empty list does not query ────────────────────────────────────────
     assert.equal(
-      (await statesJeSet(a, [])).size,
+      (await statesPerSet(a, [])).size,
       0,
-      'ohne Sets darf keine Abfrage laufen — der Lauf ruft das für jeden Nutzer auf',
+      'without sets no query may run — the run calls this for every user',
     );
   } finally {
     for (const uid of [a, b]) {

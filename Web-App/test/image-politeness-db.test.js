@@ -13,18 +13,18 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Record times and concurrency of the downloads.
 const times = [];
 const thumbTimes = [];
-let gleichzeitig = 0,
+let simultaneous = 0,
   maxConcurrent = 0;
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 testImageWorker(null, {
-  setBildLaden: async (_u, sn) => {
+  loadSetImage: async (_u, sn) => {
     times.push(Date.now());
-    gleichzeitig++;
-    maxConcurrent = Math.max(maxConcurrent, gleichzeitig);
+    simultaneous++;
+    maxConcurrent = Math.max(maxConcurrent, simultaneous);
     await new Promise(r => setTimeout(r, 30)); // “network"
-    gleichzeitig--;
+    simultaneous--;
     return `/images/sets/${sn}.jpg`;
   },
   createPreview: async () => {
@@ -32,14 +32,14 @@ testImageWorker(null, {
     return true;
   },
 });
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 test('the image server is queried gently', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -57,39 +57,39 @@ test('the image server is queried gently', { concurrency: 1 }, async t => {
   );
 
   try {
-    const n = (await _req('src/images/imageDemandRun.js')._workStack()).gesamt;
+    const n = (await _req('src/images/imageDemandRun.js')._workStack()).total;
     const spacing = times.slice(1).map((z, i) => z - times[i]);
 
     await t.test('one after another, never concurrently', () => {
       assert.equal(
         maxConcurrent,
         1,
-        `${maxConcurrent} Downloads liefen gleichzeitig — gefordert ist ` +
-          'sequenziell, gerade weil Parallelität einer Heuristik auffällt',
+        `${maxConcurrent} downloads ran at the same time — required is ` +
+          'sequential, precisely because parallelism stands out to a heuristic',
       );
     });
 
     await t.test('at least half a second apart', () => {
-      assert.ok(spacing.length >= 5, `nur ${spacing.length} Abstände gemessen`);
+      assert.ok(spacing.length >= 5, `only ${spacing.length} gaps measured`);
       const smallest = Math.min(...spacing);
-      assert.ok(smallest >= 500, `kleinster Abstand ${smallest} ms — gefordert sind mindestens 500`);
+      assert.ok(smallest >= 500, `smallest gap ${smallest} ms — at least 500 are required`);
     });
 
     await t.test('the intervals are not all the same', () => {
       // An exactly equal spacing is itself a pattern: a heuristic that
       // looks for machines recognizes evenness more easily than irregularity.
       const only = new Set(spacing.map(a => Math.round(a / 50)));
-      assert.ok(only.size > 1, 'Alle Abstände sind gleich — die Verzögerung muss zufällig streuen');
+      assert.ok(only.size > 1, 'All gaps are equal — the delay must scatter randomly');
     });
 
     await t.test('at most 30 requests per minute', () => {
       // The rate results from batch size and tick; both come from the
       // module so that the test repeats no number that may change.
-      const { STAPEL: stapel, TAKT_MS: takt } = _req('src/images/imageDemandRun.js');
-      assert.ok(stapel > 0 && takt > 0, 'STAPEL oder TAKT_MS nicht auffindbar');
-      const jeMinute = stapel * (60_000 / takt);
-      assert.ok(jeMinute <= 30, `${jeMinute} Anfragen je Minute — höchstens 30 sind gewollt`);
-      assert.equal(n, stapel, `${n} Bilder in einem Durchgang statt ${stapel}`);
+      const { BATCH: stack, TICK_MS: tick } = _req('src/images/imageDemandRun.js');
+      assert.ok(stack > 0 && tick > 0, '„STAPEL“ or „TAKT_MS“ not found');
+      const perMinute = stack * (60_000 / tick);
+      assert.ok(perMinute <= 30, `${perMinute} requests per minute — at most 30 are wanted`);
+      assert.equal(n, stack, `${n} images in one pass instead of ${stack}`);
     });
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
@@ -103,7 +103,7 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
   // The queue must be emptied BEFORE use, not only the own
@@ -113,12 +113,12 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `NT${process.pid}`;
-  const dateien = [];
+  const files = [];
   // Images present, previews missing — Marco's situation.
   for (let i = 1; i <= 10; i++) {
     const f = path.join(SET_IMAGES_DIR, `${P}_${i}.jpg`);
     fs.writeFileSync(f, 'x');
-    dateien.push(f);
+    files.push(f);
   }
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
   await db.run(
@@ -129,32 +129,32 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   );
   thumbTimes.length = 0;
   try {
-    const n = (await _req('src/images/imageDemandRun.js')._workStack()).gesamt;
-    assert.equal(n, 10, `${n} Vorschauen statt 10 — Vorbedingung stimmt nicht`);
+    const n = (await _req('src/images/imageDemandRun.js')._workStack()).total;
+    assert.equal(n, 10, `${n} previews instead of 10 — precondition does not hold`);
     const abst = thumbTimes.slice(1).map((z, i) => z - thumbTimes[i]);
-    assert.ok(abst.length >= 5, `nur ${abst.length} Abstände`);
+    assert.ok(abst.length >= 5, `only ${abst.length} gaps`);
     const smallest = Math.min(...abst);
     assert.ok(
       smallest >= 500,
-      `kleinster Abstand zwischen zwei Verkleinerungen: ${smallest} ms. Ohne ` +
-        'Pause rechnet der Job zehn davon am Stück — auf schwacher Hardware ist ' +
-        'die CPU dann belegt, und Datenbankabfragen laufen in den Zeitfehler.',
+      `smallest gap between two downscalings: ${smallest} ms. Without ` +
+        'a pause the job computes ten of them in a row — on weak hardware ' +
+        'the CPU is then busy, and database queries run into the timeout.',
     );
   } finally {
-    for (const f of dateien) fs.rmSync(f, { force: true });
+    for (const f of files) fs.rmSync(f, { force: true });
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
     // Last test with database in this file — cleanup happens here.
     await db.pool.end().catch(() => {});
   }
 });
 
-// Counter-check (09.11.2026): bildUserAgent() back to `BrickInventoryManager/…` → red
+// Counter-check (09.11.2026): imageUserAgent() back to `BrickInventoryManager/…` → red
 // “the image job fetches with the proxy's browser identifier”.
 test("the image job fetches with the proxy's browser identifier", () => {
   const dist = path.join(ROOT, 'dist', 'src/images/setImages.js');
-  assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js fehlt — erst bauen');
+  assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js is missing — build first');
   const { IMAGE_HEADERS } = require(path.join(ROOT, 'dist', 'clients/imageCdn.js'));
-  const ua = require(dist).bildUserAgent({ bildUserAgent: null });
-  assert.equal(ua, IMAGE_HEADERS['User-Agent'], 'der Bild-Auftrag holt mit der Browser-Kennung des Proxys');
+  const ua = require(dist).imageUserAgent({ imageUserAgent: null });
+  assert.equal(ua, IMAGE_HEADERS['User-Agent'], 'the image job fetches with the browser identifier of the proxy');
   assert.match(ua, /^Mozilla\/5\.0 /);
 });

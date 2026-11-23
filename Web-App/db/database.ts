@@ -3,15 +3,16 @@
 
 import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient, PoolConfig, QueryResult } from 'pg';
-import { Benachrichtigung, type Signale } from './pgNotify';
+import { Notification, type Signals } from './pgNotify';
 import type { DbInterface } from './types';
-import { fehlerCode, reportError } from '../src/infra/error';
-import { konfig, databaseConnection, systemConnection, systemWebConnection } from '../src/infra/config';
+import { errorCode, reportError } from '../src/infra/error';
+import { config, databaseConnection, systemConnection, systemWebConnection } from '../src/infra/config';
 import { queryWithRetry, isReading } from './retry';
 import { inTransactionPath, rowsContext } from '../src/infra/accountContext';
 import {
   runningTx,
   contextSql,
+  contextCheckSql,
   txQueries,
   commitCompanion,
   withCommitCompanion,
@@ -21,11 +22,11 @@ import {
   TransactionEnded,
   UnboundQuery,
   type TxHandleOf,
-  type TxStand,
+  type TxState,
 } from './transaction';
-import { initSchema, initSchemaOnce, MAY_SCHEMA_CHANGE, type Erststart } from './schemaStart';
+import { initSchema, initSchemaOnce, MAY_SCHEMA_CHANGE, type FirstStart } from './schemaStart';
 import { lockInventories } from './txLock';
-import type { Bestandssperre, TxOptions, Zugang } from '../src/infra/access';
+import type { HoldingLock, TxOptions, Access } from '../src/infra/access';
 
 export { queryWithRetry, isReading } from './retry';
 export {
@@ -35,12 +36,12 @@ export {
   UnboundQuery,
   ConcurrentSavepoint,
 } from './transaction';
-export type { Erststart } from './schemaStart';
+export type { FirstStart } from './schemaStart';
 
 // All dependencies are up here: a require() in the body hides them
 // and yields `any`.
 
-/** NUMERIC as a number: we compute in ten-thousandths (src/infra/geld.ts). Up to 2^53/10^4
+/** NUMERIC as a number: we compute in ten-thousandths (src/infra/money.ts). Up to 2^53/10^4
  * Math.round(n × 10^4) hits the value exactly (NUMERIC(12,4) reaches 10^8); above that it throws instead of rounding silently. */
 export function numericAsNumber(v: string | null): number | null {
   if (v === null) return null;
@@ -56,30 +57,30 @@ pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, numericAsNumber);
 const DEFAULT_POOL = 15;
 
 /** What a connection needs; the process reads it once and passes it on. */
-export interface DbKonfig {
-  verbindung: PoolConfig;
+export interface DbConfig {
+  connection: PoolConfig;
   pool: PoolConfig;
-  /** The system role for the system frame; without it the frame runs over `verbindung`. */
+  /** The system role for the system frame; without it the frame runs over `connection`. */
   system?: PoolConfig | null;
   /** The system role for the system frame of HTTP requests (access tables only); without it `system`. */
   systemWeb?: PoolConfig | null;
   /** In tests a fallback value inside a transaction throws even outside the database (src/infra/error.ts). */
-  streng?: boolean;
+  strict?: boolean;
   /** The time zone of the entry day, written into the database at startup (schemaStart.ts). */
   entryTimeZone?: string;
 }
 
 /** What the body of a transaction gets: its queries and an access `db` over its
  * connection, from which the context `t` is built. */
-export interface TxGriff extends TxHandleOf<Db> {}
+export interface TxHandle extends TxHandleOf<Db> {}
 
-export function dbKonfigFromEnvironment(): DbKonfig {
-  const K = konfig();
+export function dbConfigFromEnvironment(): DbConfig {
+  const K = config();
   return {
-    verbindung: databaseConnection(),
+    connection: databaseConnection(),
     system: systemConnection(),
     systemWeb: systemWebConnection(),
-    streng: K.nodeEnv === 'test',
+    strict: K.nodeEnv === 'test',
     entryTimeZone: K.entryTimeZone,
     pool: {
       max: K.pgPoolMax ?? DEFAULT_POOL,
@@ -88,7 +89,7 @@ export function dbKonfigFromEnvironment(): DbKonfig {
       connectionTimeoutMillis: K.pgConnMs,
       // Via the connection options instead of per request. The time zone of the
       // entry day is stored in the database (writeEntryTimeZone).
-      options: `-c statement_timeout=${K.pgStmtMs} -c idle_in_transaction_session_timeout=${K.pgIdleTxMs} -c lock_timeout=${K.pgSperreMs}`,
+      options: `-c statement_timeout=${K.pgStmtMs} -c idle_in_transaction_session_timeout=${K.pgIdleTxMs} -c lock_timeout=${K.pgLockMs}`,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
     },
@@ -96,29 +97,29 @@ export function dbKonfigFromEnvironment(): DbKonfig {
 }
 
 /** A row with the columns the caller reads; further ones travel along as `unknown`. */
-export type Zeile<T extends object = object> = T & Record<string, unknown>;
+export type Row<T extends object = object> = T & Record<string, unknown>;
 
 // Named, so tx callbacks are type-checked.
 export type { DbInterface };
-export type { Treffer } from './types';
+export type { Hit } from './types';
 
 // Inside an outer transaction repeatAtConflict has no effect; there its option decides.
 export type { TxOptions };
 const TX_CONFLICT = new Set(['40P01', '40001']);
 const TX_RETRIES = 2;
 
-export interface Db extends DbInterface, Zugang<Db> {
+export interface Db extends DbInterface, Access<Db> {
   readonly pool: Pool;
   /** The pool of the system role; without a role of its own the same as `pool`. */
   readonly systemPool: Pool;
   /** The pool for the system frame of HTTP requests; without a role of its own the same as `systemPool`. */
   readonly systemWebPool: Pool;
   /** Whether the system frame really lifts row-level security (BYPASSRLS, ownership or superuser). */
-  systemrahmenActs(): Promise<boolean>;
+  systemFrameActs(): Promise<boolean>;
   /** LISTEN/NOTIFY of this access (db/pgNotify.ts); only listens on the first listen(). Inside a
    * transaction it sends over its connection: the signal takes effect with the COMMIT. */
-  readonly notification: Signale;
-  transaction<T>(fn: (tx: TxGriff) => Promise<T>, o?: TxOptions): Promise<T>;
+  readonly notification: Signals;
+  transaction<T>(fn: (tx: TxHandle) => Promise<T>, o?: TxOptions): Promise<T>;
   /** Whether this access is bound to a transaction or this call path holds one open. */
   inTransaction(): boolean;
   getPoolStats(): { total: number; idle: number; waiting: number; active: number };
@@ -136,43 +137,43 @@ export interface Db extends DbInterface, Zugang<Db> {
 // SQL goes to PostgreSQL unchanged.
 
 /** Pool of the runtime role and, if configured, of the system roles. */
-function createPools(k: DbKonfig): { pool: Pool; systemPool: Pool; systemWebPool: Pool } {
+function createPools(k: DbConfig): { pool: Pool; systemPool: Pool; systemWebPool: Pool } {
   // Pipeline: query() sends BEGIN with context, query and COMMIT at once, one round trip instead of three.
-  const pool = new Pool({ ...k.verbindung, ...k.pool, pipeline: true });
+  const pool = new Pool({ ...k.connection, ...k.pool, pipeline: true });
   // Without a listener, the drop of an idle connection would bring down the process.
   pool.on('error', err => {
     console.error('[db-pool] idle client error:', err.message);
   });
-  const weitere: Pool[] = [];
-  const neben = (c: PoolConfig | null | undefined, name: string, sonst: Pool): Pool => {
-    if (!c) return sonst;
+  const others: Pool[] = [];
+  const beside = (c: PoolConfig | null | undefined, name: string, otherwise: Pool): Pool => {
+    if (!c) return otherwise;
     const p = new Pool({ ...k.pool, ...c });
     p.on('error', err => console.error(`[db-pool] idle client error (${name}):`, err.message));
-    weitere.push(p);
+    others.push(p);
     return p;
   };
-  const systemPool = neben(k.system, 'System', pool);
-  const systemWebPool = neben(k.systemWeb, 'System, Web', systemPool);
-  if (weitere.length) {
+  const systemPool = beside(k.system, 'System', pool);
+  const systemWebPool = beside(k.systemWeb, 'System, Web', systemPool);
+  if (others.length) {
     // Whoever closes the access closes pool; the system connections would otherwise keep the process alive.
-    const schliesse = pool.end.bind(pool);
-    pool.end = (() => Promise.all([schliesse(), ...weitere.map(p => p.end())]).then(() => undefined)) as Pool['end'];
+    const close = pool.end.bind(pool);
+    pool.end = (() => Promise.all([close(), ...others.map(p => p.end())]).then(() => undefined)) as Pool['end'];
   }
   return { pool, systemPool, systemWebPool };
 }
 
 /** What query() and oneTimeTransaction() need to know about their access. */
-interface Rahmen {
+interface Frame {
   ich: object;
   pool: Pool;
   systemPool: Pool;
   systemWebPool: Pool;
-  streng: boolean;
+  strict: boolean;
   /** The persistent access per connection (connectionAccess). */
-  jeConnection: WeakMap<PoolClient, Verbindungsplatz>;
+  perConnection: WeakMap<PoolClient, ConnectionSlot>;
 }
 
-function poolOfFrame(r: Rahmen): Pool {
+function poolOfFrame(r: Frame): Pool {
   const { system, web } = rowsContext();
   return system ? (web ? r.systemWebPool : r.systemPool) : r.pool;
 }
@@ -180,15 +181,15 @@ function poolOfFrame(r: Rahmen): Pool {
 /** A transaction on the connection of the other role does not count; whoever switches the frame
  * in the middle of it would query over a second connection beside it (without its
  * state, possibly against its locks). That is an error: choose the frame before the transaction. */
-function openTx(r: Rahmen): TxStand | null {
+function openTx(r: Frame): TxState | null {
   const t = runningTx();
-  return t?.offen && t.db === r.ich ? t : null;
+  return t?.open && t.db === r.ich ? t : null;
 }
-function checkFrame(r: Rahmen, t: TxStand): void {
+function checkFrame(r: Frame, t: TxState): void {
   if (t.pool !== poolOfFrame(r)) throw new BesideTheTransaction(t.pool !== r.pool);
 }
 /** The unbound access never queries into an open transaction of this path. */
-function wache(r: Rahmen): void {
+function watch(r: Frame): void {
   const t = openTx(r);
   if (!t) return;
   checkFrame(r, t);
@@ -196,110 +197,112 @@ function wache(r: Rahmen): void {
 }
 
 /** Outside a transaction: without account and system frame directly over the
- * pool, otherwise in a short one of its own so set_config(…, true) applies. The three
- * parts go out in the pipeline at once; if the query fails, the
- * COMMIT ends the aborted transaction as ROLLBACK. The connection only goes back
- * into the pool when idle, i.e. without context. */
-async function abfrage(r: Rahmen, sql: string, params?: unknown[]): Promise<QueryResult> {
-  wache(r);
-  const kontext = contextSql();
+ * pool, otherwise in a short one of its own so set_config(…, true) applies and the
+ * check before COMMIT (contextCheckSql) holds. The parts go out in the pipeline at once;
+ * if the query fails, the COMMIT ends the aborted transaction as ROLLBACK. The
+ * connection only goes back into the pool when idle, i.e. without context. */
+async function query(r: Frame, sql: string, params?: unknown[]): Promise<QueryResult> {
+  watch(r);
+  const context = contextSql();
   const p = poolOfFrame(r);
-  if (!kontext) return p.query(sql, params);
+  if (!context) return p.query(sql, params);
   const client = await p.connect();
-  let kaputt: Error | undefined;
+  let broken: Error | undefined;
   const teardown = (e: Error) => {
-    kaputt = e;
+    broken = e;
   };
   client.on('error', teardown);
   try {
-    const [anfang, ergebnis, ende] = await Promise.allSettled([
-      client.query(`BEGIN; ${kontext}`),
+    const [start, result, check, end] = await Promise.allSettled([
+      client.query(`BEGIN; ${context}`),
       client.query(sql, params),
+      client.query(contextCheckSql(context)),
       client.query('COMMIT'),
     ]);
-    if (client.getTransactionStatus() !== 'I') kaputt ??= new Error('Verbindung nach COMMIT nicht im Leerlauf');
-    for (const x of [anfang, ergebnis, ende]) if (x.status === 'rejected') throw x.reason;
-    return (ergebnis as PromiseFulfilledResult<QueryResult>).value;
+    if (client.getTransactionStatus() !== 'I') broken ??= new Error('Verbindung nach COMMIT nicht im Leerlauf');
+    for (const x of [start, result, check, end]) if (x.status === 'rejected') throw x.reason;
+    return (result as PromiseFulfilledResult<QueryResult>).value;
   } finally {
     client.off('error', teardown);
-    client.release(kaputt);
+    client.release(broken);
   }
 }
 
 async function oneTimeTransaction<T>(
-  r: Rahmen,
-  griff: (stand: TxStand) => TxGriff,
-  fn: (tx: TxGriff) => Promise<T>,
+  r: Frame,
+  handle: (state: TxState) => TxHandle,
+  fn: (tx: TxHandle) => Promise<T>,
 ): Promise<T> {
   const p = poolOfFrame(r);
   const client = await p.connect();
-  const stand = newTxStatus({ client, db: r.ich, pool: p, streng: r.streng });
-  let kaputt: Error | undefined;
+  const state = newTxStatus({ client, db: r.ich, pool: p, strict: r.strict });
+  let broken: Error | undefined;
   // If the connection drops in the middle of the transaction, the client reports that
   // as an 'error' event; without a listener it would end the whole process.
   const teardown = (e: Error) => {
-    kaputt = e;
+    broken = e;
   };
   client.on('error', teardown);
   try {
     // The context in the same round trip as BEGIN; contextSync() follows changes afterwards.
-    stand.kontext = contextSql();
-    await client.query(stand.kontext ? `BEGIN; ${stand.kontext}` : 'BEGIN');
-    const result = await inTransactionPath(stand, () => fn(griff(stand)));
-    await commitCompanion()?.(griff(stand));
-    stand.offen = false;
+    state.context = contextSql();
+    await client.query(state.context ? `BEGIN; ${state.context}` : 'BEGIN');
+    const result = await inTransactionPath(state, () => fn(handle(state)));
+    await commitCompanion()?.(handle(state));
+    state.open = false;
+    if (!rowsContext().system) await client.query(contextCheckSql(state.context));
     await client.query('COMMIT');
     return result;
   } catch (e) {
-    stand.offen = false;
+    state.open = false;
     // If the ROLLBACK fails as well, the connection is broken: it must not
     // go back into the pool, and the error that caused it is reported.
     try {
       await client.query('ROLLBACK');
     } catch (rb) {
-      kaputt = rb instanceof Error ? rb : new Error(String(rb));
+      broken = rb instanceof Error ? rb : new Error(String(rb));
     }
     throw e;
   } finally {
     client.off('error', teardown);
-    client.release(kaputt);
+    client.release(broken);
   }
 }
 
 /** The locks before the body, in the same transaction. */
-function lockWith<T>(rumpf: (tx: TxGriff) => Promise<T>, sperren?: readonly Bestandssperre[]) {
-  if (!sperren?.length) return rumpf;
-  return async (tx: TxGriff) => {
-    await lockInventories(tx, sperren);
-    return rumpf(tx);
+function lockWith<T>(body: (tx: TxHandle) => Promise<T>, lock?: readonly HoldingLock[]) {
+  if (!lock?.length) return body;
+  return async (tx: TxHandle) => {
+    await lockInventories(tx, lock);
+    return body(tx);
   };
 }
 
-async function withRetry<T>(einmal: () => Promise<T>, o: TxOptions): Promise<T> {
-  for (let versuch = 0; ; versuch++) {
+async function withRetry<T>(once: () => Promise<T>, o: TxOptions): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
     try {
-      return await einmal();
+      return await once();
     } catch (e) {
-      if (!o.repeatAtConflict || versuch >= TX_RETRIES || !TX_CONFLICT.has(fehlerCode(e) ?? '')) throw e;
+      if (!o.repeatAtConflict || attempt >= TX_RETRIES || !TX_CONFLICT.has(errorCode(e) ?? '')) throw e;
       // Staggered, so the contenders do not meet again in lockstep.
-      await new Promise(res => setTimeout(res, 25 * (versuch + 1) + Math.random() * 50));
+      await new Promise(res => setTimeout(res, 25 * (attempt + 1) + Math.random() * 50));
     }
   }
 }
 
 /** The handle of a transaction or one of its savepoints (`punkt`): queries over
  * its connection and an access on top; a transaction inside it becomes a savepoint. */
-function griff(r: Rahmen, zugang: Db, zaehler: { savepoints: number }, stand: TxStand, punkt: string | null): TxGriff {
-  const q = txQueries(stand, () => checkFrame(r, stand));
-  if (punkt === null) return { ...q, db: connectionAccess(r, zugang, zaehler, stand) };
+function handle(r: Frame, access: Db, counter: { savepoints: number }, state: TxState, point: string | null): TxHandle {
+  const q = txQueries(state, () => checkFrame(r, state));
+  if (point === null) return { ...q, db: connectionAccess(r, access, counter, state) };
   const tdb: Db = {
-    ...zugang,
+    ...access,
     ...q,
     transaction: (fn, o = {}) =>
-      innerTransaction(stand, punkt, ++zaehler.savepoints, name =>
-        lockWith(fn, o.sperren)(griff(r, zugang, zaehler, stand, name)),
+      innerTransaction(state, point, ++counter.savepoints, name =>
+        lockWith(fn, o.locks)(handle(r, access, counter, state, name)),
       ),
-    notification: zugang.notification.ueber(q.run),
+    notification: access.notification.over(q.run),
     inTransaction: () => true,
   };
   return { ...q, db: tdb };
@@ -309,111 +312,111 @@ function griff(r: Rahmen, zugang: Db, zaehler: { savepoints: number }, stand: Tx
  * on top of it (Bereich.ueber) are built once per connection instead of per transaction (measured a good 1 ms
  * per transaction). It queries over the transaction currently running on the connection, and only from
  * its call path; a straggler of an earlier one gets TransactionEnded. */
-interface Verbindungsplatz {
-  stand: TxStand | null;
+interface ConnectionSlot {
+  state: TxState | null;
   q: DbInterface | null;
   db: Db;
 }
-function connectionAccess(r: Rahmen, zugang: Db, zaehler: { savepoints: number }, stand: TxStand): Db {
-  const da = r.jeConnection.get(stand.client);
-  const platz = da ?? newSpace(r, zugang, zaehler);
-  if (!da) r.jeConnection.set(stand.client, platz);
-  platz.stand = stand;
-  platz.q = txQueries(stand, () => checkFrame(r, stand));
-  return platz.db;
+function connectionAccess(r: Frame, access: Db, counter: { savepoints: number }, state: TxState): Db {
+  const da = r.perConnection.get(state.client);
+  const slot = da ?? newSpace(r, access, counter);
+  if (!da) r.perConnection.set(state.client, slot);
+  slot.state = state;
+  slot.q = txQueries(state, () => checkFrame(r, state));
+  return slot.db;
 }
 
-function newSpace(r: Rahmen, zugang: Db, zaehler: { savepoints: number }): Verbindungsplatz {
-  const aktiv = (): { stand: TxStand; q: DbInterface } => {
-    const { stand, q } = platz;
-    if (!stand || !q || runningTx() !== stand) throw new TransactionEnded();
-    return { stand, q };
+function newSpace(r: Frame, access: Db, counter: { savepoints: number }): ConnectionSlot {
+  const active = (): { state: TxState; q: DbInterface } => {
+    const { state, q } = slot;
+    if (!state || !q || runningTx() !== state) throw new TransactionEnded();
+    return { state, q };
   };
   const q: DbInterface = {
-    all: (sql, p) => aktiv().q.all(sql, p),
-    get: (sql, p) => aktiv().q.get(sql, p),
-    run: (sql, p) => aktiv().q.run(sql, p),
-    exec: sql => aktiv().q.exec(sql),
+    all: (sql, p) => active().q.all(sql, p),
+    get: (sql, p) => active().q.get(sql, p),
+    run: (sql, p) => active().q.run(sql, p),
+    exec: sql => active().q.exec(sql),
   };
-  const platz: Verbindungsplatz = {
-    stand: null,
+  const slot: ConnectionSlot = {
+    state: null,
     q: null,
     db: {
-      ...zugang,
+      ...access,
       ...q,
       transaction: (fn, o = {}) => {
-        const { stand } = aktiv();
-        return innerTransaction(stand, null, ++zaehler.savepoints, name =>
-          lockWith(fn, o.sperren)(griff(r, zugang, zaehler, stand, name)),
+        const { state } = active();
+        return innerTransaction(state, null, ++counter.savepoints, name =>
+          lockWith(fn, o.locks)(handle(r, access, counter, state, name)),
         );
       },
-      notification: zugang.notification.ueber(q.run),
+      notification: access.notification.over(q.run),
       inTransaction: () => true,
     },
   };
-  return platz;
+  return slot;
 }
 
 /** An access to the database with a pool of its own. The pool is created here, not
  * on import: whoever knows the address calls the factory. */
-export function createDb(k: DbKonfig, o: { firstStart?: Erststart } = {}): Db {
+export function createDb(k: DbConfig, o: { firstStart?: FirstStart } = {}): Db {
   const { pool, systemPool, systemWebPool } = createPools(k);
-  const r: Rahmen = {
+  const r: Frame = {
     ich: {},
     pool,
     systemPool,
     systemWebPool,
-    streng: k.streng === true,
-    jeConnection: new WeakMap(),
+    strict: k.strict === true,
+    perConnection: new WeakMap(),
   };
-  const zaehler = { savepoints: 0 };
+  const counter = { savepoints: 0 };
 
   /** All rows of a query. T is unchecked: the caller says which
    * columns its SQL returns; without that it stays `unknown`. */
   async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
-    wache(r);
-    return queryWithRetry(async () => (await abfrage(r, sql, params)).rows, isReading(sql));
+    watch(r);
+    return queryWithRetry(async () => (await query(r, sql, params)).rows, isReading(sql));
   }
   async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
     return (await all<T>(sql, params))[0];
   }
   /** Whoever needs the new id writes RETURNING and reads with get(). */
   async function run(sql: string, params: unknown[] = []): Promise<{ changes: number }> {
-    wache(r);
-    return queryWithRetry(async () => ({ changes: (await abfrage(r, sql, params)).rowCount || 0 }), false);
+    watch(r);
+    return queryWithRetry(async () => ({ changes: (await query(r, sql, params)).rowCount || 0 }), false);
   }
-  async function transaction<T>(rumpf: (tx: TxGriff) => Promise<T>, opt: TxOptions = {}): Promise<T> {
-    wache(r);
+  async function transaction<T>(body: (tx: TxHandle) => Promise<T>, opt: TxOptions = {}): Promise<T> {
+    watch(r);
     return withRetry(
-      () => oneTimeTransaction(r, stand => griff(r, zugang, zaehler, stand, null), lockWith(rumpf, opt.sperren)),
+      () => oneTimeTransaction(r, state => handle(r, access, counter, state, null), lockWith(body, opt.locks)),
       opt,
     );
   }
 
   /** An OWN connection that does NOT come from the pool. */
   async function ownConnection() {
-    const c = new Client({ ...k.verbindung });
+    const c = new Client({ ...k.connection });
     await c.connect();
     return c;
   }
   const dieBasis = () => initSchema(ownConnection, o.firstStart);
 
-  const zugang: Db = {
+  const access: Db = {
     pool,
     systemPool,
     systemWebPool,
-    systemrahmenActs: async () =>
+    systemFrameActs: async () =>
       (
-        await systemPool.query<{ frei: boolean }>(
-          `SELECT r.rolsuper OR r.rolbypassrls OR pg_has_role(current_user, c.relowner, 'USAGE') AS frei
+        await systemPool.query<{ free: boolean }>(
+          `SELECT r.rolsuper OR r.rolbypassrls OR pg_has_role(current_user, c.relowner, 'USAGE') AS free
              FROM pg_roles r, pg_class c WHERE r.rolname = current_user AND c.oid = 'public.sets'::regclass`,
         )
-      ).rows[0]?.frei === true,
+      ).rows[0]?.free === true,
     all,
     get,
     run,
     exec: async (sql: string) => {
-      await abfrage(r, sql);
+      await query(r, sql);
     },
     transaction,
     initSchema: dieBasis,
@@ -426,7 +429,7 @@ export function createDb(k: DbKonfig, o: { firstStart?: Erststart } = {}): Db {
       ),
     ownConnection,
     withCommitCompanion,
-    notification: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
+    notification: new Notification(k.connection, (sql, p) => run(sql, p)),
     changeMaySchema: async () => (await get<{ d: boolean }>(MAY_SCHEMA_CHANGE))?.d === true,
     inTransaction: () => openTx(r) !== null,
     getPoolStats: () => ({
@@ -448,5 +451,5 @@ export function createDb(k: DbKonfig, o: { firstStart?: Erststart } = {}): Db {
       !!(await pool.query<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user')).rows[0]
         ?.s,
   };
-  return zugang;
+  return access;
 }

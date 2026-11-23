@@ -33,9 +33,9 @@ const { holdsSet, record, holdsPart, holdsMinifig, catalogSet } = require('./hel
 
 const NAME = `geschenk_${process.pid}`;
 const SET = `8${process.pid}1-1`,
-  TEIL = `gt${process.pid}`,
-  FARBE = 11,
-  FIGUR = `gf${process.pid}`;
+  PART = `gt${process.pid}`,
+  COLOR = 11,
+  FIGURE = `gf${process.pid}`;
 
 test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -56,38 +56,38 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
   await db.run(
     `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
                 VALUES ($1, $2, 'N', 'CHF', 0.4, 0.4, NOW())`,
-    [TEIL, FARBE],
+    [PART, COLOR],
   );
   await db.run(
     `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at)
                 VALUES ($1, 'N', 'CHF', 6, 6, NOW())`,
-    [FIGUR],
+    [FIGURE],
   );
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SET]);
     await db.run('DELETE FROM price_history WHERE set_number = $1', [SET]);
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SET]);
-    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TEIL]);
-    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIGUR]);
+    await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [PART]);
+    await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [FIGURE]);
     await db.pool.end().catch(() => {});
   });
 
   await holdsSet(db, uid, SET, 0);
-  await record(db, uid, SET, 2, { preis: 0, am: '2026-01-05' });
-  await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 0 });
-  await holdsMinifig(db, uid, FIGUR, { menge: 1, preis: 0 });
+  await record(db, uid, SET, 2, { price: 0, am: '2026-01-05' });
+  await holdsPart(db, uid, PART, { colorId: COLOR, quantity: 10, price: 0 });
+  await holdsMinifig(db, uid, FIGURE, { quantity: 1, price: 0 });
 
   const { gainAndLoss } = _req('src/finances/financeCalc.js');
   const pnl = await gainAndLoss(uid, [uid]);
 
   await t.test('Set', () => {
     const z = pnl.sets.find(s => s.set_number === SET);
-    assert.equal(z.purchase_price, 0, 'bekannt und 0, nicht null');
+    assert.equal(z.purchase_price, 0, 'known and 0, not null');
     assert.equal(z.pnl_pct, null);
-    assert.equal(z.pnl_prozent, null);
+    assert.equal(z.pnl_percent, null);
     assert.equal(z.baseline_pnl_pct, null);
-    assert.equal(z.pnl_betrag, 240, 'der Betrag ist der Marktwert: 2 × 120');
+    assert.equal(z.pnl_amount, 240, 'the amount is the market value: 2 × 120');
     assert.equal(z.pnl_abs, '240.00');
   });
 
@@ -98,8 +98,8 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
 
   await t.test('tile', () => {
     const z = pnl.sets.find(s => s.set_number === SET);
-    assert.equal(z.kachel_preis, 120);
-    assert.equal(z.kachel_pnl_pct, null);
+    assert.equal(z.tile_price, 120);
+    assert.equal(z.tile_pnl_pct, null);
   });
 
   await t.test('price history', async () => {
@@ -107,7 +107,7 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
     const v = await priceHistorySet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 0);
     assert.equal(v.pnl_pct, null);
-    assert.equal(v.pnl_prozent, null);
+    assert.equal(v.pnl_percent, null);
     assert.equal(v.by_condition.N.purchase_price, 0);
     assert.equal(v.by_condition.N.pnl_pct, null);
     assert.equal(v.by_condition.N.market_price, 120);
@@ -115,18 +115,18 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
 
   await t.test('part and figure', async () => {
     const { priceHistoryPart, priceHistoryMinifig } = _req('src/finances/priceHistory.js');
-    const teil = await priceHistoryPart([uid], TEIL, FARBE, 'CHF');
-    assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
-    const figur = await priceHistoryMinifig([uid], FIGUR, 'CHF');
-    assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
+    const part = await priceHistoryPart([uid], PART, COLOR, 'CHF');
+    assert.deepEqual(part.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_percent: null });
+    const minifig = await priceHistoryMinifig([uid], FIGURE, 'CHF');
+    assert.deepEqual(minifig.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_percent: null });
     const { valueAcquisitionRows } = _req('src/finances/setValue.js');
-    const [zeile] = valueAcquisitionRows(
-      TEIL,
+    const [row] = valueAcquisitionRows(
+      PART,
       [{ id: 1, condition: 'N', quantity: 10, unit_price: 0 }],
-      new Map([[`${TEIL}|N`, 0.4]]),
+      new Map([[`${PART}|N`, 0.4]]),
     );
-    assert.equal(zeile.purchase_price, 0);
-    assert.equal(zeile.pnl_pct, null);
-    assert.equal(zeile.pnl_prozent, null);
+    assert.equal(row.purchase_price, 0);
+    assert.equal(row.pnl_pct, null);
+    assert.equal(row.pnl_percent, null);
   });
 });

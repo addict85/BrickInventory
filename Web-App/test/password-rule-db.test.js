@@ -34,35 +34,35 @@ environment({ ADMIN_PASSWORD: undefined });
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
-const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
-mailAttrappe();
+const { mailFake, enterMailServer } = require('./helpers/mail-fake');
+mailFake();
 const db = testData();
 const { passwordLack } = _req('src/infra/passwordRule.js');
 const { passwordFits, ARGON2_PREFIX } = _req('src/account/passwordHash.js');
 
 test('the rule itself', () => {
   assert.equal(passwordLack('Brick-Sammlung-2026'), null);
-  assert.equal(passwordLack('1234567'), 'passwort_zu_kurz');
+  assert.equal(passwordLack('1234567'), 'password_too_short');
   // Since 04.11.2026 at least 12 characters: the common ones below already fail on the length.
-  assert.equal(passwordLack('password1'), 'passwort_zu_kurz');
+  assert.equal(passwordLack('password1'), 'password_too_short');
   for (const p of ['ichliebedich', 'Sonnenschein', 'SONNENSCHEIN'])
-    assert.equal(passwordLack(p), 'passwort_zu_haeufig', p);
+    assert.equal(passwordLack(p), 'password_too_common', p);
   assert.equal(
     passwordLack('Mein-Name-Ist-Lego', 'mein-name-ist-lego'),
-    'passwort_zu_haeufig',
-    'der Benutzername als Passwort',
+    'password_too_common',
+    'the user name as password',
   );
   // argon2id reads the whole password: long sentences and umlauts work, only oversize does not.
-  assert.equal(passwordLack('ä'.repeat(1024)), null, '1024 Zeichen gehen noch');
-  assert.equal(passwordLack('a'.repeat(1025)), 'passwort_zu_lang');
+  assert.equal(passwordLack('ä'.repeat(1024)), null, '1024 characters still work');
+  assert.equal(passwordLack('a'.repeat(1025)), 'password_too_long');
 });
 
 test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const CHEF = `regel_chef_${process.pid}`,
-    ZIEL = `regel_ziel_${process.pid}`,
+    TARGET = `regel_ziel_${process.pid}`,
     PASS = 'Regel-Pruefung-7';
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ZIEL]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, TARGET]]);
   const hash = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs')).hashSync(PASS, 4);
   const chef = (
     await db.get(
@@ -71,11 +71,11 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
       [CHEF, hash],
     )
   ).id;
-  const ziel = (
+  const target = (
     await db.get(
       `INSERT INTO users (username, password_hash, is_active, email_verified)
     VALUES ($1, $2, true, true) RETURNING id`,
-      [ZIEL, hash],
+      [TARGET, hash],
     )
   ).id;
   const regBefore = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
@@ -88,15 +88,15 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     if (regBefore)
       await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regBefore.value]);
     await mailBack();
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, ziel]]);
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, target]]);
   });
   const { base } = routerServer(_req, {
-    sitzung: { userId: chef, username: CHEF, isAdmin: true },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
+    session: { userId: chef, username: CHEF, isAdmin: true },
+    routes: { '/api/v2/auth': 'routes/auth.js' },
     t,
   });
   /** @param {string} pw @returns {[string, string, object][]} */
-  const wege = pw => [
+  const pathList = pw => [
     [
       'POST',
       '/register',
@@ -105,29 +105,29 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     ['POST', '/change-password', { current: PASS, newPassword: pw }],
     ['POST', '/reset-password', { token: 'a'.repeat(64), password: pw }],
     ['POST', '/users', { username: `regel_vw_${process.pid}`, password: pw, admin_password: PASS }],
-    ['PUT', `/users/${ziel}/password`, { password: pw, admin_password: PASS }],
+    ['PUT', `/users/${target}/password`, { password: pw, admin_password: PASS }],
   ];
-  const ruf = async ([methode, pfad, rumpf]) => {
+  const callFn = async ([method, path, body]) => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%' OR key LIKE 'reset-password|%'");
-    const r = await fetch(`${base}/api/v1/auth${pfad}`, {
-      method: methode,
+    const r = await fetch(`${base}/api/v2/auth${path}`, {
+      method: method,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(rumpf),
+      body: JSON.stringify(body),
     });
     const b = await r.json();
-    return `${pfad} ${r.status} ${b.code ?? ''}`;
+    return `${path} ${r.status} ${b.code ?? ''}`;
   };
 
   await t.test('common passwords are rejected on all five paths', async () => {
-    const ist = [];
-    for (const w of wege('sonnenschein')) ist.push(await ruf(w));
+    const actual = [];
+    for (const w of pathList('sonnenschein')) actual.push(await callFn(w));
     assert.deepEqual(
-      ist,
-      wege('').map(([, p]) => `${p} 400 passwort_zu_haeufig`),
+      actual,
+      pathList('').map(([, p]) => `${p} 400 password_too_common`),
     );
     const text = (
       await (
-        await fetch(`${base}/api/v1/auth/reset-password`, {
+        await fetch(`${base}/api/v2/auth/reset-password`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ token: 'x', password: 'ICHLIEBEDICH' }),
@@ -137,18 +137,18 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     assert.match(text, /zu häufig oder aus Datenlecks bekannt/);
   });
 
-  // Above 1024 characters the contract already rejects (eingabe_ungueltig), otherwise the rule.
+  // Above 1024 characters the contract already rejects (input_invalid), otherwise the rule.
   await t.test('oversized passwords are rejected', async () => {
-    const ist = [];
-    for (const w of wege('Ä'.repeat(1025))) ist.push((await ruf(w)).replace(/ \S*$/, ''));
+    const actual = [];
+    for (const w of pathList('Ä'.repeat(1025))) actual.push((await callFn(w)).replace(/ \S*$/, ''));
     assert.deepEqual(
-      ist,
-      wege('').map(([, p]) => `${p} 400`),
+      actual,
+      pathList('').map(([, p]) => `${p} 400`),
     );
   });
 
   await t.test('a good password goes through', async () => {
-    assert.equal(await ruf(wege('Brick-Sammlung-2026')[3]), '/users 200 ');
+    assert.equal(await callFn(pathList('Brick-Sammlung-2026')[3]), '/users 200 ');
     await db.run('DELETE FROM users WHERE username = $1', [`regel_vw_${process.pid}`]);
   });
 
@@ -156,7 +156,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
   // Counter-check (measured 11.11.2026): /register also allows an address next to USERNAME_RE → red.
   await t.test('registration takes no address as username', async () => {
     assert.equal(
-      await ruf([
+      await callFn([
         'POST',
         '/register',
         {
@@ -165,7 +165,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
           password: 'Brick-Sammlung-2026',
         },
       ]),
-      '/register 400 benutzername_ungueltig',
+      '/register 400 username_invalid',
     );
   });
 
@@ -174,109 +174,109 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
   // /users/:id/password again without names → red (200 for the name of the target).
   await t.test('the username is no password, even without a name in the session', async () => {
     const app = routerServer(_req, {
-      sitzung: { userId: chef, isAdmin: true },
-      routen: { '/api/v1/auth': 'routes/auth.js' },
+      session: { userId: chef, isAdmin: true },
+      routes: { '/api/v2/auth': 'routes/auth.js' },
       t,
     });
-    const setze = (methode, pfad, rumpf) =>
-      fetch(`${app.base}/api/v1/auth${pfad}`, {
-        method: methode,
+    const put = (method, path, body) =>
+      fetch(`${app.base}/api/v2/auth${path}`, {
+        method: method,
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(rumpf),
+        body: JSON.stringify(body),
       }).then(async r => `${r.status} ${(await r.json()).code ?? ''}`);
     assert.equal(
-      await setze('POST', '/change-password', { current: PASS, newPassword: CHEF.toUpperCase() }),
-      '400 passwort_zu_haeufig',
+      await put('POST', '/change-password', { current: PASS, newPassword: CHEF.toUpperCase() }),
+      '400 password_too_common',
     );
     assert.equal(
-      await setze('PUT', `/users/${ziel}/password`, { password: ZIEL, admin_password: PASS }),
-      '400 passwort_zu_haeufig',
+      await put('PUT', `/users/${target}/password`, { password: TARGET, admin_password: PASS }),
+      '400 password_too_common',
     );
     assert.ok(
-      await passwordFits(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash),
+      await passwordFits(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [target])).password_hash),
     );
   });
 
   // Counter-check (measured 05.11.2026): in /reset-password the second check
   // with user.username deleted → red (200, the password is the name).
   await t.test('reset: the username is no password', async () => {
-    const roh = 'b'.repeat(64);
+    const raw = 'b'.repeat(64);
     await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
-      ziel,
-      require('node:crypto').createHash('sha256').update(roh).digest('hex'),
+      target,
+      require('node:crypto').createHash('sha256').update(raw).digest('hex'),
     ]);
     assert.equal(
-      await ruf(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() + '-x' }]).then(
+      await callFn(['POST', '/reset-password', { token: raw, password: TARGET.toUpperCase() + '-x' }]).then(
         r => r.split(' ')[1],
       ),
       '200',
-      'ein anderes Passwort geht (Prüfung des Tokens)',
+      'another password works (check of the token)',
     );
     await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
-      ziel,
-      require('node:crypto').createHash('sha256').update(roh).digest('hex'),
+      target,
+      require('node:crypto').createHash('sha256').update(raw).digest('hex'),
     ]);
     assert.equal(
-      await ruf(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() }]),
-      '/reset-password 400 passwort_zu_haeufig',
+      await callFn(['POST', '/reset-password', { token: raw, password: TARGET.toUpperCase() }]),
+      '/reset-password 400 password_too_common',
     );
     assert.ok(
       !(await passwordFits(
-        ZIEL.toUpperCase(),
+        TARGET.toUpperCase(),
         (
-          await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])
+          await db.get('SELECT password_hash FROM users WHERE id = $1', [target])
         ).password_hash,
       )),
     );
   });
 
-  // Counter-check (measured 11.11.2026): eigenesPasswortAendern() (src/account/loginFlow.ts)
-  // lets passwort_zu_kurz through → red (/change-password 200 instead of 400).
+  // Counter-check (measured 11.11.2026): changeOwnPassword() (src/account/loginFlow.ts)
+  // lets password_too_short through → red (/change-password 200 instead of 400).
   await t.test('passwords that are too short are rejected on all five paths', async () => {
-    const ist = [];
-    for (const w of wege('Kurz-12345')) ist.push(await ruf(w));
+    const actual = [];
+    for (const w of pathList('Kurz-12345')) actual.push(await callFn(w));
     assert.deepEqual(
-      ist,
-      wege('').map(([, p]) => `${p} 400 passwort_zu_kurz`),
+      actual,
+      pathList('').map(([, p]) => `${p} 400 password_too_short`),
     );
   });
 
   // Counter-check (measured 11.11.2026, bcrypt back then): in setForeignPassword (src/account/accounts.ts)
   // hashed with 4 instead of BCRYPT_ROUNDS → red (PUT /users/:id/password: 4); since argon2id see E in the header.
   await t.test('every path hashes with the same costs', async () => {
-    const NEU = `regel_neu_${process.pid}`,
+    const NEW = `regel_neu_${process.pid}`,
       VW = `regel_vw_${process.pid}`;
-    t.after(() => db.run('DELETE FROM users WHERE username = ANY($1)', [[NEU, VW]]));
-    const roh = 'c'.repeat(64);
+    t.after(() => db.run('DELETE FROM users WHERE username = ANY($1)', [[NEW, VW]]));
+    const raw = 'c'.repeat(64);
     await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
-      ziel,
-      require('node:crypto').createHash('sha256').update(roh).digest('hex'),
+      target,
+      require('node:crypto').createHash('sha256').update(raw).digest('hex'),
     ]);
-    const runden = async name =>
+    const round = async name =>
       (await db.get('SELECT password_hash FROM users WHERE username = $1', [name])).password_hash.startsWith(
         ARGON2_PREFIX,
       )
         ? 'argon2id'
         : 'anders';
     // Above 72 bytes: bcrypt would have cut off the rest, the old rule rejected it.
-    const gut = `Brick-Sammlung-2026-${'ä'.repeat(40)}`;
+    const good = `Brick-Sammlung-2026-${'ä'.repeat(40)}`;
     // The own password last: the paths before it confirm with PASS.
     /** @type {[string, string, object, string][]} */
-    const schritte = [
-      ['POST', '/register', { username: NEU, email: `regel_${process.pid}@example.org`, password: gut }, NEU],
-      ['POST', '/reset-password', { token: roh, password: gut }, ZIEL],
-      ['POST', '/users', { username: VW, password: gut, admin_password: PASS }, VW],
-      ['PUT', `/users/${ziel}/password`, { password: gut, admin_password: PASS }, ZIEL],
-      ['POST', '/change-password', { current: PASS, newPassword: gut }, CHEF],
+    const steps = [
+      ['POST', '/register', { username: NEW, email: `regel_${process.pid}@example.org`, password: good }, NEW],
+      ['POST', '/reset-password', { token: raw, password: good }, TARGET],
+      ['POST', '/users', { username: VW, password: good, admin_password: PASS }, VW],
+      ['PUT', `/users/${target}/password`, { password: good, admin_password: PASS }, TARGET],
+      ['POST', '/change-password', { current: PASS, newPassword: good }, CHEF],
     ];
-    const ist = [];
-    for (const [methode, pfad, rumpf, name] of schritte) {
-      const antwort = await ruf([methode, pfad, rumpf]);
-      ist.push(`${antwort.split(' ')[0]} ${antwort.split(' ')[1]} ${await runden(name)}`);
+    const actual = [];
+    for (const [method, path, body, name] of steps) {
+      const response = await callFn([method, path, body]);
+      actual.push(`${response.split(' ')[0]} ${response.split(' ')[1]} ${await round(name)}`);
     }
     assert.deepEqual(
-      ist,
-      ['/register', '/reset-password', '/users', `/users/${ziel}/password`, '/change-password'].map(
+      actual,
+      ['/register', '/reset-password', '/users', `/users/${target}/password`, '/change-password'].map(
         p => `${p} 200 argon2id`,
       ),
     );
@@ -286,18 +286,18 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');
     environment({ ADMIN_PASSWORD: 'passwort123' });
-    const echt = { log: console.log, warn: console.warn },
+    const original = { log: console.log, warn: console.warn },
       warnings = [];
     console.log = () => {};
     console.warn = (...a) => warnings.push(a.join(' '));
     try {
       await db.initSchema();
     } finally {
-      Object.assign(console, echt);
+      Object.assign(console, original);
       environment({ ADMIN_PASSWORD: undefined });
     }
     const admin = await db.get("SELECT password_hash, must_change_password FROM users WHERE username = 'admin'");
-    assert.equal(await passwordFits('passwort123', admin.password_hash), false, 'das schwache Passwort gilt');
+    assert.equal(await passwordFits('passwort123', admin.password_hash), false, 'the weak password counts');
     assert.equal(admin.must_change_password, true);
     assert.ok(
       warnings.some(w => /ADMIN_PASSWORD wird nicht verwendet/.test(w)),

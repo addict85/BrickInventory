@@ -1,0 +1,28 @@
+Gegenprobe: Kontosymbol wieder in der App-Leiste
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: phone navigates without drawer and account menu, More collects the rest
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -8,6 +8,7 @@
+ import androidx.compose.foundation.shape.CircleShape
+ import androidx.compose.material.icons.Icons
+ import androidx.compose.material.icons.automirrored.filled.ArrowBack
++import androidx.compose.material.icons.filled.AccountCircle
+ import androidx.compose.material3.*
+ import androidx.compose.runtime.*
+ import androidx.compose.ui.Alignment
+@@ -205,6 +206,11 @@
+                 }
+             }
+         },
++        actions = {
++            IconButton(onClick = {}) {
++                Icon(Icons.Default.AccountCircle, stringResource(R.string.account_title))
++            }
++        },
+         colors = TopAppBarDefaults.topAppBarColors(
+             containerColor = accent.bar,
+             titleContentColor = accent.onBar,

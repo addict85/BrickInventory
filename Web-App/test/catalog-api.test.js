@@ -1,14 +1,14 @@
 /**
- * Integration test for /api/v1/catalog against real PostgreSQL.
+ * Integration test for /api/v2/catalog against real PostgreSQL.
  * ONLY requireToken (auth) is stubbed — router, db module and SQL run
  * 1:1 as in production. Checks among other things the future-year edge case (only a few
  * sets in the maximum year), from-to ranges, theme inheritance and owned flags.
  *
- * Counter-checks: (05.11.2026) page_size not read in routes/api_v1/catalog.ts
+ * Counter-checks: (05.11.2026) page_size not read in routes/api/catalog.ts
  * → red: “Pagination” (the page has 60 instead of 10 sets). (10.11.2026) in
  * src/catalog/repository/catalogSearch.ts c.image_local removed from SET_SPALTEN →
  * red: “the list names the local image …” (undefined instead of the address); there
- * `NOT ${PLATZHALTER}` removed from katalogWo() → red: “… a placeholder is missing”
+ * `NOT ${PLATZHALTER}` removed from catalogWhere() → red: “… a placeholder is missing”
  * (total 1 instead of 0).
  */
 const test = require('node:test');
@@ -23,14 +23,14 @@ process.env.DATABASE_URL = DB_URL;
 // build .ts -> .js (esbuild, in place) — idempotent and fast
 // Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 // stub requireToken BEFORE the router is loaded
 // The path must point to the BUILT module in dist/ — that is where the router loads
 // its dependency, and only a hit in the same require cache entry
 // replaces it effectively.
 const { DIST, testData } = require('./helpers/sources');
-const mwPath = require.resolve(path.join(DIST, 'routes/api_v1', 'middleware.js'));
+const mwPath = require.resolve(path.join(DIST, 'routes/api', 'middleware.js'));
 require.cache[mwPath] = /** @type {any} */ ({
   id: mwPath,
   filename: mwPath,
@@ -134,14 +134,15 @@ async function seed() {
 test('catalog API (Postgres integration)', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t, DB_URL);
+    noDb(t, DB_URL);
     return;
   }
   await seed();
   const app = express();
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/catalog.js'));
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/catalog.js'));
   const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}/api/v1`;
+  const base = `http://localhost:${srv.address().port}/api/v2`;
   const get = async p => {
     const r = await fetch(base + p);
     return { status: r.status, body: await r.json() };
@@ -155,7 +156,7 @@ test('catalog API (Postgres integration)', async t => {
     const yc27 = r.body.year_counts.find(y => y.year === 2027);
     assert.deepEqual(yc27, { year: 2027, n: 4 });
     const sw = r.body.themes.find(th => th.name === 'Star Wars');
-    assert.ok(sw.set_count > 4, 'Star Wars muss UCS-Kinder mitzählen');
+    assert.ok(sw.set_count > 4, 'Star Wars must count UCS children too');
   });
 
   await t.test('edge case maximum year: from=to=2027 delivers the 4 sets', async () => {
@@ -189,10 +190,10 @@ test('catalog API (Postgres integration)', async t => {
       `INSERT INTO rb_sets (set_num, name, source) VALUES ('9100-1', 'Set 9100-1', 'api') ON CONFLICT DO NOTHING`,
     );
     const r = await get('/catalog/sets?q=Future&limit=60');
-    const bilder = Object.fromEntries(r.body.sets.map(s => [s.set_number, s.image_local]));
-    assert.deepEqual(bilder, { '9000-1': null, '9001-1': '/images/sets/9001-1.jpg', '9002-1': null, '9003-1': null });
-    assert.equal((await get('/catalog/sets?q=9100')).body.total, 0, 'ein Platzhalter fehlt in der Liste');
-    assert.equal((await get('/catalog/sets/9100-1')).status, 404, 'und im Detail');
+    const images = Object.fromEntries(r.body.sets.map(s => [s.set_number, s.image_local]));
+    assert.deepEqual(images, { '9000-1': null, '9001-1': '/images/sets/9001-1.jpg', '9002-1': null, '9003-1': null });
+    assert.equal((await get('/catalog/sets?q=9100')).body.total, 0, 'a placeholder is missing in the list');
+    assert.equal((await get('/catalog/sets/9100-1')).status, 404, 'and in the detail');
   });
 
   await t.test('theme filter incl. subthemes', async () => {
@@ -203,10 +204,10 @@ test('catalog API (Postgres integration)', async t => {
 
   await t.test('detail: minifigures from the newest inventory, normalization, 404', async () => {
     let r = await get('/catalog/sets/9000-1');
-    assert.equal(r.body.set.minifigs, 3, 'nur Inventar v2 zählt');
+    assert.equal(r.body.set.minifigs, 3, 'only inventory v2 counts');
     assert.equal(r.body.set.theme_name, 'Star Wars');
     r = await get('/catalog/sets/9000');
-    assert.equal(r.body.success, true, 'Nummer ohne -1 wird normalisiert');
+    assert.equal(r.body.success, true, 'Number without -1 is normalized');
     r = await get('/catalog/sets/123456');
     assert.equal(r.status, 404);
   });
@@ -217,13 +218,13 @@ test('catalog API (Postgres integration)', async t => {
     assert.equal(r.body.page, 2);
     assert.equal(r.body.sets.length, 10);
     // page_size is the name for all lists; limit stays for older apps.
-    const neu = await get('/catalog/sets?page_size=10&page=2&sort=num_asc');
+    const fresh = await get('/catalog/sets?page_size=10&page=2&sort=num_asc');
     assert.deepEqual(
-      neu.body.sets.map(s => s.set_number),
+      fresh.body.sets.map(s => s.set_number),
       r.body.sets.map(s => s.set_number),
     );
-    assert.equal(neu.body.page_size, 10);
-    assert.equal(neu.body.pages, 9);
+    assert.equal(fresh.body.page_size, 10);
+    assert.equal(fresh.body.pages, 9);
   });
 
   srv.close();

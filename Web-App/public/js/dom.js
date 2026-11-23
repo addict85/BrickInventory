@@ -11,40 +11,40 @@ import { asHtml, esc, html, rawHtml } from './escaping.js';
  * element these fields are simply empty — type checking should catch the real errors, not every
  * field access.
  * @param {string} id
- * @returns {Feld}
+ * @returns {Field}
  */
 export function G(id) {
-  return /** @type {Feld} */ (document.getElementById(id));
+  return /** @type {Field} */ (document.getElementById(id));
 }
 
 /**
  * querySelectorAll as HTMLElement[]: the UI only queries HTML elements, and dataset, style and
  * hidden belong to HTMLElement, not to Element.
- * @param {string} sel @param {ParentNode} [wurzel]
+ * @param {string} sel @param {ParentNode} [root]
  * @returns {HTMLElement[]}
  */
-export function alle(sel, wurzel = document) {
-  return /** @type {HTMLElement[]} */ ([...wurzel.querySelectorAll(sel)]);
+export function queryAll(sel, root = document) {
+  return /** @type {HTMLElement[]} */ ([...root.querySelectorAll(sel)]);
 }
 
-/** querySelector as HTMLElement, see alle(). @param {string} sel @param {ParentNode} [wurzel] */
-export function eins(sel, wurzel = document) {
-  return /** @type {HTMLElement | null} */ (wurzel.querySelector(sel));
+/** querySelector as HTMLElement, see queryAll(). @param {string} sel @param {ParentNode} [root] */
+export function queryOne(sel, root = document) {
+  return /** @type {HTMLElement | null} */ (root.querySelector(sel));
 }
 
 /** The open tab (data-tab of the active button in the bar). */
 /** Smooth scrolling only without a wish for reduced motion: an explicit 'smooth' overrides the CSS rule. */
-export function rollArt() {
+export function rollKind() {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 }
 
 export function activeTab() {
-  return eins('.ntab.active')?.dataset.tab;
+  return queryOne('.ntab.active')?.dataset.tab;
 }
 
 const PHONE = '(max-width: 640px)';
 /** Phone width as in mobile.css: there is no table view there, the rows would be one screen height tall. */
-export const telefonBreite = () => !!globalThis.matchMedia?.(PHONE).matches;
+export const phoneWidth = () => !!globalThis.matchMedia?.(PHONE).matches;
 /** @param {() => void} fn runs when the window reaches or leaves the phone width */
 export function atPhoneSwitch(fn) {
   globalThis.matchMedia?.(PHONE).addEventListener?.('change', fn);
@@ -59,6 +59,14 @@ export function ico(name) {
 }
 
 /**
+ * Marker for a link that opens in a new tab: seen as an icon, heard as text. Without it a screen reader
+ * user only notices the new tab after the back button stops working.
+ */
+export function newTabHint() {
+  return html`<span class="new-tab">${ico('extern')}<span class="vh">${tRaw('common.new_tab')}</span></span>`;
+}
+
+/**
  * Periodic queries rest in hidden tabs: each counts against the account's budget (src/http/apiThrottle.ts),
  * even if nobody is looking. `fn` runs immediately or the next time the tab becomes visible.
  * @param {() => unknown} fn
@@ -68,9 +76,9 @@ export function ifVisible(fn) {
     fn();
     return;
   }
-  document.addEventListener('visibilitychange', function weiter() {
+  document.addEventListener('visibilitychange', function next() {
     if (document.hidden) return;
-    document.removeEventListener('visibilitychange', weiter);
+    document.removeEventListener('visibilitychange', next);
     fn();
   });
 }
@@ -86,7 +94,7 @@ let _hitsClock;
 export function reportHits(text) {
   clearTimeout(_hitsClock);
   _hitsClock = setTimeout(() => {
-    const el = G('treffer-live');
+    const el = G('match-live');
     if (el) el.textContent = el.textContent === text ? text + '\u00a0' : text;
   }, 700);
 }
@@ -94,31 +102,31 @@ export function reportHits(text) {
 /**
  * An empty state: icon, one sentence and, if there is one, the next step as a button. Texts come
  * already translated or as keys; escaping happens here.
- * @param {{ ico: string, titel?: string, text?: string, titleKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
+ * @param {{ ico: string, title?: string, text?: string, titleKey?: string, textKey?: string, button?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, kind?: string } }} o
  */
 export function emptyState(o) {
-  const buttonText = o.knopf?.textKey
-    ? html`<span data-i18n="${o.knopf.textKey}">${tRaw(o.knopf.textKey)}</span>`
-    : html`<span>${o.knopf?.text}</span>`;
-  const knopf = o.knopf
-    ? html`<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${o.knopf.click}"${o.knopf.arg ? html` data-arg="${o.knopf.arg}"` : ''}>${ico(o.knopf.ico || 'plus')}${buttonText}</button>`
+  const buttonText = o.button?.textKey
+    ? html`<span data-i18n="${o.button.textKey}">${tRaw(o.button.textKey)}</span>`
+    : html`<span>${o.button?.text}</span>`;
+  const button = o.button
+    ? html`<button type="button" class="btn ${o.button.kind || 'bp'}" data-click="${o.button.click}"${o.button.arg ? html` data-arg="${o.button.arg}"` : ''}>${ico(o.button.ico || 'plus')}${buttonText}</button>`
     : '';
   // With a key, applyLang retranslates the text if the account language is only determined later.
   const k = (/** @type {string | undefined} */ key) => (key ? ` data-i18n="${esc(key)}"` : '');
-  return html`<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${rawHtml(k(o.titleKey))}>${o.titleKey ? tRaw(o.titleKey) : o.titel}</h2>${o.text || o.textKey ? html`<p${rawHtml(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${knopf}</div>`;
+  return html`<div class="empty empty-state"><div class="empty-ico">${ico(o.ico)}</div><h2${rawHtml(k(o.titleKey))}>${o.titleKey ? tRaw(o.titleKey) : o.title}</h2>${o.text || o.textKey ? html`<p${rawHtml(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${button}</div>`;
 }
 
 /**
  * The button "reset filter" for an empty state without hits.
- * @param {string} ansicht
+ * @param {string} view
  */
-export function resetButton(ansicht) {
+export function resetButton(view) {
   return {
     text: tRaw('common.reset_filter'),
-    click: 'filterZuruecksetzen',
-    arg: ansicht,
-    ico: 'schliessen',
-    art: 'bs',
+    click: 'resetFilter',
+    arg: view,
+    ico: 'close',
+    kind: 'bs',
   };
 }
 
@@ -126,7 +134,7 @@ export function resetButton(ansicht) {
  * Locks a button for the duration of a call and remembers its label instead of setting it anew
  * afterwards: hard-coded texts were translated wrongly, and a briefly empty button looked like an error.
  * @param {HTMLButtonElement | HTMLInputElement} btn
- * @param {string} [laeuft] A different label during the work. ONLY
+ * @param {string} [running] A different label during the work. ONLY
  *   pass it if the button really should say something else: the
  *   PDF generation does that because it writes the progress into it
  *   (create → images → remaining time). Without this argument the
@@ -135,23 +143,23 @@ export function resetButton(ansicht) {
  *   original label comes back; with an argument a different one — the
  *   QR generation is then deliberately called "regenerate".
  */
-export function knopfBesetzt(btn, laeuft) {
-  const vorher = btn.textContent;
+export function buttonBusy(btn, running) {
+  const before = btn.textContent;
   // Freeze the width before anything changes: a shorter waiting text would otherwise make the whole flex row
   // next to it slide along.
-  const breite = btn.offsetWidth;
+  const width = btn.offsetWidth;
   const minBefore = btn.style.minWidth;
-  if (breite) btn.style.minWidth = breite + 'px';
+  if (width) btn.style.minWidth = width + 'px';
   btn.disabled = true;
-  btn.classList.add('besetzt');
-  if (laeuft !== undefined) btn.textContent = laeuft;
+  btn.classList.add('occupied');
+  if (running !== undefined) btn.textContent = running;
   return text => {
     btn.disabled = false;
-    btn.classList.remove('besetzt');
+    btn.classList.remove('occupied');
     // Only reset what was set at all — otherwise the release would rewrite a label
     // that was never gone.
     if (text !== undefined) btn.textContent = text;
-    else if (laeuft !== undefined) btn.textContent = vorher;
+    else if (running !== undefined) btn.textContent = before;
     // Give back the own default, do not blindly clear: a button that carries a min-width by itself
     // keeps it.
     btn.style.minWidth = minBefore;
@@ -163,7 +171,7 @@ export function knopfBesetzt(btn, laeuft) {
  * brick already stood for parts and sets, and redrawing the foreign BrickLink logo would be
  * presumptuous.
  */
-export const XML_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-stil="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M10 12.5 8 14.5l2 2"/><path d="M14 12.5l2 2-2 2"/></svg>`;
+export const XML_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-style="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M10 12.5 8 14.5l2 2"/><path d="M14 12.5l2 2-2 2"/></svg>`;
 
 /**
  * Trash icon for delete buttons on tiles and in list rows.
@@ -172,26 +180,26 @@ export const XML_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.o
  * CSS (white on red background for .delbtn, red on light background for .bd), the icon adopts it. That way it fits
  * into both environments without a second version.
  */
-export const TRASH_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;display:block" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`;
+export const TRASH_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-style="width:1em;height:1em;display:block" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`;
 
 /**
  * The one place that writes markup into the page. It only accepts finished markup (html``, rawHtml() or
  * lists of it), so that type checking rejects a string with data instead of inserting it.
  * @param {Element | null | undefined} el
- * @param {import('./escaping.js').Markup} inhalt
+ * @param {import('./escaping.js').Markup} content
  */
-export function setzeHtml(el, inhalt) {
-  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('setzeHtml: nur html`` oder rawHtml()');
-  if (el) el.innerHTML = asHtml(inhalt);
+export function setHtml(el, content) {
+  if (typeof content === 'string' && content !== '') throw new TypeError('setHtml: only html`` or rawHtml()');
+  if (el) el.innerHTML = asHtml(content);
 }
 
 /**
- * insertAdjacentHTML with the same rule as setzeHtml().
+ * insertAdjacentHTML with the same rule as setHtml().
  * @param {Element | null | undefined} el
  * @param {InsertPosition} wo
- * @param {import('./escaping.js').Markup} inhalt
+ * @param {import('./escaping.js').Markup} content
  */
-export function fuegeHtmlEin(el, wo, inhalt) {
-  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('fuegeHtmlEin: nur html`` oder rawHtml()');
-  el?.insertAdjacentHTML(wo, asHtml(inhalt));
+export function insertHtml(el, wo, content) {
+  if (typeof content === 'string' && content !== '') throw new TypeError('insertHtml: only html`` or rawHtml()');
+  el?.insertAdjacentHTML(wo, asHtml(content));
 }

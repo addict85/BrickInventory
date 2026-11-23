@@ -1,7 +1,7 @@
 /**
  * Device and passkey names appear literally in the hint mail to the
  * owner. A name with a web address, quotes or control characters
- * is rejected on all three paths (400 geraetename_ungueltig) before
+ * is rejected on all three paths (400 device_name_invalid) before
  * anything is created; ordinary device names stay allowed.
  *
  * Counter-checks (measured 05.11.2026, each alone):
@@ -10,7 +10,7 @@
  *   B  the check removed in POST /token-create → red: “POST /token-create …”
  *      (refusal only at confirmation)
  *   C  the check removed in POST /passkey/registrieren → red: “POST
- *      /passkey/registrieren …” (400 passkey_ungueltig)
+ *      /passkey/registrieren …” (400 passkey_invalid)
  *   D  devicesNameValid() without the check for quotes → red:
  *      “the rule”, “a sentence in quotes …” and the three paths
  *      (their list contains such an example)
@@ -28,11 +28,11 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const AUTH = require('./helpers/sources').mounting('auth');
 const { devicesNameValid } = _req('src/account/nameRules.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-const BOESE = [
+const EVIL = [
   'x https://evil.example',
   'Pixel") erzeugt. Alles in Ordnung',
   'brick-hilfe.example',
@@ -40,12 +40,12 @@ const BOESE = [
   'www.evil.example',
   'Telefon   Rückfragen',
 ];
-const GUT = ['Pixel 8 Pro', 'Android App', 'Galaxy S10.1', 'iPad (Küche)', 'Firefox auf Linux'];
+const GOOD = ['Pixel 8 Pro', 'Android App', 'Galaxy S10.1', 'iPad (Küche)', 'Firefox auf Linux'];
 
 test('device names: the rule', () => {
-  for (const n of BOESE) assert.equal(devicesNameValid(n), false, JSON.stringify(n));
-  for (const n of GUT) assert.equal(devicesNameValid(n), true, JSON.stringify(n));
-  assert.equal(devicesNameValid(undefined), true, 'ohne Namen gilt die Vorgabe');
+  for (const n of EVIL) assert.equal(devicesNameValid(n), false, JSON.stringify(n));
+  for (const n of GOOD) assert.equal(devicesNameValid(n), true, JSON.stringify(n));
+  assert.equal(devicesNameValid(undefined), true, 'without a name the default applies');
 });
 
 test('device names on all three paths', { concurrency: 1 }, async t => {
@@ -65,43 +65,43 @@ test('device names on all three paths', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const post = async (weg, body) => {
-    const r = await fetch(`${base}${AUTH}${weg}`, {
+  const { base } = testServer(_req, { session: { userId: uid, username: NAME }, t });
+  const post = async (route, body) => {
+    const r = await fetch(`${base}${AUTH}${route}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
     return { status: r.status, code: (await r.json()).code };
   };
-  const abgewiesen = { status: 400, code: 'geraetename_ungueltig' };
+  const rejected = { status: 400, code: 'device_name_invalid' };
 
   await t.test('POST /login', async () => {
-    for (const label of BOESE)
+    for (const label of EVIL)
       assert.deepEqual(
         await post('/login', { username: NAME, password: PASS, label }),
-        abgewiesen,
+        rejected,
         JSON.stringify(label),
       );
-    const gut = await post('/login', { username: NAME, password: PASS, label: 'Pixel 8 Pro' });
-    assert.equal(gut.status, 200, JSON.stringify(gut));
+    const good = await post('/login', { username: NAME, password: PASS, label: 'Pixel 8 Pro' });
+    assert.equal(good.status, 200, JSON.stringify(good));
   });
 
   await t.test('POST /token-create', async () => {
-    for (const label of BOESE)
-      assert.deepEqual(await post('/token-create', { password: PASS, label }), abgewiesen, JSON.stringify(label));
+    for (const label of EVIL)
+      assert.deepEqual(await post('/token-create', { password: PASS, label }), rejected, JSON.stringify(label));
     assert.equal((await post('/token-create', { password: PASS, label: 'Galaxy S10.1' })).status, 200);
   });
 
   await t.test('POST /passkey/registrieren', async () => {
-    for (const name of BOESE)
-      assert.deepEqual(await post('/passkey/registrieren', { antwort: {}, name }), abgewiesen, JSON.stringify(name));
+    for (const name of EVIL)
+      assert.deepEqual(await post('/passkey/register', { response: {}, name }), rejected, JSON.stringify(name));
   });
 
   await t.test('a sentence in quotes stays out', async () => {
     assert.deepEqual(
       await post('/login', { username: NAME, password: PASS, label: 'Handy" — alles in Ordnung' }),
-      abgewiesen,
+      rejected,
     );
   });
 });

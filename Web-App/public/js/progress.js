@@ -2,8 +2,8 @@
 // resetGive() count, the rest is internals.
 import { html } from './escaping.js';
 import { registerActions } from './registry.js';
-import { apiRaw, api, apiData, strom } from './api.js';
-import { ico, G, setzeHtml } from './dom.js';
+import { apiRaw, api, apiData, stream } from './api.js';
+import { ico, G, setHtml } from './dom.js';
 import { fmtPct } from './format.js';
 import { toast } from './messages.js';
 import { emit } from './events.js';
@@ -15,11 +15,11 @@ import { loggedInAccount } from './state.js';
 let _gibTimer = null; // Polling fallback timer (only if SSE fails)
 /**
  * An entry in an import's result. The contract does not name `results` (CsvImportStatus is open); this is how
- * src/sets/csvImportLauf.ts writes it.
- * @typedef {{ set_number?: string, zeile?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportResult
- * @typedef {import('../../frontend-types/contract').CsvImportStatus & { results?: ImportResult[] }} ImportStand
+ * src/sets/csvImportRun.ts writes it.
+ * @typedef {{ set_number?: string, row?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, quantity?: number, catalog_pending?: boolean }} ImportResult
+ * @typedef {import('../../frontend-types/contract').CsvImportStatus & { results?: ImportResult[] }} ImportStatus
  */
-/** @type {{ schliesse: () => void } | null} */
+/** @type {{ close: () => void } | null} */
 let _gibSse = null; // active stream (SSE), if available
 let _gibLastCount = 0;
 
@@ -37,93 +37,104 @@ export function importCounter(s, warnKey = 'csv.warnings_n') {
   ].join(', ');
 }
 
-/** @param {ImportStand | null | undefined} s */
-function gibApplyStatus(s) {
-  if (!s?.success || !s.status) {
-    gibStop();
+/** @typedef {{ running: boolean, done: number, total: number, pct: number }} GibProgress */
+
+/** The header bar. @param {ImportStatus} s @param {GibProgress} p */
+function gibHeader(s, p) {
+  const _gibEl = G('global-import-bar');
+  if (!_gibEl) return;
+  if (p.running) _gibEl.style.display = 'flex';
+  G('gib-fill').style.width = p.pct + '%';
+  G('gib-text').textContent = p.running
+    ? `${p.done}/${p.total} (${fmtPct(p.pct, { sign: false, places: 0 })})`
+    : importCounter(s);
+}
+
+/** The overlay while it is open (also in the second window or after minimizing). @param {ImportStatus} s
+ * @param {GibProgress} p */
+function gibOverlay(s, p) {
+  if (!G('progress-overlay')?.classList.contains('open')) return;
+  const { done, total } = p;
+  G('prog-title-txt').textContent = tRaw('csv.import_title');
+  setProgBar(p.pct);
+  if (!p.running) {
+    G('prog-footer').textContent = `${tRaw('csv.finished')} ${importCounter(s)}`;
+    G('prog-set-name').textContent = '';
     return;
   }
+  G('prog-footer').textContent = `${tRaw('csv.items_progress', { done, total })} (${importCounter(s)})`;
+  const waiting = done === 0 ? tRaw('csv.waiting') : '';
+  G('prog-set-name').textContent = s.current ? tRaw('csv.processing', { set: s.current, done, total }) : waiting;
+}
 
-  const running = s.status === 'running' || s.status === 'pending';
-  const done = s.done || 0;
-  const total = s.total || 0;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-
-  // update the header bar
-  const _gibEl = G('global-import-bar');
-  if (_gibEl) {
-    if (running) _gibEl.style.display = 'flex';
-    G('gib-fill').style.width = pct + '%';
-    G('gib-text').textContent = running
-      ? `${done}/${total} (${fmtPct(pct, { sign: false, stellen: 0 })})`
-      : importCounter(s);
-  }
-
-  // Update the overlay while it is open (also in the second window or after minimizing)
-  const overlayOpen = G('progress-overlay')?.classList.contains('open');
-  if (overlayOpen) {
-    G('prog-title-txt').textContent = tRaw('csv.import_title');
-    setProgBar(pct);
-    if (running) {
-      G('prog-footer').textContent = `${tRaw('csv.items_progress', { done, total })} (${importCounter(s)})`;
-      G('prog-set-name').textContent = s.current
-        ? tRaw('csv.verarbeite', { set: s.current, done, total })
-        : done === 0
-          ? tRaw('csv.wartet')
-          : '';
-    } else {
-      G('prog-footer').textContent = `${tRaw('csv.finished')} ${importCounter(s)}`;
-      G('prog-set-name').textContent = '';
-    }
-  }
-
-  // update the detail area
-  setzeHtml(
+/** The detail area. @param {ImportStatus} s @param {GibProgress} p */
+function gibDetails(s, p) {
+  const { done, total } = p;
+  setHtml(
     G('gib-stats'),
-    html`${Number(s.ok) || 0} ${ico('ok')} · ${Number(s.warn) || 0} ${ico('warnung')} · ${Number(s.err) || 0} ${ico('fehler')}`,
+    html`${Number(s.ok) || 0} ${ico('ok')} · ${Number(s.warn) || 0} ${ico('warning')} · ${Number(s.err) || 0} ${ico('error')}`,
   );
   const gpw = G('gib-prog-wrap');
-  if (gpw && running) {
+  if (gpw && p.running) {
     gpw.style.display = 'block';
-    G('gib-panel-fill').style.width = pct + '%';
+    G('gib-panel-fill').style.width = p.pct + '%';
     G('gib-panel-footer').textContent =
-      `${tRaw('csv.items_progress', { done, total })} (${fmtPct(pct, { sign: false, stellen: 0 })})`;
-    if (s.current) G('gib-panel-set').textContent = tRaw('csv.verarbeite', { set: s.current, done, total });
+      `${tRaw('csv.items_progress', { done, total })} (${fmtPct(p.pct, { sign: false, places: 0 })})`;
+    if (s.current) G('gib-panel-set').textContent = tRaw('csv.processing', { set: s.current, done, total });
   }
   G('gib-stats').textContent = [
     `${s.ok || 0} ok`,
     tRaw('csv.warnings_n', { n: s.warn || 0 }),
     tRaw('csv.errors_n', { n: s.err || 0 }),
   ].join(' · ');
+}
 
+/** Import finished: only hide the header bar, never close the overlay by itself — the user may still be
+ * reading the results. @param {ImportStatus} s */
+function gibFinished(s) {
+  rememberLastImport(s);
+  setTimeout(() => {
+    G('global-import-bar').style.display = 'none';
+    G('import-detail-panel').classList.remove('open');
+  }, 5000);
+  showImportCompletion();
+  emit('setsChanged');
+  gibStop();
+}
+
+/** @param {ImportStatus | null | undefined} s */
+function gibApplyStatus(s) {
+  if (!s?.success || !s.status) {
+    gibStop();
+    return;
+  }
+  const done = s.done || 0;
+  const total = s.total || 0;
+  const p = {
+    running: s.status === 'running' || s.status === 'pending',
+    done,
+    total,
+    pct: total > 0 ? Math.round((done / total) * 100) : 0,
+  };
+  gibHeader(s, p);
+  gibOverlay(s, p);
+  gibDetails(s, p);
   // Append new log lines — only if the CSV polling loop does not already write them (_csvPollActive = true
   // means: this window started the import, the loop writes the log)
   if (!_csvPollActive && s.results && s.results.length > _gibLastCount) {
     s.results.slice(_gibLastCount).forEach(r => {
       const z = logRow(r);
-      if (z) gibAddLog(z.text, z.art);
+      if (z) gibAddLog(z.text, z.kind);
     });
   }
   if (s.results) _gibLastCount = s.results.length;
-
-  if (!running) {
-    rememberLastImport(s);
-    // Import finished: only hide the header bar, never close the overlay by itself
-    setTimeout(() => {
-      G('global-import-bar').style.display = 'none';
-      G('import-detail-panel').classList.remove('open');
-      // Don't clear log or close overlay — user may still be reading results
-    }, 5000);
-    showImportCompletion();
-    emit('setsGeaendert');
-    gibStop();
-  }
+  if (!p.running) gibFinished(s);
 }
 
 // Polling fallback: fetch the status once and render it.
 async function gibPoll() {
   try {
-    const s = await apiData('GET', '/v1/sets/import/csv/status');
+    const s = await apiData('GET', '/v2/sets/import/csv/status');
     if (s) gibApplyStatus(s);
   } catch (_) {}
 }
@@ -156,25 +167,25 @@ function gibToggle() {
  * @param {string} [warnExtra]
  */
 export function logRow(r, warnExtra = '') {
-  if (!r?.set_number && !r?.zeile) return null;
+  if (!r?.set_number && !r?.row) return null;
   // With the line number one finds the spot in the file; a line without a set number otherwise has no name.
-  const wo = (r.zeile ? tRaw('csv.zeile', { n: r.zeile }) + (r.set_number ? ' · ' : '') : '') + (r.set_number || '');
+  const wo = (r.row ? tRaw('csv.row', { n: r.row }) + (r.set_number ? ' · ' : '') : '') + (r.set_number || '');
   if (r.success) {
     // A known set gets another copy; "updated" concealed that.
     const was =
       r.action === 'added'
         ? tRaw('common.added')
-        : r.menge
-          ? tRaw('csv.log_mehr', { n: r.menge })
+        : r.quantity
+          ? tRaw('csv.log_more', { n: r.quantity })
           : tRaw('common.updated');
     // Booked, but unknown to the catalog: yellow instead of green, otherwise a typo would look like a success.
-    if (r.katalog_offen)
+    if (r.catalog_pending)
       return {
         ok: false,
-        art: /** @type {const} */ ('warn'),
-        text: wo + ' – ' + was + ' — ' + tRaw('csv.log_unbekannt'),
+        kind: /** @type {const} */ ('warn'),
+        text: wo + ' – ' + was + ' — ' + tRaw('csv.log_unknown'),
       };
-    return { ok: true, art: /** @type {const} */ ('ok'), text: wo + ' – ' + was };
+    return { ok: true, kind: /** @type {const} */ ('ok'), text: wo + ' – ' + was };
   }
   // `warnExtra` only for the CSV import: there a note means
   // "timeout, will be retried". In the wanted list import it means "open, no
@@ -183,24 +194,24 @@ export function logRow(r, warnExtra = '') {
   if (r.isWarning) {
     return {
       ok: false,
-      art: /** @type {const} */ ('warn'),
+      kind: /** @type {const} */ ('warn'),
       text: wo + ': ' + (r.error || '') + (warnExtra ? ' (' + warnExtra + ')' : ''),
     };
   }
-  return { ok: false, art: /** @type {const} */ ('er'), text: wo + ': ' + (r.error || tRaw('settings.error')) };
+  return { ok: false, kind: /** @type {const} */ ('er'), text: wo + ': ' + (r.error || tRaw('settings.error')) };
 }
 
 /**
  * @param {string} text
- * @param {'ok' | 'warn' | 'er'} art
+ * @param {'ok' | 'warn' | 'er'} kind
  */
-function gibAddLog(text, art) {
+function gibAddLog(text, kind) {
   // Write into the overlay's CSV log AND into the detail log
   for (const logId of ['csv-log', 'gib-log']) {
     const log = G(logId);
     if (!log) continue;
     const line = document.createElement('div');
-    line.className = 'csv-log-line ' + art;
+    line.className = 'csv-log-line ' + kind;
     line.textContent = text;
     log.appendChild(line);
     log.scrollTop = log.scrollHeight;
@@ -219,10 +230,10 @@ export function gibStart() {
 
   // No token in the address: with withCredentials EventSource sends the session cookie, and a ?token=
   // would appear in the proxy log and in the history.
-  const s = strom(`/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`, {
-    ereignis: gibApplyStatus,
+  const s = stream(`/v2/sets/import/csv/stream?language=${encodeURIComponent(LANG)}`, {
+    event: gibApplyStatus,
     // Connection lost/rejected → fall back to polling as long as no fallback is running yet.
-    fehler: () => {
+    error: () => {
       if (_gibSse === s) _gibSse = null;
       if (!_gibTimer) {
         _gibTimer = setInterval(gibPoll, 1500);
@@ -241,7 +252,7 @@ export function gibStart() {
 
 function gibStop() {
   if (_gibSse) {
-    _gibSse.schliesse();
+    _gibSse.close();
     _gibSse = null;
   }
   if (_gibTimer) {
@@ -255,6 +266,14 @@ export async function gibCheckOnLoad() {
   if (_gibCheckTimer) return;
   let failures = 0;
 
+  // After several failures keep retrying more slowly instead of running against a wall in a three-second tick.
+  const notJson = (/** @type {number} */ status) => {
+    if (++failures === 3) console.warn('[gibCheck] response is not JSON (status ' + status + ') — polling paused');
+    if (failures >= 3 && _gibCheckTimer) {
+      clearInterval(_gibCheckTimer);
+      _gibCheckTimer = setInterval(doCheck, 30000);
+    }
+  };
   async function doCheck() {
     if (_gibTimer || _gibSse) {
       clearInterval(_gibCheckTimer);
@@ -264,21 +283,14 @@ export async function gibCheckOnLoad() {
     // Without login there is nothing to check; in a hidden tab every query counted against the budget.
     if (!loggedInAccount || document.hidden) return;
     try {
-      const r = await apiRaw('GET', '/v1/sets/import/csv/status');
+      const r = await apiRaw('GET', '/v2/sets/import/csv/status');
 
       // Check the response first, then parse. If a reverse proxy or tunnel stands in front, it delivers an HTML error page
       // on restart or dropout — r.json() then threw "Unexpected token '<'". That is not an error
       // of the app, but it should not produce a stack trace in the console either.
       const ct = r.headers.get('content-type') || '';
       if (!r.ok || !ct.includes('application/json')) {
-        if (++failures === 3)
-          console.warn('[gibCheck] Antwort ist kein JSON (Status ' + r.status + ') — Abfrage pausiert');
-        // After several failures keep retrying more slowly instead of running against a wall in a three-second
-        // tick.
-        if (failures >= 3 && _gibCheckTimer) {
-          clearInterval(_gibCheckTimer);
-          _gibCheckTimer = setInterval(doCheck, 30000);
-        }
+        notJson(r.status);
         return;
       }
       failures = 0;
@@ -290,7 +302,7 @@ export async function gibCheckOnLoad() {
         gibStart();
       }
     } catch {
-      if (++failures === 3) console.warn('[gibCheck] nicht erreichbar — Abfrage verlangsamt');
+      if (++failures === 3) console.warn('[gibCheck] unreachable — polling slowed down');
     }
   }
   doCheck();
@@ -301,57 +313,56 @@ export async function gibCheckOnLoad() {
 let _gibCheckTimer = null;
 
 /** The result of the last completed import, as long as it is at most one day old. */
-/** @type {ImportStand | null} */
+/** @type {ImportStatus | null} */
 let _lastImport = null;
 const LAST_IMPORT_MS = 24 * 3600_000;
 
 /**
  * An entry in the import menu leads back to the result list after reloading; the server keeps it in
  * import_stand, only the way there was missing.
- * @param {ImportStand | null | undefined} s
+ * @param {ImportStatus | null | undefined} s
  */
 function rememberLastImport(s) {
-  const fertig = !!s?.success && (s.status === 'done' || s.status === 'cancelled') && (s.results?.length ?? 0) > 0;
-  const alter = s?.beendet_am ? Date.now() - Date.parse(String(s.beendet_am)) : Infinity;
-  _lastImport = fertig && alter < LAST_IMPORT_MS ? /** @type {ImportStand} */ (s) : null;
-  const knopf = /** @type {HTMLButtonElement | null} */ (document.getElementById('letzter-import'));
-  if (!knopf) return;
-  knopf.hidden = !_lastImport;
-  if (_lastImport)
-    G('letzter-import-text').textContent = tRaw('csv.letzter_import', { zaehler: importCounter(_lastImport) });
+  const done = !!s?.success && (s.status === 'done' || s.status === 'cancelled') && (s.results?.length ?? 0) > 0;
+  const alter = s?.finished_at ? Date.now() - Date.parse(String(s.finished_at)) : Infinity;
+  _lastImport = done && alter < LAST_IMPORT_MS ? /** @type {ImportStatus} */ (s) : null;
+  const button = /** @type {HTMLButtonElement | null} */ (document.getElementById('last-import'));
+  if (!button) return;
+  button.hidden = !_lastImport;
+  if (_lastImport) G('last-import-text').textContent = tRaw('csv.last_import', { counter: importCounter(_lastImport) });
 }
 
 /** Opens the progress dialog with the stored result. */
-function zeigeLetztenImport() {
+function showLastImport() {
   const s = _lastImport;
   if (!s) return;
-  const menue = document.querySelector('#tab-gallery details.import-menue');
-  if (menue instanceof HTMLDetailsElement) menue.open = false;
+  const menu = document.querySelector('#tab-gallery details.import-menu');
+  if (menu instanceof HTMLDetailsElement) menu.open = false;
   showProgress(tRaw('csv.import_title'), true);
   setProgBar(100);
   for (const r of s.results || []) {
     const z = logRow(r);
-    if (z) addCsvLog(z.text, z.art);
+    if (z) addCsvLog(z.text, z.kind);
   }
-  G('prog-footer').textContent = `${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${importCounter(s)}`;
+  G('prog-footer').textContent = `${tRaw('csv.rows_read', { n: s.total ?? 0 })} · ${importCounter(s)}`;
   showImportCompletion();
 }
 
 /** Finished: "close" instead of "minimize" — a finished import does not keep running in the background. */
 export function showImportCompletion() {
-  const zu = G('btn-close-import');
-  if (zu) zu.style.display = '';
-  const klein = /** @type {HTMLElement | null} */ (document.querySelector('#progress-overlay .prog-minimieren'));
-  if (klein && document.activeElement === klein) zu?.focus();
-  if (klein) klein.hidden = true;
+  const close = G('btn-close-import');
+  if (close) close.style.display = '';
+  const small = /** @type {HTMLElement | null} */ (document.querySelector('#progress-overlay .prog-minimize'));
+  if (small && document.activeElement === small) close?.focus();
+  if (small) small.hidden = true;
 }
 /**
  * Sets the bar to "nothing running". A function instead of lines at logout: whoever resets from outside
  * would otherwise have to know the internals of this file and keep every new variable in mind.
  */
 export function resetGive() {
-  const balken = G('global-import-bar');
-  if (balken) balken.style.display = 'none';
+  const bar = G('global-import-bar');
+  if (bar) bar.style.display = 'none';
   gibStop();
   if (_gibCheckTimer) {
     clearInterval(_gibCheckTimer);
@@ -367,7 +378,7 @@ export function resetGive() {
 registerActions({
   gibToggle,
   hideProgress,
-  zeigeLetztenImport,
+  showLastImport,
 });
 
 // ── PROGRESS OVERLAY ─────────────────────────────────
@@ -395,8 +406,8 @@ export function showProgress(title, csvMode) {
   G('btn-cancel-import').style.display = 'none';
   const btnClose = G('btn-close-import');
   if (btnClose) btnClose.style.display = 'none';
-  const klein = /** @type {HTMLElement | null} */ (document.querySelector('#progress-overlay .prog-minimieren'));
-  if (klein) klein.hidden = false;
+  const small = /** @type {HTMLElement | null} */ (document.querySelector('#progress-overlay .prog-minimize'));
+  if (small) small.hidden = false;
 }
 
 export function hideProgress() {
@@ -426,26 +437,26 @@ function setStep(stepId, state) {
  * @param {number} pct
  */
 export function setProgBar(pct) {
-  const wert = Math.max(0, Math.min(100, pct));
-  G('prog-bar').style.width = wert + '%';
-  G('prog-bar-wrap')?.setAttribute('aria-valuenow', String(Math.round(wert)));
+  const value = Math.max(0, Math.min(100, pct));
+  G('prog-bar').style.width = value + '%';
+  G('prog-bar-wrap')?.setAttribute('aria-valuenow', String(Math.round(value)));
 }
 
 /**
  * @param {string} text
- * @param {'ok' | 'warn' | 'er'} art
+ * @param {'ok' | 'warn' | 'er'} kind
  */
-export function addCsvLog(text, art) {
+export function addCsvLog(text, kind) {
   const d = G('csv-log'),
     line = document.createElement('div');
-  line.className = 'csv-log-line ' + art;
+  line.className = 'csv-log-line ' + kind;
   line.textContent = text;
   d.appendChild(line);
   d.scrollTop = d.scrollHeight;
 }
 
 /** An event of the stream when capturing; `step` says which fields it carries.
- * @typedef {{ step?: string, set?: string, set_number?: string, action?: string, error?: string, [feld: string]: unknown }} SseEvent */
+ * @typedef {{ step?: string, set?: string, set_number?: string, action?: string, error?: string, [field: string]: unknown }} SseEvent */
 
 // SSE events when capturing a set. Only set data and image are waited for; instructions, parts and
 // price run in the background afterwards, and a bar for work nobody is waiting for would be a
@@ -505,11 +516,11 @@ function cancelImport() {
   _csvPollActive = false;
   _activeAbort?.abort();
   _activeAbort = null;
-  api('POST', '/v1/sets/import/csv/cancel');
+  api('POST', '/v2/sets/import/csv/cancel');
   G('btn-cancel-import').style.display = 'none';
   hideProgress();
   toast(tRaw('csv.cancelled'), 'info');
-  emit('setsGeaendert');
+  emit('setsChanged');
 }
 
 /** Cancelable event stream (POST with JSON body); a cancel ends without an error.
@@ -526,6 +537,17 @@ export function streamRequest(path, body, onEvent) {
     });
 }
 
+/** The `data:` lines of an event stream; an unreadable line is skipped.
+ * @template T @param {string[]} lines @param {(e: T) => void} onEvent */
+function dispatchLines(lines, onEvent) {
+  for (const line of lines) {
+    if (!line.startsWith('data: ')) continue;
+    try {
+      onEvent(JSON.parse(line.slice(6)));
+    } catch {}
+  }
+}
+
 /**
  * @param {Response} res
  * @param {(ev: SseEvent) => void} onEvent
@@ -536,8 +558,8 @@ async function readSSE(res, onEvent, signal) {
   // scope). The response goes through as one event; otherwise the display would wait for a data: line that
   // never comes.
   if ((res.headers.get('content-type') || '').includes('application/json')) {
-    const daten = await res.json().catch(() => null);
-    if (daten) onEvent({ step: daten.success === false ? 'error' : 'done', ...daten });
+    const data = await res.json().catch(() => null);
+    if (data) onEvent({ step: data.success === false ? 'error' : 'done', ...data });
     return;
   }
   if (!res.body) return;
@@ -552,13 +574,7 @@ async function readSSE(res, onEvent, signal) {
       buf += dec.decode(value, { stream: true });
       const lines = buf.split('\n');
       buf = lines.pop() ?? '';
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            onEvent(JSON.parse(line.slice(6)));
-          } catch {}
-        }
-      }
+      dispatchLines(lines, onEvent);
     }
   } catch (e) {
     if (/** @type {Error} */ (e).name !== 'AbortError') throw e;

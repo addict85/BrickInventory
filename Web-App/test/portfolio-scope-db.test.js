@@ -1,7 +1,7 @@
 /**
  * The portfolio curve belongs to the CHOSEN account, not to the viewer.
  *
- * Counter-check (carried out): in portfolioVerlauf `viewerId` used again as scope
+ * Counter-check (carried out): in portfolioHistory `viewerId` used again as scope
  * instead of `ids` → both curves become the same.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -72,29 +72,29 @@ test('the portfolio curve follows the selected account', { concurrency: 1 }, asy
     }
   }
 
-  const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
+  const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
   const { getSetting } = _req('src/settings/settings.js');
-  const kurve = async uids => {
+  const curve = async uids => {
     // The viewer is ALWAYS the main account — that is exactly what this is about.
-    const r = await portfolioVerlauf(mainId, uids, 'week', db, getSetting);
+    const r = await portfolioHistory(mainId, uids, 'week', db, getSetting);
     return (r?.points || []).map(p => p.value);
   };
 
   try {
-    const eigen = await kurve([mainId]);
-    const fremd = await kurve([subId]);
+    const own = await curve([mainId]);
+    const fremd = await curve([subId]);
 
-    assert.ok(eigen.length && fremd.length, 'beide Kurven müssen Punkte haben');
+    assert.ok(own.length && fremd.length, 'both curves must have points');
     assert.ok(
-      eigen[eigen.length - 1] >= 1000 && eigen[eigen.length - 1] < 2000,
-      `die eigene Kurve muss den eigenen Bestand zeigen, war: ${eigen.join(',')}`,
+      own[own.length - 1] >= 1000 && own[own.length - 1] < 2000,
+      `the own curve must show the own stock, was: ${own.join(',')}`,
     );
     assert.ok(
       fremd[fremd.length - 1] >= 5000,
-      `die Kurve des Unterkontos muss dessen Bestand zeigen, war: ${fremd.join(',')} — ` +
-        'bei gleichen Werten wie oben hängt das Blickfeld wieder am Betrachter',
+      `the sub-account's curve must show its stock, was: ${fremd.join(',')} — ` +
+        'with the same values as above the scope depends on the viewer again',
     );
-    assert.notDeepEqual(eigen, fremd, 'Beide Konten liefern dieselbe Kurve — der Filter wirkt dann nicht');
+    assert.notDeepEqual(own, fremd, 'Both accounts return the same curve — then the filter has no effect');
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await db.run(`DELETE FROM price_history WHERE set_number IN ($1,$2)`, [SN_H, SN_S]).catch(() => {});

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Safeguarding of the target platform (SDK 36 / Android 16).
@@ -13,22 +13,22 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * The SDK levels stand in build-logic (Sdk.kt); a module script must not
  * override them, otherwise this class would check a number that does not apply.
- * Counter-checks (patches under gegenproben/, red as stated on 04.11.2026):
- *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt to 31 → red “minSdk is Android 11“
+ * Counter-checks (patches under counter-checks/, red as stated on 04.11.2026):
+ *   sdk-minsdk-raised.patch   minSdk in Sdk.kt to 31 → red “minSdk is Android 11“
  */
 class TargetSdkConfigTest {
 
-    private val buildLogic = File(Quellen.project, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic")
+    private val buildLogic = File(Sources.project, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic")
 
     private val gradle: String by lazy {
         val f = File(buildLogic, "Sdk.kt")
-        assert(f.exists()) { "build-logic/…/Sdk.kt nicht gefunden" }
+        assert(f.exists()) { "build-logic/…/Sdk.kt not found" }
         f.readText()
     }
 
     private val manifest: String by lazy {
-        val f = Quellen.manifest
-        assert(f.exists()) { "AndroidManifest.xml nicht gefunden" }
+        val f = Sources.manifest
+        assert(f.exists()) { "AndroidManifest.xml not found" }
         f.readText()
     }
 
@@ -40,36 +40,36 @@ class TargetSdkConfigTest {
         s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
 
     private fun intAfter(key: String): Int {
-        val m = Regex("""\b$key\s*=\s*(\d+)""").find(Quellen.withoutComments(gradle))
-        assert(m != null) { "$key nicht in Sdk.kt gefunden" }
+        val m = Regex("""\b$key\s*=\s*(\d+)""").find(Sources.withoutComments(gradle))
+        assert(m != null) { "$key not found in Sdk.kt" }
         return m!!.groupValues[1].toInt()
     }
 
     @Test
     fun `no module script sets the SDK levels itself`() {
-        val scripts = Quellen.module.map { File(it, "build.gradle.kts") }
-        assert(scripts.size >= 12) { "Nur ${scripts.size} Modulskripte gefunden — Suche veraltet?" }
-        val setzen = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=""")
-        val eigene = scripts.filter { setzen.containsMatchIn(Quellen.withoutComments(it.readText())) }
+        val scripts = Sources.module.map { File(it, "build.gradle.kts") }
+        assert(scripts.size >= 12) { "Only ${scripts.size} module scripts found — search outdated?" }
+        val set = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=""")
+        val own = scripts.filter { set.containsMatchIn(Sources.withoutComments(it.readText())) }
             .map { it.parentFile!!.name }
-        assert(eigene.isEmpty()) { "Diese Module setzen SDK-Stände selbst statt über build-logic: $eigene" }
+        assert(own.isEmpty()) { "These modules set SDK levels themselves instead of via build-logic: $own" }
         // And the conventions take them from Sdk.kt, not as their own number.
         val conventions = buildLogic.listFiles { f -> f.extension == "kt" && f.name != "Sdk.kt" }.orEmpty()
-        assert(conventions.size >= 2) { "Keine Konventionen unter ${buildLogic.path}" }
-        val zahl = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=\s*\d""")
-        val fest = conventions.filter { zahl.containsMatchIn(Quellen.withoutComments(it.readText())) }.map { it.name }
-        assert(fest.isEmpty()) { "SDK-Stand als Zahl neben Sdk.kt: $fest" }
+        assert(conventions.size >= 2) { "No conventions under ${buildLogic.path}" }
+        val number = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=\s*\d""")
+        val fixed = conventions.filter { number.containsMatchIn(Sources.withoutComments(it.readText())) }.map { it.name }
+        assert(fixed.isEmpty()) { "SDK level as a number next to Sdk.kt: $fixed" }
     }
 
     @Test
     fun `compileSdk and targetSdk are 36 and identical`() {
         val compile = intAfter("compileSdk")
         val target = intAfter("targetSdk")
-        assert(target >= 36) { "targetSdk ist $target, erwartet mindestens 36" }
+        assert(target >= 36) { "targetSdk is $target, expected at least 36" }
         assert(compile == target) {
-            "compileSdk ($compile) und targetSdk ($target) laufen auseinander. Erlaubt " +
-                "wäre das, es verdeckt aber, welche Verhaltensänderungen tatsächlich " +
-                "aktiv sind — hier bewusst gleichgezogen."
+            "compileSdk ($compile) and targetSdk ($target) diverge. That would be " +
+                "allowed, but it hides which behavior changes are actually " +
+                "active — deliberately aligned here."
         }
     }
 
@@ -79,8 +79,8 @@ class TargetSdkConfigTest {
     @Test
     fun `minSdk is Android 11`() {
         assert(intAfter("minSdk") == 30) {
-            "minSdk ist nicht mehr 30. Gesenkt fehlt die schlüsselgebundene Gerätesperre " +
-                "für PIN und Muster; gehoben fallen Geräte weg, ohne dass es jemand entschieden hat."
+            "minSdk is no longer 30. Lowered, the key-bound device lock for PIN and pattern " +
+                "is missing; raised, devices drop out without anyone having decided it."
         }
     }
 
@@ -89,9 +89,9 @@ class TargetSdkConfigTest {
         val m = xmlCode(manifest)
         for (attr in listOf("android:screenOrientation", "android:resizeableActivity")) {
             assert(!m.contains(attr)) {
-                "$attr im Manifest. Unter targetSdk 36 wird das auf grossen Displays " +
-                    "ignoriert — die Zeile weckt also eine Erwartung, die das System " +
-                    "nicht mehr erfüllt."
+                "$attr in the manifest. Under targetSdk 36 this is ignored on large displays " +
+                    "— so the line raises an expectation that the system " +
+                    "no longer fulfills."
             }
         }
     }
@@ -100,9 +100,9 @@ class TargetSdkConfigTest {
     fun `predictive back is opted in`() {
         val m = xmlCode(manifest)
         assert(m.contains("android:enableOnBackInvokedCallback")) {
-            "enableOnBackInvokedCallback fehlt im Manifest. Unter targetSdk 36 ist es " +
-                "standardmässig an — ausgeschrieben ist sichtbar, dass die Entscheidung " +
-                "getroffen wurde, und der Schalter ist im Zweifel schnell zu finden."
+            "enableOnBackInvokedCallback is missing in the manifest. Under targetSdk 36 it is " +
+                "on by default — written out, it is visible that the decision " +
+                "was made, and the switch is quickly found when in doubt."
         }
     }
 
@@ -116,15 +116,15 @@ class TargetSdkConfigTest {
         // Lower bound: this check claims an ABSENCE.
         // If the file walk found nothing, it would be green — exactly when
         // it is worth least.
-        val hits = Quellen.alle()
+        val hits = Sources.all()
             .asSequence()
             .filter { kotlinCode(it.readText()).contains("BackHandler(") }
             .map { it.name }
             .toList()
         assert(hits.isEmpty()) {
-            "Neuer BackHandler in ${hits.joinToString()}. Das ist erlaubt, aber unter " +
-                "targetSdk 36 läuft vorhersagendes Zurück standardmässig — bitte auf " +
-                "einem Gerät prüfen, dass die Wischgeste noch am richtigen Ziel landet."
+            "New BackHandler in ${hits.joinToString()}. That is allowed, but under " +
+                "targetSdk 36 predictive back runs by default — please check on " +
+                "a device that the swipe gesture still lands on the right destination."
         }
     }
 }

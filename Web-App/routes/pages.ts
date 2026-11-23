@@ -3,10 +3,10 @@
 import express from 'express';
 import { sendStartPage, tokenToFragment } from '../src/profile/http/startPage';
 import { deliverImage } from '../src/images/http/imageDelivery';
-import { guardFor } from './api_v1/middleware';
-import type { Dienste } from '../src/services';
+import { guardFor } from './api/middleware';
+import type { Services } from '../src/services';
 
-export function buildPagesRouter(d: Pick<Dienste, 'account' | 'profile' | 'images'>) {
+export function buildPagesRouter(d: Pick<Services, 'account' | 'profile' | 'images'>) {
   const router = express.Router();
   const { requireLoginOrToken, inboundLock } = guardFor(d.account);
 

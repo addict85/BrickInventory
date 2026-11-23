@@ -1,0 +1,17 @@
+Gegenprobe: eine abgelehnte Verbindung zählt als Abbruch, der Ausgang springt nicht ein
+Modul: core-data
+Test: ch.brickinventoryapp.data.SetCreateStreamTest
+Rot: without a server it is NoneConnection, so that the outbox may step in
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStream.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStream.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStream.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStream.kt
+@@ -66,7 +66,7 @@
+         override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
+             // The body must be read here: after returning the response is closed.
+             val body = response?.let { runCatching { it.peekBody(4096).string() }.getOrNull() }
+-            val neverArrived = t is java.net.UnknownHostException || t is java.net.ConnectException
++            val neverArrived = t is java.net.UnknownHostException
+             trySend(SseEvent.StreamFailed(response?.code, body, t?.message, neverArrived))
+             close()
+         }

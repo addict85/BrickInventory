@@ -11,7 +11,7 @@ export interface CurvesPoint {
 export async function reconstructCurve(
   kx: FinancesContext,
   opts: {
-    db?: unknown;
+    db?: FinancesContext['db'];
     setNumbers: string[];
     setQty: Record<string, number>;
     placeholders: string;
@@ -30,13 +30,13 @@ export async function reconstructCurve(
 
   // Postgres calculates, with THE SAME rule as the valuation, not a similar one.
   {
-    const mengen = setNumbers.map(sn => setQty[sn] || 1);
+    const quantities = setNumbers.map(sn => setQty[sn] || 1);
     const mainQuery = (bExpr: string) =>
-      kx.portfolioKurve.dailyValuesFromHistory(
+      kx.portfolioCurve.dailyValuesFromHistory(
         currency,
         condition,
         setNumbers,
-        mengen,
+        quantities,
         dateFilter.replace(/recorded_at/g, 'ph.recorded_at'),
         bExpr,
       );
@@ -54,13 +54,13 @@ export async function reconstructCurve(
     }
     // Last resort price_cache; one row per set, the detour via SQL is not worth it.
     if (!rows.length) {
-      const roh = await kx.portfolioKurve.cachePricesTheSets(currency, condition, setNumbers, placeholders);
+      const raw = await kx.portfolioCurve.cachePricesTheSets(currency, condition, setNumbers, placeholders);
       const buckets: Record<string, { day: string; month: string; sets: Record<string, number> }> = {};
-      for (const r of roh) {
+      for (const r of raw) {
         const k = r.day;
         buckets[k] ??= { day: r.day, month: r.month, sets: {} };
         const b = buckets[k];
-        b.sets[r.set_number] = Number(r.marktpreis);
+        b.sets[r.set_number] = Number(r.market_price);
       }
       // Every set with its FIRST known price in the basket from the start, otherwise
       // the curve would start too low and report the collection's growth.
@@ -88,20 +88,20 @@ export async function reconstructCurve(
 
     // The first monthly bucket holds the value at the end of the month; without correction
     // the yearly curve would start higher than the monthly curve.
-    const erster = rawPoints[0];
-    if (monthResolution && erster) {
-      const firstTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || erster.fullDay;
-      erster.fullDay = firstTag;
-      const start = await kx.portfolioKurve.lastValuesBeforeStart(
+    const first = rawPoints[0];
+    if (monthResolution && first) {
+      const firstTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || first.fullDay;
+      first.fullDay = firstTag;
+      const start = await kx.portfolioCurve.lastValuesBeforeStart(
         currency,
         condition,
         setNumbers,
-        mengen,
+        quantities,
         firstTag,
         dateFilter.replace(/recorded_at/g, 'ph.recorded_at'),
       );
-      const wert = Number(start?.[0]?.total);
-      if (Number.isFinite(wert) && wert > 0) erster.total = wert;
+      const value = Number(start?.[0]?.total);
+      if (Number.isFinite(value) && value > 0) first.total = value;
     }
   }
 

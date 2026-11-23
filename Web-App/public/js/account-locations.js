@@ -1,7 +1,7 @@
 // Account and storage location fields: household members, account filter and the storage location fields of the capture paths. One
 // shared source, so that all forms show the same list.
 import { api } from './api.js';
-import { G, setzeHtml } from './dom.js';
+import { G, setHtml } from './dom.js';
 import { SCOPE_VIEWS, scopeMode, setScopeMode } from './account-filter.js';
 import { loadLocations, locationBlock } from './detail-fields.js';
 import { tRaw } from '../i18n.js';
@@ -34,7 +34,7 @@ export function initScopeSelects(members) {
       el.style.display = 'none';
       continue;
     }
-    setzeHtml(el, rawHtml(opts));
+    setHtml(el, rawHtml(opts));
     // A stored choice may point to an account that has since been unlinked — then fall back to "all"
     // instead of showing an empty selection.
     const saved = scopeMode(view);
@@ -47,13 +47,13 @@ export function initScopeSelects(members) {
 
   // The parts list's switch "include sub-accounts" follows the same rule: invisible without sub-accounts.
   // It lives here because isMain is determined here from the same response.
-  const subsBox = G('pl-bestand-subs-box');
+  const subsBox = G('pl-stock-subs-box');
   if (subsBox) {
     subsBox.style.display = isMain ? 'inline-flex' : 'none';
     // No check mark if there is nothing to include: otherwise the choice would stay set invisibly when the last
     // sub-account is unlinked and would keep having an effect.
     if (!isMain) {
-      const cb = G('pl-bestand-subs');
+      const cb = G('pl-stock-subs');
       if (cb) cb.checked = false;
     }
   }
@@ -63,14 +63,14 @@ export function initScopeSelects(members) {
  * would then not be right. The title itself stays fixed so that the header does not jump while loading.
  * @param {string} view */
 export function collectionSubtitle(view) {
-  const el = G(view + '-unter'),
-    wahl = G('scope-' + view);
+  const el = G(view + '-sub'),
+    choice = G('scope-' + view);
   if (!el) return;
   const basis = { gallery: 'gallery', parts: 'parts', minifigs: 'figs' }[view];
-  const haushalt = !!wahl && wahl.style.display !== 'none' && wahl.value === 'all';
-  const schluessel = `${basis}.subtitle${haushalt ? '_haushalt' : ''}`;
-  el.setAttribute('data-i18n', schluessel);
-  el.textContent = tRaw(schluessel);
+  const household = !!choice && choice.style.display !== 'none' && choice.value === 'all';
+  const key = `${basis}.subtitle${household ? '_household' : ''}`;
+  el.setAttribute('data-i18n', key);
+  el.textContent = tRaw(key);
 }
 
 /**
@@ -81,11 +81,11 @@ export function collectionSubtitle(view) {
  * state of the same response.
  * @type {HouseholdMember[]}
  */
-let _haushalt = [];
+let _household = [];
 
 /** The remembered accounts. Empty as long as no response has arrived yet. */
 export function householdAccounts() {
-  return _haushalt;
+  return _household;
 }
 
 /**
@@ -93,21 +93,21 @@ export function householdAccounts() {
  * one entry, and a selection with one option stays hidden.
  */
 export async function loadHouseholdMembers() {
-  const d = await api('GET', '/v1/sets/household-members');
+  const d = await api('GET', '/v2/sets/household-members');
   const members = d?.members || [];
-  _haushalt = members;
+  _household = members;
   // The same response decides about the account filter: more than one account means a main account with sub-accounts.
   initScopeSelects(members);
   // The storage locations in ONE go: they fill the select fields of the filters AND the shared <datalist> of the
   // input fields. Two calls would be two states of the same list.
-  const orte = loadLocations(members.map(m => m.id)).catch(() => {});
+  const locations = loadLocations(members.map(m => m.id)).catch(() => {});
   // The default for the capture fields (Marco's star) — a fetch of its own, reasoning at
   // loadLocationDefault().
   loadLocationDefault().catch(() => {});
   drawAccountSelection(members);
   drawLocationFields();
   // Only with the places is the filter row settled (storage location selection); startup waits for it.
-  await orte;
+  await locations;
 }
 
 /**
@@ -130,19 +130,19 @@ function drawAccountSelection(members) {
       box.style.display = 'none';
       continue;
     }
-    const vorher = sel.value;
-    setzeHtml(sel, rawHtml(markup));
-    if (vorher && [...sel.querySelectorAll('option')].some(o => o.value === vorher)) sel.value = vorher;
+    const before = sel.value;
+    setHtml(sel, rawHtml(markup));
+    if (before && [...sel.querySelectorAll('option')].some(o => o.value === before)) sel.value = before;
     box.style.display = '';
   }
 }
 
 // Generated select fields carry texts in the language they were built in; redraw them on a change, the
 // choice stays. loadLocations() updates the storage locations including stock and filters.
-subscribe('spracheGewechselt', () => {
-  if (!_haushalt.length) return;
-  initScopeSelects(_haushalt);
-  drawAccountSelection(_haushalt);
+subscribe('languageChanged', () => {
+  if (!_household.length) return;
+  initScopeSelects(_household);
+  drawAccountSelection(_household);
   loadLocations().catch(() => {});
 });
 
@@ -150,7 +150,13 @@ subscribe('spracheGewechselt', () => {
  * The storage location fields of the five capture paths, drawn once from locationBlock() instead of five times in the HTML.
  * Together with the account selection, because both wait until the household is loaded.
  */
-export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage', 'cat-m-storage', 'mk-take-storage'];
+export const ACQUISITION_LOCATION_FIELDS = [
+  'add-storage',
+  'ap-storage',
+  'af-storage',
+  'cat-m-storage',
+  'mk-take-storage',
+];
 
 /**
  * The storage location that should already be there when capturing — Marco's star.
@@ -158,46 +164,46 @@ export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage', 
  * "Furthermore I would like to be able to set a storage location as default in the settings.
  *  It should then already be preselected for a new capture."
  *
- * Empty means: no default, the fields stand at "—" as before.
+ * Empty means: no default, the fields state at "—" as before.
  */
 let _locationDefault = '';
 
 /**
  * Redraw a storage location field of a capture path.
  * @param {string} id
- * @param {string} wert
+ * @param {string} value
  */
-function drawLocationField(id, wert) {
+function drawLocationField(id, value) {
   const slot = G(`${id}-slot`);
   if (!slot) return;
-  setzeHtml(slot, locationBlock(id, wert));
+  setHtml(slot, locationBlock(id, value));
   // The visible label is in the HTML, the two controls are created here — a `for=` pointing at them
   // would be a dangling reference in the source (test/a11y.test.js reports exactly that, rightly). aria-labelledby
   // establishes the connection at runtime, and that for BOTH: select and text field carry the same name,
   // because they are the same field.
   for (const el of slot.children) el.setAttribute('aria-labelledby', `${id}-label`);
-  slot.dataset.gezeichnet = '1';
+  slot.dataset.drawn = '1';
 }
 
 export function drawLocationFields() {
-  for (const id of ERFASSUNGS_ORTFELDER) {
+  for (const id of ACQUISITION_LOCATION_FIELDS) {
     const slot = G(`${id}-slot`);
     // Only once: a second pass would throw away a choice already made.
-    if (!slot || slot.dataset.gezeichnet === '1') continue;
+    if (!slot || slot.dataset.drawn === '1') continue;
     drawLocationField(id, _locationDefault);
   }
 }
 
 /**
- * The default lives with the stock (/v1/storage/locations), not with the occupied places. Only a still empty
+ * The default lives with the stock (/v2/storage/locations), not with the occupied places. Only a still empty
  * field is filled in afterwards: whoever has chosen by themselves in the meantime keeps their choice.
  */
 export async function loadLocationDefault() {
-  const d = await api('GET', '/v1/storage/locations');
+  const d = await api('GET', '/v2/storage/locations');
   if (!d?.success) return;
-  _locationDefault = d.vorgabe?.name || '';
+  _locationDefault = d.preset?.name || '';
   if (!_locationDefault) return;
-  for (const id of ERFASSUNGS_ORTFELDER) {
+  for (const id of ACQUISITION_LOCATION_FIELDS) {
     if (!(G(id)?.value || '').trim()) drawLocationField(id, _locationDefault);
   }
 }
@@ -214,11 +220,11 @@ export function emptyLocationField(id) {
   }
   // Without a slot the composite field does not exist; then the old path stays. Today each of the
   // five capture paths has one (public/ index.html), but a form without a slot should not crash here.
-  const feld = G(id),
+  const field = G(id),
     sel = G(`${id}-sel`);
-  if (feld) {
-    feld.value = _locationDefault;
-    feld.style.display = 'none';
+  if (field) {
+    field.value = _locationDefault;
+    field.style.display = 'none';
   }
   if (sel) sel.selectedIndex = 0;
 }

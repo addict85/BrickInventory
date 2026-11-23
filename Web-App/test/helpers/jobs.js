@@ -7,11 +7,11 @@
  *   importWorker(t, _req);
  *
  * @param {{ after: (f: () => unknown) => void }} t
- * @param {(pfad: string) => any} _req  buildAndRequire() of the test file
+ * @param {(path: string) => any} _req  buildAndRequire() of the test file
  */
 function importWorker(t, _req) {
   const { startJobWorker } = _req('jobs/startJobs.js');
-  const worker = startJobWorker(require('./sources').testServices(), { arten: ['csv_import'], taktMs: 50 });
+  const worker = startJobWorker(require('./sources').testServices(), { kinds: ['csv_import'], tickMs: 50 });
   // The LISTEN connection too: it would otherwise keep the test process alive.
   t.after(async () => {
     await worker.stop();

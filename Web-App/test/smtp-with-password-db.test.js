@@ -4,7 +4,7 @@
  * bent. Saving without a change does not ask.
  *
  * Counter-check (measured on 28.10.2026): the password check in POST
- * /api/v1/settings removed → red: “without a password the mail server stays”.
+ * /api/v2/settings removed → red: “without a password the mail server stays”.
  * Counter-check (measured on 29.10.2026): smtp_* again in the key list
  * of POST /import → red: “the import does not switch the mail server”
  * (smtp_host was mail.angreifer.example afterwards).
@@ -17,7 +17,7 @@
  *      password, the administrators learn of it”
  *   C  the refusal without admin_password before the check removed → red: “without
  *      a password the mail server stays”, “without a password registration …”
- *      (aktuelles_passwort_falsch, counts toward the brake)
+ *      (current_password_wrong, counts toward the brake)
  *
  * A first API key (empty before) needs no password as long as the
  * setup is open: otherwise the wizard asks in the middle of the step.
@@ -44,8 +44,8 @@ const { dataOrSkip } = require('./helpers/db');
 const mails = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
-  mailAccountNotice: async (an, _n, art, o) => {
-    mails.push({ an, art, konto: o.konto });
+  mailAccountNotice: async (an, _n, kind, o) => {
+    mails.push({ an, kind, konto: o.account });
     return { success: true };
   },
 });
@@ -70,27 +70,27 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   const sensitiveBefore = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SENSITIVE]);
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.alt.example'), ('smtp_user', 'versand')
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
-  const landBefore = (await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value;
+  const landBefore = (await db.get("SELECT value FROM global_settings WHERE key = 'voucher_country'"))?.value;
   t.after(async () => {
     await db.run(
-      "DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'smtp_insecure_tls', 'gutschein_land')",
+      "DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'smtp_insecure_tls', 'voucher_country')",
     );
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SENSITIVE]);
     for (const z of sensitiveBefore)
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     if (landBefore !== undefined)
-      await db.run("INSERT INTO global_settings (key, value) VALUES ('gutschein_land', $1)", [landBefore]);
+      await db.run("INSERT INTO global_settings (key, value) VALUES ('voucher_country', $1)", [landBefore]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${uid}|%`]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
   const { base } = routerServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v1': 'routes/api_v1/settings.js' },
+    session: { userId: uid, isAdmin: true },
+    routes: { '/api/v2': 'routes/api/settings.js' },
     t,
   });
-  const speichern = body =>
-    fetch(`${base}/api/v1/settings`, {
+  const store = body =>
+    fetch(`${base}/api/v2/settings`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -98,19 +98,19 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   const host = async () => (await db.get("SELECT value FROM global_settings WHERE key = 'smtp_host'"))?.value;
 
   await t.test('without a password the mail server stays', async () => {
-    const r = await speichern({ smtp_host: 'mail.angreifer.example' });
+    const r = await store({ smtp_host: 'mail.angreifer.example' });
     assert.equal(r.status, 400);
-    assert.equal(r.body.code, 'aktuelles_passwort_erforderlich');
+    assert.equal(r.body.code, 'current_password_required');
     assert.equal(await host(), 'mail.alt.example');
   });
 
   await t.test('saving unchanged does not ask', async () => {
-    const r = await speichern({ smtp_host: 'mail.alt.example', language: 'de' });
+    const r = await store({ smtp_host: 'mail.alt.example', language: 'de' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
   });
 
   await t.test('with a password it is changed', async () => {
-    const r = await speichern({ smtp_host: 'mail.neu.example', admin_password: PASS });
+    const r = await store({ smtp_host: 'mail.neu.example', admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await host(), 'mail.neu.example');
   });
@@ -134,26 +134,26 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       ),
       'config.json',
     );
-    const r = await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: fd }).then(async x => ({
+    const r = await fetch(`${base}/api/v2/settings/import`, { method: 'POST', body: fd }).then(async x => ({
       status: x.status,
       body: await x.json(),
     }));
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(await host(), 'mail.neu.example', 'smtp_host kam über den Import');
+    assert.equal(await host(), 'mail.neu.example', 'smtp_host came in via the import');
     assert.equal(
       (await db.get("SELECT value FROM global_settings WHERE key = 'smtp_insecure_tls'"))?.value,
       undefined,
-      'smtp_insecure_tls kam über den Import',
+      'smtp_insecure_tls came in via the import',
     );
     // The rest of the file arrives — otherwise the case would check an import that does nothing at all.
-    assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value, 'AT');
-    assert.deepEqual(r.body.smtp_uebergangen, ['smtp_host', 'smtp_insecure_tls']);
+    assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'voucher_country'"))?.value, 'AT');
+    assert.deepEqual(r.body.smtp_skipped, ['smtp_host', 'smtp_insecure_tls']);
   });
 
-  const wert = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
+  const value = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
   await t.test('a first API key needs no password during setup', async () => {
     await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'einrichtung_erledigt')");
-    const r = await speichern({ rebrickable_api_key: 'erster-schluessel' });
+    const r = await store({ rebrickable_api_key: 'erster-schluessel' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await _req('src/settings/settings.js').getGlobalSetting('rebrickable_api_key'), 'erster-schluessel');
   });
@@ -161,9 +161,9 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
   await t.test('after setup even a first key only with password', async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'brickset_api_key'");
     await db.run("INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')");
-    const r = await speichern({ brickset_api_key: 'erster-fremder' });
-    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich']);
-    assert.equal(await wert('brickset_api_key'), undefined);
+    const r = await store({ brickset_api_key: 'erster-fremder' });
+    assert.deepEqual([r.status, r.body.code], [400, 'current_password_required']);
+    assert.equal(await value('brickset_api_key'), undefined);
   });
 
   await t.test('without a password registration and API key stay', async () => {
@@ -171,23 +171,23 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '0') ON CONFLICT (key) DO UPDATE SET value = '0'",
     );
     for (const body of [{ registration_enabled: '1' }, { rebrickable_api_key: 'fremder-schluessel' }]) {
-      const r = await speichern(body);
-      assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], JSON.stringify(body));
+      const r = await store(body);
+      assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], JSON.stringify(body));
     }
-    assert.equal(await wert('registration_enabled'), '0');
-    assert.notEqual(await wert('rebrickable_api_key'), 'fremder-schluessel');
+    assert.equal(await value('registration_enabled'), '0');
+    assert.notEqual(await value('rebrickable_api_key'), 'fremder-schluessel');
   });
 
   await t.test('changed with password, the administrators learn of it', async () => {
     mails.length = 0;
-    const r = await speichern({ registration_enabled: '1', admin_password: PASS });
+    const r = await store({ registration_enabled: '1', admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(await wert('registration_enabled'), '1');
+    assert.equal(await value('registration_enabled'), '1');
     for (let i = 0; i < 60 && !mails.some(m => m.an === `${NAME}@example.org`); i++)
       await new Promise(x => setTimeout(x, 25));
     assert.deepEqual(
       mails.filter(m => m.an === `${NAME}@example.org`),
-      [{ an: `${NAME}@example.org`, art: 'einstellungen_geaendert', konto: 'registration_enabled' }],
+      [{ an: `${NAME}@example.org`, kind: 'settings_changed', konto: 'registration_enabled' }],
     );
   });
 });

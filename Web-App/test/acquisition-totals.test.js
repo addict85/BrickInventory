@@ -8,7 +8,7 @@
  * for missing prices → the edge case substep turns red. And an
  * inserted `acqs.reduce(...)` in admin.js → the rule substep.
  * Counter-check of 30.10.2026: `totals` removed from the parts response in
- * routes/api_v1/acquisitions.ts → red: “parts” in the route substep.
+ * routes/api/acquisitions.ts → red: “parts” in the route substep.
  * Since 05.11.2026 `amount` is missing without a known price (money has a type);
  * measured: the route without the omission → red: “minifigs” (amount: null
  * violates the contract, the response has no entries).
@@ -17,7 +17,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
@@ -47,7 +47,7 @@ test('without a price the amount is null — not 0', () => {
   // null can the UI show the dash without guessing itself;
   // with 0 every view would have to make the same interpretation again.
   const t = acquisitionTotals([{ quantity: 2 }, { quantity: 1, purchase_price: null }]);
-  assert.equal(t.quantity, 3, 'die Stücke sind da, auch ohne Preis');
+  assert.equal(t.quantity, 3, 'the pieces are there, even without a price');
   assert.equal(t.amount, null);
   assert.equal(t.priced_rows, 0);
 });
@@ -62,8 +62,8 @@ test('a row with price 0 is captured and yields 0', () => {
 
 test('mixed: rows with and without price', () => {
   const t = acquisitionTotals([{ quantity: 2, purchase_price: 10 }, { quantity: 5 }]);
-  assert.equal(t.quantity, 7, 'die preislose Zeile zählt bei der MENGE mit');
-  assert.equal(t.amount, 20, 'beim BETRAG nicht — sie hat keinen');
+  assert.equal(t.quantity, 7, 'the row without price counts towards the QUANTITY');
+  assert.equal(t.amount, 20, 'not towards the AMOUNT — it has none');
 });
 
 test('the amount is rounded to two places', () => {
@@ -114,19 +114,23 @@ test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t
     [uid, FN],
   );
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  for (const [art, pfad, erwartet] of /** @type {[string, string, object][]} */ ([
-    ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2, currency: 'CHF', ohne_kurs: 0 }],
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  for (const [kind, path, expected] of /** @type {[string, string, object][]} */ ([
+    [
+      'sets',
+      `sets/${SN}/acquisitions`,
+      { quantity: 3, amount: 24.3, priced_rows: 2, currency: 'CHF', without_rate: 0 },
+    ],
     [
       'parts',
       `parts/${PN}/4/acquisitions`,
-      { quantity: 3, amount: 1.8, priced_rows: 1, currency: 'CHF', ohne_kurs: 0 },
+      { quantity: 3, amount: 1.8, priced_rows: 1, currency: 'CHF', without_rate: 0 },
     ],
-    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0, currency: 'CHF', ohne_kurs: 0 }],
+    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0, currency: 'CHF', without_rate: 0 }],
   ])) {
-    const r = await (await fetch(`${base}/api/v1/${pfad}`)).json();
-    assert.equal(r.acquisitions?.length > 0, true, `${art}: keine Erfassungen in der Antwort`);
-    assert.deepEqual(r.totals, erwartet, art);
+    const r = await (await fetch(`${base}/api/v2/${path}`)).json();
+    assert.equal(r.acquisitions?.length > 0, true, `${kind}: no acquisitions in the response`);
+    assert.deepEqual(r.totals, expected, kind);
   }
 });
 
@@ -134,29 +138,32 @@ test('no UI computes the sum again', async () => {
   // The server sends the total row as `totals`; here deliberately NOT the sum of the rows
   // (10 + 20 at quantity 2): what the UI shows must come from the server.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 2 };
-  const zeile = (id, preis) => ({
+  const row = (id, price) => ({
     id,
     quantity: 1,
-    purchase_price: preis,
+    purchase_price: price,
     condition: 'N',
     currency: 'EUR',
     created_at: '2026-10-01T10:00:00Z',
     user_id: 1,
   });
   const { d } = await openUi({
-    '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
-    '/v1/sets/10294-1': { success: true, set: SET },
-    '/v1/sets/10294-1/acquisitions': {
+    '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
+    '/v2/sets/10294-1': { success: true, set: SET },
+    '/v2/sets/10294-1/acquisitions': {
       success: true,
-      acquisitions: [zeile(1, 10), zeile(2, 20)],
+      acquisitions: [row(1, 10), row(2, 20)],
       totals: { quantity: 5, amount: 99, currency: 'EUR' },
     },
   }).then(async o => {
-    assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
+    assert.ok(await waitFor(() => o.d.querySelector('#gallery [data-click="openModal"]')));
     o.d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => o.d.querySelector('[data-click="openAcqModal"]')), 'Kein Knopf zu den Kaufpreisen');
+    assert.ok(
+      await waitFor(() => o.d.querySelector('[data-click="openAcqModal"]')),
+      'No button to the purchase prices',
+    );
     o.d.querySelector('[data-click="openAcqModal"]').click();
-    assert.ok(await warte(() => o.d.getElementById('acq-total-price')), 'Keine Summenzeile');
+    assert.ok(await waitFor(() => o.d.getElementById('acq-total-price')), 'No totals row');
     return o;
   });
   try {

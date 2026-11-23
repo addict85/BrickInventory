@@ -44,7 +44,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { addPurchaseAtTag, purchaseAtSameTag } = _req('src/inventory/acquisitions.js');
 
@@ -56,7 +56,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -76,15 +76,15 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   const TAG = '2026-10-21';
 
   /** The entries of a part, prepared for comparison. */
-  const zeilen = async nr =>
+  const lines = async nr =>
     (
       await db.all(
-        `SELECT quantity, unit_price::float AS preis, COALESCE(condition,'N') AS zustand
+        `SELECT quantity, unit_price::float AS price, COALESCE(condition,'N') AS condition
        FROM part_acquisitions WHERE user_id=$1 AND part_number=$2
-      ORDER BY zustand`,
+      ORDER BY condition`,
         [UID, nr],
       )
-    ).map(z => ({ menge: Number(z.quantity), preis: z.preis, zustand: z.zustand }));
+    ).map(z => ({ quantity: Number(z.quantity), price: z.price, condition: z.condition }));
 
   await t.test('two conditions, two rows', async () => {
     await addPurchaseAtTag('part', UID, ['3001', 4], {
@@ -99,23 +99,23 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
       condition: 'U',
       createdAt: TAG,
     });
-    const z = await zeilen('3001');
+    const z = await lines('3001');
     assert.equal(
       z.length,
       2,
-      `${z.length} Zeile(n) statt 2: ${JSON.stringify(z)}. Vorher wurde der ` +
-        'gebrauchte Kauf in den neuen gefaltet — Marcos Befund',
+      `${z.length} row(s) instead of 2: ${JSON.stringify(z)}. Previously the ` +
+        'used purchase was folded into the new one — Marco’s finding',
     );
   });
 
   await t.test('every row keeps its own price', async () => {
     assert.deepEqual(
-      await zeilen('3001'),
+      await lines('3001'),
       [
-        { menge: 3, preis: 1.5, zustand: 'N' },
-        { menge: 2, preis: 0.5, zustand: 'U' },
+        { quantity: 3, price: 1.5, condition: 'N' },
+        { quantity: 2, price: 0.5, condition: 'U' },
       ],
-      'Der Mischpreis 1.10 wäre die alte Rechnung über zwei verschiedene Käufe',
+      'The blended price 1.10 would be the old calculation over two different purchases',
     );
   });
 
@@ -141,12 +141,12 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
       createdAt: TAG,
     });
     assert.deepEqual(
-      (await zeilen('3002')).sort((x, y) => x.preis - y.preis),
+      (await lines('3002')).sort((x, y) => x.price - y.price),
       [
-        { menge: 3, preis: 2, zustand: 'N' },
-        { menge: 2, preis: 4, zustand: 'N' },
+        { quantity: 3, price: 2, condition: 'N' },
+        { quantity: 2, price: 4, condition: 'N' },
       ],
-      'Die Einzelkäufe müssen rekonstruierbar bleiben — kein Mischpreis 3',
+      'The single purchases must remain reconstructible — no blended price 3',
     );
   });
 
@@ -157,11 +157,11 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
         addPurchaseAtTag('part', UID, ['3004', 1], { quantity: 1, price: 1.0, condition: 'N', createdAt: TAG }),
       ),
     );
-    const z = await zeilen('3004');
+    const z = await lines('3004');
     assert.deepEqual(
       z,
-      [{ menge: 12, preis: 1, zustand: 'N' }],
-      `Statt 12 sind ${z.reduce((s, r) => s + r.menge, 0)} angekommen: ${JSON.stringify(z)}`,
+      [{ quantity: 12, price: 1, condition: 'N' }],
+      `Instead of 12, ${z.reduce((s, r) => s + r.quantity, 0)} arrived: ${JSON.stringify(z)}`,
     );
   });
 
@@ -171,7 +171,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
       price: 0.3,
       condition: 'N',
       createdAt: TAG,
-      geschaetzt: true,
+      estimated: true,
     });
     await addPurchaseAtTag('part', UID, ['3005', 1], {
       quantity: 1,
@@ -190,7 +190,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
         [1, false],
         [1, true],
       ],
-      'Ein geschätzter und ein bezahlter Preis gleicher Höhe dürfen nicht verschmelzen',
+      'An estimated and a paid price of the same amount must not merge',
     );
   });
 
@@ -210,7 +210,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
     assert.deepEqual(
       z.map(r => r.currency),
       ['CHF', 'EUR'],
-      'Nach dem Wechsel darf der alte CHF-Preis nicht zum EUR-Preis werden',
+      'After the switch the old CHF price must not become the EUR price',
     );
   });
 
@@ -227,16 +227,16 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
        VALUES ($1,'3003',4,1,'U',$2::date)`,
       [UID, TAG],
     );
-    const doppelt = db.run(
+    const twice = db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, condition, created_at)
        VALUES ($1,'3003',4,1,'N',$2::date)`,
       [UID, TAG],
     );
     await assert.rejects(
-      doppelt,
+      twice,
       /duplicate key|unique/i,
-      'Eine DRITTE Zeile mit einem schon belegten Zustand muss die Datenbank ' +
-        'abweisen — sonst ist der Index zu weit geraten',
+      'The database must reject a THIRD row with an already used condition ' +
+        '— otherwise the index has become too wide',
     );
   });
 
@@ -248,22 +248,22 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
          AND condition='N'`,
       [UID],
     );
-    assert.ok(n, 'Vorbedingung: die N-Zeile von oben');
+    assert.ok(n, 'Precondition: the N row from above');
     assert.equal(
-      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'N', { preis: 1.5 }),
+      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'N', { price: 1.5 }),
       null,
-      'Gegen den EIGENEN Zustand ist der Tag frei — die eigene Zeile zählt nicht',
+      'Against the OWN condition the day is free — the own row does not count',
     );
-    const clash = await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.5 });
+    const clash = await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { price: 0.5 });
     assert.ok(
       clash,
-      'Gegen den ANDEREN Zustand mit gleichem Preis liegt dort eine Zeile. Wer sie ' +
-        'übersieht, lässt eine Dublette entstehen — und der Index weist sie ab',
+      'Against the OTHER condition with the same price there is a row. Whoever ' +
+        'overlooks it lets a duplicate arise — and the index rejects it',
     );
     assert.equal(
-      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.9 }),
+      await purchaseAtSameTag('part', UID, ['3001', 4], TAG, n.id, 'U', { price: 0.9 }),
       null,
-      'Mit anderem Preis ist es seit Migration 0047 eine eigene Zeile, keine Kollision',
+      'With a different price it has been a separate row since migration 0047, not a collision',
     );
   });
 });

@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.services.service
 
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -10,9 +9,14 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import ch.brickinventoryapp.data.CsvImportSseClient
+import ch.brickinventoryapp.data.collection.SetFilesRepository
+import ch.brickinventoryapp.data.di.Scopes
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.model.domain.CsvImportStatusView
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetDateienRepository
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -22,21 +26,17 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import javax.inject.Inject
-import ch.brickinventoryapp.data.di.Scopes
-import ch.brickinventoryapp.data.util.LanguageManager
 
 /** The foreground service of a running CSV import; a counter in the test. */
-interface CsvImportDienst {
+interface CsvImportRunner {
     fun start()
     fun stop()
 }
 
 internal class AndroidCsvImportService @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
-) : CsvImportDienst {
+) : CsvImportRunner {
     override fun start() = CsvImportService.start(ctx)
     override fun stop() = CsvImportService.stop(ctx)
 }
@@ -50,9 +50,8 @@ class CsvImportService : Service() {
 
         // Fallback for when SSE isn't working
         private const val POLL_INTERVAL_MS = 1500L
-        private const val POLL_WINDOW      = 10   // Abfragen je Fenster, dann neuer SSE-Versuch
+        private const val POLL_WINDOW      = 10   // queries per window, then a new SSE attempt
         private const val MAX_ERRORS       = 10
-        private const val GRACE_MS         = 10_000L  // Anlauffenster, siehe applyStatus()
 
         fun start(context: Context) {
             // startForegroundService can, on Android 12+, already throw at the
@@ -71,7 +70,7 @@ class CsvImportService : Service() {
         }
     }
 
-    @Inject lateinit var dateien: SetDateienRepository
+    @Inject lateinit var files: SetFilesRepository
     @Inject lateinit var sseClient: CsvImportSseClient
 
     // Service context in the chosen app language: setApplicationLocales()
@@ -89,14 +88,14 @@ class CsvImportService : Service() {
     private val serviceScope by lazy { CoroutineScope(SupervisorJob() + areas.io) }
     private var pollJob: Job? = null
 
-    // Anlaufschutz, siehe applyStatus()
+    // Startup grace period, see importGoesOn()
     private val startedAtMs = System.currentTimeMillis()
     @Volatile private var sawRunning = false
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        fangeAusserAbbruch {
+        catchUnlessCancelled {
             ServiceCompat.startForeground(
                 this, NOTIFICATION_ID,
                 buildNotification(loc.getString(R.string.notif_csv_running), 0, 0),
@@ -122,7 +121,7 @@ class CsvImportService : Service() {
         pollJob = serviceScope.launch {
             var errors = 0
             while (isActive) {
-                val sseFailed = !folgeStrom(sseClient.stream()) { status ->
+                val sseFailed = !followStream(sseClient.stream()) { status ->
                     errors = 0
                     applyStatus(status)
                 }
@@ -155,11 +154,11 @@ class CsvImportService : Service() {
     private enum class PollResult { RUNNING, FINISHED, ERROR }
 
     /** One status query of the fallback. */
-    private suspend fun pollOnce(): PollResult = fangeAusserAbbruch {
-        when (val resp = dateien.getCsvImportStatus()) {
-            is Ergebnis.Erfolg ->
+    private suspend fun pollOnce(): PollResult = catchUnlessCancelled {
+        when (val resp = files.getCsvImportStatus()) {
+            is Outcome.Success ->
                 if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
-            is Ergebnis.Fehler -> PollResult.ERROR
+            is Outcome.Failure -> PollResult.ERROR
         }
     }.getOrElse { PollResult.ERROR }
 
@@ -170,17 +169,12 @@ class CsvImportService : Service() {
      * @return true as long as the import is running, false once it's done.
      */
     private fun applyStatus(s: CsvImportStatusView): Boolean {
-        val running = s.status?.laeuft == true
+        val running = s.status?.running == true
         val done    = s.done
         val total   = s.total
         val current = s.current ?: ""
         if (!running) {
-            // Startup grace period: the server reports "idle" until the import job has actually
-            // been created.
-            // The service starts with the upload; without this window the first
-            // idle response would end it before any progress could come in.
-            if (!sawRunning && System.currentTimeMillis() - startedAtMs < GRACE_MS) return true
-            return false
+            return importGoesOn(sawRunning, System.currentTimeMillis() - startedAtMs)
         }
         sawRunning = true
         val text = if (total > 0)
@@ -190,7 +184,7 @@ class CsvImportService : Service() {
         return true
     }
 
-    /** Abschlussmeldung kurz stehen lassen, dann beenden. */
+    /** Leave the final notice up briefly, then stop. */
     private suspend fun finishAndStop() {
         updateNotification(loc.getString(R.string.notif_csv_done), 1, 1)
         delay(4000)
@@ -236,3 +230,13 @@ class CsvImportService : Service() {
         serviceScope.cancel()
     }
 }
+
+/** How long after the start an idle answer still means "the import job is not created yet". */
+internal const val CSV_GRACE_MS = 10_000L
+
+/**
+ * Does the import go on although the server reports idle? The service starts with the upload, and
+ * until the import job exists the server says "idle"; without this window the first idle answer
+ * would end the service before any progress came in. After a running state, idle is the end.
+ */
+internal fun importGoesOn(sawRunning: Boolean, sinceStartMs: Long): Boolean = !sawRunning && sinceStartMs < CSV_GRACE_MS

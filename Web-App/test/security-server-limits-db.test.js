@@ -13,7 +13,7 @@
  *   H1  in handleRouteError the branch for 4xx without code deleted → red:
  *       „GET /% …“ (response „Failed to decode param '%'“); `fail()` in
  *       validate.ts again with `new Error` → red: „ein eigener Satz …“
- *   H2  in moveSource again 403 kein_schreibrecht for foreign
+ *   H2  in moveSource again 403 no_write_access for foreign
  *       rows → red: “a foreign entry responds like a missing one”
  *   H4  `app.use(onlyOwnHost)` deleted in server.ts → red: „ein fremder
  *       Host-Kopf …“; the exception for IP addresses deleted → red: „IP-Host“; bearer again
@@ -43,7 +43,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
   new Promise(r => {
@@ -54,33 +54,33 @@ const freePort = () =>
   });
 
 /** A request with a freely chosen Host header; fetch sets it itself. */
-function withHost(port, host, pfad, kopf = {}) {
-  return new Promise((fertig, fehler) => {
-    const r = http.request({ host: '127.0.0.1', port, path: pfad, setHost: false, headers: { host, ...kopf } }, res => {
+function withHost(port, host, path, head = {}) {
+  return new Promise((done, error) => {
+    const r = http.request({ host: '127.0.0.1', port, path: path, setHost: false, headers: { host, ...head } }, res => {
       let text = '';
       res.on('data', d => {
         text += d;
       });
-      res.on('end', () => fertig({ status: res.statusCode, text }));
+      res.on('end', () => done({ status: res.statusCode, text }));
     });
-    r.on('error', fehler);
+    r.on('error', error);
     r.end();
   });
 }
 
-/** Raw connection: sends `roh`, collects the response and measures until closing. */
-function roh(port, text) {
+/** Raw connection: sends `text`, collects the response and measures until closing. */
+function raw(port, text) {
   const start = Date.now();
   const s = net.connect(port, '127.0.0.1', () => s.write(text));
-  const ergebnis = { antwort: '', zu: null, socket: s };
+  const outcome = { response: '', closed: null, socket: s };
   s.on('data', d => {
-    ergebnis.antwort += d;
+    outcome.response += d;
   });
   s.on('error', () => {});
   s.on('close', () => {
-    ergebnis.zu = Date.now() - start;
+    outcome.closed = Date.now() - start;
   });
-  return ergebnis;
+  return outcome;
 }
 
 test('server limits: slow requests, error texts, foreign hosts', {
@@ -90,21 +90,21 @@ test('server limits: slow requests, error texts, foreign hosts', {
   if (!(await dataOrSkip(t, _req))) return;
   const PASS = 'Runde-Elf-Passwort-7x',
     NAME = `r11_${process.pid}`;
-  const namen = [`${NAME}_a`, `${NAME}_b`, `${NAME}_v`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
-  const put = async (name, bestaetigt, token = null) =>
+  const names = [`${NAME}_a`, `${NAME}_b`, `${NAME}_v`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
+  const put = async (name, confirmed, token = null) =>
     (
       await db.get(
         `INSERT INTO users
     (username, email, password_hash, is_active, email_verified, verification_token, token_expires)
     VALUES ($1, $2, $3, true, $4, $5, CASE WHEN $5::text IS NULL THEN NULL ELSE NOW() + INTERVAL '1 day' END) RETURNING id`,
-        [name, `${name}@example.org`, bcrypt.hashSync(PASS, 4), bestaetigt, token],
+        [name, `${name}@example.org`, bcrypt.hashSync(PASS, 4), confirmed, token],
       )
     ).id;
-  const alice = await put(namen[0], true),
-    bob = await put(namen[1], true);
-  const MAILTOKEN = crypto.randomBytes(32).toString('hex');
-  const unconfirmed = await put(namen[2], false, crypto.createHash('sha256').update(MAILTOKEN).digest('hex'));
+  const alice = await put(names[0], true),
+    bob = await put(names[1], true);
+  const MAIL_TOKEN = crypto.randomBytes(32).toString('hex');
+  const unconfirmed = await put(names[2], false, crypto.createHash('sha256').update(MAIL_TOKEN).digest('hex'));
   // Like POST /register since round 13: address and link only pending.
   await db.run(
     `UPDATE users SET new_email = email, new_email_token = verification_token, new_email_until = token_expires,
@@ -114,7 +114,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
   t.after(async () => {
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1', [alice]);
     await db.run('DELETE FROM sets WHERE user_id = $1', [alice]);
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
     await db.pool.end().catch(() => {});
   });
 
@@ -128,7 +128,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
       SESSION_SECRET: 'runde-elf-test-geheimnis-lang-genug-12345',
       PORT: String(port),
       TRUST_PROXY: 'false',
-      ROLLE: 'web',
+      ROLE: 'web',
       APP_BASE_URL: `http://nas.example.lan:${port}`,
     },
   });
@@ -141,84 +141,87 @@ test('server limits: slow requests, error texts, foreign hosts', {
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++)
-    await warte(250);
+  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) === null; i++)
+    await sleep(250);
 
-  const anmelden = async name => {
-    const r = await fetch(`${basis}/api/v1/auth/login`, {
+  const signIn = async name => {
+    const r = await fetch(`${basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: name, password: PASS, ohne_token: true }),
+      body: JSON.stringify({ username: name, password: PASS, without_token: true }),
     });
     assert.equal(r.status, 200, `${await r.clone().text()}\n${log}`);
     return r.headers.get('set-cookie').split(';')[0];
   };
-  const keksA = await anmelden(namen[0]),
-    keksB = await anmelden(namen[1]);
-  const als =
+  const keksA = await signIn(names[0]),
+    keksB = await signIn(names[1]);
+  const as =
     keks =>
-    (pfad, o = {}) =>
-      fetch(basis + pfad, {
+    (path, o = {}) =>
+      fetch(basis + path, {
         redirect: 'manual',
         ...o,
         headers: { cookie: keks, origin: basis, 'content-type': 'application/json', ...(o.headers || {}) },
       });
 
   await t.test('slow headers and bodies do not hold the server', async () => {
-    const kopf = roh(port, 'POST /api/v1/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\n');
-    const ohne = roh(
+    const head = raw(port, 'POST /api/v2/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\n');
+    const without = raw(
       port,
-      'POST /api/v1/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n' +
+      'POST /api/v2/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n' +
         'Content-Length: 200\r\n\r\n{',
     );
-    const mit = roh(
+    const withIt = raw(
       port,
-      `POST /api/v1/vouchers HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nCookie: ${keksA}\r\nOrigin: ${basis}\r\n` +
+      `POST /api/v2/vouchers HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nCookie: ${keksA}\r\nOrigin: ${basis}\r\n` +
         'Content-Type: application/json\r\nContent-Length: 200\r\n\r\n{',
     );
     try {
-      for (const ende = Date.now() + 14_000; ohne.zu === null && Date.now() < ende; ) await warte(200);
+      for (const end = Date.now() + 14_000; without.closed === null && Date.now() < end; ) await sleep(200);
       assert.ok(
-        ohne.zu !== null && ohne.zu < 13_000,
-        `ein stockender Rumpf ohne Anmeldung wird beendet (nach ${ohne.zu} ms)`,
+        without.closed !== null && without.closed < 13_000,
+        `a stalling body without login is terminated (after ${without.closed} ms)`,
       );
-      assert.match(ohne.antwort, /^HTTP\/1\.1 408 [\s\S]*anfrage_zu_langsam/, ohne.antwort);
-      await warte(1500);
-      assert.equal(mit.zu, null, 'ein stockender Rumpf mit Anmeldung (Upload) läuft weiter: ' + mit.antwort);
-      assert.equal(mit.antwort, '');
-      for (const ende = Date.now() + 8_000; kopf.zu === null && Date.now() < ende; ) await warte(200);
-      assert.ok(kopf.zu !== null && kopf.zu < 18_000, `ein stockender Kopf wird beendet (nach ${kopf.zu} ms)`);
-      const r = await fetch(`${basis}/api/v1/health/live`);
+      assert.match(without.response, /^HTTP\/1\.1 408 [\s\S]*request_too_slow/, without.response);
+      await sleep(1500);
+      assert.equal(withIt.closed, null, 'a stalling body with login (upload) keeps running: ' + withIt.response);
+      assert.equal(withIt.response, '');
+      for (const end = Date.now() + 8_000; head.closed === null && Date.now() < end; ) await sleep(200);
+      assert.ok(
+        head.closed !== null && head.closed < 18_000,
+        `a stalling header is terminated (after ${head.closed} ms)`,
+      );
+      const r = await fetch(`${basis}/api/v2/health/live`);
       assert.equal(r.status, 200);
     } finally {
-      for (const v of [kopf, ohne, mit]) v.socket.destroy();
+      for (const v of [head, without, withIt]) v.socket.destroy();
     }
   });
 
   await t.test('4xx name no library text, own sentences stay', async () => {
-    const prozent = await fetch(`${basis}/%`);
-    const p = await prozent.json();
-    assert.equal(prozent.status, 400);
-    assert.equal(p.code, 'anfrage_ungueltig', `GET /% → ${JSON.stringify(p)}`);
-    const gzip = await fetch(`${basis}/api/v1/auth/login`, {
+    const percentValue = await fetch(`${basis}/%`);
+    const p = await percentValue.json();
+    assert.equal(percentValue.status, 400);
+    assert.equal(p.code, 'request_invalid', `GET /% → ${JSON.stringify(p)}`);
+    const gzip = await fetch(`${basis}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'content-encoding': 'gzip' },
       body: 'kein gzip',
     });
     const g = await gzip.json();
     assert.equal(gzip.status, 400);
-    assert.equal(g.code, 'anfrage_ungueltig', `gzip → ${JSON.stringify(g)}`);
+    assert.equal(g.code, 'request_invalid', `gzip → ${JSON.stringify(g)}`);
     assert.doesNotMatch(JSON.stringify([p, g]), /decode|header check|zlib/i);
-    const eigen = await als(keksA)('/api/v1/parts', {
+    const own = await as(keksA)('/api/v2/parts', {
       method: 'POST',
       body: JSON.stringify({ part_number: '!!', quantity: 1 }),
     });
-    assert.equal(eigen.status, 400);
-    assert.match((await eigen.json()).error, /part_number darf nur Buchstaben/, 'ein eigener Satz erreicht den Nutzer');
+    assert.equal(own.status, 400);
+    assert.match((await own.json()).error, /part_number darf nur Buchstaben/, 'an own sentence reaches the user');
   });
 
   await t.test('a foreign entry responds like a missing one', async () => {
@@ -230,72 +233,74 @@ test('server limits: slow requests, error texts, foreign hosts', {
         [alice],
       )
     ).id;
-    const umhaengen = async id => {
-      const r = await als(keksB)(`/api/v1/sets/10294-1/acquisitions/${id}`, {
+    const reassign = async id => {
+      const r = await as(keksB)(`/api/v2/sets/10294-1/acquisitions/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ owner_user_id: bob }),
       });
-      return [r.status, await r.json()];
+      // request_id differs per request by design; the rest must not tell the two apart.
+      const { request_id: _rid, ...body } = await r.json();
+      return [r.status, body];
     };
-    const fremd = await umhaengen(acq),
-      fehlt = await umhaengen(2_000_000_000);
-    assert.deepEqual(fremd, fehlt);
+    const fremd = await reassign(acq),
+      missing = await reassign(2_000_000_000);
+    assert.deepEqual(fremd, missing);
     assert.equal(fremd[0], 404);
-    assert.equal(fremd[1].code, 'kaufpreis_nicht_gefunden');
+    assert.equal(fremd[1].code, 'purchase_price_not_found');
     assert.equal(Number((await db.get('SELECT user_id FROM set_acquisitions WHERE id = $1', [acq])).user_id), alice);
   });
 
   await t.test('a foreign Host header is rejected, the own one is not', async () => {
-    const fremd = await withHost(port, 'boese.example', '/api/v1/auth/me');
-    assert.equal(fremd.status, 421, 'ein fremder Host-Kopf wird abgewiesen');
-    assert.equal(JSON.parse(fremd.text).code, 'fremder_host');
-    assert.equal((await withHost(port, `NAS.example.lan:${port}`, '/api/v1/auth/me')).status, 200);
-    assert.equal((await withHost(port, 'nas.example.lan', '/api/v1/auth/me')).status, 200);
-    assert.equal((await withHost(port, 'boese.example', '/api/v1/health/live')).status, 200);
+    const fremd = await withHost(port, 'boese.example', '/api/v2/auth/me');
+    assert.equal(fremd.status, 421, 'a foreign Host header is rejected');
+    assert.equal(JSON.parse(fremd.text).code, 'foreign_host');
+    assert.equal((await withHost(port, `NAS.example.lan:${port}`, '/api/v2/auth/me')).status, 200);
+    assert.equal((await withHost(port, 'nas.example.lan', '/api/v2/auth/me')).status, 200);
+    assert.equal((await withHost(port, 'boese.example', '/api/v2/health/live')).status, 200);
     assert.notEqual((await withHost(port, 'boese.example', '/ca.crt')).status, 421);
     assert.equal(
-      (await withHost(port, 'boese.example', '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status,
+      (await withHost(port, 'boese.example', '/api/v2/auth/me', { authorization: 'Bearer falsch' })).status,
       421,
-      'ein Bearer-Kopf öffnet einen fremden Namen nicht',
+      'a bearer header does not open a foreign name',
     );
     for (const ip of [`192.168.1.20:${port}`, '10.0.0.5', '[fe80::1]:8080']) {
       assert.equal(
-        (await withHost(port, ip, '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status,
+        (await withHost(port, ip, '/api/v2/auth/me', { authorization: 'Bearer falsch' })).status,
         401,
-        `ein IP-Host (${ip}) geht an die Anmeldung`,
+        `an IP host (${ip}) goes to the login`,
       );
     }
     assert.equal(
-      (await withHost(port, '1.2.3.4.boese.example', '/api/v1/auth/me')).status,
+      (await withHost(port, '1.2.3.4.boese.example', '/api/v2/auth/me')).status,
       421,
-      'ein Name mit Ziffern ist keine Adresse',
+      'a name with digits is no address',
     );
   });
 
   await t.test('the link alone confirms nothing, only the POST', async () => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'email-bestaetigen|%'");
     // A link from an older mail (?token=) becomes a fragment before the page loads.
-    const alt = await fetch(`${basis}/verify?token=${MAILTOKEN}`, { redirect: 'manual' });
-    assert.equal(alt.status, 303, 'ein alter Link mit ?token= wird umgeleitet');
-    assert.equal(alt.headers.get('location'), `/verify#token=${MAILTOKEN}`);
+    const alt = await fetch(`${basis}/verify?token=${MAIL_TOKEN}`, { redirect: 'manual' });
+    assert.equal(alt.status, 303, 'an old link with ?token= is redirected');
+    assert.equal(alt.headers.get('location'), `/verify#token=${MAIL_TOKEN}`);
     assert.equal(alt.headers.get('cache-control'), 'no-store');
-    const seite = await fetch(`${basis}/verify`, { redirect: 'manual' });
-    assert.equal(seite.status, 200);
-    assert.match(seite.headers.get('content-type'), /text\/html/);
-    assert.equal(seite.headers.get('cache-control'), 'no-store');
-    assert.match(await seite.text(), /id="panel-verify"/);
-    const stand = async () =>
+    const page = await fetch(`${basis}/verify`, { redirect: 'manual' });
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get('content-type'), /text\/html/);
+    assert.equal(page.headers.get('cache-control'), 'no-store');
+    assert.match(await page.text(), /id="panel-verify"/);
+    const state = async () =>
       (await db.get('SELECT email_verified FROM users WHERE id = $1', [unconfirmed])).email_verified;
-    assert.equal(await stand(), false, 'der Link allein bestätigt nichts');
+    assert.equal(await state(), false, 'the link alone confirms nothing');
     const confirm = token =>
-      fetch(`${basis}/api/v1/auth/email-bestaetigen`, {
+      fetch(`${basis}/api/v2/auth/confirm-email`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token }),
       }).then(async r => [r.status, await r.json()]);
-    assert.deepEqual((await confirm('falsch'))[1].code, 'bestaetigungslink_ungueltig');
-    assert.deepEqual(await confirm(MAILTOKEN), [200, { success: true }]);
-    assert.equal(await stand(), true);
-    assert.equal((await confirm(MAILTOKEN))[0], 400, 'ein zweiter Klick meldet keinen zweiten Erfolg');
+    assert.deepEqual((await confirm('falsch'))[1].code, 'confirmation_link_invalid');
+    assert.deepEqual(await confirm(MAIL_TOKEN), [200, { success: true }]);
+    assert.equal(await state(), true);
+    assert.equal((await confirm(MAIL_TOKEN))[0], 400, 'a second click reports no second success');
   });
 });

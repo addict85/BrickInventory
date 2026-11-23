@@ -6,57 +6,57 @@
  */
 
 /** @param {any} s */
-const art = s => s._zod.def.type;
+const kind = s => s._zod.def.type;
 
 /**
  * @param {any} schema  zod schema
- * @param {any} wert    part from the test (may be missing)
+ * @param {any} value    part from the test (may be missing)
  */
-function fill(schema, wert) {
+function fill(schema, value) {
   const def = schema._zod.def;
-  switch (art(schema)) {
+  switch (kind(schema)) {
     case 'optional':
-      return wert === undefined ? undefined : fill(def.innerType, wert);
+      return value === undefined ? undefined : fill(def.innerType, value);
     case 'nullable':
-      return wert == null ? null : fill(def.innerType, wert);
+      return value == null ? null : fill(def.innerType, value);
     case 'object': {
-      if (wert !== undefined && (wert === null || typeof wert !== 'object' || Array.isArray(wert))) return wert;
-      const quelle = wert ?? {};
-      const aus = {};
-      for (const [k, v] of Object.entries(quelle)) if (!Object.hasOwn(def.shape, k)) aus[k] = v;
+      if (value !== undefined && (value === null || typeof value !== 'object' || Array.isArray(value))) return value;
+      const source = value ?? {};
+      const out = {};
+      for (const [k, v] of Object.entries(source)) if (!Object.hasOwn(def.shape, k)) out[k] = v;
       for (const [k, s] of Object.entries(def.shape)) {
-        const v = fill(s, quelle[k]);
-        if (v !== undefined) aus[k] = v;
+        const v = fill(s, source[k]);
+        if (v !== undefined) out[k] = v;
       }
-      return aus;
+      return out;
     }
     case 'array':
-      return Array.isArray(wert) ? wert.map(x => fill(def.element, x)) : (wert ?? []);
+      return Array.isArray(value) ? value.map(x => fill(def.element, x)) : (value ?? []);
     case 'record': {
-      if (!wert || typeof wert !== 'object') return wert ?? {};
-      return Object.fromEntries(Object.entries(wert).map(([k, v]) => [k, fill(def.valueType, v)]));
+      if (!value || typeof value !== 'object') return value ?? {};
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fill(def.valueType, v)]));
     }
     case 'union': {
-      if (wert === undefined) return fill(def.options[0], undefined);
+      if (value === undefined) return fill(def.options[0], undefined);
       // The first option that matches after completing.
       for (const o of def.options) {
-        const v = fill(o, wert);
+        const v = fill(o, value);
         if (o.safeParse(v).success) return v;
       }
-      return wert;
+      return value;
     }
     case 'string':
-      return wert ?? '';
+      return value ?? '';
     case 'number':
-      return wert ?? 0;
+      return value ?? 0;
     case 'boolean':
-      return wert ?? false;
+      return value ?? false;
     case 'literal':
-      return wert ?? def.values[0];
+      return value ?? def.values[0];
     case 'enum':
-      return wert ?? Object.values(def.entries)[0];
+      return value ?? Object.values(def.entries)[0];
     default:
-      return wert;
+      return value;
   }
 }
 

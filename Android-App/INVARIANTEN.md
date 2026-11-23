@@ -28,7 +28,7 @@ ML-Kit-Client), braucht `DisposableEffect { onDispose { … } }`. Test: `Resourc
 **Doppelklick-Sperre.** `confirmAddBarcode()` prüft `hinzufuegen` zuerst und setzt es synchron
 **vor** `viewModelScope.launch`; jeder Ausgang und `cancelBarcode()` setzt es zurück. Der
 gesperrte Knopf ist nur Rückmeldung, kein Schutz.
-Dateien: `collection/ui/viewmodel/EntryViewModel.kt`, `collection/ui/ZustandErfassung.kt`,
+Dateien: `collection/ui/viewmodel/EntryViewModel.kt`, `collection/ui/EntryStates.kt`,
 `collection/ui/dialogs/BarcodeResultDialog.kt` · Test: `EntryViewModelTest`
 
 **Ein Barcode-Pfad.** Scanner → `vm.resolveBarcode()` → `repo.resolveBarcode()`; keine
@@ -43,48 +43,48 @@ und quittiert. Test: `ManualEntryAfterScanTest`
 
 **Zwei Preisfelder.** Sets schicken `purchase_price`, Teile und Figuren `unit_price`; der
 Rumpf entsteht nur über `changeForSet()` bzw. `changeForPiece()`.
-Datei: `contract/Ergaenzungen.kt` · Test: `PurchasesViewModelTest`
+Datei: `contract/Supplements.kt` · Test: `PurchasesViewModelTest`
 
 ## Sitzung und Netz
 
 **HTTP 401.** `sicherAufrufen()` meldet ihn als `Ergebnis.Fehler.Abgewiesen`; `abgeglichen()` und
 `reconciledSingle()` fallen dann **nicht** auf die Ablage zurück; der Interceptor meldet nur, wenn ein Token mitging
 und es der eigene Server war.
-Dateien: `data/repository/Abruf.kt`, `app/di/AppModule.kt`, `data/SessionExpiredSignal.kt`,
-`session/SitzungsDienst.kt` · Test: `SessionAndLifecycleTest`
+Dateien: `data/repository/Fetch.kt`, `app/di/AppModule.kt`, `data/SessionExpiredSignal.kt`,
+`session/SessionService.kt` · Test: `SessionAndLifecycleTest`
 
 **Token nur an die eigene Herkunft** (Schema, Host, Port, Basispfad). Was eine Antwort
 auslöst, gilt nur der Sitzung, in der die Anfrage hinausging (Generation der
 `TokenLimit`); Umleitungen bleiben in der Herkunft. Abmelden entwertet am Server oder
 über `EntwertungsWorker`; ein gesperrter Keystore heisst „später“, nie „abgemeldet“.
-Dateien: `network/di/ServerWaechter.kt`, `data/Entwertung.kt`, `security/Tresorbefund.kt` ·
-Tests: `ServerwechselTest`, `TokenSwapTest`, `RedirectTest`, `BasePathTest`,
+Dateien: `network/di/ServerGuard.kt`, `data/Redemption.kt`, `security/VaultFinding.kt` ·
+Tests: `ServerSwitchTest`, `TokenSwapTest`, `RedirectTest`, `BasePathTest`,
 `RedemptionTest`, `VaultLockTest`
 
 **Schrittschutz nur mit Attestation.** Der Geräteschlüssel entsteht mit der Nonce des
 Servers und geht nur als Kette hinaus; jede Absage (auch 404) hält an, es gibt keinen
 blossen Schlüssel und keinen Rückfall auf die Prüfung im Gerät. Erzeugt zuerst im
 StrongBox, nur ohne Chip im TEE (`strongBoxFirst`).
-Dateien: `ui/components/Schluesselbindung.kt`, `data/repository/SchrittbindungImpl.kt`,
-`ui/components/StrongBoxZuerst.kt` · Tests: `SchluesselbindungTest`, `SchrittbindungTest`,
+Dateien: `ui/components/KeyBinding.kt`, `data/account/StepBindingImpl.kt`,
+`ui/components/StrongBoxFirst.kt` · Tests: `KeyBindingTest`, `StepBindingTest`,
 `StrongBoxFirstTest`
 
 **Ein OkHttp-Stack.** Ausserhalb von core-data kein eigener `OkHttpClient.Builder()`: Er
 liefe am Wächter vorbei (Token, Klartext-Verbot, 401). Abweichende Zeiten über `newBuilder()`
 des injizierten Clients. core-data baut drei Grundlagen: Server (mit Wächter), Update (nur
 GitHub), Entwertung (ohne Wächter, mit dem Token des Auftrags).
-Dateien: `finances/ui/pdf/AnleitungsLader.kt`, `data/di/ServerClient.kt` · Test: `AnleitungsDownloadTest`
+Dateien: `finances/ui/pdf/InstructionLoader.kt`, `data/di/ServerClient.kt` · Test: `InstructionDownloadTest`
 
 **Ergebnis hat zwei Varianten.** Kein `else` in einem `when` über `Ergebnis`: Eine neue
 Variante soll den Bau dort brechen, wo sie behandelt werden muss.
-Datei: `data/repository/Ergebnis.kt` · Test: `MediaAuthTest`
+Datei: `data/repository/Outcome.kt` · Test: `MediaAuthTest`
 
 **Fehlermeldungen an einer Stelle.** Die Datenschicht meldet die Art des Fehlers, keinen
 Satz; den Satz bildet `AppTexte.meldung()`, die Meldung des Servers hat Vorrang.
 `technisch` gehört ins Log, nie in die Anzeige. Ein Bildschirmzustand trägt `Laden<T>` für Abrufe,
 `Vorgang` für Handlungen (läuft, fertig, gescheitert mit `Meldung`), keinen fertigen Satz und
-kein `laeuft: Boolean`; alte Formen zählt `QuelltextRatscheTest`.
-Tests: `ErrorMessageLayerTest`, `AppTextsTest`, `LoadTest`, `OperationTest`, `QuelltextRatscheTest`
+kein `laeuft: Boolean`; alte Formen zählt `SourceRatchetTest`.
+Tests: `ErrorMessageLayerTest`, `AppTextsTest`, `LoadTest`, `OperationTest`, `SourceRatchetTest`
 
 **Eine Json-Konfiguration.** Server, Ablage und Cache lesen und schreiben mit `BrickJson`
 (per DI als `Json`); keine zweite `Json { }`.
@@ -96,27 +96,27 @@ Datei: `model/json/BrickJson.kt` · Test: `BrickJsonTest`
 (Fassung 1) abgelegt, nie als Server-Anfrage; eine unverträgliche Änderung bekommt eine
 neue Fassung daneben. Lesen schreibt nie; ein unlesbarer Posten wird über
 `cleanUnreadable()` als verworfen gemeldet, nie still gelöscht.
-Dateien: `offline/InitialForm.kt`, `offline/room/RoomAblagen.kt`, `data/local/Abgleich.kt` ·
-Tests: `InitialFormTest`, `InventoryDatabaseTest`, `AusgangsmelderTest`
+Dateien: `offline/InitialForm.kt`, `offline/room/RoomStores.kt`, `data/local/Reconcile.kt` ·
+Tests: `InitialFormTest`, `InventoryDatabaseTest`, `OutboxNotifierTest`
 
 **Eine Ablage.** Was offline gelten soll, liegt als Fach (`StockKind`) in der Room-Ablage,
 auch eine einzelne Antwort ohne Liste (`reconciledSingle()`); kein zweiter Plattenspeicher
 daneben. Den früheren (`noBackupFilesDir/api-*`) räumt `cleanOldResponseStore()`.
-Jedes Fach liegt in eigener `…Zeile`-Form (`Ablagezeilen.kt`), nie als Servermodell; eine
+Jedes Fach liegt in eigener `…Zeile`-Form (`StoreRows.kt`), nie als Servermodell; eine
 unverträgliche Änderung bekommt eine neue Fassung (`Ablageform.fassung`), ältere bleiben lesbar.
-Dateien: `offline/Offlineablage.kt`, `offline/Ablageform.kt`, `data/repository/Abruf.kt`,
+Dateien: `offline/OfflineStore.kt`, `offline/StoreShape.kt`, `data/repository/Fetch.kt`,
 `data/cache/CacheOwner.kt` · Tests: `CacheAreaTest`, `RepoCacheFallbackTest`, `StoreVersionTest`
 
 **Schema.** Wer das Room-Schema ändert, erhöht die Fassung, schreibt eine Migration und
-checkt das Schema unter `core-offline/schemas` ein. Test: `BestandMigrationTest`
+checkt das Schema unter `core-offline/schemas` ein. Test: `StockMigrationTest`
 
 ## Zustand und Module
 
 **Zustand nach Domänen.** `AppUiState` hält nur die Sitzung, jeder Bereich hat seinen Fluss;
-wer nur einen Teil braucht, leitet ihn mit `abgeleitet { }` ab. Jede Feature-Datei schreibt
-nur Felder ihrer Domäne; Ausnahmen stehen begründet im Test. Abmelden leert jeden Bereich.
-Dateien: `session/AppUiState.kt`, `session/AbgeleiteterZustand.kt` · Tests:
-`StateFlowWidthTest`, `DerivedStateTest`, `StateDomainBoundaryTest`, `PartsViewModelTest`
+wer nur einen Teil braucht, leitet ihn mit `map`/`combine` und `stateIn` im viewModelScope ab.
+Jede Feature-Datei schreibt nur Felder ihrer Domäne; Ausnahmen stehen begründet im Test. Abmelden
+leert jeden Bereich. Dateien: `session/AppUiState.kt`, `session/Session.kt` · Tests:
+`StateFlowWidthTest`, `SessionStateTest`, `StateDomainBoundaryTest`, `PartsViewModelTest`
 
 **Modulkanten.** app → feature-* → core-*, kein Bereich kennt einen anderen; die Kernmodule
 in fester Schichtung (build-logic, `Modulkanten`). Zustand und alles darunter ohne Compose
@@ -124,16 +124,16 @@ in fester Schichtung (build-logic, `Modulkanten`). Zustand und alles darunter oh
 Flüssen und Rückrufen, nie den AppViewModel. Ein ViewModel liegt nur mit Grund in
 core-state (`zustandsViewModels`).
 Das Wire-Format liegt in core-contract (kennt core-model, nicht umgekehrt), als ein Satz
-Typen, erzeugt aus `Web-App/docs/openapi.json` (`contract/Vertrag.kt`, nie von Hand; Namen und
+Typen, erzeugt aus `Web-App/docs/openapi-v2.json` (`contract/Contract.kt`, nie von Hand; Namen und
 Fachtypen in `Web-App/scripts/contract-kotlin-mapping.js`). Nur core-data bindet
 es ein (`implementation`, `Modulkanten.wireKenner`), die Ablage hält Fachtypen; jedes Repository gibt Fachtypen (`model.fach`)
 zurück, ein `success: false` ist eine `Absage`.
-Datei: `navigation/Bereichsumgebung.kt` · Tests: `ModulgrenzenTest`, `SchichtregelnTest`
+Datei: `navigation/AreaEnvironment.kt` · Tests: `ModuleBoundariesTest`, `LayerRulesTest`
 
 **Bildschirme sind zustandslos.** Nur ein Composable `…Route` nimmt ein ViewModel und reicht
 Zustand und eine `…Aktionen`-Schnittstelle weiter; so lässt sich jeder Bildschirm ohne Hilt
 zeigen und prüfen. Geladen wird im ViewModel, sobald jemand den Zustand beobachtet
-(`observeLoadOn`, `loadPerServer`, `Observed`), nie per `LaunchedEffect` (`QuelltextRatscheTest`). Dialoge stehen in `ui/dialogs/`, ihr Aufruf samt Bedingung im
+(`observeLoadOn`, `loadPerServer`, `Observed`), nie per `LaunchedEffect` (`SourceRatchetTest`). Dialoge stehen in `ui/dialogs/`, ihr Aufruf samt Bedingung im
 Navigationsaufbau; grosse Bildschirme teilen sich in `*Sections.kt` (detekt `LongMethod`).
 
 **Delegierte Zustands-Properties** (`val state by …collectAsStateWithLifecycle()`) erlauben
@@ -149,12 +149,12 @@ Listenzustand liegt oberhalb des NavHost. Im Helfer: Merker `remember`, nie
 `vergiss(…)`; Reiter antippen → `vergissReiter(route)` **vor** der Navigation. Ausnahme:
 der Katalog merkt sich seine Position selbst (`CatalogScreen.kt`).
 Dateien: `ui/ScrollMemory.kt`, `AppNavigation.kt`, `MainScaffold.kt`,
-`collection/ui/SammlungGraph.kt`, `parts/ui/TeileGraph.kt`, `finances/ui/FinanzenGraph.kt` ·
-Tests: `ListScrollPositionTest`, `TabOpensAtTopTest`
+`collection/ui/CollectionGraph.kt`, `parts/ui/PartsGraph.kt`, `finances/ui/FinancesGraph.kt` ·
+Tests: `ListScrollPositionTest`, `TabScrollPositionTest`, `TabOpensAtTopTest`
 
 **Endlos-Scroll.** Die Ladesperre wird synchron vor dem `launch` gesetzt und in jedem
 Ausgang gelöst; beim Anhängen werden bekannte Schlüssel ausgesiebt.
-Datei: `collection/ui/Galerie.kt` · Test: `GalleryTest`
+Datei: `collection/ui/Gallery.kt` · Test: `GalleryTest`
 
 **Schlüssel.** Stehen `items(…, key = …)` und ein `item { }` in derselben Liste, trägt auch
 dieser einen Schlüssel. Test: `LazyGridItemKeyTest`
@@ -172,23 +172,23 @@ Dateien: `services/service/CsvImportService.kt`, `services/service/PdfExportServ
 **Kein FileProvider.** Die Teileliste gibt nur der eigene `TeilelistenProvider` weiter:
 nicht exportiert, Leserecht nur über die Auswahl des Systems, Klartext nur im Speicher
 (Proxy-Deskriptor). Auf der Platte liegt sie mit AES-GCM verschlüsselt.
-Dateien: `data/service/TeilelistenProvider.kt`, `data/util/Teilelistentresor.kt` ·
+Dateien: `data/service/PartListsProvider.kt`, `data/util/PartListVault.kt` ·
 Tests: `ServicePolishTest`, `PartListsStoreTest`, `InvariantsReferencesTest`
 
 **Update nur aus signierter Beschreibung.** Ohne gültige Signatur eines
 Beschreibungsschlüssels gilt keine Beschreibung, auch keine unsignierte `version.json`.
-Datei: `update/util/UpdateSignatur.kt` · Tests: `UpdateFreshTest`, `InvariantsReferencesTest`
+Datei: `update/util/UpdateSignature.kt` · Tests: `UpdateFreshTest`, `InvariantsReferencesTest`
 
 **Ein CSV-Statuspfad.** SSE zuerst, Polling nur als Rückfall, die Statuslogik in
 `applyStatus()` samt Anlaufschutz. Dateien: `services/service/CsvImportService.kt`,
 `data/CsvImportSseClient.kt` · Test: `ResourceAndCacheTest`
 
 **PDF-Cache mit Budget.** `prunePdfCache()` hält `PDF_CACHE_BUDGET_BYTES`, älteste zuerst,
-ohne die gerade angeforderte Datei. Datei: `finances/ui/pdf/AnleitungsLader.kt` · Tests:
+ohne die gerade angeforderte Datei. Datei: `finances/ui/pdf/InstructionLoader.kt` · Tests:
 `ResourceAndCacheTest`, `InstructionStoreTest`
 
 **Abmelden leert alle Caches**, den Bild-Speicher vor dem Bild-Plattencache.
-Datei: `data/SitzungsBereinigung.kt` · Test: `ResourceAndCacheTest`
+Datei: `data/SessionCleanup.kt` · Test: `ResourceAndCacheTest`
 
 **Ein ImageLoader**, im DI-Modul, nie in `onCreate()`. Dateien: `app/di/AppModule.kt`,
 `MainActivity.kt` · Test: `SessionAndLifecycleTest`
@@ -202,11 +202,11 @@ Datei: `management/ui/screens/MonitoringScreen.kt` · Test: `SessionAndLifecycle
 
 **Abbrechen links, Hauptknopf rechts.** AlertDialog ordnet selbst; jede andere Reihe mit
 Abbrechen und Hauptknopf ist eine `Knopfzeile`. Jeder AlertDialog liegt auf
-`fensterFlaeche()`. Datei: `ui/components/Dialoge.kt` · Test: `QuelltextRatscheTest`
+`fensterFlaeche()`. Datei: `ui/components/Dialogs.kt` · Test: `SourceRatchetTest`
 
 **Absenden ist nie gesperrt, weil etwas fehlt.** Der Hauptknopf bleibt antippbar, markiert
 die falschen Felder und setzt den Cursor ins erste; gesperrt nur während des Sendens, dann
-mit `lockedColors()` (4,5:1). Dateien: `ui/components/PasswortWechsel.kt`, `ui/theme/Gesperrt.kt` ·
+mit `lockedColors()` (4,5:1). Dateien: `ui/components/PasswordSwitch.kt`, `ui/theme/LockedState.kt` ·
 Tests: `PasswordSwitchTest`, `LockedContrastTest`, `ScaffoldAndFormTest`
 
 **Einfachwahl ist kein Chip.** Zwei bis vier Möglichkeiten: `SegmentChoice` (bei grosser Schrift
@@ -224,12 +224,12 @@ Test: `PriceChartMathTest`
 
 **Bewertung je Erfassung.** Jede Erfassung mit dem Marktpreis ihres Zustands; der Server
 rechnet, die App rechnet nicht nach. Dateien: `finances/ui/screens/FinanceScreen.kt`,
-`contract/Vertrag.kt` · Test: `PriceHistorySerializationTest`
+`contract/Contract.kt` · Test: `PriceHistorySerializationTest`
 
 **Beträge sind Geld, Zeitpunkte Instant.** Fachtypen tragen Beträge als `Geld`
 (Zehntausendstel wie der Server), gerundet auf Rappen erst in der Anzeige; Zeitpunkte als
 `Instant`, der Kalendertag ist der in UTC. Double und Text gibt es nur auf der Leitung.
-Dateien: `model/domain/Geld.kt`, `model/util/DatumFormat.kt` · Tests: `MoneyTest`, `QuelltextRatscheTest`
+Dateien: `model/domain/Money.kt`, `model/util/DatumFormat.kt` · Tests: `MoneyTest`, `SourceRatchetTest`
 
 ## Bau und Plattform
 
@@ -255,13 +255,13 @@ Test: `ResourceAndCacheTest`
 | geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`VouchersRepository.withoutSecret`), ein Gutschein-PDF nur im Speicher (memfd) |
 | vertraulich | Sets, Teile, Figuren, Merkliste, Preisalarme, Lagerorte, Bewertungen, Gutschein-Nummer und -Betrag, Kennzahlen, Katalog-Metadaten (Room `bestand.db`), Ausgang | SQLCipher |
 | vertraulich | Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `StoreCipher` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
-| vertraulich | Server-Adresse, Benutzername, Herkunft des Tokens, Widget-Zahlen, Abmeldeaufträge (WorkManager), gescheiterte Entwertungen | `Vertrauenschiffre.verschluessleDetail`: eigener Schlüssel, nur entsperrt (`setUnlockedDeviceRequired`), überlebt das Abmelden; gesperrt heisst „später“, nie „weg“ (`VertrauenschiffreTest`, `TokenVaultTest`, `AuftragsablageTest`) |
+| vertraulich | Server-Adresse, Benutzername, Herkunft des Tokens, Widget-Zahlen, Abmeldeaufträge (WorkManager), gescheiterte Entwertungen | `Vertrauenschiffre.verschluessleDetail`: eigener Schlüssel, nur entsperrt (`setUnlockedDeviceRequired`), überlebt das Abmelden; gesperrt heisst „später“, nie „weg“ (`TrustCipherTest`, `TokenVaultTest`, `JobStoreTest`) |
 | vertraulich | Konto- und Lagerortfilter | nur im Speicher (`ScopeFilterStorage`); Reste früherer Fassungen räumt `PlaintextRemainder` (`PlaintextRemainderTest`) |
 | vertraulich | Teileliste-PDF | `StoreCipher` (`Teilelistentresor`); Klartext nur im Speicher, solange die Ziel-App über den `TeilelistenProvider` liest; nach 30 Minuten gelöscht |
 | Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre`, überlebt das Abmelden, arbeitet auch gesperrt (jede TLS-Verbindung fragt); Eintragsnamen per HMAC, kein Host im Namen; unlesbar heisst „nicht vertraut“ (`TrustEncryptedTest`) |
 
 Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
-(`NetzsicherheitTest`), beim Abmelden geleert, jede Ablage gehört Server und Konto
+(`NetworkSecurityTest`), beim Abmelden geleert, jede Ablage gehört Server und Konto
 (`CacheAreaTest`). Ein neues Fach in `StockKind` ist rot, bis es hier eingeordnet ist.
 
 ## Bewusst getragen

@@ -14,7 +14,7 @@ const db = testData();
 // parts.bl_part_number, and migration 0037 deleted the column (the
 // BrickLink number now stands in bl_mapping). Postgres removes
 // dependent indexes itself on DROP COLUMN.
-const EXPECTED = ['idx_set_figuren_fig', 'idx_sets_setnum'];
+const EXPECTED = ['idx_set_minifigs_fig', 'idx_sets_set_num'];
 
 /**
  * Fetch the plan of a query — without the table scan escape.
@@ -50,17 +50,17 @@ test('request path: the three indexes exist and the planner can take them', asyn
 
     // ── 1. Created ─────────────────────────────────────────────────────────
     const da = (
-      await db.all('SELECT indexname FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)', [
+      await db.all('SELECT indexname AS "indexName" FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)', [
         'public',
         EXPECTED,
       ])
     )
-      .map(r => r.indexname)
+      .map(r => r.indexName)
       .sort();
     assert.deepEqual(
       da,
       [...EXPECTED].sort(),
-      `db/database.ts legt nicht alle erwarteten Indizes an — gefunden: ${da.join(', ') || '(keine)'}`,
+      `db/database.ts does not create all expected indexes — found: ${da.join(', ') || '(none)'}`,
     );
 
     // COUNTER-CHECK: the query must not simply confirm everything.
@@ -68,14 +68,14 @@ test('request path: the three indexes exist and the planner can take them', asyn
       'public',
       ['idx_gibt_es_nicht'],
     ]);
-    assert.equal(invented.length, 0, 'Gegenprobe: die Index-Abfrage meldet auch erfundene Namen als vorhanden');
+    assert.equal(invented.length, 0, 'Counter-check: the index query also reports invented names as present');
 
     // ── 2. The planner can take them ───────────────────────────────────────
     //
     // The BrickLink lookup first, and for that the
     // MIGRATIONS are needed: bl_mapping is created in 0037, not in
-    // db/basis.sql (a table belongs in exactly one place,
-    // scripts/check-schema-am-start.js checks that).
+    // db/base.sql (a table belongs in exactly one place,
+    // scripts/check-schema-at-start.js checks that).
     const c0 = await db.pool.connect();
     try {
       await _req('db/migrate.js').runMigrations(c0);
@@ -91,14 +91,14 @@ test('request path: the three indexes exist and the planner can take them', asyn
     assert.match(
       blPlan,
       /Index (Only )?Scan.* on bl_mapping/,
-      `Die BrickLink-Nachschlage laeuft nicht ueber einen Index:\n${blPlan}`,
+      `The BrickLink lookup does not run via an index:\n${blPlan}`,
     );
 
     const minifigPlan = await plan(`SELECT set_number FROM set_minifigs_catalog WHERE fig_number = 'x' LIMIT 1`);
-    assert.match(minifigPlan, /idx_set_figuren_fig/, `Plan:\n${minifigPlan}`);
+    assert.match(minifigPlan, /idx_set_minifigs_fig/, `Plan:\n${minifigPlan}`);
 
     const setPlan = await plan(`SELECT user_id FROM sets WHERE set_number = 'x' ORDER BY user_id`);
-    assert.match(setPlan, /idx_sets_setnum/, `Plan:\n${setPlan}`);
+    assert.match(setPlan, /idx_sets_set_num/, `Plan:\n${setPlan}`);
 
     // COUNTER-CHECK for the BrickLink lookup: a column with NO index on it
     // must lead to a table scan. Otherwise the
@@ -108,7 +108,7 @@ test('request path: the three indexes exist and the planner can take them', asyn
     assert.match(
       withoutIndex,
       /Seq Scan on bl_mapping/,
-      `Gegenprobe: auch ohne Index kam kein Tabellenscan:\n${withoutIndex}`,
+      `Counter-check: even without an index there was no table scan:\n${withoutIndex}`,
     );
   } finally {
     await db.pool.end().catch(() => {});

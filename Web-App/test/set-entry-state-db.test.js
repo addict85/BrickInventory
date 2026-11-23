@@ -1,5 +1,7 @@
 /**
  * When topping up a set, price and noted condition must match TOGETHER.
+ *
+ * Counter-check: userDefaultCondition() (src/settings/settings.ts) ignores a stored 'U' → red “topping up without a condition follows the user's default”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -13,10 +15,10 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 const { setUserSetting } = _req('src/settings/userSetting.js');
-const { setErfassen } = require('./helpers/sources').areaPage('sets');
+const { acquireSet } = require('./helpers/sources').areaPage('sets');
 
 test("topping up without a condition follows the user's default", { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const name = `zst_${process.pid}`;
   const SET = `90${String(process.pid).slice(-4)}-1`;
@@ -32,35 +34,35 @@ test("topping up without a condition follows the user's default", { concurrency:
     await setUserSetting(uid, 'user_default_condition', 'U');
 
     // ISOLATE the top-up path
-    await holdsSet(db, uid, SET, 1, { zustand: 'N' });
+    await holdsSet(db, uid, SET, 1, { condition: 'N' });
 
     // Acquisition WITHOUT a condition. Pass the price along so that no network call
     // is needed; this is not about the price.
-    await setErfassen({ requester: uid, setNumber: SET, menge: 1, kaufpreis: 20, ifPresent: 'aufstocken' });
+    await acquireSet({ requester: uid, setNumber: SET, quantity: 1, kaufpreis: 20, ifPresent: 'aufstocken' });
 
-    const zeilen = await db.all(
+    const lines = await db.all(
       `SELECT id, quantity, condition FROM set_acquisitions
         WHERE user_id=$1 AND set_number=$2 ORDER BY id`,
       [uid, SET],
     );
     assert.equal(
-      zeilen.length,
+      lines.length,
       2,
-      `${zeilen.length} Erfassung(en): ${JSON.stringify(zeilen)}. Erwartet sind ` +
-        'ZWEI — die Vorbedingung mit "N" und die des Aufstock-Wegs mit dem ' +
-        'Standard "U". Eine einzige hiesse, dass die beiden Zustände wieder ' +
-        'verschmolzen werden.',
+      `${lines.length} acquisition(s): ${JSON.stringify(lines)}. Expected are ` +
+        'TWO — the precondition with "N" and the one of the top-up path with the ' +
+        'default "U". A single one would mean that the two conditions are ' +
+        'merged again.',
     );
-    assert.equal(zeilen[0].condition, 'N', 'Vorbedingung: die Zeile des Helfers');
+    assert.equal(lines[0].condition, 'N', "precondition: the helper's row");
 
-    const neue = zeilen[1];
+    const newOnes = lines[1];
     assert.equal(
-      neue.condition,
+      newOnes.condition,
       'U',
-      `Die Erfassung des Aufstock-Wegs steht als "${neue.condition}" in der ` +
-        'Datenbank, obwohl der Standard des Nutzers "U" ist und der Preis genau ' +
-        'dafür geholt wurde. Preis und Vermerk müssen denselben Zustand meinen — ' +
-        'sonst zählt der Eintrag in der Finanzansicht in der falschen Gruppe.',
+      `The acquisition of the top-up path is stored as "${newOnes.condition}" in the ` +
+        'database, although the user\'s default is "U" and the price was fetched exactly ' +
+        'for that. Price and note must mean the same condition — ' +
+        'otherwise the entry counts in the wrong group in the finance view.',
     );
   } finally {
     await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});

@@ -1,7 +1,7 @@
-import type { DbInterface, Treffer } from '../../../db/database';
+import type { DbInterface, Hit } from '../../../db/database';
 
-export async function hatInstructions(tx: DbInterface, uid: number, sn: string): Promise<boolean> {
-  return !!(await tx.get<Treffer>('SELECT 1 AS ok FROM instructions WHERE user_id=$1 AND set_number=$2 LIMIT 1', [
+export async function hasInstructions(tx: DbInterface, uid: number, sn: string): Promise<boolean> {
+  return !!(await tx.get<Hit>('SELECT 1 AS ok FROM instructions WHERE user_id=$1 AND set_number=$2 LIMIT 1', [
     uid,
     sn,
   ]));
@@ -12,14 +12,14 @@ export async function removeInstructions(tx: DbInterface, uid: number, sn: strin
 }
 
 /** Parts and figures are copied by the inventory (src/inventory/shared.ts). */
-export async function copyInstructions(tx: DbInterface, sn: string, von: number, nach: number): Promise<number> {
+export async function copyInstructions(tx: DbInterface, sn: string, fromValue: number, nach: number): Promise<number> {
   return (
     (
       await tx.run(
         `INSERT INTO instructions (user_id, set_number, url, description, local_path)
                    SELECT $1, set_number, url, description, local_path
                      FROM instructions WHERE user_id = $2 AND set_number = $3`,
-        [nach, von, sn],
+        [nach, fromValue, sn],
       )
     ).changes ?? 0
   );

@@ -1,6 +1,6 @@
 /**
  * The services of an area read and write via the access with which
- * buildServices() built them, and a unit of work (k.transaktion) applies
+ * buildServices() built them, and a unit of work (k.transact) applies
  * entirely or not at all.
  *
  * Counter-checks (13.11.2026):
@@ -13,51 +13,54 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const quellen = require('./helpers/sources');
+const sources = require('./helpers/sources');
 const { accessOrSkip } = require('./helpers/db');
 const { holdsPart } = require('./helpers/inventory');
 
-const _req = quellen.buildAndRequire();
-const testAccess = () => quellen.testAccess();
+const _req = sources.buildAndRequire();
+const testAccess = () => sources.testAccess();
 test.after(() => testAccess().pool.end());
 
 /** An access that counts its queries; otherwise the same as the test's. */
 function counting(z) {
-  const zaehler = { n: 0 };
-  const mit =
+  const counter = { n: 0 };
+  const withIt =
     f =>
     (...a) => {
-      zaehler.n++;
+      counter.n++;
       return f(...a);
     };
-  return { zaehler, zugang: { ...z, all: mit(z.all), get: mit(z.get), run: mit(z.run), exec: mit(z.exec) } };
+  return {
+    counter,
+    zugang: { ...z, all: withIt(z.all), get: withIt(z.get), run: withIt(z.run), exec: withIt(z.exec) },
+  };
 }
 
 test('services take the access from their context, not from the process', async t => {
   if (!(await accessOrSkip(t, _req))) return;
   const { buildServices } = _req('startup/wiring.js');
   // Test data as the owner role (bypassing row security), the service asks as the runtime role.
-  const eigen = quellen.testData();
+  const own = sources.testData();
   const { asRequest } = _req('src/infra/accountContext.js');
   const db = testAccess();
   const name = `kontext_${process.pid}`;
-  await eigen.run('DELETE FROM users WHERE username = $1', [name]);
+  await own.run('DELETE FROM users WHERE username = $1', [name]);
   const uid = (
-    await eigen.get("INSERT INTO users (username, password_hash, email_verified) VALUES ($1, 'x', true) RETURNING id", [
+    await own.get("INSERT INTO users (username, password_hash, email_verified) VALUES ($1, 'x', true) RETURNING id", [
       name,
     ])
   ).id;
-  t.after(() => eigen.run('DELETE FROM users WHERE id = $1', [uid]));
-  await holdsPart(eigen, uid, '3001', { menge: 4 });
+  t.after(() => own.run('DELETE FROM users WHERE id = $1', [uid]));
+  await holdsPart(own, uid, '3001', { quantity: 4 });
 
-  const { zaehler, zugang } = counting(db);
-  const d = buildServices(zugang);
+  const { counter, zugang: access } = counting(db);
+  const d = buildServices(access);
   const stats = await asRequest({ session: { userId: uid } }, () => d.parts.partStats(uid));
-  assert.equal(Number(stats.unique_parts), 1, 'das angelegte Teil kommt an');
-  assert.ok(zaehler.n > 0, 'partStatsQuery fragt über den übergebenen Zugang');
+  assert.equal(Number(stats.unique_parts), 1, 'the created part arrives');
+  assert.ok(counter.n > 0, 'partStatsQuery queries via the passed access');
 });
 
-test('k.transaktion: what is written via t applies together or not at all', async t => {
+test('k.transact: what is written via t applies together or not at all', async t => {
   if (!(await accessOrSkip(t, _req))) return;
   const { buildServices } = _req('startup/wiring.js');
   const contexts = {};
@@ -65,16 +68,16 @@ test('k.transaktion: what is written via t applies together or not at all', asyn
   const e = contexts.settings;
   // Only the system role writes global values (0117): the transaction in its context.
   const { inSystemContext } = _req('src/infra/accountContext.js');
-  const imSystem = f => inSystemContext('test', f);
+  const asSystem = f => inSystemContext('test', f);
   const A = `kontext_a_${process.pid}`;
   const B = `kontext_b_${process.pid}`;
-  t.after(() => imSystem(() => e.repository.deleteGlobalValues([A, B])));
+  t.after(() => asSystem(() => e.repository.deleteGlobalValues([A, B])));
 
   await assert.rejects(
-    imSystem(() =>
-      e.transaktion(async tx => {
+    asSystem(() =>
+      e.transact(async tx => {
         await tx.repository.writeGlobalValue(A, 'eins');
-        assert.equal(await tx.repository.globalValue(A), 'eins', 'innen sichtbar');
+        assert.equal(await tx.repository.globalValue(A), 'eins', 'visible inside');
         await tx.repository.writeGlobalValue(B, 'zwei');
         throw new Error('Abbruch');
       }),
@@ -84,11 +87,11 @@ test('k.transaktion: what is written via t applies together or not at all', asyn
   assert.deepEqual(
     [await e.repository.globalValue(A), await e.repository.globalValue(B)],
     [null, null],
-    'ein Fehler nimmt alles zurück',
+    'an error rolls everything back',
   );
 
-  await imSystem(() =>
-    e.transaktion(async tx => {
+  await asSystem(() =>
+    e.transact(async tx => {
       await tx.repository.writeGlobalValue(A, 'eins');
       await tx.repository.writeGlobalValue(B, 'zwei');
     }),

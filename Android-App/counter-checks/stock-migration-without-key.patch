@@ -1,0 +1,16 @@
+Gegenprobe: MIGRATION_1_2 vergibt keine Schlüssel (UPDATE-Schleife fehlt)
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.StockMigrationTest
+Rot: every earlier version becomes the newest without loss, every item has its own key, every row its filters
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/InventoryDatabase.kt
+@@ -184,7 +184,6 @@
+         db.execSQL("ALTER TABLE `ausgang` ADD COLUMN `schluessel` TEXT NOT NULL DEFAULT ''")
+         val ids = mutableListOf<Long>()
+         db.query("SELECT id FROM `ausgang`").use { c -> while (c.moveToNext()) ids += c.getLong(0) }
+-        for (id in ids) db.execSQL("UPDATE `ausgang` SET `schluessel` = ? WHERE id = ?", arrayOf<Any>(UUID.randomUUID().toString(), id))
+     }
+ }
+ 

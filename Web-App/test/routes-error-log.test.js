@@ -16,11 +16,11 @@ const _req = buildAndRequire();
 const { handleRouteError } = _req('src/http/httpResponse.js');
 
 /** Calls handleRouteError; delivers the one line including the level (error/warn). */
-function logWithLevel(fehler, req) {
-  const zeilen = [];
-  const echt = { error: console.error, warn: console.warn };
-  console.error = (...teile) => zeilen.push({ stufe: 'error', zeile: require('node:util').format(...teile) });
-  console.warn = (...teile) => zeilen.push({ stufe: 'warn', zeile: require('node:util').format(...teile) });
+function logWithLevel(error, req) {
+  const lines = [];
+  const original = { error: console.error, warn: console.warn };
+  console.error = (...parts) => lines.push({ stufe: 'error', row: require('node:util').format(...parts) });
+  console.warn = (...parts) => lines.push({ stufe: 'warn', row: require('node:util').format(...parts) });
   // A response that can do only as much as handleRouteError needs.
   const res = {
     headersSent: false,
@@ -32,60 +32,60 @@ function logWithLevel(fehler, req) {
     },
   };
   try {
-    handleRouteError(res, fehler, undefined, req);
+    handleRouteError(res, error, undefined, req);
   } finally {
-    Object.assign(console, echt);
+    Object.assign(console, original);
   }
-  assert.equal(zeilen.length, 1, 'Es soll genau eine Zeile geschrieben werden');
-  return zeilen[0];
+  assert.equal(lines.length, 1, 'Exactly one line should be written');
+  return lines[0];
 }
-const protokolliere = (fehler, req) => logWithLevel(fehler, req).zeile;
+const logIt = (error, req) => logWithLevel(error, req).row;
 
 test('the error line names method and path', () => {
-  const e = Object.assign(new Error('Nicht gefunden'), { status: 404, code: 'nicht_gefunden' });
-  const zeile = protokolliere(e, {
+  const e = Object.assign(new Error('Nicht gefunden'), { status: 404, code: 'not_found' });
+  const row = logIt(e, {
     method: 'PUT',
-    originalUrl: '/api/v1/parts/3001/5/acquisitions/42',
+    originalUrl: '/api/v2/parts/3001/5/acquisitions/42',
   });
   assert.match(
-    zeile,
-    /\[route-warnung\] PUT \/api\/v1\/parts\/3001\/5\/acquisitions\/42 404:/,
-    `Ohne Methode und Pfad ist die Zeile nicht zuzuordnen — dastand: ${zeile}`,
+    row,
+    /\[route-warnung\] PUT \/api\/v2\/parts\/3001\/5\/acquisitions\/42 404:/,
+    `Without method and path the line cannot be attributed — it read: ${row}`,
   );
 });
 
 test('the question mark part stays outside', () => {
   const e = Object.assign(new Error('Nicht gefunden'), { status: 404 });
-  const zeile = protokolliere(e, {
+  const row = logIt(e, {
     method: 'GET',
-    originalUrl: '/api/v1/sets?accounts=alle&geheim=abc',
+    originalUrl: '/api/v2/sets?accounts=alle&geheim=abc',
   });
-  assert.ok(zeile.includes('GET /api/v1/sets '), `Pfad fehlt: ${zeile}`);
+  assert.ok(row.includes('GET /api/v2/sets '), `path missing: ${row}`);
   assert.ok(
-    !zeile.includes('geheim'),
-    'Die Abfrage steht mit im Protokoll — was dort stehen darf, ist nicht Sache ' + `des Protokolls: ${zeile}`,
+    !row.includes('geheim'),
+    'The query is in the log as well — what may be in there is not the business ' + `of the log: ${row}`,
   );
-  assert.ok(!zeile.includes('accounts'), `Die Abfrage steht mit im Protokoll: ${zeile}`);
+  assert.ok(!row.includes('accounts'), `The query is in the log as well: ${row}`);
 });
 
 test('without a request the line stays as before', () => {
   // There are callers outside of a route (background work, tests). The addition
   // must not turn into „undefined undefined" there.
-  const zeile = protokolliere(new Error('kaputt'), undefined);
-  assert.match(zeile, /\[route-error\] 500:/, `Unerwartete Form: ${zeile}`);
-  assert.ok(!zeile.includes('undefined'), `„undefined" in der Zeile: ${zeile}`);
+  const row = logIt(new Error('kaputt'), undefined);
+  assert.match(row, /\[route-error\] 500:/, `Unerwartete Form: ${row}`);
+  assert.ok(!row.includes('undefined'), `„undefined" in the line: ${row}`);
 });
 
 test('a 4xx is a warning without a stack, a 5xx an error with a stack', () => {
   const nicht = logWithLevel(Object.assign(new Error('Nicht gefunden'), { status: 404 }), {
     method: 'GET',
-    originalUrl: '/api/v1/sets/1-1',
+    originalUrl: '/api/v2/sets/1-1',
   });
   assert.equal(nicht.stufe, 'warn');
-  assert.match(nicht.zeile, /Nicht gefunden/);
-  assert.ok(!/\n\s+at /.test(nicht.zeile), `Stack in einer 4xx-Zeile: ${nicht.zeile}`);
+  assert.match(nicht.row, /Nicht gefunden/);
+  assert.ok(!/\n\s+at /.test(nicht.row), `stack in a 4xx line: ${nicht.row}`);
 
-  const kaputt = logWithLevel(new Error('Verbindung weg'), { method: 'GET', originalUrl: '/api/v1/sets' });
-  assert.equal(kaputt.stufe, 'error');
-  assert.match(kaputt.zeile, /\n\s+at /, 'ein 5xx trägt seinen Stack');
+  const broken = logWithLevel(new Error('Verbindung weg'), { method: 'GET', originalUrl: '/api/v2/sets' });
+  assert.equal(broken.stufe, 'error');
+  assert.match(broken.row, /\n\s+at /, 'a 5xx carries its stack');
 });

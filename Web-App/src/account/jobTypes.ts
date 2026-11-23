@@ -1,18 +1,16 @@
 /** Files of a deleted account that were left behind on deletion: the job tries again. */
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { deleteAccountFiles } from './removeAccount';
 
 const AccountFiles = z.object({ user_id: z.number().int().positive() });
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    konto_dateien: typeof AccountFiles;
+    account_files: typeof AccountFiles;
   }
 }
 
-export function accountJobTypes(): Anmeldung[] {
-  return [
-    auftragsart({ art: 'konto_dateien', nutzlast: AccountFiles, ausfuehren: n => deleteAccountFiles(n.user_id) }),
-  ];
+export function accountJobTypes(): Login[] {
+  return [jobKind({ kind: 'account_files', payload: AccountFiles, run: n => deleteAccountFiles(n.user_id) })];
 }

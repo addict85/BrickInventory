@@ -1,0 +1,16 @@
+Gegenprobe: Ein Kommentar verweist wieder auf das Begründungsarchiv
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: no reference to the reasoning archive, and no KDoc hangs on nothing
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenVault.kt
+@@ -12,6 +12,7 @@
+ /**
+  * Encryption for the bearer token. The token opens an account on the server and expires
+  * at the latest after TOKEN_MAX_DURATION_DAYS (core-data), earlier when unused.
++ * Ausführlich: docs/begruendungen/core-security/sicherheit/TokenVault.kt.md#z12
+  */
+ 
+ /** Where the keys live: on the device the AndroidKeyStore, in the test a bundle in memory. */

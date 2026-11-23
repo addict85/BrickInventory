@@ -1,0 +1,17 @@
+Gegenprobe: Die Pflicht aus /auth/me wird nicht gemeldet
+Modul: core-state
+Test: ch.brickinventoryapp.state.SecondFactorTakeoverTest
+Rot: auth me with obligation shows the setup and keeps the admin right
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+@@ -172,7 +172,7 @@
+     if (me !is Outcome.Success) return null
+     val user = me.data
+     adminChanged(user?.admin == true)
+-    if (user?.secondFactorRequired == true) factorRequired.report()
++    if (user?.secondFactorRequired == true) factorRequired.done()
+     return user
+ }
+ 

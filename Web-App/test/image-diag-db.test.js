@@ -3,6 +3,8 @@
  *
  * Counter-check (performed): the hint block for “preview missing" removed →
  * substep A turns red.
+ * Counter-checks (22.11.2026, each alone): in downloadSetImage the line for a non-200 status, for a failed
+ * fetch, or for a too small answer removed → red “the set image download reports every failure”.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
@@ -23,101 +25,110 @@ const { holdsSet, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
 test('the image diagnostics describe every situation in plain text', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
-  const ordner = path.join(DATA_DIR, 'images', 'sets');
-  fs.mkdirSync(ordner, { recursive: true });
+  const dir = path.join(DATA_DIR, 'images', 'sets');
+  fs.mkdirSync(dir, { recursive: true });
 
   const USER = `diag-${process.pid}`;
-  const MIT = `9000-${process.pid}`; // file present
-  const OHNE = `9001-${process.pid}`; // nothing present
-  const original = path.join(ordner, `${MIT}.jpg`);
-  const vorschau = path.join(ordner, `${MIT}_thumb.jpg`);
+  const WITH = `9000-${process.pid}`; // file present
+  const WITHOUT = `9001-${process.pid}`; // nothing present
+  const original = path.join(dir, `${WITH}.jpg`);
+  const preview = path.join(dir, `${WITH}_thumb.jpg`);
 
   await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
   await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
-  await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
-  await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
+  await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[WITH, WITHOUT]]);
+  await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[WITH, WITHOUT]]);
   // The stock only says “this account holds the set"; name and image path
   // have been in the catalog since migration 0033.
-  await holdsSet(db, uid, MIT, 1);
-  await catalogSet(db, MIT, { name: 'Mit Bild', image_local: `/images/sets/${MIT}.jpg` });
-  await holdsSet(db, uid, OHNE, 1);
-  await catalogSet(db, OHNE, { name: 'Ohne alles' });
+  await holdsSet(db, uid, WITH, 1);
+  await catalogSet(db, WITH, { name: 'Mit Bild', image_local: `/images/sets/${WITH}.jpg` });
+  await holdsSet(db, uid, WITHOUT, 1);
+  await catalogSet(db, WITHOUT, { name: 'Ohne alles' });
   await new Jimp({ width: 500, height: 400, color: 0x0000ffff }).write(original);
-  fs.rmSync(vorschau, { force: true });
+  fs.rmSync(preview, { force: true });
 
   await adminWithFactor(_req, uid);
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid, isAdmin: true }, t });
   const frag = async sn => {
-    const r = await fetch(`${base}/api/v1/admin/image-diag/${sn}`);
-    assert.equal(r.status, 200, 'die Diagnose muss antworten');
+    const r = await fetch(`${base}/api/v2/admin/image-diag/${sn}`);
+    assert.equal(r.status, 200, 'the diagnosis must answer');
     return r.json();
   };
 
   try {
     // A) Exactly Marco's situation: original present, preview missing.
-    let d = await frag(MIT);
-    assert.equal(d.lokal.original.vorhanden, true, 'das Original muss gefunden werden');
-    assert.equal(d.lokal.vorschau.vorhanden, false);
+    let d = await frag(WITH);
+    assert.equal(d.local.original.existing, true, 'the original must be found');
+    assert.equal(d.local.preview.existing, false);
     assert.ok(
-      d.hinweise.some(h => /Vorschau fehlt/.test(h)),
-      `die Diagnose muss die fehlende Vorschau benennen, bekam: ${d.hinweise.join(' | ')}`,
+      d.hints.some(h => /Vorschau fehlt/.test(h)),
+      `the diagnosis must name the missing preview, got: ${d.hints.join(' | ')}`,
     );
 
     // B) Nothing known — neither file nor address.
-    d = await frag(OHNE);
+    d = await frag(WITHOUT);
     assert.ok(
-      d.hinweise.some(h => /Weder lokale Datei noch CDN-Adresse/.test(h)),
-      `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hinweise.join(' | ')}`,
+      d.hints.some(h => /Weder lokale Datei noch CDN-Adresse/.test(h)),
+      `the diagnosis must name „nichts anzeigbar“, got: ${d.hints.join(' | ')}`,
     );
 
     // C) After generation everything is together — and the sizes are right.
-    await _req('src/images/thumbs.js').vorschauErzeugenAus(`/images/sets/${MIT}.jpg`);
-    d = await frag(MIT);
+    await _req('src/images/thumbs.js').previewFrom(`/images/sets/${WITH}.jpg`);
+    d = await frag(WITH);
     assert.ok(
-      d.hinweise.some(h => /Alles vorhanden/.test(h)),
-      `nach der Erzeugung darf nichts mehr bemängelt werden, bekam: ${d.hinweise.join(' | ')}`,
+      d.hints.some(h => /Alles vorhanden/.test(h)),
+      `after the generation nothing may be flagged anymore, got: ${d.hints.join(' | ')}`,
     );
-    assert.ok(
-      d.lokal.vorschau.bytes < d.lokal.original.bytes,
-      'die gemeldete Vorschau muss kleiner sein als das Original',
-    );
+    assert.ok(d.local.preview.bytes < d.local.original.bytes, 'the reported preview must be smaller than the original');
 
     // The diagnosis must repair NOTHING — otherwise the tool changes the
     // state it is supposed to describe.
-    fs.rmSync(vorschau, { force: true });
-    await frag(MIT);
-    assert.equal(fs.existsSync(vorschau), false, 'die Diagnose hat die Vorschau erzeugt — sie soll nur beobachten');
+    fs.rmSync(preview, { force: true });
+    await frag(WITH);
+    assert.equal(fs.existsSync(preview), false, 'the diagnosis created the preview — it should only observe');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
-    await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[MIT, OHNE]]).catch(() => {});
+    await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[WITH, WITHOUT]]).catch(() => {});
     fs.rmSync(original, { force: true });
-    fs.rmSync(vorschau, { force: true });
+    fs.rmSync(preview, { force: true });
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }
 });
 
-test('the set image download reports every failure', () => {
-  // Until an earlier round there was exactly ONE log line (the size limit from 47);
-  // status code, network error, dwarf response and the enclosing catch
-  // all ended in a silent `return null`. Exactly this silence stretched
-  // the image debugging over five addenda.
-  const src = fs.readFileSync(path.join(ROOT, 'src/images/setImages.ts'), 'utf8');
-  const start = src.indexOf('async function setBildHerunterladen');
-  const fn = src
-    .slice(start, src.indexOf('\n}\n', start))
-    .split('\n')
-    .filter(l => !l.trim().startsWith('//'))
-    .join('\n');
-  const meldungen = (fn.match(/console\.(error|log)/g) || []).length;
-  assert.ok(
-    meldungen >= 4,
-    `setBildHerunterladen meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
-      'zu kleine Antwort und der umschliessende catch müssen alle eine Spur hinterlassen',
-  );
+test('the set image download reports every failure', async t => {
+  // Every way to fail leaves a line with set number and reason; the fetch is replaced at the wiring.
+  const { FetchError } = _req('src/infra/fetch.js');
+  /** @type {Record<string, () => Promise<any>>} */
+  const answers = {
+    'http-403': async () => ({ status: 403 }),
+    'http-404': async () => ({ status: 404 }),
+    net: async () => {
+      throw new Error('ECONNRESET');
+    },
+    gross: async () => {
+      throw new FetchError('zu-gross', 'zu gross');
+    },
+    small: async () => ({ status: 200, body: Buffer.from('<html>') }),
+  };
+  let current = 'net';
+  require('./helpers/sources').testSources(t, { fetchImage: async () => answers[current]() });
+  const lines = [];
+  t.mock.method(console, 'error', (...a) => lines.push(a.join(' ')));
+  t.mock.method(console, 'warn', (...a) => lines.push(a.join(' ')));
+  const { downloadSetImage } = _req('src/images/setImages.js');
+  const reasons = {};
+  for (const kind of Object.keys(answers)) {
+    current = kind;
+    const sn = `zzdiag-${kind}-${process.pid}`;
+    lines.length = 0;
+    assert.equal(await downloadSetImage(`https://cdn.rebrickable.com/media/sets/${sn}.jpg`, sn), null, kind);
+    reasons[kind] = lines.filter(l => l.includes(sn)).length;
+  }
+  assert.deepEqual(reasons, { 'http-403': 1, 'http-404': 1, net: 1, gross: 1, small: 1 });
 });

@@ -1,0 +1,15 @@
+Gegenprobe: Abmelden behält den Ablageschlüssel (kein Krypto-Shredding)
+Modul: core-data
+Test: ch.brickinventoryapp.data.LogoutCleansEverythingTest
+Rot: after sign-out every store is empty and the old key worthless
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SessionCleanup.kt
+@@ -63,6 +63,5 @@
+         // Price alerts name sets and prices; the bar belongs to the signed-out account.
+         catchUnlessCancelled { NotificationManagerCompat.from(ctx).cancelAll() }
+         // Finally a new store key: remnants on the flash are no longer readable afterwards.
+-        withContext(io) { catchUnlessCancelled { store.renew() } }
+     }
+ }

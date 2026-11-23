@@ -11,25 +11,25 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 test('login: errors at the field', async t => {
   const { w, d } = await openUi(
     {
-      '/v1/auth/login': {
+      '/v2/auth/login': {
         $status: 401,
         success: false,
         error: 'Benutzername oder Passwort falsch',
-        code: 'anmeldedaten_ungueltig',
+        code: 'credentials_invalid',
       },
     },
-    { angemeldet: false },
+    { loggedIn: false },
   );
   try {
     d.getElementById('lu').value = 'anna';
-    d.getElementById('lp').value = 'falsch';
+    d.getElementById('lp').value = 'wrong';
     d.getElementById('btn-login').click();
-    await warte(() => d.getElementById('lerr').textContent.length > 0);
+    await waitFor(() => d.getElementById('lerr').textContent.length > 0);
     await t.test('wrong password', () => {
       for (const id of ['lu', 'lp']) {
         const f = d.getElementById(id);
@@ -40,10 +40,10 @@ test('login: errors at the field', async t => {
     });
     await t.test('typing removes the marking', () => {
       const lp = d.getElementById('lp');
-      lp.value = 'neu';
+      lp.value = 'new';
       lp.dispatchEvent(new w.Event('input', { bubbles: true }));
       assert.equal(lp.hasAttribute('aria-invalid'), false);
-      assert.equal(d.getElementById('lu').getAttribute('aria-invalid'), 'true', 'das andere Feld bleibt markiert');
+      assert.equal(d.getElementById('lu').getAttribute('aria-invalid'), 'true', 'the other field stays marked');
     });
   } finally {
     w.close();
@@ -51,12 +51,12 @@ test('login: errors at the field', async t => {
 });
 
 test('registration: empty required fields', async () => {
-  const { w, d } = await openUi({}, { angemeldet: false });
+  const { w, d } = await openUi({}, { loggedIn: false });
   try {
     d.getElementById('link-register').click();
     d.getElementById('reg-user').value = 'bert';
     d.getElementById('btn-register').click();
-    await takt(20);
+    await tick(20);
     assert.ok(d.getElementById('reg-err').textContent.length > 0);
     assert.equal(d.getElementById('reg-user').hasAttribute('aria-invalid'), false);
     for (const id of ['reg-email', 'reg-pass']) {

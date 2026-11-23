@@ -1,12 +1,12 @@
 // The catalog: search sets, show details and add them to the collection.
 import { emit } from './events.js';
-import { detailRow, kachelName, loadDisplay, listLoadError } from './components.js';
+import { detailRow, tileName, loadDisplay, listLoadError } from './components.js';
 import { registerActions } from './registry.js';
 import { loadGuard } from './load-guard.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { errorMessage, api } from './api.js';
-import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl, setDialogbild, PLACEHOLDER_SET } from './images.js';
-import { emptyState, reportHits, ico, G, resetButton, alle, eins, setzeHtml, fuegeHtmlEin } from './dom.js';
+import { imageTag, placeholderContent, fullUrl, imgUrl, thumbUrl, setDialogImage, PLACEHOLDER_SET } from './images.js';
+import { emptyState, reportHits, ico, G, resetButton, queryAll, queryOne, setHtml, insertHtml } from './dom.js';
 import { amountFromField, quantityFromField } from './form.js';
 import { toast } from './messages.js';
 import { setScrollLabel } from './scrollbar.js';
@@ -15,7 +15,7 @@ import { esc, html, joinHtml } from './escaping.js';
 import { handleSseEvent, hideProgress, showProgress, streamDone, streamRequest } from './progress.js';
 import { emptyLocationField, selectedOwner, selectedStorage } from './account-locations.js';
 
-// The data source is /api/v1/catalog/* (local rb_* tables from the daily CSV sync) — paginated
+// The data source is /api/v2/catalog/* (local rb_* tables from the daily CSV sync) — paginated
 // on the server side, since the catalog comprises ~25k sets.
 
 const _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'year_desc' };
@@ -98,18 +98,18 @@ function _bindCatalogControls() {
 }
 
 async function loadCatalogMeta() {
-  const d = await api('GET', '/v1/catalog/meta');
+  const d = await api('GET', '/v2/catalog/meta');
   if (!d.success) return;
   // Theme dropdown: path names ("Star Wars › UCS") with set count
   const themeEl = G('cat-theme');
   const cur = themeEl.value;
-  setzeHtml(
+  setHtml(
     themeEl,
     html`${html`<option value="">${tRaw('catalog.filter.all_themes')}</option>`}${(d.themes || []).map(th => html`<option value="${th.id}"${String(th.id) === cur ? ' selected' : ''}>${th.name} (${th.set_count})</option>`)}`,
   );
   // Year dropdowns (from/to): descending from max to min
-  const { year_min: von, year_max: bis } = d;
-  if (von && bis) {
+  const { year_min: of, year_max: bis } = d;
+  if (of && bis) {
     const mk = (
       /** @type {HTMLElement | null} */ el,
       /** @type {string} */ placeholderKey,
@@ -118,13 +118,13 @@ async function loadCatalogMeta() {
     ) => {
       // "from 2015" instead of just "2015": otherwise the field shows a number when chosen that does not say which bound it is.
       let opts = html`<option value="">${tRaw(placeholderKey)}</option>`;
-      for (let y = bis; y >= von; y--) {
-        opts = html`${opts}${html`<option value="${y}"${String(y) === cur ? ' selected' : ''}>${tRaw(yearKey, { jahr: y })}</option>`}`;
+      for (let y = bis; y >= of; y--) {
+        opts = html`${opts}${html`<option value="${y}"${String(y) === cur ? ' selected' : ''}>${tRaw(yearKey, { year: y })}</option>`}`;
       }
-      if (el) setzeHtml(el, opts);
+      if (el) setHtml(el, opts);
     };
-    mk(G('cat-year-from'), 'catalog.filter.year_from', 'catalog.filter.ab_jahr', _catState.yearFrom);
-    mk(G('cat-year-to'), 'catalog.filter.year_to', 'catalog.filter.bis_jahr', _catState.yearTo);
+    mk(G('cat-year-from'), 'catalog.filter.year_from', 'catalog.filter.ab_year', _catState.yearFrom);
+    mk(G('cat-year-to'), 'catalog.filter.year_to', 'catalog.filter.bis_year', _catState.yearTo);
   }
   // Initialize the from-to slider
   _catYearCounts = {};
@@ -191,16 +191,61 @@ function _catQuery(page) {
  * One block per page over the WHOLE result — only that way can the year bar jump somewhere instead of
  * filtering.
  */
+/** Without a filter "empty" means: the catalog has not been reconciled yet. What to do then depends on
+ * the role and on whether the Rebrickable key is set. */
+function catalogEmptyState() {
+  const filtered = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
+  if (filtered)
+    return emptyState({
+      ico: 'search',
+      title: tRaw('catalog.no_results'),
+      text: tRaw('catalog.no_results_hint'),
+      button: resetButton('catalog'),
+    });
+  const title = tRaw('catalog.empty_title');
+  if (!loggedInAccount?.isAdmin)
+    return emptyState({ ico: 'catalog', title, text: tRaw('catalog.empty_hint_account'), button: undefined });
+  if (!String(settingsSnapshot?.rebrickable_api_key || '').trim())
+    return emptyState({
+      ico: 'catalog',
+      title,
+      text: tRaw('catalog.empty_without_key'),
+      button: { text: tRaw('rb_key.banner_link'), click: 'openRbHint', ico: 'key' },
+    });
+  return emptyState({
+    ico: 'catalog',
+    title,
+    text: tRaw('catalog.empty_hint'),
+    button: { text: tRaw('catalog.to_sync'), click: 'openTab', arg: 'monitor', ico: 'refresh' },
+  });
+}
+
+/** One block per page. The first one is filled, the others only hold space: ONE empty block instead of 60
+ * placeholder tiles, with 25,000 sets that would be 25,000 elements. The height comes from the measured
+ * first page, because the number of columns depends on the window. */
+function catalogPages() {
+  const blocks = [];
+  for (let page = 1; page <= _catPageCount; page++) {
+    const count = page === _catPageCount ? _catTotal - (page - 1) * CAT_LIMIT : CAT_LIMIT;
+    blocks.push(
+      page === 1
+        ? html`<div class="sgrid cat-page" data-page="1">${joinHtml(_catItems.map(catCard))}</div>`
+        : html`<div class="cat-page cat-page-ph" data-page="${page}" data-count="${count}"></div>`,
+    );
+  }
+  return joinHtml(blocks);
+}
+
 async function loadCatalogSets() {
   loadCatalog.start();
   _catLoadedPages = new Set();
   _catLoadingPages = new Set();
   const grid = G('catalog-grid');
-  setzeHtml(grid, loadDisplay(tRaw('catalog.loading')));
+  setHtml(grid, loadDisplay(tRaw('catalog.loading')));
   _catState.page = 1;
-  const d = await loadCatalog.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(1)}`));
+  const d = await loadCatalog.whenCurrent(api('GET', `/v2/catalog/sets?${_catQuery(1)}`));
   if (d === undefined) return;
-  if (listLoadError(grid, d, { erneut: 'loadCatalogSets' })) return;
+  if (listLoadError(grid, d, { again: 'loadCatalogSets' })) return;
 
   _catTotal = d.total || 0;
   _catPageCount = Math.max(1, Math.ceil(_catTotal / CAT_LIMIT));
@@ -213,49 +258,11 @@ async function loadCatalogSets() {
   );
 
   if (!_catItems.length) {
-    // Without a filter "empty" means: the catalog has not been reconciled yet.
-    const gefiltert = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
-    const ohneSchluessel = !gefiltert && !String(settingsSnapshot?.rebrickable_api_key || '').trim();
-    const leerText = gefiltert
-      ? 'catalog.no_results_hint'
-      : !loggedInAccount?.isAdmin
-        ? 'catalog.empty_hint_konto'
-        : ohneSchluessel
-          ? 'catalog.empty_ohne_schluessel'
-          : 'catalog.empty_hint';
-    const emptyButton = gefiltert
-      ? resetButton('catalog')
-      : !loggedInAccount?.isAdmin
-        ? undefined
-        : ohneSchluessel
-          ? { text: tRaw('rb_key.banner_link'), click: 'rbHinweisOeffnen', ico: 'schluessel' }
-          : { text: tRaw('catalog.zum_abgleich'), click: 'oeffneReiter', arg: 'monitor', ico: 'aktualisieren' };
-    setzeHtml(
-      grid,
-      emptyState({
-        ico: gefiltert ? 'suche' : 'katalog',
-        titel: tRaw(gefiltert ? 'catalog.no_results' : 'catalog.leer_titel'),
-        text: tRaw(leerText),
-        knopf: emptyButton,
-      }),
-    );
+    setHtml(grid, catalogEmptyState());
     setScrollLabel(null);
     return;
   }
-
-  // One block per page. The first one is filled, the others only hold space.
-  const bloecke = [];
-  for (let seite = 1; seite <= _catPageCount; seite++) {
-    const anzahl = seite === _catPageCount ? _catTotal - (seite - 1) * CAT_LIMIT : CAT_LIMIT;
-    bloecke.push(
-      seite === 1
-        ? html`<div class="sgrid cat-page" data-page="1">${joinHtml(_catItems.map(catCard))}</div>`
-        : // Unloaded pages are ONE empty block instead of 60 placeholder tiles: with 25,000 sets that would be 25,000
-          // elements. The height comes from the measured first page, because the number of columns depends on the window.
-          html`<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`,
-    );
-  }
-  setzeHtml(grid, joinHtml(bloecke));
+  setHtml(grid, catalogPages());
   _catLoadedPages.add(1);
   _loadYearDistribution();
   _setPlaceholderHeight();
@@ -271,14 +278,14 @@ async function loadCatalogSets() {
  * when loading more, and one loses the spot one was just at.
  */
 function _setPlaceholderHeight() {
-  const erste = eins('#catalog-grid .cat-page[data-page="1"]');
-  if (!erste) return;
-  const hoehe = erste.offsetHeight;
-  if (hoehe < 10) return; // not drawn yet
-  const proTile = hoehe / Math.max(1, _catItems.length);
-  for (const el of alle('#catalog-grid .cat-page-ph')) {
-    const anzahl = parseInt(el.dataset.anzahl ?? '', 10) || CAT_LIMIT;
-    el.style.height = Math.round(anzahl * proTile) + 'px';
+  const first = queryOne('#catalog-grid .cat-page[data-page="1"]');
+  if (!first) return;
+  const height = first.offsetHeight;
+  if (height < 10) return; // not drawn yet
+  const proTile = height / Math.max(1, _catItems.length);
+  for (const el of queryAll('#catalog-grid .cat-page-ph')) {
+    const count = parseInt(el.dataset.count ?? '', 10) || CAT_LIMIT;
+    el.style.height = Math.round(count * proTile) + 'px';
   }
 }
 
@@ -286,21 +293,21 @@ function _setPlaceholderHeight() {
  * Measure the position of the page blocks once, then from memory: getBoundingClientRect per block and image
  * forced over 400 layouts, and dragging the bar pushed the CPU to 100 %.
  */
-/** @type {{ seite: number, oben: number, unten: number }[]} */
+/** @type {{ page: number, top: number, bottom: number }[]} */
 let _catBlockStates = [];
 // Years with their count, in the order of the list — the basis for the label on the scroll bar (see
-// _yearAnPosition).
-/** @type {import('../../frontend-types/contract').JahrAnzahl[]} */
+// _yearOnPosition).
+/** @type {import('../../frontend-types/contract').YearCount[]} */
 let _catYearDistribution = [];
 
 function _measureBlocks() {
   _catBlockStates = [];
-  for (const el of alle('#catalog-grid .cat-page')) {
+  for (const el of queryAll('#catalog-grid .cat-page')) {
     const r = el.getBoundingClientRect();
     _catBlockStates.push({
-      seite: parseInt(el.dataset.page ?? '', 10),
-      oben: r.top + window.scrollY,
-      unten: r.bottom + window.scrollY,
+      page: parseInt(el.dataset.page ?? '', 10),
+      top: r.top + window.scrollY,
+      bottom: r.bottom + window.scrollY,
     });
   }
 }
@@ -310,21 +317,21 @@ function _measureBlocks() {
  * of which only the last one is looked at. During normal scrolling one does not notice the pause.
  */
 /** @type {number | null} */
-let _catLadeTimer = null;
+let _catLoadTimer = null;
 /**
- * @param {boolean} [sofort]
+ * @param {boolean} [immediately]
  */
-function _loadVisiblePages(sofort) {
-  clearTimeout(_catLadeTimer);
+function _loadVisiblePages(immediately) {
+  clearTimeout(_catLoadTimer);
   const tun = () => {
-    const oben = window.scrollY - 600;
-    const unten = window.scrollY + window.innerHeight + 600;
+    const top = window.scrollY - 600;
+    const bottom = window.scrollY + window.innerHeight + 600;
     for (const b of _catBlockStates) {
-      if (b.unten >= oben && b.oben <= unten) loadPage(b.seite);
+      if (b.bottom >= top && b.top <= bottom) loadPage(b.page);
     }
   };
-  if (sofort) tun();
-  else _catLadeTimer = setTimeout(tun, 150);
+  if (immediately) tun();
+  else _catLoadTimer = setTimeout(tun, 150);
 }
 
 /**
@@ -338,13 +345,13 @@ function _observePages() {
   _measureBlocks();
   if (!_catScrollBound) {
     _catScrollBound = true;
-    let angefordert = false;
+    let requested = false;
     const atMovement = () => {
-      if (angefordert) return;
-      angefordert = true;
+      if (requested) return;
+      requested = true;
       // Throttled via requestAnimationFrame: a scroll event fires dozens of times per second.
       requestAnimationFrame(() => {
-        angefordert = false;
+        requested = false;
         _loadVisiblePages();
       });
     };
@@ -367,30 +374,30 @@ function _observePages() {
  *
  * Pages already loaded or currently loading are skipped — without this check every
  * scroll step triggered the same fetch several times.
- * @param {number} seite
+ * @param {number} page
  */
-export async function loadPage(seite) {
-  if (seite < 1 || seite > _catPageCount) return;
-  if (_catLoadedPages.has(seite) || _catLoadingPages.has(seite)) return;
-  _catLoadingPages.add(seite);
+export async function loadPage(page) {
+  if (page < 1 || page > _catPageCount) return;
+  if (_catLoadedPages.has(page) || _catLoadingPages.has(page)) return;
+  _catLoadingPages.add(page);
   try {
-    const d = await loadCatalog.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(seite)}`));
+    const d = await loadCatalog.whenCurrent(api('GET', `/v2/catalog/sets?${_catQuery(page)}`));
     if (d === undefined) return;
     if (!d.success || !d.sets?.length) return;
-    const block = eins(`#catalog-grid .cat-page[data-page="${seite}"]`);
+    const block = queryOne(`#catalog-grid .cat-page[data-page="${page}"]`);
     if (!block) return;
     block.classList.remove('cat-page-ph');
     block.classList.add('sgrid');
     block.style.height = '';
-    block.removeAttribute('data-anzahl');
-    setzeHtml(block, joinHtml(d.sets.map(catCard)));
-    _catLoadedPages.add(seite);
+    block.removeAttribute('data-count');
+    setHtml(block, joinHtml(d.sets.map(catCard)));
+    _catLoadedPages.add(page);
     _catItems = _catItems.concat(d.sets);
     // The block heights have changed — measure again, then check what is now additionally in view.
     _measureBlocks();
     _loadVisiblePages();
   } finally {
-    _catLoadingPages.delete(seite);
+    _catLoadingPages.delete(page);
   }
 }
 
@@ -400,28 +407,28 @@ function catCard(s) {
   // downloaded images (image_local) save the way to the CDN entirely.
   const src = s.image_local || s.image_url;
   const img = src
-    ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: '', fade: true, ph: 'set' })
-    : html`<span class="bild-ph" aria-hidden="true">${placeholderContent('set')}</span>`;
+    ? imageTag({ src: imgUrl(thumbUrl(src), 'only'), alt: '', fade: true, ph: 'set' })
+    : html`<span class="image-ph" aria-hidden="true">${placeholderContent('set')}</span>`;
   const themeShort = s.theme_name ? s.theme_name.split(' › ').pop() : '';
   const ownedBadge = s.owned
-    ? html`<span class="ibadge besitz-badge">${ico('ok')}${tRaw('catalog.owned_badge')}${s.owned_quantity > 1 ? html`${' ×'}${s.owned_quantity}` : ''}</span>`
+    ? html`<span class="ibadge owned-badge">${ico('ok')}${tRaw('catalog.owned_badge')}${s.owned_quantity > 1 ? html`${' ×'}${s.owned_quantity}` : ''}</span>`
     : '';
-  // The theme tone for the design "farbfaecher" (themes/farbfaecher.css reads it as --faecher-ton). Always
+  // The theme tone for the design "farbfaecher" (themes/farbfaecher.css reads it as --fan-hue). Always
   // set, not only with the design active: the variable costs nothing, and a query of the active design
   // here would be a second place that has to know it. Without a theme number it stays away — then the
   // stripe shows nothing instead of something wrong.
   const thema = s.theme_id;
-  const ton = thema != null && Number.isInteger(thema) ? html` data-faecher="${((thema % 12) + 12) % 12}"` : '';
-  const k = kachelName();
-  return html`<div class="sc"${ton} tabindex="0" role="button"${k.attr} data-sn="${s.set_number}" data-year="${s.year || ''}" data-click="openCatModal" data-arg="${s.set_number}">
+  const hue = thema != null && Number.isInteger(thema) ? html` data-fan="${((thema % 12) + 12) % 12}"` : '';
+  const k = tileName();
+  return html`<div class="sc"${hue} tabindex="0" role="button"${k.attr} data-sn="${s.set_number}" data-year="${s.year || ''}" data-click="openCatModal" data-arg="${s.set_number}">
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${s.set_number}</div>
       <div class="sname">${s.name || '—'}</div>
       <div class="smeta"${k.teil(0)}>
         <span class="smeta-text"${themeShort ? html` title="${themeShort}"` : ''}>${s.year || '—'}${themeShort ? html`${' · '}${themeShort}` : ''}</span>
-        <div class="splaketten">
-          ${s.num_parts ? html`<span class="teile-zahl">${tRaw('catalog.pieces_n', { n: s.num_parts.toLocaleString(locale()) })}</span>` : ''}
+        <div class="sbadges">
+          ${s.num_parts ? html`<span class="parts-number">${tRaw('catalog.pieces_n', { n: s.num_parts.toLocaleString(locale()) })}</span>` : ''}
           ${ownedBadge}
         </div>
       </div>
@@ -432,7 +439,7 @@ function catCard(s) {
 // ── Detail-Modal ──────────────────────────────────────────────────────────────
 /** @param {string} setNumber */
 async function openCatModal(setNumber) {
-  const d = await api('GET', `/v1/catalog/sets/${encodeURIComponent(setNumber)}`);
+  const d = await api('GET', `/v2/catalog/sets/${encodeURIComponent(setNumber)}`);
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -446,7 +453,7 @@ async function openCatModal(setNumber) {
   // The full resolution in the detail directly from the CDN, not via the proxy: for a one-off large image
   // that is faster and relieves the server; the proxy only pays off for the many small previews.
   const detailSrc = s.image_local || s.image_url;
-  setDialogbild(G('cat-m-img'), detailSrc ? fullUrl(detailSrc) : PLACEHOLDER_SET, PLACEHOLDER_SET);
+  setDialogImage(G('cat-m-img'), detailSrc ? fullUrl(detailSrc) : PLACEHOLDER_SET, PLACEHOLDER_SET);
   /** @type {[string, string | number][]} */
   const rows = [
     [tRaw('detail.year'), s.year || '—'],
@@ -455,7 +462,7 @@ async function openCatModal(setNumber) {
     [tRaw('detail.minifigs'), s.minifigs || '—'],
   ];
   if (s.owned) rows.push([tRaw('catalog.owned'), '×' + s.owned_quantity]);
-  setzeHtml(
+  setHtml(
     G('cat-m-det'),
     rows.map(([k, v]) => detailRow(k, esc(String(v)))),
   );
@@ -492,11 +499,11 @@ function closeCatModal() {
 async function addCatalogSetToGallery() {
   if (!_catCurSet) return;
   const num = _catCurSet.set_number;
-  const preis = amountFromField('cat-m-price');
-  const menge = quantityFromField('cat-m-qty');
-  if (!preis.ok || !menge.ok) return;
-  const qty = menge.wert;
-  const purchase_price = preis.wert;
+  const price = amountFromField('cat-m-price');
+  const quantity = quantityFromField('cat-m-qty');
+  if (!price.ok || !quantity.ok) return;
+  const qty = quantity.value;
+  const purchase_price = price.value;
   const condition = G('cat-m-cond').value || 'N';
   // Send the account along (Marco's find): the catalog dialog was the FOURTH capture path — gallery form,
   // manual part and manual minifigure have long asked for the account, here it was missing. Consequence: a set
@@ -511,7 +518,7 @@ async function addCatalogSetToGallery() {
   showProgress(tRaw('gallery.adding_set', { num }), false);
   try {
     await streamRequest(
-      '/v1/sets/add-stream',
+      '/v2/sets/add-stream',
       { set_number: num, quantity: qty, purchase_price, condition, owner_user_id, storage },
       ev => {
         handleSseEvent(ev, num);
@@ -520,14 +527,14 @@ async function addCatalogSetToGallery() {
           setTimeout(() => {
             hideProgress();
             toast(
-              tRaw(ev.action === 'added' ? 'gallery.set_hinzugefuegt' : 'gallery.set_aktualisiert', {
+              tRaw(ev.action === 'added' ? 'gallery.set_added' : 'gallery.set_updated', {
                 num: ev.set_number,
               }),
               'success',
             );
             setLastImportAt(Date.now());
             _patchCatalogOwned(num, qty); // owned badge in place (no reload: the scroll position stays)
-            emit('sammlungLaden');
+            emit('collectionLoad');
           }, 800);
         } else if (ev.step === 'error') {
           streamDone();
@@ -561,7 +568,7 @@ function _patchCatalogOwned(setNumber, qty) {
     `#catalog-grid .sc[data-sn="${window.CSS && CSS.escape ? CSS.escape(setNumber) : setNumber}"]`,
   );
   if (el) {
-    fuegeHtmlEin(el, 'afterend', catCard(it));
+    insertHtml(el, 'afterend', catCard(it));
     el.remove();
   }
 }
@@ -575,16 +582,16 @@ registerActions({
 
 // The application draws the bar (#app-scrollbar); the catalog only supplies the year next to it. Read from
 // the topmost visible tile — estimated only where nothing is loaded yet.
-function _yearAnPosition() {
+function _yearOnPosition() {
   const grid = G('catalog-grid');
   if (!grid) return null;
   // First choice: the topmost VISIBLE tile. As soon as the page is loaded, that is the truth and not a
   // calculation.
-  for (const karte of alle('.sc:not(.cat-page-ph)', grid)) {
-    const r = karte.getBoundingClientRect();
+  for (const card of queryAll('.sc:not(.cat-page-ph)', grid)) {
+    const r = card.getBoundingClientRect();
     if (r.bottom >= 0) {
-      const jahr = karte.dataset.year;
-      if (jahr) return parseInt(jahr, 10);
+      const year = card.dataset.year;
+      if (year) return parseInt(year, 10);
       break;
     }
   }
@@ -593,11 +600,11 @@ function _yearAnPosition() {
   if (!_catYearDistribution.length || !_catTotal) return null;
   const doc = document.documentElement;
   const rollbar = Math.max(1, doc.scrollHeight - window.innerHeight);
-  const anteil = Math.min(1, Math.max(0, window.scrollY / rollbar));
-  let nummer = Math.round(anteil * (_catTotal - 1));
-  for (const eintrag of _catYearDistribution) {
-    if (nummer < eintrag.n) return eintrag.year;
-    nummer -= eintrag.n;
+  const share = Math.min(1, Math.max(0, window.scrollY / rollbar));
+  let number = Math.round(share * (_catTotal - 1));
+  for (const entry of _catYearDistribution) {
+    if (number < entry.n) return entry.year;
+    number -= entry.n;
   }
   return _catYearDistribution[_catYearDistribution.length - 1]?.year ?? null;
 }
@@ -616,7 +623,7 @@ async function _loadYearDistribution() {
   if (p.toString() === _yearDistributionFor && _catYearDistribution.length) return;
   _yearDistributionFor = p.toString();
   _catYearDistribution = [];
-  const d = await loadCatalog.whenCurrent(api('GET', `/v1/catalog/year-verteilung?${p.toString()}`));
+  const d = await loadCatalog.whenCurrent(api('GET', `/v2/catalog/year-distribution?${p.toString()}`));
   if (d === undefined) return;
   if (d?.success) _catYearDistribution = (d.years || []).filter(y => y.year);
   else _yearDistributionFor = '';
@@ -635,7 +642,7 @@ function _initYearRail() {
   setScrollLabel(
     sensible
       ? () => {
-          const j = _yearAnPosition();
+          const j = _yearOnPosition();
           return j ? String(j) : null;
         }
       : null,

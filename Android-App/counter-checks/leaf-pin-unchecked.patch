@@ -1,0 +1,17 @@
+Gegenprobe: Unter einer öffentlichen Wurzel gilt wieder jeder Serverschlüssel (zweiter Pin ungeprüft)
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
+Rot: a new server key under the same public root deliberately asks
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -276,7 +276,7 @@
+         val publicPin = pin in systemRoots
+         if (!publicPin && fitsToPin(chain, pin)) return
+         val situation = situation(chain, with)
+-        if (carriesPin(situation, pin, publicPin, fromCode)) return if (publicPin) checkSheet(chain[0], key, fromCode) else Unit
++        if (carriesPin(situation, pin, publicPin, fromCode)) return
+         val kind = if (fromCode) CertificateUnresolved.Kind.CODE_MISMATCH else CertificateUnresolved.Kind.CHANGED
+         throw reported(CertificateUnresolved(key, situation.fingerprint, kind, expected = pin, sheet = spkiFingerprint(chain[0])))
+     }

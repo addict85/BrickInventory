@@ -10,10 +10,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/ui');
+const { openUi, waitFor, tick } = require('./helpers/ui');
 
 const RESPONSES = {
-  '/v1/parts/manual': {
+  '/v2/parts/manual': {
     success: true,
     parts: [
       {
@@ -27,7 +27,7 @@ const RESPONSES = {
       },
     ],
   },
-  '/v1/parts/3001/4/acquisitions': {
+  '/v2/parts/3001/4/acquisitions': {
     success: true,
     acquisitions: [
       {
@@ -57,12 +57,12 @@ const RESPONSES = {
 
 async function detail() {
   const o = await openUi(RESPONSES);
-  const knopf = o.d.createElement('button');
-  Object.assign(knopf.dataset, { click: 'openManDetail', arg: 'part', arg2: '3001', arg3: '4' });
-  o.d.body.appendChild(knopf);
-  knopf.click();
-  await warte(() => /3[.,]50/.test(o.d.getElementById('man-detail-body')?.textContent || ''));
-  await takt(20);
+  const button = o.d.createElement('button');
+  Object.assign(button.dataset, { click: 'openManDetail', arg: 'part', arg2: '3001', arg3: '4' });
+  o.d.body.appendChild(button);
+  button.click();
+  await waitFor(() => /3[.,]50/.test(o.d.getElementById('man-detail-body')?.textContent || ''));
+  await tick(20);
   return o;
 }
 
@@ -72,9 +72,9 @@ test('every acquisition in its currency', async () => {
     const text = d.getElementById('man-detail-body').textContent;
     // jsdom formats as “CHF 3.50” without full ICU data, a browser as
     // “3,50 CHF” — what is checked is the currency at the amount, not the notation.
-    const flach = text.replace(/\s+/g, ' ');
-    assert.match(flach, /CHF ?3[.,]50|3[.,]50 ?CHF/, `CHF fehlt: ${flach.slice(0, 600)}`);
-    assert.match(flach, /(EUR|€) ?1[.,]25|1[.,]25 ?(EUR|€)/, 'die EUR-Erfassung bleibt in EUR');
+    const flat = text.replace(/\s+/g, ' ');
+    assert.match(flat, /CHF ?3[.,]50|3[.,]50 ?CHF/, `CHF is missing: ${flat.slice(0, 600)}`);
+    assert.match(flat, /(EUR|€) ?1[.,]25|1[.,]25 ?(EUR|€)/, 'the EUR acquisition stays in EUR');
   } finally {
     w.close();
   }
@@ -83,9 +83,9 @@ test('every acquisition in its currency', async () => {
 test('an estimated price carries ≈', async () => {
   const { w, d } = await detail();
   try {
-    const zeichen = [...d.querySelectorAll('#man-detail-body [role="img"]')].filter(e => e.textContent === '≈');
-    assert.equal(zeichen.length, 1, 'genau die geschätzte Erfassung trägt ≈');
-    assert.match(zeichen[0].getAttribute('aria-label'), /geschätzt/i);
+    const chars = [...d.querySelectorAll('#man-detail-body [role="img"]')].filter(e => e.textContent === '≈');
+    assert.equal(chars.length, 1, 'exactly the estimated acquisition carries ≈');
+    assert.match(chars[0].getAttribute('aria-label'), /geschätzt/i);
   } finally {
     w.close();
   }

@@ -21,7 +21,7 @@ const SERVER = ['startup/app.ts', 'routes/pages.ts', 'src/images/http/imageDeliv
 /**
  * Comments gone — the explanatory text above names express.static itself.
  */
-function ohneKommentare(src) {
+function withoutComments(src) {
   let out = '',
     i = 0,
     str = null;
@@ -49,9 +49,9 @@ function ohneKommentare(src) {
     if (c === '/' && n === '*') {
       // block comment
       const e = src.indexOf('*/', i + 2);
-      const bis = e < 0 ? src.length : e + 2;
-      for (const ch of src.slice(i, bis)) if (ch === '\n') out += '\n'; // keep lines
-      i = bis;
+      const until = e < 0 ? src.length : e + 2;
+      for (const ch of src.slice(i, until)) if (ch === '\n') out += '\n'; // keep lines
+      i = until;
       continue;
     }
     if (c === '/' && n === '/') {
@@ -65,7 +65,7 @@ function ohneKommentare(src) {
   }
   return out;
 }
-const CODE = ohneKommentare(SERVER);
+const CODE = withoutComments(SERVER);
 
 test('no static mount delivers files from the data directory', () => {
   // express.static knows no login check. For PUBLIC_DIR that is right
@@ -74,7 +74,7 @@ test('no static mount delivers files from the data directory', () => {
   assert.deepEqual(
     mounts,
     ['PUBLIC_DIR'],
-    `express.static über: ${mounts.join(', ')} — nur PUBLIC_DIR darf ohne Anmeldung ausgeliefert werden`,
+    `express.static over: ${mounts.join(', ')} — only PUBLIC_DIR may be served without login`,
   );
 });
 
@@ -84,11 +84,11 @@ test('the placeholder lies outside of /images/', () => {
   // the rule "everything here requires a login".
   assert.ok(
     fs.existsSync(path.join(ROOT, 'public', 'assets', 'set-placeholder.svg')),
-    'public/assets/set-placeholder.svg fehlt',
+    'public/assets/set-placeholder.svg is missing',
   );
   assert.ok(
     !fs.existsSync(path.join(ROOT, 'public', 'images')),
-    'public/images/ darf es nicht mehr geben — sonst überlagert es data/images/',
+    'public/images/ must no longer exist — otherwise it shadows data/images/',
   );
 
   const refs = [];
@@ -98,14 +98,14 @@ test('the placeholder lies outside of /images/', () => {
     if (src.includes('/images/set-placeholder')) refs.push(f);
   }
   if (read('public/index.html').includes('/images/set-placeholder')) refs.push('index.html');
-  assert.deepEqual(refs, [], `Alte Platzhalter-Adresse in: ${refs.join(', ')}`);
+  assert.deepEqual(refs, [], `Old placeholder address in: ${refs.join(', ')}`);
 });
 
 test('the SQL migrations end up in the build', () => {
   // Where this test comes from
   const build = read('scripts/build-ts.js');
-  assert.match(build, /ASSET_EXT/, 'build-ts.js kopiert keine Nicht-TS-Dateien mit — .sql-Migrationen fehlen im Build');
-  assert.match(build, /'\.sql'/, '.sql muss unter den mitkopierten Endungen stehen');
+  assert.match(build, /ASSET_EXT/, 'build-ts.js does not copy non-TS files — .sql migrations are missing in the build');
+  assert.match(build, /'\.sql'/, '.sql must be among the copied extensions');
 });
 
 test('data-self handlers take the element as the FIRST argument', () => {
@@ -121,7 +121,7 @@ test('data-self handlers take the element as the FIRST argument', () => {
       if (after.includes('data-self="1"')) withSelfAndArg.add(m[1]);
     }
   }
-  assert.ok(withSelfAndArg.size > 0, 'Keine data-self+data-arg-Handler gefunden — Prüfung liefe ins Leere');
+  assert.ok(withSelfAndArg.size > 0, 'No data-self+data-arg handlers found — the check would test nothing');
 
   const wrong = [];
   for (const f of files) {
@@ -134,7 +134,7 @@ test('data-self handlers take the element as the FIRST argument', () => {
       if (!/^(btn|el)\b/.test(first)) wrong.push(`${name}(${m[1]})`);
     }
   }
-  assert.deepEqual(wrong, [], `Element gehört an die erste Stelle: ${wrong.join(', ')}`);
+  assert.deepEqual(wrong, [], `Element belongs in first position: ${wrong.join(', ')}`);
 });
 
 test('addresses to the own server do not go through the proxy', () => {
@@ -160,12 +160,12 @@ test('addresses to the own server do not go through the proxy', () => {
   assert.equal(
     fullUrl('https://example.test/images/sets/9396-1_thumb.jpg'),
     '/images/sets/9396-1.jpg',
-    'Eigene Adressen müssen als Pfad behandelt werden, nicht proxiert',
+    'Own addresses must be treated as a path, not proxied',
   );
   assert.equal(
     imgUrl('https://example.test/images/sets/9396-1.jpg', true),
     '/images/sets/9396-1.jpg',
-    'Auch imgUrl darf die eigene Adresse nicht in den Proxy stecken',
+    'imgUrl must not put the own address into the proxy either',
   );
 
   // Foreign hosts still run via the proxy — that is the purpose of the
@@ -173,7 +173,7 @@ test('addresses to the own server do not go through the proxy', () => {
   assert.match(
     fullUrl('https://cdn.rebrickable.com/media/sets/9396-1.jpg'),
     /^\/api\/v1\/img-proxy\?url=/,
-    'CDN-Adressen müssen weiterhin über das Backend laufen',
+    'CDN addresses must still go through the backend',
   );
 });
 

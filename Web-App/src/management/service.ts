@@ -1,16 +1,16 @@
 /** The monitoring page reaches foreign services and jobs only from here, without a layer jump in the routes. */
 import fs from 'node:fs';
-import { AbrufFehler } from '../infra/fetch';
+import { FetchError } from '../infra/fetch';
 import { DAILY_JOBS } from './timesOfDay';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, reportError, withoutMissingFile } from '../infra/error';
-import { Degradations, versuche } from '../infra/result';
-import { requestsJeMinute } from '../images';
+import { errorMessage, reportError, withoutMissingFile } from '../infra/error';
+import { Degradations, attempts } from '../infra/result';
+import { requestsPerMinute } from '../images';
 import { asFetchError } from '../externalSources';
-import { fachfehler, type ErrorCode } from '../infra/errorTexts';
+import { failDomain, type ErrorCode } from '../infra/errorTexts';
 import type { ManagementContext } from './context';
 
-const SOURCES: Record<string, (q: ManagementContext['externalSources']['quellen']) => Promise<void>> = {
+const SOURCES: Record<string, (q: ManagementContext['externalSources']['sources']) => Promise<void>> = {
   rebrickable: q => q.checkRebrickableAccess(),
   brickset: q => q.checkBricksetAccess(),
   bricklink: q => q.checkBricklinkAccess(),
@@ -26,88 +26,88 @@ const SOURCE_NAME: Record<string, string> = {
 function sourceRejection(e: unknown): ErrorCode {
   const f = asFetchError(e),
     text = f.message;
-  if (/nicht konfiguriert|nicht vollständig|not configured/i.test(text)) return 'quelle_ohne_schluessel';
+  if (/nicht konfiguriert|nicht vollständig|not configured/i.test(text)) return 'source_without_key';
   if (
     f.isTransient ||
-    (e instanceof AbrufFehler && (e.grund === 'netz' || e.grund === 'zeitlimit')) ||
+    (e instanceof FetchError && (e.reason === 'netz' || e.reason === 'time_limit')) ||
     /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|socket hang up/i.test(text)
   )
-    return 'quelle_nicht_erreichbar';
-  if (/\b(401|403)\b|invalid|ungültig|unauthori[sz]ed/i.test(text)) return 'quelle_abgelehnt';
-  return 'quelle_test_fehlgeschlagen';
+    return 'source_unreachable';
+  if (/\b(401|403)\b|invalid|ungültig|unauthori[sz]ed/i.test(text)) return 'source_rejected';
+  return 'source_test_failed';
 }
 
 /** null if the access answers; otherwise code, name and raw reason. Only throws for an unknown source. */
 export async function checkSource(
   k: ManagementContext,
-  quelle: string,
-): Promise<{ code: ErrorCode; quelle: string; grund: string } | null> {
-  const pruefe = Object.hasOwn(SOURCES, quelle) ? SOURCES[quelle] : undefined;
-  if (!pruefe) fachfehler('ungueltig', 'quelle_unbekannt');
+  source: string,
+): Promise<{ code: ErrorCode; source: string; reason: string } | null> {
+  const check = Object.hasOwn(SOURCES, source) ? SOURCES[source] : undefined;
+  if (!check) failDomain('invalid', 'source_unknown');
   try {
-    await pruefe(k.externalSources.quellen);
+    await check(k.externalSources.sources);
     return null;
   } catch (e) {
-    return { code: sourceRejection(e), quelle: SOURCE_NAME[quelle] ?? quelle, grund: fehlertext(e).slice(0, 200) };
+    return { code: sourceRejection(e), source: SOURCE_NAME[source] ?? source, reason: errorMessage(e).slice(0, 200) };
   }
 }
 
 export async function cacheStats(k: ManagementContext) {
-  const leer = { count: 0, limit: 0, remaining: 0 };
+  const noQuota = { count: 0, limit: 0, remaining: 0 };
   const ab = new Degradations();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-    ab.oder(
+    ab.orElse(
       'cache',
-      Promise.all([k.catalog.cacheStand(), k.management.pricesInCache()]).then(([c, prices]) => ({ ...c, prices })),
+      Promise.all([k.catalog.cacheState(), k.management.pricesInCache()]).then(([c, prices]) => ({ ...c, prices })),
       { prices: 0, subsets: 0, catalog: 0 },
     ),
-    ab.oder('veraltete_preise', k.management.stalePrices(), 0),
-    ab.oder('kontingent_bricklink', k.externalSources.quotaStatus('bricklink'), leer),
-    ab.oder('kontingent_rebrickable', k.externalSources.quotaStatus('rebrickable'), leer),
-    ab.oder('kontingent_brickset', k.externalSources.quotaStatus('brickset'), leer),
+    ab.orElse('veraltete_preise', k.management.stalePrices(), 0),
+    ab.orElse('kontingent_bricklink', k.externalSources.quotaStatus('bricklink'), noQuota),
+    ab.orElse('kontingent_rebrickable', k.externalSources.quotaStatus('rebrickable'), noQuota),
+    ab.orElse('kontingent_brickset', k.externalSources.quotaStatus('brickset'), noQuota),
   ]);
   return {
     ...stats,
     price_stale: stale,
     rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS },
     db_pool: k.db.getPoolStats(),
-    ...ab.angabe(),
+    ...ab.detail(),
   };
 }
 
-export async function clearCaches(k: ManagementContext, alle: boolean) {
+export async function clearCaches(k: ManagementContext, all: boolean) {
   await k.finances.emptyPriceCache();
-  if (alle) {
+  if (all) {
     await k.catalog.emptySubsetsCache();
     await k.catalog.emptyCatalogCache();
   }
 }
 
 /** If there is quota left today, process right away instead of waiting until tomorrow. */
-export async function bricksetLimitSet(k: ManagementContext, alt: number, neu: number) {
-  if (!(neu > alt)) return;
+export async function bricksetLimitSet(k: ManagementContext, alt: number, fresh: number) {
+  if (!(fresh > alt)) return;
   // The new limit is saved; without a counter state the queue waits for the next run.
-  const rl = await versuche('management:kontingentUebersicht', k.externalSources.quotaStatus('brickset'));
+  const rl = await attempts('management:kontingentUebersicht', k.externalSources.quotaStatus('brickset'));
   if (!rl.ok) return;
-  const rest = Math.max(0, neu - (rl.wert.count || 0));
+  const rest = Math.max(0, fresh - (rl.value.count || 0));
   if (rest <= 0) return;
-  console.log(`[brickset] Limit erhöht ${alt}→${neu}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
-  await k.externalSources.brickset.jetzt();
+  console.log(`[brickset] Limit erhöht ${alt}→${fresh}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
+  await k.externalSources.brickset.now();
 }
 
 export async function requeueInstructions(k: ManagementContext) {
-  const fehlend = await k.management.setsWithoutInstructions();
-  for (const { set_number } of fehlend) {
+  const absent = await k.management.setsWithoutInstructions();
+  for (const { set_number } of absent) {
     await k.catalog.deleteInstructions(set_number);
-    await k.catalog.anleitungEinreihen(set_number);
+    await k.catalog.enqueueInstruction(set_number);
   }
-  return fehlend.length;
+  return absent.length;
 }
 
 /** In the old format, so that the UI stays unchanged. */
 export async function priceJobStatus(k: ManagementContext) {
   const plan = await k.management.lastRunOfType();
-  let letzter: {
+  let last: {
     lastRun?: string | null;
     lastDuration?: number | null;
     lastUpdated?: number;
@@ -115,36 +115,36 @@ export async function priceJobStatus(k: ManagementContext) {
     log?: unknown;
   } = {};
   try {
-    letzter = JSON.parse((await k.jobQueue.liesZustand('preis_job_stand')) ?? '{}');
+    last = JSON.parse((await k.jobQueue.readState('preis_job_stand')) ?? '{}');
   } catch (e) {
     reportError('management:preis-stand', e);
   }
-  const laeuft = plan?.status === 'laeuft';
+  const running = plan?.status === 'running';
   const job = {
-    running: laeuft,
-    lastRun: letzter.lastRun ?? null,
-    lastDuration: letzter.lastDuration ?? null,
-    lastUpdated: letzter.lastUpdated ?? 0,
-    lastErrors: letzter.lastErrors ?? 0,
-    nextRun: plan && !laeuft ? new Date(plan.due_at).toISOString() : null,
+    running: running,
+    lastRun: last.lastRun ?? null,
+    lastDuration: last.lastDuration ?? null,
+    lastUpdated: last.lastUpdated ?? 0,
+    lastErrors: last.lastErrors ?? 0,
+    nextRun: plan && !running ? new Date(plan.due_at).toISOString() : null,
     progress:
-      laeuft && plan?.progress
+      running && plan?.progress
         ? {
-            current: plan.progress.erledigt ?? 0,
-            total: plan.progress.gesamt ?? 0,
+            current: plan.progress.done ?? 0,
+            total: plan.progress.total ?? 0,
             set: plan.progress.text ?? null,
           }
         : null,
-    log: Array.isArray(letzter.log) ? letzter.log : [],
+    log: Array.isArray(last.log) ? last.log : [],
   };
   return { job, rate_limit: await k.externalSources.quotaStatus('bricklink') };
 }
 
 /** false if it is already running. */
-export const runPriceJobNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('preise');
+export const runPriceJobNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('prices');
 /** Only queues the job; if that fails, the admin learns about it instead of the log. */
 export async function reloadMissingImages(k: ManagementContext): Promise<void> {
-  await k.jobQueue.placeJobOne('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxAttempts: 2 });
+  await k.jobQueue.placeJobOne('images_reload', {}, { key: 'images_reload', maxAttempts: 2 });
 }
 
 export const runCatalogSyncNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('csv_sync');
@@ -152,12 +152,12 @@ export const runCatalogSyncNow = (k: ManagementContext) => k.jobQueue.pullPlanBe
 /** Even beyond the daily quota. */
 export async function retryBrickset(k: ManagementContext, sn: string) {
   await k.externalSources.setQuotaBack('brickset');
-  await k.externalSources.brickset.jetzt(sn);
+  await k.externalSources.brickset.now(sn);
 }
 
 export async function removeBrickset(k: ManagementContext, sn: string) {
-  await k.externalSources.quellen.fromRetryQueue(sn);
-  await k.catalog.anleitungEinreihen(sn, { nurAusweichquelle: true });
+  await k.externalSources.sources.fromRetryQueue(sn);
+  await k.catalog.enqueueInstruction(sn, { fallbackOnly: true });
 }
 
 /** The open scheduled job gets the new appointment immediately. */
@@ -170,7 +170,7 @@ export async function setJobSchedule(
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
-    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fachfehler('ungueltig', 'uhrzeit_ungueltig');
+    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) failDomain('invalid', 'time_invalid');
     await k.settings.setGlobalValue(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
@@ -181,46 +181,46 @@ export async function setJobSchedule(
       String(Math.max(5, parseInt(String(minutes), 10) || 60)),
     );
   } else {
-    fachfehler('ungueltig', 'unbekannter_job');
+    failDomain('invalid', 'unknown_job');
   }
   await rescheduleJobs(k);
 }
 
 export async function rescheduleJobs(k: ManagementContext) {
   await k.jobQueue.scheduleChanged('csv_sync');
-  await k.jobQueue.scheduleChanged('preise');
-  await k.externalSources.brickset.prefer(await k.externalSources.brickset.dueAb(false));
+  await k.jobQueue.scheduleChanged('prices');
+  await k.externalSources.brickset.prefer(await k.externalSources.brickset.dueFrom(false));
 }
 
 /** A set is finished with original AND preview; withdrawn negative results
  * are counted as well. */
 export async function queueCatalogImages(kx: ManagementContext, allAgain: boolean) {
   const toForgotten = await (allAgain ? kx.management.setImageMisses() : kx.management.setImageMissesWithout404());
-  const verworfen = toForgotten.length ? await kx.images.forgetMissing(toForgotten.map(r => r.cache_key)) : 0;
+  const discarded = toForgotten.length ? await kx.images.forgetMissing(toForgotten.map(r => r.cache_key)) : 0;
   // What is already finished is not queued again.
-  const vorhanden: Set<string> = new Set();
+  const present: Set<string> = new Set();
   try {
-    const namen = new Set<string>(fs.readdirSync(SET_IMAGES_DIR));
+    const names = new Set<string>(fs.readdirSync(SET_IMAGES_DIR));
     // If the preview is missing, the set stays in the queue; the job then does not
     // load again.
-    for (const n of namen) {
+    for (const n of names) {
       if (!n.endsWith('_thumb.jpg')) continue;
       const basis = n.slice(0, -'_thumb.jpg'.length);
-      if (namen.has(`${basis}.jpg`)) vorhanden.add(basis);
+      if (names.has(`${basis}.jpg`)) present.add(basis);
     }
   } catch (e) {
     // Without a folder nothing is finished yet; every other read error goes into the log.
     withoutMissingFile('management:vorschauen lesen')(e);
   }
 
-  const kandidaten = await kx.management.catalogImageCandidates();
+  const candidates = await kx.management.catalogImageCandidates();
 
   // The same naming rule as setBildHerunterladen(), otherwise the comparison would find nothing.
   const fileName = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
   const openSets: string[] = [];
   const openUrls: string[] = [];
-  for (const k of kandidaten) {
-    if (vorhanden.has(fileName(k.set_num))) continue;
+  for (const k of candidates) {
+    if (present.has(fileName(k.set_num))) continue;
     openSets.push(k.set_num);
     openUrls.push(k.set_img_url);
   }
@@ -230,16 +230,16 @@ export async function queueCatalogImages(kx: ManagementContext, allAgain: boolea
     newEnqueued = await kx.images.catalogImagesReserve(openUrls, openSets);
     await kx.images.imageDemandKick();
   }
-  const offen = await kx.management.openImageJobs();
+  const open = await kx.management.openImageJobs();
   // "Hours or days?" is the first question; the rate comes from the job itself.
-  const proMinute = requestsJeMinute();
+  const perMinute = requestsPerMinute();
   return {
     queued: newEnqueued,
-    pending: offen?.n ?? 0,
-    skipped: kandidaten.length - openUrls.length,
+    pending: open?.n ?? 0,
+    skipped: candidates.length - openUrls.length,
     // Without the number it would stay unclear why images considered missing are pending again.
-    verworfen,
-    dauer_minuten: Math.ceil((offen?.n ?? 0) / proMinute),
+    discarded,
+    duration_minutes: Math.ceil((open?.n ?? 0) / perMinute),
   };
 }
 /** Without a set list not the whole table: the preview notes have a
@@ -247,16 +247,16 @@ export async function queueCatalogImages(kx: ManagementContext, allAgain: boolea
 export async function forgetImageMisses(
   k: ManagementContext,
   sets: string[] | null,
-  vorschauen: boolean,
+  previews: boolean,
 ): Promise<number> {
   const v = k.management;
-  const schluessel = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setImageMisses()).map(r => r.cache_key);
-  if (vorschauen) schluessel.push(...(await v.thumbnailImageMisses()).map(r => r.cache_key));
-  return schluessel.length ? k.images.forgetMissing(schluessel) : 0;
+  const key = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setImageMisses()).map(r => r.cache_key);
+  if (previews) key.push(...(await v.thumbnailImageMisses()).map(r => r.cache_key));
+  return key.length ? k.images.forgetMissing(key) : 0;
 }
 
-export function serverLogSince(k: ManagementContext, minuten: number) {
-  return k.management.logSince(minuten);
+export function serverLogSince(k: ManagementContext, minutes: number) {
+  return k.management.logSince(minutes);
 }
 
 export { AccountImageRow } from './repository/management';

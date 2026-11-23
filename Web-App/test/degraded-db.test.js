@@ -17,19 +17,19 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-let cacheKaputt = false,
+let cacheBroken = false,
   priceBroken = false;
 const Module = require('node:module');
-const _echt = Module.prototype.require;
+const _original = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
-  const m = _echt.call(this, name, ...rest);
+  const m = _original.call(this, name, ...rest);
   if (typeof name !== 'string') return m;
   if (/(?:catalog[/\\]|^\.\/)bricklinkPrices(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) =>
         k === 'getCacheStats'
           ? async (...a) => {
-              if (cacheKaputt) throw new Error('Cache nicht lesbar');
+              if (cacheBroken) throw new Error('Cache not readable');
               return t[k](...a);
             }
           : t[k],
@@ -39,7 +39,7 @@ Module.prototype.require = function (name, ...rest) {
       get: (t, k) =>
         k === 'setState'
           ? async (...a) => {
-              if (priceBroken) throw new Error('Zustand nicht lesbar');
+              if (priceBroken) throw new Error('Condition not readable');
               return t[k](...a);
             }
           : t[k],
@@ -68,15 +68,15 @@ test('substitute values are named in the response', { concurrency: 1 }, async t 
   await t.test('the cache numbers say which part is missing', async () => {
     const { cacheStats: cacheStatistics } = _req('src/management/service.js');
     const heil = await cacheStatistics();
-    assert.equal(heil.degradiert, undefined, 'ohne Fehler keine Angabe');
-    cacheKaputt = true;
+    assert.equal(heil.degraded, undefined, 'no statement without an error');
+    cacheBroken = true;
     try {
       const r = await cacheStatistics();
-      assert.deepEqual(r.degradiert, ['cache']);
-      assert.equal(r.prices, 0, 'der Ersatzwert bleibt — aber jetzt erkennbar');
+      assert.deepEqual(r.degraded, ['cache']);
+      assert.equal(r.prices, 0, 'the substitute value stays — but now recognizable');
       assert.equal(typeof r.price_stale, 'number');
     } finally {
-      cacheKaputt = false;
+      cacheBroken = false;
     }
   });
 
@@ -89,14 +89,14 @@ test('substitute values are named in the response', { concurrency: 1 }, async t 
     );
     const { changeSet } = require('./helpers/sources').areaPage('sets');
     // Sets asks for the condition via the finance services of its context (sk.finances).
-    const finanzen = require('./helpers/sources').testArea('finances');
-    const stateReal = finanzen.setState;
-    finanzen.setState = async (...a) => {
-      if (priceBroken) throw new Error('Zustand nicht lesbar');
+    const finances = require('./helpers/sources').testArea('finances');
+    const stateReal = finances.setState;
+    finances.setState = async (...a) => {
+      if (priceBroken) throw new Error('Condition not readable');
       return stateReal(...a);
     };
     t.after(() => {
-      finanzen.setState = stateReal;
+      finances.setState = stateReal;
     });
     priceBroken = true;
     let r;
@@ -105,13 +105,13 @@ test('substitute values are named in the response', { concurrency: 1 }, async t 
     } finally {
       priceBroken = false;
     }
-    assert.equal(r.quantity, 2, 'die Menge ist trotzdem geschrieben');
-    assert.deepEqual(r.degradiert, ['kaufpreis']);
+    assert.equal(r.quantity, 2, 'the quantity is written anyway');
+    assert.deepEqual(r.degraded, ['kaufpreis']);
     const withoutPrice = await db.get(
       'SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id = $1 AND set_number = $2 AND purchase_price IS NULL',
       [uid, SN],
     );
-    assert.equal(withoutPrice.n, 1, 'die neue Erfassung ohne Preis — der Nachtrag holt ihn');
-    assert.equal((await changeSet(uid, SN, { quantity: 2 })).degradiert, undefined);
+    assert.equal(withoutPrice.n, 1, 'the new acquisition without a price — the follow-up fetches it');
+    assert.equal((await changeSet(uid, SN, { quantity: 2 })).degraded, undefined);
   });
 });

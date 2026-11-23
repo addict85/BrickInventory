@@ -1,0 +1,19 @@
+Gegenprobe: Gutschein-Formular wieder mit eigener Reihe Speichern | Abbrechen
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: Cancel and main button stand together only in the button row
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherForm.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherForm.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherForm.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherForm.kt
+@@ -81,6 +81,10 @@
+         if (condition.edited == null) PdfChoice(pdfSelected, onPdfChoose)
+       }
+         HorizontalDivider(Modifier.padding(top = Spacing.small))
++        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
++            Button(onClick = onSave) { Text(stringResource(R.string.settings_save)) }
++            TextButton(onClick = onClose) { Text(stringResource(R.string.common_cancel)) }
++        }
+         ButtonRow(
+             confirm = stringResource(R.string.settings_save),
+             onConfirm = {

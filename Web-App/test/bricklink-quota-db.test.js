@@ -4,7 +4,7 @@
  *
  * Counter-checks (measured on 28.10.2026):
  *   A  the count removed in bricklinkRequest() → red: both cases
- *   B  in fetchPrice back to kontingentPruefenUndZaehlen instead of quotaFree
+ *   B  in fetchPrice back to checkAndCountQuota instead of quotaFree
  *      → red: both cases (the pre-check counts too)
  *   C  in bricklinkRequest the abort on an exhausted quota removed
  *      → red: “an exhausted quota also stops the fallback”
@@ -28,15 +28,15 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
 /** @type {string[]} */
-const aufrufe = [];
+const calls = [];
 // @ts-expect-error — dummy with exactly what clients/bricklink.ts uses.
 https.get = (url, _opts, cb) => {
   const u = new URL(url);
-  aufrufe.push(u.pathname + u.search);
+  calls.push(u.pathname + u.search);
   const req = new EventEmitter();
-  const art = u.searchParams.get('guide_type');
+  const kind = u.searchParams.get('guide_type');
   const data =
-    art === 'stock'
+    kind === 'stock'
       ? { avg_price: '12.50', qty_avg_price: '12.00', min_price: '10', max_price: '15', total_quantity: '3' }
       : { avg_price: '0', qty_avg_price: '0', min_price: '0', max_price: '0', total_quantity: '0' };
   setImmediate(() => {
@@ -49,7 +49,7 @@ https.get = (url, _opts, cb) => {
   return req;
 };
 
-const zaehler = async () =>
+const counter = async () =>
   Number(
     (
       await db.get(`SELECT count FROM api_calls WHERE day = $1 AND api = 'bricklink' AND account_id = 0`, [
@@ -62,46 +62,46 @@ test('BrickLink quota per HTTP call', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const SN = `91${process.pid % 10000}-1`;
-  const heute = new Date().toISOString().slice(0, 10);
-  const vorher = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`);
-  const setze = async (k, v) =>
+  const todayDate = new Date().toISOString().slice(0, 10);
+  const prior = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`);
+  const put = async (k, v) =>
     db.run(`INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [
       k,
       v,
     ]);
   const newTag = async () => {
-    await db.run(`DELETE FROM api_calls WHERE day = $1 AND api = 'bricklink'`, [heute]);
+    await db.run(`DELETE FROM api_calls WHERE day = $1 AND api = 'bricklink'`, [todayDate]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
-    aufrufe.length = 0;
+    calls.length = 0;
   };
-  const zugang = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
-  const alterAccess = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
-  for (const k of zugang) await setze(k, 'test');
+  const access = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
+  const alterAccess = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [access]);
+  for (const k of access) await put(k, 'test');
   await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
   const { fetchPrice } = _req('src/finances/financeCalc.js');
   t.after(async () => {
-    await setze('api_limit_bricklink', vorher?.value ?? '4000');
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [zugang]);
-    for (const z of alterAccess) await setze(z.key, z.value);
+    await put('api_limit_bricklink', prior?.value ?? '4000');
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [access]);
+    for (const z of alterAccess) await put(z.key, z.value);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     await db.run('DELETE FROM price_history WHERE set_number = $1', [SN]);
     await db.pool.end().catch(() => {});
   });
 
   await t.test('sold and stock count once each', async () => {
-    await setze('api_limit_bricklink', '100');
+    await put('api_limit_bricklink', '100');
     await newTag();
     const p = await fetchPrice(SN, 'N', 'sold', 'EUR', 24);
-    assert.equal(parseFloat(p.avg_price), 12.5, 'der Rückfall auf Angebote hat keinen Preis geliefert');
-    assert.equal(aufrufe.length, 2, `erwartet zwei Abrufe, gesehen: ${aufrufe.join(' | ')}`);
-    assert.equal(await zaehler(), 2, 'das Kontingent zählt nicht jeden Abruf');
+    assert.equal(parseFloat(p.avg_price), 12.5, 'the fallback to offers delivered no price');
+    assert.equal(calls.length, 2, `expected two fetches, seen: ${calls.join(' | ')}`);
+    assert.equal(await counter(), 2, 'the quota does not count every fetch');
   });
 
   await t.test('an exhausted quota also stops the fallback', async () => {
-    await setze('api_limit_bricklink', '1');
+    await put('api_limit_bricklink', '1');
     await newTag();
     await fetchPrice(SN, 'N', 'sold', 'EUR', 24).catch(() => null);
-    assert.equal(aufrufe.length, 1, `über das Limit hinaus abgerufen: ${aufrufe.join(' | ')}`);
-    assert.equal(await zaehler(), 1);
+    assert.equal(calls.length, 1, `fetched beyond the limit: ${calls.join(' | ')}`);
+    assert.equal(await counter(), 1);
   });
 });

@@ -5,7 +5,7 @@
  *
  * Counter-check (measured 31.10.2026): in checkAuth() the line `if (angemeldetesKonto) return;`
  * removed → red: „die App bleibt sichtbar“ (#app has display: none, the
- * login form stands there again). On 11.11.2026 repeated with ruhig() instead of a 5 s pause:
+ * login form stands there again). On 11.11.2026 repeated with settle() instead of a 5 s pause:
  * red as well.
  */
 const test = require('node:test');
@@ -19,23 +19,23 @@ test('a late startup response "not logged in" does not end the fresh login', {
     name: `ueberholt_${process.pid}`,
     intercept: [
       {
-        muster: '*/api/v1/auth/me*',
-        contains: '/api/v1/auth/me',
-        antwort: { success: true, loggedIn: false, user: null },
+        pattern: '*/api/v2/auth/me*',
+        contains: '/api/v2/auth/me',
+        response: { success: true, loggedIn: false, user: null },
         delay: 4000,
       },
     ],
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   // startApp returns shortly after the login; the start response comes
-  // 4 s after loading the page. ruhig() waits until it is there.
-  await app.ruhig(15_000);
-  const stand = await app.b.auswerten(`({
+  // 4 s after loading the page. settle() waits until it is there.
+  await app.settle(15_000);
+  const state = await app.b.evaluate(`({
     app: getComputedStyle(document.getElementById('app')).display,
     mask: getComputedStyle(document.getElementById('login-screen')).display })`);
-  assert.notEqual(stand.app, 'none', 'die App bleibt sichtbar');
-  assert.equal(stand.mask, 'none', 'die Anmeldemaske bleibt verborgen');
+  assert.notEqual(state.app, 'none', 'the app stays visible');
+  assert.equal(state.mask, 'none', 'the sign-in form stays hidden');
 });

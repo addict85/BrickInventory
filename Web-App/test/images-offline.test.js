@@ -28,22 +28,22 @@ test("the tables' images may come from the cache offline", { concurrency: 1 }, a
     )
   ).id;
   // Part images are catalog: every logged-in account gets them.
-  const datei = path.join(__dirname, '..', 'data', 'images', 'parts', `OFF${process.pid}_0.png`);
-  fs.mkdirSync(path.dirname(datei), { recursive: true });
-  fs.writeFileSync(datei, 'Bild');
+  const file = path.join(__dirname, '..', 'data', 'images', 'parts', `OFF${process.pid}_0.png`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, 'Bild');
   t.after(async () => {
-    fs.rmSync(datei, { force: true });
+    fs.rmSync(file, { force: true });
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const r = await fetch(`${base}/images/parts/${path.basename(datei)}`);
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  const r = await fetch(`${base}/images/parts/${path.basename(file)}`);
   assert.equal([r.status, await r.text()].join(' '), '200 Bild');
-  const kopf = String(r.headers.get('cache-control'));
+  const head = String(r.headers.get('cache-control'));
   // no-cache, must-revalidate and no-store forbid the old copy that the app's offline fallback lives on.
-  assert.doesNotMatch(kopf, /no-cache|must-revalidate|no-store/, kopf);
+  assert.doesNotMatch(head, /no-cache|must-revalidate|no-store/, head);
   // max-age=0: online it still asks every time, a replaced image applies immediately.
-  assert.match(kopf, /max-age=0/, kopf);
+  assert.match(head, /max-age=0/, head);
   // private: a reverse proxy must not cache images behind a login.
-  assert.match(kopf, /private/, kopf);
+  assert.match(head, /private/, head);
 });

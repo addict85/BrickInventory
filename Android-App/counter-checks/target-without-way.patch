@@ -1,0 +1,16 @@
+Gegenprobe: Der Eintrag „CSV-Import“ fehlt auf der Seite „Mehr“
+Modul: app
+Test: ch.brickinventoryapp.app.ReachableRoutesTest
+Rot: a path leads to every destination without values
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MoreScreen.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MoreScreen.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MoreScreen.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MoreScreen.kt
+@@ -135,7 +135,6 @@
+             MoreGroup(R.string.nav_group_manage, separator)
+             MoreItem(R.string.storage_manage, Icons.Outlined.Inventory2) { onTarget(AccountTarget.StorageLocations) }
+             MoreItem(R.string.household_title, Icons.Outlined.Group) { onTarget(AccountTarget.Household) }
+-            MoreItem(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onTarget(AccountTarget.CsvImport) }
+         }
+         3 -> {
+             MoreGroup(R.string.nav_group_account, separator)

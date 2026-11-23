@@ -33,7 +33,7 @@ Fallback-Konstante `brickinventory-manager-secret-change-in-production`.
 Abgelaufene Nonces werden beim nächsten `/qr-token` mit weggeräumt.
 
 ### Login-Vorbedingungen: eine Quelle statt zwei
-`utils/auth.ts`, `routes/auth.ts`, `routes/api_v1/auth.ts`
+`utils/auth.ts`, `routes/auth.ts`, `routes/api/auth.ts`
 
 `/api/v1/auth/login` prüfte weder `is_active` noch `email_verified` und stellte
 danach einen Token mit `expires_at = NULL` aus. Ein deaktiviertes oder nie
@@ -637,7 +637,7 @@ Zwei Nachbesserungen, beide Fehler aus den vorherigen Runden.
 
 ### 1. Das Label aktualisierte sich in der Webapp weiterhin nicht
 
-Mein `withSetAggregate()` sass nur in `routes/api_v1/acquisitions.ts`. Die
+Mein `withSetAggregate()` sass nur in `routes/api/acquisitions.ts`. Die
 Webapp benutzt aber einen **eigenen** Handler in `routes/sets.ts:1102` — genau
 die Art von Doppelspur, die euer „einmal implementieren, über zwei Routen
 anbieten"-Muster eigentlich verhindern soll. Die PUT-Antwort der Webapp enthielt
@@ -1039,7 +1039,7 @@ Entscheidung, die ich nicht ungefragt getroffen habe.
 ## Nachtrag: `guide_type` auf `sold` + Zustands-Fallback wiederhergestellt
 
 **`sold` statt `stock`** — an allen sechs Stellen: der Vorgabewert in
-`getPriceGuide()`, die Einstellung `price_guide_type` in `routes/api_v1/sets.ts`
+`getPriceGuide()`, die Einstellung `price_guide_type` in `routes/api/sets.ts`
 und `utils/financeCalc.ts`, die beiden hartkodierten Minifiguren-/Teile-Abrufe
 in `financeCalc.ts` und die zwei Vorgaben in `jobs/priceJob.js`. Damit zählen
 tatsächlich erzielte Preise der letzten sechs Monate statt eingestellter
@@ -1265,7 +1265,7 @@ Stand: `tsc --noEmit` sauber, **151 Tests, alle grün, nichts übersprungen.**
 ---
 ## Punkt 4 (Teil 1): Galerie lädt seitenweise
 
-`utils/handlers.ts`, `routes/sets.ts`, `routes/api_v1/sets.ts`,
+`utils/handlers.ts`, `routes/sets.ts`, `routes/api/sets.ts`,
 `public/js/02-gallery.js`, `index.html`
 
 **Der Knackpunkt war nicht die Paginierung selbst**, sondern dass die Galerie
@@ -1324,7 +1324,7 @@ Client, die mitgezogen werden muss.
 
 ### Punkt 4, Teil 2: Minifiguren und manuelle Listen
 
-`utils/handlers.ts`, `routes/minifigs.ts`, `routes/api_v1/minifigs.ts`,
+`utils/handlers.ts`, `routes/minifigs.ts`, `routes/api/minifigs.ts`,
 `public/js/06-minifigs.js`, `index.html`
 
 `getMinifigs()` hatte Suche und Quellenfilter schon serverseitig — es fehlten
@@ -1345,7 +1345,7 @@ bekommen, mit gebundenen LIMIT/OFFSET-Parametern.
 ### Punkt 3: Rate-Limits in die Datenbank
 
 `utils/loginLimiter.ts`, `db/database.ts`, `routes/auth.ts`,
-`routes/api_v1/auth.ts`
+`routes/api/auth.ts`
 
 Die Zähler lagen im Prozessspeicher. Der Server läuft im Cluster mit
 `WEB_WORKERS` Prozessen (Vorgabe: Anzahl CPU-Kerne), und jede Anfrage kann in

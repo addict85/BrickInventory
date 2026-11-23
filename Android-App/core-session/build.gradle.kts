@@ -9,15 +9,20 @@ plugins {
 
 android {
     namespace = "ch.brickinventoryapp.core.session"
+    // A session without Hilt and a sign-out fake, for the tests above.
+    testFixtures.enable = true
 }
 
 dependencies {
     api(project(":core-model"))
     implementation(project(":core-data"))
-    // NetworkPolicy: Adresse einer gescheiterten Abmeldung, Klartext-Altbestand.
+    // NetworkPolicy: address of a failed sign-out, plaintext legacy stock.
     implementation(project(":core-network"))
     implementation(project(":core-resources"))
-    // Own flows (AbgeleiteterZustand); without this entry Gradle resolves to an old version.
+    // Own flows (the session's StateFlow); without this entry Gradle resolves to an old version.
     implementation(libs.kotlinx.coroutines.android)
-    // SitzungsDienst is tested in core-state: its tests assemble it together with the Blickfeld.
+
+    testFixturesImplementation(project(":core-data"))
+    testFixturesImplementation(libs.kotlinx.coroutines.android)
+    // SessionService is tested in core-state: its tests assemble it together with the Blickfeld.
 }

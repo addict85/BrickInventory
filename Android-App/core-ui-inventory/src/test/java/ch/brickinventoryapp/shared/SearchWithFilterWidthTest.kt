@@ -20,7 +20,7 @@ import org.robolectric.annotation.Config
  * width of the grid on the tablet. Limited to 720 dp, it used to end in the middle over the tiles.
  *
  * Counter-check (measured only in CI — Robolectric):
- *   suche-wieder-begrenzt  search field reverted to `widthIn(max = 720.dp)` → red „auf dem Tablet geht …“
+ *   search-limited-again  search field reverted to `widthIn(max = 720.dp)` → red „auf dem Tablet geht …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
@@ -34,14 +34,14 @@ class SearchWithFilterWidthTest {
         compose.setContent {
             BrickInventoryManagerTheme {
                 Box(Modifier.width(1200.dp)) {
-                    SearchWithFilter(wert = "", onValue = {}, platzhalter = "Suche", activeFilter = 0, onFilter = {})
+                    SearchWithFilter(value = "", onValue = {}, placeholder = "Suche", activeFilter = 0, onFilter = {})
                 }
             }
         }
         compose.waitForIdle()
-        val feld = compose.onNode(hasSetTextAction()).fetchSemanticsNode().boundsInRoot
-        val breite = feld.width / compose.density.density
+        val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode().boundsInRoot
+        val width = field.width / compose.density.density
         // The filter button and margins need a good 100 dp; the rest belongs to the field (previously at most 720).
-        assertTrue("Das Suchfeld ist nur $breite dp breit", breite > 1000f)
+        assertTrue("the search field is only $width dp wide", width > 1000f)
     }
 }

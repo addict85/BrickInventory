@@ -1,10 +1,10 @@
-import { echt, registerActions } from './registry.js';
+import { genuine, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { api } from './api.js';
-import { G, setzeHtml } from './dom.js';
+import { G, setHtml } from './dom.js';
 import { toast } from './messages.js';
 import { esc, html, rawHtml, joinHtml } from './escaping.js';
-import { confirmDelete, bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
+import { confirmDelete, confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
 // Settings, section household: invite, join, unlink. An account then sees the inventories of the
 // linked accounts; the rules for it live in the server (src/household).
 
@@ -16,12 +16,12 @@ import { confirmDelete, bestaetigeMitPasswort, withSecondFactor } from './confir
  * only one of the boxes stands there — a button the server always rejects is worse than none.
  */
 export async function loadHousehold() {
-  const [d, zf] = await Promise.all([api('GET', '/v1/settings/household'), api('GET', '/v1/auth/zweiter-faktor')]);
+  const [d, sf] = await Promise.all([api('GET', '/v2/settings/household'), api('GET', '/v2/auth/second-factor')]);
   if (!d?.success) return;
   renderHousehold(d);
   // With a second factor the server also requires the code when redeeming.
-  const faktor = G('household-redeem-faktor');
-  if (faktor) faktor.style.display = zf?.aktiv ? '' : 'none';
+  const factor = G('household-redeem-factor');
+  if (factor) factor.style.display = sf?.active ? '' : 'none';
 }
 
 /**
@@ -36,53 +36,53 @@ function renderHousehold(d) {
   const redeemEl = G('household-redeem-box');
   if (!stateEl) return;
 
-  // A grid on the list, the rows as display:contents: that way all names and all buttons stand in
+  // A grid on the list, the rows as display:contents: that way all names and all buttons state in
   // the same two columns. Names and all buttons in the same two columns; the icon marks the names as
   // accounts.
-  const liste = (
-    /** @type {{ id: number, username?: string | null, via?: string | null }[]} */ eintraege,
-    /** @type {(a: { id: number, username?: string | null, via?: string | null }) => string} */ aktion,
+  const list = (
+    /** @type {{ id: number, username?: string | null, via?: string | null }[]} */ entries,
+    /** @type {(a: { id: number, username?: string | null, via?: string | null }) => string} */ action,
   ) =>
-    html`<ul class="haushalt-liste">${eintraege.map(
-      a => html`<li data-stil="display:contents">
-      <span class="haushalt-name"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg>${a.username}</span>
-      <span class="haushalt-aktion">${rawHtml(aktion(a))}</span>
+    html`<ul class="household-list">${entries.map(
+      a => html`<li data-style="display:contents">
+      <span class="household-name"><svg class="ico" aria-hidden="true"><use href="#i-profile"/></svg>${a.username}</span>
+      <span class="household-action">${rawHtml(action(a))}</span>
     </li>`,
     )}</ul>`;
 
-  const teile = [];
-  const eltern = d.parents || (d.linked_to ? [d.linked_to] : []);
-  if (eltern.length) {
-    teile.push(
-      html`<div>${tRaw('household.state_parents', { n: eltern.length })}${liste(
-        eltern,
+  const parts = [];
+  const parent = d.parents || (d.linked_to ? [d.linked_to] : []);
+  if (parent.length) {
+    parts.push(
+      html`<div>${tRaw('household.state_parents', { n: parent.length })}${list(
+        parent,
         a =>
-          `<button class="btn bs btn-sm" data-click="unlinkFromParent"${echt()} data-arg="${a.id}" data-arg2="${esc(a.username || '')}">${t('household.unlink_self')}</button>`,
+          `<button class="btn bs btn-sm" data-click="unlinkFromParent"${genuine()} data-arg="${a.id}" data-arg2="${esc(a.username || '')}">${t('household.unlink_self')}</button>`,
       )}</div>`,
     );
   }
   if (d.sub_accounts?.length) {
-    teile.push(
-      html`${eltern.length ? html`<div data-stil="margin-top:.6rem">` : html`<div>`}${tRaw('household.state_main', { n: d.sub_accounts.length })}${liste(
+    parts.push(
+      html`${parent.length ? html`<div data-style="margin-top:.6rem">` : html`<div>`}${tRaw('household.state_main', { n: d.sub_accounts.length })}${list(
         d.sub_accounts,
         a =>
-          `<button class="btn bs btn-sm" data-click="unlinkHousehold"${echt()} data-arg="${a.id}" data-arg2="${esc(a.username || '')}">${t('household.unlink_sub')}</button>`,
+          `<button class="btn bs btn-sm" data-click="unlinkHousehold"${genuine()} data-arg="${a.id}" data-arg2="${esc(a.username || '')}">${t('household.unlink_sub')}</button>`,
       )}</div>`,
     );
   }
-  if (!teile.length) {
-    teile.push(html`<div data-stil="color:var(--mut)">${t('household.state_none', { cur: d.currency || '' })}</div>`);
+  if (!parts.length) {
+    parts.push(html`<div data-style="color:var(--mut)">${t('household.state_none', { cur: d.currency || '' })}</div>`);
   }
   if (d.former_links?.length) {
-    teile.push(html`<div role="note" data-stil="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
-      ${tRaw('household.former_intro')}${liste(
+    parts.push(html`<div role="note" data-style="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
+      ${tRaw('household.former_intro')}${list(
         d.former_links,
-        a => `<span data-stil="color:var(--mut)">${a.via ? t('household.former_via', { via: a.via }) : ''}</span>
+        a => `<span data-style="color:var(--mut)">${a.via ? t('household.former_via', { via: a.via }) : ''}</span>
               <button class="btn bs btn-sm" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`,
       )}
     </div>`);
   }
-  setzeHtml(stateEl, joinHtml(teile));
+  setHtml(stateEl, joinHtml(parts));
 
   // Every account may invite and redeem: an account can have several parent accounts, and each needs
   // its own invitation.
@@ -91,7 +91,7 @@ function renderHousehold(d) {
 }
 
 export async function createHouseholdInvite() {
-  const d = await api('POST', '/v1/settings/household/invite', {});
+  const d = await api('POST', '/v2/settings/household/invite', {});
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -123,26 +123,26 @@ export async function redeemHouseholdInvite() {
     return;
   }
   // Resolve the code first: whoever agrees should know whom they are giving access.
-  const p = await api('POST', '/v1/settings/household/redeem/pruefen', { code });
+  const p = await api('POST', '/v2/settings/household/redeem/check', { code });
   if (!p.success) {
     toast(p.error || t('settings.error'), 'error');
     return;
   }
   const name = p.inviter.username;
   // The main account then sees and changes the own collection — hence with password.
-  const password = await bestaetigeMitPasswort(
-    tRaw('household.redeem_frage', { name }),
+  const password = await confirmDeleteWithPassword(
+    tRaw('household.redeem_question', { name }),
     tRaw('household.redeem_confirm_text', { name }),
     'link',
-    { knopf: 'confirm.btn.einladung_annehmen', art: 'bp' },
+    { button: 'confirm.btn.invitation_accept', kind: 'bp' },
   );
   if (password === null) return;
-  const faktor_code = (G('household-redeem-faktor-code')?.value || '').trim();
+  const factor_code = (G('household-redeem-factor-code')?.value || '').trim();
   const d = await withSecondFactor(z =>
-    api('POST', '/v1/settings/household/redeem', {
+    api('POST', '/v2/settings/household/redeem', {
       code,
       password,
-      ...(z.code || faktor_code ? { faktor_code: z.code || faktor_code } : {}),
+      ...(z.code || factor_code ? { factor_code: z.code || factor_code } : {}),
       ...(z.passkey ? { passkey: z.passkey } : {}),
     }),
   );
@@ -152,11 +152,11 @@ export async function redeemHouseholdInvite() {
     return;
   }
   G('household-redeem-code').value = '';
-  if (G('household-redeem-faktor-code')) G('household-redeem-faktor-code').value = '';
+  if (G('household-redeem-factor-code')) G('household-redeem-factor-code').value = '';
   // tRaw + raw name: the toast sets text, no HTML — with esc() it would say "Marco &amp; Co" instead of "Marco
   // & Co".
-  const verknuepft = /** @type {{ linked_to?: { username?: string } }} */ (d).linked_to;
-  toast(tRaw('household.redeem_ok', { name: verknuepft?.username || '' }), 'success');
+  const linked = /** @type {{ linked_to?: { username?: string } }} */ (d).linked_to;
+  toast(tRaw('household.redeem_ok', { name: linked?.username || '' }), 'success');
   loadHousehold();
 }
 
@@ -168,13 +168,13 @@ export async function unlinkFromParent(mainUserId, name) {
   if (
     !(await confirmDelete(
       tRaw('household.unlink_confirm_title', { name }),
-      tRaw('household.unlink_confirm_text_eltern', { name }),
+      tRaw('household.unlink_confirm_text_parent', { name }),
       'link',
-      { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' },
+      { button: 'confirm.btn.link_unlink', kind: 'bp' },
     ))
   )
     return;
-  const d = await api('POST', '/v1/settings/household/unlink', { main_user_id: parseInt(mainUserId, 10) });
+  const d = await api('POST', '/v2/settings/household/unlink', { main_user_id: parseInt(mainUserId, 10) });
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -187,7 +187,7 @@ export async function unlinkFromParent(mainUserId, name) {
  * @param {string} subUserId
  */
 export async function dismissFormerLink(subUserId) {
-  const d = await api('POST', '/v1/settings/household/former/dismiss', { sub_user_id: parseInt(subUserId, 10) });
+  const d = await api('POST', '/v2/settings/household/former/dismiss', { sub_user_id: parseInt(subUserId, 10) });
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
@@ -205,13 +205,13 @@ export async function unlinkHousehold(subUserId, name) {
       tRaw('household.unlink_confirm_title', { name }),
       tRaw('household.unlink_confirm_text', { name }),
       'link',
-      { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' },
+      { button: 'confirm.btn.link_unlink', kind: 'bp' },
     ))
   )
     return;
   const d = await api(
     'POST',
-    '/v1/settings/household/unlink',
+    '/v2/settings/household/unlink',
     subUserId ? { sub_user_id: parseInt(subUserId, 10) } : {},
   );
   if (!d.success) {

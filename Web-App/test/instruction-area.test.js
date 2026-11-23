@@ -14,28 +14,28 @@ const express = require('express');
 const { deliverFile } = require('./helpers/sources').buildAndRequire()('src/http/serveFile.js');
 const { portOf } = require('./helpers/server');
 
-const DATEI = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'BI-3004.pdf');
-fs.writeFileSync(DATEI, Buffer.alloc(5000, 7));
-const SIZE = fs.statSync(DATEI).size;
+const FILE = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'BI-3004.pdf');
+fs.writeFileSync(FILE, Buffer.alloc(5000, 7));
+const SIZE = fs.statSync(FILE).size;
 
 /** Server with EXACTLY the body the instruction route in server.ts has. */
-function starte() {
+function start() {
   const app = express();
-  app.get('/data/instructions/*pfad', (_req, res) => deliverFile(res, DATEI));
-  app.get('/fehlt', (_req, res) => deliverFile(res, DATEI + '.gibtesnicht'));
+  app.get('/data/instructions/*pfad', (_req, res) => deliverFile(res, FILE));
+  app.get('/fehlt', (_req, res) => deliverFile(res, FILE + '.gibtesnicht'));
   const srv = app.listen(0);
   const basis = `http://127.0.0.1:${portOf(srv)}`;
   return { srv, basis };
 }
 
 test('range requests to an instruction', async t => {
-  const { srv, basis } = starte();
+  const { srv, basis } = start();
   t.after(() => srv.close());
 
-  const hol = async (pfad, range) => await fetch(basis + pfad, range ? { headers: { Range: range } } : undefined);
+  const fetchIt = async (path, range) => await fetch(basis + path, range ? { headers: { Range: range } } : undefined);
 
   await t.test('without a range the whole file comes', async () => {
-    const r = await hol('/data/instructions/BI-3004.pdf');
+    const r = await fetchIt('/data/instructions/BI-3004.pdf');
     assert.equal(r.status, 200);
     assert.equal((await r.arrayBuffer()).byteLength, SIZE);
   });
@@ -43,18 +43,18 @@ test('range requests to an instruction', async t => {
   await t.test('a range in the middle is continued', async () => {
     // That is the NORMAL case after an abort: the app has half and
     // fetches the rest. If this step fails, the resume path itself is broken.
-    const r = await hol('/data/instructions/BI-3004.pdf', 'bytes=2500-');
+    const r = await fetchIt('/data/instructions/BI-3004.pdf', 'bytes=2500-');
     assert.equal(r.status, 206);
     assert.equal(r.headers.get('content-range'), `bytes 2500-${SIZE - 1}/${SIZE}`);
   });
 
   await t.test('a range BEHIND the end of the file is 416, not 404', async () => {
-    const r = await hol('/data/instructions/BI-3004.pdf', `bytes=${SIZE}-`);
+    const r = await fetchIt('/data/instructions/BI-3004.pdf', `bytes=${SIZE}-`);
     assert.equal(
       r.status,
       416,
-      'Genau Marcos Befund: Die Datei ist da, der Bereich ist es nicht. 404 ' +
-        'behauptet das Gegenteil und schickt jede Fehlersuche in die Irre.',
+      'Exactly Marco’s finding: the file is there, the area is not. 404 ' +
+        'claims the opposite and sends every debugging session astray.',
     );
     // The length is the information with which a client can correct
     // itself — it must accompany the 416.
@@ -64,7 +64,7 @@ test('range requests to an instruction', async t => {
   await t.test('a missing file stays 404', async () => {
     // The opposite direction, so that the rule does not turn green because
     // nothing answers 404 anymore.
-    const r = await hol('/fehlt');
+    const r = await fetchIt('/fehlt');
     assert.equal(r.status, 404);
   });
 });

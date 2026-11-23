@@ -18,35 +18,35 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 
 test('an already supplied set triggers no fetch', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
   const fetches = [];
-  const nein = name => async () => {
+  const no = name => async () => {
     fetches.push(name);
-    throw new Error(`${name}: im Test kein Netz`);
+    throw new Error(`${name}: no network in the test`);
   };
   testSources(t, {
-    scrapeInstructions: nein('scrapeInstructions'),
-    brickset: { getInstructions: nein('brickset.getInstructions') },
+    scrapeInstructions: no('scrapeInstructions'),
+    brickset: { getInstructions: no('brickset.getInstructions') },
   });
-  for (const [name, modul] of [
+  for (const [name, mod] of [
     ['http', http],
     ['https', https],
   ])
-    for (const art of ['request', 'get']) {
-      const echt = modul[art];
-      t.mock.method(/** @type {any} */ (modul), art, (/** @type {any[]} */ ...a) => {
-        fetches.push(`${name}.${art}`);
-        return echt.apply(modul, a);
+    for (const kind of ['request', 'get']) {
+      const original = mod[kind];
+      t.mock.method(/** @type {any} */ (mod), kind, (/** @type {any[]} */ ...a) => {
+        fetches.push(`${name}.${kind}`);
+        return original.apply(mod, a);
       });
     }
 
@@ -64,9 +64,9 @@ test('an already supplied set triggers no fetch', async t => {
     [sn],
   );
 
-  const anzahl = await ins.setAnleitungenLaden(sn, null);
+  const count = await ins.loadSetInstructions(sn, null);
 
-  assert.deepEqual(fetches, [], 'kein fremder Server für ein versorgtes Set');
-  assert.equal(ins.lastFetchWarExtern(), false, 'Der Takt darf nach diesem Durchgang nicht warten');
-  assert.equal(anzahl, 1, 'Die vorhandene Anleitung wurde nicht gezählt');
+  assert.deepEqual(fetches, [], 'no foreign server for a supplied set');
+  assert.equal(ins.lastFetchWasExternal(), false, 'The tick must not wait after this pass');
+  assert.equal(count, 1, 'The existing instruction was not counted');
 });

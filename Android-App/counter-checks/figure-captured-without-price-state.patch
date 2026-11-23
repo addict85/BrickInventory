@@ -1,0 +1,17 @@
+Gegenprobe: das Erfassen einer Figur verliert, woher der Kaufpreis stammt
+Modul: core-data
+Test: ch.brickinventoryapp.data.PartsSlotValuesTest
+Rot: adding a figure reports new and the state of the purchase price
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/FiguresRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/FiguresRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/FiguresRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/FiguresRepositoryImpl.kt
+@@ -81,7 +81,7 @@
+             store.write(Editing.RecordFigure(entry),
+                 { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { key ->
+                 safeCall { api.addMinifig(request, key) }
+-            }.promised({ it.success }) { Recorded(it.action == "added", it.figNumber, it.priceFromCondition) }
++            }.promised({ it.success }) { Recorded(it.action == "added", it.figNumber) }
+         }
+ 
+     /**

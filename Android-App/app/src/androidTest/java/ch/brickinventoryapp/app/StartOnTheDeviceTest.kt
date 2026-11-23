@@ -21,7 +21,8 @@ class StartOnTheDeviceTest {
 
     @Test
     fun theAppStartsUntilToFirstView() {
-        assertEquals("ch.brickinventoryapp", InstrumentationRegistry.getInstrumentation().targetContext.packageName)
+        // The debug build installs next to the release one (applicationIdSuffix).
+        assertEquals("ch.brickinventoryapp.debug", InstrumentationRegistry.getInstrumentation().targetContext.packageName)
         ActivityScenario.launch(MainActivity::class.java).use { scene ->
             scene.moveToState(Lifecycle.State.RESUMED)
             assertEquals(Lifecycle.State.RESUMED, scene.state)

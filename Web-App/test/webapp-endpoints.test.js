@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare, routerEinhaengungen, pathForm, leseLiteral } = require('./helpers/sources');
+const { withoutComments, routerMounts, pathForm, readLiteral } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
@@ -26,52 +26,52 @@ function form(p) {
 /**
  * Resolve template expressions, then cut off the query part.
  */
-function pathFormV1(roh) {
-  return form(pathForm(roh));
+function pathFormV1(raw) {
+  return form(pathForm(raw));
 }
 
 function serverRoutes() {
-  const alle = new Set();
-  const collect = (datei, mount) => {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  const all = new Set();
+  const collect = (file, mount) => {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const m of require('./helpers/sources').routesFromSource(src, mount))
-      alle.add(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
+      all.add(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
   };
   // Mount points READ from server.ts instead of copied: a
   // copied list silently goes stale. See routerEinhaengungen().
-  for (const r of routerEinhaengungen()) collect(r.datei, r.mount);
-  const v1 = path.join(ROOT, 'routes/api_v1');
+  for (const r of routerMounts()) collect(r.file, r.mount);
+  const v1 = path.join(ROOT, 'routes/api');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
-    collect(path.join(v1, f), '/api/v1');
+    collect(path.join(v1, f), '/api/v2');
   }
   // And the three that hang directly in server.ts.
-  const srv = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+  const srv = withoutComments(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   for (const m of srv.matchAll(/app\.(get|post|put|delete)\(\s*'(\/api\/[^']+)'/g))
-    alle.add(`${m[1].toUpperCase()} ${form(m[2])}`);
-  return alle;
+    all.add(`${m[1].toUpperCase()} ${form(m[2])}`);
+  return all;
 }
 
 /** All calls of the web app: api('VERB', pfad) and fetch(pfad, { method }). */
 function webCalls() {
   const out = [];
-  for (const datei of fs.readdirSync(JS)) {
-    if (!datei.endsWith('.js') || datei === 'app.bundle.js') continue;
-    const src = ohneKommentare(fs.readFileSync(path.join(JS, datei), 'utf8'));
+  for (const file of fs.readdirSync(JS)) {
+    if (!file.endsWith('.js') || file === 'app.bundle.js') continue;
+    const src = withoutComments(fs.readFileSync(path.join(JS, file), 'utf8'));
     const rowOf = i => src.slice(0, i).split('\n').length;
 
     for (const m of src.matchAll(/\bapi(?:Roh|Raw)?\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
-      const lit = leseLiteral(src, m.index + m[0].length);
+      const lit = readLiteral(src, m.index + m[0].length);
       if (!lit?.text.startsWith('/')) continue;
-      out.push({ datei, zeile: rowOf(m.index), verb: m[1], pfad: pathFormV1('/api' + lit.text) });
+      out.push({ file, row: rowOf(m.index), verb: m[1], path: pathFormV1('/api' + lit.text) });
     }
     for (const m of src.matchAll(/fetch\(\s*/g)) {
-      const lit = leseLiteral(src, m.index + m[0].length);
+      const lit = readLiteral(src, m.index + m[0].length);
       if (!lit?.text.startsWith('/api/')) continue;
       // The method is in the second argument; without it, it is GET.
-      const rest = src.slice(lit.ende, lit.ende + 300);
+      const rest = src.slice(lit.end, lit.end + 300);
       const verb = (rest.match(/method\s*:\s*['"`](\w+)['"`]/)?.[1] ?? 'GET').toUpperCase();
-      out.push({ datei, zeile: rowOf(m.index), verb, pfad: pathFormV1(lit.text) });
+      out.push({ file, row: rowOf(m.index), verb, path: pathFormV1(lit.text) });
     }
   }
   return out;
@@ -79,26 +79,26 @@ function webCalls() {
 
 test('every address of the web app exists on the server', () => {
   const server = serverRoutes();
-  const aufrufe = webCalls();
+  const calls = webCalls();
 
   // Self-proof in both directions: if one of the patterns finds nothing, the
   // error list would be empty and the test green without having checked anything.
-  assert.ok(server.size >= 120, `Nur ${server.size} Server-Routen gefunden — Muster veraltet?`);
-  assert.ok(aufrufe.length >= 100, `Nur ${aufrufe.length} Webapp-Aufrufe gefunden — Muster veraltet?`);
+  assert.ok(server.size >= 120, `Only ${server.size} server routes found — pattern outdated?`);
+  assert.ok(calls.length >= 100, `Only ${calls.length} web app calls found — pattern outdated?`);
 
-  const fehlend = [
+  const absent = [
     ...new Set(
-      aufrufe.filter(a => !server.has(`${a.verb} ${a.pfad}`)).map(a => `${a.datei}:${a.zeile}  ${a.verb} ${a.pfad}`),
+      calls.filter(a => !server.has(`${a.verb} ${a.path}`)).map(a => `${a.file}:${a.row}  ${a.verb} ${a.path}`),
     ),
   ].sort();
 
   assert.deepEqual(
-    fehlend,
+    absent,
     [],
-    'Diese Adressen ruft die Webapp auf, der Server hat sie nicht:\n  ' +
-      fehlend.join('\n  ') +
-      '\nIm Browser scheitert das erst zur Laufzeit — und wo der Aufruf auf ' +
-      '.catch(() => null) endet, fehlt danach still ein Teil der Anzeige.',
+    'The web app calls these addresses, the server does not have them:\n  ' +
+      absent.join('\n  ') +
+      '\nIn the browser this only fails at runtime — and where the call ends in ' +
+      '.catch(() => null), part of the display is then silently missing.',
   );
 });
 
@@ -125,40 +125,40 @@ const EVERYTHING_DELETE =
   'Telefon gibt es den Knopf absichtlich nicht — ein Fehlgriff dort träfe die ' +
   'ganze Sammlung; einzelne Elemente löscht die App wie bisher.';
 
-const NUR_WEB = new Map([
+const WEB_ONLY = new Map([
   [
-    '/api/v1/auth/uebernahme-abbrechen',
+    '/api/v2/auth/cancel-takeover',
     'Der Link steht in einer Mail und öffnet die Webseite; die App hat dafür keinen eigenen Weg nötig.',
   ],
   [
-    '/api/v1/auth/anmeldung-freigeben',
+    '/api/v2/auth/approve-login',
     'Der Link steht in einer Mail und öffnet die Webseite; die freigegebene Adresse gilt danach auch für die App.',
   ],
   [
-    '/api/v1/einrichtung/stand',
+    '/api/v2/setup/state',
     'Die Prüfung erklärt die Installation des Wurzelzertifikats im Browser. Die App ' +
       'richtet sich über den QR-Code ein und bekommt den Fingerabdruck dort (`fp`).',
   ],
   [
-    '/api/v1/settings/tls',
+    '/api/v2/settings/tls',
     'Fingerabdruck der CA zum Abgleich von Hand. Die App bekommt ihn mit dem ' +
       'QR-Code (`fp`) und pinnt ihn; eine Anzeige brächte ihr nichts.',
   ],
   [
-    '/api/v1/auth/passkeys',
+    '/api/v2/auth/passkeys',
     'Passkeys entstehen und verschwinden im Browser (Passwort und Sitzung); die App meldet sich nur mit ihnen an.',
   ],
-  ['/api/v1/auth/passkeys/:X', 'wie /api/v1/auth/passkeys'],
-  ['/api/v1/auth/passkey/registrieren', 'wie /api/v1/auth/passkeys'],
-  ['/api/v1/auth/passkey/registrieren/optionen', 'wie /api/v1/auth/passkeys'],
+  ['/api/v2/auth/passkeys/:X', 'wie /api/v2/auth/passkeys'],
+  ['/api/v2/auth/passkey/register', 'wie /api/v2/auth/passkeys'],
+  ['/api/v2/auth/passkey/register/options', 'wie /api/v2/auth/passkeys'],
   [
-    '/api/v1/admin/protokoll',
+    '/api/v2/admin/audit-log',
     'Protokoll der Verwalteraktionen an fremden Konten. Diese Aktionen ' +
       '(Passwort setzen, Rolle, Löschen) gibt es absichtlich nur in der ' +
       'Webapp (VerwaltungApi.kt nennt den Grund), also auch ihr Protokoll.',
   ],
   [
-    '/api/v1/admin/job-status',
+    '/api/v2/admin/job-status',
     'Stand des Preis-Jobs samt BrickLink-Kontingent. Die App zeigt BEIDES ' +
       'schon: den Fortschritt über /admin/jobs (jobMonitor, mit progress/total) ' +
       'und das Kontingent über /admin/cache-stats (rate_limits, ' +
@@ -166,56 +166,56 @@ const NUR_WEB = new Map([
       'die Doppelung, gegen die dieser Baum sonst prüft.',
   ],
   [
-    '/api/v1/auth/qr-token',
+    '/api/v2/auth/qr-token',
     'Erzeugt den Nonce für die QR-Anmeldung — das ist die Seite, die den Code ' +
       'ZEIGT. Die App ist die andere Seite und liest ihn (/auth/qr-login). Ein ' +
       'Telefon, das sich selbst einen Code zum Abscannen anzeigt, hat niemand.',
   ],
   [
-    '/api/v1/auth/qr-kopplung/:X',
+    '/api/v2/auth/qr-pairing/:X',
     'Bestätigt oder lehnt die QR-Kopplung in der Sitzung ab, die den Code ' +
       'erzeugt hat; die App ist das Gerät, das gekoppelt wird, und zeigt nur den Code.',
   ],
   [
-    '/api/v1/auth/qr-kopplung/:X/bestaetigen',
+    '/api/v2/auth/qr-pairing/:X/confirm',
     'Bestätigt oder lehnt die QR-Kopplung in der Sitzung ab, die den Code ' +
       'erzeugt hat; die App ist das Gerät, das gekoppelt wird, und zeigt nur den Code.',
   ],
   [
-    '/api/v1/auth/qr-kopplung/:X/ablehnen',
+    '/api/v2/auth/qr-pairing/:X/reject',
     'Bestätigt oder lehnt die QR-Kopplung in der Sitzung ab, die den Code ' +
       'erzeugt hat; die App ist das Gerät, das gekoppelt wird, und zeigt nur den Code.',
   ],
   [
-    '/api/v1/auth/reset-password',
+    '/api/v2/auth/reset-password',
     'Setzt das Passwort mit dem Token aus der E-Mail. Der Link darin zeigt auf ' +
       'die WEBSEITE (src/mail/mailer.ts: `${baseUrl}/reset-password#token=`), also ' +
       'landet auch ein App-Nutzer dort. Was die App braucht, hat sie: ' +
       '/auth/forgot-password löst die Mail aus.',
   ],
   [
-    '/api/v1/auth/email-bestaetigen',
+    '/api/v2/auth/confirm-email',
     'Der Knopf auf der Seite hinter dem Link aus der Mail (/verify). Der Link ' +
       'öffnet die Webseite, auch auf dem Telefon; die App hat dafür keinen Bildschirm.',
   ],
-  ['/api/v1/auth/email-bestaetigen/vorschau', 'Nennt auf derselben Seite (/verify) vor dem Knopf das Konto des Links.'],
+  ['/api/v2/auth/confirm-email/preview', 'Nennt auf derselben Seite (/verify) vor dem Knopf das Konto des Links.'],
   [
-    '/api/v1/auth/bestaetigung-erneut',
+    '/api/v2/auth/resend-confirmation',
     'Neuer Bestätigungslink; er zeigt auf die Webseite (/verify), dort wird bestätigt. ' +
       'Neu seit Runde 6 – die App kann den Knopf nachziehen, bis dahin hilft die Webseite.',
   ],
   [
-    '/api/v1/auth/users',
+    '/api/v2/auth/users',
     'Nutzerverwaltung. ABSICHTLICH nicht in der App — die Begründung steht in ' +
       'VerwaltungApi.kt: sie gehört an den Rechner, nicht auf ein Telefon.',
   ],
-  ['/api/v1/auth/users/:X', 'Nutzer löschen — siehe /auth/users.'],
-  ['/api/v1/auth/users/:X/admin', 'Verwalterrecht umschalten — siehe /auth/users.'],
-  ['/api/v1/auth/users/:X/password', 'Fremdes Passwort zurücksetzen — siehe /auth/users.'],
-  ['/api/v1/auth/users/:X/aktiv', 'Fremdes Konto deaktivieren — siehe /auth/users.'],
-  ['/api/v1/auth/users/:X/freischalten', 'Offene Registrierung ohne Mail freischalten — siehe /auth/users.'],
+  ['/api/v2/auth/users/:X', 'Nutzer löschen — siehe /auth/users.'],
+  ['/api/v2/auth/users/:X/admin', 'Verwalterrecht umschalten — siehe /auth/users.'],
+  ['/api/v2/auth/users/:X/password', 'Fremdes Passwort zurücksetzen — siehe /auth/users.'],
+  ['/api/v2/auth/users/:X/active', 'Fremdes Konto deaktivieren — siehe /auth/users.'],
+  ['/api/v2/auth/users/:X/approve', 'Offene Registrierung ohne Mail freischalten — siehe /auth/users.'],
   [
-    '/api/v1/wanted-list/import/xml',
+    '/api/v2/wanted-list/import/xml',
     'BrickLink-Wanted-Liste einlesen. NOCH NICHT in der App, und der Grund ' +
       'steht hier, damit ihn der Naechste nicht neu herleitet: Dieser Import ist ' +
       'ZWEISTUFIG. Der erste Schritt schreibt nichts, sondern liefert einen ' +
@@ -230,7 +230,7 @@ const NUR_WEB = new Map([
       'Versehen, sondern ein benannter Rest.',
   ],
   [
-    '/api/v1/vouchers/export/pdf',
+    '/api/v2/vouchers/export/pdf',
     'Alle Gutscheine als EIN PDF. Die App RUFT die Adresse sehr wohl auf — seit ' +
       'Marcos Vorgabe vom 15.10. („Bitte auch den Button … in der Android-App ' +
       'einbauen. Das erzeugte PDF soll analog den andere PDFs angezeigt werden") ' +
@@ -245,20 +245,20 @@ const NUR_WEB = new Map([
       'nicht die Auskunft darueber.',
   ],
   [
-    '/api/v1/settings/import',
+    '/api/v2/settings/import',
     'Spielt eine gesicherte Verwaltungs-Konfiguration aus einer JSON-Datei ' +
       'zurück. Dasselbe Urteil wie bei der Nutzerverwaltung: eine Aufgabe für ' +
       'den Rechner, an dem die Sicherung liegt.',
   ],
   [
-    '/api/v1/settings/raw',
+    '/api/v2/settings/raw',
     'Alle Einstellungen für die Einstellungsseite, mit Verwalter-Sicht und ' +
-      'maskierten Geheimnissen. Die App holt über /v1/settings bewusst eine ' +
+      'maskierten Geheimnissen. Die App holt über /v2/settings bewusst eine ' +
       'ENGERE Auswahl (sechs Felder, isAdmin=false) — nicht dieselbe Antwort ' +
       'unter anderem Namen, sondern eine andere Frage.',
   ],
   [
-    '/api/v1/settings/smtp-test',
+    '/api/v2/settings/smtp-test',
     'Verschickt eine Probe-Mail zum Prüfen der SMTP-Angaben. Die App richtet ' +
       'kein SMTP ein; ohne die Formularfelder daneben hätte der Knopf nichts zu ' +
       'prüfen.',
@@ -266,91 +266,91 @@ const NUR_WEB = new Map([
 
   // Four addresses the app KNEW and no longer calls
   [
-    '/api/v1/sets/:X/instructions',
+    '/api/v2/sets/:X/instructions',
     'Verwirft die hinterlegten Anleitungen eines Sets und lässt die ' +
       'automatische Suche noch einmal laufen. War im Set-Detail der App und ist ' +
       'auf Marcos ausdrücklichen Wunsch entfernt.',
   ],
   [
-    '/api/v1/sets/:X/parts',
+    '/api/v2/sets/:X/parts',
     'Liest die Teileliste eines Sets neu aus dem Katalog ein. Ebenfalls im ' +
       'Set-Detail der App gewesen, auf Marcos Wunsch entfernt.',
   ],
   [
-    '/api/v1/parts/bl-color-map',
+    '/api/v2/parts/bl-color-map',
     'Rebrickable-Farbnummer → BrickLink-Farbnummer. Wurde in der App NUR vom ' +
       'BrickLink-Export der Teileliste gebraucht; der ist auf Marcos Wunsch ' +
       'entfernt, und damit hat die Karte dort keinen Leser mehr.',
   ],
   [
-    '/api/v1/minifigs/:X/parts',
+    '/api/v2/minifigs/:X/parts',
     'Die Einzelteile einer Minifigur. Dieselbe Herkunft: Der Export löste ' +
       'fehlende Figuren in ihre Teile auf, weil man die Figur oft nicht als ' +
       'Ganzes kaufen kann. Mit dem Export entfiel der einzige Aufrufer.',
   ],
-  ['/api/v1/papierkorb', TRASH],
-  ['/api/v1/papierkorb/:X', TRASH],
-  ['/api/v1/papierkorb/:X/wiederherstellen', TRASH],
-  ['/api/v1/auth/users/:X/zweiter-faktor', SECOND_FACTOR],
-  ['/api/v1/settings/einrichtung', SETUP],
-  ['/api/v1/settings/einrichtung/fertig', SETUP],
-  ['/api/v1/settings/quelle-testen', SETUP],
-  ['/api/v1/bestand', EVERYTHING_DELETE],
+  ['/api/v2/trash', TRASH],
+  ['/api/v2/trash/:X', TRASH],
+  ['/api/v2/trash/:X/restore', TRASH],
+  ['/api/v2/auth/users/:X/second-factor', SECOND_FACTOR],
+  ['/api/v2/settings/setup', SETUP],
+  ['/api/v2/settings/setup/complete', SETUP],
+  ['/api/v2/settings/test-source', SETUP],
+  ['/api/v2/inventory', EVERYTHING_DELETE],
   [
-    '/api/v1/auth/konto',
+    '/api/v2/auth/account',
     'Das eigene Konto endgültig löschen (Sicherheitsprüfung Runde 9, H4): mit Passwort und ' +
       'zweitem Faktor in der Webapp; in der App wäre ein Fehlgriff auf dem Telefon zu teuer.',
   ],
   [
-    '/api/v1/settings/household/redeem/pruefen',
+    '/api/v2/settings/household/redeem/check',
     'Nennt vor dem Annehmen einer Haushaltseinladung das einladende Konto (UI-Prüfung 13, M2). ' +
       'Die App fragt beim Annehmen nur das Passwort ab; sie bekommt die Prüfung mit ihrem eigenen Befund.',
   ],
   [
-    '/api/v1/vouchers/:X/pdf',
+    '/api/v2/vouchers/:X/pdf',
     'Die App holt das Gutschein-PDF nicht über Retrofit, sondern über seine Adresse im ' +
       'PdfViewerScreen (gutscheinPdfAdresse); die Webapp lädt es seit dem Einmal-Ticket per fetch.',
   ],
 ]);
 
 test('what only the web app can do has a reason', () => {
-  // The app's Retrofit routes (shared/app-schnittstelle.json); `{x}` becomes `:X`.
+  // The app's Retrofit routes (shared/app-interface.json); `{x}` becomes `:X`.
   const appPaths = new Set(
     require('./helpers/contract')
-      .appSchnittstelle()
-      .routen.map(r => form(r.pfad.replace(/\{[^}]+\}/g, ':X'))),
+      .appRoutes(require('./helpers/sources').buildAndRequire())
+      .map(r => form(r.path.replace(/\{[^}]+\}/g, ':X'))),
   );
   // MEASURED, there are 94 addresses.
-  assert.ok(appPaths.size >= 60, `Nur ${appPaths.size} App-Adressen — Muster veraltet?`);
+  assert.ok(appPaths.size >= 60, `Only ${appPaths.size} app addresses — pattern outdated?`);
 
-  const webPaths = new Set(webCalls().map(a => a.pfad));
+  const webPaths = new Set(webCalls().map(a => a.path));
   // MEASURED, there are 68.
-  assert.ok(webPaths.size >= 50, `Nur ${webPaths.size} Webapp-Adressen — Muster veraltet?`);
+  assert.ok(webPaths.size >= 50, `Only ${webPaths.size} web app addresses — pattern outdated?`);
 
-  const nurWeb = [...webPaths].filter(p => !appPaths.has(p)).sort();
+  const webOnly = [...webPaths].filter(p => !appPaths.has(p)).sort();
 
-  const unjustified = nurWeb.filter(p => !NUR_WEB.has(p));
+  const unjustified = webOnly.filter(p => !WEB_ONLY.has(p));
   assert.deepEqual(
     unjustified,
     [],
-    'Diese Adressen ruft nur die Webapp auf, und es steht kein Grund dabei:\n  ' +
+    'Only the web app calls these addresses, and no reason is given:\n  ' +
       unjustified.join('\n  ') +
-      '\nEntweder die App zieht nach — dann sind die beiden Oberflächen wieder ' +
-      'gleich viel wert —, oder es gibt einen Grund; der gehört dann in NUR_WEB, ' +
-      'damit ihn der Nächste nicht neu herleiten muss.',
+      '\nEither the app catches up — then both interfaces are worth ' +
+      'the same again —, or there is a reason; it then belongs in NUR_WEB, ' +
+      'so that the next person does not have to work it out again.',
   );
 
   // The same rule as for every exception list in this tree: an entry
   // that no longer describes anything looks like a decision and is merely
   // a guess. If the app catches up with one of these addresses, the entry
   // must become ROUTE — otherwise it silently covers the next gap as well.
-  const veraltet = [...NUR_WEB.keys()].filter(p => !nurWeb.includes(p)).sort();
+  const stale = [...WEB_ONLY.keys()].filter(p => !webOnly.includes(p)).sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
-    'Diese Einträge in NUR_WEB beschreiben nichts mehr:\n  ' +
-      veraltet.join('\n  ') +
-      '\nEntweder ruft die App die Adresse inzwischen auch auf (dann Eintrag ' +
-      'streichen), oder die Webapp ruft sie nicht mehr auf (dann ebenfalls).',
+    'These entries in NUR_WEB no longer describe anything:\n  ' +
+      stale.join('\n  ') +
+      '\nEither the app now calls the address too (then remove the ' +
+      'entry), or the web app no longer calls it (then likewise).',
   );
 });

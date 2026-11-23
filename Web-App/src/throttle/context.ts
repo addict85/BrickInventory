@@ -1,29 +1,33 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/area';
-import type { Uhr } from '../infra/clock';
+import { bound, type Context } from '../infra/area';
+import type { Clock } from '../infra/clock';
 import * as repository from './repository';
 
 export interface ThrottleDependencies {
   db: Db;
   /** The in-memory fallback's clock. */
-  uhr: Uhr;
+  clock: Clock;
 }
 
 export const access = (db: Db) => ({
   counter: {
-    read: mit(db)(repository.read),
-    increase: mit(db)(repository.increase),
-    lock: mit(db)(repository.lock),
-    occupySlot: mit(db)(repository.occupySlot),
-    freeSlot: mit(db)(repository.freeSlot),
-    deleteCounter: mit(db)(repository.deleteCounter),
-    deleteCountersWithPrefix: mit(db)(repository.deleteCountersWithPrefix),
-    deleteOldCounters: mit(db)(repository.deleteOldCounters),
-    countUp: mit(db)(repository.countUp),
-    hourlyState: mit(db)(repository.hourlyState),
-    countHour: mit(db)(repository.countHour),
-    countOncePerDay: mit(db)(repository.countOncePerDay),
+    read: bound(db)(repository.read),
+    increase: bound(db)(repository.increase),
+    lock: bound(db)(repository.lock),
+    occupySlot: bound(db)(repository.occupySlot),
+    freeSlot: bound(db)(repository.freeSlot),
+    deleteCounter: bound(db)(repository.deleteCounter),
+    deleteCountersWithPrefix: bound(db)(repository.deleteCountersWithPrefix),
+    deleteOldCounters: bound(db)(repository.deleteOldCounters),
+    countUp: bound(db)(repository.countUp),
+    hourlyState: bound(db)(repository.hourlyState),
+    countHour: bound(db)(repository.countHour),
+    countOncePerDay: bound(db)(repository.countOncePerDay),
+  },
+  apiBudget: {
+    claim: bound(db)(repository.claimApiBudget),
+    clear: bound(db)(repository.clearApiBudget),
   },
 });
-export type ThrottleContext = Kontext<ThrottleDependencies, ReturnType<typeof access>>;
+export type ThrottleContext = Context<ThrottleDependencies, ReturnType<typeof access>>;

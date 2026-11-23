@@ -6,14 +6,16 @@ import type { z } from 'zod';
 export interface JobPayloads {}
 export type JobKind = keyof JobPayloads & string;
 export type PayloadSchema<A extends JobKind> = JobPayloads[A] extends z.ZodType ? JobPayloads[A] : never;
-export type Nutzlast<A extends JobKind> = z.output<PayloadSchema<A>>;
+export type Payload<A extends JobKind> = z.output<PayloadSchema<A>>;
 export type PayloadInput<A extends JobKind> = z.input<PayloadSchema<A>>;
 
-export type JobStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
+/** Stored in jobs.status (migration 0136); API v1 shows the former German values (contract/management.ts). */
+export const JOB_STATUSES = ['pending', 'running', 'done', 'error', 'cancelled'] as const;
+export type JobStatus = (typeof JOB_STATUSES)[number];
 
-export interface Fortschritt {
-  erledigt?: number;
-  gesamt?: number;
+export interface Progress {
+  done?: number;
+  total?: number;
   text?: string | null;
   [k: string]: unknown;
 }
@@ -21,12 +23,12 @@ export interface Fortschritt {
 /** What a service needs from the running job: report state, stop at the signal. */
 export interface JobRun {
   readonly signal?: AbortSignal;
-  fortschritt?(f: Fortschritt): Promise<boolean>;
+  progress?(f: Progress): Promise<boolean>;
 }
 
 /** Throws the reason for the abort; between two steps of a long run. */
-export function checkAbort(lauf: JobRun | undefined): void {
-  lauf?.signal?.throwIfAborted();
+export function checkAbort(run: JobRun | undefined): void {
+  run?.signal?.throwIfAborted();
 }
 
 export interface JobRow {
@@ -42,18 +44,18 @@ export interface JobRow {
   error_message: string | null;
 }
 
-export interface Einstellen {
+export interface Enqueue {
   userId?: number | null;
   /** If an open job with this key already exists, no second one is added. */
-  schluessel?: string;
+  key?: string;
   maxAttempts?: number;
   afterSeconds?: number;
   /** Takes precedence over afterSeconds. */
-  dueAb?: Date;
-  fortschritt?: Fortschritt;
+  dueFrom?: Date;
+  progress?: Progress;
 }
 
-export type Belegung = Pick<JobRow, 'id' | 'locked_by'>;
+export type Claim = Pick<JobRow, 'id' | 'locked_by'>;
 
 /** If a remote side throttles, the whole kind waits, not one job. */
 
@@ -67,13 +69,13 @@ export interface Pause {
 /** What a handler gets from the worker; the domain services only know this, not the worker. */
 export interface JobContext {
   /** false: the job no longer belongs to this run (aborted, reassigned). */
-  lebenszeichen(): Promise<boolean>;
-  fortschritt(f: Fortschritt): Promise<boolean>;
+  heartbeat(): Promise<boolean>;
+  progress(f: Progress): Promise<boolean>;
   /** Aborted, reassigned or the process ends: fetches and loops stop. */
   readonly signal: AbortSignal;
   /** A long job stops at the next safe point. */
-  readonly beendet: boolean;
-  readonly versuch: number;
+  readonly ended: boolean;
+  readonly attempt: number;
 }
 
 /** Is returned and continued later without counting as failed. */
@@ -94,9 +96,9 @@ export class JobLost extends Error {
 export class JobMove extends Error {
   constructor(
     readonly bis: Date,
-    readonly grund: string,
-    readonly zaehlt = false,
+    readonly reason: string,
+    readonly counts = false,
   ) {
-    super(grund);
+    super(reason);
   }
 }

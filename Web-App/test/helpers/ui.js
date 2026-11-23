@@ -9,21 +9,21 @@ const { complete } = require('./contract-fill');
 
 const ROOT = path.join(__dirname, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-// TEST_BUENDEL: the bundle with source map from test-run.js --abdeckung.
-const { BUENDEL, placeBundleSafe } = require('./bundle');
+// TEST_BUNDLE: the bundle with source map from test-run.js --coverage.
+const { BUNDLE_FILE, placeBundleSafe } = require('./bundle');
 placeBundleSafe();
-const BUNDLE_PATH = process.env.TEST_BUENDEL || BUENDEL;
+const BUNDLE_PATH = process.env.TEST_BUNDLE || BUNDLE_FILE;
 const BUNDLE = fs.readFileSync(BUNDLE_PATH, 'utf8');
 
-const ANMELDUNG = {
-  '/v1/startup-status': { ready: true, progress: 0, total: 0, step: null, sub: null },
-  '/v1/auth/me': {
+const SIGNED_IN = {
+  '/v2/startup-status': { ready: true, progress: 0, total: 0, step: null, sub: null },
+  '/v2/auth/me': {
     success: true,
     loggedIn: true,
-    user: { id: 1, username: 'anna', is_admin: true, zweiterFaktorPflicht: false },
+    user: { id: 1, username: 'anna', is_admin: true, secondFactorRequired: false },
   },
-  '/v1/sets/household-members': { success: true, members: [{ id: 1, username: 'anna', is_self: true, tiefe: 0 }] },
-  '/v1/stats': {
+  '/v2/sets/household-members': { success: true, members: [{ id: 1, username: 'anna', is_self: true, depth: 0 }] },
+  '/v2/stats': {
     success: true,
     stats: {
       total_sets: 0,
@@ -37,72 +37,72 @@ const ANMELDUNG = {
       user_default_condition: null,
     },
   },
-  '/v1/sets': { success: true, sets: [], count: 0, total: 0, themes: [] },
-  '/v1/parts': { success: true, parts: [], total: 0, page: 1, page_size: 50, source: 'db' },
-  '/v1/parts/stats': { success: true, stats: { unique_parts: 0, unique_colors: 0, total_parts: 0 } },
-  '/v1/parts/colors': { success: true, colors: [] },
-  '/v1/parts/categories': { success: true, categories: [] },
-  '/v1/parts/manual': { success: true, parts: [], total: 0, page: 1, page_size: 0 },
-  '/v1/parts/brick-colors': { success: true, colors: [] },
-  '/v1/minifigs': { success: true, figs: [], total: 0 },
-  '/v1/minifigs/stats': { success: true, stats: { types: 0, total_quantity: 0, manual: 0, unique_figs: 0 } },
-  '/v1/minifigs/manual': { success: true, figs: [], total: 0, page: 1, page_size: 0 },
-  '/v1/finance/valuation': {
+  '/v2/sets': { success: true, sets: [], count: 0, total: 0, themes: [] },
+  '/v2/parts': { success: true, parts: [], total: 0, page: 1, page_size: 50, source: 'db' },
+  '/v2/parts/stats': { success: true, stats: { unique_parts: 0, unique_colors: 0, total_parts: 0 } },
+  '/v2/parts/colors': { success: true, colors: [] },
+  '/v2/parts/categories': { success: true, categories: [] },
+  '/v2/parts/manual': { success: true, parts: [], total: 0, page: 1, page_size: 0 },
+  '/v2/parts/brick-colors': { success: true, colors: [] },
+  '/v2/minifigs': { success: true, figs: [], total: 0 },
+  '/v2/minifigs/stats': { success: true, stats: { types: 0, total_quantity: 0, manual: 0, unique_figs: 0 } },
+  '/v2/minifigs/manual': { success: true, figs: [], total: 0, page: 1, page_size: 0 },
+  '/v2/finance/valuation': {
     success: true,
     currency: 'EUR',
     total_value: '0',
     condition: 'N',
-    kaufpreise_fremde_waehrung: 0,
-    kaufpreise_umgerechnet: 0,
-    preise_ausstehend: 0,
+    foreign_currency_purchases: 0,
+    converted_purchase_prices: 0,
+    prices_pending: 0,
     guide_type: 'sold',
     ttl_hours: 24,
-    ttl_stunden: 24,
+    cache_ttl_hours: 24,
     sets: [],
     totals: { min: '0', avg: '0', max: '0', qty_avg: '0' },
-    wert_gesamt: 0,
+    value_total: 0,
     total: 0,
     page: 1,
     page_size: 0,
   },
-  '/v1/finance/parts-valuation': {
+  '/v2/finance/parts-valuation': {
     success: true,
     currency: 'EUR',
     parts: [],
     total_value: '0',
-    kaufpreise_fremde_waehrung: 0,
-    kaufpreise_umgerechnet: 0,
-    preise_ausstehend: 0,
-    wert_gesamt: 0,
+    foreign_currency_purchases: 0,
+    converted_purchase_prices: 0,
+    prices_pending: 0,
+    value_total: 0,
     total: 0,
     page: 1,
     page_size: 0,
   },
-  '/v1/finance/minifigs-valuation': {
+  '/v2/finance/minifigs-valuation': {
     success: true,
     currency: 'EUR',
     figs: [],
     total_value: '0',
-    kaufpreise_fremde_waehrung: 0,
-    kaufpreise_umgerechnet: 0,
-    preise_ausstehend: 0,
-    wert_gesamt: 0,
+    foreign_currency_purchases: 0,
+    converted_purchase_prices: 0,
+    prices_pending: 0,
+    value_total: 0,
     total: 0,
     page: 1,
     page_size: 0,
   },
-  '/v1/finance/pnl': {
+  '/v2/finance/pnl': {
     success: true,
     currency: 'EUR',
     sets: [],
     totals: {
       purchase: '0',
       current: '0',
-      kaufpreise_fremde_waehrung: 0,
-      kaufpreise_umgerechnet: 0,
+      foreign_currency_purchases: 0,
+      converted_purchase_prices: 0,
       pnl_current: '0',
       pnl_purchase: '0',
-      pnl_prozent: null,
+      pnl_percent: null,
       sets_purchase: '0',
       parts_purchase: '0',
       figs_purchase: '0',
@@ -112,17 +112,17 @@ const ANMELDUNG = {
     page: 1,
     page_size: 0,
   },
-  '/v1/finance/portfolio-history': {
+  '/v2/finance/portfolio-history': {
     success: true,
     currency: 'EUR',
     period: '1y',
     points: [],
     y_axis: [],
-    messpunkte: 0,
+    data_points: 0,
     period_change_pct: null,
   },
-  '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe' } },
-  '/v1/auth/users': {
+  '/v2/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe' } },
+  '/v2/auth/users': {
     success: true,
     users: [
       {
@@ -130,35 +130,35 @@ const ANMELDUNG = {
         username: 'anna',
         is_admin: true,
         is_active: true,
-        zweiter_faktor: false,
-        wartet_auf_bestaetigung: false,
+        second_factor: false,
+        awaiting_confirmation: false,
         created_at: '2026-10-01T00:00:00Z',
-        angekuendigt: [{ type: 'deaktivieren', effective_at: '2026-10-02T00:00:00Z' }],
+        announced: [{ type: 'deactivate', effective_at: '2026-10-02T00:00:00Z' }],
       },
     ],
   },
-  '/v1/admin/api-limits': { success: true, limits: { rebrickable: 25000, bricklink: 4000, brickset: 100 } },
+  '/v2/admin/api-limits': { success: true, limits: { rebrickable: 25000, bricklink: 4000, brickset: 100 } },
 };
 
 const SIGNED_OUT = {
-  '/v1/startup-status': ANMELDUNG['/v1/startup-status'],
-  '/v1/auth/me': { success: true, loggedIn: false },
+  '/v2/startup-status': SIGNED_IN['/v2/startup-status'],
+  '/v2/auth/me': { success: true, loggedIn: false },
 };
 
 // An error in a loader that the UI itself does not catch should
 // not end the test run; it lands in `fehler` and the test can see it.
-const fehler = [];
+const error = [];
 process.on('unhandledRejection', e => {
-  fehler.push(e);
+  error.push(e);
 });
 
 let _contract;
-const vertrag = () => {
+const contract = () => {
   if (!_contract) {
     require('./sources').buildDist();
     _contract = {
       ...require(path.join(ROOT, 'dist', 'src', 'contract', 'index.js')),
-      Fehler: require(path.join(ROOT, 'dist', 'src', 'contract', 'base.js')).Fehler,
+      Fehler: require(path.join(ROOT, 'dist', 'src', 'contract', 'base.js')).ErrorBody,
     };
   }
   return _contract;
@@ -169,73 +169,73 @@ const vertrag = () => {
  * completed by the route's schema (contract-fill.js); a wrong type throws. A deliberately broken response carries
  * `$contractViolating: '<reason>'` and goes out unchanged.
  */
-function checkResponse(methode, url, daten) {
-  if (!daten || typeof daten !== 'object' || daten === UNASSIGNED || daten.$contractViolating) return daten;
-  const pfad =
+function checkResponse(method, url, data) {
+  if (!data || typeof data !== 'object' || data === UNASSIGNED || data.$contractViolating) return data;
+  const path =
     '/api' +
     String(url)
       .replace(/^https?:\/\/[^/]+/, '')
       .replace(/^\/api/, '')
       .split('?')[0];
-  const { routeForRequest, Fehler } = vertrag();
-  const status = daten.$status ?? 200;
-  const schema = status >= 400 ? Fehler : routeForRequest(methode.toUpperCase(), pfad)?.antwort;
-  if (!schema) return daten;
-  const rumpf = Array.isArray(daten)
-    ? daten
-    : Object.fromEntries(Object.entries(daten).filter(([k]) => !k.startsWith('$')));
+  const { routeForRequest, Fehler: ErrorSchema } = contract();
+  const status = data.$status ?? 200;
+  const schema = status >= 400 ? ErrorSchema : routeForRequest(method.toUpperCase(), path)?.response;
+  if (!schema) return data;
+  const body = Array.isArray(data)
+    ? data
+    : Object.fromEntries(Object.entries(data).filter(([k]) => !k.startsWith('$')));
   // Error responses are not completed: the test states error and code itself.
-  const wert = status >= 400 ? rumpf : complete(schema, JSON.parse(JSON.stringify(rumpf)));
-  const r = schema.safeParse(wert);
+  const value = status >= 400 ? body : complete(schema, JSON.parse(JSON.stringify(body)));
+  const r = schema.safeParse(value);
   if (!r.success) {
     throw new Error(
-      `Testantwort verletzt den Vertrag: ${methode} ${pfad} (${status}): ` +
+      `Test response violates the contract: ${method} ${path} (${status}): ` +
         r.error.issues
           .slice(0, 6)
           .map(i => `${i.path.join('.') || '$'}: ${i.message}`)
           .join(' | '),
     );
   }
-  return Array.isArray(daten) ? wert : { ...wert, $status: daten.$status };
+  return Array.isArray(data) ? value : { ...value, $status: data.$status };
 }
 
 // Paths not predefined: the test does not rely on them, so no contract check.
 const UNASSIGNED = Object.freeze({ success: true });
 
-function responseFor(antworten, url, o = {}) {
-  const pfad = String(url)
+function responseFor(answers, url, o = {}) {
+  const path = String(url)
     .replace(/^https?:\/\/[^/]+/, '')
     .replace(/^\/api/, '')
     .split('?')[0];
-  const a = Object.hasOwn(antworten, pfad) ? antworten[pfad] : UNASSIGNED;
+  const a = Object.hasOwn(answers, path) ? answers[path] : UNASSIGNED;
   return typeof a === 'function' ? a(url, o) : a;
 }
 
-const takt = (ms = 0) => new Promise(r => setTimeout(r, ms));
+const tick = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
 /** Waits until `bedingung()` is true (at most `ms`). */
-async function warte(bedingung, ms = 3000) {
-  const ende = Date.now() + ms;
-  while (Date.now() < ende) {
-    if (bedingung()) return true;
-    await takt(10);
+async function waitFor(condition, ms = 3000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    if (condition()) return true;
+    await tick(10);
   }
-  return bedingung();
+  return condition();
 }
 
 /**
- * @param {object} [antworten]  path → response (object or function(url))
- * @param {{ angemeldet?: boolean, sprache?: string, browserLanguage?: string, vorher?: (w: any) => void, url?: string }} [opt]
+ * @param {object} [answers]  path → response (object or function(url))
+ * @param {{ loggedIn?: boolean, language?: string, browserLanguage?: string, before?: (w: any) => void, url?: string }} [opt]
  *   url: address of the page (default http://localhost/), e.g. https:// for a page with TLS.
  */
-async function openUi(antworten = {}, opt = {}) {
+async function openUi(answers = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
-  const alle = { ...(opt.angemeldet === false ? SIGNED_OUT : ANMELDUNG), ...antworten };
+  const all = { ...(opt.loggedIn === false ? SIGNED_OUT : SIGNED_IN), ...answers };
   // The account's language wins over the stored one on loading — so set both.
-  if (opt.sprache && !antworten['/v1/settings/raw'])
-    alle['/v1/settings/raw'] = {
+  if (opt.language && !answers['/v2/settings/raw'])
+    all['/v2/settings/raw'] = {
       success: true,
-      settings: { ...ANMELDUNG['/v1/settings/raw'].settings, language: opt.sprache },
+      settings: { ...SIGNED_IN['/v2/settings/raw'].settings, language: opt.language },
     };
   const dom = new jsdom.JSDOM(HTML, {
     runScripts: 'outside-only',
@@ -243,38 +243,38 @@ async function openUi(antworten = {}, opt = {}) {
     pretendToBeVisual: true,
   });
   const w = dom.window;
-  const aufrufe = [];
+  const calls = [];
   try {
-    w.localStorage.setItem('bim_lang', opt.sprache || 'de');
+    w.localStorage.setItem('bim_lang', opt.language || 'de');
   } catch (_) {
     /* jsdom without storage */
   }
   // A response may be a promise (delayed) or throw (network error);
   // `$status` sets the HTTP status, e.g. { $status: 500, success: false }.
-  let offen = 0;
+  let open = 0;
   w.fetch = async (url, o = {}) => {
-    aufrufe.push({ url: String(url), method: o.method || 'GET', body: o.body, headers: o.headers || {} });
-    offen++;
-    let daten;
+    calls.push({ url: String(url), method: o.method || 'GET', body: o.body, headers: o.headers || {} });
+    open++;
+    let data;
     try {
-      daten = await responseFor(alle, url, o);
+      data = await responseFor(all, url, o);
     } finally {
-      setTimeout(() => offen--, 0);
+      setTimeout(() => open--, 0);
     }
     // Thrown outside the window: the UI would otherwise catch the error as a network error.
     try {
-      daten = checkResponse(o.method || 'GET', url, daten);
+      data = checkResponse(o.method || 'GET', url, data);
     } catch (e) {
       setImmediate(() => {
         throw e;
       });
     }
-    const status = daten?.$status ?? 200;
+    const status = data?.$status ?? 200;
     return {
       ok: status < 400,
       status,
       headers: { get: () => 'application/json' },
-      json: async () => JSON.parse(JSON.stringify(daten)),
+      json: async () => JSON.parse(JSON.stringify(data)),
     };
   };
   w.console.warn = () => {};
@@ -287,36 +287,36 @@ async function openUi(antworten = {}, opt = {}) {
   };
   // index.html loads the dictionaries as separate <script> tags.
   for (const l of ['de', 'en']) w.eval(fs.readFileSync(path.join(ROOT, 'public', 'locales', l + '.js'), 'utf8'));
-  if (opt.vorher) opt.vorher(w);
+  if (opt.before) opt.before(w);
   // With file names instead of w.eval(): that way V8 attributes the coverage to the bundle.
   new (require('node:vm').Script)(BUNDLE, { filename: BUNDLE_PATH }).runInContext(dom.getInternalVMContext());
   if (w.document.readyState === 'loading') await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
-  if (opt.angemeldet !== false)
-    await warte(
+  if (opt.loggedIn !== false)
+    await waitFor(
       () =>
         w.document.getElementById('app')?.style.display !== 'none' &&
         w.document.getElementById('app')?.style.display !== '',
     );
-  await takt(20);
+  await tick(20);
   /** Until no response is pending anymore and the UI has processed the last one. */
-  const ruhig = async (ms = 3000) => {
-    const ok = await warte(() => offen === 0, ms);
-    for (let i = 0; i < 3; i++) await takt(0);
+  const settle = async (ms = 3000) => {
+    const ok = await waitFor(() => open === 0, ms);
+    for (let i = 0; i < 3; i++) await tick(0);
     return ok;
   };
-  return { w, d: w.document, aufrufe, warte, takt, ruhig, fehler };
+  return { w, d: w.document, calls, waitFor, tick, settle, error };
 }
 
 /** Open a tab, like a click in the bar. */
-async function reiter(w, name) {
+async function switchTab(w, name) {
   w.document.querySelector(`.ntab[data-tab="${name}"]`).click();
-  await takt(50);
+  await tick(50);
 }
 
 /** Open a view from the user menu (account, vouchers, …). */
-async function sicht(w, name) {
+async function view(w, name) {
   w.document.querySelector(`.umenu-item[data-arg="${name}"]`).click();
-  await takt(50);
+  await tick(50);
 }
 
-module.exports = { openUi, reiter, sicht, warte, takt, ANMELDUNG, SIGNED_OUT, checkResponse };
+module.exports = { openUi, switchTab, view, waitFor, tick, SIGNED_IN, SIGNED_OUT, checkResponse };

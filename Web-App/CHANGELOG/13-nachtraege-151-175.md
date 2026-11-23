@@ -189,12 +189,12 @@ Admin-Routen zählen also dazu, nicht nur die klassischen Session-Routen.
 
 | Datei | betroffen |
 | --- | --- |
-| `routes/api_v1/admin.ts` | 14 |
+| `routes/api/admin.ts` | 14 |
 | `routes/auth.ts` | 8 |
 | `routes/sets.ts` | 7 |
-| `routes/api_v1/settings.ts`, `routes/settings.ts` | je 5 |
-| `routes/api_v1/sets.ts` | 4 |
-| `routes/api_v1/minifigs.ts`, `routes/api_v1/parts.ts` | je 3 |
+| `routes/api/settings.ts`, `routes/settings.ts` | je 5 |
+| `routes/api/sets.ts` | 4 |
+| `routes/api/minifigs.ts`, `routes/api/parts.ts` | je 3 |
 | übrige | 5 |
 
 **Was `lax` offen lässt — und was dabei gefunden wurde.** `lax` schickt das

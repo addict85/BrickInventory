@@ -1,0 +1,18 @@
+Gegenprobe: ein unlesbares Ereignis endet wieder still statt als Fehler
+Modul: core-data
+Test: ch.brickinventoryapp.data.SetCreateUnreadableTest
+Rot: an unreadable event ends as an error
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
+@@ -57,7 +57,8 @@
+                 is SseEvent.Data -> step(e.value)
+                 // An unreadable event could be the „done“; an end without it leaves open
+                 // whether the set was created. Both are an abort, not a sentence of the server.
+-                is SseEvent.Unreadable, SseEvent.Ended -> SetCreateStep.Failure("")
++                is SseEvent.Unreadable -> null
++                SseEvent.Ended -> SetCreateStep.Failure("")
+                 is SseEvent.StreamFailed -> withoutStream(e)
+             }
+             if (step != null) emit(step)

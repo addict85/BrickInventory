@@ -2,11 +2,11 @@ package ch.brickinventoryapp.offline
 
 import android.content.Context
 import androidx.room.Room
-import ch.brickinventoryapp.offline.room.InventoryDatabase
-import ch.brickinventoryapp.offline.room.RoomExit
-import ch.brickinventoryapp.offline.room.RoomInventory
 import ch.brickinventoryapp.offline.room.EncryptedInventoryFactory
-import ch.brickinventoryapp.security.Ablageschluessel
+import ch.brickinventoryapp.offline.room.InventoryDatabase
+import ch.brickinventoryapp.offline.room.RoomInventory
+import ch.brickinventoryapp.offline.room.RoomOutbox
+import ch.brickinventoryapp.security.StoreKey
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -15,20 +15,20 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** Room behind the interfaces [LocalInventory] and [Ausgang]; Room itself stays in this module. */
+/** Room behind the interfaces [LocalInventory] and [Outbox]; Room itself stays in this module. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal abstract class OfflineModule {
-    @Binds abstract fun bestand(r: RoomInventory): LocalInventory
-    @Binds abstract fun ausgang(r: RoomExit): Ausgang
+    @Binds abstract fun stock(r: RoomInventory): LocalInventory
+    @Binds abstract fun outbox(r: RoomOutbox): Outbox
 
     companion object {
         @Provides
         @Singleton
-        fun datenbank(@ApplicationContext context: Context, ablage: Ablageschluessel): InventoryDatabase =
+        fun database(@ApplicationContext context: Context, store: StoreKey): InventoryDatabase =
             Room.databaseBuilder(context, InventoryDatabase::class.java, InventoryDatabase.NAME)
                 // Encrypted with SQLCipher; a plaintext legacy stock is taken over on first opening.
-                .openHelperFactory(EncryptedInventoryFactory(context, ablage))
+                .openHelperFactory(EncryptedInventoryFactory(context, store))
                 .addMigrations(*InventoryDatabase.MIGRATIONS)
                 .build()
     }

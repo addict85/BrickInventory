@@ -1,12 +1,12 @@
 import type { DbInterface } from '../../../db/database';
-import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import { blJoin, blNumberSql } from '../../../db/blMappingSql';
 import type { EntryRow } from '../../../db/stockQuantity';
-import type { Spalten } from '../../../db/rows';
+import type { Columns } from '../../../db/rows';
 
 /** The BrickLink number sits on the minifig (bl_mapping), not on the instance. */
 
 export function manualMinifigRow(db: DbInterface, uid: number, figNumber: string): Promise<{ id: number } | undefined> {
-  return db.get<Spalten<'minifigs', 'id'>>(
+  return db.get<Columns<'minifigs', 'id'>>(
     "SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
     [uid, figNumber],
   );
@@ -14,7 +14,7 @@ export function manualMinifigRow(db: DbInterface, uid: number, figNumber: string
 
 export function minifigRowWithCondition(db: DbInterface, uid: number, figNumber: string) {
   return db.get<{ id: number; bl_fig_number: string | null; condition: string | null }>(
-    `SELECT m.id, ${blNummerSql('m.fig_number', 'z')} AS bl_fig_number,
+    `SELECT m.id, ${blNumberSql('m.fig_number', 'z')} AS bl_fig_number,
             (SELECT a.condition FROM minifig_acquisitions a
               WHERE a.user_id = m.user_id AND a.fig_number = m.fig_number
               ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition

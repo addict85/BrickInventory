@@ -15,23 +15,23 @@ const assert = require('node:assert/strict');
 const { openUi } = require('./helpers/ui');
 
 /** Opens the UI and records every empty src, also the one from the markup. */
-async function withObserver(antworten = {}) {
-  const leer = [];
-  const o = await openUi(antworten, {
-    vorher(w) {
+async function withObserver(answers = {}) {
+  const empty = [];
+  const o = await openUi(answers, {
+    before(w) {
       new w.MutationObserver(ms => {
         for (const m of ms) {
-          const ziel = /** @type {any} */ (m.target);
+          const target = /** @type {any} */ (m.target);
           // oldValue also catches an empty src that was overwritten again in the same tick.
           if (
             m.type === 'attributes' &&
-            ziel.tagName === 'IMG' &&
-            (ziel.getAttribute('src') === '' || m.oldValue === '')
+            target.tagName === 'IMG' &&
+            (target.getAttribute('src') === '' || m.oldValue === '')
           )
-            leer.push(ziel.outerHTML.slice(0, 120));
+            empty.push(target.outerHTML.slice(0, 120));
           for (const n of m.addedNodes || [])
             for (const img of n.querySelectorAll ? [n, ...n.querySelectorAll('img')] : [])
-              if (img.tagName === 'IMG' && img.getAttribute('src') === '') leer.push(img.outerHTML.slice(0, 120));
+              if (img.tagName === 'IMG' && img.getAttribute('src') === '') empty.push(img.outerHTML.slice(0, 120));
         }
       }).observe(w.document, {
         subtree: true,
@@ -43,13 +43,13 @@ async function withObserver(antworten = {}) {
     },
   });
   for (const img of o.d.querySelectorAll('img'))
-    if (img.getAttribute('src') === '') leer.push(img.outerHTML.slice(0, 120));
-  return { ...o, leer };
+    if (img.getAttribute('src') === '') empty.push(img.outerHTML.slice(0, 120));
+  return { ...o, empty };
 }
 
 test('at startup and in the gallery no image has an empty src', async () => {
-  const { w, d, warte, leer } = await withObserver({
-    '/v1/sets': {
+  const { w, d, waitFor, empty } = await withObserver({
+    '/v2/sets': {
       success: true,
       sets: [
         {
@@ -64,17 +64,17 @@ test('at startup and in the gallery no image has an empty src', async () => {
     },
   });
   try {
-    assert.ok(await warte(() => d.querySelector('#gallery img')));
-    assert.ok(d.querySelectorAll('img').length >= 5, 'greift die Suche noch?');
-    assert.deepEqual(leer, []);
+    assert.ok(await waitFor(() => d.querySelector('#gallery img')));
+    assert.ok(d.querySelectorAll('img').length >= 5, 'does the search still match?');
+    assert.deepEqual(empty, []);
   } finally {
     w.close();
   }
 });
 
 test('a load error retries without an empty src', async () => {
-  const { w, d, warte, leer } = await withObserver({
-    '/v1/sets': {
+  const { w, d, waitFor, empty } = await withObserver({
+    '/v2/sets': {
       success: true,
       sets: [
         {
@@ -89,34 +89,34 @@ test('a load error retries without an empty src', async () => {
     },
   });
   try {
-    assert.ok(await warte(() => d.querySelector('#gallery img[src]')));
+    assert.ok(await waitFor(() => d.querySelector('#gallery img[src]')));
     const img = d.querySelector('#gallery img[src]');
-    const vorher = img.src;
-    let wechsel = 0;
+    const prior = img.src;
+    let change = 0;
     new w.MutationObserver(ms => {
-      wechsel += ms.length;
+      change += ms.length;
     }).observe(img, { attributes: true, attributeFilter: ['src'] });
     img.dispatchEvent(new w.Event('error'));
     assert.equal(img.dataset.retried, '1');
     // The retry removes the address after one second and sets it anew.
-    assert.ok(await warte(() => wechsel >= 2, 3000), 'kein Wiederholversuch');
-    assert.equal(img.src, vorher);
-    assert.deepEqual(leer, []);
+    assert.ok(await waitFor(() => change >= 2, 3000), 'no retry');
+    assert.equal(img.src, prior);
+    assert.deepEqual(empty, []);
   } finally {
     w.close();
   }
 });
 
 test('closing the zoom removes the image instead of clearing src', async () => {
-  const { w, d, leer } = await withObserver();
+  const { w, d, empty } = await withObserver();
   try {
-    const bild = d.getElementById('lightbox-img');
-    bild.setAttribute('src', '/api/v1/img-proxy?url=x');
+    const image = d.getElementById('lightbox-img');
+    image.setAttribute('src', '/api/v1/img-proxy?url=x');
     d.getElementById('img-lightbox').classList.add('open');
     d.querySelector('#img-lightbox [data-click="closeImageLightbox"]').click();
     assert.equal(d.getElementById('img-lightbox').classList.contains('open'), false);
-    assert.equal(bild.hasAttribute('src'), false);
-    assert.deepEqual(leer, []);
+    assert.equal(image.hasAttribute('src'), false);
+    assert.deepEqual(empty, []);
   } finally {
     w.close();
   }

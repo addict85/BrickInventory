@@ -83,28 +83,28 @@ cd BrickInventory/Web-App
 cp .env.example .env
 echo BRICK_HOST=nas.example.lan >> .env   # Name oder IP-Adresse des Servers
 echo VORGELAGERTER_PROXY=keiner >> .env   # oder die Adresse eines Proxys davor (README, „Proxy vor Caddy“)
-sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
-sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt
-sh scripts/image-pruefen.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
+sh scripts/setup-secrets.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
+sudo sh scripts/setup-ca.sh          # eigene CA, die nur für BRICK_HOST gilt
+sh scripts/check-image.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
 docker compose up -d
 docker compose logs migration | grep "Erstes Administratorkonto"   # wo das Startpasswort von admin steht
 ```
 
 → `https://<BRICK_HOST>` (Port 80 leitet um). Das Wurzelzertifikat der eigenen
 CA liegt unter `https://<BRICK_HOST>/ca.crt` (die Warnung einmal bestätigen); vor dem Installieren auf einem
-Gerät den Fingerabdruck vergleichen, den `scripts/ca-einrichten.sh` ausgibt.
+Gerät den Fingerabdruck vergleichen, den `scripts/setup-ca.sh` ausgibt.
 
 - **Öffentlicher Name statt eigener CA:** `BRICK_TLS=acme` (und optional
-  `ACME_EMAIL`) in `.env`; `scripts/ca-einrichten.sh` entfällt, das Zertifikat
+  `ACME_EMAIL`) in `.env`; `scripts/setup-ca.sh` entfällt, das Zertifikat
   kommt von Let's Encrypt.
 - **Geheimnisse** stehen nicht in `.env`, sondern als Dateien in
   `./geheimnisse/` und gehen als Docker-Secrets in die Container.
 - **Das Image** zieht compose nur als Digest aus `BRICK_IMAGE`; das trägt
-  `scripts/image-pruefen.sh` nach bestandener Signaturprüfung ein (cosign
+  `scripts/check-image.sh` nach bestandener Signaturprüfung ein (cosign
   muss installiert sein).
 - **Selbst bauen** statt ziehen: `BRICK_IMAGE=brickinventory:lokal` in `.env`,
   dann `docker compose up -d --build`.
-- **Update:** `sh scripts/image-pruefen.sh && docker compose up -d`; vorher
+- **Update:** `sh scripts/check-image.sh && docker compose up -d`; vorher
   `Web-App/UPGRADE.md` lesen.
 
 Das Passwort des Kontos `admin` steht nur beim allerersten Start im Protokoll
@@ -127,7 +127,7 @@ Bildverarbeitung fiele still auf den langsamen Rückfall zurück.
 
 Jedes veröffentlichte Image ist mit [cosign](https://docs.sigstore.dev/)
 signiert (keyless, aus dem Workflow `docker-publish.yml` auf `main`).
-`scripts/image-pruefen.sh` prüft das vor jeder Übernahme; von Hand:
+`scripts/check-image.sh` prüft das vor jeder Übernahme; von Hand:
 
 ```bash
 cosign verify addict85/brickinventory:latest \
@@ -223,10 +223,10 @@ Invarianten der App stehen in
 [`Android-App/INVARIANTEN.md`](Android-App/INVARIANTEN.md).
 
 Das vollständige Datenbankschema steht in
-[`Web-App/db/schema-stand.sql`](Web-App/db/schema-stand.sql) — erzeugt aus
+[`Web-App/db/schema-snapshot.sql`](Web-App/db/schema-snapshot.sql) — erzeugt aus
 einer frischen Datenbank, zum Lesen. Eine neue Installation bekommt ihr
-Schema aus `db/basis.sql` und danach die jüngeren `db/migrations/`; nach einer
-Migration beide Dateien mit `npm run build && npm run schema:stand` neu
+Schema aus `db/base.sql` und danach die jüngeren `db/migrations/`; nach einer
+Migration beide Dateien mit `npm run build && npm run schema:snapshot` neu
 schreiben (braucht `pg_dump`; der Schema-Test meldet einen veralteten Stand).
 
 ---

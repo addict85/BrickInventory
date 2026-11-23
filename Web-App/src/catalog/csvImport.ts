@@ -1,17 +1,18 @@
-/** Write into a shadow table and swap in one transaction so that
- * the existing data stays readable until then. */
+/** Write into a shadow table and swap, all in one transaction: readers keep seeing the
+ * old rows until the COMMIT, and an abort at any point leaves them untouched. */
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import { dbKonfigFromEnvironment, createDb, type Db } from '../../db/database';
+import { dbConfigFromEnvironment, createDb, type Db } from '../../db/database';
 import { databaseConnection, systemConnection } from '../infra/config';
-import { isJa } from '../infra/validate';
-import { logAndContinue } from '../infra/error';
+import { isYes } from '../infra/validate';
+import { inSystemContext } from '../infra/accountContext';
+import { buildContext } from '../infra/area';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/csvSwap';
 import type { CatalogReadContract } from './readContract';
 
-export type Meldung = { type: 'progress'; total: number; pct: number; filename: string };
+export type Message = { type: 'progress'; total: number; pct: number; filename: string };
 
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
@@ -43,10 +44,10 @@ export function csvRow(line: string): string[] {
 async function streamInsert(
   tmpFile: string,
   chunkSize: number,
-  mapRow: (spalten: string[]) => unknown[],
+  mapRow: (columns: string[]) => unknown[],
   insertChunk: (chunk: unknown[][]) => Promise<void>,
   filename: string,
-  melde: (m: Meldung) => void,
+  report: (m: Message) => void,
 ) {
   const fileSize = fs.statSync(tmpFile).size;
   const input = fs.createReadStream(tmpFile, { encoding: 'utf8', highWaterMark: 64 * 1024 });
@@ -74,7 +75,7 @@ async function streamInsert(
       const pct = Math.min(99, Math.round((bytesRead / fileSize) * 100));
       if (pct !== lastPct) {
         lastPct = pct;
-        melde({ type: 'progress', total, pct, filename });
+        report({ type: 'progress', total, pct, filename });
       }
     }
   }
@@ -82,47 +83,46 @@ async function streamInsert(
   return total;
 }
 
-interface Tausch {
-  tabelle: repo.CsvTable;
+interface Swap {
+  table: repo.CsvTable;
   filename: string;
   tmp: string;
   cols: string[];
-  konflikt?: repo.Konflikt;
+  conflict?: repo.Conflict;
   chunkSize?: number;
   mapRow: (c: string[]) => unknown[];
   /** Instead of the swap; rb_sets reconciles via upsert. */
-  abgleich?: typeof repo.swap;
+  reconcile?: typeof repo.swap;
 }
 
-// Via a shadow table: readers see the old one until the swap, never an empty table.
-async function importiereMitTausch(pool: Db['systemPool'], melde: (m: Meldung) => void, t: Tausch): Promise<number> {
-  const schatten = `${t.tabelle}_import`;
-  const client = await pool.connect();
-  try {
-    await repo.lockTable(client, t.tabelle);
-    try {
-      await repo.putShadowAn(client, t.tabelle, schatten);
-      const total = await streamInsert(
-        t.tmp,
-        t.chunkSize ?? 100,
-        t.mapRow,
-        chunk => repo.addBlockOne(client, schatten, t.cols, chunk, t.konflikt),
-        t.filename,
-        melde,
+// One transaction holds the snapshot for the whole file (minutes for the largest table).
+// That is the price for "old state or new state, nothing in between" without a session lock.
+async function importWithSwap(db: Db, report: (m: Message) => void, s: Swap): Promise<number> {
+  const shadow = `${s.table}_import`;
+  const k = buildContext({ db }, () => ({}));
+  // Reconciling rb_sets asks whether any account holds a set: across account boundaries, so
+  // as system role; without an account the runtime role would see no row and delete it.
+  const total = await inSystemContext('katalog-import', () =>
+    k.transact(async t => {
+      await repo.lockTable(t.db, s.table);
+      await repo.createShadow(t.db, s.table, shadow);
+      const n = await streamInsert(
+        s.tmp,
+        s.chunkSize ?? 100,
+        s.mapRow,
+        chunk => repo.addBlockOne(t.db, shadow, s.cols, chunk, s.conflict),
+        s.filename,
+        report,
       );
       // An empty file is an error, not an empty catalog.
-      if (total === 0)
-        throw new Error(`${t.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
-      await (t.abgleich ?? repo.swap)(client, t.tabelle, schatten, t.cols);
-      await repo.removeShadow(client, schatten).catch(logAndContinue('csv-worker:query'));
-      await repo.pflege(client, t.tabelle);
-      return total;
-    } finally {
-      await repo.giveTableFree(client, t.tabelle).catch(logAndContinue('csv-worker:lockKeyFor'));
-    }
-  } finally {
-    client.release();
-  }
+      if (n === 0)
+        throw new Error(`${s.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
+      await (s.reconcile ?? repo.swap)(t.db, s.table, shadow, s.cols);
+      return n;
+    }),
+  );
+  await repo.maintenance(sql => db.systemPool.query(sql), s.table);
+  return total;
 }
 
 /** The import process's access, without the server's deadlines: swapping a large
@@ -130,55 +130,48 @@ async function importiereMitTausch(pool: Db['systemPool'], melde: (m: Meldung) =
  * pool of its own without a pipeline, like this process's raw pool before. */
 export function createImportAccess(): Db {
   return createDb({
-    ...dbKonfigFromEnvironment(),
+    ...dbConfigFromEnvironment(),
     pool: { max: 2 },
     system: systemConnection() ?? databaseConnection(),
   });
 }
 
-export function createCatalogImports(
-  db: Pick<Db, 'systemPool'>,
-  melde: (m: Meldung) => void,
-  l: Pick<CatalogReadContract, 'setZaehlt'>,
-) {
-  // Reconciling rb_sets asks whether any account holds a set: across account boundaries, so
-  // as system role; without an account the runtime role would see no row and delete it.
-  const pool = db.systemPool;
-  const tausch = (t: Tausch) => () => importiereMitTausch(pool, melde, t);
+export function createCatalogImports(db: Db, report: (m: Message) => void, l: Pick<CatalogReadContract, 'setCounts'>) {
+  const swap = (t: Swap) => () => importWithSwap(db, report, t);
   return {
-    colors: tausch({
-      tabelle: 'rb_colors',
+    colors: swap({
+      table: 'rb_colors',
       filename: 'colors.csv.gz',
       tmp: path.join(DATA_DIR, 'colors.csv.tmp'),
       // bl_color_id comes from the API, not from the CSV — if written along, it would be
       // empty after every swap.
       cols: ['id', 'name', 'rgb', 'is_trans'],
-      konflikt: ['id'],
-      mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2), isJa(sp(c, 3))],
+      conflict: ['id'],
+      mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2), isYes(sp(c, 3))],
     }),
-    part_categories: tausch({
-      tabelle: 'rb_part_categories',
+    part_categories: swap({
+      table: 'rb_part_categories',
       filename: 'part_categories.csv.gz',
       tmp: path.join(DATA_DIR, 'part_categories.csv.tmp'),
       cols: ['id', 'name'],
-      konflikt: ['id'],
+      conflict: ['id'],
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1)],
     }),
-    parts: tausch({
-      tabelle: 'rb_parts',
+    parts: swap({
+      table: 'rb_parts',
       filename: 'parts.csv.gz',
       tmp: path.join(DATA_DIR, 'parts.csv.tmp'),
       cols: ['part_num', 'name', 'part_cat_id', 'part_img_url'],
-      konflikt: ['part_num'],
+      conflict: ['part_num'],
       mapRow: c => [sp(c, 0), sp(c, 1), parseInt(sp(c, 2), 10) || 0, sp(c, 4)],
     }),
-    sets: tausch({
-      tabelle: 'rb_sets',
+    sets: swap({
+      table: 'rb_sets',
       filename: 'sets.csv.gz',
       tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
       cols: ['set_num', 'name', 'year', 'theme_id', 'num_parts', 'set_img_url'],
-      konflikt: ['set_num'],
-      abgleich: (c, _table, schatten, cols) => repo.sameSetsAb(c, l, schatten, cols),
+      conflict: ['set_num'],
+      reconcile: (c, _table, shadow, cols) => repo.syncSets(c, l, shadow, cols),
       mapRow: c => [
         sp(c, 0),
         sp(c, 1),
@@ -188,43 +181,43 @@ export function createCatalogImports(
         sp(c, 5),
       ],
     }),
-    inventories: tausch({
-      tabelle: 'rb_inventories',
+    inventories: swap({
+      table: 'rb_inventories',
       filename: 'inventories.csv.gz',
       tmp: path.join(DATA_DIR, 'inventories.csv.tmp'),
       cols: ['id', 'set_num', 'version'],
-      konflikt: ['id'],
+      conflict: ['id'],
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 2), parseInt(sp(c, 1), 10) || 1],
     }),
-    themes: tausch({
-      tabelle: 'rb_themes',
+    themes: swap({
+      table: 'rb_themes',
       filename: 'themes.csv.gz',
       tmp: path.join(DATA_DIR, 'themes.csv.tmp'),
       cols: ['id', 'name', 'parent_id'],
-      konflikt: ['id'],
+      conflict: ['id'],
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2) ? parseInt(sp(c, 2), 10) || null : null],
     }),
-    inventory_minifigs: tausch({
-      tabelle: 'rb_inventory_minifigs',
+    inventory_minifigs: swap({
+      table: 'rb_inventory_minifigs',
       filename: 'inventory_minifigs.csv.gz',
       tmp: path.join(DATA_DIR, 'inventory_minifigs.csv.tmp'),
       cols: ['inventory_id', 'fig_num', 'quantity'],
-      konflikt: 'ignorieren',
+      conflict: 'ignorieren',
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), parseInt(sp(c, 2), 10) || 1],
     }),
-    inventory_parts: tausch({
-      tabelle: 'rb_inventory_parts',
+    inventory_parts: swap({
+      table: 'rb_inventory_parts',
       filename: 'inventory_parts.csv.gz',
       tmp: path.join(DATA_DIR, 'inventory_parts.csv.tmp'),
       cols: ['inventory_id', 'part_num', 'color_id', 'quantity', 'is_spare', 'img_url'],
       chunkSize: 50,
-      // isJa(): one interpretation for 't', 'True', '1' …
+      // isYes(): one interpretation for 't', 'True', '1' …
       mapRow: c => [
         parseInt(sp(c, 0), 10) || 0,
         sp(c, 1),
         parseInt(sp(c, 2), 10) || 0,
         parseInt(sp(c, 3), 10) || 1,
-        isJa(sp(c, 4)),
+        isYes(sp(c, 4)),
         sp(c, 5),
       ],
     }),

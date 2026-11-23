@@ -15,30 +15,33 @@
     // Only the bottom header row counts — multi-row headers (a group heading above) occur in the
     // finance tables.
     const headRow = head.rows[head.rows.length - 1];
-    // Visible text only: a header labelled only for screen readers (.vh) stays empty on the card.
-    const labels = [...headRow.cells].map(th => {
-      const k = th.cloneNode(true);
-      /** @type {Element} */
-      (k).querySelectorAll('.vh').forEach(v => {
-        v.remove();
-      });
-      return (k.textContent || '').trim();
-    });
+    const labels = [...headRow.cells].map(visibleText);
     if (!labels.length) return;
 
     for (const body of table.tBodies) {
-      for (const row of body.rows) {
-        let col = 0;
-        for (const cell of row.cells) {
-          if (!cell.hasAttribute('data-label')) {
-            cell.setAttribute('data-label', labels[col] || '');
-          }
-          // Account for colspan, otherwise every following column shifts
-          col += cell.colSpan || 1;
-        }
-      }
+      for (const row of body.rows) labelRow(row, labels);
     }
     table.dataset.labelled = '1';
+  }
+
+  /** Visible text only: a header labelled only for screen readers (.vh) stays empty on the card.
+   * @param {HTMLTableCellElement} th */
+  function visibleText(th) {
+    const k = /** @type {Element} */ (th.cloneNode(true));
+    k.querySelectorAll('.vh').forEach(v => {
+      v.remove();
+    });
+    return (k.textContent || '').trim();
+  }
+
+  /** @param {HTMLTableRowElement} row @param {string[]} labels */
+  function labelRow(row, labels) {
+    let col = 0;
+    for (const cell of row.cells) {
+      if (!cell.hasAttribute('data-label')) cell.setAttribute('data-label', labels[col] || '');
+      // Account for colspan, otherwise every following column shifts
+      col += cell.colSpan || 1;
+    }
   }
 
   /** Handle every still-unlabelled table below root. */
@@ -102,7 +105,7 @@
   if (!started) document.addEventListener('DOMContentLoaded', start);
 
   // ── 3. Scrolling section bar in settings ──────────────────────
-  // On a phone it scrolls sideways; without an edge hint nobody saw the sections behind it. data-mehr
+  // On a phone it scrolls sideways; without an edge hint nobody saw the sections behind it. data-more
   // tells the CSS which side still has more.
   /**
    * @param {HTMLElement} nav
@@ -111,10 +114,10 @@
     const right = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2;
     const left = nav.scrollLeft > 2;
     const more = (left ? 'l' : '') + (right ? 'r' : '');
-    if (nav.dataset.mehr !== more) nav.dataset.mehr = more;
+    if (nav.dataset.more !== more) nav.dataset.more = more;
   }
   for (const settingsNav of /** @type {NodeListOf<HTMLElement>} */ (
-    document.querySelectorAll('.einst-nav, .konto-nav')
+    document.querySelectorAll('.settings-nav, .account-nav')
   )) {
     settingsNav.addEventListener('scroll', () => edgeHint(settingsNav), { passive: true });
     // Chrome doesn't scroll a partly-clipped link into view on focus; it would sit half outside the window.
@@ -134,15 +137,15 @@
     () => {
       const y = window.scrollY,
         root = document.documentElement;
-      root.classList.toggle('schrift-gross', parseFloat(getComputedStyle(root).fontSize) >= 24);
-      if (y < 60 || y < lastHeight - 4) root.classList.remove('kopf-weg');
-      else if (y > lastHeight + 4) root.classList.add('kopf-weg');
+      root.classList.toggle('text-large', parseFloat(getComputedStyle(root).fontSize) >= 24);
+      if (y < 60 || y < lastHeight - 4) root.classList.remove('header-remove');
+      else if (y > lastHeight + 4) root.classList.add('header-remove');
       if (Math.abs(y - lastHeight) > 4) lastHeight = y;
     },
     { passive: true },
   );
-  for (const bar of document.querySelectorAll('header, nav:not(.einst-nav)'))
-    bar.addEventListener('focusin', () => document.documentElement.classList.remove('kopf-weg'));
+  for (const bar of document.querySelectorAll('header, nav:not(.settings-nav)'))
+    bar.addEventListener('focusin', () => document.documentElement.classList.remove('header-remove'));
 
   // ── 5. Room for the fixed bars ─────────────────────────────────────
   // A field scrolled only just into view, with the bar sitting over it (WCAG 2.4.11). The heights
@@ -151,7 +154,7 @@
   function measureBars() {
     const root = document.documentElement,
       header = /** @type {HTMLElement|null} */ (document.querySelector('header'));
-    const nav = /** @type {HTMLElement|null} */ (document.querySelector('nav:not(.einst-nav)')),
+    const nav = /** @type {HTMLElement|null} */ (document.querySelector('nav:not(.settings-nav)')),
       banner = document.getElementById('offline-band');
     const navBottom = !!nav && getComputedStyle(nav).position === 'fixed';
     const bars = (header?.offsetHeight || 0) + (nav && !navBottom ? nav.offsetHeight : 0);
@@ -159,16 +162,16 @@
     const bottom = navBottom ? nav.offsetHeight : 0;
     // Only write on change: every write triggers layout, and the observer below would see itself.
     for (const [name, value] of [
-      ['--leiste-oben', `${Math.round(top)}px`],
-      ['--leiste-unten', `${Math.round(bottom)}px`],
-      ['--band-oben', `${Math.round(bars)}px`],
+      ['--bar-top', `${Math.round(top)}px`],
+      ['--bar-bottom', `${Math.round(bottom)}px`],
+      ['--band-top', `${Math.round(bars)}px`],
     ])
       if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value);
   }
   document.addEventListener('focusin', measureBars, true);
   window.addEventListener('resize', measureBars, { passive: true });
   if (typeof ResizeObserver === 'function')
-    for (const l of document.querySelectorAll('header, nav:not(.einst-nav)'))
+    for (const l of document.querySelectorAll('header, nav:not(.settings-nav)'))
       new ResizeObserver(() => requestAnimationFrame(measureBars)).observe(l);
   measureBars();
 

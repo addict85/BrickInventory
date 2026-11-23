@@ -1,73 +1,73 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
 import type { Db } from '../../db/database';
-import { mit, buildArea, type Inspect } from '../infra/area';
+import { bound, buildArea, type Inspect } from '../infra/area';
 import * as acquisitions from './acquisitions';
 import * as inventoryExportService from './inventoryExport';
 import * as sharedService from './shared';
-import * as inhalt from './content';
+import * as content from './content';
 import * as metricsService from './metrics';
-import * as manuelleMenge from './manualQuantity';
+import * as manualQuantity from './manualQuantity';
 import * as trashService from './trash';
-import * as kaufpreisNachtrag from './purchasePriceBackfill';
-import * as lagerortRechte from './storageLocationRights';
+import * as purchasePriceBackfill from './purchasePriceBackfill';
+import * as storageRights from './storageLocationRights';
 import * as locationService from './storageLocation';
-import * as lagerortSetzen from './setStorageLocation';
-import { schreibwege } from './writePaths';
-import { zugang, type InventoryDependencies, type InventoryContext } from './context';
+import * as setStorage from './setStorageLocation';
+import { writePaths } from './writePaths';
+import { access, type InventoryDependencies, type InventoryContext } from './context';
 
 export type { InventoryDependencies, InventoryContext } from './context';
 
 export function createInventory(a: InventoryDependencies, inspect?: Inspect<InventoryContext>) {
   return buildArea(
     a,
-    (db: Db) => zugang(db, a.lesevertrag),
+    (db: Db) => access(db, a.readContract),
     (k: InventoryContext) => ({
-      bookDailyEntry: mit(k)(acquisitions.addPurchaseAtTag),
-      entryAtSameTag: mit(k)(acquisitions.purchaseAtSameTag),
-      setEstimatedPrice: mit(k)(acquisitions.setEstimatedPrice),
-      erfassungenInKontowaehrung: mit(k)(acquisitions.erfassungenInKontowaehrung),
-      partsAsCsv: mit(k)(inventoryExportService.partsCsv),
-      minifigsAsCsv: mit(k)(inventoryExportService.figurenCsv),
-      usingSets: mit(k)(sharedService.usingSets),
-      deleteManual: mit(k)(sharedService.deleteManual),
-      setInhalt: {
-        enterParts: mit(k)(inhalt.enterParts),
-        enterMinifigs: mit(k)(inhalt.enterMinifigs),
-        entfernen: mit(k)(inhalt.entfernen),
-        kopieren: mit(k)(inhalt.kopieren),
+      bookDailyEntry: bound(k)(acquisitions.addPurchaseAtTag),
+      entryAtSameTag: bound(k)(acquisitions.purchaseAtSameTag),
+      setEstimatedPrice: bound(k)(acquisitions.setEstimatedPrice),
+      acquisitionsInAccountCurrency: bound(k)(acquisitions.acquisitionsInAccountCurrency),
+      partsAsCsv: bound(k)(inventoryExportService.partsCsv),
+      minifigsAsCsv: bound(k)(inventoryExportService.minifigsCsv),
+      usingSets: bound(k)(sharedService.usingSets),
+      deleteManual: bound(k)(sharedService.deleteManual),
+      setContent: {
+        enterParts: bound(k)(content.enterParts),
+        enterMinifigs: bound(k)(content.enterMinifigs),
+        remove: bound(k)(content.removeContent),
+        copy: bound(k)(content.copy),
       },
-      manuell: {
-        putRowAn: mit(k)(inhalt.putRowAn),
-        partsOfAccount: mit(k)(inhalt.partsOfAccount),
-        minifigsOfAccount: mit(k)(inhalt.minifigsOfAccount),
-        recolorPartRow: mit(k)(inhalt.recolorPartRow),
+      manual: {
+        createRow: bound(k)(content.createRow),
+        partsOfAccount: bound(k)(content.partsOfAccount),
+        minifigsOfAccount: bound(k)(content.minifigsOfAccount),
+        recolorPartRow: bound(k)(content.recolorPartRow),
       },
-      setzeManuellenZustand: mit(k)(sharedService.manuellenZustandSetzen),
-      inventoryMetrics: mit(k)(metricsService.getStats),
-      passeManualQuantityAn: mit(k)(manuelleMenge.passeManualQuantityAn),
-      putInTrash: mit(k)(trashService.putInTrash),
-      putPurchasesInTrash: mit(k)(trashService.putPurchasesInTrash),
-      listTrash: mit(k)(trashService.listTrash),
-      placeAgainHer: mit(k)(trashService.placeAgainHer),
-      deleteFinal: mit(k)(trashService.deleteFinal),
-      emptyTrash: mit(k)(trashService.emptyTrash),
-      cleanTrashOn: mit(k)(trashService.cleanTrashOn),
-      backfillPurchasePrices: mit(k)(kaufpreisNachtrag.run),
+      setManualCondition: bound(k)(sharedService.setManualCondition),
+      inventoryMetrics: bound(k)(metricsService.getStats),
+      adjustManualQuantity: bound(k)(manualQuantity.adjustManualQuantity),
+      putInTrash: bound(k)(trashService.putInTrash),
+      putPurchasesInTrash: bound(k)(trashService.putPurchasesInTrash),
+      listTrash: bound(k)(trashService.listTrash),
+      restore: bound(k)(trashService.restore),
+      deleteFinal: bound(k)(trashService.deleteFinal),
+      emptyTrash: bound(k)(trashService.emptyTrash),
+      cleanTrashOn: bound(k)(trashService.cleanTrashOn),
+      backfillPurchasePrices: bound(k)(purchasePriceBackfill.run),
       locationService: {
-        benenneOrtUm: mit(k)(locationService.benenneOrtUm),
-        lagerorte: mit(k)(locationService.lagerorte),
-        putLocationAn: mit(k)(locationService.putLocationAn),
-        loescheOrt: mit(k)(locationService.loescheOrt),
-        locationForNewEntry: mit(k)(locationService.locationForNewEntry),
-        vorgabeVon: mit(k)(locationService.vorgabeVon),
-        setLocation: mit(k)(lagerortSetzen.setLocation),
+        renameStorage: bound(k)(locationService.renameStorage),
+        storages: bound(k)(locationService.storages),
+        createStorage: bound(k)(locationService.createStorage),
+        deleteStorage: bound(k)(locationService.deleteStorage),
+        locationForNewEntry: bound(k)(locationService.locationForNewEntry),
+        defaultOf: bound(k)(locationService.defaultOf),
+        setLocation: bound(k)(setStorage.setLocation),
       },
 
-      ...schreibwege(k),
+      ...writePaths(k),
 
-      setDefault: mit(k)(lagerortRechte.setDefault),
-      lagerSchreibkonto: mit(k)(lagerortRechte.lagerSchreibkonto),
-      locationsFor: mit(k)(lagerortRechte.locationsFor),
+      setDefault: bound(k)(storageRights.setDefault),
+      storageWriteAccount: bound(k)(storageRights.storageWriteAccount),
+      locationsFor: bound(k)(storageRights.locationsFor),
     }),
     inspect,
   );

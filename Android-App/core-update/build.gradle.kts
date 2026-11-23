@@ -11,13 +11,13 @@ plugins {
 android {
     namespace = "ch.brickinventoryapp.core.update"
 
-    // InstallationsSessionTest runs under Robolectric and reads the receiver's texts.
+    // InstallSessionTest runs under Robolectric and reads the receiver's texts.
     testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
     implementation(project(":core-data"))
-    // R.string and R.raw.beschreibungs_schluessel: the R classes are not transitive.
+    // R.string and R.raw.description_key: the R classes are not transitive.
     implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.serialization.json)

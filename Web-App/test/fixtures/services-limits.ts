@@ -1,27 +1,27 @@
 // Probe für test/services-limits.test.js: Jede Zeile mit @ts-expect-error greift auf
 // Innenleben eines Bereichs zu (Zugang, Arbeitseinheit, Repository, Fach). Gibt eine
 // Fabrik es wieder heraus, ist die Erwartung unbenutzt und tsc meldet die Zeile.
-import type { Dienste } from '../../startup/wiring';
+import type { Services } from '../../startup/wiring';
 
-export function probe(d: Dienste): unknown[] {
+export function probe(d: Services): unknown[] {
   return [
     // Kein Bereich gibt seinen Zugang oder seine Transaktion heraus.
     // @ts-expect-error
     d.inventory.db,
     // @ts-expect-error
-    d.inventory.transaktion,
+    d.inventory.transact,
     // @ts-expect-error
-    d.inventory.papierkorb,
+    d.inventory.trash,
     // @ts-expect-error
-    d.inventory.manuelleMengen,
+    d.inventory.manualQuantities,
     // @ts-expect-error
     d.jobQueue.db,
     // @ts-expect-error
-    d.jobQueue.auftraege,
+    d.jobQueue.jobs,
     // @ts-expect-error
-    d.jobQueue.laufzustand,
+    d.jobQueue.runState,
     // @ts-expect-error
-    d.jobQueue.faecher,
+    d.jobQueue.fans,
     // @ts-expect-error
     d.settings.repository,
     // @ts-expect-error
@@ -31,19 +31,19 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.account.db,
     // @ts-expect-error
-    d.account.protokoll,
+    d.account.log,
     // @ts-expect-error
-    d.account.konten,
+    d.account.accounts,
     // @ts-expect-error
     d.catalog.db,
     // @ts-expect-error
-    d.catalog.quellen,
+    d.catalog.sources,
     // @ts-expect-error
-    d.catalog.bildwerk,
+    d.catalog.imageWork,
     // @ts-expect-error
     d.finances.db,
     // @ts-expect-error
-    d.finances.preisCache,
+    d.finances.priceCache,
     // @ts-expect-error
     d.sets.db,
     // @ts-expect-error
@@ -62,9 +62,9 @@ export function probe(d: Dienste): unknown[] {
     d.management.db,
     // @ts-expect-error
     d.idempotency.db,
-    // Die ausdrücklichen Dienste dagegen stehen da.
-    d.inventory.locationService.lagerorte,
-    d.jobQueue.liesZustand,
-    d.account.verwalter.rememberAdminAction,
+    // Die ausdrücklichen Services dagegen stehen da.
+    d.inventory.locationService.storages,
+    d.jobQueue.readState,
+    d.account.admin.rememberAdminAction,
   ];
 }

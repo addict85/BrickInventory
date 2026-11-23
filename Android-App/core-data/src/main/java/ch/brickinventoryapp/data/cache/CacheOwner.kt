@@ -6,7 +6,7 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * Whom the local store belongs to: server and session. On the device the TokenAblage;
+ * Whom the local store belongs to: server and session. On the device the TokenStore;
  * the interface keeps the store checkable without DataStore.
  */
 fun interface CacheOwner {
@@ -24,8 +24,8 @@ fun interface CacheOwner {
 }
 
 /** Name of the area in the store: hashed, so that neither address nor token stand on disk. */
-internal fun areaName(bereich: String): String =
-    MessageDigest.getInstance("SHA-256").digest(bereich.toByteArray()).joinToString("") { "%02x".format(it) }.take(32)
+internal fun areaName(area: String): String =
+    MessageDigest.getInstance("SHA-256").digest(area.toByteArray()).joinToString("") { "%02x".format(it) }.take(32)
 
 /**
  * The former response cache (`api-*`) has lain fallow since the single store. It

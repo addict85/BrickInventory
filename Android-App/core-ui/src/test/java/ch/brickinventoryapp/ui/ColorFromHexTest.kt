@@ -12,7 +12,7 @@ import org.junit.Test
  *
  * Counter-check: in argbFromHex() the check
  * for hex digits removed → red „ein unlesbarer Wert …“ (NumberFormatException);
- * gegenproben/farbe-hex-ungeprueft.patch.
+ * counter-checks/color-hex-unchecked.patch.
  */
 class ColorFromHexTest {
 
@@ -21,13 +21,13 @@ class ColorFromHexTest {
         assertEquals(0xFFC91A09L, argbFromHex("C91A09"))
         assertEquals(0xFFC91A09L, argbFromHex("#c91a09"))
         assertEquals(0xFF05131DL, argbFromHex(" 05131D "))
-        assertEquals("Mit Deckkraft bleibt sie", 0x80FFFFFFL, argbFromHex("80FFFFFF"))
+        assertEquals("with opacity it stays", 0x80FFFFFFL, argbFromHex("80FFFFFF"))
     }
 
     @Test
     fun `an unreadable value gives no color`() {
-        for (roh in listOf(null, "", "#", "zz1234", "12345", "1234567", "C91A09FF00")) {
-            assertNull("„$roh“", argbFromHex(roh))
+        for (raw in listOf(null, "", "#", "zz1234", "12345", "1234567", "C91A09FF00")) {
+            assertNull("„$raw“", argbFromHex(raw))
         }
     }
 }

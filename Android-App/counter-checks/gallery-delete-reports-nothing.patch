@@ -1,0 +1,17 @@
+Gegenprobe: Ein gelöschtes Set bleibt in der Ablage stehen
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryViewModelTest
+Rot: a deleted set disappears from the store, and the key figures come anew
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/collection/SetsRepositoryImpl.kt
+@@ -71,7 +71,7 @@
+ 
+     /** Delete only online: the server's trash decides what comes back. */
+     override suspend fun deleteSet(setNumber: String): Outcome<Unit> =
+-        store.caughtUp({ r -> FollowUp.SetRemoved(setNumber).takeIf { r.success } }) { safeCall { api.deleteSet(setNumber) } }.done()
++        safeCall { api.deleteSet(setNumber) }.done()
+ 
+     /** The gallery from the store, by the display's filters; also changes through things edited offline. */
+     override fun observeSets(search: String?, theme: String?, storageLocation: String?, sort: SetSort?): Flow<Local<SetView>> =

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.util
 
-import ch.brickinventoryapp.network.util.Protokoll
+import ch.brickinventoryapp.network.util.AppLog
 import okhttp3.logging.HttpLoggingInterceptor
 
 /**
@@ -9,8 +9,8 @@ import okhttp3.logging.HttpLoggingInterceptor
  * redacted in case someone raises the level while searching.
  */
 internal fun networkRecording(
-    schreiber: HttpLoggingInterceptor.Logger = HttpLoggingInterceptor.Logger { Protokoll.notiz("OkHttp", it) },
-): HttpLoggingInterceptor = HttpLoggingInterceptor(schreiber).apply {
+    writer: HttpLoggingInterceptor.Logger = HttpLoggingInterceptor.Logger { AppLog.note("OkHttp", it) },
+): HttpLoggingInterceptor = HttpLoggingInterceptor(writer).apply {
     level = HttpLoggingInterceptor.Level.BASIC
     redactHeader("Authorization")
     redactHeader("Cookie")

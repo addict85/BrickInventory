@@ -4,7 +4,7 @@
  * or a network error leaves the last good list in place.
  *
  * Counter-checks (measured 14.11.2026):
- *   A  in jobs/startJobs.ts the handler `widerrufsliste` renamed → red:
+ *   A  in jobs/startJobs.ts the handler `revocation_list` renamed → red:
  *      “the scheduled job stores the list …” and “an unreadable response …”
  *   B  in loadRevocationList() (src/catalog) store the raw text first, then read → red: “an
  *      unreadable response …” (and “the scheduled job …”: no serial numbers)
@@ -20,11 +20,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData, testSources, testServices, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const db = testData();
 
 const EXCERPT = fs.readFileSync(path.join(__dirname, 'fixtures', 'attestation-status-excerpt.json'));
-const gespeichert = async () => {
+const saved = async () => {
   const z = await db.get("SELECT value FROM run_state WHERE key = 'attestation_widerruf'");
   return z ? JSON.parse(z.value) : null;
 };
@@ -36,53 +36,53 @@ test('revocation list as a job', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   await db.run("DELETE FROM run_state WHERE key = 'attestation_widerruf'");
-  await db.run("DELETE FROM jobs WHERE type = 'widerrufsliste'");
-  let antwort = async () => EXCERPT;
+  await db.run("DELETE FROM jobs WHERE type = 'revocation_list'");
+  let response = async () => EXCERPT;
   const fetches = [];
   testSources(t, {
     revocationListFetch: async signal => {
       fetches.push(signal);
-      return antwort();
+      return response();
     },
   });
   const d = testServices();
 
   await t.test('the scheduled job stores the list and schedules the next run', async () => {
-    await d.jobQueue.pullPlanBefore('widerrufsliste', 0);
-    const worker = _req('jobs/startJobs.js').startJobWorker(d, { arten: ['widerrufsliste'], taktMs: 50 });
+    await d.jobQueue.pullPlanBefore('revocation_list', 0);
+    const worker = _req('jobs/startJobs.js').startJobWorker(d, { kinds: ['revocation_list'], tickMs: 50 });
     try {
-      await bis(async () => (await gespeichert()) !== null, 10_000);
+      await until(async () => (await saved()) !== null, 10_000);
     } finally {
       await worker.stop(0);
     }
-    const l = await gespeichert();
+    const l = await saved();
     assert.equal(l.nummern.length, 5);
     assert.ok(l.nummern.includes('c35747a084470c3135aeefe2b8d40cd6'));
-    assert.ok(Math.abs(Date.now() - new Date(l.stand).getTime()) < 60_000);
-    assert.ok(fetches[0] instanceof AbortSignal, 'Der Abruf bekommt das Signal des Auftrags');
+    assert.ok(Math.abs(Date.now() - new Date(l.state).getTime()) < 60_000);
+    assert.ok(fetches[0] instanceof AbortSignal, 'The fetch gets the signal of the job');
     const planRow = () =>
       db.get(
         `SELECT EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek FROM jobs
-          WHERE dedupe_key = 'plan:widerrufsliste' AND status = 'offen'`,
+          WHERE dedupe_key = 'plan:revocation_list' AND status = 'pending'`,
       );
-    await bis(async () => (await planRow())?.in_sek > 60, 5000);
+    await until(async () => (await planRow())?.in_sek > 60, 5000);
     const plan = await planRow();
-    assert.ok(plan?.in_sek > 5 * 3600 && plan.in_sek <= 6 * 3600, `nächster Lauf in ${plan?.in_sek} s`);
+    assert.ok(plan?.in_sek > 5 * 3600 && plan.in_sek <= 6 * 3600, `next run in ${plan?.in_sek} s`);
   });
 
   await t.test('an unreadable response or a network error leaves the last good list in place', async () => {
-    const vorher = await gespeichert();
-    const lauf = () =>
-      _req('jobs/startJobs.js').editor(d).widerrufsliste.ausfuehren({}, { signal: new AbortController().signal });
-    for (const kaputt of ['<html>Wartung</html>', '{"entries": {"zz": {"status": "REVOKED"}}}', '{}']) {
-      antwort = async () => Buffer.from(kaputt);
-      await assert.rejects(lauf(), kaputt);
-      assert.deepEqual(await gespeichert(), vorher, kaputt);
+    const prior = await saved();
+    const run = () =>
+      _req('jobs/startJobs.js').editor(d).revocation_list.run({}, { signal: new AbortController().signal });
+    for (const broken of ['<html>Wartung</html>', '{"entries": {"zz": {"status": "REVOKED"}}}', '{}']) {
+      response = async () => Buffer.from(broken);
+      await assert.rejects(run(), broken);
+      assert.deepEqual(await saved(), prior, broken);
     }
-    antwort = async () => {
+    response = async () => {
       throw new Error('ECONNRESET');
     };
-    await assert.rejects(lauf(), /ECONNRESET/);
-    assert.deepEqual(await gespeichert(), vorher);
+    await assert.rejects(run(), /ECONNRESET/);
+    assert.deepEqual(await saved(), prior);
   });
 });

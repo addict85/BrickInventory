@@ -13,52 +13,52 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, ANMELDUNG } = require('./helpers/ui');
+const { openUi, waitFor, tick, SIGNED_IN } = require('./helpers/ui');
 
-const HAUSHALT = {
-  '/v1/sets/household-members': {
+const HOUSEHOLD = {
+  '/v2/sets/household-members': {
     success: true,
     members: [
-      { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-      { id: 7, username: 'ben', is_self: false, tiefe: 1 },
+      { id: 1, username: 'anna', is_self: true, depth: 0 },
+      { id: 7, username: 'ben', is_self: false, depth: 1 },
     ],
   },
 };
-const GEMERKT = {
+const REMEMBERED = {
   bim_scope_gallery: '7',
   bim_scope_parts: 'own',
   bim_scope_finance: '7',
-  bim_lager_gallery: 'Regal A',
+  bim_location_gallery: 'Regal A',
 };
 const remember = w => {
-  for (const [k, v] of Object.entries(GEMERKT)) w.localStorage.setItem(k, v);
+  for (const [k, v] of Object.entries(REMEMBERED)) w.localStorage.setItem(k, v);
 };
-const setQueries = o => o.aufrufe.filter(a => a.method === 'GET' && /\/v1\/sets(\?|$)/.test(a.url));
+const setQueries = o => o.calls.filter(a => a.method === 'GET' && /\/v2\/sets(\?|$)/.test(a.url));
 
 test('login resets the account and location filters before the list loads', async () => {
   const o = await openUi(
     {
-      ...ANMELDUNG,
-      ...HAUSHALT,
-      '/v1/auth/me': { success: true, loggedIn: false },
-      '/v1/auth/login': {
+      ...SIGNED_IN,
+      ...HOUSEHOLD,
+      '/v2/auth/me': { success: true, loggedIn: false },
+      '/v2/auth/login': {
         success: true,
-        user: { id: 1, username: 'anna', is_admin: false, zweiterFaktorPflicht: false },
+        user: { id: 1, username: 'anna', is_admin: false, secondFactorRequired: false },
       },
     },
-    { angemeldet: false, vorher: remember },
+    { loggedIn: false, before: remember },
   );
   try {
-    await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
-    assert.equal(setQueries(o).length, 0, 'vor der Anmeldung lädt nichts');
+    await waitFor(() => o.d.getElementById('login-screen').style.display === 'flex');
+    assert.equal(setQueries(o).length, 0, 'nothing loads before the login');
     o.d.getElementById('lu').value = 'anna';
     o.d.getElementById('lp').value = 'geheim-geheim';
     o.d.getElementById('btn-login').click();
-    assert.ok(await warte(() => setQueries(o).length > 0), 'nach der Anmeldung lädt keine Setliste');
-    await o.ruhig();
-    const erste = setQueries(o)[0].url;
-    assert.doesNotMatch(erste, /accounts=|storage=/, `die erste Setabfrage filtert noch: ${erste}`);
-    for (const k of Object.keys(GEMERKT)) assert.equal(o.w.localStorage.getItem(k), null, `${k} blieb gespeichert`);
+    assert.ok(await waitFor(() => setQueries(o).length > 0), 'after the login no set list loads');
+    await o.settle();
+    const first = setQueries(o)[0].url;
+    assert.doesNotMatch(first, /accounts=|storage=/, `the first set query still filters: ${first}`);
+    for (const k of Object.keys(REMEMBERED)) assert.equal(o.w.localStorage.getItem(k), null, `${k} stayed saved`);
     assert.equal(o.d.getElementById('scope-gallery').value, 'all');
   } finally {
     o.w.close();
@@ -66,9 +66,9 @@ test('login resets the account and location filters before the list loads', asyn
 });
 
 test('a reload in the same session keeps the choice', async () => {
-  const o = await openUi(HAUSHALT, { vorher: remember });
+  const o = await openUi(HOUSEHOLD, { before: remember });
   try {
-    await o.ruhig();
+    await o.settle();
     assert.ok(
       setQueries(o).some(a => /accounts=7/.test(a.url) && /storage=Regal(\+|%20)A/.test(a.url)),
       setQueries(o)
@@ -83,15 +83,15 @@ test('a reload in the same session keeps the choice', async () => {
 });
 
 test('the choice is remembered and goes to the server', async () => {
-  const o = await openUi(HAUSHALT);
+  const o = await openUi(HOUSEHOLD);
   try {
-    await o.ruhig();
-    const feld = o.d.getElementById('scope-gallery');
-    assert.equal(feld.style.display, '', 'der Kontofilter ist bei einem Haushalt verborgen');
-    feld.value = 'own';
-    feld.dispatchEvent(new o.w.Event('change', { bubbles: true }));
-    await takt(30);
-    await o.ruhig();
+    await o.settle();
+    const field = o.d.getElementById('scope-gallery');
+    assert.equal(field.style.display, '', 'the account filter is hidden for a household');
+    field.value = 'own';
+    field.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    await tick(30);
+    await o.settle();
     assert.equal(o.w.localStorage.getItem('bim_scope_gallery'), 'own');
     assert.match(setQueries(o).at(-1).url, /accounts=own/);
   } finally {

@@ -17,16 +17,16 @@ export interface Throttle {
 }
 
 export interface ClientsAccess {
-  schluessel(name: KeyName): Promise<string>;
+  key(name: KeyName): Promise<string>;
   /** Counts a call; `allowed: false` once the daily quota is used up. */
-  zaehle(api: ApiName): Promise<{ allowed: boolean; count: number; limit: number }>;
+  count(api: ApiName): Promise<{ allowed: boolean; count: number; limit: number }>;
   quotaStatus(api: ApiName): Promise<{ count: number; limit: number; remaining: number }>;
-  drossel: { foreground: Throttle; hintergrund: Throttle };
-  /** @returns vorgemerkt: false if the set was already queued too often. */
+  throttle: { foreground: Throttle; background: Throttle };
+  /** @returns queued: false if the set was already queued too often. */
   bricksetReserve(
     setNumber: string,
-    fehler: string,
-    bald: boolean,
-  ): Promise<{ versuch: number; vorgemerkt: boolean; hoechstens: number }>;
+    error: string,
+    soon: boolean,
+  ): Promise<{ attempt: number; queued: boolean; atMost: number }>;
   bricksetForgotten(setNumber: string): Promise<void>;
 }

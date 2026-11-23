@@ -1,20 +1,29 @@
 package ch.brickinventoryapp.management.ui.viewmodel
 
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Zustand
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.data.repository.ManagementRepository
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.data.account.ManagementRepository
+import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.model.domain.ApiLimitsView
+import ch.brickinventoryapp.model.domain.BackgroundView
 import ch.brickinventoryapp.model.domain.BricksetEntryView
 import ch.brickinventoryapp.model.domain.CacheMetricsView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.domain.JobStateView
 import ch.brickinventoryapp.model.domain.ScheduleView
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.dataOrNull
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.ui.errorMessage
+import ch.brickinventoryapp.state.ui.loadAs
+import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,15 +31,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.domain.Fehlercode
-import ch.brickinventoryapp.model.domain.BackgroundView
-import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.model.ui.dataOrNull
-import ch.brickinventoryapp.state.ui.loadAs
-import ch.brickinventoryapp.state.ui.loadError
-import ch.brickinventoryapp.state.ui.errorMessage
-import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 
 /**
  * What the monitoring screen knows from the server — server data only. What is
@@ -44,26 +44,28 @@ data class MonitoringUiState(
      * shows when a job runs next, and can change it.
      */
     val jobSchedules: Map<String, ScheduleView> = emptyMap(),
-    val queue: Laden<List<BricksetEntryView>> = Laden.Daten(emptyList()),
+    val queue: Load<List<BricksetEntryView>> = Load.Data(emptyList()),
     /** What a running or just-started button shows instead of its label. */
-    val buttons: Map<Jobstart, Meldung> = emptyMap(),
-    val aktualisiert: Boolean = false,
+    val buttons: Map<Jobstart, Message> = emptyMap(),
+    val updated: Boolean = false,
     val cacheStats: CacheMetricsView? = null,
     val apiLimits: ApiLimitsView? = null,
     val cacheTtl: String = "24",
-    val defaultState: Zustand = Zustand.NEU,
+    val defaultState: Condition = Condition.NEW,
     /** The theme the admin sets for everyone — not the account's own. */
     val defaultDesign: Design? = null,
-    /** The server said `nur_admins`: the poll loop stops instead of being rejected again every 5 s. */
+    /** Cache numbers, limits, cache duration and defaults: a failure keeps the last values and offers a retry. */
+    val settingsFetch: Load<Unit> = Load.Data(Unit),
+    /** The server said `only_admins`: the poll loop stops instead of being rejected again every 5 s. */
     val accessRevoked: Boolean = false,
 )
 
-private fun entzogen(r: Ergebnis<*>) = r is Ergebnis.Fehler && r.code == Fehlercode.NUR_ADMINS
+private fun revoked(r: Outcome<*>) = r is Outcome.Failure && r.code == ErrorCode.ONLY_ADMINS
 
 /** The background work (job table); the view stays up while it is being fetched anew. */
 data class BackgroundUiState(
-    val ansicht: BackgroundView? = null,
-    val abruf: Laden<Unit> = Laden.Daten(Unit),
+    val view: BackgroundView? = null,
+    val fetch: Load<Unit> = Load.Data(Unit),
 )
 
 /**
@@ -72,9 +74,9 @@ data class BackgroundUiState(
  */
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(
-    private val verwaltung: ManagementRepository,
-    private val konto: AccountRepository,
-    private val meldungen: MeldungsKanal,
+    private val admin: ManagementRepository,
+    private val account: AccountRepository,
+    private val messages: MessageChannel,
 ) : ViewModel(), MonitoringActions {
 
     private val _state = MutableStateFlow(MonitoringUiState())
@@ -88,27 +90,27 @@ class MonitoringViewModel @Inject constructor(
     private val _managementState = MutableStateFlow(ManagementUiState())
     val managementState = _managementState.asStateFlow()
 
-    internal suspend fun loadLog(minuten: Int) {
-        _managementState.update { it.copy(abruf = Laden.Loads, logMinutes = minuten) }
-        when (val r = verwaltung.getLog(minuten)) {
-            is Ergebnis.Erfolg -> _managementState.update { it.copy(protokoll = r.data, abruf = Laden.Daten(Unit)) }
-            is Ergebnis.Fehler -> _managementState.update { it.copy(abruf = loadError(r)) }
+    internal suspend fun loadLog(minutes: Int) {
+        _managementState.update { it.copy(fetch = Load.Loads, logMinutes = minutes) }
+        when (val r = admin.getLog(minutes)) {
+            is Outcome.Success -> _managementState.update { it.copy(log = r.data, fetch = Load.Data(Unit)) }
+            is Outcome.Failure -> _managementState.update { it.copy(fetch = loadError(r)) }
         }
     }
 
-    override fun chooseLog(minuten: Int) {
-        viewModelScope.launch { loadLog(minuten) }
+    override fun chooseLog(minutes: Int) {
+        viewModelScope.launch { loadLog(minutes) }
     }
 
     private val _background = MutableStateFlow(BackgroundUiState())
-    val hintergrund = _background.asStateFlow()
+    val background = _background.asStateFlow()
 
     /**
      * Keeps jobs and background work current until the caller ends (the page
      * is no longer visible) or the server denies admin rights; otherwise
      * every further tick would just fetch another 403.
      */
-    suspend fun haltAktuell() {
+    suspend fun holdCurrent() {
         while (!_state.value.accessRevoked) {
             loadJobs()
             loadBackground()
@@ -117,12 +119,12 @@ class MonitoringViewModel @Inject constructor(
     }
 
     suspend fun loadBackground() {
-        _background.update { it.copy(abruf = Laden.Loads) }
-        when (val r = verwaltung.getAuftraege()) {
-            is Ergebnis.Erfolg -> _background.update { BackgroundUiState(ansicht = r.data) }
-            is Ergebnis.Fehler -> {
-                _background.update { it.copy(abruf = loadError(r)) }
-                if (entzogen(r)) _state.update { it.copy(accessRevoked = true) }
+        _background.update { it.copy(fetch = Load.Loads) }
+        when (val r = admin.getBackgroundJobs()) {
+            is Outcome.Success -> _background.update { BackgroundUiState(view = r.data) }
+            is Outcome.Failure -> {
+                _background.update { it.copy(fetch = loadError(r)) }
+                if (revoked(r)) _state.update { it.copy(accessRevoked = true) }
             }
         }
     }
@@ -132,63 +134,73 @@ class MonitoringViewModel @Inject constructor(
      * the server's sentence, because only it knows why the job
      * no longer fits in the meantime. The list is reloaded afterward, either way.
      */
-    internal suspend fun abortJobAb(id: String): Meldung =
-        afterJob(verwaltung.abortJobAb(id)) { Meldung.Resource(R.string.hintergrund_abgebrochen_ok) }
+    internal suspend fun requestJobCancel(id: String): Message =
+        afterJob(admin.requestJobCancel(id)) { Message.Resource(R.string.background_cancelled_ok) }
 
-    internal suspend fun repeatJob(id: String): Meldung =
-        afterJob(verwaltung.repeatJob(id)) { Meldung.Resource(R.string.hintergrund_wiederholt_ok) }
+    internal suspend fun repeatJob(id: String): Message =
+        afterJob(admin.repeatJob(id)) { Message.Resource(R.string.background_retried_ok) }
 
-    internal suspend fun starteAuftragsArt(art: String, name: String): Meldung =
-        afterJob(verwaltung.starteAuftragsArt(art)) {
-            Meldung.Resource(if (it) R.string.hintergrund_gestartet else R.string.hintergrund_nichts_gestartet, listOf(name))
+    internal suspend fun startJobKind(kind: String, name: String): Message =
+        afterJob(admin.startJobKind(kind)) {
+            Message.Resource(if (it) R.string.background_started else R.string.background_nothing_started, listOf(name))
         }
 
-    internal suspend fun emptyJobKind(art: String): Meldung =
-        afterJob(verwaltung.emptyJobKind(art)) { Meldung.Menge(R.plurals.hintergrund_geleert, it) }
+    internal suspend fun emptyJobKind(kind: String): Message =
+        afterJob(admin.emptyJobKind(kind)) { Message.Quantity(R.plurals.background_emptied, it) }
 
     // In the viewModelScope, not the screen's scope: leaving the page
     // does not abort the action, and the sentence does not bypass the state.
-    override fun cancelJob(id: String) = melde { abortJobAb(id) }
-    override fun retryJob(id: String) = melde { repeatJob(id) }
-    override fun auftragsArtStarten(art: String, name: String) = melde { starteAuftragsArt(art, name) }
-    override fun clearJobKind(art: String) = melde { emptyJobKind(art) }
+    override fun cancelJob(id: String) = report { requestJobCancel(id) }
+    override fun retryJob(id: String) = report { repeatJob(id) }
+    override fun jobKindStart(kind: String, name: String) = report { startJobKind(kind, name) }
+    override fun clearJobKind(kind: String) = report { emptyJobKind(kind) }
 
     private val _settingsNew = MutableStateFlow(false)
 
     /** Theme or default state changed: the app reloads its settings and acknowledges. */
     val settingsNew = _settingsNew.asStateFlow()
 
-    fun einstellungenGeladen() {
+    fun settingsLoaded() {
         _settingsNew.value = false
     }
 
-    fun defaultStateChoose(zustand: Zustand) = gespeichert(einstellungen = true) { setDefaultState(zustand) }
-    fun designChoose(theme: Design) = gespeichert(einstellungen = true) { setzeDesign(theme) }
-    fun saveCacheDuration(hours: Int) = gespeichert { setCacheDuration(hours) }
-    fun cacheLeeren(alles: Boolean) = gespeichert(R.string.monitoring_cache_cleared) { emptyCache(alles) }
+    fun defaultStateChoose(condition: Condition) = saved(settings = true) { setDefaultState(condition) }
+    fun designChoose(theme: Design) = saved(settings = true) { setDesign(theme) }
+    fun saveCacheDuration(hours: Int) = saved { setCacheDuration(hours) }
+    fun cacheClear(everything: Boolean) =
+        saved(R.string.monitoring_cache_cleared, failure = R.string.monitoring_cache_clear_failed) { emptyCache(everything) }
     fun saveLimits(rebrickable: Int, bricklink: Int, brickset: Int) =
-        gespeichert(R.string.monitoring_limits_saved) { setLimits(rebrickable, bricklink, brickset) }
+        saved(R.string.monitoring_limits_saved) { setLimits(rebrickable, bricklink, brickset) }
 
-    // Only a success reports itself; a failure leaves the shown state as is.
-    private fun gespeichert(satz: Int = R.string.monitoring_cache_saved, einstellungen: Boolean = false, aktion: suspend () -> Boolean) {
+    // A failure names its cause: a switch that silently flips back looks like a bug in the app.
+    private fun saved(
+        sentence: Int = R.string.monitoring_cache_saved,
+        settings: Boolean = false,
+        failure: Int = R.string.monitoring_save_failed,
+        action: suspend () -> Outcome<Unit>,
+    ) {
         viewModelScope.launch {
-            if (!aktion()) return@launch
-            if (einstellungen) _settingsNew.value = true
-            meldungen.zeige(Meldung.Resource(satz))
+            when (val r = action()) {
+                is Outcome.Failure -> messages.show(Message.Resource(failure, listOf(errorMessage(r))))
+                is Outcome.Success -> {
+                    if (settings) _settingsNew.value = true
+                    messages.show(Message.Resource(sentence))
+                }
+            }
         }
     }
 
-    private fun melde(aktion: suspend () -> Meldung) {
-        viewModelScope.launch { meldungen.zeige(aktion()) }
+    private fun report(action: suspend () -> Message) {
+        viewModelScope.launch { messages.show(action()) }
     }
 
-    private suspend fun <T> afterJob(r: Ergebnis<T>, erfolg: (T) -> Meldung): Meldung {
-        val satz = when (r) {
-            is Ergebnis.Erfolg -> erfolg(r.data)
-            is Ergebnis.Fehler -> errorMessage(r)
+    private suspend fun <T> afterJob(r: Outcome<T>, success: (T) -> Message): Message {
+        val sentence = when (r) {
+            is Outcome.Success -> success(r.data)
+            is Outcome.Failure -> errorMessage(r)
         }
         loadBackground()
-        return satz
+        return sentence
     }
 
     override fun refresh() {
@@ -196,12 +208,12 @@ class MonitoringViewModel @Inject constructor(
     }
 
     internal suspend fun loadJobs() {
-        _state.update { it.copy(aktualisiert = true) }
-        val r = verwaltung.getJobs()
+        _state.update { it.copy(updated = true) }
+        val r = admin.getJobs()
         _state.update {
-            if (r is Ergebnis.Erfolg)
-                it.copy(jobs = r.data.jobs, jobSchedules = r.data.schedules, aktualisiert = false)
-            else it.copy(aktualisiert = false, accessRevoked = it.accessRevoked || entzogen(r))
+            if (r is Outcome.Success)
+                it.copy(jobs = r.data.jobs, jobSchedules = r.data.schedules, updated = false)
+            else it.copy(updated = false, accessRevoked = it.accessRevoked || revoked(r))
         }
     }
 
@@ -210,32 +222,38 @@ class MonitoringViewModel @Inject constructor(
     }
 
     internal suspend fun loadQueue() {
-        _state.update { it.copy(queue = Laden.Loads) }
-        val r = verwaltung.getBricksetQueue()
+        _state.update { it.copy(queue = Load.Loads) }
+        val r = admin.getBricksetQueue()
         _state.update { it.copy(queue = r.loadAs()) }
     }
 
-    override fun wiederhole(setNummer: String) = reportAfter(
-        { repeatEntry(setNummer) },
-        Meldung.Resource(R.string.monitoring_retry_queued, listOf(setNummer)),
-        Meldung.Resource(R.string.monitoring_retry_error),
+    override fun retry(setNumber: String) = reportAfter(
+        { repeatEntry(setNumber) },
+        Message.Resource(R.string.monitoring_retry_queued, listOf(setNumber)),
+        R.string.monitoring_retry_error, setNumber,
     )
 
-    override fun entferne(setNummer: String) = reportAfter(
-        { removeEntry(setNummer) },
-        Meldung.Resource(R.string.monitoring_entry_removed, listOf(setNummer)),
-        Meldung.Resource(R.string.monitoring_delete_error),
+    override fun remove(setNumber: String) = reportAfter(
+        { removeEntry(setNumber) },
+        Message.Resource(R.string.monitoring_entry_removed, listOf(setNumber)),
+        R.string.monitoring_delete_error, setNumber,
     )
 
-    private fun reportAfter(aktion: suspend () -> Boolean, erfolg: Meldung, failure: Meldung) {
-        viewModelScope.launch { meldungen.zeige(if (aktion()) erfolg else failure) }
+    /** [failure] takes the set number and the cause; „Fehler beim Löschen“ alone said neither. */
+    private fun reportAfter(action: suspend () -> Outcome<Unit>, success: Message, failure: Int, setNumber: String) {
+        viewModelScope.launch {
+            messages.show(when (val r = action()) {
+                is Outcome.Success -> success
+                is Outcome.Failure -> Message.Resource(failure, listOf(setNumber, errorMessage(r)))
+            })
+        }
     }
 
     /** Retries a stuck entry; reloads the list afterward. */
-    internal suspend fun repeatEntry(setNummer: String): Boolean {
-        val ok = verwaltung.retryBricksetEntry(setNummer) is Ergebnis.Erfolg
-        if (ok) loadQueue()
-        return ok
+    internal suspend fun repeatEntry(setNumber: String): Outcome<Unit> {
+        val r = admin.retryBricksetEntry(setNumber)
+        if (r is Outcome.Success) loadQueue()
+        return r
     }
 
     /**
@@ -243,14 +261,14 @@ class MonitoringViewModel @Inject constructor(
      * it reloads instead of writing the old copy back — something else may
      * have changed on the server in between.
      */
-    internal suspend fun removeEntry(setNummer: String): Boolean {
+    internal suspend fun removeEntry(setNumber: String): Outcome<Unit> {
         _state.update { s ->
-            val ohne = s.queue.dataOrNull()?.filter { it.setNumber != setNummer }
-            if (ohne == null) s else s.copy(queue = Laden.Daten(ohne))
+            val without = s.queue.dataOrNull()?.filter { it.setNumber != setNumber }
+            if (without == null) s else s.copy(queue = Load.Data(without))
         }
-        val ok = verwaltung.deleteBricksetEntry(setNummer) is Ergebnis.Erfolg
-        if (!ok) loadQueue()
-        return ok
+        val r = admin.deleteBricksetEntry(setNumber)
+        if (r is Outcome.Failure) loadQueue()
+        return r
     }
 
     /**
@@ -258,38 +276,39 @@ class MonitoringViewModel @Inject constructor(
      * its label again; a failure goes into the snackbar as a message. It is disabled
      * before the launch, otherwise a double tap would start it twice.
      */
-    override fun starte(job: Jobstart) {
+    override fun launch(job: Jobstart) {
         if (job in _state.value.buttons) return
-        setButton(job, Meldung.Resource(if (job == Jobstart.INSTRUCTIONS) R.string.common_loading else R.string.monitoring_starting))
+        setButton(job, Message.Resource(if (job == Jobstart.INSTRUCTIONS) R.string.common_loading else R.string.monitoring_starting))
         viewModelScope.launch {
-            val gestartet = startJob(job)
-            if (gestartet == null) {
-                setButton(job, null)
-                val satz = if (job == Jobstart.INSTRUCTIONS) R.string.monitoring_reimport_error else R.string.monitoring_start_error
-                meldungen.zeige(Meldung.Resource(satz))
-                return@launch
+            when (val r = startJob(job)) {
+                is Outcome.Failure -> {
+                    setButton(job, null)
+                    val sentence = if (job == Jobstart.INSTRUCTIONS) R.string.monitoring_reimport_error else R.string.monitoring_start_error
+                    messages.show(Message.Resource(sentence, listOf(errorMessage(r))))
+                }
+                is Outcome.Success -> {
+                    setButton(job, r.data)
+                    delay(STARTED_MS)
+                    setButton(job, null)
+                }
             }
-            setButton(job, gestartet)
-            delay(STARTED_MS)
-            setButton(job, null)
         }
     }
 
-    private fun setButton(job: Jobstart, stand: Meldung?) =
-        _state.update { it.copy(buttons = if (stand == null) it.buttons - job else it.buttons + (job to stand)) }
+    private fun setButton(job: Jobstart, state: Message?) =
+        _state.update { it.copy(buttons = if (state == null) it.buttons - job else it.buttons + (job to state)) }
 
-    /** Starts the job; returns what the button shows afterward, or null on a failure. */
-    internal suspend fun startJob(job: Jobstart): Meldung? {
-        val gestartet = Meldung.Resource(R.string.monitoring_started)
+    /** Starts the job; returns what the button shows afterward, or the failure with its cause. */
+    internal suspend fun startJob(job: Jobstart): Outcome<Message> {
+        val started = Message.Resource(R.string.monitoring_started)
         return when (job) {
-            Jobstart.CSV_ABGLEICH -> Meldung.Resource(R.string.monitoring_sync_started_short)
-                .takeIf { verwaltung.triggerCsvSync() is Ergebnis.Erfolg }
-            Jobstart.PREISLAUF -> gestartet.takeIf { verwaltung.triggerPriceJob() is Ergebnis.Erfolg }
-            Jobstart.BESTANDSBILDER -> gestartet.takeIf { verwaltung.redownloadMissingImages() is Ergebnis.Erfolg }
+            Jobstart.CSV_RECONCILE -> admin.triggerCsvSync().then { Message.Resource(R.string.monitoring_sync_started_short) }
+            Jobstart.PRICE_RUN -> admin.triggerPriceJob().then { started }
+            Jobstart.STOCK_IMAGES -> admin.redownloadMissingImages().then { started }
             // The catalog's images, not the stock's next to it.
-            Jobstart.KATALOGBILDER -> gestartet.takeIf { verwaltung.queueCatalogImages() is Ergebnis.Erfolg }
-            Jobstart.INSTRUCTIONS -> (verwaltung.reimportInstructions() as? Ergebnis.Erfolg)?.data
-                ?.let { Meldung.Menge(R.plurals.monitoring_reimport_enqueued, it) }
+            Jobstart.CATALOG_IMAGES -> admin.queueCatalogImages().then { started }
+            Jobstart.INSTRUCTIONS -> admin.reimportInstructions()
+                .then { Message.Quantity(R.plurals.monitoring_reimport_enqueued, it) }
         }
     }
 
@@ -299,60 +318,59 @@ class MonitoringViewModel @Inject constructor(
      * the order of the state changes would become unpredictable.
      */
     internal suspend fun loadCacheAndLimits() {
-        (verwaltung.getCacheStats() as? Ergebnis.Erfolg)?.let { r ->
-            _state.update { it.copy(cacheStats = r.data) }
-        }
-        (verwaltung.getApiLimits() as? Ergebnis.Erfolg)?.let { r ->
-            _state.update { it.copy(apiLimits = r.data) }
-        }
-        (verwaltung.getCacheTtl() as? Ergebnis.Erfolg)?.let { r ->
-            _state.update { it.copy(cacheTtl = r.data) }
-        }
-        (konto.getDefaultCondition() as? Ergebnis.Erfolg)?.let { r ->
-            _state.update { it.copy(defaultState = r.data) }
-        }
+        _state.update { it.copy(settingsFetch = Load.Data(Unit)) }
+        setting(admin.getCacheStats()) { s, d -> s.copy(cacheStats = d) }
+        setting(admin.getApiLimits()) { s, d -> s.copy(apiLimits = d) }
+        setting(admin.getCacheTtl()) { s, d -> s.copy(cacheTtl = d) }
+        setting(account.getDefaultCondition()) { s, d -> s.copy(defaultState = d) }
     }
 
-    internal suspend fun setCacheDuration(hours: Int): Boolean {
-        val ok = verwaltung.setCacheTtl(hours) is Ergebnis.Erfolg
-        if (ok) _state.update { it.copy(cacheTtl = hours.toString()) }
-        return ok
+    /** All settings of the page again, after one of them failed. */
+    fun reloadSettings() {
+        viewModelScope.launch { loadCacheAndLimits(); loadDesignDefault() }
+    }
+
+    private fun <T> setting(r: Outcome<T>, take: (MonitoringUiState, T) -> MonitoringUiState) = when (r) {
+        is Outcome.Success -> _state.update { take(it, r.data) }
+        is Outcome.Failure -> _state.update { it.copy(settingsFetch = loadError(r)) }
+    }
+
+    internal suspend fun setCacheDuration(hours: Int): Outcome<Unit> {
+        val r = admin.setCacheTtl(hours)
+        if (r is Outcome.Success) _state.update { it.copy(cacheTtl = hours.toString()) }
+        return r
     }
 
     /**
      * Clear the cache and fetch the numbers again right away — otherwise the old
      * ones would stay up, and nothing would show that something happened.
      */
-    internal suspend fun emptyCache(alles: Boolean): Boolean {
-        val ok = verwaltung.clearCache(alles) is Ergebnis.Erfolg
-        if (ok) loadCacheAndLimits()
-        return ok
+    internal suspend fun emptyCache(everything: Boolean): Outcome<Unit> {
+        val r = admin.clearCache(everything)
+        if (r is Outcome.Success) loadCacheAndLimits()
+        return r
     }
 
     /**
      * Set a job's schedule and fetch it anew, because the server normalizes it ("7:5" →
      * "07:05", at least five minutes): it should show what applies.
      */
-    override fun setSchedule(name: String, zeit: String?, minuten: Int?) {
-        viewModelScope.launch {
-            if (setzeJobZeitplan(name, zeit, minuten)) meldungen.zeige(Meldung.Resource(R.string.monitoring_cache_saved))
-        }
+    override fun setSchedule(name: String, time: String?, minutes: Int?) {
+        saved { setJobSchedule(name, time, minutes) }
     }
 
-    internal suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Boolean {
-        val ok = verwaltung.setJobSchedule(name, zeit, minuten) is Ergebnis.Erfolg
-        if (ok) loadJobs()
-        return ok
+    internal suspend fun setJobSchedule(name: String, time: String? = null, minutes: Int? = null): Outcome<Unit> {
+        val r = admin.setJobSchedule(name, time, minutes)
+        if (r is Outcome.Success) loadJobs()
+        return r
     }
 
     /**
-     * The default from /settings/theme. An older server does not know `vorgabe`
+     * The default from /settings/theme. An older server does not know `default`
      * yet; there, the effective theme was also the default.
      */
     internal suspend fun loadDesignDefault() {
-        (konto.getAppTheme() as? Ergebnis.Erfolg)?.let { r ->
-            _state.update { it.copy(defaultDesign = r.data.vorgabe ?: r.data.wirksam) }
-        }
+        setting(account.getAppTheme()) { s, d -> s.copy(defaultDesign = d.default ?: d.effective) }
     }
 
     /**
@@ -360,20 +378,18 @@ class MonitoringViewModel @Inject constructor(
      * value into the state and remembers it, so that the display switches right away and
      * survives a cold start.
      */
-    internal suspend fun setzeDesign(theme: Design): Boolean {
-        val ok = verwaltung.setAppTheme(theme) is Ergebnis.Erfolg
-        if (ok) _state.update { it.copy(defaultDesign = theme) }
-        return ok
+    internal suspend fun setDesign(theme: Design): Outcome<Unit> {
+        val r = admin.setAppTheme(theme)
+        if (r is Outcome.Success) _state.update { it.copy(defaultDesign = theme) }
+        return r
     }
 
-    internal suspend fun setLimits(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
-        val ok = verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Ergebnis.Erfolg
-        if (ok) {
-            (verwaltung.getApiLimits() as? Ergebnis.Erfolg)?.let { r ->
-                _state.update { it.copy(apiLimits = r.data) }
-            }
+    internal suspend fun setLimits(rebrickable: Int, bricklink: Int, brickset: Int): Outcome<Unit> {
+        val r = admin.setApiLimits(rebrickable, bricklink, brickset)
+        if (r is Outcome.Success) {
+            setting(admin.getApiLimits()) { s, d -> s.copy(apiLimits = d) }
         }
-        return ok
+        return r
     }
 
     /**
@@ -381,13 +397,19 @@ class MonitoringViewModel @Inject constructor(
      * the call fails, it is rolled back, otherwise the UI would claim something that was never
      * saved.
      */
-    internal suspend fun setDefaultState(zustand: Zustand): Boolean {
-        val vorher = _state.value.defaultState
-        _state.update { it.copy(defaultState = zustand) }
-        val ok = verwaltung.setDefaultCondition(zustand) is Ergebnis.Erfolg
-        if (!ok) _state.update { it.copy(defaultState = vorher) }
-        return ok
+    internal suspend fun setDefaultState(condition: Condition): Outcome<Unit> {
+        val before = _state.value.defaultState
+        _state.update { it.copy(defaultState = condition) }
+        val r = admin.setDefaultCondition(condition)
+        if (r is Outcome.Failure) _state.update { it.copy(defaultState = before) }
+        return r
     }
+}
+
+/** What a started job shows on its button, the failure passed on unchanged with its cause. */
+private inline fun <T, R> Outcome<T>.then(f: (T) -> R): Outcome<R> = when (this) {
+    is Outcome.Success -> Outcome.Success(f(data))
+    is Outcome.Failure -> this
 }
 
 /** Spacing of the polls, for as long as monitoring is visible. */

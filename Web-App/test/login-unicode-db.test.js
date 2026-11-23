@@ -6,7 +6,7 @@
  * typed-in spelling.
  *
  * Counter-checks (measured on 28.10.2026):
- *   A  kontoKennung() again with JavaScript toLowerCase() and `= $1` → red:
+ *   A  accountKey() again with JavaScript toLowerCase() and `= $1` → red:
  *      “after five failed attempts the Unicode spelling is locked too”
  *   B  sendPasswordResetMail again to `email` from the request → red: “the
  *      reset mail goes to the stored address”
@@ -22,10 +22,10 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Links in mails only exist with a fixed address (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
 // Otherwise the console shows the recipient address only masked (src/mail/mailer.ts).
-process.env.MAIL_KONSOLE_MIT_TOKEN = '1';
+process.env.MAIL_CONSOLE_WITH_TOKEN = '1';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
+const { buildAndRequire, mounting, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
@@ -46,53 +46,53 @@ test('Unicode spellings of the same address', { concurrency: 1 }, async t => {
       [NAME, MAIL, bcrypt.hashSync('richtig-geheim', 4)],
     )
   ).id;
-  const aufraeumen = () =>
+  const cleanUp = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2`, [
       `%konto:${uid}`,
       `%${MAIL.split('@')[0]}%`,
     ]);
-  await aufraeumen();
+  await cleanUp();
   await db.run("DELETE FROM global_settings WHERE key LIKE 'smtp_%'");
   t.after(async () => {
-    await aufraeumen();
+    await cleanUp();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
   const { checkCredentials } = _req('src/account/loginCheck.js');
 
   await t.test('after five failed attempts the Unicode spelling is locked too', async () => {
-    const anfrage = { ip: '203.0.113.9', socket: {}, headers: {} };
+    const request = { ip: '203.0.113.9', socket: {}, headers: {} };
     for (let i = 0; i < 5; i++) {
-      const r = await checkCredentials(anfrage, MAIL, 'falsch');
-      assert.equal(r.absage?.art, 'nicht_angemeldet', `Versuch ${i + 1}`);
+      const r = await checkCredentials(request, MAIL, 'falsch');
+      assert.equal(r.refusal?.kind, 'not_signed_in', `Attempt ${i + 1}`);
     }
-    const r = await checkCredentials(anfrage, VARIANT, 'richtig-geheim');
-    assert.equal(r.absage?.art, 'zu_viele', 'die Variante bekam frische Zähler');
+    const r = await checkCredentials(request, VARIANT, 'richtig-geheim');
+    assert.equal(r.refusal?.kind, 'too_many', 'the variant got fresh counters');
   });
 
   await t.test('the reset mail goes to the stored address', async () => {
     const app = express();
     app.use(express.json());
-    app.use(einhaengung('auth'), require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+    app.use(mounting('auth'), require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
     const srv = app.listen(0);
-    const zeilen = [];
-    const echt = console.log;
+    const lines = [];
+    const original = console.log;
     console.log = (...a) => {
-      zeilen.push(a.join(' '));
+      lines.push(a.join(' '));
     };
     try {
-      const r = await fetch(`http://localhost:${srv.address().port}${einhaengung('auth')}/forgot-password`, {
+      const r = await fetch(`http://localhost:${srv.address().port}${mounting('auth')}/forgot-password`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email: VARIANT.toUpperCase() }),
       });
       assert.equal(r.status, 200);
-      for (let i = 0; i < 50 && !zeilen.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
+      for (let i = 0; i < 50 && !lines.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
     } finally {
-      console.log = echt;
+      console.log = original;
       srv.close();
     }
-    const an = zeilen.find(z => z.includes('An:')) || '';
-    assert.ok(an.includes(MAIL), `Empfänger: ${an}`);
+    const an = lines.find(z => z.includes('An:')) || '';
+    assert.ok(an.includes(MAIL), `Recipient: ${an}`);
   });
 });

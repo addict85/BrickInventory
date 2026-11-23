@@ -33,35 +33,35 @@ async function token() {
 
 (async () => {
   const t = await token();
-  /** @type {[string, { antwort?: import('zod').ZodType }][]} */
-  const routen = Object.entries(CONTRACT).filter(([k, r]) => k.startsWith('GET ') && !k.includes(':') && r.antwort);
-  let falsch = 0;
-  for (const [schluessel, r] of routen) {
-    const pfad = schluessel.slice(4);
+  /** @type {[string, { response?: import('zod').ZodType }][]} */
+  const routes = Object.entries(CONTRACT).filter(([k, r]) => k.startsWith('GET ') && !k.includes(':') && r.response);
+  let wrong = 0;
+  for (const [key, r] of routes) {
+    const path = key.slice(4);
     /** @type {string[]} */
-    let fehler;
+    let error;
     try {
-      const a = await fetch(BASE + pfad, { headers: { Authorization: `Bearer ${t}` } });
-      const ergebnis = a.ok ? r.antwort?.safeParse(await a.json()) : undefined;
-      fehler = !a.ok
+      const a = await fetch(BASE + path, { headers: { Authorization: `Bearer ${t}` } });
+      const result = a.ok ? r.response?.safeParse(await a.json()) : undefined;
+      error = !a.ok
         ? [`HTTP ${a.status}`]
-        : ergebnis && !ergebnis.success
-          ? ergebnis.error.issues.map(i => `$.${i.path.join('.')}: ${i.message}`)
+        : result && !result.success
+          ? result.error.issues.map(i => `$.${i.path.join('.')}: ${i.message}`)
           : [];
     } catch (e) {
-      fehler = [`Anfrage fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`];
+      error = [`Anfrage fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`];
     }
-    if (fehler.length) {
-      falsch++;
-      console.error(`✗ ${schluessel}`);
-      [...new Set(fehler.map(f => f.replace(/\.\d+\./g, '.i.')))].slice(0, 10).forEach(f => {
+    if (error.length) {
+      wrong++;
+      console.error(`✗ ${key}`);
+      [...new Set(error.map(f => f.replace(/\.\d+\./g, '.i.')))].slice(0, 10).forEach(f => {
         console.error(`    ${f}`);
       });
-    } else console.log(`✓ ${schluessel}`);
+    } else console.log(`✓ ${key}`);
   }
-  if (falsch) {
-    console.error(`\n${falsch} von ${routen.length} Routen weichen vom Vertrag ab.`);
+  if (wrong) {
+    console.error(`\n${wrong} von ${routes.length} Routen weichen vom Vertrag ab.`);
     process.exit(1);
   }
-  console.log(`\nAlle ${routen.length} Routen halten ihren Vertrag.`);
+  console.log(`\nAlle ${routes.length} Routen halten ihren Vertrag.`);
 })();

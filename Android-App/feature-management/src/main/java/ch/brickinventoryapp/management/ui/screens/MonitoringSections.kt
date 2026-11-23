@@ -1,8 +1,5 @@
 package ch.brickinventoryapp.management.ui.screens
 
-import ch.brickinventoryapp.model.domain.BricksetEntryView
-import ch.brickinventoryapp.model.domain.ScheduleView
-import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -12,17 +9,20 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.resources.R
-import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringActions
-import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.model.domain.BricksetEntryView
+import ch.brickinventoryapp.model.domain.ScheduleView
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.ui.util.NumericInput
 
 /**
  * The sections of the monitoring page below the job list — whole functions
@@ -42,11 +42,11 @@ internal fun BricksetQueueRow(
     var showError by rememberSaveable { mutableStateOf(false) }
 
     Surface(
-        shape = Formen.kachel,
+        shape = Shapes.tile,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(entry.setNumber, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
@@ -63,8 +63,8 @@ internal fun BricksetQueueRow(
 
             // Last error expandable. Read locally: across the module boundary (core-model)
             // there is no smart cast.
-            val letzterFehler = entry.lastError
-            if (!letzterFehler.isNullOrBlank()) {
+            val lastError = entry.lastError
+            if (!lastError.isNullOrBlank()) {
                 TextButton(
                     onClick = { showError = !showError },
                     contentPadding = PaddingValues(0.dp),
@@ -76,15 +76,15 @@ internal fun BricksetQueueRow(
                 }
                 AnimatedVisibility(showError) {
                     Surface(
-                        shape = Formen.marke,
+                        shape = Shapes.brand,
                         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
                     ) {
                         Text(
-                            letzterFehler,
+                            lastError,
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(Abstaende.klein)
+                            modifier = Modifier.padding(Spacing.small)
                         )
                     }
                 }
@@ -106,30 +106,31 @@ private fun BricksetActions(
     var deleteAsk by rememberSaveable(entry.setNumber) { mutableStateOf(false) }
     if (deleteAsk) {
         Prompt(
-            titel = stringResource(R.string.monitoring_queue_loeschen_titel),
-            text = stringResource(R.string.monitoring_queue_loeschen_text, entry.setNumber),
-            bestaetigen = stringResource(R.string.common_delete),
-            onBestaetigen = { deleteAsk = false; onDelete(entry.setNumber) },
-            onAbbrechen = { deleteAsk = false },
+            title = stringResource(R.string.monitoring_queue_delete_title),
+            text = stringResource(R.string.monitoring_queue_delete_text, entry.setNumber),
+            // Off the list, not destroyed: the set stays, Brickset is just no longer asked.
+            confirm = stringResource(R.string.monitoring_queue_remove),
+            onConfirm = { deleteAsk = false; onDelete(entry.setNumber) },
+            onCancel = { deleteAsk = false },
             symbol = Icons.Default.Delete,
         )
     }
-    val wiederholen = stringResource(R.string.aktion_fuer, stringResource(R.string.monitoring_icon_retry), entry.setNumber)
-    val loeschen = stringResource(R.string.aktion_fuer, stringResource(R.string.common_delete), entry.setNumber)
-    Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
-        MitTooltip(wiederholen) {
+    val retry = stringResource(R.string.action_for, stringResource(R.string.monitoring_icon_retry), entry.setNumber)
+    val delete = stringResource(R.string.action_for, stringResource(R.string.monitoring_queue_remove), entry.setNumber)
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.tiny)) {
+        WithTooltip(retry) {
             FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
-                Icon(Icons.Default.Refresh, contentDescription = wiederholen, Modifier.size(withFont(14.dp)))
+                Icon(Icons.Default.Refresh, contentDescription = retry, Modifier.size(withFont(14.dp)))
             }
         }
-        MitTooltip(loeschen) {
+        WithTooltip(delete) {
             FilledTonalIconButton(
                 onClick = { deleteAsk = true },
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 )
             ) {
-                Icon(Icons.Default.Delete, contentDescription = loeschen, Modifier.size(withFont(14.dp)),
+                Icon(Icons.Default.Delete, contentDescription = delete, Modifier.size(withFont(14.dp)),
                     tint = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
@@ -147,12 +148,12 @@ private fun BricksetActions(
 internal fun ScheduleRow(
     jobKey: String,
     plan: ScheduleView,
-    aktionen: MonitoringActions,
+    actions: MonitoringActions,
 ) {
     val daily = plan.type == "daily"
-    var bearbeiten by rememberSaveable(jobKey) { mutableStateOf(false) }
-    val gezeigt = if (daily) plan.time.orEmpty() else (plan.minutes ?: 60).toString()
-    var eingabe by rememberSaveable(jobKey, gezeigt) { mutableStateOf(gezeigt) }
+    var edit by rememberSaveable(jobKey) { mutableStateOf(false) }
+    val shown = if (daily) plan.time.orEmpty() else (plan.minutes ?: 60).toString()
+    var input by rememberSaveable(jobKey, shown) { mutableStateOf(shown) }
 
     Row(
         Modifier.fillMaxWidth(),
@@ -165,25 +166,25 @@ internal fun ScheduleRow(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (bearbeiten) {
-            ScheduleInput(daily, eingabe, onInput = { eingabe = it },
-                onSpeichern = {
-                    if (daily) aktionen.setSchedule(jobKey, zeit = eingabe.trim())
-                    else aktionen.setSchedule(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
-                    bearbeiten = false
+        if (edit) {
+            ScheduleInput(daily, input, onInput = { input = it },
+                onSave = {
+                    if (daily) actions.setSchedule(jobKey, time = input.trim())
+                    else actions.setSchedule(jobKey, minutes = input.toIntOrNull() ?: 60)
+                    edit = false
                 },
-                onAbbrechen = { bearbeiten = false })
+                onCancel = { edit = false })
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small),
                 verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     if (daily) plan.time.orEmpty()
                     else stringResource(R.string.monitoring_schedule_minutes, plan.minutes ?: 60),
                     fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                 )
-                MitTooltip(stringResource(R.string.cd_edit_schedule)) {
+                WithTooltip(stringResource(R.string.cd_edit_schedule)) {
                     FilledTonalIconButton(
-                        onClick = { bearbeiten = true },
+                        onClick = { edit = true },
                     ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(withFont(14.dp))) }
                 }
             }
@@ -195,15 +196,15 @@ internal fun ScheduleRow(
 @Composable
 private fun ScheduleInput(
     daily: Boolean,
-    eingabe: String,
+    input: String,
     onInput: (String) -> Unit,
-    onSpeichern: () -> Unit,
-    onAbbrechen: () -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically) {
         OutlinedTextField(
-            value = eingabe,
+            value = input,
             onValueChange = {
                 // For minutes only digits; for the time of day also the
                 // colon — otherwise "03:00" could not be typed.
@@ -214,15 +215,15 @@ private fun ScheduleInput(
             suffix = { if (!daily) Text(stringResource(R.string.monitoring_schedule_unit)) },
             modifier = Modifier.width(if (daily) 96.dp else 90.dp),
             singleLine = true,
-            shape = Formen.kachel,
-            keyboardOptions = NumericInput.ganzzahlTastatur(),
+            shape = Shapes.tile,
+            keyboardOptions = NumericInput.integerKeyboard(),
         )
         FilledTonalButton(
-            onClick = onSpeichern,
+            onClick = onSave,
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
         ) { Text(stringResource(R.string.common_ok), style = MaterialTheme.typography.labelMedium) }
-        MitTooltip(stringResource(R.string.common_cancel)) {
-            IconButton(onClick = onAbbrechen) {
+        WithTooltip(stringResource(R.string.common_cancel)) {
+            IconButton(onClick = onCancel) {
                 Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
             }
         }

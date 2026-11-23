@@ -1,7 +1,7 @@
 /**
  * Is a function name English? What counts is the first word (the verb), because
  * it carries the name: `fetchPrice`, `getSetInfo`, `isDecodable`. “set” alone
- * does not count, in the domain it is the (LEGO) set (`setErfassen`); it is English
+ * does not count, in the domain it is the (LEGO) set (`acquireSet`); it is English
  * only with an English word after it (`setUserSetting`).
  */
 const VERBS = new Set(
@@ -18,9 +18,9 @@ const VERBS = new Set(
 const ENGLISH_AFTER_SET = /^set(?:User|Global|Setting|Status|Job|Up|Default|Value|Cache|Price|State)/;
 
 function englishName(/** @type {string} */ name) {
-  const erstes = (/^[a-z]+/.exec(name) || [''])[0];
-  if (erstes === 'set') return ENGLISH_AFTER_SET.test(name);
-  return VERBS.has(erstes);
+  const firstItem = (/^[a-z]+/.exec(name) || [''])[0];
+  if (firstItem === 'set') return ENGLISH_AFTER_SET.test(name);
+  return VERBS.has(firstItem);
 }
 
 module.exports = { englishName };

@@ -5,50 +5,98 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import ch.brickinventoryapp.ui.screens.imageAnalyse
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.Executors
-import ch.brickinventoryapp.ui.screens.imageAnalyse
+
+/** The scanner's status lines, in the app's language. */
+internal class ScanHints(val confirming: String, val aim: String, val error: String)
+
+/** What the scanner reports: a barcode, a set number read as text, or a status line. */
+internal class ScanCallbacks(
+    val onBarcodeFound: (String) -> Unit,
+    /** SET NUMBER read via text recognition — needs NO EAN resolution. */
+    val onSetNumberFound: (String) -> Unit,
+    val onStatus: (String) -> Unit,
+)
+
+/**
+ * The scanner's decisions per frame, without camera and ML Kit: a value counts once it was read
+ * [CONFIRM_NEEDED] times in a row; text recognition runs only on frames without a barcode and at
+ * most every [OCR_INTERVAL_MS], so the analysis thread gets free in between and focus doesn't
+ * feel sluggish. The barcode reader runs on every frame regardless.
+ */
+internal class ScanDecider(private val ocrEnabled: Boolean, private val now: () -> Long = System::currentTimeMillis) {
+    /** What to do with a frame. */
+    sealed interface Step {
+        data class Found(val value: String) : Step
+        data class Status(val confirming: Boolean) : Step
+        /** No barcode: hand the frame to text recognition. */
+        data object ReadText : Step
+    }
+
+    private var lastValue = ""
+    private var confirmCount = 0
+    private var lastOcr = 0L
+
+    /** The barcode reader's result for a frame, null without a barcode. */
+    fun onBarcode(value: String?): Step {
+        if (value != null) return confirm(value)
+        // No barcode in the frame → text recognition. The order is deliberate: the barcode is
+        // unambiguous, the read number only probable — on the box the barcode wins, text
+        // recognition applies on the instructions.
+        val time = now()
+        if (time - lastOcr < OCR_INTERVAL_MS) return Step.Status(confirming = false)
+        lastOcr = time
+        return if (ocrEnabled) Step.ReadText else Step.Status(confirming = false)
+    }
+
+    /** Text recognition's best set number for a frame, null without one. */
+    fun onText(candidate: String?): Step =
+        // The same multi-confirmation as for the barcode: a single misread shouldn't
+        // immediately trigger a dialog.
+        if (candidate != null) confirm(candidate) else Step.Status(confirming = false)
+
+    private fun confirm(value: String): Step {
+        if (value == lastValue) confirmCount++ else { lastValue = value; confirmCount = 1 }
+        return if (confirmCount >= CONFIRM_NEEDED) Step.Found(value) else Step.Status(confirming = true)
+    }
+
+    companion object {
+        const val CONFIRM_NEEDED = 2
+
+        /**
+         * Minimum gap between two text recognitions: small enough that a held-up instruction
+         * booklet is read right away, large enough that the analysis thread gets free in between.
+         */
+        const val OCR_INTERVAL_MS = 700L
+    }
+}
 
 /**
  * The image-analysis part of the barcode scanner: barcode reader, text recognition,
- * confirmation counting and throttling. Separate from embedding the camera preview, because
- * whoever works on recognition has nothing to do with PreviewView, lifecycle and focus gestures.
+ * confirmation counting and throttling ([ScanDecider]). Separate from embedding the camera preview,
+ * because whoever works on recognition has nothing to do with PreviewView, lifecycle and focus gestures.
  */
 // Opt-in for imageProxy.image: `@androidx.annotation.OptIn` is the form
 // for a marker defined in Java — `@ExperimentalGetImage` on the local
 // variable would be the annotation, not the opt-in (Lint:
-// UnsafeOptInUsageError). The same pattern as in KameraAufbau.kt.
+// UnsafeOptInUsageError). The same pattern as in CameraSetup.kt.
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 internal fun rememberBarcodeAnalyzer(
     frozen: Boolean,
     ocrEnabled: Boolean,
-    onBarcodeFound: (String) -> Unit,
-    /** SET NUMBER read via text recognition — needs NO EAN resolution. */
-    onSetNumberFound: (String) -> Unit,
-    onStatus: (String) -> Unit,
-    confirmingHint: String,
-    aimHint: String,
-    errorHint: String,
+    callbacks: ScanCallbacks,
+    hints: ScanHints,
 ): ImageAnalysis {
     val executor       = remember { Executors.newSingleThreadExecutor() }
-
-    var lastValue    = remember { "" }
-    var confirmCount = remember { 0 }
-    val CONFIRM_NEEDED = 2
-    /**
-     * Minimum gap between two text recognitions: small enough that a
-     * held-up instruction booklet is read right away, large enough that the analysis thread
-     * gets free in between and focus doesn't feel sluggish. The barcode reader keeps
-     * running on every frame regardless.
-     */
-    val OCR_INTERVALL_MS = 700L
-    val letzteOcr = remember { java.util.concurrent.atomic.AtomicLong(0L) }
+    val decider = remember { ScanDecider(ocrEnabled) }
 
     val barcodeScanner = remember {
         BarcodeScanning.getClient(
@@ -74,8 +122,15 @@ internal fun rememberBarcodeAnalyzer(
             executor.shutdown()
         }
     }
+    val report: (ScanDecider.Step, Boolean) -> Unit = { step, asText ->
+        when (step) {
+            is ScanDecider.Step.Found -> if (asText) callbacks.onSetNumberFound(step.value) else callbacks.onBarcodeFound(step.value)
+            is ScanDecider.Step.Status -> callbacks.onStatus(if (step.confirming) hints.confirming else hints.aim)
+            ScanDecider.Step.ReadText -> Unit
+        }
+    }
     val imageAnalyzer = remember {
-        // Setup including AF mode: ui/screens/KameraAufbau.kt — the same
+        // Setup including AF mode: ui/screens/CameraSetup.kt — the same
         // settings as in SetupScreen, only with more resolution for
         // small EAN bars and text recognition.
         imageAnalyse(1920, 1080)
@@ -87,53 +142,20 @@ internal fun rememberBarcodeAnalyzer(
                     val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
                     barcodeScanner.process(image)
                         .addOnSuccessListener { barcodes ->
-                            val barcode = barcodes.firstOrNull { it.rawValue != null }
-                            if (barcode?.rawValue != null) {
-                                val value = barcode.rawValue!!
-                                if (value == lastValue) confirmCount++
-                                else { lastValue = value; confirmCount = 1 }
-                                if (confirmCount >= CONFIRM_NEEDED) onBarcodeFound(value)
-                                else onStatus(confirmingHint)
+                            val step = decider.onBarcode(barcodes.firstOrNull { it.rawValue != null }?.rawValue)
+                            if (step != ScanDecider.Step.ReadText) {
+                                report(step, false)
                                 imageProxy.close()
-                            } else {
-                                // No barcode in the frame → text recognition. The order is
-                                // deliberate: the barcode is unambiguous, the read number only
-                                // probable — on the box the barcode wins, text
-                                // recognition applies on the instructions.
-                                val jetzt = System.currentTimeMillis()
-                                if (jetzt - letzteOcr.get() < OCR_INTERVALL_MS) {
-                                    onStatus(aimHint)
-                                    imageProxy.close()
-                                    return@addOnSuccessListener
-                                }
-                                letzteOcr.set(jetzt)
-
-                                if (!ocrEnabled) {
-                                    // Text recognition not wanted here — only the target hint, and
-                                    // the image buffer must still be released.
-                                    onStatus(aimHint)
-                                    imageProxy.close()
-                                    return@addOnSuccessListener
-                                }
-                                textRecognizer.process(image)
-                                    .addOnSuccessListener { result ->
-                                        val candidate = setNumberCandidates(result.text).firstOrNull()
-                                        if (candidate != null) {
-                                            // The same multi-confirmation as for the
-                                            // barcode: a single misread shouldn't
-                                            // immediately trigger a dialog.
-                                            if (candidate == lastValue) confirmCount++
-                                            else { lastValue = candidate; confirmCount = 1 }
-                                            if (confirmCount >= CONFIRM_NEEDED) onSetNumberFound(candidate)
-                                            else onStatus(confirmingHint)
-                                        } else onStatus(aimHint)
-                                    }
-                                    .addOnFailureListener { onStatus(aimHint) }
-                                    .addOnCompleteListener { imageProxy.close() }
                                 return@addOnSuccessListener
                             }
+                            textRecognizer.process(image)
+                                .addOnSuccessListener { result ->
+                                    report(decider.onText(setNumberCandidates(result.text).firstOrNull()), true)
+                                }
+                                .addOnFailureListener { callbacks.onStatus(hints.aim) }
+                                .addOnCompleteListener { imageProxy.close() }
                         }
-                        .addOnFailureListener { onStatus(errorHint); imageProxy.close() }
+                        .addOnFailureListener { callbacks.onStatus(hints.error); imageProxy.close() }
                     // No addOnCompleteListener: on the barcode task it fired as soon as it
                     // reported "no barcode" and closed the frame that text recognition was
                     // only just starting on — silently, with no result. That's why every exit closes the image buffer

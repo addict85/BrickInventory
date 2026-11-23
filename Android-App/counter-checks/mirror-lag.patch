@@ -1,0 +1,17 @@
+Gegenprobe: der Plattenspiegel übernimmt jeden Wert, auch einen überholten
+Modul: core-data
+Test: ch.brickinventoryapp.data.MirrorFollowUpTest
+Rot: an outdated disk value does not turn the memory back
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+@@ -76,7 +76,7 @@
+         stream.map(raw).distinctUntilChanged()
+             .transformLatest { r -> read(r) { emit(r to it) } }
+             .collect { (r, value) ->
+-                lock.withLock { if (raw(now()) == r) set(value) }
++                lock.withLock { set(value) }
+                 if (first) { first = false; onRead() }
+             }
+     }

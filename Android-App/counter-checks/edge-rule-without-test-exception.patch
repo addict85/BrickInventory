@@ -1,0 +1,17 @@
+Gegenprobe: die Kantenregel nimmt Testkonfigurationen nicht mehr aus
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: the edge rule forbids area to area, wrong layering, api and core-testing in main code
+
+diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
+--- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
++++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
+@@ -108,7 +108,7 @@
+             k.configuration == "api" && k.after != "core-model" ->
+                 "module edges via api only to core-model: ${k.of} → ${k.after}"
+             k.onlyTest && reverseTest(k) -> "${k.of} tests with ${k.after}, which builds on ${k.of}: the test belongs in ${k.after}"
+-            k.onlyTest -> null
++            false -> null
+             k.after == "core-contract" && k.of !in wireMarker ->
+                 "${k.of} knows the wire format: only ${wireMarker.sorted().joinToString(" and ")} maps it"
+             k.after == "core-testing" -> "${k.of} includes core-testing not only for tests"

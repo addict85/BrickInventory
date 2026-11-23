@@ -1,141 +1,141 @@
 /** What the services receive; separate from area.ts so that no import cycle arises. */
-import type { Konfig } from '../infra/config';
+import type { AppConfig } from '../infra/config';
 import type { MailServices } from '../mail';
 import type { Db } from '../../db/database';
-import { mit, withContract, type Kontext } from '../infra/area';
+import { bound, withContract, type Context } from '../infra/area';
 import type { FinancesReadContract } from './readContract';
-import type { Faecher } from '../infra/cache';
-import * as bewertung from './repository/valuation';
-import * as erfassungen from './repository/acquisitions';
-import * as gewinnVerlust from './repository/profitLoss';
-import * as marktpreise from './repository/marketPrices';
-import * as portfolioKurve from './repository/portfolioCurve';
-import * as preisalarme from './repository/priceAlerts';
-import * as preisCache from './repository/priceCache';
-import * as preisLauf from './repository/priceRun';
-import * as preisverlauf from './repository/priceHistory';
-import * as setWert from './repository/setValue';
-import * as wechselkurse from './repository/exchangeRates';
+import type { Compartments } from '../infra/cache';
+import * as valuation from './repository/valuation';
+import * as acquisitions from './repository/acquisitions';
+import * as profitLoss from './repository/profitLoss';
+import * as marketPrices from './repository/marketPrices';
+import * as portfolioCurve from './repository/portfolioCurve';
+import * as priceAlerts from './repository/priceAlerts';
+import * as priceCache from './repository/priceCache';
+import * as priceRun from './repository/priceRun';
+import * as priceHistory from './repository/priceHistory';
+import * as setValueOf from './repository/setValue';
+import * as exchangeRates from './repository/exchangeRates';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../catalog';
 import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
-import type { Uhr } from '../infra/clock';
+import type { Clock } from '../infra/clock';
 
 export interface FinancesDependencies {
-  uhr: Uhr;
-  konfig: Readonly<Konfig>;
+  clock: Clock;
+  config: Readonly<AppConfig>;
   db: Db;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   jobQueue: JobsServices;
   household: HouseholdServices;
   catalog: CatalogServices;
   externalSources: ForeignSourcesServices;
-  faecher: Faecher;
+  compartments: Compartments;
   mail: MailServices;
-  lesevertrag: FinancesReadContract;
+  readContract: FinancesReadContract;
 }
 
 /** Valuation, acquisitions, profit and market prices. */
-const bestandszugang = (db: Db, l: FinancesReadContract) => ({
-  bewertung: {
-    manualEntries: withContract(db, l)(bewertung.manualEntries),
-    setsToValuation: withContract(db, l)(bewertung.setsToValuation),
-    catalogFeatures: mit(db)(bewertung.catalogFeatures),
-    manualMinifigsToValuation: withContract(db, l)(bewertung.manualMinifigsToValuation),
-    manualPartsToValuation: withContract(db, l)(bewertung.manualPartsToValuation),
+const holdingAccess = (db: Db, l: FinancesReadContract) => ({
+  valuation: {
+    manualEntries: withContract(db, l)(valuation.manualEntries),
+    setsToValuation: withContract(db, l)(valuation.setsToValuation),
+    catalogFeatures: bound(db)(valuation.catalogFeatures),
+    manualMinifigsToValuation: withContract(db, l)(valuation.manualMinifigsToValuation),
+    manualPartsToValuation: withContract(db, l)(valuation.manualPartsToValuation),
   },
-  erfassungen: {
-    loadSetEntries: withContract(db, l)(erfassungen.loadSetEntries),
+  acquisitions: {
+    loadSetEntries: withContract(db, l)(acquisitions.loadSetEntries),
   },
-  gewinnVerlust: {
-    setsWithEntries: withContract(db, l)(gewinnVerlust.setsWithEntries),
-    freshMarketPrices: mit(db)(gewinnVerlust.freshMarketPrices),
-    lastMarketPricesFromHistory: mit(db)(gewinnVerlust.lastMarketPricesFromHistory),
+  profitLoss: {
+    setsWithEntries: withContract(db, l)(profitLoss.setsWithEntries),
+    freshMarketPrices: bound(db)(profitLoss.freshMarketPrices),
+    lastMarketPricesFromHistory: bound(db)(profitLoss.lastMarketPricesFromHistory),
   },
-  marktpreise: {
-    setPriceFromCache: mit(db)(marktpreise.setPriceFromCache),
-    partEntryState: withContract(db, l)(marktpreise.partEntryState),
-    minifigEntryState: withContract(db, l)(marktpreise.minifigEntryState),
-    minifigsPricesFromCache: mit(db)(marktpreise.minifigsPricesFromCache),
-    partsPricesFromCache: mit(db)(marktpreise.partsPricesFromCache),
-    estimatedMinifigsPrices: mit(db)(marktpreise.estimatedMinifigsPrices),
-    estimatedMinifigsPrice: mit(db)(marktpreise.estimatedMinifigsPrice),
-    rememberEstimatedMinifigsPrice: mit(db)(marktpreise.rememberEstimatedMinifigsPrice),
-    rememberEstimatedMinifigsHistory: mit(db)(marktpreise.rememberEstimatedMinifigsHistory),
+  marketPrices: {
+    setPriceFromCache: bound(db)(marketPrices.setPriceFromCache),
+    partEntryState: withContract(db, l)(marketPrices.partEntryState),
+    minifigEntryState: withContract(db, l)(marketPrices.minifigEntryState),
+    minifigsPricesFromCache: bound(db)(marketPrices.minifigsPricesFromCache),
+    partsPricesFromCache: bound(db)(marketPrices.partsPricesFromCache),
+    estimatedMinifigsPrices: bound(db)(marketPrices.estimatedMinifigsPrices),
+    estimatedMinifigsPrice: bound(db)(marketPrices.estimatedMinifigsPrice),
+    rememberEstimatedMinifigsPrice: bound(db)(marketPrices.rememberEstimatedMinifigsPrice),
+    rememberEstimatedMinifigsHistory: bound(db)(marketPrices.rememberEstimatedMinifigsHistory),
   },
-  portfolioKurve: {
-    dailyValuesFromHistory: mit(db)(portfolioKurve.dailyValuesFromHistory),
-    cachePricesTheSets: mit(db)(portfolioKurve.cachePricesTheSets),
-    lastValuesBeforeStart: mit(db)(portfolioKurve.lastValuesBeforeStart),
-    setsWithPurchaseTotal: withContract(db, l)(portfolioKurve.setsWithPurchaseTotal),
+  portfolioCurve: {
+    dailyValuesFromHistory: bound(db)(portfolioCurve.dailyValuesFromHistory),
+    cachePricesTheSets: bound(db)(portfolioCurve.cachePricesTheSets),
+    lastValuesBeforeStart: bound(db)(portfolioCurve.lastValuesBeforeStart),
+    setsWithPurchaseTotal: withContract(db, l)(portfolioCurve.setsWithPurchaseTotal),
   },
 });
 
 /** Alerts, price cache, price run and exchange rates. */
-const preiszugang = (db: Db, l: FinancesReadContract) => ({
-  preisalarme: {
-    transferAlarm: mit(db)(preisalarme.transferAlarm),
-    writeAlarm: mit(db)(preisalarme.writeAlarm),
-    removeAlarm: mit(db)(preisalarme.removeAlarm),
-    alertsOfSets: withContract(db, l)(preisalarme.alertsOfSets),
-    alertsInScope: withContract(db, l)(preisalarme.alertsInScope),
-    databaseNow: mit(db)(preisalarme.databaseNow),
-    alertsOfAccount: withContract(db, l)(preisalarme.alertsOfAccount),
-    allActiveAlerts: mit(db)(preisalarme.allActiveAlerts),
-    cachePriceForAlarm: mit(db)(preisalarme.cachePriceForAlarm),
-    setAlarmBack: mit(db)(preisalarme.setAlarmBack),
-    resolveAlarmFrom: mit(db)(preisalarme.resolveAlarmFrom),
-    setNameFromMaster: mit(db)(preisalarme.setNameFromMaster),
-    alertsForExport: mit(db)(preisalarme.alertsForExport),
+const priceAccess = (db: Db, l: FinancesReadContract) => ({
+  priceAlerts: {
+    transferAlarm: bound(db)(priceAlerts.transferAlarm),
+    writeAlarm: bound(db)(priceAlerts.writeAlarm),
+    removeAlarm: bound(db)(priceAlerts.removeAlarm),
+    alertsOfSets: withContract(db, l)(priceAlerts.alertsOfSets),
+    alertsInScope: withContract(db, l)(priceAlerts.alertsInScope),
+    databaseNow: bound(db)(priceAlerts.databaseNow),
+    alertsOfAccount: withContract(db, l)(priceAlerts.alertsOfAccount),
+    allActiveAlerts: bound(db)(priceAlerts.allActiveAlerts),
+    cachePriceForAlarm: bound(db)(priceAlerts.cachePriceForAlarm),
+    setAlarmBack: bound(db)(priceAlerts.setAlarmBack),
+    resolveAlarmFrom: bound(db)(priceAlerts.resolveAlarmFrom),
+    setNameFromMaster: bound(db)(priceAlerts.setNameFromMaster),
+    alertsForExport: bound(db)(priceAlerts.alertsForExport),
   },
-  preisCache: {
-    setStateCounter: withContract(db, l)(preisCache.setStateCounter),
-    deleteAllSetPrices: mit(db)(preisCache.deleteAllSetPrices),
-    setPriceFresh: mit(db)(preisCache.setPriceFresh),
-    setPricesFresh: mit(db)(preisCache.setPricesFresh),
-    rememberSetPrice: mit(db)(preisCache.rememberSetPrice),
-    rememberSetHistory: mit(db)(preisCache.rememberSetHistory),
-    blFarben: mit(db)(preisCache.blFarben),
-    partsPricesFresh: mit(db)(preisCache.partsPricesFresh),
-    marketPriceFromCache: mit(db)(preisCache.marketPriceFromCache),
-    marketPriceFromHistory: mit(db)(preisCache.marketPriceFromHistory),
-    minifigsPricesFresh: mit(db)(preisCache.minifigsPricesFresh),
-    partPriceFresh: mit(db)(preisCache.partPriceFresh),
-    minifigPriceFresh: mit(db)(preisCache.minifigPriceFresh),
-    rememberPartPrice: mit(db)(preisCache.rememberPartPrice),
-    rememberPartHistory: mit(db)(preisCache.rememberPartHistory),
-    rememberMinifigPrice: mit(db)(preisCache.rememberMinifigPrice),
-    rememberMinifigHistory: mit(db)(preisCache.rememberMinifigHistory),
+  priceCache: {
+    setStateCounter: withContract(db, l)(priceCache.setStateCounter),
+    deleteAllSetPrices: bound(db)(priceCache.deleteAllSetPrices),
+    setPriceFresh: bound(db)(priceCache.setPriceFresh),
+    setPricesFresh: bound(db)(priceCache.setPricesFresh),
+    rememberSetPrice: bound(db)(priceCache.rememberSetPrice),
+    rememberSetHistory: bound(db)(priceCache.rememberSetHistory),
+    blColors: bound(db)(priceCache.blColors),
+    partsPricesFresh: bound(db)(priceCache.partsPricesFresh),
+    marketPriceFromCache: bound(db)(priceCache.marketPriceFromCache),
+    marketPriceFromHistory: bound(db)(priceCache.marketPriceFromHistory),
+    minifigsPricesFresh: bound(db)(priceCache.minifigsPricesFresh),
+    partPriceFresh: bound(db)(priceCache.partPriceFresh),
+    minifigPriceFresh: bound(db)(priceCache.minifigPriceFresh),
+    rememberPartPrice: bound(db)(priceCache.rememberPartPrice),
+    rememberPartHistory: bound(db)(priceCache.rememberPartHistory),
+    rememberMinifigPrice: bound(db)(priceCache.rememberMinifigPrice),
+    rememberMinifigHistory: bound(db)(priceCache.rememberMinifigHistory),
   },
-  preisLauf: {
-    inventoryPlaces: withContract(db, l)(preisLauf.inventoryPlaces),
-    wantedListsPlaces: withContract(db, l)(preisLauf.wantedListsPlaces),
-    recordedStates: withContract(db, l)(preisLauf.recordedStates),
-    desiredStates: withContract(db, l)(preisLauf.desiredStates),
-    writeDailyStatus: mit(db)(preisLauf.writeDailyStatus),
-    setsWithAlarm: mit(db)(preisLauf.setsWithAlarm),
+  priceRun: {
+    inventoryPlaces: withContract(db, l)(priceRun.inventoryPlaces),
+    wantedListsPlaces: withContract(db, l)(priceRun.wantedListsPlaces),
+    recordedStates: withContract(db, l)(priceRun.recordedStates),
+    desiredStates: withContract(db, l)(priceRun.desiredStates),
+    writeDailyStatus: bound(db)(priceRun.writeDailyStatus),
+    setsWithAlarm: bound(db)(priceRun.setsWithAlarm),
   },
-  preisverlauf: {
-    dailyPricesOfSets: mit(db)(preisverlauf.dailyPricesOfSets),
-    cachePricesOfSets: mit(db)(preisverlauf.cachePricesOfSets),
-    firstPurchaseOfSets: withContract(db, l)(preisverlauf.firstPurchaseOfSets),
-    purchaseChnittOfSets: withContract(db, l)(preisverlauf.purchaseChnittOfSets),
-    deleteOldHistory: mit(db)(preisverlauf.deleteOldHistory),
-    manualSeries: mit(db)(preisverlauf.manualSeries),
-    cachePricesAfterKey: mit(db)(preisverlauf.cachePricesAfterKey),
-    purchaseChnitteAfterKey: withContract(db, l)(preisverlauf.purchaseChnitteAfterKey),
+  priceHistory: {
+    dailyPricesOfSets: bound(db)(priceHistory.dailyPricesOfSets),
+    cachePricesOfSets: bound(db)(priceHistory.cachePricesOfSets),
+    firstPurchaseOfSets: withContract(db, l)(priceHistory.firstPurchaseOfSets),
+    purchaseAverageOfSets: withContract(db, l)(priceHistory.purchaseAverageOfSets),
+    deleteOldHistory: bound(db)(priceHistory.deleteOldHistory),
+    manualSeries: bound(db)(priceHistory.manualSeries),
+    cachePricesAfterKey: bound(db)(priceHistory.cachePricesAfterKey),
+    purchaseAveragesByKey: withContract(db, l)(priceHistory.purchaseAveragesByKey),
   },
-  setWert: {
-    cachePricesForSets: mit(db)(setWert.cachePricesForSets),
-    setEntriesToValue: withContract(db, l)(setWert.setEntriesToValue),
+  setValueOf: {
+    cachePricesForSets: bound(db)(setValueOf.cachePricesForSets),
+    setEntriesToValue: withContract(db, l)(setValueOf.setEntriesToValue),
   },
-  wechselkurse: {
-    writeRates: mit(db)(wechselkurse.writeRates),
-    givesEsRates: mit(db)(wechselkurse.givesEsRates),
+  exchangeRates: {
+    writeRates: bound(db)(exchangeRates.writeRates),
+    givesEsRates: bound(db)(exchangeRates.givesEsRates),
   },
 });
 
-export const zugang = (db: Db, l: FinancesReadContract) => ({ ...bestandszugang(db, l), ...preiszugang(db, l) });
-export type FinancesContext = Kontext<FinancesDependencies, ReturnType<typeof zugang>>;
+export const access = (db: Db, l: FinancesReadContract) => ({ ...holdingAccess(db, l), ...priceAccess(db, l) });
+export type FinancesContext = Context<FinancesDependencies, ReturnType<typeof access>>;

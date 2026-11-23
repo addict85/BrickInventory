@@ -9,17 +9,17 @@ import java.util.UUID
  * viewer then goes back; an old ticket would no longer be valid anyway.
  */
 internal object PdfSelection {
-    data class Pdf(val url: String, val titel: String)
+    data class Pdf(val url: String, val title: String)
 
     private const val AT_MOST = 8
-    private val offen = object : LinkedHashMap<String, Pdf>() {
+    private val open = object : LinkedHashMap<String, Pdf>() {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pdf>?) = size > AT_MOST
     }
 
     /** Stores the PDF and returns the key for the route. */
-    fun put(url: String, titel: String): String = synchronized(offen) {
-        UUID.randomUUID().toString().also { offen[it] = Pdf(url, titel) }
+    fun put(url: String, title: String): String = synchronized(open) {
+        UUID.randomUUID().toString().also { open[it] = Pdf(url, title) }
     }
 
-    fun fetch(schluessel: String): Pdf? = synchronized(offen) { offen[schluessel] }
+    fun fetch(key: String): Pdf? = synchronized(open) { open[key] }
 }

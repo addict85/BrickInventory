@@ -35,15 +35,15 @@ object CategoryGerman {
 
     /** „Bricks Sloped“ → „Steine schräg“, „Minifig Upper Body“ → „Minifigur Oberkörper“. */
     fun translate(en: String): String {
-        val teile = Regex("""(\s+|,|-)""").split(en.trim()).filter { it.isNotBlank() }
+        val parts = Regex("""(\s+|,|-)""").split(en.trim()).filter { it.isNotBlank() }
         val separator = Regex("""\s*(,|-)\s*|\s+""").findAll(en.trim()).map { it.value.trim() }.toList()
         val sb = StringBuilder()
-        teile.forEachIndexed { i, wort ->
-            val de = words[wort.lowercase()] ?: wort
+        parts.forEachIndexed { i, word ->
+            val de = words[word.lowercase()] ?: word
             if (i > 0) {
                 val t = separator.getOrNull(i - 1).orEmpty()
-                val vorher = words[teile[i - 1].lowercase()]
-                if (vorher !in prefixes) sb.append(if (t.isEmpty()) " " else if (t == ",") ", " else " $t ")
+                val before = words[parts[i - 1].lowercase()]
+                if (before !in prefixes) sb.append(if (t.isEmpty()) " " else if (t == ",") ", " else " $t ")
             }
             sb.append(de)
         }

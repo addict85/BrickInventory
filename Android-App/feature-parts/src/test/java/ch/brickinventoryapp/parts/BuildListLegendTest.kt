@@ -3,11 +3,11 @@ package ch.brickinventoryapp.parts
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.parts.ui.PartListUiState
 import ch.brickinventoryapp.parts.ui.PlPart
-import ch.brickinventoryapp.parts.ui.TeilelisteUiState
 import ch.brickinventoryapp.parts.ui.screens.PartsListScreen
 import ch.brickinventoryapp.parts.ui.screens.buildListsGroups
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import coil3.ImageLoader
 import org.junit.Assert.assertEquals
@@ -23,10 +23,10 @@ import org.robolectric.annotation.Config
  * every row spells out "Benötigt" and "Vorhanden", and the minifigures stand in
  * their own group at the end instead of under "(Keine Farbe)" between the parts.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
- *   bauliste-ohne-legende      the legend is missing → red “above the list stands …”
- *   bauliste-pille-als-zeichen "Vorhanden" back to "8/12" → red “above the list stands …”
- *   bauliste-figuren-gemischt  figures grouped by color again → red “the minifigures …”
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
+ *   build-list-without-legend      the legend is missing → red “above the list stands …”
+ *   build-list-pill-as-character "Vorhanden" back to "8/12" → red “above the list stands …”
+ *   build-list-figures-mixed  figures grouped by color again → red “the minifigures …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h2400dp-port-xxhdpi")
@@ -37,38 +37,38 @@ class BuildListLegendTest {
 
     private fun text(id: Int, vararg a: Any) = compose.activity.getString(id, *a)
 
-    private val stein = PlPart(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", colorHex = "C91A09",
-        colorId = 4, quantity = 12, imageUrl = null, vorhanden = 8)
-    private val platte = PlPart(partNumber = "3020", partName = "Plate 2 x 4", colorName = "Light Bluish Gray",
-        colorHex = "A0A5A9", colorId = 71, quantity = 30, imageUrl = null, vorhanden = 30)
+    private val brick = PlPart(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", colorHex = "C91A09",
+        colorId = 4, quantity = 12, imageUrl = null, present = 8)
+    private val plate = PlPart(partNumber = "3020", partName = "Plate 2 x 4", colorName = "Light Bluish Gray",
+        colorHex = "A0A5A9", colorId = 71, quantity = 30, imageUrl = null, present = 30)
     private val sticker = PlPart(partNumber = "75192stk01", partName = "Sticker Sheet", colorName = "",
-        colorHex = null, quantity = 1, imageUrl = null, vorhanden = 0)
+        colorHex = null, quantity = 1, imageUrl = null, present = 0)
     private val luke = PlPart(partNumber = "sw0001", partName = "Luke Skywalker", colorName = "", colorHex = null,
-        quantity = 1, imageUrl = null, isFig = true, vorhanden = 0)
+        quantity = 1, imageUrl = null, isFig = true, present = 0)
 
     @Test
     fun `above the list stands the legend, the rows write out their quantities`() {
         compose.setContent {
             BrickInventoryManagerTheme {
-                PartsListScreen(TeilelisteUiState(parts = listOf(stein, platte, luke), generated = true),
+                PartsListScreen(PartListUiState(parts = listOf(brick, plate, luke), generated = true),
                     serverUrl = "", imageLoader = ImageLoader.Builder(compose.activity).build(), onScanBarcode = {})
             }
         }
         compose.waitForIdle()
-        compose.onNodeWithText(text(R.string.partslist_legende)).fetchSemanticsNode("Legende fehlt")
-        for (t in listOf(text(R.string.partslist_benoetigt, "12"), text(R.string.partslist_vorhanden_von, "8", "12"),
-                         text(R.string.partslist_vorhanden, "30"))) {
+        compose.onNodeWithText(text(R.string.partslist_legend)).fetchSemanticsNode("Legende fehlt")
+        for (t in listOf(text(R.string.partslist_needed, "12"), text(R.string.partslist_present_of, "8", "12"),
+                         text(R.string.partslist_present, "30"))) {
             compose.onNodeWithText(t, useUnmergedTree = true).fetchSemanticsNode("„$t“ fehlt")
         }
-        val kopf = compose.onNodeWithText(text(R.string.detail_minifigs), useUnmergedTree = true)
+        val header = compose.onNodeWithText(text(R.string.detail_minifigs), useUnmergedTree = true)
             .fetchSemanticsNode("Keine Gruppe Minifiguren").positionInRoot.y
-        val figur = compose.onNodeWithText("Luke Skywalker", useUnmergedTree = true).fetchSemanticsNode().positionInRoot.y
-        assertTrue("Luke steht nicht unter dem Kopf „Minifiguren“", figur > kopf)
+        val figure = compose.onNodeWithText("Luke Skywalker", useUnmergedTree = true).fetchSemanticsNode().positionInRoot.y
+        assertTrue("Hatch does not stand under the header „Minifiguren“", figure > header)
     }
 
     @Test
     fun `the minifigures form their own group at the end`() {
-        val groups = buildListsGroups(listOf(luke, stein, sticker, platte))
+        val groups = buildListsGroups(listOf(luke, brick, sticker, plate))
         assertEquals(listOf("", "Light Bluish Gray", "Red", null), groups.map { it.first })
         assertEquals(listOf(sticker), groups.first().second)
         assertEquals(listOf(luke), groups.last().second)

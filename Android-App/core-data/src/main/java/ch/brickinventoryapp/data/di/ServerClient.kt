@@ -1,53 +1,65 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.model.ui.Meldung
-import javax.inject.Inject
 import android.os.Build
 import ch.brickinventoryapp.core.data.BuildConfig
-import ch.brickinventoryapp.data.Netzvertrauen
-import ch.brickinventoryapp.data.Tokenspiegel
-import ch.brickinventoryapp.network.util.NetworkPolicy
-import ch.brickinventoryapp.network.util.VersionsHint
-import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.NetworkTrust
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.RightsSignal
-import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.network.util.RenewableTlsFactory
+import ch.brickinventoryapp.data.SessionExpiredSignal
+import ch.brickinventoryapp.data.TokenMirror
+import ch.brickinventoryapp.data.TokenStore
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.security.PinTrust
-import ch.brickinventoryapp.security.ChoiceTrust
-import ch.brickinventoryapp.security.CertificateQuestion
-import ch.brickinventoryapp.security.trustJob
 import ch.brickinventoryapp.data.util.networkRecording
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.network.di.AccessState
+import ch.brickinventoryapp.network.di.RotationReason
+import ch.brickinventoryapp.network.di.ServerGuard
+import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.network.util.RenewableTlsFactory
+import ch.brickinventoryapp.network.util.VersionsHint
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.ChoiceTrust
+import ch.brickinventoryapp.security.PinTrust
+import ch.brickinventoryapp.security.SystemRoots
 import ch.brickinventoryapp.security.pinKey
 import ch.brickinventoryapp.security.spkiFingerprint
-import ch.brickinventoryapp.security.SystemRoots
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.network.di.Rotationsanlass
-import ch.brickinventoryapp.network.di.ServerWaechter
-import ch.brickinventoryapp.network.di.Zugangslage
+import ch.brickinventoryapp.security.trustJob
+import okhttp3.OkHttpClient
+import java.io.IOException
+import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
 /**
  * The device's access situation. The values come from the in-memory mirror of the
- * TokenAblage; only at cold start is the disk waited for, without
- * runBlocking (TokenAblage.waitOnStart).
+ * TokenStore; only at cold start is the disk waited for, without
+ * runBlocking (TokenStore.waitOnStart).
  */
-private class DevicesAccess(private val prefs: Tokenspiegel) : Zugangslage {
+private class DevicesAccess(private val prefs: TokenMirror) : AccessState {
     // Always wait, not only without a mirror value: only afterwards is the old
     // state of the user CAs reset too. After the cold start it returns immediately.
-    private fun bereit() = prefs.waitOnStart()
+    private fun ready() = prefs.waitOnStart()
     // A QR pairing already talks to the new server; the token stays bound to its
-    // origin and does not go there (ServerWaechter.setHeaders).
-    override fun serverUrl(): String { bereit(); return prefs.kopplungszielState.value ?: prefs.serverUrlState.value.orEmpty() }
-    override fun token(): String { bereit(); return prefs.authTokenState.value.orEmpty() }
-    override fun tokenOrigin(): String? { bereit(); return prefs.tokenOriginState.value }
-    override fun generation(): Long { bereit(); return prefs.tokenGeneration() }
+    // origin and does not go there (ServerGuard.setHeaders).
+    override fun serverUrl(): String { ready(); return prefs.pairingTargetState.value ?: prefs.serverUrlState.value.orEmpty() }
+    // Locked the mirror holds a placeholder: the request fails like a network error and is
+    // retried later, instead of going out without a token and reading as „signed out“.
+    override fun token(): String {
+        ready()
+        val token = prefs.authTokenState.value.orEmpty()
+        if (token == TokenStore.TOKEN_WIPED) {
+            prefs.restoreAfterLock()
+            throw IOException("Gerät gesperrt")
+        }
+        return token
+    }
+    override fun tokenOrigin(): String? { ready(); return prefs.tokenOriginState.value }
+    override fun generation(): Long { ready(); return prefs.tokenGeneration() }
 }
 
-private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTrustManager {
+private fun trust(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTrustManager {
     val tmf = javax.net.ssl.TrustManagerFactory.getInstance(javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm())
     tmf.init(ks)
     return tmf.trustManagers.filterIsInstance<javax.net.ssl.X509ExtendedTrustManager>().first()
@@ -55,21 +67,21 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
 
 /** The same system roots as in pinning (without user CAs), read only on first need. */
 internal fun systemRoots(): SystemRoots {
-    val fingerabdruecke by lazy { vertrauen(null).acceptedIssuers.map { spkiFingerprint(it) }.toSet() }
-    return SystemRoots { it in fingerabdruecke }
+    val fingerprints by lazy { trust(null).acceptedIssuers.map { spkiFingerprint(it) }.toSet() }
+    return SystemRoots { it in fingerprints }
 }
 
 /**
  * System CAs per network_security_config (without user CAs), plus the
  * AndroidCAStore including user CAs for the explicit setting — only for the
- * own server; above that its pinning (util/ServerVertrauen.kt).
+ * own server; above that its pinning (util/ServerTrust.kt).
  */
 private var trustShared: PinTrust? = null
 private var sharedTls: RenewableTlsFactory? = null
 
 /** One SSLContext for all server clients; new as soon as the user CAs switch. */
 @Synchronized
-private fun serverTls(prefs: Netzvertrauen, tm: PinTrust): RenewableTlsFactory {
+private fun serverTls(prefs: NetworkTrust, tm: PinTrust): RenewableTlsFactory {
     sharedTls?.let { return it }
     val factory = RenewableTlsFactory {
         javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory
@@ -79,18 +91,18 @@ private fun serverTls(prefs: Netzvertrauen, tm: PinTrust): RenewableTlsFactory {
 }
 
 @Synchronized
-private fun trustServer(prefs: Netzablagen, frage: CertificateQuestion): PinTrust {
+private fun trustServer(prefs: NetworkStores, question: CertificateQuestion): PinTrust {
     trustShared?.let { return it }
-    val system = vertrauen(null)
+    val system = trust(null)
     return PinTrust(
-        kette = ChoiceTrust(
+        userCaTrust = ChoiceTrust(
             system = system,
-            withUser = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
-            userAllowed = { prefs.vertrauen.userCaAllowed() },
+            withUser = lazy { trust(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
+            userAllowed = { prefs.trust.userCaAllowed() },
         ),
-        pins = prefs.vertrauen,
-        ownServer = { pinKey(prefs.token.kopplungszielState.value ?: prefs.token.serverUrlState.value.orEmpty()) },
-        frage = frage,
+        pins = prefs.trust,
+        ownServer = { pinKey(prefs.token.pairingTargetState.value ?: prefs.token.serverUrlState.value.orEmpty()) },
+        question = question,
         foreignHosts = system,
         ctForced = Build.VERSION.SDK_INT >= ANDROID_16,
     ).also { trustShared = it }
@@ -100,33 +112,33 @@ private fun trustServer(prefs: Netzablagen, frage: CertificateQuestion): PinTrus
 private const val ANDROID_16 = 36
 
 /** Token and trust together: the server clients need both, nothing else from the stores. */
-class Netzablagen @Inject constructor(val token: Tokenspiegel, val vertrauen: Netzvertrauen)
+class NetworkStores @Inject constructor(val token: TokenMirror, val trust: NetworkTrust)
 
-/** API, image and SSE client: the same guard (ServerWaechter.kt), own timeouts. */
+/** API, image and SSE client: the same guard (ServerGuard.kt), own timeouts. */
 @Suppress("LongParameterList") // One building block for three clients; the parts differ per client.
 internal fun buildInterceptorClient(
-    prefs: Netzablagen,
+    prefs: NetworkStores,
     isApiClient: Boolean,
     sessionExpired: SessionExpiredSignal,
     ctx: android.content.Context,
     /** Where a version hint goes; only the API client reports. */
-    meldungen: MeldungsKanal? = null,
+    messages: MessageChannel? = null,
     /** Waits for the decision about an unknown certificate. */
-    frage: CertificateQuestion,
+    question: CertificateQuestion,
     /** Swaps the token when the server requires it; only for clients with a token. */
-    rotation: Rotationsanlass? = null,
+    rotation: RotationReason? = null,
     /** Only the API client: the admin calls arrive there. */
     rights: RightsSignal? = null,
     /** Only the API client: with a start password the server rejects every fetch. */
-    pflicht: PasswordRequired? = null,
+    required: PasswordRequired? = null,
     /** Only the API client: the server rejects admin rights without a second factor. */
     factorRequired: SecondFactorRequired? = null,
 ): OkHttpClient {
-    val versionsMessage: ((VersionsHint) -> Unit)? = meldungen?.let { kanal ->
-        { hinweis: VersionsHint ->
-            kanal.zeige(Meldung.Resource(
-                if (hinweis == VersionsHint.APP_ZU_ALT) R.string.api_app_zu_alt
-                else R.string.api_server_zu_alt))
+    val versionsMessage: ((VersionsHint) -> Unit)? = messages?.let { channel ->
+        { hint: VersionsHint ->
+            channel.show(Message.Resource(
+                if (hint == VersionsHint.APP_TOO_OLD) R.string.api_app_too_old
+                else R.string.api_server_too_old))
         }
     }
     val client = OkHttpClient.Builder()
@@ -138,21 +150,21 @@ internal fun buildInterceptorClient(
             }
         }
         // No redirect past the guard: it only sees what it sends itself, and
-        // follows only within the same origin (ServerWaechter.senden).
+        // follows only within the same origin (ServerGuard's send).
         .followRedirects(false)
         .followSslRedirects(false)
-        .addInterceptor(ServerWaechter(DevicesAccess(prefs.token), isApiClient, NetworkPolicy.entwicklung,
-            sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMessage = versionsMessage,
+        .addInterceptor(ServerGuard(DevicesAccess(prefs.token), isApiClient, NetworkPolicy.development,
+            sessionExpired = { sessionExpired.notifyExpired() }, versionsMessage = versionsMessage,
             // The language from the resources: the server answers in the one the UI shows.
-            ownHeaders = { original, ziel ->
-                if (original.header("Accept-Language") == null) ziel.header("Accept-Language",
+            ownHeaders = { original, target ->
+                if (original.header("Accept-Language") == null) target.header("Accept-Language",
                     LanguageManager.localizedContext(ctx)
                         .getString(R.string.lang_code))
-            }, rotation = rotation, rightsRevoked = { rights?.melde() },
-            passwordSwitchNeeded = { pflicht?.melde() }, zweiterFaktorPflicht = { factorRequired?.melde() }))
+            }, rotation = rotation, rightsRevoked = { rights?.report() },
+            passwordSwitchNeeded = { required?.report() }, secondFactorRequired = { factorRequired?.report() }))
         .apply {
-            val tm = trustServer(prefs, frage)
-            sslSocketFactory(serverTls(prefs.vertrauen, tm), tm)
+            val tm = trustServer(prefs, question)
+            sslSocketFactory(serverTls(prefs.trust, tm), tm)
         }
         .connectTimeout(15, TimeUnit.SECONDS)
         // An inter-byte timeout; PDF generation runs via job polling.
@@ -168,32 +180,32 @@ internal fun buildInterceptorClient(
  * token.
  */
 internal fun buildRedemptionBase(
-    prefs: Netzablagen,
-    frage: CertificateQuestion,
+    prefs: NetworkStores,
+    question: CertificateQuestion,
 ): OkHttpClient = OkHttpClient.Builder()
     .followRedirects(false)
     .followSslRedirects(false)
     .apply {
-        val tm = trustServer(prefs, frage)
-        sslSocketFactory(serverTls(prefs.vertrauen, tm), tm)
+        val tm = trustServer(prefs, question)
+        sslSocketFactory(serverTls(prefs.trust, tm), tm)
     }
     .connectTimeout(15, TimeUnit.SECONDS)
     .readTimeout(30, TimeUnit.SECONDS)
     .build()
 
 /**
- * Trust per invalidation job (data/Entwertung.kt): the pin from the job,
+ * Trust per invalidation job (data/Redemption.kt): the pin from the job,
  * otherwise the remembered one — pins stay at sign-out. User CAs as for the
  * own server only by explicit setting.
  */
-internal fun jobTrustFactory(prefs: Netzvertrauen): (String, String?) -> javax.net.ssl.X509ExtendedTrustManager {
-    val system = vertrauen(null)
-    val kette = ChoiceTrust(
+internal fun jobTrustFactory(prefs: NetworkTrust): (String, String?) -> javax.net.ssl.X509ExtendedTrustManager {
+    val system = trust(null)
+    val userCaTrust = ChoiceTrust(
         system = system,
-        withUser = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
+        withUser = lazy { trust(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
         userAllowed = { prefs.userCaAllowed() },
     )
-    return { schluessel, pin -> trustJob(kette, system, schluessel, pin ?: prefs.pin(schluessel)) }
+    return { key, pin -> trustJob(userCaTrust, system, key, pin ?: prefs.pin(key)) }
 }
 
 /**
@@ -201,7 +213,7 @@ internal fun jobTrustFactory(prefs: Netzvertrauen): (String, String?) -> javax.n
  * switching the user CAs, do not keep using a connection with the old trust.
  * For every client with its own dispatcher or pool (the image client has one).
  */
-internal fun followsTheServer(prefs: Netzablagen, client: OkHttpClient) {
-    prefs.token.onServerwechsel { client.dispatcher.cancelAll() }
-    prefs.vertrauen.onUserCaSwitch { client.connectionPool.evictAll() }
+internal fun followsTheServer(prefs: NetworkStores, client: OkHttpClient) {
+    prefs.token.onServerSwitch { client.dispatcher.cancelAll() }
+    prefs.trust.onUserCaSwitch { client.connectionPool.evictAll() }
 }

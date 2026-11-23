@@ -1,8 +1,8 @@
 /** Setting the storage location: a file of its own, because the function takes the context that
  * context.ts only builds from the other storage location services. */
-import * as orte from './repository/storageLocation';
-import type { Schreiber } from '../household';
-import type { LagerArt } from './storageLocation';
+import * as storages from './repository/storageLocation';
+import type { Writer } from '../household';
+import type { StorageKind } from './storageLocation';
 import type { InventoryContext } from './context';
 
 /** Who may write is decided by src/household/household.ts; this function
@@ -10,19 +10,19 @@ import type { InventoryContext } from './context';
  * @returns how many rows were affected (0 = there is nothing to set) */
 export async function setLocation(
   k: InventoryContext,
-  art: LagerArt,
-  ownerIdsChoice: Schreiber | number[],
+  kind: StorageKind,
+  ownerIdsChoice: Writer | number[],
   keyRaw: (string | number)[],
-  ort: string | null,
+  location: string | null,
 ): Promise<number> {
-  const schluessel = keyRaw.map(String);
+  const key = keyRaw.map(String);
   const ownerIds = await k.household.writeAreaFrom(ownerIdsChoice);
-  if (ort === null) return orte.sortLocationTo(k.db, art, ownerIds, null, schluessel);
+  if (location === null) return storages.sortLocationTo(k.db, kind, ownerIds, null, key);
   // A new name goes into the stock — before the assignment, which finds it via the ID.
-  return k.transaktion(async t => {
-    const ids = await orte.ownerWithRow(t.db, art, ownerIds, schluessel);
+  return k.transact(async t => {
+    const ids = await storages.ownerWithRow(t.db, kind, ownerIds, key);
     if (!ids.length) return 0;
-    await orte.takeLocationOn(t.db, ids, ort);
-    return orte.sortLocationTo(t.db, art, ids, ort, schluessel);
+    await storages.takeLocationOn(t.db, ids, location);
+    return storages.sortLocationTo(t.db, kind, ids, location, key);
   });
 }

@@ -9,7 +9,7 @@ function mask(s) {
   let o = '',
     i = 0;
   const n = s.length;
-  const leer = c => (c === '\n' ? '\n' : ' ');
+  const empty = c => (c === '\n' ? '\n' : ' ');
   while (i < n) {
     const c = s[i],
       d = s[i + 1];
@@ -21,7 +21,7 @@ function mask(s) {
       continue;
     }
     if (c === '/' && d === '*') {
-      while (i < n && !(s[i] === '*' && s[i + 1] === '/')) o += leer(s[i++]);
+      while (i < n && !(s[i] === '*' && s[i + 1] === '/')) o += empty(s[i++]);
       o += '  ';
       i += 2;
       continue;
@@ -37,13 +37,13 @@ function mask(s) {
         }
         // In `${…}` there is code: it stays visible, braces count along.
         if (c === '`' && s[i] === '$' && s[i + 1] === '{') {
-          let tiefe = 1;
+          let depth = 1;
           o += '${';
           i += 2;
-          while (i < n && tiefe) {
-            if (s[i] === '{') tiefe++;
-            else if (s[i] === '}') tiefe--;
-            o += tiefe ? s[i] : '}';
+          while (i < n && depth) {
+            if (s[i] === '{') depth++;
+            else if (s[i] === '}') depth--;
+            o += depth ? s[i] : '}';
             i++;
           }
           continue;
@@ -61,21 +61,21 @@ function mask(s) {
   return o;
 }
 
-function schliesst(s, i, auf, zu) {
+function closes(s, i, opened, closed) {
   let t = 0;
   for (let j = i; j < s.length; j++) {
-    if (s[j] === auf) t++;
-    else if (s[j] === zu && --t === 0) return j;
+    if (s[j] === opened) t++;
+    else if (s[j] === closed && --t === 0) return j;
   }
   return -1;
 }
 
 /** Top-level statements of a body (roughly: split at `;`). */
-function instructions(rumpf) {
+function instructions(body) {
   const r = [];
   let t = 0,
     cur = '';
-  for (const c of rumpf) {
+  for (const c of body) {
     if ('({['.includes(c)) t++;
     if (')}]'.includes(c)) t--;
     if (c === ';' && t === 0) {
@@ -93,35 +93,35 @@ function instructions(rumpf) {
  * Every catch of a file with masked body (`rumpf`), original text (`roh`) and line.
  * For `.catch(…)` only arrow functions: `.catch(logAndContinue('x'))` is counted by another ratchet.
  */
-function catches(quelle) {
-  const s = mask(quelle);
-  const raus = [];
+function catches(source) {
+  const s = mask(source);
+  const result = [];
   const re = /\bcatch\b\s*(?:\(\s*\w*\s*(?::\s*\w+)?\s*\))?\s*\{|\.catch\(/g;
   for (const m of s.matchAll(re)) {
     let a, e;
     if (m[0].startsWith('.')) {
-      const auf = m.index + m[0].length - 1;
-      const zu = schliesst(s, auf, '(', ')');
-      const arg = s.slice(auf + 1, zu);
-      const pfeil = /^\s*(?:async\s*)?(?:\(\s*\w*\s*(?::\s*\w+)?\s*\)|\w+)\s*=>\s*/.exec(arg);
-      if (!pfeil) continue;
-      a = auf + 1 + pfeil[0].length;
-      e = zu;
+      const opened = m.index + m[0].length - 1;
+      const closed = closes(s, opened, '(', ')');
+      const arg = s.slice(opened + 1, closed);
+      const arrowIcon = /^\s*(?:async\s*)?(?:\(\s*\w*\s*(?::\s*\w+)?\s*\)|\w+)\s*=>\s*/.exec(arg);
+      if (!arrowIcon) continue;
+      a = opened + 1 + arrowIcon[0].length;
+      e = closed;
       if (s[a] === '{') {
-        e = schliesst(s, a, '{', '}');
+        e = closes(s, a, '{', '}');
         a++;
       }
     } else {
       a = m.index + m[0].length;
-      e = schliesst(s, a - 1, '{', '}');
+      e = closes(s, a - 1, '{', '}');
     }
-    raus.push({
-      zeile: quelle.slice(0, m.index).split('\n').length,
-      rumpf: s.slice(a, e),
-      roh: quelle.slice(a, e),
+    result.push({
+      row: source.slice(0, m.index).split('\n').length,
+      body: s.slice(a, e),
+      raw: source.slice(a, e),
     });
   }
-  return raus;
+  return result;
 }
 
 const LOG = /^(?:void\s+)?(?:console\.\w+|reportError|log|warn)\s*\(/;
@@ -132,8 +132,8 @@ const LOG = /^(?:void\s+)?(?:console\.\w+|reportError|log|warn)\s*\(/;
  * reportAndDeliver without the name.
  */
 function onlyReported(f) {
-  if (/\bthrow\b/.test(f.rumpf)) return false;
-  const st = instructions(f.rumpf);
+  if (/\bthrow\b/.test(f.body)) return false;
+  const st = instructions(f.body);
   const rest = st.filter(x => !LOG.test(x));
   return (
     rest.length < st.length &&
@@ -143,9 +143,9 @@ function onlyReported(f) {
 
 /** Without a report to the UI or into the log, without `throw`: the error is gone. */
 const REPORTS_UI =
-  /\bthrow\b|\b(?:toast|show\w*|report\w*|setze(?:Fehler|Status)\w*|error\w*|console\.\w+|reject|alert)\s*\(|\.(?:textContent|hidden)\s*=/;
-function stillImBrowser(f) {
-  return !REPORTS_UI.test(f.rumpf);
+  /\bthrow\b|\b(?:toast|show\w*|report\w*|set(?:Error|Status)\w*|error\w*|console\.\w+|reject|alert)\s*\(|\.(?:textContent|hidden)\s*=/;
+function silentInBrowser(f) {
+  return !REPORTS_UI.test(f.body);
 }
 
-module.exports = { mask, catches, onlyReported, stillImBrowser };
+module.exports = { mask, catches, onlyReported, silentInBrowser };

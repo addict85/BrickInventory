@@ -34,51 +34,51 @@ test('services resolve the view', { concurrency: 1 }, async t => {
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const { setsLesen } = require('./helpers/sources').areaPage('sets');
+  const { readSets } = require('./helpers/sources').areaPage('sets');
   const { deleteSetFor } = require('./helpers/sources').areaPage('sets');
   const [MAIN, SUB] = [`haupt_${process.pid}`, `sub_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, SUB]]);
-  const haupt = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [MAIN])).id;
+  const main = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [MAIN])).id;
   const sub = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [SUB])).id;
-  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, sub]);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [main, sub]);
   H.reportHouseholdChange();
-  await holdsSet(db, haupt, '10179-1');
+  await holdsSet(db, main, '10179-1');
   await holdsSet(db, sub, '75192-1');
-  const nummern = async sicht => (await setsLesen(sicht, {})).sets.map(s => s.set_number).sort();
+  const numbers = async view => (await readSets(view, {})).sets.map(s => s.set_number).sort();
 
   await t.test('a view selects the accounts in the service', async () => {
-    assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1', '75192-1']);
-    assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
-    assert.deepEqual(await nummern({ nutzer: haupt, konten: 'subs' }), ['75192-1']);
+    assert.deepEqual(await numbers({ user: main }), ['10179-1', '75192-1']);
+    assert.deepEqual(await numbers({ user: main, accounts: 'own' }), ['10179-1']);
+    assert.deepEqual(await numbers({ user: main, accounts: 'subs' }), ['75192-1']);
     assert.deepEqual(
-      await nummern({ nutzer: sub, konten: String(haupt) }),
+      await numbers({ user: sub, accounts: String(main) }),
       ['75192-1'],
-      'ein Unterkonto sieht über eine fremde ID nicht ins Hauptkonto',
+      'a sub-account does not see into the main account via a foreign ID',
     );
   });
 
   await t.test('deleting follows the account selection, in the write scope', async () => {
     assert.equal(
-      await deleteSetFor({ nutzer: sub, konten: String(haupt) }, '10179-1'),
+      await deleteSetFor({ user: sub, accounts: String(main) }, '10179-1'),
       null,
-      'das Unterkonto löschte ein Set des Hauptkontos',
+      'the sub-account deleted a set of the main account',
     );
     assert.equal(
-      await deleteSetFor({ nutzer: haupt, konten: 'subs' }, '10179-1'),
+      await deleteSetFor({ user: main, accounts: 'subs' }, '10179-1'),
       null,
-      'mit „Unterkonten“ gewählt traf das Löschen das eigene Set',
+      'with „Unterkonten“ selected the deletion hit the own set',
     );
-    assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
-    assert.ok(await deleteSetFor({ nutzer: haupt, konten: 'subs' }, '75192-1'));
-    assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1']);
+    assert.deepEqual(await numbers({ user: main, accounts: 'own' }), ['10179-1']);
+    assert.ok(await deleteSetFor({ user: main, accounts: 'subs' }, '75192-1'));
+    assert.deepEqual(await numbers({ user: main }), ['10179-1']);
   });
 
   await t.test('a sub-account does not write for its main account', async () => {
-    assert.equal(await H.schreibziel(haupt, sub), sub);
-    assert.equal(await H.schreibziel(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
+    assert.equal(await H.writeTarget(main, sub), sub);
+    assert.equal(await H.writeTarget(sub, undefined), sub, 'without a request the own account');
     await assert.rejects(
-      H.schreibziel(sub, haupt),
-      (/** @type {any} */ e) => e.code === 'kein_schreibrecht' && e.art === 'verboten',
+      H.writeTarget(sub, main),
+      (/** @type {any} */ e) => e.code === 'no_write_access' && e.kind === 'forbidden',
     );
   });
 });

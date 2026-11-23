@@ -27,19 +27,19 @@ const v2 = Buffer.from(
     32,
   ),
 );
-function withRecentlyTag(klar, k, laenge) {
+function withRecentlyTag(plain, k, len) {
   const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv('aes-256-gcm', v2, iv, { authTagLength: laenge });
+  const c = crypto.createCipheriv('aes-256-gcm', v2, iv, { authTagLength: len });
   c.setAAD(Buffer.from(k, 'utf8'));
-  const inhalt = Buffer.concat([c.update(Buffer.from(klar, 'utf8')), c.final()]);
-  return Buffer.concat([iv, c.getAuthTag(), inhalt]);
+  const content = Buffer.concat([c.update(Buffer.from(plain, 'utf8')), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), content]);
 }
 
 test('a 4-byte tag is not accepted, a full one is', () => {
-  const k = g.kontext('test', 1);
-  const kurz = withRecentlyTag('', k, 4);
-  assert.equal(g.decrypt(`v2:${kurz.toString('base64')}`, k), null);
-  assert.equal(g.decryptBuffer(Buffer.concat([Buffer.from('BIENC2\n'), kurz]), k), null);
+  const k = g.context('test', 1);
+  const short = withRecentlyTag('', k, 4);
+  assert.equal(g.decrypt(`v2:${short.toString('base64')}`, k), null);
+  assert.equal(g.decryptBuffer(Buffer.concat([Buffer.from('BIENC2\n'), short]), k), null);
   assert.equal(g.decrypt(g.encrypt('geheim', k), k), 'geheim');
-  assert.equal(g.decrypt(`v2:${Buffer.alloc(20).toString('base64')}`, k), null, 'zu kurz');
+  assert.equal(g.decrypt(`v2:${Buffer.alloc(20).toString('base64')}`, k), null, 'too short');
 });

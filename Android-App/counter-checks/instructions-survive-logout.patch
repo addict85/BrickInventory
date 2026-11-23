@@ -1,0 +1,16 @@
+Gegenprobe: Abmelden lässt die verschlüsselten Anleitungen liegen (sec12 N1)
+Modul: core-data
+Test: ch.brickinventoryapp.data.InstructionStoreTest
+Rot: sign-out clears all instructions, the start only the plaintext
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
+@@ -65,7 +65,6 @@
+ /** On sign-out and thus on server switch: the instructions belong to the account's collection. */
+ fun cleanUpInstructions(cacheDir: File) {
+     cleanUpPlaintextInstructions(cacheDir)
+-    cacheDir.listFiles { f -> f.name.startsWith(INSTRUCTION_PREFIX) }?.forEach { it.deleteRecursively() }
+ }
+ 
+ /** At start: plaintext instructions of older versions (`pdfview_*`) and display remnants of a crash. */

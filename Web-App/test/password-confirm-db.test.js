@@ -26,7 +26,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const AUTH = require('./helpers/sources').mounting('auth');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `pwbest_${process.pid}`,
@@ -50,12 +50,12 @@ test('confirm password', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const withSession = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const withoutSession = testServer(_req, { sitzung: {}, t });
-  const post = async (srv, pfad, body, kopf = {}) => {
-    const r = await fetch(`${srv.base}${AUTH}${pfad}`, {
+  const withSession = testServer(_req, { session: { userId: uid, username: NAME }, t });
+  const withoutSession = testServer(_req, { session: {}, t });
+  const post = async (srv, path, body, head = {}) => {
+    const r = await fetch(`${srv.base}${AUTH}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...kopf },
+      headers: { 'Content-Type': 'application/json', ...head },
       body: JSON.stringify(body),
     });
     return { status: r.status, body: await r.json() };
@@ -65,7 +65,7 @@ test('confirm password', { concurrency: 1 }, async t => {
     const token = await _req('src/account/deviceToken.js').createToken(uid, 'Probe');
     const r = await post(withoutSession, '/token-create', { password: PASS }, { Authorization: `Bearer ${token}` });
     assert.equal(r.status, 403, JSON.stringify(r.body));
-    assert.equal(r.body.code, 'nur_mit_sitzung');
+    assert.equal(r.body.code, 'session_only');
   });
 
   await t.test('from the session only with the password', async () => {
@@ -78,22 +78,22 @@ test('confirm password', { concurrency: 1 }, async t => {
   await t.test('after five failed attempts it stops — even with the correct password', async () => {
     for (let i = 0; i < 5; i++) {
       const r = await post(withSession, '/change-password', { current: 'falsch' + i, newPassword: 'NeuesPasswort123' });
-      assert.equal(r.status, 400, `Versuch ${i + 1}`);
+      assert.equal(r.status, 400, `attempt ${i + 1}`);
     }
     const r = await post(withSession, '/change-password', { current: PASS, newPassword: 'NeuesPasswort123' });
     assert.equal(r.status, 429, JSON.stringify(r.body));
     // The same brake applies to the second factor.
-    assert.equal((await post(withSession, '/zweiter-faktor/einrichten', { password: PASS })).status, 429);
+    assert.equal((await post(withSession, '/second-factor/setup', { password: PASS })).status, 429);
   });
 
   await t.test('a success resets the counter', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`passwort-bestaetigen|${uid}|%`]);
-    for (let i = 0; i < 4; i++) await post(withSession, '/zweiter-faktor/einrichten', { password: 'falsch' });
-    assert.equal((await post(withSession, '/zweiter-faktor/einrichten', { password: PASS })).status, 200);
+    for (let i = 0; i < 4; i++) await post(withSession, '/second-factor/setup', { password: 'falsch' });
+    assert.equal((await post(withSession, '/second-factor/setup', { password: PASS })).status, 200);
     assert.equal(
-      (await post(withSession, '/zweiter-faktor/einrichten', { password: 'falsch' })).status,
+      (await post(withSession, '/second-factor/setup', { password: 'falsch' })).status,
       400,
-      'nach dem Erfolg zählt wieder von vorn',
+      'after success it counts from the start again',
     );
   });
 });

@@ -1,0 +1,17 @@
+Gegenprobe: FilterWahl wieder als FilterChip (Rolle Kästchen statt Optionsfeld)
+Modul: app
+Test: ch.brickinventoryapp.app.AccessibilityTest
+Rot: filter choice is a single choice with heading and wraps
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
+@@ -258,7 +258,7 @@
+  */
+ @Composable
+ fun FilterChoice(text: String, chosen: Boolean, onClick: () -> Unit) {
+-    ChoiceChip(text, chosen, onClick, if (largeFont()) Modifier else Modifier.widthIn(max = 220.dp))
++    androidx.compose.material3.FilterChip(chosen, onClick, { Text(text) })
+ }
+ 
+ /** Account filter as a section — only when there is something to choose in the household. */

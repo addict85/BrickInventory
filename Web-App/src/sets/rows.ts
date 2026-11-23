@@ -8,9 +8,9 @@ export interface SetMaster {
   image_url: string | null;
   image_local: string | null;
   /** Created by setErfassen without a catalog: only says that some account captured the number. */
-  platzhalter?: boolean;
+  placeholder?: boolean;
 }
-export interface ListenTeil {
+export interface ListedPart {
   part_number: string;
   color_id: number;
   total_quantity: number | string;

@@ -1,0 +1,17 @@
+Gegenprobe: Das Lesen des Tokens zählt auch bei gesperrtem Gerät jeden Versuch und gibt nach zehn Minuten auf
+Modul: core-security
+Test: ch.brickinventoryapp.security.VaultLockTest
+Rot: with a locked device reading waits without a deadline and reports the token after unlocking
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/VaultFinding.kt
+@@ -153,7 +153,7 @@
+                 wait(VAULT_ATTEMPT_MS.getOrElse(attempt) { VAULT_FOLLOW_UP_MS })
+                 // With the device locked, the key only becomes available again after unlocking:
+                 // that time doesn't count, otherwise the session would be gone after a night.
+-                if (attempt < VAULT_ATTEMPT_MS.size || !lock.locked()) attempt++
++                attempt++
+             }
+         }
+     }

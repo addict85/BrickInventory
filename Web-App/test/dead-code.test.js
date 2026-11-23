@@ -1,15 +1,17 @@
 /**
  * Functions without callers.
+ *
+ * Counter-check: a function without caller appended to src/sets/service.ts → red “no function without a single caller”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { ROOT, withoutComments } = require('./helpers/sources');
 
 /** All .ts sources of the server plus the tests as the reference corpus. */
-function dateien(subfolder, extension) {
+function files(subfolder, extension) {
   const out = [];
   (function walk(d) {
     if (!fs.existsSync(d)) return;
@@ -24,67 +26,65 @@ function dateien(subfolder, extension) {
 }
 
 test('no function without a single caller', () => {
-  const quellen = ['routes', 'src', 'jobs', 'db']
-    .flatMap(d => dateien(d, '.ts'))
-    .concat([path.join(ROOT, 'server.ts')]);
-  const korpus = quellen
-    .concat(dateien('test', '.js'))
-    .map(f => ohneKommentare(fs.readFileSync(f, 'utf8')))
+  const sources = ['routes', 'src', 'jobs', 'db'].flatMap(d => files(d, '.ts')).concat([path.join(ROOT, 'server.ts')]);
+  const corpus = sources
+    .concat(files('test', '.js'))
+    .map(f => withoutComments(fs.readFileSync(f, 'utf8')))
     .join('\n');
 
-  assert.ok(quellen.length > 20, `nur ${quellen.length} Quelldateien gefunden — die Prüfung liefe ins Leere`);
+  assert.ok(sources.length > 20, `only ${sources.length} source files found — the check would run into nothing`);
 
   const tot = [];
-  let geprueft = 0;
-  for (const datei of quellen) {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  let checked = 0;
+  for (const file of sources) {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const m of src.matchAll(/^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/gm)) {
       const name = m[1];
-      geprueft++;
-      const treffer = (korpus.match(new RegExp(`\\b${name}\\b`, 'g')) || []).length;
+      checked++;
+      const hits = (corpus.match(new RegExp(`\\b${name}\\b`, 'g')) || []).length;
       // 1 hit = only the declaration itself.
-      if (treffer <= 1) tot.push(`${path.relative(ROOT, datei)}: ${name}`);
+      if (hits <= 1) tot.push(`${path.relative(ROOT, file)}: ${name}`);
     }
   }
 
-  assert.ok(geprueft > 100, `nur ${geprueft} Funktionen geprüft — das Muster greift nicht mehr`);
-  assert.deepEqual(tot, [], `Funktionen ohne Aufrufer:\n  ${tot.join('\n  ')}`);
+  assert.ok(checked > 100, `only ${checked} functions checked — the pattern no longer matches`);
+  assert.deepEqual(tot, [], `Functions without a caller:\n  ${tot.join('\n  ')}`);
 });
 
 /**
  * The second half: EXPORTED names without callers.
  */
 test('no exported value without a single caller', () => {
-  const quellen = ['routes', 'src', 'jobs', 'db', 'clients', 'startup']
-    .flatMap(d => dateien(d, '.ts'))
+  const sources = ['routes', 'src', 'jobs', 'db', 'clients', 'startup']
+    .flatMap(d => files(d, '.ts'))
     .concat([path.join(ROOT, 'server.ts')]);
-  const withTests = quellen.concat(dateien('test', '.js'));
-  assert.ok(quellen.length > 20, `nur ${quellen.length} Quelldateien — die Pruefung liefe ins Leere`);
+  const withTests = sources.concat(files('test', '.js'));
+  assert.ok(sources.length > 20, `only ${sources.length} source files — the check would run into nothing`);
 
-  const inhalt = new Map(withTests.map(f => [f, ohneKommentare(fs.readFileSync(f, 'utf8'))]));
+  const content = new Map(withTests.map(f => [f, withoutComments(fs.readFileSync(f, 'utf8'))]));
 
   // Counted SEPARATELY per notation — see the self-proof below.
-  const gefunden = { inline: 0, liste: 0 };
+  const found = { inline: 0, list: 0 };
 
   /** Exported VALUES (no types) of a file. */
   const exportedValues = src => {
-    const namen = new Set();
+    const names = new Set();
     for (const m of src.matchAll(/^export\s+(?:async\s+)?(?:function|const|class)\s+(\w+)/gm)) {
-      namen.add(m[1]);
-      gefunden.inline++;
+      names.add(m[1]);
+      found.inline++;
     }
     for (const m of src.matchAll(/^export\s*\{([^}]*)\}/gm))
-      for (const roh of m[1].split(',')) {
-        const n = roh.trim().split(' as ').pop().trim();
+      for (const raw of m[1].split(',')) {
+        const n = raw.trim().split(' as ').pop().trim();
         // Capitalized and without parentheses: can be a type — the
         // distinction is not reliably possible here, so when in doubt
         // leave it out. Better one finding fewer than a false alarm.
         if (n && !/^[A-Z][A-Za-z]*$/.test(n)) {
-          namen.add(n);
-          gefunden.liste++;
+          names.add(n);
+          found.list++;
         }
       }
-    return namen;
+    return names;
   };
 
   /** Occurrences in the own file, without declaration and export list. */
@@ -108,11 +108,11 @@ test('no exported value without a single caller', () => {
   };
 
   const tot = [];
-  for (const datei of quellen) {
-    const src = inhalt.get(datei);
+  for (const file of sources) {
+    const src = content.get(file);
     for (const name of exportedValues(src)) {
-      const anderswo = [...inhalt].some(([f, t]) => f !== datei && new RegExp(`\\b${name}\\b`).test(t));
-      if (!anderswo && ownUsage(src, name) === 0) tot.push(`${path.relative(ROOT, datei)}: ${name}`);
+      const elsewhere = [...content].some(([f, t]) => f !== file && new RegExp(`\\b${name}\\b`).test(t));
+      if (!elsewhere && ownUsage(src, name) === 0) tot.push(`${path.relative(ROOT, file)}: ${name}`);
     }
   }
 
@@ -121,21 +121,21 @@ test('no exported value without a single caller', () => {
   // Not as a sum: a self-proof that adds numbers covers up the death
   // of one summand — exactly the kind of error it is built against.
   assert.ok(
-    gefunden.inline > 70,
-    `Nur ${gefunden.inline} Exporte in der Form \`export function x\` gefunden ` +
-      '(GEMESSEN: 139) — dieses Muster ist veraltet.',
+    found.inline > 70,
+    `Only ${found.inline} exports of the form \`export function x\` found ` +
+      '(MEASURED: 139) — this pattern is outdated.',
   );
   assert.ok(
-    gefunden.liste > 125,
-    `Nur ${gefunden.liste} Exporte in der Form \`export { x }\` gefunden ` +
-      '(GEMESSEN: 252) — dieses Muster ist veraltet. Genau dieses fand upsert().',
+    found.list > 125,
+    `Only ${found.list} exports of the form \`export { x }\` found ` +
+      '(MEASURED: 252) — this pattern is outdated. Exactly this one found upsert().',
   );
 
   assert.deepEqual(
     tot,
     [],
-    'Diese Namen werden exportiert und NIRGENDS aufgerufen — auch nicht in ihrer ' +
-      'eigenen Datei. Entweder fehlt der Anschluss, oder die Fassung ist ueberholt; ' +
-      'beides altert unbemerkt mit.',
+    'These names are exported and called NOWHERE — not even in their ' +
+      'own file. Either the connection is missing, or the version is outdated; ' +
+      'both age unnoticed.',
   );
 });

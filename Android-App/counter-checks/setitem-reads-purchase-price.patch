@@ -1,0 +1,17 @@
+Gegenprobe: SetItem liest wieder das gespiegelte purchase_price
+Modul: core-data
+Test: ch.brickinventoryapp.data.PurchasePriceDisplayTest
+Rot: the display rule is in the model and prefers the average
+
+
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
+@@ -1926,6 +1926,7 @@
+     @SerialName("instructions") val instructions: List<Instruction> = emptyList(),
+     @SerialName("bricklink") val bricklink: BrickLinkRef? = null,
+     @SerialName("price_comparison_url") val priceComparisonUrl: String? = null,
++    @SerialName("purchase_price") val purchasePrice: Double? = null,
+ )
+ 
+ @Serializable

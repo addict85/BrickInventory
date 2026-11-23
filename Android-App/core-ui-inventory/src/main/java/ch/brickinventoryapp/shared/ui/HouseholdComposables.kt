@@ -1,12 +1,5 @@
 package ch.brickinventoryapp.shared.ui
 
-import ch.brickinventoryapp.ui.components.nebenKnopfFarben
-import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.domain.accountOptions
-import ch.brickinventoryapp.model.domain.AccountView
-import ch.brickinventoryapp.model.domain.LocationView
-import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -19,10 +12,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.model.domain.AccountView
+import ch.brickinventoryapp.model.domain.LocationView
+import ch.brickinventoryapp.model.domain.MemberView
+import ch.brickinventoryapp.model.domain.accountOptions
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.secondaryButtonColors
+import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
  * The account filter, as an inventory view shows it: top left, with the
@@ -41,7 +41,7 @@ fun ScopeFilterRow(
     // side by side you see both answers at a glance, as in the web app
     // (public/index.html, scope-* and storage-* on one row). Defaults, so
     // screens that only need the account filter can call it unchanged.
-    lagerorte: List<LocationView> = emptyList(),
+    storageLocations: List<LocationView> = emptyList(),
     storageCurrent: String = "",
     onStorageSelect: (String) -> Unit = {},
 ) {
@@ -49,18 +49,18 @@ fun ScopeFilterRow(
     // storage-location filter as long as no location is captured anywhere. If both are empty,
     // no row is produced — otherwise an empty strip would sit there.
     val showAccounts = members.size > 1
-    val showStorage  = lagerorte.isNotEmpty()
+    val showStorage  = storageLocations.isNotEmpty()
     if (!showAccounts && !showStorage) return
     Row(
-        Modifier.padding(start = 14.dp, top = Abstaende.klein),
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        Modifier.padding(start = 14.dp, top = Spacing.small),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showAccounts) {
             ScopeFilterChip(members = members, current = current, onSelect = onSelect)
         }
         if (showStorage) {
-            LocationFilterChip(orte = lagerorte, current = storageCurrent, onSelect = onStorageSelect)
+            LocationFilterChip(locations = storageLocations, current = storageCurrent, onSelect = onStorageSelect)
         }
     }
 }
@@ -74,44 +74,44 @@ fun ScopeFilterRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationFilterChip(
-    orte: List<LocationView>,
+    locations: List<LocationView>,
     current: String,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (orte.isEmpty()) return
-    val alle = stringResource(R.string.filter_storage_all)
+    if (locations.isEmpty()) return
+    val all = stringResource(R.string.filter_storage_all)
     // If the stored choice points to a location that's now empty, an empty
     // label would otherwise sit here above a filtered list — the same
     // trap as with the account filter.
-    val wert = if (orte.any { it.ort == current }) current else ""
+    val value = if (locations.any { it.location == current }) current else ""
     var open by rememberSaveable { mutableStateOf(false) }
 
     Box(modifier) {
         AssistChip(
             onClick = { open = true },
             label = {
-                Text(if (wert.isBlank()) alle else wert,
+                Text(if (value.isBlank()) all else value,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
             },
             trailingIcon = {
-                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(withFont(18.dp)))
+                Icon(Icons.Default.ArrowDropDown, all, Modifier.size(withFont(18.dp)))
             },
-            shape = Formen.kachel,
+            shape = Shapes.tile,
         )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
-                text = { Text(alle, fontWeight = if (wert.isBlank()) FontWeight.Bold else FontWeight.Normal) },
-                onClick = { open = false; if (wert.isNotBlank()) onSelect("") }
+                text = { Text(all, fontWeight = if (value.isBlank()) FontWeight.Bold else FontWeight.Normal) },
+                onClick = { open = false; if (value.isNotBlank()) onSelect("") }
             )
-            orte.forEach { o ->
+            locations.forEach { o ->
                 DropdownMenuItem(
                     text = {
-                        Text("${o.ort}  (${o.sets + o.teile})",
-                            fontWeight = if (o.ort == wert) FontWeight.Bold else FontWeight.Normal)
+                        Text("${o.location}  (${o.sets + o.parts})",
+                            fontWeight = if (o.location == value) FontWeight.Bold else FontWeight.Normal)
                     },
-                    onClick = { open = false; if (o.ort != wert) onSelect(o.ort) }
+                    onClick = { open = false; if (o.location != value) onSelect(o.location) }
                 )
             }
         }
@@ -157,7 +157,7 @@ fun ScopeFilterChip(
                 Icon(Icons.Default.ArrowDropDown,
                     stringResource(R.string.household_scope_label), Modifier.size(18.dp))
             },
-            shape = Formen.kachel,
+            shape = Shapes.tile,
         )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             options.forEach { (v, text) ->
@@ -191,11 +191,11 @@ fun OwnerBadges(owners: List<AccountView>, modifier: Modifier = Modifier) {
     FlowRow(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalArrangement = Arrangement.spacedBy(Abstaende.hairline),
+        verticalArrangement = Arrangement.spacedBy(Spacing.hairline),
     ) {
         owners.forEach { o ->
             Surface(
-                shape = Formen.etikett,
+                shape = Shapes.tag,
                 color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
                 Text(
@@ -203,7 +203,7 @@ fun OwnerBadges(owners: List<AccountView>, modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.hairline)
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = Spacing.hairline)
                 )
             }
         }
@@ -228,7 +228,7 @@ fun OwnerPicker(
     val current = members.firstOrNull { it.id == selected } ?: members.first()
 
     Box(modifier) {
-        OutlinedButton(onClick = { open = true }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+        OutlinedButton(onClick = { open = true }, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
             Text(stringResource(R.string.household_for_account) + ": " + current.username,
                 style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Icon(Icons.Default.ArrowDropDown, null, Modifier.size(withFont(18.dp)))

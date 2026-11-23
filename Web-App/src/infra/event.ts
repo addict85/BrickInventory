@@ -5,75 +5,75 @@ import { reportError } from './error';
 
 type Listener<A extends unknown[]> = (...a: A) => unknown;
 
-export interface Ereignis<A extends unknown[] = []> {
-  horche(f: Listener<A>): () => void;
+export interface Event<A extends unknown[] = []> {
+  listen(f: Listener<A>): () => void;
   /** Resolves when all listeners are done, with false if one failed; never throws. */
-  melde(...a: A): Promise<boolean>;
+  report(...a: A): Promise<boolean>;
 }
 
 export interface SignalPath {
-  listen(kanal: string, h: (nutzlast?: string) => unknown): void;
-  unlisten(kanal: string, h: (nutzlast?: string) => unknown): void;
-  notify(kanal: string, nutzlast?: string): Promise<void>;
+  listen(channel: string, h: (payload?: string) => unknown): void;
+  unlisten(channel: string, h: (payload?: string) => unknown): void;
+  notify(channel: string, payload?: string): Promise<void>;
 }
 
-async function rufe<A extends unknown[]>(name: string, listener: Iterable<Listener<A>>, a: A): Promise<boolean> {
+async function call<A extends unknown[]>(name: string, listener: Iterable<Listener<A>>, a: A): Promise<boolean> {
   const r = await Promise.allSettled([...listener].map(async f => f(...a)));
   for (const x of r) if (x.status === 'rejected') reportError(`ereignis:${name}`, x.reason);
   return r.every(x => x.status === 'fulfilled');
 }
 
 /** Only in this process; the area keeps it in a compartment so that two accesses do not hear each other. */
-export function ereignis<A extends unknown[] = []>(name: string): Ereignis<A> {
+export function event<A extends unknown[] = []>(name: string): Event<A> {
   const listener = new Set<Listener<A>>();
   return {
-    horche(f) {
+    listen(f) {
       listener.add(f);
       return () => {
         listener.delete(f);
       };
     },
-    melde: (...a) => rufe(name, listener, a),
+    report: (...a) => call(name, listener, a),
   };
 }
 
 /** Across processes via NOTIFY: here immediately, elsewhere after the COMMIT of the signal path. */
 export interface ProcessEvent {
-  horche(f: () => unknown): () => void;
-  melde(ueber: SignalPath): Promise<boolean>;
+  listen(f: () => unknown): () => void;
+  report(over: SignalPath): Promise<boolean>;
   connect(s: SignalPath): () => void;
 }
 
-export function processEvent(name: string, kanal: string): ProcessEvent {
-  const hier = ereignis(name);
+export function processEvent(name: string, channel: string): ProcessEvent {
+  const here = event(name);
   // The own NOTIFY comes back; here it already applies.
   const sender = crypto.randomBytes(6).toString('hex');
   return {
-    horche: f => hier.horche(f),
-    melde: async ueber => {
-      const [ok, gesendet] = await Promise.all([hier.melde(), rufe(name, [() => ueber.notify(kanal, sender)], [])]);
-      return ok && gesendet;
+    listen: f => here.listen(f),
+    report: async over => {
+      const [ok, sent] = await Promise.all([here.report(), call(name, [() => over.notify(channel, sender)], [])]);
+      return ok && sent;
     },
     connect(s) {
-      const h = (n?: string) => (n === sender ? undefined : hier.melde());
-      s.listen(kanal, h);
-      return () => s.unlisten(kanal, h);
+      const h = (n?: string) => (n === sender ? undefined : here.report());
+      s.listen(channel, h);
+      return () => s.unlisten(channel, h);
     },
   };
 }
 
 /** Only via NOTIFY, also for the own process: a wake-up signal that only applies after the COMMIT. */
 export interface Signal {
-  horche(s: SignalPath, f: (nutzlast?: string) => unknown): () => void;
-  melde(ueber: SignalPath, nutzlast?: string): Promise<void>;
+  listen(s: SignalPath, f: (payload?: string) => unknown): () => void;
+  report(over: SignalPath, payload?: string): Promise<void>;
 }
 
-export function signal(kanal: string): Signal {
+export function signal(channel: string): Signal {
   return {
-    horche(s, f) {
-      s.listen(kanal, f);
-      return () => s.unlisten(kanal, f);
+    listen(s, f) {
+      s.listen(channel, f);
+      return () => s.unlisten(channel, f);
     },
-    melde: (ueber, nutzlast) => ueber.notify(kanal, nutzlast),
+    report: (over, payload) => over.notify(channel, payload),
   };
 }

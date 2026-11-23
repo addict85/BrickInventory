@@ -1,0 +1,17 @@
+Gegenprobe: Die Kontosicht zeigt die Antwort eines anderen Kontos
+Modul: core-data
+Test: ch.brickinventoryapp.data.AccountViewTest
+Rot: the account view does not show a response for a different account
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
+@@ -79,7 +79,7 @@
+             launch { store.altered(*trigger).collectLatest { refresh(query) } }
+             launch {
+                 last.map { e ->
+-                    if (e == null || e.query != query || e.area != store.area()) Local(emptyList(), null) else e.list
++                    if (e == null || e.query != query) Local(emptyList(), null) else e.list
+                 }.distinctUntilChanged().collect { send(it) }
+             }
+             awaitClose()

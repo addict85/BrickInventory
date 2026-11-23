@@ -1,0 +1,16 @@
+Gegenprobe: Der Entwerter sendet auch, wenn die Herkunft des Tokens nicht zum Server passt
+Modul: core-data
+Test: ch.brickinventoryapp.data.RedemptionTest
+Rot: a job for a different server sends nothing
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Redemption.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Redemption.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Redemption.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Redemption.kt
+@@ -84,7 +84,6 @@
+                  origin: String? = NetworkPolicy.origin(serverUrl)): RedemptionOutcome {
+         val target = ownAddress(serverUrl, "api/v2/auth/logout")
+         if (token.isBlank() || target == null) return RedemptionOutcome.GIVE_UP
+-        if (origin == null || origin != NetworkPolicy.origin(serverUrl)) return RedemptionOutcome.GIVE_UP
+         val situation = object : AccessState {
+             override fun serverUrl() = serverUrl
+             override fun token() = token

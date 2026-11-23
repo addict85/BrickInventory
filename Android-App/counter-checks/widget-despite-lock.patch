@@ -1,0 +1,16 @@
+Gegenprobe: Das Widget verdeckt seine Beträge erst, wenn die App beim Öffnen gesperrt wurde
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppLockTest
+Rot: the widget hides its amounts as soon as the lock can apply
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
+@@ -85,6 +85,6 @@
+          * waited for that, the amounts would sit exposed on the home screen until the next run.
+          */
+         fun hiddenWidget(store: Store): Boolean =
+-            store.locked() || store.minutes() > 0 && store.backgroundSince() != null
++            store.locked()
+     }
+ }

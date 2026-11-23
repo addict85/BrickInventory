@@ -23,9 +23,9 @@
  * Counter-checks H4 (measured 04.11.2026, each on its own):
  *   H  the branch on APP_BASE_URL removed in startBans() → red: “without
  *      APP_BASE_URL in production …” (code instead of 1: database error)
- *   I  APP_BASE_URL_FEHLT_OK not evaluated → red: the same check (refused
+ *   I  APP_BASE_URL_MISSING_OK not evaluated → red: the same check (refused
  *      with the exception)
- *   J  the exception for ROLLE=jobs removed → red: the same check ({"ROLLE":"jobs"})
+ *   J  the exception for ROLE=jobs removed → red: the same check ({"ROLE":"jobs"})
  * Counter-checks (measured 08.11.2026, each on its own):
  *   K  'change-me-to-a-long-random-string' deleted from PLACEHOLDER_SECRETS
  *      → red: “example value and too short session secret …”
@@ -42,8 +42,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { startBans } = _req('src/infra/config.js');
 
 /** Start the server and wait for its end — at most `ms`, then it counts as running. */
-function starte(env, ms = 8000) {
-  return new Promise(fertig => {
+function launch(env, ms = 8000) {
+  return new Promise(done => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -62,12 +62,12 @@ function starte(env, ms = 8000) {
     srv.stderr.on('data', d => {
       log += d;
     });
-    const uhr = setTimeout(() => {
+    const clock = setTimeout(() => {
       srv.kill('SIGKILL');
     }, ms);
     srv.on('exit', code => {
-      clearTimeout(uhr);
-      fertig({ code, log });
+      clearTimeout(clock);
+      done({ code, log });
     });
   });
 }
@@ -77,60 +77,63 @@ test('example database password: startup refused', { timeout: 30_000 }, async ()
     { PGPASSWORD: 'brickinventory_secret', PGHOST: '127.0.0.1', PGPORT: '1' },
     { DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@127.0.0.1:1/x' },
   ]) {
-    const { code, log } = await starte(env);
-    assert.equal(code, 1, `der Server läuft mit dem Beispielpasswort weiter: ${log.slice(-400)}`);
+    const { code, log } = await launch(env);
+    assert.equal(code, 1, `the server keeps running with the example password: ${log.slice(-400)}`);
     assert.match(log, /Beispielpasswort .*Start verweigert/);
   }
 });
 
 test('TRUST_PROXY=docker: startup refused', { timeout: 30_000 }, async () => {
-  const { code, log } = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', TRUST_PROXY: 'docker' });
+  const { code, log } = await launch({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', TRUST_PROXY: 'docker' });
   assert.equal(code, 1, log.slice(-400));
   assert.match(log, /TRUST_PROXY enthält „docker/);
 });
 
 test('without NODE_ENV no public session secret', { timeout: 30_000 }, async () => {
-  const ohne = {
+  const without = {
     NODE_ENV: undefined,
     DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x',
     APP_BASE_URL: 'https://lego.example.org',
   };
-  for (const geheimnis of [undefined, 'brickinventory-manager-dev-secret']) {
-    const { code, log } = await starte({ ...ohne, SESSION_SECRET: geheimnis });
+  for (const secret of [undefined, 'brickinventory-manager-dev-secret']) {
+    const { code, log } = await launch({ ...without, SESSION_SECRET: secret });
     assert.equal(code, 1, log.slice(-400));
     assert.match(log, /SESSION_SECRET .*Start verweigert/);
   }
   // Explicitly in development the development secret applies; the start
   // then only fails at the database, which does not exist here.
-  const { log } = await starte({ ...ohne, NODE_ENV: 'development', SESSION_SECRET: undefined });
+  const { log } = await launch({ ...without, NODE_ENV: 'development', SESSION_SECRET: undefined });
   assert.doesNotMatch(log, /SESSION_SECRET/);
   assert.match(log, /Database initialisation failed/);
 });
 
 test('example value and too short session secret: startup refused', { timeout: 30_000 }, async () => {
   const env = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
-  for (const [geheimnis, grund] of /** @type {[string, RegExp][]} */ ([
+  for (const [secret, reason] of /** @type {[string, RegExp][]} */ ([
     ['change-me-to-a-long-random-string', /Beispielwert/],
     ['nur-31-zeichen-lang-1234567890x', /zu kurz \(nötig sind mindestens 32 Zeichen/],
   ])) {
-    const { code, log } = await starte({ ...env, SESSION_SECRET: geheimnis });
+    const { code, log } = await launch({ ...env, SESSION_SECRET: secret });
     assert.equal(code, 1, log.slice(-400));
-    assert.match(log, grund);
+    assert.match(log, reason);
   }
 });
 
 test('without APP_BASE_URL in production: startup refused, only explicitly allowed', { timeout: 60_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x' };
-  const ohne = await starte(db);
-  assert.equal(ohne.code, 1, ohne.log.slice(-400));
-  assert.match(ohne.log, /APP_BASE_URL fehlt im Betrieb: .*Start verweigert/);
-  assert.doesNotMatch(ohne.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
+  const without = await launch(db);
+  assert.equal(without.code, 1, without.log.slice(-400));
+  assert.match(without.log, /APP_BASE_URL fehlt im Betrieb: .*Start verweigert/);
+  assert.doesNotMatch(without.log, /Database initialisation failed/, 'the ban comes before the database');
   // With the exception it starts up to the database, reported loudly.
-  const erlaubt = await starte({ ...db, APP_BASE_URL_FEHLT_OK: '1' });
-  assert.match(erlaubt.log, /❌ \[start\] APP_BASE_URL fehlt im Betrieb \(APP_BASE_URL_FEHLT_OK=1\): Der Host-Filter/);
-  assert.match(erlaubt.log, /Database initialisation failed/);
-  for (const env of [{ APP_BASE_URL: 'https://lego.example.org' }, { ROLLE: 'jobs' }, { NODE_ENV: 'development' }]) {
-    const r = await starte({ ...db, ...env });
+  const allowed = await launch({ ...db, APP_BASE_URL_MISSING_OK: '1' });
+  assert.match(
+    allowed.log,
+    /❌ \[start\] APP_BASE_URL fehlt im Betrieb \(APP_BASE_URL_MISSING_OK=1\): Der Host-Filter/,
+  );
+  assert.match(allowed.log, /Database initialisation failed/);
+  for (const env of [{ APP_BASE_URL: 'https://lego.example.org' }, { ROLE: 'jobs' }, { NODE_ENV: 'development' }]) {
+    const r = await launch({ ...db, ...env });
     assert.doesNotMatch(r.log, /APP_BASE_URL fehlt/, JSON.stringify(env));
     assert.match(r.log, /Database initialisation failed/, JSON.stringify(env));
   }
@@ -142,7 +145,7 @@ test('npm start sets NODE_ENV=production', () => {
 });
 
 test('outside production no ban, with an own password none', () => {
-  assert.deepEqual(startBans({ NODE_ENV: 'development' }), [], 'ausserhalb von Produktion kein Verbot');
+  assert.deepEqual(startBans({ NODE_ENV: 'development' }), [], 'outside production no ban');
   const basis = { NODE_ENV: 'production', PGPASSWORD: 'eigenes', APP_BASE_URL: 'https://lego.example.org' };
   assert.deepEqual(startBans({ ...basis, TRUST_PROXY: '172.28.73.10' }), []);
   assert.equal(startBans({ ...basis, TRUST_PROXY: '1' }).length, 1);

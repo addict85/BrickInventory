@@ -1,0 +1,17 @@
+Gegenprobe: Das gemerkte Design kommt nicht mehr vor dem ersten Bild in die Sitzung
+Modul: core-state
+Test: ch.brickinventoryapp.state.RenderingAndTrustTest
+Rot: the state is born with the remembered design
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AccountValues.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AccountValues.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AccountValues.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/AccountValues.kt
+@@ -37,7 +37,7 @@
+ ) : AccountValues {
+     override val currency: StateFlow<CurrencyCode> = store.currency.stateIn(area, SharingStarted.Eagerly, CurrencyCode.EUR)
+     override val design: StateFlow<Design> =
+-        store.appTheme.stateIn(area, SharingStarted.Eagerly, appearance.rememberedDesign())
++        store.appTheme.stateIn(area, SharingStarted.Eagerly, Design.DEFAULT)
+ 
+     override fun setCurrency(w: CurrencyCode) { area.launch { store.saveCurrency(w) } }
+     override fun setDesign(d: Design) { area.launch { store.saveAppTheme(d) } }

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * All ViewModels are ordinary ViewModels — none inherits its context.
@@ -9,14 +9,14 @@ import ch.brickinventoryapp.testing.Quellen
  * ── Why that is more than uniformity ─────────────────────────────────────────
  * `MainViewModel` was the ONLY `AndroidViewModel` in the tree. CatalogViewModel
  * and MonitoringViewModel are ordinary `ViewModel`s and get the
- * context injected — just like VorschauSpeicher, PreferencesManager and
+ * context injected — just like PreviewMemory, PreferencesManager and
  * PdfExportManager. So two patterns for the same thing, and the rarer one was
  * the more expensive:
  *
  * `AndroidViewModel` requires a real `Application` in the constructor. That way
  * the class cannot be built in a JVM test — and that is the reason
  * why the large part of the Android tests READS source instead of executing
- * code. A test can then only check the assumption „loadSets() sets the loading state"
+ * code. A test can then only check the assumption „loadSets() sets the loading state“
  * on the wording, not on the flow.
  *
  * The context has stayed the same: `getApplication<Application>()
@@ -34,23 +34,23 @@ import ch.brickinventoryapp.testing.Quellen
  */
 class ViewModelDesignTest {
 
-    private fun viewModelFiles() = Quellen.alle()
+    private fun viewModelFiles() = Sources.all()
         .filter { it.name.endsWith("ViewModel.kt") }
-        .map { it.name to Quellen.withoutComments(it.readText()) }
+        .map { it.name to Sources.withoutComments(it.readText()) }
 
     @Test
     fun `no ViewModel inherits its context`() {
-        val dateien = viewModelFiles()
-        assert(dateien.size >= 3) {
-            "Nur ${'$'}{dateien.size} ViewModel-Dateien gefunden — Muster veraltet? " +
-                "Eine leere Suche wäre still grün."
+        val files = viewModelFiles()
+        assert(files.size >= 3) {
+            "Only ${files.size} ViewModel files found — pattern outdated? " +
+                "An empty search would be silently green."
         }
-        val treffer = dateien.filter { (_, s) -> s.contains("AndroidViewModel") }.map { it.first }
-        assert(treffer.isEmpty()) {
-            "Diese ViewModels erben von AndroidViewModel: ${'$'}{treffer.joinToString()}.\n" +
-                "AndroidViewModel verlangt eine echte Application im Konstruktor — die Klasse " +
-                "lässt sich damit in keinem JVM-Test bauen. Den Context gibt es über " +
-                "@ApplicationContext, wie in CatalogViewModel und in der ganzen Datenschicht."
+        val hits = files.filter { (_, s) -> s.contains("AndroidViewModel") }.map { it.first }
+        assert(hits.isEmpty()) {
+            "Diese ViewModels erben von AndroidViewModel: ${'$'}{hits.joinToString()}.\n" +
+                "AndroidViewModel requires a real Application in the constructor — the class " +
+                "then cannot be built in any JVM test. The Context comes via " +
+                "@ApplicationContext, as in CatalogViewModel and in the whole data layer."
         }
     }
 
@@ -67,7 +67,7 @@ class ViewModelDesignTest {
             // counter-check that stayed green.
             if (!Regex("""\bctx\b""").containsMatchIn(s)) continue
             assert(s.contains("@param:ApplicationContext")) {
-                "$name benutzt ctx, bekommt ihn aber nicht über @ApplicationContext"
+                "$name uses ctx but does not get it via @ApplicationContext"
             }
         }
     }

@@ -1,0 +1,16 @@
+Gegenprobe: ein Zeitpunkt in einem Fachtyp wieder als String
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: domain types carry amounts as Money and points in time as Instant, not as Double and String
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HouseholdViews.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HouseholdViews.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HouseholdViews.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HouseholdViews.kt
+@@ -39,6 +39,7 @@
+     val createdAt: Instant? = null,
+     val ownerUserId: Int? = null,
+     val priceEstimated: Boolean = false,
++    val changedAt: String? = null,
+     val currency: CurrencyCode? = null,
+ ) {
+     /** Sets carry purchase_price, parts and figures unit_price. */

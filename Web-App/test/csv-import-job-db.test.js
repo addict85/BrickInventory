@@ -34,85 +34,85 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // The import stops at the first set at the lock per set number as long as the test holds it.
-let loslassen = () => {};
+let letGo = () => {};
 
 const { buildAndRequire, testData, testAccess, asAccount, testSources, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { warte } = require('./helpers/time');
+const { sleep } = require('./helpers/time');
 
 test('CSV import as a job', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   // Adding asks no network; provided only so that a return to it would show.
   testSources(t, {
     holeSet: async () => {
-      throw new Error('Netz beim Erfassen');
+      throw new Error('Network during capture');
     },
   });
   const { lockUntilToEnd } = _req('db/txLock.js');
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
   /** The lock setErfassen() takes per set number; held until loslassen(). */
-  const sperre = { fertig: Promise.resolve() };
+  const lock = { done: Promise.resolve() };
   const holdLock = (/** @type {string} */ sn) =>
     /** @type {Promise<void>} */ (
-      new Promise(gehalten => {
-        sperre.fertig = db.transaction(async (/** @type {any} */ tx) => {
+      new Promise(held => {
+        lock.done = db.transaction(async (/** @type {any} */ tx) => {
           await lockUntilToEnd(tx, LOCKS.SET_ADD, sn);
           await new Promise(r => {
-            loslassen = () => r(undefined);
-            gehalten(undefined);
+            letGo = () => r(undefined);
+            held(undefined);
           });
         });
       })
     );
-  testImageWorker(t, { setBildLaden: async () => null });
+  testImageWorker(t, { loadSetImage: async () => null });
 
   const dedupe_key = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consumer_key'];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [dedupe_key]);
+  const prior = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [dedupe_key]);
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [dedupe_key]);
-  const konto = async name => {
+  const account = async name => {
     await db.run('DELETE FROM users WHERE username=$1', [name]);
     return (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
   };
-  const a = await konto(`csvauftrag-a-${process.pid}`);
-  const b = await konto(`csvauftrag-b-${process.pid}`);
+  const a = await account(`csvauftrag-a-${process.pid}`);
+  const b = await account(`csvauftrag-b-${process.pid}`);
   const { placeJobOne } = Object.assign({}, _req('src/jobQueue/jobs.js'), {
     ..._req('src/jobQueue/service.js'),
-    ...require('./helpers/sources').testArea('jobQueue').auftraege,
+    ...require('./helpers/sources').testArea('jobQueue').jobs,
   });
   const { jobSet } = _req('src/jobQueue/importJob.js');
   const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
-    arten: ['csv_import'],
-    taktMs: 50,
+    kinds: ['csv_import'],
+    tickMs: 50,
   });
-  const nacharbeit = uid =>
+  const rework = uid =>
     db.all(
-      `SELECT payload->>'set_number' AS sn, payload->>'art' AS type FROM jobs
-      WHERE type = 'nacharbeit' AND user_id = $1 ORDER BY id`,
+      `SELECT payload->>'set_number' AS sn, payload->>'kind' AS type FROM jobs
+      WHERE type = 'rework' AND user_id = $1 ORDER BY id`,
       [uid],
     );
-  const stand = () => db.get('SELECT status, done, results, current FROM import_status WHERE user_id=$1', [a]);
-  const booked = (uid, nummern) =>
+  const state = () => db.get('SELECT status, done, results, current FROM import_status WHERE user_id=$1', [a]);
+  const booked = (uid, numbers) =>
     db
       .all('SELECT set_number FROM sets WHERE user_id = $1 AND set_number = ANY($2) ORDER BY set_number', [
         uid,
-        nummern,
+        numbers,
       ])
       .then(z => z.map(x => x.set_number));
   const untilDone = async () => {
     for (let i = 0; i < 200; i++) {
-      const s = await stand();
+      const s = await state();
       if (s?.status === 'done') return s;
-      await warte(25);
+      await sleep(25);
     }
-    return stand();
+    return state();
   };
 
   try {
     await t.test('a set of another account gets its follow-up work during the import', async () => {
       await holdLock('76001-1');
-      const lauf = `lauf-${process.pid}-1`;
+      const run = `lauf-${process.pid}-1`;
       const rows = [{ sn: '76001-1', qty: 1, purchasePrice: null, condition: null, acquiredAt: null }];
       await asAccount(a, () =>
         jobSet(a, {
@@ -122,34 +122,34 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
           current: null,
           results: '[]',
           error: null,
-          run_id: lauf,
+          run_id: run,
         }),
       );
-      await placeJobOne('csv_import', { user_id: a, lauf, rows }, { userId: a });
-      for (let i = 0; i < 100 && (await stand())?.current !== '76001-1'; i++) await warte(20);
-      assert.equal((await stand())?.current, '76001-1', 'der Import steckt im ersten Set');
+      await placeJobOne('csv_import', { user_id: a, lauf: run, rows }, { userId: a });
+      for (let i = 0; i < 100 && (await state())?.current !== '76001-1'; i++) await sleep(20);
+      assert.equal((await state())?.current, '76001-1', 'the import is stuck in the first set');
 
       const SN = `7${process.pid % 10000}-1`;
       const r = await asAccount(b, () =>
         require('./helpers/sources')
           .areaPage('sets')
-          .setErfassen({ requester: b, setNumber: SN, menge: 1, kaufpreis: 10, zustand: 'N' }),
+          .acquireSet({ requester: b, setNumber: SN, quantity: 1, kaufpreis: 10, condition: 'N' }),
       );
       assert.equal(r.action, 'added');
-      assert.deepEqual(await nacharbeit(b), [{ sn: SN, type: 'ergaenzen' }]);
+      assert.deepEqual(await rework(b), [{ sn: SN, type: 'ergaenzen' }]);
 
-      loslassen();
-      await sperre.fertig;
+      letGo();
+      await lock.done;
       assert.equal((await untilDone()).status, 'done');
       assert.deepEqual(
-        await nacharbeit(a),
+        await rework(a),
         [{ sn: '76001-1', type: 'csv' }],
-        'der Import stellt seine Nacharbeit selbst ein',
+        'the import schedules its follow-up work itself',
       );
     });
 
     await t.test('an interrupted import continues', async () => {
-      const lauf = `lauf-${process.pid}-2`;
+      const run = `lauf-${process.pid}-2`;
       const [r1, r2, r3] = ['91001-1', '91002-1', '91003-1'];
       const rows = [r1, r2, r3].map(sn => ({
         sn,
@@ -168,17 +168,17 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
           current: r2,
           error: 'unterbrochen',
           results: JSON.stringify([{ set_number: r1, success: true, action: 'added' }]),
-          run_id: lauf,
+          run_id: run,
         }),
       );
       await db.run(
         `INSERT INTO jobs (type, payload, user_id, status, attempts, deadline_at)
-                    VALUES ('csv_import', $1, $2, 'laeuft', 1, NOW() - INTERVAL '1 minute')`,
-        [JSON.stringify({ user_id: a, lauf, rows }), a],
+                    VALUES ('csv_import', $1, $2, 'running', 1, NOW() - INTERVAL '1 minute')`,
+        [JSON.stringify({ user_id: a, lauf: run, rows }), a],
       );
       const s = await untilDone();
       assert.equal(s.status, 'done');
-      assert.deepEqual(await booked(a, [r1, r2, r3]), [r3], 'r1 ist fertig, r2 ungewiss — gebucht wird nur r3');
+      assert.deepEqual(await booked(a, [r1, r2, r3]), [r3], 'r1 is done, r2 uncertain — only r3 is booked');
       assert.deepEqual(
         s.results.map(z => [z.set_number, z.success, !!z.isWarning]),
         [
@@ -189,11 +189,11 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
       );
     });
   } finally {
-    loslassen();
+    letGo();
     await worker.stop(0);
     await testAccess().notification.close();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
-    for (const z of vorher)
+    for (const z of prior)
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2', [
         z.key,
         z.value,

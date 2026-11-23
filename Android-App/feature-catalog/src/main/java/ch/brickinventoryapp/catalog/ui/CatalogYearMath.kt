@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.catalog.ui
 
-import ch.brickinventoryapp.model.domain.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.domain.YearCountView
 import kotlin.math.roundToInt
 
 /**
@@ -11,7 +11,7 @@ internal object CatalogYearMath {
 
     /**
      * Fraction (0..1) along the bar for a touch at y pixels. As in the web app
-     * (js/rollbalken.js → rollen): the handle sits centered under the finger,
+     * (`js/rollbalken.js` → `rollen`): the handle sits centered under the finger,
      * converted onto the track without the handle's height.
      */
     fun shareFrom(y: Float, heightPx: Int, thumbHeightPx: Int): Float {
@@ -30,47 +30,47 @@ internal object CatalogYearMath {
     }
 
     /** Fraction for a running number — the reverse direction of numberFrom. */
-    fun anteilAusNummer(nummer: Int, total: Int): Float {
+    fun shareFromNumber(number: Int, total: Int): Float {
         if (total <= 1) return 0f
-        return (nummer.toFloat() / (total - 1)).coerceIn(0f, 1f)
+        return (number.toFloat() / (total - 1)).coerceIn(0f, 1f)
     }
 
     /**
      * The year that stands next to the handle — in the same order as the web app
-     * (js/katalog.js → _jahrAnPosition):
+     * (`js/katalog.js` → _jahrAnPosition):
      *
      *   First choice:  the year of the tile at that spot. If it's loaded, that's the truth, not a calculation.
      *   Second choice: the distribution, for still-empty areas.
      *
-     * @param geladen delivers the year for a running number, or null if that
+     * @param loaded delivers the year for a running number, or null if that
      *         spot isn't loaded yet
      */
     fun yearFor(
-        share: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>,
-        geladen: (Int) -> Int?
-    ): Int? = geladen(numberFrom(share, total)) ?: yearAnPosition(share, total, verteilung)
+        share: Float, total: Int, distribution: List<YearCountView>,
+        loaded: (Int) -> Int?
+    ): Int? = loaded(numberFrom(share, total)) ?: yearAnPosition(share, total, distribution)
 
     /**
      * Which year sits at this fraction of the list? As in the web app
-     * (js/katalog.js → _jahrAnPosition): a fraction becomes a running number,
+     * (`js/katalog.js` → _jahrAnPosition): a fraction becomes a running number,
      * which walks through the distribution until it falls into a year.
      */
-    fun yearAnPosition(share: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
-        if (verteilung.isEmpty() || total <= 0) return null
-        var nummer = numberFrom(share, total)
-        for (entry in verteilung) {
-            if (nummer < entry.n) return entry.year
-            nummer -= entry.n
+    fun yearAnPosition(share: Float, total: Int, distribution: List<YearCountView>): Int? {
+        if (distribution.isEmpty() || total <= 0) return null
+        var number = numberFrom(share, total)
+        for (entry in distribution) {
+            if (number < entry.n) return entry.year
+            number -= entry.n
         }
-        return verteilung.last().year
+        return distribution.last().year
     }
 
     /** The first running number of a year; null if the distribution doesn't know it. */
-    fun numberOfYear(jahr: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
-        var nummer = 0
-        for (entry in verteilung) {
-            if (entry.year == jahr) return nummer
-            nummer += entry.n
+    fun numberOfYear(year: Int, distribution: List<YearCountView>): Int? {
+        var number = 0
+        for (entry in distribution) {
+            if (entry.year == year) return number
+            number += entry.n
         }
         return null
     }

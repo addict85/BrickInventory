@@ -1,0 +1,17 @@
+Gegenprobe: der Bestand der Teileliste wird unter einem anderen Schlüssel gesucht
+Modul: core-data
+Test: ch.brickinventoryapp.data.PartsSlotValuesTest
+Rot: the stock is listed per requested part, what is missing has no entry
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
+@@ -111,7 +111,7 @@
+                               accounts: AccountSelection?): Outcome<Map<PartialKey, PartInventory>> =
+         safeCall { api.getOwnedParts(HoldingRequest(parts = parts.map { HoldingPart(it.number, it.color) }), accounts?.request) }
+             .promised({ it.success }) { r ->
+-                parts.mapNotNull { t -> r.holding["${t.number}|${t.color}"]?.let { t to PartInventory(it.total, it.loose) } }.toMap()
++                parts.mapNotNull { t -> r.holding["${t.number}-${t.color}"]?.let { t to PartInventory(it.total, it.loose) } }.toMap()
+             }
+ 
+     /** Set a part's storage location; an empty text deletes it. */

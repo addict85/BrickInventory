@@ -40,7 +40,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
@@ -52,7 +52,7 @@ test('search text and storage location also hit the manually captured lists', { 
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -72,7 +72,7 @@ test('search text and storage location also hit the manually captured lists', { 
   const UID = u.id;
 
   // Three manually captured parts. At BrickLink 3002 carries a DIFFERENT number —
-  // and the tile shows that one (bl_part_number, blNummerSql). Whoever reads it
+  // and the tile shows that one (bl_part_number, blNumberSql). Whoever reads it
   // there also types it in.
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES
                   ('3001','Brick 2 x 4'), ('3002','Brick 2 x 2'), ('3003','Brick 2 x 3')`);
@@ -80,104 +80,104 @@ test('search text and storage location also hit the manually captured lists', { 
                   ('3001',4,'Red'), ('3002',4,'Red'), ('3003',4,'Red')`);
   await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES ('part','3002','9999')`);
   await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3')`, [UID]);
-  const ORT = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
-  await holdsPart(db, UID, '3001', { colorId: 4, menge: 10, storageId: ORT });
-  await holdsPart(db, UID, '3002', { colorId: 4, menge: 5 });
-  await holdsPart(db, UID, '3003', { colorId: 4, menge: 1 });
+  const PLACE = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
+  await holdsPart(db, UID, '3001', { colorId: 4, quantity: 10, storageId: PLACE });
+  await holdsPart(db, UID, '3002', { colorId: 4, quantity: 5 });
+  await holdsPart(db, UID, '3003', { colorId: 4, quantity: 1 });
   // A set part with the same number: it must NEVER show up in this list,
   // not even as a search hit.
-  await holdsPart(db, UID, '3001', { setNumber: '10497-1', colorId: 7, menge: 2 });
+  await holdsPart(db, UID, '3001', { setNumber: '10497-1', colorId: 7, quantity: 2 });
 
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES
                   ('fig-000123','Chewbacca'), ('fig-000456','Luke Skywalker')`);
-  await holdsMinifig(db, UID, 'fig-000123', { menge: 1 });
-  await holdsMinifig(db, UID, 'fig-000456', { menge: 2 });
+  await holdsMinifig(db, UID, 'fig-000123', { quantity: 1 });
+  await holdsMinifig(db, UID, 'fig-000456', { quantity: 2 });
 
-  const teile = _req('src/parts/queries.js');
-  const figuren = _req('src/minifigs/queries.js');
-  const nummern = async opt => (await teile.manualPartsList([UID], UID, opt)).map(p => String(p.part_number)).sort();
+  const parts = _req('src/parts/queries.js');
+  const minifigs = _req('src/minifigs/queries.js');
+  const numbers = async opt => (await parts.manualPartsList([UID], UID, opt)).map(p => String(p.part_number)).sort();
   const figNumbers = async opt =>
-    (await figuren.readManualMinifigs([UID], UID, opt)).map(f => String(f.fig_number)).sort();
+    (await minifigs.readManualMinifigs([UID], UID, opt)).map(f => String(f.fig_number)).sort();
 
   await t.test('without search text everything is there', async () => {
     assert.deepEqual(
-      await nummern({}),
+      await numbers({}),
       ['3001', '3002', '3003'],
-      'Die Liste ohne Filter ist der Vergleichspunkt für alles Folgende',
+      'The list without a filter is the reference point for everything that follows',
     );
     assert.deepEqual(await figNumbers({}), ['fig-000123', 'fig-000456']);
   });
 
   await t.test('the search for the part number leaves only it', async () => {
-    const g = await nummern({ search: '3001' });
+    const g = await numbers({ search: '3001' });
     assert.deepEqual(
       g,
       ['3001'],
-      `Die Suche nach 3001 liefert ${g.join(',')} — erwartet nur 3001. ` +
-        'Genau das ist Marcos Befund: „passiert nichts".',
+      `The search for 3001 returns ${g.join(',')} — expected only 3001. ` +
+        'That is exactly what Marco reported: „passiert nichts".',
     );
   });
 
   await t.test('the search finds the name from the catalog', async () => {
     assert.deepEqual(
-      await nummern({ search: '2 x 3' }),
+      await numbers({ search: '2 x 3' }),
       ['3003'],
-      'Der Teilename steht seit Migration 0034 in part_catalog — die ' +
-        'Bedingung muss über den JOIN gehen, nicht über parts',
+      'The part name lives in part_catalog since migration 0034 — the ' +
+        'condition must go through the JOIN, not through parts',
     );
   });
 
   await t.test('the search finds the BrickLink number from the tile', async () => {
-    const g = await nummern({ search: '9999' });
+    const g = await numbers({ search: '9999' });
     assert.deepEqual(
       g,
       ['3002'],
-      `Die Suche nach 9999 liefert ${g.join(',') || '(nichts)'} — erwartet 3002. ` +
-        'Auf der Kachel steht 9999 (bl_part_number); eine Suche, die nur die ' +
-        'Rebrickable-Nummer kennt, findet nicht, was dasteht.',
+      `The search for 9999 returns ${g.join(',') || '(nothing)'} — expected 3002. ` +
+        'The tile shows 9999 (bl_part_number); a search that only knows the ' +
+        'Rebrickable number does not find what is shown.',
     );
   });
 
   await t.test('without hits the list stays empty — not full', async () => {
     assert.deepEqual(
-      await nummern({ search: '4711' }),
+      await numbers({ search: '4711' }),
       [],
-      'Ein Suchtext ohne Treffer muss eine leere Liste ergeben. Käme die ' +
-        'ganze Liste zurück, sähe es wieder aus wie „passiert nichts".',
+      'A search text without hits must yield an empty list. If the whole ' +
+        'list came back, it would look like „passiert nichts" again.',
     );
   });
 
   await t.test('the storage location filters the same list', async () => {
     assert.deepEqual(
-      await nummern({ storage: 'Kiste 3' }),
+      await numbers({ storage: 'Kiste 3' }),
       ['3001'],
-      'Der Lagerortfilter steht in derselben Leiste und gehört zum gleichen ' + 'Versprechen',
+      'The location filter sits in the same bar and belongs to the same ' + 'promise',
     );
-    assert.deepEqual(await nummern({ storage: 'Regal B' }), [], 'Ein Ort ohne Teile ergibt eine leere Liste');
+    assert.deepEqual(await numbers({ storage: 'Regal B' }), [], 'A location without parts yields an empty list');
   });
 
   await t.test('search text and storage location together', async () => {
     assert.deepEqual(
-      await nummern({ search: '3001', storage: 'Kiste 3' }),
+      await numbers({ search: '3001', storage: 'Kiste 3' }),
       ['3001'],
-      'Beide Platzhalter stehen in EINER Abfrage; vertauschen sich ihre ' +
-        'Nummern, bekommt jede Bedingung den Wert der anderen und die Liste ' +
-        'ist leer',
+      'Both placeholders are in ONE query; if their numbers are swapped, ' +
+        'each condition gets the value of the other and the list ' +
+        'is empty',
     );
     assert.deepEqual(
-      await nummern({ search: '3002', storage: 'Kiste 3' }),
+      await numbers({ search: '3002', storage: 'Kiste 3' }),
       [],
-      'Beide Bedingungen gelten zusammen, nicht wahlweise',
+      'Both conditions apply together, not alternatively',
     );
   });
 
   await t.test('the set part stays out, even as a search hit', async () => {
-    const alle = await teile.manualPartsList([UID], UID, { search: '3001' });
+    const all = await parts.manualPartsList([UID], UID, { search: '3001' });
     assert.deepEqual(
-      alle.map(p => p.color_id),
+      all.map(p => p.color_id),
       [4],
-      'Diese Liste zeigt nur source=manual. Das Set-Teil 3001 in Farbe 7 ' +
-        'gehört in die Wand darunter — der Suchtext darf es nicht hereinholen.',
+      'This list shows only source=manual. The set part 3001 in colour 7 ' +
+        'belongs in the wall below — the search text must not pull it in.',
     );
   });
 
@@ -185,9 +185,13 @@ test('search text and storage location also hit the manually captured lists', { 
     assert.deepEqual(
       await figNumbers({ search: 'chewb' }),
       ['fig-000123'],
-      'Der Figurenname steht in minifigs_catalog',
+      'The figure name lives in minifigs_catalog',
     );
-    assert.deepEqual(await figNumbers({ search: '000456' }), ['fig-000456'], 'Die Figurennummer muss genauso treffen');
+    assert.deepEqual(
+      await figNumbers({ search: '000456' }),
+      ['fig-000456'],
+      'The figure number must match just the same',
+    );
   });
 
   await t.test('the wall of set parts searches via the same phrasing', async () => {
@@ -195,11 +199,11 @@ test('search text and storage location also hit the manually captured lists', { 
     // them together: before, the live path of the set parts did NOT know the
     // BrickLink number, the precomputed summary next to it did
     // — the same search found something different depending on the path.
-    const d = await teile.partsQuery([UID], { search: '9999' });
+    const d = await parts.partsQuery([UID], { search: '9999' });
     assert.deepEqual(
       d.parts.map(p => String(p.part_number)),
       ['9999'],
-      'Die Set-Teile-Wand findet die BrickLink-Nummer nicht — sie zeigt sie ' + 'aber an (blNummerSql als part_number)',
+      'The set parts wall does not find the BrickLink number — but it shows ' + 'it (blNumberSql as part_number)',
     );
   });
 });

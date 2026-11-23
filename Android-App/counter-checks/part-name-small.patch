@@ -1,0 +1,17 @@
+Gegenprobe: Teilename wieder in labelSmall (11 sp)
+Modul: app
+Test: ch.brickinventoryapp.app.TileReadAloudTest
+Rot: name, color and second line are at least 12 sp
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
+@@ -236,7 +236,7 @@
+             fontWeight = FontWeight.SemiBold)
+         Text(part.partName?.let { catalogName(it) }
+                 ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
+-            style = MaterialTheme.typography.bodySmall,
++            style = MaterialTheme.typography.labelSmall,
+             color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+             // Always room for two lines in the grid: tiles of a row are equally high,
+             // even when a name is short. The row does not have to resemble anyone else's.

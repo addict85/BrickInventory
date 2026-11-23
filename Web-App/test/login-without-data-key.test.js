@@ -3,7 +3,7 @@
  * an unkeyed SHA-256 (which could be brute-forced for small value
  * ranges).
  *
- * Counter-check (measured 14.11.2026): in namedDigest() and adressDigest() again
+ * Counter-check (measured 14.11.2026): in namedDigest() and addressDigest() again
  * `try { searchValue(…) } catch { createHash('sha256')… }` → red: „Missing expected
  * rejection“ (the brake kept counting without a key).
  */
@@ -14,10 +14,10 @@ const path = require('node:path');
 const fs = require('node:fs');
 
 // A place where no key lies and none can be created.
-const sperre = fs.mkdtempSync(path.join(os.tmpdir(), 'ohne-schluessel-'));
-fs.writeFileSync(path.join(sperre, 'datei'), '');
+const lock = fs.mkdtempSync(path.join(os.tmpdir(), 'ohne-schluessel-'));
+fs.writeFileSync(path.join(lock, 'datei'), '');
 delete process.env.DATA_KEY;
-process.env.DATA_KEY_FILE = path.join(sperre, 'datei', 'unter', 'datenschluessel');
+process.env.DATA_KEY_FILE = path.join(lock, 'datei', 'unter', 'datenschluessel');
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
@@ -28,5 +28,5 @@ test('without a data key the login brake refuses instead of hashing unkeyed', as
     limiter.loginAllowed('203.0.113.5', `ohne_schluessel_${process.pid}`),
     /unter[\\/]datenschluessel|ENOTDIR/,
   );
-  fs.rmSync(sperre, { recursive: true, force: true });
+  fs.rmSync(lock, { recursive: true, force: true });
 });

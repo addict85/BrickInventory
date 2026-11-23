@@ -1,0 +1,17 @@
+Gegenprobe: Die Kaufverwaltung formatiert ein Datum mit String.format ohne Locale
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: no String-format without Locale
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/AcquisitionManagementScreen.kt
+@@ -442,7 +442,7 @@
+                     showDatePicker = false
+                     dpState.selectedDateMillis?.let { ms ->
+                         val d = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneOffset.UTC).toLocalDate()
+-                        onSave(null, null, null, "%04d-%02d-%02d".format(d.year, d.monthValue, d.dayOfMonth))
++                        onSave(null, null, null, String.format("%04d-%02d-%02d", d.year, d.monthValue, d.dayOfMonth))
+                     }
+                 }) { Text(stringResource(R.string.common_ok)) }
+             },

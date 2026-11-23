@@ -23,15 +23,15 @@ const { accessOrSkip } = require('./helpers/db');
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'loadtest.js');
 
 test('the load script runs through without errors at a small load', async t => {
-  if (!(await accessOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await accessOrSkip(t, _req, { runMigrate: false }))) return;
   const r = spawnSync(process.execPath, [SCRIPT, '--users', '2', '--dauer', '1', '--sets', '20'], {
     encoding: 'utf8',
     env: { ...process.env },
     timeout: 120_000,
   });
-  const aus = `${r.stdout}\n${r.stderr}`;
-  assert.equal(r.status, 0, aus);
-  assert.match(r.stdout, /sets 20, parts 1500, minifigs 80, price_history 900/, aus);
+  const out = `${r.stdout}\n${r.stderr}`;
+  assert.equal(r.status, 0, out);
+  assert.match(r.stdout, /sets 20, parts 1500, minifigs 80, price_history 900/, out);
   for (const name of ['Galerie (Seite 1)', 'Teile-Liste', 'Minifiguren', 'Bewertung Sets', 'Portfolio-Verlauf'])
     assert.match(r.stdout, new RegExp(`^  ${name.replace(/[()]/g, '\\$&')}\\s+\\d+ ms$`, 'm'), name);
   assert.match(r.stdout, /Keine Fehler — alle Antworten HTTP 200/);

@@ -1,0 +1,20 @@
+Gegenprobe: Kennzahlen in einer Zeile ohne Umbruch
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: collection key figures wrap at 200 percent and stay fully visible
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
+@@ -65,10 +65,9 @@
+ @Composable
+ fun MetricsSeries(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+     Surface(modifier.fillMaxWidth(), shape = Shapes.bar, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+-        FlowRow(
++        Row(
+             Modifier.padding(horizontal = Spacing.edge, vertical = Spacing.small),
+             horizontalArrangement = Arrangement.spacedBy(Spacing.large),
+-            verticalArrangement = Arrangement.spacedBy(Spacing.tiny),
+         ) { content() }
+     }
+ }

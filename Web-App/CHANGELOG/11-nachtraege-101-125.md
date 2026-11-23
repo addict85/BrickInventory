@@ -217,7 +217,7 @@ Scrolling so stark ausgelastet." Damit war die Suche endlich am richtigen Ort.
 
 ### Der Befund
 
-`routes/api_v1/catalog.ts` hatte eine EIGENE Bild-Warteschlange. Sie holte zu
+`routes/api/catalog.ts` hatte eine EIGENE Bild-Warteschlange. Sie holte zu
 jedem gelisteten Set das Bild und rief `generateThumb()` DIREKT auf — vorbei an
 allem, was ich in fünf Nachträgen gedrosselt hatte:
 
@@ -1042,7 +1042,7 @@ Muster, das die Vorgabe vermeiden soll.
 
 ### 2. „Job noch nicht gelaufen", während im Log Durchgänge stehen
 
-`jobs/imageQueue.ts`, `routes/api_v1/admin.ts`
+`jobs/imageQueue.ts`, `routes/api/admin.ts`
 
 Der Stand des letzten Durchgangs lag als `letzterLauf` im Arbeitsspeicher des
 Moduls. Gesetzt wird er dort, wo der Job läuft (Primär-Worker); gelesen wurde er

@@ -8,10 +8,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 
-const erfassungen = {
-  '/v1/sets/10294-1/acquisitions': () => ({
+const acqList = {
+  '/v2/sets/10294-1/acquisitions': () => ({
     success: true,
     acquisitions: [{ id: 7, quantity: 1, condition: 'N', purchase_price: 129.99, created_at: '2026-06-01T10:00:00Z' }],
     totals: { quantity: 1, amount: 129.99 },
@@ -19,20 +19,20 @@ const erfassungen = {
 };
 
 async function dialog(browserLanguage) {
-  const o = await openUi(erfassungen, { sprache: 'de', browserLanguage });
-  const knopf = o.d.createElement('button');
-  knopf.dataset.click = 'openAcqModal';
-  knopf.dataset.arg = '10294-1';
-  o.d.body.append(knopf);
-  knopf.click();
-  await warte(() => o.d.getElementById('acq-preis-7'));
+  const o = await openUi(acqList, { language: 'de', browserLanguage });
+  const button = o.d.createElement('button');
+  button.dataset.click = 'openAcqModal';
+  button.dataset.arg = '10294-1';
+  o.d.body.append(button);
+  button.click();
+  await waitFor(() => o.d.getElementById('acq-price-7'));
   return o;
 }
 
 test('German browser, German app: the date appears once', async () => {
   const o = await dialog('de-DE');
   try {
-    assert.equal(o.d.getElementById('acq-datum-7'), null, 'das Datum steht unter dem Feld noch einmal');
+    assert.equal(o.d.getElementById('acq-date-7'), null, 'the date is shown once more below the field');
   } finally {
     o.w.close();
   }
@@ -41,7 +41,7 @@ test('German browser, German app: the date appears once', async () => {
 test('English browser, German app: the date appears below in German', async () => {
   const o = await dialog('en-US');
   try {
-    assert.match(o.d.getElementById('acq-datum-7')?.textContent ?? '', /1\. Juni 2026/);
+    assert.match(o.d.getElementById('acq-date-7')?.textContent ?? '', /1\. Juni 2026/);
   } finally {
     o.w.close();
   }

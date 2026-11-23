@@ -1,40 +1,40 @@
 /** The area's factory: services as closures over k (buildArea, src/infra/area.ts). */
-import { mit, buildArea, type Inspect } from '../infra/area';
-import { Faecher } from '../infra/cache';
-import * as anmeldepruefung from './loginCheck';
-import * as anmeldungAblauf from './loginFlow';
-import * as geraeteToken from './deviceToken';
+import { bound, buildArea, type Inspect } from '../infra/area';
+import { Compartments } from '../infra/cache';
+import * as loginCheck from './loginCheck';
+import * as loginFlow from './loginFlow';
+import * as deviceToken from './deviceToken';
 import { accountJobTypes } from './jobTypes';
-import * as kontoHinweis from './accountNotice';
-import * as nebenlaeufe from './sideRuns';
-import * as profilAendern from './changeProfile';
+import * as accountNotice from './accountNotice';
+import * as sideRuns from './sideRuns';
+import * as changeProfile from './changeProfile';
 import * as loginLimiter from './loginLimiter';
-import * as registrierungAblauf from './registrationFlow';
-import * as tokenWunsch from './tokenRequest';
-import * as verwalterAktionen from './adminActions';
-import * as verwalterProtokoll from './adminLog';
-import * as zugangsende from './accessEnd';
-import * as zielDrossel from './targetThrottle';
-import * as passwortBestaetigung from './passwordConfirmation';
-import * as sitzungsVersion from './sessionVersion';
+import * as registrationFlow from './registrationFlow';
+import * as tokenRequest from './tokenRequest';
+import * as adminActions from './adminActions';
+import * as adminLog from './adminLog';
+import * as accessEnd from './accessEnd';
+import * as targetThrottle from './targetThrottle';
+import * as passwordConfirmation from './passwordConfirmation';
+import * as sessionVersion from './sessionVersion';
 import * as accessesService from './accesses';
 import * as startAdminService from './startAdmin';
 import * as qrPairingService from './qrPairing';
 import * as accountsService from './accounts';
 import type { DevicesServices } from '../devices';
-import { zugang, type AccountDependencies, type AccountContext } from './context';
+import { access, type AccountDependencies, type AccountContext } from './context';
 
 export type { AccountDependencies, AccountContext } from './context';
 
-export function createAccount(a: Omit<AccountDependencies, 'faecher'>, inspect?: Inspect<AccountContext>) {
+export function createAccount(a: Omit<AccountDependencies, 'compartments'>, inspect?: Inspect<AccountContext>) {
   return buildArea(
-    { ...a, faecher: new Faecher() },
-    zugang,
+    { ...a, compartments: new Compartments() },
+    access,
     (k: AccountContext) => ({
       ...loginAndDevices(k),
-      ...konten(k),
-      verwalter: verwaltung(k),
-      sitzungen: sitzungen(k),
+      ...accounts(k),
+      admin: management(k),
+      sessions: sessions(k),
     }),
     inspect,
   );
@@ -43,90 +43,90 @@ export function createAccount(a: Omit<AccountDependencies, 'faecher'>, inspect?:
 /** Login, devices and tokens. */
 function loginAndDevices(k: AccountContext) {
   return {
-    verifyEmailToken: mit(k)(anmeldepruefung.verifyEmailToken),
-    checkCredentials: mit(k)(anmeldepruefung.checkCredentials),
-    eigenesPasswortAendern: mit(k)(anmeldungAblauf.eigenesPasswortAendern),
-    loginResponse: mit(k)(anmeldungAblauf.loginResponse),
-    devicesTokenIssue: mit(k)(anmeldungAblauf.devicesTokenIssue),
-    createQrAccess: mit(k)(anmeldungAblauf.createQrAccess),
+    verifyEmailToken: bound(k)(loginCheck.verifyEmailToken),
+    checkCredentials: bound(k)(loginCheck.checkCredentials),
+    changeOwnPassword: bound(k)(loginFlow.changeOwnPasswordChecked),
+    loginResponse: bound(k)(loginFlow.loginResponse),
+    devicesTokenIssue: bound(k)(loginFlow.devicesTokenIssue),
+    createQrAccess: bound(k)(loginFlow.createQrAccess),
     // The step guard (http/stepGuard.ts) asks the account whether the request may proceed; the rule lives in devices.
-    pruefeFreigabe: (...a: Parameters<DevicesServices['pruefeFreigabe']>) => k.devices.pruefeFreigabe(...a),
-    pruefeToken: mit(k)(geraeteToken.pruefeToken),
-    rotateToken: mit(k)(geraeteToken.rotateToken),
-    tokenLoeschen: mit(k)(geraeteToken.tokenLoeschen),
-    nutzerZumToken: mit(k)(geraeteToken.nutzerZumToken),
-    tokenGilt: mit(k)(geraeteToken.tokenGilt),
+    checkApproval: (...a: Parameters<DevicesServices['checkApproval']>) => k.devices.checkApproval(...a),
+    checkToken: bound(k)(deviceToken.checkToken),
+    rotateToken: bound(k)(deviceToken.rotateToken),
+    deleteToken: bound(k)(deviceToken.deleteToken),
+    userForToken: bound(k)(deviceToken.userForToken),
+    tokenValid: bound(k)(deviceToken.tokenValid),
   };
 }
 
 /** Accounts, accesses, administration and settings of the account. */
-function konten(k: AccountContext) {
+function accounts(k: AccountContext) {
   return {
-    onRaeumSteps: mit(k)(nebenlaeufe.onRaeumSteps),
-    adressHints: mit(k)(nebenlaeufe.adressHints),
-    accountsList: mit(k)(accountsService.accountsList),
-    profil: mit(k)(accountsService.profil),
-    profilAendern: mit(k)(profilAendern.profilAendern),
-    accountShortOf: mit(k)(accountsService.accountShortOf),
-    accountFullOf: mit(k)(accountsService.accountFullOf),
-    givesAccount: mit(k)(accountsService.givesAccount),
-    passwordSwitchDue: mit(k)(accountsService.passwordSwitchDue),
-    accountConfigured: mit(k)(accountsService.accountConfigured),
-    openFactorRequired: mit(k)(accountsService.openFactorRequired),
-    setPasswordPerLink: mit(k)(accountsService.setPasswordPerLink),
-    putAccountAn: mit(k)(accountsService.putAccountAn),
-    kontoEntfernen: mit(k)(verwalterAktionen.accountRemoveBy),
-    auftragsarten: accountJobTypes,
-    adminHintInBackground: mit(k)(kontoHinweis.adminHintInBackground),
-    hintInBackground: mit(k)(kontoHinweis.hintInBackground),
-    joinHousehold: mit(k)(kontoHinweis.joinHousehold),
-    countRequest: mit(k)(loginLimiter.countRequest),
-    redeemMailLink: mit(k)(verwalterAktionen.redeemMailLink),
-    reportDevice: mit(k)(qrPairingService.reportDevice),
-    holeQrTokenAb: mit(k)(qrPairingService.holeQrTokenAb),
-    discardPickup: mit(k)(qrPairingService.discardPickup),
-    kopplungsStand: mit(k)(qrPairingService.kopplungsStand),
-    confirmPairing: mit(k)(qrPairingService.confirmPairing),
-    rejectPairingAb: mit(k)(qrPairingService.rejectPairingAb),
-    tryRegistration: mit(k)(registrierungAblauf.tryRegistration),
-    confirmationAgainRequest: mit(k)(registrierungAblauf.confirmationAgainRequest),
-    ruecksetzLinkRequest: mit(k)(registrierungAblauf.ruecksetzLinkRequest),
-    nameToConfirmation: mit(k)(registrierungAblauf.nameToConfirmation),
-    accountToRuecksetzLink: mit(k)(registrierungAblauf.accountToRuecksetzLink),
-    putStartAdminAn: mit(k)(startAdminService.putStartAdminAn),
-    listenOnRevocation: mit(k)(zugangsende.listenOnRevocation),
-    tokenDetails: mit(k)(tokenWunsch.tokenDetails),
-    targetThrottled: mit(k)(zielDrossel.targetThrottled),
-    accountThrottled: mit(k)(zielDrossel.accountThrottled),
-    confirmSetupThrottled: mit(k)(passwortBestaetigung.confirmSetupThrottled),
-    checkConfirmation: mit(k)(passwortBestaetigung.checkConfirmation),
-    checkCodeConfirmation: mit(k)(passwortBestaetigung.checkCodeConfirmation),
+    onCleanupSteps: bound(k)(sideRuns.onCleanupSteps),
+    addressHints: bound(k)(sideRuns.addressHints),
+    accountsList: bound(k)(accountsService.accountsList),
+    profile: bound(k)(accountsService.profile),
+    changeProfile: bound(k)(changeProfile.changeProfile),
+    accountShortOf: bound(k)(accountsService.accountShortOf),
+    accountFullOf: bound(k)(accountsService.accountFullOf),
+    givesAccount: bound(k)(accountsService.givesAccount),
+    passwordSwitchDue: bound(k)(accountsService.passwordSwitchDue),
+    accountConfigured: bound(k)(accountsService.accountConfigured),
+    openFactorRequired: bound(k)(accountsService.openFactorRequired),
+    setPasswordPerLink: bound(k)(accountsService.setPasswordPerLink),
+    addAccount: bound(k)(accountsService.addAccount),
+    removeAccount: bound(k)(adminActions.accountRemoveBy),
+    jobKinds: accountJobTypes,
+    adminHintInBackground: bound(k)(accountNotice.adminHintInBackground),
+    hintInBackground: bound(k)(accountNotice.hintInBackground),
+    joinHousehold: bound(k)(accountNotice.joinHousehold),
+    countRequest: bound(k)(loginLimiter.countRequest),
+    redeemMailLink: bound(k)(adminActions.redeemMailLink),
+    reportDevice: bound(k)(qrPairingService.reportDevice),
+    fetchQrToken: bound(k)(qrPairingService.fetchQrToken),
+    discardPickup: bound(k)(qrPairingService.discardPickup),
+    pairingState: bound(k)(qrPairingService.pairingState),
+    confirmPairing: bound(k)(qrPairingService.confirmPairing),
+    rejectPairing: bound(k)(qrPairingService.rejectPairing),
+    tryRegistration: bound(k)(registrationFlow.tryRegistration),
+    confirmationAgainRequest: bound(k)(registrationFlow.confirmationAgainRequest),
+    resetLinkRequest: bound(k)(registrationFlow.resetLinkRequest),
+    nameToConfirmation: bound(k)(registrationFlow.nameToConfirmation),
+    accountToResetLink: bound(k)(registrationFlow.accountToResetLink),
+    createStartAdmin: bound(k)(startAdminService.createStartAdmin),
+    listenOnRevocation: bound(k)(accessEnd.listenOnRevocation),
+    tokenDetails: bound(k)(tokenRequest.tokenDetails),
+    targetThrottled: bound(k)(targetThrottle.targetThrottled),
+    accountThrottled: bound(k)(targetThrottle.accountThrottled),
+    confirmSetupThrottled: bound(k)(passwordConfirmation.confirmSetupThrottled),
+    checkConfirmation: bound(k)(passwordConfirmation.checkConfirmation),
+    checkCodeConfirmation: bound(k)(passwordConfirmation.checkCodeConfirmation),
   };
 }
 
 /** Sessions and app accesses of the own account. */
-function sitzungen(k: AccountContext) {
+function sessions(k: AccountContext) {
   return {
-    accessesList: mit(k)(accessesService.accessesList),
-    endAccess: mit(k)(accessesService.endAccess),
-    endOther: mit(k)(zugangsende.endOther),
-    limit: mit(k)(zugangsende.limitSessions),
-    versionFromDb: mit(k)(sitzungsVersion.sessionVersionFromDb),
-    currentVersion: mit(k)(sitzungsVersion.currentSessionVersion),
+    accessesList: bound(k)(accessesService.accessesList),
+    endAccess: bound(k)(accessesService.endAccess),
+    endOther: bound(k)(accessEnd.endOther),
+    limit: bound(k)(accessEnd.limitSessions),
+    versionFromDb: bound(k)(sessionVersion.sessionVersionFromDb),
+    currentVersion: bound(k)(sessionVersion.currentSessionVersion),
   };
 }
 
 /** Administrators on foreign accounts: changes, takeovers and their log. */
-function verwaltung(k: AccountContext) {
+function management(k: AccountContext) {
   return {
-    unlockRegistration: mit(k)(verwalterAktionen.unlockRegistration),
-    aktivSetzen: mit(k)(verwalterAktionen.aktivSetzen),
-    verwalterRolleSetzen: mit(k)(verwalterAktionen.verwalterRolleSetzen),
-    passwordByAdmin: mit(k)(verwalterAktionen.passwordByAdmin),
-    factorByAdmin: mit(k)(verwalterAktionen.factorByAdmin),
-    cancelTakeovers: mit(k)(verwalterAktionen.cancelTakeovers),
-    rememberAdminAction: mit(k)(verwalterProtokoll.rememberAdminAction),
-    managementLog: mit(k)(verwalterProtokoll.managementLog),
+    unlockRegistration: bound(k)(adminActions.unlockRegistration),
+    setActive: bound(k)(adminActions.setActive),
+    setAdminRole: bound(k)(adminActions.setAdminRole),
+    passwordByAdmin: bound(k)(adminActions.passwordByAdmin),
+    factorByAdmin: bound(k)(adminActions.factorByAdmin),
+    cancelTakeovers: bound(k)(adminActions.cancelTakeovers),
+    rememberAdminAction: bound(k)(adminLog.rememberAdminAction),
+    managementLog: bound(k)(adminLog.managementLog),
   };
 }
 

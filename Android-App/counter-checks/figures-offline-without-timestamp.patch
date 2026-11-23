@@ -1,0 +1,16 @@
+Gegenprobe: Ohne Netz melden die Figuren einen Fehler, obwohl die Quelle einen Stand hat
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartsTest
+Rot: without network the figures stay, with their state
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/Parts.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/Parts.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/Parts.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/Parts.kt
+@@ -84,7 +84,6 @@
+     fun outbox(r: Outcome<Unit>, state: Long?, done: (S, Long?) -> S, error: (S, Outcome.Failure) -> S) {
+         when {
+             r is Outcome.Success -> uiState.update { done(it, null) }
+-            r is Outcome.Failure && r.transient && state != null -> uiState.update { done(it, state) }
+             r is Outcome.Failure -> {
+                 uiState.update { error(it, r) }
+                 reportError(r)

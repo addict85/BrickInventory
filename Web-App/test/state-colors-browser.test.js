@@ -45,8 +45,8 @@ window.addEventListener('load', () => {
       const g = farbton(cs.backgroundColor), t = farbton(cs.color);
       const satt = c => { const v=(c.match(/[\\d.]+/g)||[]).slice(0,3).map(Number); return Math.max(...v)-Math.min(...v); };
       return satt(cs.backgroundColor) >= satt(cs.color) ? g : t; };
-    return { design: s.dataset.design, neu: plakette('.cond-new'), gebr: plakette('.cond-used'),
-             linieNeu: f('.linie-neu', 'backgroundColor'), linieGebr: f('.linie-gebr', 'backgroundColor') };
+    return { design: s.dataset.design, fresh: plakette('.cond-new'), gebr: plakette('.cond-used'),
+             lineNew: f('.linie-neu', 'backgroundColor'), lineUsed: f('.linie-gebr', 'backgroundColor') };
   });
   document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(e) + 'ENDE';
 });
@@ -59,10 +59,10 @@ test('condition colors in all designs', t => {
     t.skip('no Chrome found');
     return;
   }
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'zustand-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testPage());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zustand-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'seite.html');
+  fs.writeFileSync(file, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -73,23 +73,20 @@ test('condition colors in all designs', t => {
       '--window-size=800,800',
       '--virtual-time-budget=3000',
       '--dump-dom',
-      `file://${datei}`,
+      `file://${file}`,
     ],
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.equal(e.length, DESIGNS.length);
-  const blau = h => h >= 190 && h <= 250,
+  const blue = h => h >= 190 && h <= 250,
     bernstein = h => h >= 20 && h <= 55;
   for (const d of e) {
-    assert.ok(blau(d.neu), `${d.design}: Neu ist nicht blau (Farbton ${d.neu})`);
-    assert.ok(blau(d.linieNeu), `${d.design}: Diagrammlinie Neu ist nicht blau (Farbton ${d.linieNeu})`);
-    assert.ok(bernstein(d.gebr), `${d.design}: Gebraucht ist nicht bernstein (Farbton ${d.gebr})`);
-    assert.ok(
-      bernstein(d.linieGebr),
-      `${d.design}: Diagrammlinie Gebraucht ist nicht bernstein (Farbton ${d.linieGebr})`,
-    );
+    assert.ok(blue(d.fresh), `${d.design}: new is not blue (hue ${d.fresh})`);
+    assert.ok(blue(d.lineNew), `${d.design}: chart line for new is not blue (hue ${d.lineNew})`);
+    assert.ok(bernstein(d.gebr), `${d.design}: used is not amber (hue ${d.gebr})`);
+    assert.ok(bernstein(d.lineUsed), `${d.design}: chart line for used is not amber (hue ${d.lineUsed})`);
   }
 });

@@ -1,0 +1,16 @@
+Gegenprobe: Die Pflichtmaske des zweiten Faktors lädt wieder per LaunchedEffect
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: screens do not trigger loading via LaunchedEffect, states carry loading and message
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
+@@ -264,6 +264,7 @@
+             )
+         } else if (factorRequired && loggedIn) {
+             val factorState by startAccountVm.secondFactorState.collectAsStateWithLifecycle()
++            LaunchedEffect(Unit) { startAccountVm.loadSecondFactor() }
+             SecondFactorRequiredMask(
+                 condition = factorState,
+                 onSetUp = startAccountVm::setUpSecondFactorOne,

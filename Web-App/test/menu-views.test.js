@@ -5,7 +5,7 @@
  * Counter-checks (measured 10.11.2026, each on its own, bundle rebuilt):
  *   A  in index.html data-arg="gutscheine" → "gutschein" → red: “every
  *      menu entry opens …” and “every view without a tab …”
- *   B  the VIEWS entry `daten` removed in navigation.js → red: “every
+ *   B  the VIEWS entry `data` removed in navigation.js → red: “every
  *      menu entry opens …” (daten opens nothing)
  *   C  in sitzung.js the line that shows #ntab-settings for admins
  *      removed → red: “only an admin sees settings and background jobs …”
@@ -17,49 +17,49 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, ANMELDUNG, sicht, takt } = require('./helpers/ui');
+const { openUi, SIGNED_IN, view, tick } = require('./helpers/ui');
 
-const KONTO = admin => ({
-  '/v1/auth/me': { success: true, loggedIn: true, user: { ...ANMELDUNG['/v1/auth/me'].user, is_admin: admin } },
+const ACCOUNT = admin => ({
+  '/v2/auth/me': { success: true, loggedIn: true, user: { ...SIGNED_IN['/v2/auth/me'].user, is_admin: admin } },
 });
 // Every view gets an empty, contract-conforming response (checkResponse adds the required fields).
-const SICHTDATEN = Object.fromEntries(
+const VIEW_DATA = Object.fromEntries(
   [
-    '/v1/vouchers',
-    '/v1/alerts',
-    '/v1/storage/locations',
-    '/v1/storage',
-    '/v1/papierkorb',
-    '/v1/settings/tokens',
-    '/v1/settings/tls',
-    '/v1/settings/household',
-    '/v1/auth/profile',
-    '/v1/auth/zweiter-faktor',
-    '/v1/auth/passkeys',
+    '/v2/vouchers',
+    '/v2/alerts',
+    '/v2/storage/locations',
+    '/v2/storage',
+    '/v2/trash',
+    '/v2/settings/tokens',
+    '/v2/settings/tls',
+    '/v2/settings/household',
+    '/v2/auth/profile',
+    '/v2/auth/second-factor',
+    '/v2/auth/passkeys',
   ].map(p => [p, { success: true }]),
 );
-const eintraege = d => [...d.querySelectorAll('.umenu-item[data-click="oeffneSicht"]')];
+const entries = d => [...d.querySelectorAll('.umenu-item[data-click="openView"]')];
 
 test('every menu entry opens its area and loads it', async () => {
-  const o = await openUi(SICHTDATEN);
+  const o = await openUi(VIEW_DATA);
   try {
-    await o.ruhig();
-    const namen = eintraege(o.d).map(e => e.dataset.arg);
-    assert.equal(namen.length, 7, `${namen.length} Sichten im Menü statt sieben`);
-    const fehler = [];
-    for (const name of namen) {
-      const vorher = o.aufrufe.length;
-      await sicht(o.w, name);
-      await o.ruhig();
-      const aktiv = [...o.d.querySelectorAll('.tab.active')].map(t => t.id);
-      if (aktiv.join() !== `tab-${name}`) fehler.push(`${name}: aktiv ist ${aktiv.join(', ') || 'nichts'}`);
-      if (o.aufrufe.length === vorher) fehler.push(`${name}: lädt nichts`);
+    await o.settle();
+    const names = entries(o.d).map(e => e.dataset.arg);
+    assert.equal(names.length, 7, `${names.length} views in the menu instead of seven`);
+    const error = [];
+    for (const name of names) {
+      const prior = o.calls.length;
+      await view(o.w, name);
+      await o.settle();
+      const active = [...o.d.querySelectorAll('.tab.active')].map(t => t.id);
+      if (active.join() !== `tab-${name}`) error.push(`${name}: aktiv ist ${active.join(', ') || 'nichts'}`);
+      if (o.calls.length === prior) error.push(`${name}: lädt nichts`);
     }
-    assert.deepEqual(fehler, []);
+    assert.deepEqual(error, []);
     assert.deepEqual(
-      o.fehler.map(e => e.message),
+      o.error.map(e => e.message),
       [],
-      'ein Lader ist gescheitert',
+      'a loader failed',
     );
   } finally {
     o.w.close();
@@ -69,14 +69,14 @@ test('every menu entry opens its area and loads it', async () => {
 test('every view without a tab is reachable via the menu', async () => {
   const o = await openUi();
   try {
-    const reiter = new Set([...o.d.querySelectorAll('.ntab[data-tab]')].map(r => r.dataset.tab));
-    const inMenu = new Set(eintraege(o.d).map(e => e.dataset.arg));
+    const switchTab = new Set([...o.d.querySelectorAll('.ntab[data-tab]')].map(r => r.dataset.tab));
+    const inMenu = new Set(entries(o.d).map(e => e.dataset.arg));
     const surfaces = [...o.d.querySelectorAll('.tab[id^="tab-"]')].map(t => t.id.slice(4));
-    assert.ok(surfaces.length >= 14, `nur ${surfaces.length} Flächen gefunden`);
+    assert.ok(surfaces.length >= 14, `only ${surfaces.length} surfaces found`);
     assert.deepEqual(
-      surfaces.filter(n => !reiter.has(n) && !inMenu.has(n)),
+      surfaces.filter(n => !switchTab.has(n) && !inMenu.has(n)),
       [],
-      'Diese Flächen öffnet weder ein Reiter noch das Menü',
+      'Neither a tab nor the menu opens these surfaces',
     );
   } finally {
     o.w.close();
@@ -85,13 +85,13 @@ test('every view without a tab is reachable via the menu', async () => {
 
 test('only an admin sees settings and background jobs', async () => {
   for (const admin of [true, false]) {
-    const o = await openUi(KONTO(admin));
+    const o = await openUi(ACCOUNT(admin));
     try {
-      await o.ruhig();
-      const sichtbar = el => el.style.display !== 'none';
-      assert.equal(sichtbar(o.d.getElementById('ntab-settings')), admin, `Reiter Einstellungen, Verwalter=${admin}`);
+      await o.settle();
+      const visible = el => el.style.display !== 'none';
+      assert.equal(visible(o.d.getElementById('ntab-settings')), admin, `settings tab, admin=${admin}`);
       for (const el of o.d.querySelectorAll('.umenu-item.admin-only'))
-        assert.equal(sichtbar(el), admin, `${el.dataset.arg} im Menü, Verwalter=${admin}`);
+        assert.equal(visible(el), admin, `${el.dataset.arg} in the menu, admin=${admin}`);
     } finally {
       o.w.close();
     }
@@ -100,42 +100,45 @@ test('only an admin sees settings and background jobs', async () => {
 
 test('every menu entry keeps its icon, even after translating', async () => {
   const words = require('./helpers/sources').loadTranslations().en;
-  const o = await openUi({}, { sprache: 'en' });
+  const o = await openUi({}, { language: 'en' });
   try {
-    await o.ruhig();
-    const knoepfe = [...o.d.querySelectorAll('#umenu-pop button')];
-    assert.equal(knoepfe.length, 10, `${knoepfe.length} Einträge statt zehn`);
-    const falsch = [];
-    for (const k of knoepfe) {
-      const ziel = k.querySelector('svg.ico use')?.getAttribute('href');
+    await o.settle();
+    const buttonList = [...o.d.querySelectorAll('#umenu-pop button')];
+    assert.equal(buttonList.length, 10, `${buttonList.length} entries instead of ten`);
+    const wrong = [];
+    for (const k of buttonList) {
+      const target = k.querySelector('svg.ico use')?.getAttribute('href');
       const text = k.querySelector('[data-i18n]');
-      if (!ziel || !o.d.getElementById(ziel.slice(1)))
-        falsch.push(`${k.textContent.trim()}: kein Symbol aus dem Sprite`);
+      if (!target || !o.d.getElementById(target.slice(1)))
+        wrong.push(`${k.textContent.trim()}: kein Symbol aus dem Sprite`);
       if (!text || text.textContent !== words[text.dataset.i18n])
-        falsch.push(`${k.textContent.trim()}: nicht übersetzt`);
+        wrong.push(`${k.textContent.trim()}: nicht übersetzt`);
     }
-    assert.deepEqual(falsch, []);
+    assert.deepEqual(wrong, []);
   } finally {
     o.w.close();
   }
 });
 
 test('logout stands once, in the drawer, and logs out', async () => {
-  const o = await openUi({ '/v1/auth/logout': { success: true } });
+  const o = await openUi({ '/v2/auth/logout': { success: true } });
   try {
-    await o.ruhig();
-    const knopf = o.d.querySelectorAll('#btn-logout');
-    assert.equal(knopf.length, 1);
-    assert.ok(o.d.getElementById('umenu-pop').contains(knopf[0]), 'Abmelden steht nicht in der Klappe');
-    assert.ok(knopf[0].previousElementSibling?.matches('hr.umenu-trenner'), 'vor Abmelden fehlt der Trenner');
-    knopf[0].click();
-    await takt(30);
-    await o.ruhig();
+    await o.settle();
+    const button = o.d.querySelectorAll('#btn-logout');
+    assert.equal(button.length, 1);
+    assert.ok(o.d.getElementById('umenu-pop').contains(button[0]), '„Abmelden“ is not in the dropdown');
     assert.ok(
-      o.aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/auth/logout')),
-      'kein Abmeldeaufruf',
+      button[0].previousElementSibling?.matches('hr.umenu-divider'),
+      'the separator before „Abmelden“ is missing',
     );
-    assert.equal(o.d.getElementById('login-screen').style.display, 'flex', 'die Anmeldemaske erscheint nicht');
+    button[0].click();
+    await tick(30);
+    await o.settle();
+    assert.ok(
+      o.calls.some(a => a.method === 'POST' && a.url.endsWith('/v2/auth/logout')),
+      'no logout call',
+    );
+    assert.equal(o.d.getElementById('login-screen').style.display, 'flex', 'the login form does not appear');
   } finally {
     o.w.close();
   }
@@ -145,7 +148,7 @@ test('the header bar keeps its deliberate height', () => {
   // The height belongs to the header bar, not .btn-sm: the class carries half the
   // UI; min-height 32 px is the compact button size.
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-  assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*(max\()?\d+px/, 'In `.umenu` steht keine Höhe mehr.');
-  assert.match(css, /\.umenu \.ubadge\{height:var\(--kopf-hoehe\)\}/, 'Der Namensknopf nimmt die Höhe nicht mehr.');
-  assert.doesNotMatch(css, /\.btn-sm\{[^}]*(?<!min-)height:/, '`.btn-sm` hat eine feste Höhe bekommen.');
+  assert.match(css, /\.umenu\{[^}]*--header-height:\s*(max\()?\d+px/, '`.umenu` no longer sets a height.');
+  assert.match(css, /\.umenu \.ubadge\{height:var\(--header-height\)\}/, 'The name button no longer takes the height.');
+  assert.doesNotMatch(css, /\.btn-sm\{[^}]*(?<!min-)height:/, '`.btn-sm` has been given a fixed height.');
 });

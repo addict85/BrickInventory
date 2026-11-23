@@ -1,0 +1,17 @@
+Gegenprobe: die Teileliste (Inventar im Klartext) bleibt nach der Frist liegen, die Altersprüfung ist umgedreht
+Modul: core-data
+Test: ch.brickinventoryapp.data.PartListsStoreTest
+Rot: after the deadline the parts list disappears, a fresh one stays
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
+@@ -75,7 +75,7 @@
+ fun cleanOldPartListOn(intern: File, now: Long, deadline: Long = PART_LIST_DEADLINE_MS): Boolean {
+     File(File(intern, "pdf"), "teileliste.pdf").delete()
+     val file = File(File(intern, "pdf"), PART_LIST_FILE)
+-    return file.isFile && now - file.lastModified() >= deadline && file.delete()
++    return file.isFile && now - file.lastModified() < deadline && file.delete()
+ }
+ 
+ /**

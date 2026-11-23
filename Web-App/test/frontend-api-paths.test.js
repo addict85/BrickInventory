@@ -1,48 +1,50 @@
 /**
  * Every API path of the frontend hits a route of the server.
+ *
+ * Counter-check: `api('GET', '/v2/zz-nowhere')` appended to public/js/catalog.js → red “every API path of the frontend hits a route”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { pathForm, leseLiteral } = require('./helpers/sources');
+const { pathForm, readLiteral } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 
 /** All routes of the server as [METHOD, full path]. */
-function routen() {
-  const raus = new Set();
-  // The mount points from server.ts (helpers/sources.js), without api_v1.
-  for (const r of require('./helpers/sources').routerEinhaengungen()) collect(`routes/${r.name}`, r.mount);
-  // api_v1 is included via index.ts — read the files directly.
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1'))) {
-    if (f.endsWith('.ts')) collect(`routes/api_v1/${f.replace(/\.ts$/, '')}`, '/api/v1');
+function routes() {
+  const result = new Set();
+  // The mount points from server.ts (helpers/sources.js), without routes/api.
+  for (const r of require('./helpers/sources').routerMounts()) collect(`routes/${r.name}`, r.mount);
+  // routes/api is included via index.ts — read the files directly.
+  for (const f of fs.readdirSync(path.join(ROOT, 'routes/api'))) {
+    if (f.endsWith('.ts')) collect(`routes/api/${f.replace(/\.ts$/, '')}`, '/api/v2');
   }
   // And the few that hang directly in server.ts (startup-status, health …).
   const srv = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
   for (const m of srv.matchAll(/app\.(get|post|put|delete|patch)\(\s*'(\/api\/[^']+)'/g))
-    raus.add(`${m[1].toUpperCase()} ${m[2]}`);
+    result.add(`${m[1].toUpperCase()} ${m[2]}`);
 
-  function collect(rel, praefix) {
-    const datei = path.join(ROOT, rel + '.ts');
-    if (!fs.existsSync(datei)) return;
-    const s = fs.readFileSync(datei, 'utf8');
-    for (const m of require('./helpers/sources').routesFromSource(s, praefix)) {
-      raus.add(`${m[1].toUpperCase()} ${(praefix + m[2]).replace(/\/\//g, '/')}`);
+  function collect(rel, prefix) {
+    const file = path.join(ROOT, rel + '.ts');
+    if (!fs.existsSync(file)) return;
+    const s = fs.readFileSync(file, 'utf8');
+    for (const m of require('./helpers/sources').routesFromSource(s, prefix)) {
+      result.add(`${m[1].toUpperCase()} ${(prefix + m[2]).replace(/\/\//g, '/')}`);
     }
   }
-  return [...raus].map(z => {
+  return [...result].map(z => {
     const [me, ...r] = z.split(' ');
     return [me, r.join(' ')];
   });
 }
 
-const ROUTES = routen();
+const ROUTES = routes();
 
-function passt(methode, pfad) {
-  const tp = pfad.replace(/^\/|\/$/g, '').split('/');
+function fits(method, path) {
+  const tp = path.replace(/^\/|\/$/g, '').split('/');
   return ROUTES.some(([rm, rp]) => {
-    if (rm !== methode) return false;
+    if (rm !== method) return false;
     const tr = rp.replace(/^\/|\/$/g, '').split('/');
     if (tr.length !== tp.length && !rp.endsWith('*')) return false;
     return tr.every((a, i) => a.startsWith(':') || a === '*' || tp[i] === ':x' || a === tp[i]);
@@ -52,18 +54,18 @@ function passt(methode, pfad) {
 /**
  * `${…}` becomes a placeholder segment, the query part drops.
  */
-function normieren(roh) {
-  return ('/api' + pathForm(roh, ':x')).replace(/\/$/, '');
+function normalize(raw) {
+  return ('/api' + pathForm(raw, ':x')).replace(/\/$/, '');
 }
 
 test('every API path of the frontend hits a route', () => {
-  assert.ok(ROUTES.length > 100, `nur ${ROUTES.length} Routen gefunden — das Muster greift nicht mehr`);
+  assert.ok(ROUTES.length > 100, `only ${ROUTES.length} routes found — the pattern no longer matches`);
 
   // First path segments the server knows under /api.
-  const segmente = new Set(ROUTES.map(([, rp]) => rp.replace(/^\//, '').split('/')[1]).filter(Boolean));
+  const segmentList = new Set(ROUTES.map(([, rp]) => rp.replace(/^\//, '').split('/')[1]).filter(Boolean));
 
   // Also the .js directly under public/
-  const dateien = [
+  const files = [
     ...fs
       .readdirSync(path.join(ROOT, 'public'))
       .filter(x => x.endsWith('.js'))
@@ -73,36 +75,36 @@ test('every API path of the frontend hits a route', () => {
       .filter(x => x.endsWith('.js') && x !== 'app.bundle.js')
       .map(x => [x, path.join(ROOT, 'public', 'js', x)]),
   ];
-  const fehler = [];
-  for (const [f, voll] of dateien) {
-    const s = fs.readFileSync(voll, 'utf8');
+  const error = [];
+  for (const [f, full] of files) {
+    const s = fs.readFileSync(full, 'utf8');
 
-    const direkt = new Map();
+    const direct = new Map();
     // The literal is READ, not cut with a pattern: here
     // stood ``(`[^`]*`|'[^']*')``, and that breaks at a backtick
     // inside. MEASURED it delivered for
     for (const m of s.matchAll(/\bapi(?:Roh|Raw)?\(\s*'(GET|POST|PUT|DELETE|PATCH)'\s*,\s*/g)) {
-      const lit = leseLiteral(s, m.index + m[0].length);
+      const lit = readLiteral(s, m.index + m[0].length);
       if (!lit?.text.startsWith('/')) continue;
-      const p = normieren(lit.text);
-      if (!direkt.has(p)) direkt.set(p, new Set());
-      direkt.get(p).add(m[1]);
+      const p = normalize(lit.text);
+      if (!direct.has(p)) direct.set(p, new Set());
+      direct.get(p).add(m[1]);
     }
-    for (const [p, methoden] of direkt) {
-      for (const me of methoden) {
-        if (!passt(me, p)) fehler.push(`${f}: ${me} ${p} — keine passende Route`);
+    for (const [p, methods] of direct) {
+      for (const me of methods) {
+        if (!fits(me, p)) error.push(`${f}: ${me} ${p} — keine passende Route`);
       }
     }
 
     // Paths that are first built into a variable.
     for (const m of s.matchAll(/`\//g)) {
-      const lit = leseLiteral(s, m.index);
+      const lit = readLiteral(s, m.index);
       if (!lit) continue;
-      const p = normieren(lit.text);
+      const p = normalize(lit.text);
       const seg = p.replace(/^\/api\/?/, '').split('/')[0];
-      if (!segmente.has(seg) || direkt.has(p)) continue;
-      if (!['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].some(me => passt(me, p))) {
-        fehler.push(`${f}: ${p} — keine passende Route (Pfad in einer Variablen)`);
+      if (!segmentList.has(seg) || direct.has(p)) continue;
+      if (!['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].some(me => fits(me, p))) {
+        error.push(`${f}: ${p} — keine passende Route (Pfad in einer Variablen)`);
       }
     }
   }
@@ -110,15 +112,15 @@ test('every API path of the frontend hits a route', () => {
   // invisible again — and the rule permanently green without ever looking. MEASURED
   // when extending: i18n.js is included.
   assert.ok(
-    dateien.some(([f]) => f === 'i18n.js'),
-    'public/i18n.js wird nicht gelesen — genau die Luecke, die am 25.09. einen 404 durchliess.',
+    files.some(([f]) => f === 'i18n.js'),
+    'public/i18n.js is not read — exactly the gap that let a 404 through on 25.09.',
   );
 
   assert.deepEqual(
-    fehler,
+    error,
     [],
-    'Frontend-Pfade ohne Route:\n  ' +
-      fehler.join('\n  ') +
-      '\nSolche Aufrufe scheitern still, wenn ein .catch() daran hängt.',
+    'Frontend paths without a route:\n  ' +
+      error.join('\n  ') +
+      '\nSuch calls fail silently when a .catch() is attached.',
   );
 });

@@ -21,7 +21,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test('a new copy follows the acquisitions, not the stored value', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   // The daily rule stands as an index in migration 0047; without it the
   // ON CONFLICT does not apply when capturing.
   const mc = await db.pool.connect();
@@ -33,13 +33,13 @@ test('a new copy follows the acquisitions, not the stored value', { concurrency:
 
   const U = `neuzust-${process.pid}`,
     SET = '60445-1';
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     await db.run('DELETE FROM set_acquisitions WHERE set_number=$1', [SET]).catch(() => {});
     await db.run('DELETE FROM sets WHERE set_number=$1', [SET]).catch(() => {});
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SET]).catch(() => {});
     await db.run('DELETE FROM users WHERE username=$1', [U]).catch(() => {});
   };
-  await aufraeumen();
+  await cleanUp();
 
   try {
     await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [U]);
@@ -76,18 +76,21 @@ test('a new copy follows the acquisitions, not the stored value', { concurrency:
         WHERE user_id=$1 AND set_number=$2 ORDER BY created_at ASC, id ASC`,
       [uid, SET],
     );
-    assert.equal(erf.length, 2, 'Die Mengenerhoehung hat keine neue Erfassung angelegt');
+    assert.equal(erf.length, 2, 'Increasing the quantity created no new acquisition');
     // Counter-check: in priceForNewEntry pin the condition to
     // DEFAULT_PRICE_CONDITION -> here stands 'N' and 100.
-    assert.equal(erf[1].condition, 'U', 'Das neue Exemplar traegt die Vorgabe statt den Zustand der Erfassungen');
+    assert.equal(
+      erf[1].condition,
+      'U',
+      'The new copy carries the default instead of the condition of the acquisitions',
+    );
     assert.equal(
       erf[1].p,
       20,
-      'Das neue Exemplar hat den Neupreis bekommen, obwohl das Set gebraucht ist — ' +
-        'das geht in Bestandswert und G&V ein',
+      'The new copy got the new price although the set is used — ' + 'that goes into the stock value and the P&L',
     );
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end();
   }
 });
@@ -97,22 +100,22 @@ test('a new copy follows the acquisitions, not the stored value', { concurrency:
  */
 test('no source reads purchase price or condition from sets', () => {
   // Found, not enumerated.
-  const dateien = [];
-  const gehen = d => {
+  const files = [];
+  const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts'].includes(e.name) || e.name.startsWith('.')) continue;
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) gehen(abs);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+      if (e.isDirectory()) go(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) files.push(abs);
     }
   };
-  gehen(ROOT);
-  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  go(ROOT);
+  assert.ok(files.length >= 40, `Only ${files.length} source files found — the search no longer works`);
 
   // What is searched for are the forms in which the two columns actually
   // occurred in this tree — FOUND, not invented (git log of migration
   // 0032 names every place):
-  const verboten = [
+  const forbidden = [
     /\bs\.purchase_price\b/i,
     /\bs\.condition\b/i,
     /UPDATE sets SET (purchase_price|condition)\b/i,
@@ -121,36 +124,36 @@ test('no source reads purchase price or condition from sets', () => {
     /COALESCE\(condition,'N'\) AS c\s*\n?\s*FROM sets\b/i,
     /INSERT INTO sets \([^)]*\b(purchase_price|condition)\b/i,
   ];
-  const treffer = [];
-  let geprueft = 0;
-  for (const f of dateien) {
+  const hits = [];
+  let checked = 0;
+  for (const f of files) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
-    geprueft++;
-    for (const r of verboten) {
+    checked++;
+    for (const r of forbidden) {
       const m = code.match(r);
-      if (m) treffer.push(`${path.relative(ROOT, f)}: ${m[0].replace(/\s+/g, ' ')}`);
+      if (m) hits.push(`${path.relative(ROOT, f)}: ${m[0].replace(/\s+/g, ' ')}`);
     }
   }
   // Self-proof with a MEASURED number: the patterns must really trigger on a text that
   // contains them — otherwise the rule would be vacuously true.
   const probe = `SELECT s.condition, s.purchase_price FROM sets s
     INSERT INTO sets (user_id,purchase_price) VALUES ($1,$2)`;
-  const angeschlagen = verboten.filter(r => r.test(probe)).length;
+  const damaged = forbidden.filter(r => r.test(probe)).length;
   assert.equal(
-    angeschlagen,
+    damaged,
     3,
-    `Von den Mustern schlugen ${angeschlagen} auf der Probe an, erwartet 3 ` +
-      '(s.condition, s.purchase_price, INSERT INTO sets mit purchase_price)',
+    `${damaged} of the patterns fired on the probe, expected 3 ` +
+      '(s.condition, s.purchase_price, INSERT INTO sets with purchase_price)',
   );
-  assert.ok(geprueft >= 40, `Nur ${geprueft} Dateien geprueft — die Suche greift nicht mehr`);
+  assert.ok(checked >= 40, `Only ${checked} files checked — the search no longer works`);
   assert.deepEqual(
-    treffer,
+    hits,
     [],
-    'Diese Stellen lesen oder schreiben Kaufpreis/Zustand auf der sets-Zeile. ' +
-      'Beides steht seit Migration 0032 nur in set_acquisitions; genau aus dem ' +
-      'Nebeneinander sind in diesem Baum achtmal dieselben Fehler entstanden.',
+    'These places read or write purchase price/condition on the sets row. ' +
+      'Since migration 0032 both live only in set_acquisitions; exactly this ' +
+      'coexistence produced the same bugs eight times in this tree.',
   );
 });

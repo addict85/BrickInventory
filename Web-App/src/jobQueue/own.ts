@@ -3,19 +3,19 @@
 import type { JobKind } from './jobs';
 import type { JobsContext } from './context';
 
-export function ownJob(k: JobsContext, art: JobKind, schluessel: string, uid: number) {
-  return k.eigene.ownRow(art, schluessel, uid);
+export function ownJob(k: JobsContext, kind: JobKind, key: string, uid: number) {
+  return k.ownRows.ownRow(kind, key, uid);
 }
 
-export async function deleteOwn(k: JobsContext, art: JobKind, schluessel: string, uid: number) {
-  await k.eigene.deleteOwnRow(art, schluessel, uid);
+export async function deleteOwn(k: JobsContext, kind: JobKind, key: string, uid: number) {
+  await k.ownRows.deleteOwnRow(kind, key, uid);
 }
 
-export async function countRunning(k: JobsContext, art: JobKind, uid: number, deadlineSec: number) {
-  return (await k.eigene.countRunningRows(art, uid, deadlineSec))?.n ?? 0;
+export async function countRunning(k: JobsContext, kind: JobKind, uid: number, deadlineSec: number) {
+  return (await k.ownRows.countRunningRows(kind, uid, deadlineSec))?.n ?? 0;
 }
 
 /** @returns the keys of the deleted ones, so that their files go along */
-export async function deleteEnded(k: JobsContext, art: JobKind, deadlineSec: number): Promise<string[]> {
-  return (await k.eigene.deleteEndedRows(art, deadlineSec)).map(r => r.dedupe_key);
+export async function deleteEnded(k: JobsContext, kind: JobKind, deadlineSec: number): Promise<string[]> {
+  return (await k.ownRows.deleteEndedRows(kind, deadlineSec)).map(r => r.dedupe_key);
 }

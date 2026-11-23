@@ -53,9 +53,10 @@ Danach:
 | Befehl | Ergebnis |
 | --- | --- |
 | `./gradlew testDebugUnitTest :core-model:test` | JVM-Unit-Tests aller Module (core-model ist reines Kotlin und hat `test`), Bericht je Modul unter `*/build/reports/tests/` |
-| `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, direkt installierbar |
+| `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, als eigenes Paket `ch.brickinventoryapp.debug` neben der Release-App installierbar |
 | `./gradlew assembleRelease` | `app/build/outputs/apk/release/BrickInventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
 | `./gradlew lintRelease` | `app/build/reports/lint-results-release.html` |
+| `./gradlew resolveLockedClasspaths --write-locks` | erneuert die `gradle.lockfile` je Modul nach einer Änderung an Abhängigkeiten; ohne das bricht der Bau ab, sobald sich eine Fassung ändert |
 | `./gradlew detekt` | Kotlin-Prüfung je Modul, Funde unter `*/build/reports/detekt/detekt.txt`; rot bei jedem Fund |
 | `./gradlew installDebug` | baut und installiert auf dem angeschlossenen Gerät (`adb devices`) |
 | `./gradlew clean` | löscht `app/build/` |
@@ -102,7 +103,7 @@ jedem Push, der `Android-App/` berührt. Der Job `build` macht nacheinander:
 6. `detekt` gegen `config/detekt/baseline.xml`
 7. Rückstand der Abhängigkeiten melden (`tools/versions-check.py`)
 
-Daneben misst der Job `gegenproben` die Patches unter `gegenproben/`: auf einem
+Daneben misst der Job `counter-checks` die Patches unter `counter-checks/`: auf einem
 Push nur die betroffenen, nachts und von Hand alle. Die Test- und Lint-Berichte
 hängen als Artefakt am Lauf (auch bei rotem Lauf — gerade dann werden sie gebraucht).
 
@@ -173,7 +174,7 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
 ## Datenschutz: mit wem die App spricht
 
 - **Dein Server** — alles, was zum Konto gehört. Auch Bilder kommen nur über seinen
-  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`network/util/BildHosts.kt`).
+  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`network/util/ImageHosts.kt`).
 - **GitHub** — nur die Update-Prüfung (`update/util/AppUpdate.kt`): beim Start, solange
   der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
   Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
@@ -190,7 +191,7 @@ Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.
 ## Sicherheit im Netz
 
 **Nur https.** Die Release-App sendet nichts unverschlüsselt. Zwei Linien:
-der Wächter (`network/di/ServerWaechter.kt`) bricht jede http-Anfrage vor dem Netz ab,
+der Wächter (`network/di/ServerGuard.kt`) bricht jede http-Anfrage vor dem Netz ab,
 und die Network-Security-Config (`app/src/main/res/xml/`) verbietet Klartext
 für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 `10.0.2.2` (Emulator), festgelegt in `app/src/debug/res/xml/` und
@@ -198,7 +199,7 @@ für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 führt beim Start in die Einrichtung mit einer Anleitung (QR neu scannen oder
 https-Adresse eintragen).
 
-**Wem die App beim eigenen Server vertraut** (`security/ServerVertrauen.kt`):
+**Wem die App beim eigenen Server vertraut** (`security/ServerTrust.kt`):
 
 | Weg | Was passiert |
 | --- | --- |
@@ -224,7 +225,7 @@ wählbaren `O=` des Subjekts. Andere Hosts
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
 ausdrücklich einschaltet.
 
-**Logcat.** Die App schreibt nur über `network/util/Protokoll.kt`, und das nur im
+**Logcat.** Die App schreibt nur über `network/util/AppLog.kt`, und das nur im
 Debug-Build; dort zeigt der Netzmitschnitt Anfrage- und Statuszeile, nie Rümpfe,
 und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
 zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
@@ -233,7 +234,7 @@ zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
 ## Daten auf dem Gerät
 
 Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
-(`security/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
+(`security/StoreKey.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
 Zweck gebunden). Der Ablageschlüssel ist wie das Token unter einem Keystore-Schlüssel
 mit `setUnlockedDeviceRequired` umhüllt (`EntsperrVault`, Alias
 `brickinventory_ablage_entsperrt`): Ein Prozess, der bei gesperrtem Gerät neu startet,
@@ -312,11 +313,37 @@ für heikle Schritte zählt (gesperrter Bootloader, verifizierter Start, echte
 App), prüft der Server über die Key Attestation des Geräteschlüssels
 (`docs/SICHERHEIT.md`, „Android: Resilienz“).
 
+**Kein Play Integrity:** Die App kommt über GitHub-Releases, nicht nur über Google Play.
+Play Integrity setzt die Play-Dienste und eine Prüfung über Googles Server voraus: Geräte
+ohne Google-Dienste (GrapheneOS, /e/) wären ausgesperrt, jeder Aufruf gäbe Google
+Gerätesignale, und der selbst gehostete Server bräuchte ein Google-Cloud-Projekt. Schützen
+würde es nichts, was der Server nicht ohnehin prüft (Rechte je Anfrage, Key Attestation).
+
 **App-Sperre:** ein Sichtschutz der Oberfläche, keine Verschlüsselung. Sie
 verdeckt die App nach der gewählten Zeit im Hintergrund; Hintergrundarbeit läuft
 weiter, die Daten schützt der Keystore (siehe „Daten auf dem Gerät“). Das
 Widget verdeckt seine Beträge, sobald die Sperre greifen kann
-(`AppLock.hiddenWidget`).
+(`AppLock.hiddenWidget`). Entsperrt nur eine Signatur des eigenen Keystore-Schlüssels
+(Biometrie oder Displaysperre, `CryptoObject`); der Zustand auf der Platte trägt ein
+HMAC-Siegel aus dem Keystore (`AppLockStore`). Wer die Datei auf „entsperrt“ oder „aus“
+ändert, bricht das Siegel, und die App startet gesperrt.
+
+**Gerätesperre:** Geht der Bildschirm bei gesicherter Displaysperre aus, verwirft die App
+den Schlüssel der lokalen Ablagen und das Token aus dem Speicher (`LockWipe`); beide kommen
+erst nach dem Entsperren wieder aus dem Keystore. Anfragen in dieser Zeit scheitern wie ohne
+Netz und werden nachgeholt, statt ohne Token zu gehen.
+
+**Anmeldung:** Kein Token gilt ohne Ende. `never_expires` heisst nur noch „dauerhaft bis zur
+Höchstdauer“ (Server: `TOKEN_MAX_DAYS`, Standard 90 Tage; der Tausch verlängert nicht), und die
+App meldet sich nach 90 Tagen auch selbst ab. Eine Woche vor dem Ende (das kürzere aus den 90 Tagen
+und `token_info.hard_expires_at` aus `/auth/me`) bittet sie um eine neue Anmeldung; ein 401 danach
+meldet „Sitzung abgelaufen — bitte erneut anmelden“. Das Anmeldedatum liegt verschlüsselt und an das Token gebunden
+(`TokenAblage.SIGNED_IN_SECRET`): Ein gelöschtes oder verändertes Datum gilt als abgelaufen.
+
+**Neuer Serverschlüssel ab Android 16:** Dort prüft das System Certificate Transparency, und
+ein neuer Schlüssel unter derselben öffentlichen Wurzel braucht kein Abtippen mehr. Ein
+Tippen allein genügt trotzdem nicht: Die App fragt die Displaysperre (ohne Displaysperre:
+Abtippen wie bis Android 15).
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
@@ -331,7 +358,7 @@ Berechtigungen, Dateien, Token und Ablageschlüssel. Er bekommt den Deskriptor
 nur lesend (memfd versiegelt, Datei `O_RDONLY`) und schreibt Pixel in einen
 `SharedMemory`, dessen Grösse der Hauptprozess aus eigenen Massen festlegt;
 das Bitmap baut der Hauptprozess selbst. Seitenzahl und Seitenkanten aus dem
-Renderer gelten als fremd und werden begrenzt (`PdfSeite.kt`). Anleitungen
+Renderer gelten als fremd und werden begrenzt (`PdfPage.kt`). Anleitungen
 stammen inhaltlich von Dritten; eine pdfium-Lücke träfe so nur den leeren
 Render-Prozess und reichte nicht über ein Bitmap-Parcel zurück.
 
@@ -349,9 +376,9 @@ Geheimnis nur, wenn man sie dort auswählt.
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
 kennt einen anderen, ohne Ausnahme; was mehrere Bereiche zeigen, liegt im Kernmodul
 `core-ui-inventory`. Die Regel steht einmal in
-`build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt`:
-Die Aufgabe `modulkantenPruefen` (an `check`, in der CI für alle Module) führt sie
-gegen die aufgelösten Kanten aus, `ModulgrenzenTest` gegen die Build-Dateien.
+`build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt`:
+Die Aufgabe `moduleEdgesCheck` (an `check`, in der CI für alle Module) führt sie
+gegen die aufgelösten Kanten aus, `ModuleBoundariesTest` gegen die Build-Dateien.
 
 Den gemeinsamen Android-Block setzen Konventions-Plugins aus `build-logic/`
 (ein eigener Gradle-Bau, eingebunden in `settings.gradle.kts`, Plugin-IDs im
@@ -377,12 +404,12 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
 | `core-model` | `ch.brickinventoryapp.model` | Fachtypen in `model.fach` (Beträge als `Geld` in Zehntausendsteln, Zeitpunkte als `Instant`), `Fehlercode` und Anmeldekennungen des Servers, reine Regeln (Passwortlänge, `otpauthAddress`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
-| `core-contract` | `ch.brickinventoryapp.contract` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/contract-kotlin-mapping.js`), abgeleitete Werte in `Ergaenzungen.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
+| `core-contract` | `ch.brickinventoryapp.contract` | Wire-Format: Anfragen und Antworten des Servers (API v2) in `Contract.kt`, erzeugt aus `Web-App/docs/openapi-v2.json` (`npm run contract:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/contract-kotlin-mapping.js`), abgeleitete Werte in `Supplements.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
 | `core-resources` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.resources.R` |
 | `core-network` | `ch.brickinventoryapp.network` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
 | `core-security` | `ch.brickinventoryapp.security` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
 | `core-offline` | `ch.brickinventoryapp.offline` | Room samt Schema (`core-offline/schemas`, SQLCipher), Offlineablage, Ausgang und lokale Anwendung von Bearbeitungen, alles in Fachtypen; kennt weder Netz noch Repositories noch das Wire-Format |
-| `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories (geben Fach- und Ansichtstypen zurück), DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, Vertrag und Strom des PDF-Auftrags |
+| `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories (geben Fach- und Ansichtstypen zurück), DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, Vertrag und Strom des PDF-Auftrags. Repositories nach Bereich in `data.catalog`, `data.collection`, `data.parts`, `data.finances`, `data.account`: Schnittstelle öffentlich, Implementierung `internal`, gebunden in `di/RepositoryModule`; gemeinsamer Kern (`Outcome`, Abrufhelfer) in `data.repository`, kennt keinen Bereich (ModuleBoundariesTest). Testhilfen (Test-API, Testserver, Repository-Fabriken) in `src/testFixtures`, Paket `data.testing` |
 | `core-update` | `ch.brickinventoryapp.update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
 | `core-services` | `ch.brickinventoryapp.services` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine, geheime Zwischenablage); kennt keine Ansichten und keine Servermodelle |
@@ -390,7 +417,7 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 | `core-session` | `ch.brickinventoryapp.session` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
 | `core-state` | `ch.brickinventoryapp.state` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-session`, ohne `core-ui` und ohne Compose (`Modulkanten.withoutUi`) |
 | `core-navigation` | `ch.brickinventoryapp.navigation` | `Bereichsumgebung`: was jeder Bereich von der App zum Zeigen seiner Ziele bekommt (NavController, Bilder, Snackbar, Sitzung, Blickfeld, Rollgedächtnis) — einzelne Flüsse und Rückrufe, kein AppViewModel |
-| `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
+| `core-testing` | `ch.brickinventoryapp.testing` | Nur `Sources` (Quelltext lesen für Strukturprüfungen), ohne Modulkanten; alle anderen Testhilfen liegen als `testFixtures` im Modul, das sie brauchen (`offline.testing`, `data.testing`, `session.testing`, `state.testing`), nur als `testImplementation` |
 | `feature-login` | `ch.brickinventoryapp.login` | Anmelden, Server einrichten, QR |
 | `feature-catalog` | `ch.brickinventoryapp.catalog` | Katalog und Katalog-Detail |
 | `feature-collection` | `ch.brickinventoryapp.collection` | Galerie, Set-Detail, Merkliste, Käufe, Vergleich, Scanner |
@@ -405,7 +432,7 @@ Unterpfad (`ui.screens` in `feature-collection` heisst
 `ch.brickinventoryapp.collection.ui.screens`); `core-ui` und `core-data` beginnen
 schon mit ihrem Stamm (`ch.brickinventoryapp.ui.*`, `ch.brickinventoryapp.data.*`).
 Die Tests eines Moduls liegen direkt im Stamm. Aus einem Import ist so das Modul
-ablesbar, und kein Paket verteilt sich auf zwei Module; `ModulgrenzenTest` prüft
+ablesbar, und kein Paket verteilt sich auf zwei Module; `ModuleBoundariesTest` prüft
 es an jeder Kotlin-Datei. Die R-Klassen folgen dem `namespace` des Moduls
 (`ch.brickinventoryapp.core.ui.R`, `ch.brickinventoryapp.resources.R`), die der
 App bleibt `ch.brickinventoryapp.R`. Was ein Modul dem anderen zeigt, ist
@@ -421,13 +448,16 @@ Die Tests liegen neben dem Code ihres Moduls; was mehrere Bereiche zusammen
 prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`. Robolectric
 und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 
-- `QuelltextRatscheTest` hält fest, wie viele Testfunktionen Quelltext lesen,
+- `SourceRatchetTest` hält fest, wie viele Testfunktionen Quelltext lesen,
   wie oft Tests in Echtzeit warten und wie viele Namen voll qualifiziert stehen;
   jede Zahl steht genau auf dem gemessenen Wert und darf nur sinken.
-- `gegenproben/` enthält Patches, die etwas kaputt machen; der CI-Job
-  `gegenproben` misst, dass der im Kopf genannte Test dann rot wird
-  (`tools/gegenproben.py`). Nicht jede Testklasse hat einen; wer einen Test
-  schreibt, legt seinen dazu.
+- `counter-checks/` enthält Patches, die etwas kaputt machen; der CI-Job
+  `counter-checks` misst, dass der im Kopf genannte Test dann rot wird
+  (`tools/counter-checks.py`). Nicht jede Testklasse hat einen; wer einen Test
+  schreibt, legt seinen dazu. Ob alle Patches noch auf den Stand passen, prüft
+  `python3 tools/counter-checks.py --check counter-checks` ohne Gradle in Sekunden
+  (in der CI der Job `counter-checks-fit` bei jedem Push); einzelne Patches misst
+  `python3 tools/counter-checks.py counter-checks <name>.patch …`.
 - ViewModel- und Oberflächentests laufen im Takt: `PfadServer.imTakt()` antwortet
   ohne Netz im aufrufenden Faden und liest jede Antwort gegen das DTO der Methode.
 
@@ -545,7 +575,7 @@ meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das es nicht
 braucht. `fehlerTextId()` und die Bereichsquelle der `Offlineablage` sind
 beides Beispiele dafür.
 
-Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Quellen.kt` —
+Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Sources.kt` —
 insbesondere `fenster()` (misst ZEILEN, nicht Zeichen) und `withoutComments()`.
 `Quellen.wurzel` legt die Quellen aller Module zu einem Baum zusammen.
 
@@ -665,7 +695,9 @@ die Meldung nennt jeweils die Einstellung:
   des Baulaufs (ohne Projektcode).
 - **Environments `release` und `release-beschreibung`:** mindestens ein Pflichtprüfer,
   nur der Zweig `main` und *Allow administrators to bypass* **aus** (`can_admins_bypass: false`).
-  *Prevent self-review* ergibt nur eine Warnung, solange nur eine Person prüft.
+  *Prevent self-review* **an** (Fehler, nicht mehr Warnung: eine zweite Person prüft).
+- **Keine Umgehung:** Kein Ruleset für `main` hat einen Bypass-Akteur; bei den Etiketten
+  nur die Rolle *Repository admin*. Gelesen mit `REGELN_LESETOKEN` (`docs/ANDROID-RELEASE.md`, Schritt 6).
 - **`main` geschützt per Ruleset** (Settings → Rules → Rulesets → New branch ruleset,
   Ziel `main`): *Require a pull request before merging*, *Require status checks to
   pass* (Android-App, Sicherheit) und *Block force pushes*. Gelesen wird
@@ -759,11 +791,11 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 
 Ein Schlüssel signiert Daten nur für einen Zweck: Der APK-Schlüssel signiert
 APKs, die Beschreibung bekommt einen eigenen ECDSA-Schlüssel (P-256). Kennt die
-App einen solchen Schlüssel (`core-resources/src/main/res/raw/beschreibungs_schluessel.pem`),
+App einen solchen Schlüssel (`core-resources/src/main/res/raw/description_key.pem`),
 nimmt sie nur dessen Signatur an. Ist die Datei leer, nimmt sie keine Beschreibung an.
 
 **Stand:** Eingerichtet (10.11.2026): ein Schlüssel in
-`beschreibungs_schluessel.pem`. Das Secret `BESCHREIBUNG_SCHLUESSEL` gehört
+`description_key.pem`. Das Secret `BESCHREIBUNG_SCHLUESSEL` gehört
 verschlüsselt, mit eigener Passphrase `BESCHREIBUNG_PASS`, in die Environment
 `release-beschreibung` (Umzug: `docs/ANDROID-RELEASE.md`). Ein Release ohne die
 Secrets bricht in *APK prüfen* ab.
@@ -778,7 +810,7 @@ Einrichten (einmalig, in dieser Reihenfolge):
    Environment `release-beschreibung` legen. Fehlt eines davon, bricht der Job
    *Beschreibung signieren* ab.
 3. Den öffentlichen Teil (`openssl pkey -in beschreibung.pem -pubout`) an
-   `beschreibungs_schluessel.pem` anhängen und veröffentlichen. Ab dieser
+   `description_key.pem` anhängen und veröffentlichen. Ab dieser
    Fassung gilt für die App nur noch die Beschreibungssignatur. Fehlt das Secret
    bei einem Etikett, obwohl die App einen Schlüssel nennt, bricht `apk-pruefen`
    ab, statt eine Beschreibung zu veröffentlichen, die die Geräte ablehnen.

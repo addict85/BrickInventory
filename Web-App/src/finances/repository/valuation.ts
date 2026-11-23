@@ -1,9 +1,9 @@
 import type { DbInterface } from '../../../db/database';
-import { kaufpreisSpalten } from '../../../db/geldSql';
-import { mengeAus, teilmengeAus } from '../../../db/stockQuantity';
+import { purchasePriceColumns } from '../../../db/moneySql';
+import { quantityFrom, subsetFrom } from '../../../db/stockQuantity';
 import type { FinancesReadContract } from '../readContract';
-import { blJoin, blNummerSql } from '../../../db/blMappingSql';
-import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/catalogView';
+import { blJoin, blNumberSql } from '../../../db/blMappingSql';
+import { partViewJoin, minifigViewJoin, setMasterJoin, PART, MINIFIG, SET } from '../../../db/catalogView';
 
 /** An acquisition of a manual part or a figure, purchase price in the account currency. */
 export interface ManualEntry {
@@ -14,8 +14,8 @@ export interface ManualEntry {
   fig_number?: string;
   quantity: number;
   unit_price: string | null;
-  kaufpreis_fremd: boolean;
-  kaufpreis_umgerechnet: boolean;
+  purchase_price_foreign: boolean;
+  purchase_price_converted: boolean;
   currency: string;
   price_estimated: boolean;
   condition: string;
@@ -25,21 +25,21 @@ export interface ManualEntry {
 export function manualEntries(
   db: DbInterface,
   l: FinancesReadContract,
-  art: 'part' | 'fig',
+  kind: 'part' | 'fig',
   uids: number[],
-  waehrung: string,
+  currency: string,
 ) {
   return db.all<ManualEntry>(
-    art === 'part'
+    kind === 'part'
       ? `SELECT id, user_id, part_number, color_id, quantity,
-              ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
+              ${purchasePriceColumns('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
-         FROM ${l.teilErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`
+         FROM ${l.partAcquisitions('= ANY($1)')} e ORDER BY created_at ASC, id ASC`
       : `SELECT id, user_id, fig_number, quantity,
-              ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
+              ${purchasePriceColumns('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
-         FROM ${l.figurErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`,
-    [uids, waehrung],
+         FROM ${l.figAcquisitions('= ANY($1)')} e ORDER BY created_at ASC, id ASC`,
+    [uids, currency],
   );
 }
 
@@ -57,13 +57,13 @@ export interface ValuedSet {
 /** Purchase price and condition are stored in the acquisitions. */
 export function setsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
   return db.all<ValuedSet>(
-    `SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.jahr} AS year,
-            ${mengeAus('sm', 0)}::int AS quantity,
+    `SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.year} AS year,
+            ${quantityFrom('sm', 0)}::int AS quantity,
             c.image_local, c.image_url, s.added_at
-       FROM ${l.setBestand('= ANY($1)')} s
+       FROM ${l.setHoldings('= ANY($1)')} s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
-       ${setStammJoin('s.set_number')}
-       ${l.mengeJoin('s', 'sm', '= ANY($1)')}
+       ${setMasterJoin('s.set_number')}
+       ${l.setQuantityJoin('s', 'sm', '= ANY($1)')}
       WHERE s.user_id = ANY($1)`,
     [uids],
   );
@@ -77,7 +77,7 @@ export function catalogFeatures(db: DbInterface, setNumbers: string[]) {
   );
 }
 
-export interface ManuelleFigur {
+export interface ManualMinifig {
   id: number;
   user_id: number;
   set_number: string | null;
@@ -92,23 +92,23 @@ export interface ManuelleFigur {
 }
 
 export function manualMinifigsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
-  return db.all<ManuelleFigur>(
+  return db.all<ManualMinifig>(
     `
     SELECT m.id, m.user_id, m.set_number, m.fig_number,
-           ${blNummerSql('m.fig_number', 'blzf')} AS bl_fig_number,
-           ${teilmengeAus('m', 'fig')} AS quantity,
+           ${blNumberSql('m.fig_number', 'blzf')} AS bl_fig_number,
+           ${subsetFrom('m', 'fig')} AS quantity,
            m.source, m.storage_id,
-           ${FIGUR.name} AS fig_name, ${FIGUR.bild} AS image_url, ${FIGUR.bildDatei} AS image_local
-      FROM ${l.figurBestand('= ANY($1)')} m
-      ${l.teilmengeJoin('m', 'fig')}
+           ${MINIFIG.name} AS fig_name, ${MINIFIG.image} AS image_url, ${MINIFIG.imageFile} AS image_local
+      FROM ${l.figHoldings('= ANY($1)')} m
+      ${l.quantityJoin('m', 'fig')}
       ${blJoin('m.fig_number', 'fig', 'm.user_id', 'blzf')}
-      ${figurSichtJoin('m.user_id', 'm.fig_number')}
+      ${minifigViewJoin('m.user_id', 'm.fig_number')}
      WHERE m.user_id = ANY($1) AND m.source='manual'`,
     [uids],
   );
 }
 
-export interface ManuellesTeil {
+export interface ManualPart {
   id: number;
   user_id: number;
   set_number: string | null;
@@ -128,21 +128,21 @@ export interface ManuellesTeil {
 }
 
 export function manualPartsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
-  return db.all<ManuellesTeil>(
+  return db.all<ManualPart>(
     `
     SELECT p.id, p.user_id, p.set_number, p.part_number,
-           ${blNummerSql('p.part_number')} AS bl_part_number,
+           ${blNumberSql('p.part_number')} AS bl_part_number,
            p.color_id,
-           ${teilmengeAus('p', 'part')} AS quantity,
+           ${subsetFrom('p', 'part')} AS quantity,
            p.source,
            p.storage_id, p.added_at,
-           ${TEIL.name} AS part_name, ${TEIL.kategorie} AS category_name,
-           ${TEIL.farbname} AS color_name, ${TEIL.farbcode} AS color_hex,
-           ${TEIL.bild} AS image_url, ${TEIL.bildDatei} AS image_local
-      FROM ${l.teilBestand('= ANY($1)')} p
-      ${l.teilmengeJoin('p', 'part')}
+           ${PART.name} AS part_name, ${PART.category} AS category_name,
+           ${PART.colorName} AS color_name, ${PART.colorHex} AS color_hex,
+           ${PART.image} AS image_url, ${PART.imageFile} AS image_local
+      FROM ${l.partHoldings('= ANY($1)')} p
+      ${l.quantityJoin('p', 'part')}
       ${blJoin('p.part_number', 'part', 'p.user_id')}
-      ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
+      ${partViewJoin('p.user_id', 'p.part_number', 'p.color_id')}
      WHERE p.user_id = ANY($1) AND p.source = 'manual'`,
     [uids],
   );

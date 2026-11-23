@@ -1,10 +1,10 @@
-import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import { blJoin, blNumberSql } from '../../../db/blMappingSql';
 import type { MinifigPart, CatalogRow } from '../rows';
 import type { DbInterface } from '../../../db/database';
 
 export function catalogPartsOfMinifig(db: DbInterface, figNumber: string) {
   return db.all<CatalogRow>(
-    `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number, c.image_url, c.image_local
+    `SELECT c.part_number, c.color_id, ${blNumberSql('c.part_number')} AS bl_part_number, c.image_url, c.image_local
        FROM set_parts_catalog c ${blJoin('c.part_number', 'part', null)}
       WHERE c.set_number = $1`,
     [figNumber],

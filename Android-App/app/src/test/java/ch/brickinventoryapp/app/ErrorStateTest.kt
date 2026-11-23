@@ -1,29 +1,32 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
-import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.errorKind
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.testing.testMinifigsRepository
-import ch.brickinventoryapp.testing.testFinancesRepository
-import ch.brickinventoryapp.testing.testVouchersRepository
-import ch.brickinventoryapp.testing.testHouseholdRepository
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testFinancesRepository
+import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.data.testing.testMinifigsRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testVouchersRepository
+import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
+import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.Fehlerklasse
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.ui.errorKind
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.testing.NumbersTexts
+import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.ui.LoadingIndicator
 import ch.brickinventoryapp.ui.loadingIndicator
-import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
-import ch.brickinventoryapp.finances.ui.viewmodel.GutscheinViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.MerklisteViewModel
-import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -32,125 +35,122 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Before
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.TestDienste
 
 /**
  * Loading, error, empty and no hit are different states — and every
  * screen with loaded content learns of the error. Previously wishlist,
  * finances, parts, figures and vouchers showed „leer“ after an error, the
- * set detail a spinner without end. Executed against a PfadServer without network that
+ * set detail a spinner without end. Executed against a PathServer without network that
  * first responds 404 and delivers content after „Erneut versuchen“.
  *
  * Counter-checks:
- *   A  ladeanzeige(): `fehler != null` after `gefiltert` → red “an error comes
+ *   A  ladeanzeige(): `error != null` after `filtered` → red “an error comes
  *      before Empty and No hit …”
- *   B  MerklisteViewModel: `fehler = meldung(r)` removed → red “the wishlist …”
+ *   B  WantedListViewModel: `error = message(r)` removed → red “the wishlist …”
  *   C  FinanceViewModel: `valuationFehler = null` removed on reload → red
  *      “the valuation …” (the old error would stay after the success)
  *   D  parts: `partsFehler = beschreibeFehler(r)` removed → red “parts and figures …”
- *   E  SetDetailViewModel: `setDetailFehler = meldung(r)` removed → red “the set detail …”
- *   F  GutscheinViewModel: `fehler = texts.meldung(r)` removed → red “the vouchers …”
+ *   E  SetDetailViewModel: `setDetailFehler = message(r)` removed → red “the set detail …”
+ *   F  VoucherViewModel: `error = texts.message(r)` removed → red “the vouchers …”
  * Counter-checks: in FinanceViewModel `valuationFehlerKlasse = …`
- *   removed → red “the valuation …”; in Teile.kt `minifigsFehlerKlasse = …`
+ *   removed → red “the valuation …”; in Parts.kt `minifigsFehlerKlasse = …`
  *   removed → red “parts and figures …”.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ErrorStateTest {
 
-    private lateinit var paths: PfadServer
-    private lateinit var t: TestDienste
+    private lateinit var paths: PathServer
+    private lateinit var t: TestServices
 
     @Before
-    fun auf() {
+    fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        paths = PfadServer()
-        t = TestDienste(paths.imTakt(), io = Dispatchers.Main)
+        paths = PathServer()
+        t = TestServices(paths.onTick(), io = Dispatchers.Main)
     }
 
     @After
-    fun zu() {
-        t.aufraeumen()
+    fun tearDown() {
+        t.cleanUp()
         Dispatchers.resetMain()
         paths.server.shutdown()
     }
 
     @Test
     fun `an error comes before Empty and No hit, loaded content before everything`() {
-        assertEquals(LoadingIndicator.FEHLER, loadingIndicator(hatContent = false, laedt = false, fehler = "weg", gefiltert = true))
-        assertEquals(LoadingIndicator.LOADS, loadingIndicator(hatContent = false, laedt = true, fehler = "weg", gefiltert = false))
-        assertEquals(LoadingIndicator.LISTE, loadingIndicator(hatContent = true, laedt = false, fehler = "weg", gefiltert = false))
-        assertEquals(LoadingIndicator.NO_HITS, loadingIndicator(hatContent = false, laedt = false, fehler = null, gefiltert = true))
-        assertEquals(LoadingIndicator.LEER, loadingIndicator(hatContent = false, laedt = false, fehler = null, gefiltert = false))
+        assertEquals(LoadingIndicator.ERROR, loadingIndicator(hasContent = false, loading = false, error = "weg", filtered = true))
+        assertEquals(LoadingIndicator.LOADS, loadingIndicator(hasContent = false, loading = true, error = "weg", filtered = false))
+        assertEquals(LoadingIndicator.LIST, loadingIndicator(hasContent = true, loading = false, error = "weg", filtered = false))
+        assertEquals(LoadingIndicator.NO_HITS, loadingIndicator(hasContent = false, loading = false, error = null, filtered = true))
+        assertEquals(LoadingIndicator.EMPTY, loadingIndicator(hasContent = false, loading = false, error = null, filtered = false))
     }
 
     @Test
     fun `the wishlist reports the error and forgets it on reload`() {
-        val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alerts(), t.kontosicht,
+        val vm = t.track(WantedListViewModel(t.session, t.filter(), t.hints, t.wantedList(), t.alerts(), t.accountView,
             testCatalogRepository(t.api), testFinancesRepository(t.api), SavedStateHandle()))
         vm.loadWanted()
-        assertTrue("Fehler", vm.wantedState.value.abruf.errorMessage != null)
+        assertTrue("Error", vm.wantedState.value.fetch.errorMessage != null)
         // No finished sentence in the state: the resource for the kind plus HTTP status.
-        assertEquals(Meldung.Resource(R.string.err_server, listOf(404)), vm.wantedState.value.abruf.errorMessage)
-        assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.wantedState.value.abruf.errorKind)
+        assertEquals(Message.Resource(R.string.err_server, listOf(404)), vm.wantedState.value.fetch.errorMessage)
+        assertEquals("404 without a body is a server error", ErrorClass.SERVER, vm.wantedState.value.fetch.errorKind)
 
-        paths.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
+        paths.responses["/api/v2/wanted"] = """{"success":true,"item":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
         vm.loadWanted()
-        assertTrue("Inhalt", vm.wantedState.value.merkposten.isNotEmpty())
-        assertNull(vm.wantedState.value.abruf.errorMessage)
+        assertTrue("content", vm.wantedState.value.wantedItem.isNotEmpty())
+        assertNull(vm.wantedState.value.fetch.errorMessage)
     }
 
     @Test
     fun `the valuation reports the error and forgets it on reload`() {
-        val vm = t.merke(FinanceViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, testFinancesRepository(t.api), SavedStateHandle()))
+        val vm = t.track(FinanceViewModel(t.session, t.filter(), t.hints, t.changes, testFinancesRepository(t.api), SavedStateHandle()))
         vm.loadValuation()
-        assertTrue("Fehler", vm.financeState.value.bewertung is Laden.Fehler)
-        assertEquals(Fehlerklasse.SERVER, vm.financeState.value.bewertung.errorKind)
+        assertTrue("Error", vm.financeState.value.valuationLoad is Load.Failure)
+        assertEquals(ErrorClass.SERVER, vm.financeState.value.valuationLoad.errorKind)
 
-        paths.antworten["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
+        paths.responses["/api/v2/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
         vm.loadValuation()
-        assertTrue("Bewertung", vm.financeState.value.valuation != null)
-        assertNull(vm.financeState.value.bewertung.errorMessage)
+        assertTrue("rating", vm.financeState.value.valuation != null)
+        assertNull(vm.financeState.value.valuationLoad.errorMessage)
     }
 
     @Test
     fun `parts and figures report the error each on their own`() {
-        val vm = t.merke(PartsViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, t.scrollMemory, testPartsRepository(t.api), t.kontosicht, SavedStateHandle()))
+        val vm = t.track(PartsViewModel(t.session, t.filter(), t.hints, t.changes, t.scrollMemory, testPartsRepository(t.api), t.accountView, SavedStateHandle()))
         vm.loadParts()
-        assertTrue("Teilefehler", vm.teileState.value.partsFetch is Laden.Fehler)
-        val fig = t.merke(MinifigsViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, testMinifigsRepository(t.api), t.kontosicht, SavedStateHandle()))
+        assertTrue("Teilefehler", vm.partsState.value.partsFetch is Load.Failure)
+        val fig = t.track(MinifigsViewModel(t.session, t.filter(), t.hints, t.changes, testMinifigsRepository(t.api), t.accountView, SavedStateHandle()))
         fig.loadMinifigs()
-        assertTrue("Figurenfehler", fig.minifigsState.value.minifigsFetch is Laden.Fehler)
-        assertTrue(vm.teileState.value.partsFetch.errorMessage != null)
-        assertEquals(Fehlerklasse.SERVER, vm.teileState.value.partsFetch.errorKind)
-        assertEquals(Fehlerklasse.SERVER, fig.minifigsState.value.minifigsFetch.errorKind)
+        assertTrue("Figurenfehler", fig.minifigsState.value.minifigsFetch is Load.Failure)
+        assertTrue(vm.partsState.value.partsFetch.errorMessage != null)
+        assertEquals(ErrorClass.SERVER, vm.partsState.value.partsFetch.errorKind)
+        assertEquals(ErrorClass.SERVER, fig.minifigsState.value.minifigsFetch.errorKind)
     }
 
     @Test
     fun `the set detail reports the error instead of loading forever`() {
-        val reader = object : FileReader { override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null }
-        val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setCatalog(), t.alerts(), t.setFiles(),
+        val reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null }
+        val vm = t.track(SetDetailViewModel(t.session, t.filter(), t.hints, t.sets(), t.setCatalog(), t.alerts(), t.setFiles(),
             testFinancesRepository(t.api), testHouseholdRepository(t.api), reader,
             SavedStateHandle(mapOf("setNumber" to "75192-1"))))
-        assertTrue("Fehler", vm.setDetailState.value.detailFetch is Laden.Fehler)
-        assertEquals(false, vm.setDetailState.value.detailFetch.laedt)
-        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.detailFetch.errorKind)
+        assertTrue("Error", vm.setDetailState.value.detailFetch is Load.Failure)
+        assertEquals(false, vm.setDetailState.value.detailFetch.loading)
+        assertEquals(ErrorClass.SERVER, vm.setDetailState.value.detailFetch.errorKind)
     }
 
     @Test
     fun `the vouchers report the error`() {
-        val vm = GutscheinViewModel(
+        val vm = VoucherViewModel(
             repo = testVouchersRepository(t.api),
             texts = NumbersTexts,
-            reader = object : FileReader { override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null },
-            meldungen = t.meldungen,
+            reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
+            messages = t.messages,
         )
         vm.loadVouchers()
-        assertTrue("Fehler", vm.state.value.abruf is Laden.Fehler)
-        assertEquals(Fehlerklasse.SERVER, vm.state.value.abruf.errorKind)
+        assertTrue("Error", vm.state.value.fetch is Load.Failure)
+        assertEquals(ErrorClass.SERVER, vm.state.value.fetch.errorKind)
     }
 }

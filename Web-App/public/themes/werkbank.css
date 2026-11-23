@@ -1,27 +1,12 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   APP-DESIGN "werkbank" (dunkel) — die Werkstatt: warmes Graphit, Lochwand,
-   eine Holzkante unter der Kopfleiste und Messing als zweite Farbe.
-   ---------------------------------------------------------------------------
-   Aktiv, sobald <html data-theme="werkbank"> gesetzt ist (siehe applyTheme()
-   in js/theme-boot.js). Alle Regeln sind unter [data-theme="werkbank"]
-   gescoped; die Datei wird immer geladen, greift aber nur beim aktiven Design.
-
-   Die PALETTE steht nicht hier, sondern in /tokens.css — erzeugt aus
-   shared/design-tokens.json, damit die Android-App dieselben Werte fuehrt.
-   Hier steht nur, was das Web allein betrifft.
-
-   ── Warum ein dunkles Design mehr ist als getauschte Farben ────────────────
-   Das Grunddesign hat eine Grau-Skala (--s50 hell bis --s800 dunkel) und
-   benutzt sie als "je hoeher die Zahl, desto dunkler". Auf dunklem Grund muss
-   diese Achse sich umkehren, sonst ist heller Text auf hellem Grund. Die
-   Skala wird deshalb hier komplett neu belegt statt einzelne Stellen
-   ueberschrieben — es sind dieselben Rollen, nur andere Werte.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ APP THEME "werkbank" (dark) — the workshop: warm graphite, pegboard, a wooden edge below the header
+   and brass as the second colour ═══
+   Active with <html data-theme="werkbank">; all rules scoped under [data-theme="werkbank"]. The palette is in
+   /tokens.css. A dark theme is more than swapped colours: the grey scale (--s50 light … --s800 dark) is used
+   as "higher means darker", so on dark ground the axis is reassigned completely — same roles, other values. */
 
 [data-theme="werkbank"]{
-  /* Die Grau-Achse, umgedreht: 50 ist jetzt der DUNKELSTE Ton. Warm statt
-     blaustichig — sonst war das Design von „Klassisch dunkel“ kaum zu
-     unterscheiden (beide Anthrazit mit Blau). */
+  /* The grey axis reversed: 50 is now the DARKEST tone. Warm instead of bluish — otherwise the theme was hardly
+     distinguishable from classic dark. */
   --s50:#13110d;--s100:#1a1712;--s200:#2c261e;--s300:#3a3227;
   --s400:#7a6f60;--s500:#a89c8b;--s600:#c6b9a6;--s700:#ddd2c1;--s800:#ece4d8;
 
@@ -30,43 +15,33 @@
   --bdr:#3a3127;
   --txt:#ece4d8;
   --mut:#a89c8b;
-  --screen-bg:#17140f;      /* Login-/Startup-Screen, vor dem Login */
-  /* Messing: Kante, Unterstrich des offenen Reiters, Kopf der Kacheln. */
+  --screen-bg:#17140f;      /* Login/startup screen, before login */
+  /* Brass: edge, underline of the open tab, tile headers. */
   --messing:#c9963f;
-  --holz:#7a4f2a;
-  /* Text auf --b600: Weiss auf #4d9fff kam auf 2,7:1; dunkel wie in der App
-     (onPrimary) auf 6,3:1. */
-  --auf-primaer:#1e1608;
+  --wood:#7a4f2a;
+  /* Text on --b600: white on #4d9fff reached 2.7:1; dark as in the app (onPrimary) 6.3:1. */
+  --on-primary:#1e1608;
   --rad:12px;
 
-  /* Zustands- und Meldefarben: auf dunklem Grund gedaempft, sonst leuchten
-     sie staerker als die Markenfarbe und ziehen den Blick von ihr weg. */
+  /* Condition and message colours dimmed on dark ground, otherwise they glow brighter than the brand colour. */
   --g100:#1d2a20;--g500:#6fbf7f;--g700:#6fbf7f;
-  --gewinn:#6fbf7f;
+  --profit:#6fbf7f;
   --r100:#2c1c1c;--r500:#e07a72;
-  /* Dunkles Design: Hier muss roter Text HELLER sein, nicht dunkler. Das
-     #b91c1c der Grundfassung waere auf #191e25 unlesbar. Der eigene Ton
-     misst bereits (werkbank stand nicht in der Fehlerliste), er gilt
-     deshalb fuer beides. */
+  /* Dark theme: red text must be LIGHTER here, not darker; the base #b91c1c would be unreadable on #191e25. */
   --r700:#e07a72;
   --a100:#2a2418;--a500:#d9a84e;
-  /* Auf dunklem Bernstein muss die Schrift HELLER werden, nicht dunkler.
-     Ohne diese Zeile stuende hier #92400e aus :root — dunkelbraun auf
-     dunkelbraun, GEMESSEN 2.17:1. Genau so stand es bisher fest in
-     .spare-tag und .ra; mit dem Token wird es hier mitbehoben. */
-  --a-schrift:#d9a84e;
+  /* On dark amber the text must get LIGHTER, not darker: #92400e from :root would be dark brown on dark brown (2.17:1). */
+  --a-text:#d9a84e;
   --p100:#241d2e;--p600:#b087d6;
 
-  /* Schatten sind auf Dunkel fast unsichtbar — die Trennung macht der
-     Rahmen. Sie bleiben schwach gesetzt, damit nichts flach wirkt. */
+  /* Shadows are almost invisible on dark — the border separates. They stay faint so nothing looks flat. */
   --sh0:0 1px 2px rgba(0,0,0,.34);
   --sh1:0 3px 10px rgba(0,0,0,.40);
   --sh2:0 10px 28px rgba(0,0,0,.48);
 }
 
-/* ── Vor dem Login ──────────────────────────────────────────────────────────
-   Muss hier stehen: Login- und Startup-Screen erscheinen, bevor irgendeine
-   Nutzereinstellung gelesen ist (siehe --screen-bg oben und theme.test.js). */
+/* ── Before login ──
+   Must be here: login and startup screen appear before any user setting is read (see --screen-bg and theme.test.js). */
 [data-theme="werkbank"] #login-screen,
 [data-theme="werkbank"] #startup-screen{
   background:var(--screen-bg);color:var(--txt);
@@ -76,52 +51,47 @@
   background:var(--sur);border:1px solid var(--bdr);
 }
 
-/* ── Flaechen ───────────────────────────────────────────────────────────── */
-/* Die Lochwand: ein schwaches Raster aus Löchern, wie an der Wand über der
-   Werkbank — Textur, kein Muster, über das man lesen muss. */
+/* ── Surfaces ───────────────────────────────────────────────────────────── */
+/* The pegboard: a faint grid of holes like on the wall above the workbench — texture, not a pattern. */
 [data-theme="werkbank"] body{
   background-color:var(--bg);
   background-image:radial-gradient(circle at 12px 12px,rgba(0,0,0,.38) 2.2px,transparent 2.8px);
   background-size:24px 24px;
 }
 [data-theme="werkbank"] header{
-  background:linear-gradient(180deg,#2a241c,var(--sur));border-bottom:4px solid var(--holz);
+  background:linear-gradient(180deg,#2a241c,var(--sur));border-bottom:4px solid var(--wood);
   box-shadow:inset 0 -1px 0 var(--messing);
 }
 [data-theme="werkbank"] nav{
   background:var(--sur);border-bottom:1px solid var(--bdr);
 }
-[data-theme="werkbank"] .ntab.active,[data-theme="werkbank"] .ntab.gruppe-aktiv{border-bottom-color:var(--messing)}
+[data-theme="werkbank"] .ntab.active,[data-theme="werkbank"] .ntab.group-active{border-bottom-color:var(--messing)}
 [data-theme="werkbank"] .ptitle-icon .ico{color:var(--messing)}
 [data-theme="werkbank"] .sc{border-top:3px solid var(--messing)}
 [data-theme="werkbank"] .card,
 [data-theme="werkbank"] .sc,
-[data-theme="werkbank"] .modal-content{
+[data-theme="werkbank"] .modal{
   background:var(--sur);border-color:var(--bdr);
 }
-/* Das Bildfeld dunkler als die Karte: Ein Set-Foto mit weissem Rand steht
-   sonst als heller Block im Dunkeln. */
+/* The image field darker than the card: a set photo with a white border otherwise stands as a light block in the dark. */
 [data-theme="werkbank"] .sci{border-bottom-color:var(--bdr)}
 
 /* ── Eingaben ───────────────────────────────────────────────────────────── */
 [data-theme="werkbank"] input,
 [data-theme="werkbank"] select,
 [data-theme="werkbank"] textarea{
-  background:#2a241c;color:var(--txt);border-color:var(--feldrand);
+  background:#2a241c;color:var(--txt);border-color:var(--field-border);
 }
 [data-theme="werkbank"] input::placeholder,
 [data-theme="werkbank"] textarea::placeholder{color:var(--mut)}
 
-/* ── Zustands-Plaketten ─────────────────────────────────────────────────────
-   Dieselbe Bedeutung wie ueberall: Neu gegen Gebraucht. Die Werte sind die
-   gedaempften Varianten der Diagrammfarben, damit Plakette und Linie
-   zusammengehoeren — dieselbe Ueberlegung wie in themes/brick.css. */
+/* ── Condition badges ──
+   New vs. used as everywhere; the values are the dimmed chart colours so badge and line belong together. */
 [data-theme="werkbank"] .cond-new{background:#16243a;color:#8cc2ff}
 [data-theme="werkbank"] .cond-used{background:#2a2418;color:#d9a84e}
 
-/* Akzent Messing statt Blau: Das Blau der gemeinsamen Palette gehörte zu
-   keinem Werkstoff des Designs. Nur im Web; die App führt ihre Werte selbst.
-   Die Zustandsfarben bleiben: Neu blau, Gebraucht bernstein, wie überall. */
+/* Accent brass instead of blue: the blue of the shared palette belonged to no material of this theme.
+   Web only; the app keeps its own values. Condition colours stay: new blue, used amber. */
 [data-theme="werkbank"]{
   --b50:#2a2114;--b100:#3a2d17;--b200:#4f3c1c;--b300:#6b5124;
   --b400:#9c7533;--b500:#c08f3e;--b600:#d9a84e;--b700:#e8c27a;

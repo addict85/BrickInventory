@@ -84,19 +84,19 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Rebrickable stubbed at the wiring (testSources).
 testSources(null, {
   // At Rebrickable 98765 is called 12345 — a DEVIATING number, as only listed
   // there. Nothing else knows this pair.
-  blTeilZuRb: async blId => (blId === '98765' ? '12345' : null),
+  blPartToRb: async blId => (blId === '98765' ? '12345' : null),
   blFilterIneffective: () => false,
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
 });
-const { importiereWantedListe } = _req('src/wanted/wantedList.js');
+const { importWantedList } = _req('src/wanted/wantedList.js');
 const { describeItem, resolveLocalOn } = _req('src/wanted/wantedResolution.js');
 const { readWantedList } = _req('src/wanted/wantedParser.js');
 
@@ -108,20 +108,20 @@ test.after(async () => {
 /**
  * `zustand` since 20.10. — previously this was a fixed `X`.
  */
-function item(typ, id, farbe, menge = 1, zustand = 'X') {
+function item(typeName, id, color, quantity = 1, condition = 'X') {
   return (
-    `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
-    `${farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`}<MINQTY>${menge}</MINQTY>\n` +
-    `${zustand === null ? '' : `<CONDITION>${zustand}</CONDITION>\n`}</ITEM>`
+    `<ITEM>\n<ITEMTYPE>${typeName}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
+    `${color === null ? '' : `<COLOR>${color}</COLOR>\n`}<MINQTY>${quantity}</MINQTY>\n` +
+    `${condition === null ? '' : `<CONDITION>${condition}</CONDITION>\n`}</ITEM>`
   );
 }
-const liste = (...items) => `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
+const list = (...items) => `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
 
 test('preview, corrections and color translation', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -150,108 +150,109 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
                 VALUES (4,'Red','C91A09',5), (0,'Black','05131D',11), (7,'Blue','0055BF',7)`);
 
   await t.test('1. the preview carries name, image and color — and invents nothing', async () => {
-    const xml = liste(item('P', '3001', 5, 10), item('P', '3002', 5, 3), item('P', '9999', 5, 1));
+    const xml = list(item('P', '3001', 5, 10), item('P', '3002', 5, 3), item('P', '9999', 5, 1));
     // `vorschau: true` is there EXPLICITLY. The default of this function is
     // WRITE (`vorschau: !!opt.vorschau`), and that is right: whoever calls it
     // brings a creator along. The decision "preview or for real"
-    // is made by the route from `?schreiben=1` — not by a default value here.
-    const b = await importiereWantedListe(1, xml, { vorschau: true });
-    assert.equal(b.vorschau, true, 'Mit vorschau: true muss es eine Vorschau sein');
-    assert.equal(b.angelegt, 0, 'Eine Vorschau schreibt nichts');
+    // is made by the route from `?write=1` — not by a default value here.
+    const b = await importWantedList(1, xml, { preview: true });
+    assert.equal(b.preview, true, 'With preview: true it must be a preview');
+    assert.equal(b.created, 0, 'A preview writes nothing');
 
-    const nach = new Map(b.posten.map(p => [p.blId, p]));
+    const nach = new Map(b.items.map(p => [p.blId, p]));
     assert.equal(
       nach.get('3001').name,
       'Brick 2 x 4',
-      'Der Name aus part_catalog fehlt — dann zeigt die Vorschau nur Nummern, ' +
-        'und Marco kann an Posten 57 nicht erkennen, dass es der falsche Stein ist.',
+      'The name from part_catalog is missing — then the preview shows only numbers, ' +
+        'and Marco cannot tell at item 57 that it is the wrong brick.',
     );
     assert.equal(
-      nach.get('3001').bild,
+      nach.get('3001').image,
       'https://cdn.example/3001-rot.png',
-      'Das Bild hängt an Teil UND Farbe (ein roter 2x4 sieht anders aus als ein ' + 'blauer). Hier fehlt das Farbbild.',
+      'The image depends on part AND colour (a red 2x4 looks different from a ' +
+        'blue one). The colour image is missing here.',
     );
-    assert.equal(nach.get('3001').farbName, 'Red');
-    assert.equal(nach.get('3001').farbHex, 'C91A09');
+    assert.equal(nach.get('3001').colorName, 'Red');
+    assert.equal(nach.get('3001').colorHex, 'C91A09');
 
     // 3002 is ONLY in rb_parts (the CSV sync), not in part_catalog.
     // The resolution therefore leaves it OPEN — stage 3 reads part_catalog, and
     // it should: it is a guess, and widening it to the 50,000 rows of
     // rb_parts would mean many more items on the strength of a guess …
-    assert.equal(
-      nach.get('3002').ausgang,
-      'offen',
-      'Stufe 3 liest part_catalog; 3002 steht dort nicht und bleibt offen',
-    );
+    assert.equal(nach.get('3002').outcome, 'open', 'Level 3 reads part_catalog; 3002 is not there and stays open');
     assert.equal(
       nach.get('3002').name,
       'Brick 2 x 2',
-      'Der Rückfall auf rb_parts (CSV-Abgleich) greift nicht — dann bleibt ' +
-        'jedes Teil namenlos, das noch in keinem Set war.',
+      'The fallback to rb_parts (CSV comparison) does not work — then every part ' +
+        'that has not been in any set yet stays nameless.',
     );
     assert.equal(
-      nach.get('3002').bild,
+      nach.get('3002').image,
       'https://cdn.example/3002.png',
-      'Ohne Farbbild muss das allgemeine Teilebild einspringen',
+      'Without a colour image the general part image must step in',
     );
     assert.equal(
-      nach.get('3002').nameGeraten,
+      nach.get('3002').nameGuessed,
       true,
-      'Der Name wurde unter der BrickLink-Nummer gefunden, nicht über eine ' +
-        'Abbildung. Ohne dieses Kennzeichen sieht die Zeile aus wie ein Treffer.',
+      'The name was found under the BrickLink number, not via a ' +
+        'mapping. Without this flag the row looks like a hit.',
     );
-    assert.equal(nach.get('3001').nameGeraten, false, '3001 ist abgebildet — da ist nichts geraten.');
+    assert.equal(nach.get('3001').nameGuessed, false, '3001 is mapped — nothing is guessed there.');
 
     // 9999 is in no catalog. Empty is the HONEST answer here.
     assert.equal(
       nach.get('9999').name ?? null,
       null,
-      `Für 9999 steht „${nach.get('9999').name}" da — das kennt kein Katalog ` +
-        'dieses Baums. Ein geratener Name ist schlimmer als eine leere Zelle.',
+      `For 9999 it says „${nach.get('9999').name}" — no catalogue in ` +
+        'this tree knows that. A guessed name is worse than an empty cell.',
     );
     assert.notEqual(
-      nach.get('9999').nameGeraten,
+      nach.get('9999').nameGuessed,
       true,
-      'Eine leere Zeile „geraten" zu nennen wäre eine Behauptung über nichts',
+      'Calling an empty row „geraten“ would be a claim about nothing',
     );
   });
 
   await t.test('2. quantity, BL color and condition travel into the preview', async () => {
     // Without it the preview cannot show the row — and the correction
     // cannot say which color was meant.
-    const b = await importiereWantedListe(1, liste(item('P', '3001', 85, 7)), { vorschau: true });
-    const p = b.posten[0];
-    assert.equal(p.blFarbe, 85, 'Die BrickLink-Farbnummer aus der Datei fehlt');
-    assert.equal(p.menge, 7);
-    assert.equal(p.ausgang, 'offen', 'Farbe 85 ist nicht abbildbar — der Posten bleibt offen');
-    assert.match(p.grund || '', /BrickLink-Farbe 85/);
+    const b = await importWantedList(1, list(item('P', '3001', 85, 7)), { preview: true });
+    const p = b.items[0];
+    assert.equal(p.blColor, 85, 'The BrickLink colour number from the file is missing');
+    assert.equal(p.quantity, 7);
+    assert.equal(p.outcome, 'open', 'Colour 85 cannot be mapped — the item stays open');
+    assert.match(p.reason || '', /BrickLink-Farbe 85/);
   });
 
   await t.test('2b. the account default condition travels ONCE per report', async () => {
     // Asked for by Marco on 20.10.
-    const ohne = await importiereWantedListe(1, liste(item('P', '3001', 5, 1, 'X')), { vorschau: true });
-    assert.equal(ohne.standardZustand, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (userDefaultCondition)');
-    assert.equal(ohne.posten[0].zustand, null, 'Am ITEM steht weiterhin, was in der Datei stand — nicht der Standard');
+    const without = await importWantedList(1, list(item('P', '3001', 5, 1, 'X')), { preview: true });
+    assert.equal(
+      without.defaultCondition,
+      'N',
+      'Without a setting the default of the tree applies (userDefaultCondition)',
+    );
+    assert.equal(without.items[0].condition, null, 'The ITEM still carries what was in the file — not the default');
 
     await db.run(`INSERT INTO user_settings (user_id, key, value)
                   VALUES (1,'user_default_condition','U')
                   ON CONFLICT (user_id, key) DO UPDATE SET value='U'`);
-    const mit = await importiereWantedListe(
+    const withIt = await importWantedList(
       1,
-      liste(
+      list(
         item('P', '3001', 5, 1, 'N'),
         item('P', '3001', 5, 1, 'U'),
         item('P', '3001', 5, 1, 'X'),
         item('P', '3001', 5, 1, null),
       ),
-      { vorschau: true },
+      { preview: true },
     );
-    assert.equal(mit.standardZustand, 'U', 'Die Einstellung des Kontos gewinnt');
+    assert.equal(withIt.defaultCondition, 'U', 'The account setting wins');
     assert.deepEqual(
-      mit.posten.map(x => x.zustand),
+      withIt.items.map(x => x.condition),
       ['N', 'U', null, null],
-      'N und U bleiben, X bleibt null — der Standard ersetzt sie NICHT im Posten. ' +
-        'Die Vorschau setzt beides zusammen (row() in public/js/wanted-xml.js)',
+      'N and U stay, X stays null — the default does NOT replace them in the item. ' +
+        'The preview combines both (row() in public/js/wanted-xml.js)',
     );
     await db.run(`DELETE FROM user_settings WHERE user_id=1 AND key='user_default_condition'`);
   });
@@ -259,49 +260,49 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   await t.test('3. a correction hits the item at the index, not the number', async () => {
     // The same number and the same color TWICE — a key of kind,
     // number and color would hit both rows.
-    const xml = liste(item('P', '3001', 85, 2), item('P', '3001', 85, 5));
-    const zaehler = [];
-    const b = await importiereWantedListe(1, xml, {
-      vorschau: false,
-      korrekturen: [{ index: 1, blId: '3001', art: 'part', rbFarbe: 7 }],
+    const xml = list(item('P', '3001', 85, 2), item('P', '3001', 85, 5));
+    const counter = [];
+    const b = await importWantedList(1, xml, {
+      preview: false,
+      corrections: [{ index: 1, blId: '3001', kind: 'part', rbColor: 7 }],
       creator: {
-        teil: async (_u, body) => {
-          zaehler.push(body);
+        part: async (_u, body) => {
+          counter.push(body);
           return { action: 'created' };
         },
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
     });
-    assert.equal(b.korrekturen?.angewandt, 1, JSON.stringify(b.korrekturen));
-    assert.deepEqual(b.korrekturen?.abgewiesen, []);
+    assert.equal(b.corrections?.applied, 1, JSON.stringify(b.corrections));
+    assert.deepEqual(b.corrections?.rejected, []);
     assert.equal(
-      zaehler.length,
+      counter.length,
       1,
-      `Der Anleger bekam ${zaehler.length} Posten. Genau EINER wurde korrigiert; ` +
-        'der andere hat weiterhin keine abbildbare Farbe und muss offen bleiben.',
+      `The creator got ${counter.length} items. Exactly ONE was corrected; ` +
+        'the other still has no mappable colour and must stay open.',
     );
     assert.equal(
-      zaehler[0].quantity,
+      counter[0].quantity,
       5,
-      `Menge ${zaehler[0].quantity} — korrigiert war Index 1, also der Posten mit 5. ` +
-        'Trifft die Korrektur den ersten, zeigt sie auf die Nummer statt auf den Index.',
+      `quantity ${counter[0].quantity} — index 1 was corrected, i.e. the item with 5. ` +
+        'If the correction hits the first one, it points to the number instead of the index.',
     );
-    assert.equal(zaehler[0].color_id, 7);
+    assert.equal(counter[0].color_id, 7);
     // The COLOR NAME must be fetched afterwards: the resolution fetches it for the
     // colors from the FILE, and 7 was not there.
     assert.equal(
-      zaehler[0].color_name,
+      counter[0].color_name,
       'Blue',
-      'Ohne Nachtragen geht die eingetragene Farbe ohne Namen an den Anleger — ' +
-        'und das ist genau der Farbpunkt ohne Beschriftung vom 19.10.',
+      'Without filling in, the entered colour goes to the creator without a name — ' +
+        'and that is exactly the colour dot without a label from 19.10.',
     );
-    assert.equal(zaehler[0].color_hex, '0055BF');
+    assert.equal(counter[0].color_hex, '0055BF');
     assert.equal(
-      b.posten[1].sicherheit,
+      b.items[1].confidence,
       'korrigiert',
-      'Eine eingetragene Nummer ist nicht „zuordnung" — der Bericht darf nicht ' +
-        'behaupten, der Katalog habe geliefert, was jemand getippt hat.',
+      'An entered number is not „zuordnung“ — the report must not ' +
+        'claim the catalogue supplied what someone typed.',
     );
   });
 
@@ -309,84 +310,84 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // The case: between preview and writing a DIFFERENT file was
     // chosen. Without the counter-check the correction would act on a foreign
     // item — silently, because both numbers would look plausible.
-    const xml = liste(item('P', '3001', 85, 2));
-    const zaehler = [];
-    const b = await importiereWantedListe(1, xml, {
-      vorschau: false,
-      korrekturen: [{ index: 0, blId: '4444', art: 'part', rbFarbe: 7 }],
+    const xml = list(item('P', '3001', 85, 2));
+    const counter = [];
+    const b = await importWantedList(1, xml, {
+      preview: false,
+      corrections: [{ index: 0, blId: '4444', kind: 'part', rbColor: 7 }],
       creator: {
-        teil: async (_u, body) => {
-          zaehler.push(body);
+        part: async (_u, body) => {
+          counter.push(body);
           return { action: 'created' };
         },
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
     });
-    assert.equal(b.korrekturen?.angewandt, 0);
+    assert.equal(b.corrections?.applied, 0);
     assert.equal(
-      b.korrekturen?.abgewiesen.length,
+      b.corrections?.rejected.length,
       1,
-      'Die abgewiesene Korrektur muss im Bericht STEHEN — stillschweigend zu ' +
-        'übergehen heisst: Marco korrigiert, und nichts passiert.',
+      'The rejected correction must BE in the report — silently ' +
+        'skipping it means: Marco corrects, and nothing happens.',
     );
-    assert.equal(zaehler.length, 0, 'Der Posten hat weiterhin keine Farbe und bleibt offen');
+    assert.equal(counter.length, 0, 'The item still has no colour and stays open');
   });
 
   await t.test('5. only a REGISTERED number is remembered, no catalog hit', async () => {
-    const gemerkt = [];
+    const remembered = [];
     const creator = {
-      teil: async () => ({ action: 'created' }),
-      figur: async () => ({ action: 'created' }),
+      part: async () => ({ action: 'created' }),
+      minifig: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
     };
     // 3001 resolves via the catalog (stage 3, a guess), 9999 does not.
     // 9999 is corrected → 3002.
-    const xml = liste(item('P', '3001', 5, 1), item('P', '9999', 5, 1));
-    const b = await importiereWantedListe(1, xml, {
-      vorschau: false,
+    const xml = list(item('P', '3001', 5, 1), item('P', '9999', 5, 1));
+    const b = await importWantedList(1, xml, {
+      preview: false,
       creator,
-      korrekturen: [{ index: 1, blId: '9999', art: 'part', rbId: '3002', rbFarbe: 4 }],
-      rememberNumber: async (art, rbId, blId) => {
-        gemerkt.push({ art, rbId, blId });
+      corrections: [{ index: 1, blId: '9999', kind: 'part', rbId: '3002', rbColor: 4 }],
+      rememberNumber: async (kind, rbId, blId) => {
+        remembered.push({ kind, rbId, blId });
       },
     });
-    assert.equal(b.korrekturen?.angewandt, 1, JSON.stringify(b.korrekturen));
+    assert.equal(b.corrections?.applied, 1, JSON.stringify(b.corrections));
     assert.deepEqual(
-      gemerkt,
-      [{ art: 'part', rbId: '3002', blId: '9999' }],
-      `Gemerkt wurde ${JSON.stringify(gemerkt)}. Erwartet ist GENAU die ` +
-        'eingetragene Zuordnung 9999→3002. Steht 3001 mit dabei, wird ein ' +
-        'Katalogtreffer — also eine Vermutung — als Abbildung eingetragen.',
+      remembered,
+      [{ kind: 'part', rbId: '3002', blId: '9999' }],
+      `Remembered was ${JSON.stringify(remembered)}. Expected is EXACTLY the ` +
+        'entered mapping 9999→3002. If 3001 is included, a ' +
+        'catalogue hit — i.e. a guess — is recorded as a mapping.',
     );
   });
 
   await t.test('5b. a number looked up at Rebrickable is remembered too', async () => {
-    const gemerkt = [];
-    const xml = liste(item('P', '98765', 5, 1));
-    const b = await importiereWantedListe(1, xml, {
-      vorschau: false,
+    const remembered = [];
+    const xml = list(item('P', '98765', 5, 1));
+    const b = await importWantedList(1, xml, {
+      preview: false,
       viaRebrickable: true,
       creator: {
-        teil: async () => ({ action: 'created' }),
-        figur: async () => ({ action: 'created' }),
+        part: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
-      rememberNumber: async (art, rbId, blId) => {
-        gemerkt.push({ art, rbId, blId });
+      rememberNumber: async (kind, rbId, blId) => {
+        remembered.push({ kind, rbId, blId });
       },
     });
     assert.deepEqual(
-      b.stufen,
+      b.levels,
       { rebrickable: 1 },
-      'Der Posten muss ueber Rebrickable aufgeloest worden sein — sonst sagt ' + 'der Fall nichts ueber diese Stufe',
+      'The item must have been resolved via Rebrickable — otherwise ' + 'the case says nothing about this level',
     );
     assert.deepEqual(
-      gemerkt,
-      [{ art: 'part', rbId: '12345', blId: '98765' }],
-      `Gemerkt wurde ${JSON.stringify(gemerkt)}. Ohne diesen Eintrag fragt der ` +
-        'naechste Import dieselbe Nummer wieder bei Rebrickable — 1,5 Sekunden ' +
-        'und ein Abruf aus dem Tageskontingent je Posten, bei jedem Lauf',
+      remembered,
+      [{ kind: 'part', rbId: '12345', blId: '98765' }],
+      `Remembered was ${JSON.stringify(remembered)}. Without this entry the ` +
+        'next import asks Rebrickable about the same number again — 1.5 seconds ' +
+        'and one fetch from the daily quota per item, on every run',
     );
   });
 
@@ -394,79 +395,78 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // The opposite direction to case 5: without this case it would also be green
     // if the preview already wrote. A preview that stores something is
     // not one.
-    const gemerkt = [];
+    const remembered = [];
     // WITH creator: without it writing fails, and the callback would
     // not be reached for that reason alone — the case would be green without
     // saying anything about the preview.
-    const b = await importiereWantedListe(1, liste(item('P', '9999', 5, 1)), {
-      vorschau: true,
-      korrekturen: [{ index: 0, blId: '9999', art: 'part', rbId: '3002', rbFarbe: 4 }],
+    const b = await importWantedList(1, list(item('P', '9999', 5, 1)), {
+      preview: true,
+      corrections: [{ index: 0, blId: '9999', kind: 'part', rbId: '3002', rbColor: 4 }],
       creator: {
-        teil: async () => ({ action: 'created' }),
-        figur: async () => ({ action: 'created' }),
+        part: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
       rememberNumber: async (...a) => {
-        gemerkt.push(a);
+        remembered.push(a);
       },
     });
-    assert.equal(b.korrekturen?.angewandt, 1, 'Vorbedingung: die Korrektur muss greifen, sonst sagt der Fall nichts');
-    assert.equal(b.angelegt, 0, 'Eine Vorschau legt nichts an');
-    assert.deepEqual(gemerkt, [], 'In der Vorschau darf nichts gemerkt werden');
+    assert.equal(b.corrections?.applied, 1, 'precondition: the correction must apply, otherwise the case says nothing');
+    assert.equal(b.created, 0, 'A preview creates nothing');
+    assert.deepEqual(remembered, [], 'Nothing may be remembered in the preview');
   });
 
   await t.test('7. describeItem does not make one query per item', async () => {
     // Marco's file has 224 rows. One query per row would be a preview
     // one waits for.
-    const echt = db.pool.query.bind(db.pool);
-    let abfragen = 0;
+    const original = db.pool.query.bind(db.pool);
+    let queryList = 0;
     db.pool.query = (...a) => {
-      abfragen++;
-      return echt(...a);
+      queryList++;
+      return original(...a);
     };
     try {
-      const gelesen = readWantedList(
-        liste(
+      const parsed = readWantedList(
+        list(
           ...Array.from({ length: 60 }, (_, i) => item('P', `300${i % 10}`, 5, 1)),
           ...Array.from({ length: 20 }, (_, i) => item('M', `fig${i}`, null, 1)),
           ...Array.from({ length: 20 }, (_, i) => item('S', `1049${i}-1`, null, 1)),
         ),
       );
-      const auf = await resolveLocalOn(gelesen.posten);
-      abfragen = 0;
-      await describeItem(auf);
+      const opened = await resolveLocalOn(parsed.items);
+      queryList = 0;
+      await describeItem(opened);
       assert.ok(
-        abfragen <= 4,
-        `${abfragen} Abfragen für 100 Posten. Erlaubt sind höchstens 4 (Teile, ` +
-          'Farbbilder, Figuren, Sets). Eine je Posten wären 100.',
+        queryList <= 4,
+        `${queryList} queries for 100 items. At most 4 are allowed (parts, ` +
+          'colour images, figures, sets). One per item would be 100.',
       );
     } finally {
-      db.pool.query = echt;
+      db.pool.query = original;
     }
   });
 
   await t.test('8. name and image are in the report EVEN after writing', async () => {
     // Marco's finding of 21.10.
     const creator = {
-      teil: async () => ({ action: 'created' }),
-      figur: async () => ({ action: 'created' }),
+      part: async () => ({ action: 'created' }),
+      minifig: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
     };
-    const b = await importiereWantedListe(1, liste(item('P', '3001', 5, 1)), {
-      vorschau: false,
+    const b = await importWantedList(1, list(item('P', '3001', 5, 1)), {
+      preview: false,
       creator,
     });
     assert.equal(
-      b.posten[0].ausgang,
-      'angelegt',
-      'Der Posten muss wirklich geschrieben worden sein — sonst sagt der Fall ' +
-        'nichts über den Weg NACH dem Schreiben',
+      b.items[0].outcome,
+      'created',
+      'The item must really have been written — otherwise the case says ' + 'nothing about the path AFTER writing',
     );
-    assert.equal(b.posten[0].name, 'Brick 2 x 4');
+    assert.equal(b.items[0].name, 'Brick 2 x 4');
     assert.equal(
-      b.posten[0].bild,
+      b.items[0].image,
       'https://cdn.example/3001-rot.png',
-      'Ohne das zeichnet der Dialog nach dem Import leere Zellen — genau ' + 'Marcos Befund',
+      'Without it the dialog draws empty cells after the import — exactly ' + 'what Marco reported',
     );
   });
 
@@ -477,31 +477,31 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     // the loop would show nothing for exactly these items.
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
                   VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
-    const vorher = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), { vorschau: true });
+    const prior = await importWantedList(1, list(item('P', '7777', 5, 1)), { preview: true });
     assert.equal(
-      vorher.posten[0].bild,
+      prior.items[0].image,
       null,
-      'In der Vorschau gibt es das Bild noch nicht — sonst sagt der Fall nichts',
+      'In the preview the image does not exist yet — otherwise the case says nothing',
     );
 
-    const b = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), {
-      vorschau: false,
+    const b = await importWantedList(1, list(item('P', '7777', 5, 1)), {
+      preview: false,
       creator: {
         // The way addManualPart would do it: fill the catalog first, then report.
-        teil: async () => {
+        part: async () => {
           await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url)
                         VALUES ('7777',4,'https://cdn.example/7777.png')
                         ON CONFLICT DO NOTHING`);
           return { action: 'created' };
         },
-        figur: async () => ({ action: 'created' }),
+        minifig: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
     });
     assert.equal(
-      b.posten[0].bild,
+      b.items[0].image,
       'https://cdn.example/7777.png',
-      'Das beim Anlegen geschriebene Bild muss im Bericht ankommen',
+      'The image written on creation must arrive in the report',
     );
   });
 });

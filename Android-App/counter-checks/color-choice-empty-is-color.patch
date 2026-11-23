@@ -1,0 +1,17 @@
+Gegenprobe: Farbwahl.aus nimmt einen leeren Text als Farbe
+Modul: core-contract
+Test: ch.brickinventoryapp.contract.DomainTypesTest
+Rot: empty means all colors and categories, otherwise the choice carries the value
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/PartsFilter.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/PartsFilter.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/PartsFilter.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/PartsFilter.kt
+@@ -16,7 +16,7 @@
+     val value: String? get() = (this as? Color)?.name
+ 
+     companion object {
+-        fun from(text: String?): ColorPicker = text?.takeIf { it.isNotBlank() }?.let(::Color) ?: All
++        fun from(text: String?): ColorPicker = text?.let(::Color) ?: All
+     }
+ }
+ 

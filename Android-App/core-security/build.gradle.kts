@@ -1,7 +1,7 @@
 // What protects secrets: the token vault in the Keystore, store keys and
 // encrypted stores, TLS trust towards the app's own server, secret
 // clipboard, password and passkey rules. Knows neither repositories nor
-// Room: core-offline and core-data build on it, never the other way round (ModulgrenzenTest).
+// Room: core-offline and core-data build on it, never the other way round (ModuleBoundariesTest).
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -20,7 +20,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
 
-    testImplementation(project(":core-testing"))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
 }

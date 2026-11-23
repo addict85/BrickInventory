@@ -27,7 +27,7 @@ const sv = _req('src/account/sessionVersion.js');
 const signals = testAccess().notification;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 
 test('session version across all processes', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -40,51 +40,51 @@ test('session version across all processes', { concurrency: 1 }, async t => {
       [NAME],
     )
   ).id;
-  const anderer = new Client({ connectionString: process.env.DATABASE_URL });
-  await anderer.connect();
+  const otherOne = new Client({ connectionString: process.env.DATABASE_URL });
+  await otherOne.connect();
   t.after(async () => {
     await signals.close();
-    await anderer.end().catch(() => {});
+    await otherOne.end().catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const hoeher = () => db.run('UPDATE users SET session_version = session_version + 1 WHERE id = $1', [uid]);
+  const higher = () => db.run('UPDATE users SET session_version = session_version + 1 WHERE id = $1', [uid]);
   const inDb = async () => (await db.get('SELECT session_version AS v FROM users WHERE id = $1', [uid])).v;
 
   await t.test('without a listen connection only the database applies', async () => {
     await sv.currentSessionVersion(uid);
-    await hoeher();
+    await higher();
     assert.equal(await sv.currentSessionVersion(uid), await inDb());
   });
 
   sv.listenOnSessionVersion();
-  let bereit = false;
-  const fertig = () => {
-    bereit = true;
+  let ready = false;
+  const done = () => {
+    ready = true;
   };
-  signals.listen('sitzung_version', fertig);
-  await bis(() => bereit, 5000);
-  signals.unlisten('sitzung_version', fertig);
-  assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
+  signals.listen('sitzung_version', done);
+  await until(() => ready, 5000);
+  signals.unlisten('sitzung_version', done);
+  assert.ok(ready, 'the listen connection did not come about');
 
   await t.test('an increment from another process applies immediately', async () => {
-    const vorher = await sv.currentSessionVersion(uid);
-    await hoeher();
-    assert.equal(await sv.currentSessionVersion(uid), vorher, 'Vorbedingung: der Zwischenspeicher trägt sie noch');
-    await anderer.query("SELECT pg_notify('sitzung_version', 'anderer')");
-    const neu = await inDb();
+    const prior = await sv.currentSessionVersion(uid);
+    await higher();
+    assert.equal(await sv.currentSessionVersion(uid), prior, 'precondition: the cache still holds it');
+    await otherOne.query("SELECT pg_notify('sitzung_version', 'anderer')");
+    const fresh = await inDb();
     assert.ok(
-      await bis(async () => (await sv.currentSessionVersion(uid)) === neu, 1000),
-      'die alte Version gilt im Zwischenspeicher weiter',
+      await until(async () => (await sv.currentSessionVersion(uid)) === fresh, 1000),
+      'the old version stays valid in the cache',
     );
   });
 
   await t.test('an increment here notifies the others', async () => {
-    const gehoert = [];
-    anderer.on('notification', m => gehoert.push(m.channel));
-    await anderer.query('LISTEN sitzung_version');
+    const belongsTo = [];
+    otherOne.on('notification', m => belongsTo.push(m.channel));
+    await otherOne.query('LISTEN sitzung_version');
     await _req('src/account/accessEnd.js').endAllSessions(uid);
-    await bis(() => gehoert.length > 0, 1000);
-    assert.deepEqual(gehoert.slice(0, 1), ['sitzung_version']);
+    await until(() => belongsTo.length > 0, 1000);
+    assert.deepEqual(belongsTo.slice(0, 1), ['sitzung_version']);
   });
 });

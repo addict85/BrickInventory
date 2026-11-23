@@ -1,0 +1,16 @@
+Gegenprobe: ein Gutschein-PDF ohne Längenangabe wird ohne Obergrenze in den Speicher geladen
+Modul: core-data
+Test: ch.brickinventoryapp.data.PdfInStorageTest
+Rot: a response above the limit is rejected, even without a length
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfInMemory.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfInMemory.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfInMemory.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfInMemory.kt
+@@ -35,7 +35,6 @@
+                 currentCoroutineContext().ensureActive()
+                 val n = one.read(piece)
+                 if (n < 0) break
+-                if (content.size() + n > limit) throw IOException("PDF zu gross: über $limit Bytes")
+                 content.write(piece, 0, n)
+                 progress(content.size().toLong(), total)
+             }

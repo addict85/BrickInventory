@@ -1,0 +1,17 @@
+Gegenprobe: Teilekachel auch bei 200 % mit dem Bild über die ganze Breite
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: parts at 200 percent show several parts fully and add lies on none
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsCard.kt
+@@ -95,7 +95,7 @@
+     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
+     // From large font on, a list row like the sets: the image at full width
+     // left room for one part per screen. The quantity then moves from the image into the text.
+-    val row = largeFont()
++    val row = false
+     val quantity: @Composable () -> Unit = {
+         Surface(color = MaterialTheme.colorScheme.primary, shape = Shapes.brand) {
+             Text(quantityFromSet(qty), Modifier.padding(horizontal = Spacing.tiny, vertical = 1.dp)

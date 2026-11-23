@@ -1,5 +1,5 @@
 // Keyboard handling for all dialogs in one place: Escape, focus moving in, Tab stays inside, focus moving back.
-// Closing happens via the data-dialog-zu button, so the same cleanup runs as a click on ✕.
+// Closing happens via the data-dialog-close button, so the same cleanup runs as a click on ✕.
 
 // `summary` belongs in the list: without it, the trap would jump back to the start right before "More
 // actions", and everything after it would be unreachable by keyboard.
@@ -46,13 +46,13 @@ function focusTargets(dialog) {
 }
 
 /**
- * Initial focus: `[data-erstfokus]`, else the dialog itself — a text field would open the keyboard on the
+ * Initial focus: `[data-first-focus]`, else the dialog itself — a text field would open the keyboard on the
  * phone.
  * @param {HTMLElement} dialog
  */
 function focusInto(dialog) {
   if (dialog.contains(document.activeElement)) return;
-  const target = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-erstfokus]'));
+  const target = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-first-focus]'));
   if (target && visible(target)) {
     target.focus();
     return;
@@ -68,6 +68,12 @@ function focusPanel(dialog) {
 }
 
 const _before = new WeakMap();
+/**
+ * The element that last lost focus to nowhere. A choice in "More actions" collapses the menu, and Chrome
+ * blurs the hidden button before the confirmation opens — without this, the dialog would not know its trigger.
+ * @type {Element | null}
+ */
+let _lastBlurred = null;
 const _wasOpen = new WeakMap();
 /** @type {((dialog: HTMLElement, open: boolean) => void)[]} */
 const _listeners = [];
@@ -80,15 +86,38 @@ export function onDialogChange(fn) {
   _listeners.push(fn);
 }
 
+// Messages and their buttons ("undo") stay reachable above an open dialog.
+const NEVER_INERT = '#toasts, #announcement-status, #announcement-error';
+
+/**
+ * Everything beside the topmost open dialog is inert: aria-modal alone does not stop a screen reader's
+ * virtual cursor or a mouse click from reaching the page behind. Only what this module set is lifted again.
+ */
+function updateInert() {
+  const top = topDialog();
+  for (const el of /** @type {HTMLElement[]} */ ([...document.body.children])) {
+    const should = !!top && el !== top && !el.matches(NEVER_INERT) && el.tagName !== 'SCRIPT';
+    if (should && !el.hasAttribute('inert')) {
+      el.setAttribute('inert', '');
+      el.dataset.dialogInert = '';
+    } else if (!should && el.hasAttribute('data-dialog-inert')) {
+      el.removeAttribute('inert');
+      delete el.dataset.dialogInert;
+    }
+  }
+}
+
 /** @param {HTMLElement} dialog */
 function stateChanged(dialog) {
   const open = isOpen(dialog);
   if (open === _wasOpen.get(dialog)) return;
   _wasOpen.set(dialog, open);
+  // Read the trigger before the page goes inert: Chrome blurs a focused element inside an inert subtree.
+  const trigger = document.activeElement === document.body ? _lastBlurred : document.activeElement;
+  updateInert();
   for (const h of _listeners) h(dialog, open);
   if (open) {
-    const active = document.activeElement;
-    if (active && active !== document.body && !dialog.contains(active)) _before.set(dialog, active);
+    if (trigger && trigger !== document.body && !dialog.contains(trigger)) _before.set(dialog, trigger);
     focusInto(dialog);
   } else {
     const back = _before.get(dialog);
@@ -123,7 +152,7 @@ function focusHeading() {
 
 // If the focused element disappears (card deleted, list redrawn, toast closed), focus would fall back to
 // <body> (WCAG 2.4.3). Then the same element redrawn, else its neighbor, else the heading.
-const ENTRY = '.sc, tr[data-arg], .part-card, .man-tile, .mk-zeile';
+const ENTRY = '.sc, tr[data-arg], .part-card, .man-tile, .mk-row';
 /** @type {{ el: Element, locations: string[] } | null} */
 let _focus = null;
 /** @param {Element | null} e */
@@ -210,7 +239,7 @@ function keyPressed(ev) {
       /** @type {HTMLElement | null} */ (menu.querySelector(':scope > summary'))?.focus();
       return;
     }
-    const closeBtn = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-dialog-zu]'));
+    const closeBtn = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-dialog-close]'));
     if (!closeBtn) return;
     ev.preventDefault();
     ev.stopPropagation();
@@ -249,6 +278,9 @@ export function initDialogs() {
   // Capture: ahead of individual modules' own Escape handlers (user menu etc.).
   document.addEventListener('keydown', keyPressed, true);
   document.addEventListener('focusin', focusRemembered, true);
+  document.addEventListener('focusout', ev => {
+    _lastBlurred = !ev.relatedTarget && ev.target instanceof Element ? ev.target : null;
+  });
   new MutationObserver(focusLost).observe(document.body, { childList: true, subtree: true });
 }
 

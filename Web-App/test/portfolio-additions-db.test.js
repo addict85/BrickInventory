@@ -20,25 +20,25 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test('the portfolio percentage measures prices, not additional purchases', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
-  const NUTZER = `pfz-${process.pid}`;
+  const USER = `pfz-${process.pid}`;
   const PREFIX = `86${(process.pid % 900) + 100}`;
   const SN = i => `${PREFIX}${String(i).padStart(2, '0')}-1`;
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     await db.run(`DELETE FROM sets WHERE set_number LIKE $1`, [`${PREFIX}%`]).catch(() => {});
     await db.run(`DELETE FROM price_history WHERE set_number LIKE $1`, [`${PREFIX}%`]).catch(() => {});
   };
 
-  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
-  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
-  await aufraeumen();
+  await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
+  await cleanUp();
 
-  const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
+  const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
-  const kurve = async (period = 'week') => portfolioVerlauf(uid, [uid], period, db, getSetting);
+  const curve = async (period = 'week') => portfolioHistory(uid, [uid], period, db, getSetting);
 
   /** Create a set and give it a price history from `abTag` days before today. */
   const setWith = async (i, abTag, priceAtStart, priceToday) => {
@@ -52,11 +52,11 @@ test('the portfolio percentage measures prices, not additional purchases', { con
       [uid, SN(i)],
     );
     for (let d = abTag; d >= 0; d--) {
-      const preis = abTag === 0 ? priceToday : priceAtStart + (priceToday - priceAtStart) * ((abTag - d) / abTag);
+      const price = abTag === 0 ? priceToday : priceAtStart + (priceToday - priceAtStart) * ((abTag - d) / abTag);
       await db.run(
         `INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
          VALUES ($1,'N','CHF',$2,$2, CURRENT_DATE - $3::int + interval '9 hours')`,
-        [SN(i), preis.toFixed(2), d],
+        [SN(i), price.toFixed(2), d],
       );
     }
   };
@@ -65,25 +65,22 @@ test('the portfolio percentage measures prices, not additional purchases', { con
     // Starting point: two sets with one week of history, price 100 → 110.
     await setWith(1, 6, 100, 110);
     await setWith(2, 6, 100, 110);
-    const vorher = await kurve();
-    assert.equal(vorher.period_change_pct, 10, `Grundfall stimmt nicht: ${vorher.period_change_pct} statt +10 %`);
+    const prior = await curve();
+    assert.equal(prior.period_change_pct, 10, `base case is wrong: ${prior.period_change_pct} instead of +10 %`);
 
     // The case from Marco's screenshot: 24 sets added today
     for (let i = 3; i <= 26; i++) await setWith(i, 1, 50, 50);
-    const nachher = await kurve();
+    const later = await curve();
     assert.ok(
-      nachher.period_change_pct <= vorher.period_change_pct + 0.01,
-      `Das Erfassen hat die Prozentzahl ERHÖHT: ${vorher.period_change_pct} → ` +
-        `${nachher.period_change_pct}. Genau das war Marcos Befund (+850 %).`,
+      later.period_change_pct <= prior.period_change_pct + 0.01,
+      `Recording RAISED the percentage: ${prior.period_change_pct} → ` +
+        `${later.period_change_pct}. That is exactly what Marco reported (+850 %).`,
     );
     assert.ok(
-      nachher.period_change_pct >= 0,
-      `Zukäufe dürfen das Vorzeichen nicht drehen, war: ${nachher.period_change_pct}`,
+      later.period_change_pct >= 0,
+      `Additional purchases must not flip the sign, was: ${later.period_change_pct}`,
     );
-    assert.ok(
-      nachher.period_change_pct <= 10,
-      'Kein Set hat sich um mehr als 10 % bewegt — mehr darf die Summe nicht zeigen',
-    );
+    assert.ok(later.period_change_pct <= 10, 'No set moved by more than 10 % — the total must not show more');
 
     // Opposite direction: if a PRICE moves, it must show — otherwise
     // a hard-wired zero would be green too.
@@ -93,33 +90,33 @@ test('the portfolio percentage measures prices, not additional purchases', { con
           WHERE set_number=$1 AND recorded_at >= CURRENT_DATE`,
         [SN(i)],
       );
-    const risen = await kurve();
+    const risen = await curve();
     assert.ok(
-      risen.period_change_pct > nachher.period_change_pct + 50,
-      `Eine Preisverdopplung muss sich zeigen, war: ${risen.period_change_pct}`,
+      risen.period_change_pct > later.period_change_pct + 50,
+      `A price doubling must show, was: ${risen.period_change_pct}`,
     );
 
     // And the curve itself must have no jump any more: the first point
     // already contains all 26 sets. Without the backfill only the value of the
     // two old ones would stand there.
     const p = risen.points.map(x => x.value);
-    assert.ok(p[0] > 1000, `Der erste Punkt enthält nicht den ganzen Bestand (2×100 + 24×50 = 1400), war: ${p[0]}`);
+    assert.ok(p[0] > 1000, `The first point does not contain the whole stock (2×100 + 24×50 = 1400), was: ${p[0]}`);
 
     // All periods must make the same statement — the monthly resolution
     // (year/max) has its own path for the starting point, and that one has
     // already drifted apart once in this series.
-    const werte = {};
-    for (const per of ['week', 'month', 'year', 'max']) werte[per] = (await kurve(per)).period_change_pct;
-    const only = [...new Set(Object.values(werte))];
+    const values = {};
+    for (const per of ['week', 'month', 'year', 'max']) values[per] = (await curve(per)).period_change_pct;
+    const only = [...new Set(Object.values(values))];
     assert.equal(
       only.length,
       1,
-      `Die Zeiträume sind sich uneinig: ${JSON.stringify(werte)} — bei Daten aus ` +
-        'einer einzigen Woche müssen Woche, Monat, Jahr und Max dasselbe zeigen',
+      `The periods disagree: ${JSON.stringify(values)} — with data from ` +
+        'a single week, week, month, year and max must show the same',
     );
   } finally {
-    await aufraeumen();
-    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await cleanUp();
+    await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

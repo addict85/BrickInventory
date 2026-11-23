@@ -1,37 +1,37 @@
 /** What the services receive; separate from area.ts so that no import cycle arises. */
-import type { Konfig } from '../infra/config';
-import type { Uhr } from '../infra/clock';
+import type { AppConfig } from '../infra/config';
+import type { Clock } from '../infra/clock';
 import type { Db } from '../../db/database';
-import { imSystem, mit, type Kontext } from '../infra/area';
+import { asSystem, bound, type Context } from '../infra/area';
 import type { DevicesReadContract } from './readContract';
 import type { JobsServices } from '../jobQueue';
-import * as geraeteSchluessel from './repository/deviceKeys';
+import * as deviceKey from './repository/deviceKeys';
 
 export interface DevicesDependencies {
-  konfig: Readonly<Konfig>;
+  config: Readonly<AppConfig>;
   db: Db;
-  uhr: Uhr;
+  clock: Clock;
   /** The run state holds the attestation's revocation list (catalog/revocationList.ts loads it). */
   jobQueue: JobsServices;
-  lesevertrag: DevicesReadContract;
+  readContract: DevicesReadContract;
 }
 
 /** Keys and approvals are under row security; checking happens before the request carries an account. */
 const WITHOUT_ACCOUNT = 'Anmeldung oder Token-Prüfung: Es gibt noch kein Konto, für das der Zeilenschutz gälte';
 
-export const zugang = (db: Db, l: DevicesReadContract) => ({
-  geraeteSchluessel: {
-    familyOfTokens: mit(l)(imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.familyOfTokens)),
-    keyThe: imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.keyThe),
-    entryThe: imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.entryThe),
-    putKeyAn: mit(l)(imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.putKeyAn)),
-    putNonceAn: mit(l)(imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.putNonceAn)),
-    qrNonceThe: imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.qrNonceThe),
-    takeNonce: imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.takeNonce),
-    putChallengeAn: imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.putChallengeAn),
-    takeChallenge: imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.takeChallenge),
-    openRelease: imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.openRelease),
-    useRelease: imSystem(db, WITHOUT_ACCOUNT, geraeteSchluessel.useRelease),
+export const access = (db: Db, l: DevicesReadContract) => ({
+  deviceKeys: {
+    familyOfTokens: bound(l)(asSystem(db, WITHOUT_ACCOUNT, deviceKey.familyOfTokens)),
+    keyThe: asSystem(db, WITHOUT_ACCOUNT, deviceKey.keyThe),
+    entryThe: asSystem(db, WITHOUT_ACCOUNT, deviceKey.entryThe),
+    createKey: bound(l)(asSystem(db, WITHOUT_ACCOUNT, deviceKey.createKey)),
+    createNonce: bound(l)(asSystem(db, WITHOUT_ACCOUNT, deviceKey.createNonce)),
+    qrNonceThe: asSystem(db, WITHOUT_ACCOUNT, deviceKey.qrNonceThe),
+    takeNonce: asSystem(db, WITHOUT_ACCOUNT, deviceKey.takeNonce),
+    createChallenge: asSystem(db, WITHOUT_ACCOUNT, deviceKey.createChallenge),
+    takeChallenge: asSystem(db, WITHOUT_ACCOUNT, deviceKey.takeChallenge),
+    openRelease: asSystem(db, WITHOUT_ACCOUNT, deviceKey.openRelease),
+    useRelease: asSystem(db, WITHOUT_ACCOUNT, deviceKey.useRelease),
   },
 });
-export type DevicesContext = Kontext<DevicesDependencies, ReturnType<typeof zugang>>;
+export type DevicesContext = Context<DevicesDependencies, ReturnType<typeof access>>;

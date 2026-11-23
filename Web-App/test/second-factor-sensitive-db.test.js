@@ -44,7 +44,7 @@ const { decrypt } = _req('src/infra/secret.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Faktor-Passwort-1';
 
-async function konto(name, { admin = false } = {}) {
+async function account(name, { admin = false } = {}) {
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   return (
     await db.get(
@@ -61,7 +61,7 @@ async function withFactor(uid) {
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
   const code = zf.hotp(zf.fromBase32(decrypt(z.secret, zf.secondFactorContext(uid))), zf.timeStep());
   const codes = await zf.confirmSetup(uid, code);
-  assert.ok(Array.isArray(codes) && codes.length >= 3, 'Vorbedingung: Faktor active');
+  assert.ok(Array.isArray(codes) && codes.length >= 3, 'precondition: factor active');
   return codes;
 }
 
@@ -69,13 +69,13 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `zfh_${process.pid}`,
-    OHNE = `zfh_ohne_${process.pid}`,
+    WITHOUT = `zfh_ohne_${process.pid}`,
     CHEF = `zfh_chef_${process.pid}`;
-  const uid = await konto(NAME),
-    ohne = await konto(OHNE),
-    chef = await konto(CHEF, { admin: true });
+  const uid = await account(NAME),
+    without = await account(WITHOUT),
+    chef = await account(CHEF, { admin: true });
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, ohne, chef]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, without, chef]]).catch(() => {});
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'bestaetigung|%'`).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -83,14 +83,14 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
 
   const server = (id, name, admin = false) =>
     routerServer(_req, {
-      sitzung: { userId: id, username: name, isAdmin: admin },
-      routen: { '/api/v1/auth': 'routes/auth.js' },
+      session: { userId: id, username: name, isAdmin: admin },
+      routes: { '/api/v2/auth': 'routes/auth.js' },
       t,
     }).base;
   const basis = server(uid, NAME);
-  const ruf = async (b, methode, weg, body) => {
-    const r = await fetch(`${b}/api/v1/auth${weg}`, {
-      method: methode,
+  const callFn = async (b, method, route, body) => {
+    const r = await fetch(`${b}/api/v2/auth${route}`, {
+      method: method,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
@@ -98,24 +98,24 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
   };
 
   await t.test('password change', async () => {
-    const withoutCode = await ruf(basis, 'POST', '/change-password', {
+    const withoutCode = await callFn(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
     });
-    assert.equal(withoutCode.body.code, 'zweiter_faktor_noetig', 'Passwortwechsel ohne Code');
+    assert.equal(withoutCode.body.code, 'second_factor_required', 'password change without a code');
     assert.equal(withoutCode.status, 400);
-    const falsch = await ruf(basis, 'POST', '/change-password', {
+    const wrong = await callFn(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
       code: '000000',
     });
-    assert.equal(falsch.body.code, 'zweiter_faktor_falsch');
-    const gut = await ruf(basis, 'POST', '/change-password', {
+    assert.equal(wrong.body.code, 'second_factor_wrong');
+    const good = await callFn(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
       code: codes[0],
     });
-    assert.equal(gut.status, 200, JSON.stringify(gut.body));
+    assert.equal(good.status, 200, JSON.stringify(good.body));
     // Back, so that the following parts take the same password.
     await db.run('UPDATE users SET password_hash = $2 WHERE id = $1', [uid, await bcrypt.hash(PASS, 4)]);
   });
@@ -128,47 +128,47 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
         [uid, `zfh-${process.pid}`],
       )
     ).id;
-    const withoutCode = await ruf(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS });
-    assert.equal(withoutCode.body.code, 'zweiter_faktor_noetig', 'Passkey löschen ohne Code');
-    assert.ok(await db.get('SELECT 1 FROM passkeys WHERE id = $1', [pk]), 'der Passkey steht noch');
-    const gut = await ruf(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS, code: codes[1] });
-    assert.equal(gut.body.deleted, 1, JSON.stringify(gut.body));
+    const withoutCode = await callFn(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS });
+    assert.equal(withoutCode.body.code, 'second_factor_required', 'deleting a passkey without a code');
+    assert.ok(await db.get('SELECT 1 FROM passkeys WHERE id = $1', [pk]), 'the passkey is still there');
+    const good = await callFn(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS, code: codes[1] });
+    assert.equal(good.body.deleted, 1, JSON.stringify(good.body));
   });
 
   await t.test('change e-mail', async () => {
-    const withoutCode = await ruf(basis, 'PUT', '/profile', {
+    const withoutCode = await callFn(basis, 'PUT', '/profile', {
       username: NAME,
       email: `${NAME}@neu.example`,
       password_current: PASS,
     });
-    assert.equal(withoutCode.body.code, 'zweiter_faktor_noetig', 'E-Mail ändern ohne Code');
+    assert.equal(withoutCode.body.code, 'second_factor_required', 'changing the email without a code');
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@alt.example`);
-    const gut = await ruf(basis, 'PUT', '/profile', {
+    const good = await callFn(basis, 'PUT', '/profile', {
       username: NAME,
       email: `${NAME}@neu.example`,
       password_current: PASS,
       code: codes[2],
     });
-    assert.equal(gut.status, 200, JSON.stringify(gut.body));
+    assert.equal(good.status, 200, JSON.stringify(good.body));
     assert.equal((await db.get('SELECT new_email FROM users WHERE id = $1', [uid])).new_email, `${NAME}@neu.example`);
   });
 
   await t.test('missing code does not count in the brake', async () => {
     for (let i = 0; i < 7; i++)
       assert.equal(
-        (await ruf(basis, 'POST', '/change-password', { current: PASS, newPassword: 'Neues-Passwort-33' })).status,
+        (await callFn(basis, 'POST', '/change-password', { current: PASS, newPassword: 'Neues-Passwort-33' })).status,
         400,
       );
-    const gut = await ruf(basis, 'POST', '/change-password', {
+    const good = await callFn(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-33',
       code: codes[3],
     });
-    assert.equal(gut.status, 200, `fehlender Code zählt nicht in der Bremse: ${JSON.stringify(gut.body)}`);
+    assert.equal(good.status, 200, `a missing code does not count in the throttle: ${JSON.stringify(good.body)}`);
   });
 
   await t.test('without second factor as before', async () => {
-    const r = await ruf(server(ohne, OHNE), 'POST', '/change-password', {
+    const r = await callFn(server(without, WITHOUT), 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-44',
     });
@@ -176,7 +176,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
   });
 
   await t.test('administrator address only applies after the link', async () => {
-    const r = await ruf(server(chef, CHEF, true), 'PUT', '/profile', {
+    const r = await callFn(server(chef, CHEF, true), 'PUT', '/profile', {
       username: CHEF,
       email: `${CHEF}@neu.example`,
       password_current: PASS,
@@ -186,7 +186,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
     assert.deepEqual(
       [z.email, z.new_email],
       [`${CHEF}@alt.example`, `${CHEF}@neu.example`],
-      'Verwalter-Adresse gilt erst nach dem Link',
+      'the admin address only applies after the link',
     );
   });
 });

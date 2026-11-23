@@ -3,7 +3,7 @@
  * `voll` true, with `app` false; requireToken passes it on to req.apiUser like that.
  *
  * Counter-checks (measured on 11.11.2026):
- *   A  in pruefeToken() back to `… ? 1 : 0` → red: both parts
+ *   A  in checkToken() back to `… ? 1 : 0` → red: both parts
  *   B  in requireToken `is_admin: user.is_admin ? 1 : 0` → red: “requireToken
  *      passes a boolean on”
  */
@@ -29,28 +29,28 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [id]);
     await db.pool.end().catch(() => {});
   });
-  const voll = await A.createToken(id, 'voll', false, null, { scope: 'voll' });
+  const full = await A.createToken(id, 'voll', false, null, { scope: 'voll' });
   const app = await A.createToken(id, 'app', false, null, { scope: 'app' });
 
   await t.test('a token with scope full carries true, with app false', async () => {
-    assert.equal((await A.pruefeToken(voll)).nutzer?.is_admin, true);
-    assert.equal((await A.pruefeToken(app)).nutzer?.is_admin, false);
+    assert.equal((await A.checkToken(full)).user?.is_admin, true);
+    assert.equal((await A.checkToken(app)).user?.is_admin, false);
   });
 
   await t.test('requireToken passes a boolean on', async () => {
-    const { requireToken } = _req('routes/api_v1/middleware.js').guardFor(
+    const { requireToken } = _req('routes/api/middleware.js').guardFor(
       require('./helpers/sources').testServices().account,
     );
-    for (const [token, soll] of [
-      [voll, true],
+    for (const [token, want] of [
+      [full, true],
       [app, false],
     ]) {
       const req = { method: 'GET', path: '/x', headers: { authorization: `Bearer ${token}` }, ip: '127.0.0.1' };
-      await new Promise((weiter, fehler) => {
-        const res = { status: () => res, json: r => fehler(new Error(JSON.stringify(r))), setHeader: () => {} };
-        requireToken(req, res, weiter);
+      await new Promise((next, error) => {
+        const res = { status: () => res, json: r => error(new Error(JSON.stringify(r))), setHeader: () => {} };
+        requireToken(req, res, next);
       });
-      assert.equal(req.apiUser.is_admin, soll);
+      assert.equal(req.apiUser.is_admin, want);
     }
   });
 });

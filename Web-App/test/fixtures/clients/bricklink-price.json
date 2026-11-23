@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "description": "OK",
+    "message": "OK",
+    "code": 200
+  },
+  "data": {
+    "item": {
+      "no": "10294-1",
+      "type": "SET"
+    },
+    "new_or_used": "N",
+    "currency_code": "CHF",
+    "avg_price": "612.5000",
+    "qty_avg_price": "605.0000",
+    "unit_quantity": 12
+  }
+}

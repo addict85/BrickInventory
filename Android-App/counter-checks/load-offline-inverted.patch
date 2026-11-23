@@ -1,0 +1,17 @@
+Gegenprobe: Laden.Daten.offline gilt für frische Daten
+Modul: core-model
+Test: ch.brickinventoryapp.model.LoadTest
+Rot: data from the store is offline, fresh data is not
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Load.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Load.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Load.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Load.kt
+@@ -10,7 +10,7 @@
+ 
+     /** [state]: time of the store if the data comes from it offline; null means fresh. */
+     data class Data<out T>(val value: T, val state: Long? = null) : Load<T> {
+-        val offline: Boolean get() = state != null
++        val offline: Boolean get() = state == null
+     }
+ 
+     /** No data: [kind] chooses icon and advice, [message] is the sentence for it. */

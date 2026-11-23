@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.compose.ui.graphics.Color
-import ch.brickinventoryapp.ui.theme.akzentflaechen
-import ch.brickinventoryapp.ui.theme.farbschema
-import ch.brickinventoryapp.ui.theme.hatDarkVersion
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.ui.theme.accentSurfaces
+import ch.brickinventoryapp.ui.theme.colorScheme
+import ch.brickinventoryapp.ui.theme.hasDarkVersion
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -14,15 +14,15 @@ import org.junit.Test
  * secondaryContainer (selected chips, hints) and the market value tile — are
  * never red in any design or version.
  *
- * Counter-checks (patches under gegenproben/, measured only in CI):
- *   noppe-container-rot        noppe's primaryContainer back to NoppeRotHell
- *                              → red „value and state surfaces are never red“ (noppe.primaryContainer)
- *   noppe-dunkel-container-rot noppe in the dark without its own primaryContainer (back to #2a1415)
- *                              → red „value and state surfaces are never red“ (noppe/dunkel.primaryContainer)
+ * Counter-checks (patches under counter-checks/, measured only in CI):
+ *   stud-container-red        `noppe`'s primaryContainer back to StudRedLight
+ *                              → red „value and state surfaces are never red“ (`noppe`.primaryContainer)
+ *   stud-dark-container-red `noppe` in the dark without its own primaryContainer (back to #2a1415)
+ *                              → red „value and state surfaces are never red“ (`noppe/dunkel`.primaryContainer)
  */
 class RedOnlyForWarningTest {
 
-    private val designs = listOf(Design.CLASSIC, Design.BRICK, Design.WERKBANK, Design.FARBFAECHER, Design.NOPPE, Design.HOCHGLANZ)
+    private val designs = listOf(Design.CLASSIC, Design.BRICK, Design.WORKBENCH, Design.COLOR_FAN, Design.STUD, Design.GLOSSY)
 
     /** Hue in degrees and chroma (max − min of channels); gray has no hue. */
     private fun toneAndChroma(c: Color): Pair<Float, Float> {
@@ -38,31 +38,31 @@ class RedOnlyForWarningTest {
     }
 
     /** Red: hue between 340° and 20° and visibly chromatic (not a warm gray). */
-    private fun rot(c: Color): Boolean {
+    private fun red(c: Color): Boolean {
         val (tone, chroma) = toneAndChroma(c)
         return chroma >= MIN_CHROMA && (tone >= 340f || tone <= 20f)
     }
 
     @Test
     fun `value and state surfaces are never red`() {
-        val versions = designs.map { it to false } + designs.filter { hatDarkVersion(it) }.map { it to true }
-        val fehler = versions.flatMap { (design, dunkel) ->
-            val s = farbschema(design, dunkel)
-            val name = if (dunkel) "${design.kennung}/dunkel" else design.kennung
+        val versions = designs.map { it to false } + designs.filter { hasDarkVersion(it) }.map { it to true }
+        val error = versions.flatMap { (design, dark) ->
+            val s = colorScheme(design, dark)
+            val name = if (dark) "${design.identifier}/dunkel" else design.identifier
             listOf("primary" to s.primary, "primaryContainer" to s.primaryContainer,
                 "secondaryContainer" to s.secondaryContainer,
-                "markt" to akzentflaechen(design, dunkel, s).markt)
-                .filter { (_, c) -> rot(c) }.map { (rolle, _) -> "$name.$rolle" }
+                "markt" to accentSurfaces(design, dark, s).market)
+                .filter { (_, c) -> red(c) }.map { (role, _) -> "$name.$role" }
         }
-        assertTrue("Rot auf einer Wert- oder Zustandsfläche: $fehler", fehler.isEmpty())
+        assertTrue("red on a value or state surface: $error", error.isEmpty())
     }
 
     /** The measurement itself: it detects error red, not blue, gray or sand. */
     @Test
     fun `the red measurement separates red from blue, gray and sand`() {
-        assertTrue(rot(Color(0xFFB91C1C)))
-        assertTrue(rot(Color(0xFFFDECEC)))
-        assertTrue(!rot(Color(0xFF2563EB)) && !rot(Color(0xFFF4F4F4)) && !rot(Color(0xFFE9DED0)))
+        assertTrue(red(Color(0xFFB91C1C)))
+        assertTrue(red(Color(0xFFFDECEC)))
+        assertTrue(!red(Color(0xFF2563EB)) && !red(Color(0xFFF4F4F4)) && !red(Color(0xFFE9DED0)))
     }
 
     private companion object {

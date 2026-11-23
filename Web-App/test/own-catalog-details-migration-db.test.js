@@ -27,7 +27,7 @@ const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0093
 const SCHEMA = `probe0093_${process.pid}`;
 
 test('migration 0093: own catalog details', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});
@@ -56,11 +56,11 @@ test('migration 0093: own catalog details', { concurrency: 1 }, async t => {
   const anna = (
     await c.query(`INSERT INTO public.users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [SCHEMA])
   ).rows[0].id;
-  const weg = 2147480000; // a deleted account
+  const route = 2147480000; // a deleted account
   await c.query(
     `INSERT INTO part_catalog (part_number, part_name, category_name, name_von, kategorie_von) VALUES
     ('p1', 'Annas Name', 'Brick', $1, NULL), ('p2', 'Geprüft', NULL, NULL, NULL), ('p3', 'Verwaist', NULL, $2, NULL)`,
-    [anna, weg],
+    [anna, route],
   );
   await c.query(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex, image_url, farbname_von, farbcode_von, bild_von)
@@ -71,6 +71,15 @@ test('migration 0093: own catalog details', { concurrency: 1 }, async t => {
     `INSERT INTO minifigs_catalog (fig_number, fig_name, image_url, name_von) VALUES ('f1', 'Geheimfigur', NULL, $1)`,
     [anna],
   );
+  // 0093 calls the trigger functions by their names of that time (0127 renamed them).
+  for (const [alt, fresh] of [
+    ['merke_teilekatalog_alt', 'remember_parts_catalog_old'],
+    ['merke_teilekatalog_neu', 'remember_parts_catalog_new'],
+    ['merke_teilekatalog_beide', 'remember_parts_catalog_both'],
+  ]) {
+    const def = (await c.query(`SELECT pg_get_functiondef('public.${fresh}()'::regprocedure) AS d`)).rows[0].d;
+    await c.query(def.replace(`public.${fresh}(`, `${SCHEMA}.${alt}(`));
+  }
   await c.query(MIGRATION);
 
   await t.test('inputs are stored with the account', async () => {

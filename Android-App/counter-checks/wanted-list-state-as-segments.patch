@@ -1,0 +1,28 @@
+Gegenprobe: Zustandsfilter der Merkliste wieder als Segmente statt Filterchips
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: wishlist filters the condition with chips and sorts via a menu
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
+@@ -51,6 +51,7 @@
+ import ch.brickinventoryapp.ui.components.ScanButton
+ import ch.brickinventoryapp.ui.components.SearchField
+ import ch.brickinventoryapp.ui.components.SelectionChip
++import ch.brickinventoryapp.ui.components.SegmentChoice
+ import ch.brickinventoryapp.ui.components.SortMenu
+ import ch.brickinventoryapp.ui.components.secondaryButtonColors
+ import ch.brickinventoryapp.ui.components.secondaryButtonRand
+@@ -200,7 +201,10 @@
+ 
+             // The condition narrows the list: a filter, hence chips as in gallery and
+             // finances; segments are only for views (sets | parts | minifigures).
+-            if (withHeader) StateFilterChips(
++            if (withHeader) SegmentChoice(
++                options = listOf(null to stringResource(R.string.filter_condition_all),
++                                  Condition.NEW to stringResource(R.string.condition_new),
++                                  Condition.USED to stringResource(R.string.condition_used)),
+                 chosen = condition.stateFilter,
+                 onChoice = { actions.setWantedState(it) },
+                 modifier = Modifier.padding(horizontal = Spacing.edge).padding(bottom = Spacing.small),

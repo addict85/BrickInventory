@@ -15,10 +15,10 @@ if (!setNumber) {
 
 const ROOT = path.join(__dirname, '..');
 const dbModule = require(path.join(ROOT, 'dist/db/database.js'));
-const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 const { DATA_DIR } = require(path.join(ROOT, 'dist/src/infra/appPaths.js'));
 
-const zeile = (/** @type {string} */ k, /** @type {any} */ v) => console.log(`   ${String(k).padEnd(14)} ${v}`);
+const row = (/** @type {string} */ k, /** @type {any} */ v) => console.log(`   ${String(k).padEnd(14)} ${v}`);
 
 /** @param {string} url */
 function hole(url) {
@@ -42,7 +42,7 @@ function hole(url) {
         res.on('data', c => {
           n += c.length;
         });
-        res.on('end', () => r({ status: res.statusCode, typ: res.headers['content-type'], bytes: n }));
+        res.on('end', () => r({ status: res.statusCode, type: res.headers['content-type'], bytes: n }));
       },
     );
     req.on('timeout', () => {
@@ -53,15 +53,78 @@ function hole(url) {
   });
 }
 
+/** @param {Array<{ username?: string, user_id: number, image_url?: string, image_local?: string }>} rows */
+function reportAccounts(rows) {
+  console.log('1. Bestand je Konto (Bildfelder aus dem Katalog):');
+  if (!rows.length) console.log('   ⚠️  Kein Konto besitzt dieses Set.');
+  for (const r of rows) {
+    console.log(`   ── ${r.username || r.user_id}`);
+    row('image_url', r.image_url || '∅ leer');
+    row('image_local', r.image_local || '∅ leer');
+  }
+}
+
+/** @param {{ name?: string, image_url?: string, image_local?: string } | undefined} cat */
+function reportCatalog(cat) {
+  console.log('\n2. set_catalog (kontoübergreifend):');
+  if (!cat) {
+    console.log('   ⚠️  Kein Katalogeintrag — dann kann auch der Rückfall nichts liefern.');
+    return;
+  }
+  row('name', cat.name || '∅');
+  row('image_url', cat.image_url || '∅ leer');
+  row('image_local', cat.image_local || '∅ leer');
+}
+
+/** @param {string | null} local */
+function reportFiles(local) {
+  console.log('\n4. Dateien auf der Platte:');
+  if (!local) {
+    console.log('   (keine lokale Adresse hinterlegt)');
+    return;
+  }
+  const abs = path.join(DATA_DIR, local.replace(/^\//, ''));
+  const orig = abs.replace(/_thumb(\.[^.]+)$/, '$1');
+  const thumb = orig.replace(/(\.[^.]+)$/, '_thumb$1');
+  /** @type {Array<[string, string]>} */
+  const pairs = [
+    ['Original', orig],
+    ['Vorschau', thumb],
+  ];
+  for (const [was, p] of pairs) {
+    const st = fs.existsSync(p) ? fs.statSync(p) : null;
+    row(was, st ? `${p}  (${st.size} Bytes)` : `FEHLT: ${p}`);
+  }
+  console.log('   Hinweis: Fehlt nur die Vorschau, liefert die Route seither');
+  console.log('   das Original aus — das ist KEIN Fehler.');
+}
+
+/** @param {string | null} effective */
+async function reportCdn(effective) {
+  console.log('\n5. Erreichbarkeit der CDN-Adresse:');
+  if (!effective || effective.startsWith('/')) {
+    console.log('   (keine externe Adresse zu prüfen)');
+    return;
+  }
+  const r = await hole(effective);
+  row('Adresse', effective);
+  row('Antwort', `${r.status}${r.type ? '  ' + r.type : ''}${r.bytes ? '  ' + r.bytes + ' Bytes' : ''}`);
+  if (r.status === 404) {
+    console.log('   ⚠️  404 — die hinterlegte Adresse zeigt ins Leere. Bei ganz neuen Sets');
+    console.log('   ist das oft der geratene BrickLink-Rückfall aus clients/bricklink.ts');
+    console.log('   (img.bricklink.com/ItemImage/SN/0/<nr>.png), den es dort noch nicht gibt.');
+  } else if (r.status === 200) {
+    console.log('   ✅ Das Bild ist abrufbar — dann liegt es NICHT an der Adresse,');
+    console.log('   sondern am Weg dorthin (Proxy, Anmeldung, Zwischenspeicher des Clients).');
+  }
+}
+
 (async () => {
   console.log(`\n═══ Bild-Diagnose für ${setNumber} ═══\n`);
 
   // ── 1. The accounts' rows ───────────────────────────────────────────────────
-  //
-  // Since migration 0033 the image fields are in the catalog, and all rows
-  // thus carry the same value — which the diagnostics below already said as point 2
-  // anyway. The list here still answers "which accounts hold the
-  // Set?".
+  // Since migration 0033 the image fields are in the catalog, and all rows thus carry the same
+  // value. The list here still answers "which accounts hold the set?".
   const rows = await db.all(
     `SELECT s.user_id, u.username, c.image_url, c.image_local
        FROM sets s
@@ -70,13 +133,7 @@ function hole(url) {
       WHERE s.set_number = $1 ORDER BY s.user_id`,
     [setNumber],
   );
-  console.log('1. Bestand je Konto (Bildfelder aus dem Katalog):');
-  if (!rows.length) console.log('   ⚠️  Kein Konto besitzt dieses Set.');
-  for (const r of rows) {
-    console.log(`   ── ${r.username || r.user_id}`);
-    zeile('image_url', r.image_url || '∅ leer');
-    zeile('image_local', r.image_local || '∅ leer');
-  }
+  reportAccounts(rows);
 
   // ── 2. The shared catalog ───────────────────────────────────────────────────
   const cat = await db.get(
@@ -84,60 +141,20 @@ function hole(url) {
        FROM set_catalog c JOIN rb_sets rs ON rs.set_num = c.set_number WHERE c.set_number = $1`,
     [setNumber],
   );
-  console.log('\n2. set_catalog (kontoübergreifend):');
-  if (!cat) console.log('   ⚠️  Kein Katalogeintrag — dann kann auch der Rückfall nichts liefern.');
-  else {
-    zeile('name', cat.name || '∅');
-    zeile('image_url', cat.image_url || '∅ leer');
-    zeile('image_local', cat.image_local || '∅ leer');
-  }
+  reportCatalog(cat);
 
   // ── 3. What the API makes of it ─────────────────────────────────────────────
   const effective = rows[0]?.image_url || cat?.image_url || null;
-  const lokal = rows[0]?.image_local || cat?.image_local || null;
+  const local = rows[0]?.image_local || cat?.image_local || null;
   console.log('\n3. Was die API ausliefert (COALESCE seither):');
-  zeile('image_local', lokal || '∅ leer');
-  zeile('image_url', effective || '∅ leer');
-  if (!lokal && !effective) {
+  row('image_local', local || '∅ leer');
+  row('image_url', effective || '∅ leer');
+  if (!local && !effective) {
     console.log('   ⚠️  BEIDE leer — die Clients haben nichts anzuzeigen. Das ist die Ursache.');
   }
 
-  // ── 4. Are the files really there? ──────────────────────────────────────────
-  console.log('\n4. Dateien auf der Platte:');
-  if (!lokal) console.log('   (keine lokale Adresse hinterlegt)');
-  else {
-    const abs = path.join(DATA_DIR, lokal.replace(/^\//, ''));
-    const orig = abs.replace(/_thumb(\.[^.]+)$/, '$1');
-    const thumb = orig.replace(/(\.[^.]+)$/, '_thumb$1');
-    /** @type {Array<[string, string]>} */
-    const pairs = [
-      ['Original', orig],
-      ['Vorschau', thumb],
-    ];
-    for (const [was, p] of pairs) {
-      const st = fs.existsSync(p) ? fs.statSync(p) : null;
-      zeile(was, st ? `${p}  (${st.size} Bytes)` : `FEHLT: ${p}`);
-    }
-    console.log('   Hinweis: Fehlt nur die Vorschau, liefert die Route seither');
-    console.log('   das Original aus — das ist KEIN Fehler.');
-  }
-
-  // ── 5. Does the CDN answer? ─────────────────────────────────────────────────
-  console.log('\n5. Erreichbarkeit der CDN-Adresse:');
-  if (!effective || effective.startsWith('/')) console.log('   (keine externe Adresse zu prüfen)');
-  else {
-    const r = await hole(effective);
-    zeile('Adresse', effective);
-    zeile('Antwort', `${r.status}${r.typ ? '  ' + r.typ : ''}${r.bytes ? '  ' + r.bytes + ' Bytes' : ''}`);
-    if (r.status === 404) {
-      console.log('   ⚠️  404 — die hinterlegte Adresse zeigt ins Leere. Bei ganz neuen Sets');
-      console.log('   ist das oft der geratene BrickLink-Rückfall aus clients/bricklink.ts');
-      console.log('   (img.bricklink.com/ItemImage/SN/0/<nr>.png), den es dort noch nicht gibt.');
-    } else if (r.status === 200) {
-      console.log('   ✅ Das Bild ist abrufbar — dann liegt es NICHT an der Adresse,');
-      console.log('   sondern am Weg dorthin (Proxy, Anmeldung, Zwischenspeicher des Clients).');
-    }
-  }
+  reportFiles(local);
+  await reportCdn(effective);
 
   console.log('');
   await db.pool.end();

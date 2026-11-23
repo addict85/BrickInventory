@@ -1,0 +1,18 @@
+Gegenprobe: der Token wird beim Start nicht aus dem DataStore nachgefüllt
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenStoredValueTest
+Rot: a new process gets token and address from the DataStore
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -261,9 +261,6 @@
+         mirror<List<String?>, String>({ raw(it, ADDRESS) }, _serverUrlState) { r, report ->
+             readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, lock = lock)
+         }
+-        mirror<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { secret, report ->
+-            readToken(vault, secret, null, report, lock = lock)
+-        }
+         mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
+             readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, lock = lock)
+         }

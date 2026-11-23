@@ -1,6 +1,6 @@
 /** What settings reads from the higher household: currency applies per household (db/householdView.ts). */
 export interface SettingsReadContract {
-  householdDown(konto: string): string;
-  auchFremdGeteilt(ids: string): string;
-  isSubAccount(konto: string): string;
+  householdDown(account: string): string;
+  alsoSharedByOthers(ids: string): string;
+  isSubAccount(account: string): string;
 }

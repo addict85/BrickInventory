@@ -16,11 +16,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import ch.brickinventoryapp.model.domain.Figurenerfassung
-import ch.brickinventoryapp.model.domain.Teilerfassung
-import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.model.domain.FigureEntry
+import ch.brickinventoryapp.model.domain.PartEntry
 import ch.brickinventoryapp.parts.ui.screens.AddMinifigDialog
 import ch.brickinventoryapp.parts.ui.screens.AddPartDialog
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.addClosable
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
@@ -37,11 +37,11 @@ import org.robolectric.shadows.ShadowDialog
  * field says what is missing; only a valid entry goes out. A filled-in dialog
  * closes neither by tapping beside it nor by back without a confirmation prompt (AddDialog).
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
- *   teil-erfassen-schliesst-still  "Hinzufügen" calls submit() and onDismiss() again → red “without a part number …”
- *   figur-erfassen-schliesst-still the same in the figures dialog → red “without a figure number …”
- *   erfassen-verwirft-ohne-frage   back also closes filled-in input right away → red “back asks …”
- *   erfassen-daneben-schliesst     addClosable always allows tapping beside it → red “tapping beside it …”
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
+ *   part-capture-closes-silently  "Hinzufügen" calls submit() and onDismiss() again → red “without a part number …”
+ *   figure-capture-closes-silently the same in the figures dialog → red “without a figure number …”
+ *   capture-discards-without-asking   back also closes filled-in input right away → red “back asks …”
+ *   capture-outside-closes     addClosable always allows tapping beside it → red “tapping beside it …”
  */
 @RunWith(RobolectricTestRunner::class)
 class AddDialogTest {
@@ -50,15 +50,15 @@ class AddDialogTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private fun text(id: Int) = compose.activity.getString(id)
-    private val teile = mutableListOf<Teilerfassung>()
-    private val figuren = mutableListOf<Figurenerfassung>()
+    private val parts = mutableListOf<PartEntry>()
+    private val figures = mutableListOf<FigureEntry>()
     private var closed = 0
 
     private fun showPart() {
         compose.setContent {
             BrickInventoryManagerTheme {
-                var offen by remember { mutableStateOf(true) }
-                if (offen) AddPartDialog(onDismiss = { offen = false; closed++ }, onAdd = { teile += it; offen = false })
+                var open by remember { mutableStateOf(true) }
+                if (open) AddPartDialog(onDismiss = { open = false; closed++ }, onAdd = { parts += it; open = false })
             }
         }
         compose.waitForIdle()
@@ -67,15 +67,15 @@ class AddDialogTest {
     private fun showMinifig() {
         compose.setContent {
             BrickInventoryManagerTheme {
-                var offen by remember { mutableStateOf(true) }
-                if (offen) AddMinifigDialog(onDismiss = { offen = false; closed++ }, onAdd = { figuren += it; offen = false })
+                var open by remember { mutableStateOf(true) }
+                if (open) AddMinifigDialog(onDismiss = { open = false; closed++ }, onAdd = { figures += it; open = false })
             }
         }
         compose.waitForIdle()
     }
 
     private fun button(id: Int) = compose.onNode(hasText(text(id)) and hasClickAction() and hasAnyAncestor(isDialog()))
-    private fun feld(id: Int) = compose.onNode(hasSetTextAction() and hasText(text(id)))
+    private fun field(id: Int) = compose.onNode(hasSetTextAction() and hasText(text(id)))
 
     private fun tap(id: Int) {
         button(id).performClick()
@@ -84,7 +84,7 @@ class AddDialogTest {
 
     /** Back, as the system gives it to the topmost dialog window. */
     @Suppress("DEPRECATION")
-    private fun zurueck() {
+    private fun back() {
         compose.runOnUiThread { ShadowDialog.getLatestDialog().onBackPressed() }
         compose.waitForIdle()
     }
@@ -93,61 +93,61 @@ class AddDialogTest {
     fun `without a part number the dialog stays open and the field says why`() {
         showPart()
         tap(R.string.parts_add_button)
-        assertEquals("Der Dialog schloss ohne Erfassung", 0, closed)
-        assertEquals(emptyList<Teilerfassung>(), teile)
-        compose.onNodeWithText(text(R.string.parts_nummer_fehlt)).assertExists()
+        assertEquals("The dialog closed without an entry", 0, closed)
+        assertEquals(emptyList<PartEntry>(), parts)
+        compose.onNodeWithText(text(R.string.parts_number_missing)).assertExists()
 
-        feld(R.string.parts_part_number).performTextInput("3001")
+        field(R.string.parts_part_number).performTextInput("3001")
         tap(R.string.parts_add_button)
-        assertEquals(listOf("3001"), teile.map { it.nummer })
-        assertEquals("Erfolg schliesst über onAdd, nicht über Abbrechen", 0, closed)
+        assertEquals(listOf("3001"), parts.map { it.number })
+        assertEquals("Success closes via onAdd, not via cancel", 0, closed)
     }
 
     @Test
     fun `without a figure number the dialog stays open and the field says why`() {
         showMinifig()
         tap(R.string.minifigs_add_button)
-        assertEquals("Der Dialog schloss ohne Erfassung", 0, closed)
-        compose.onNodeWithText(text(R.string.minifigs_nummer_fehlt)).assertExists()
+        assertEquals("The dialog closed without an entry", 0, closed)
+        compose.onNodeWithText(text(R.string.minifigs_number_missing)).assertExists()
 
-        feld(R.string.minifigs_fig_number).performTextInput("fig-007357")
+        field(R.string.minifigs_fig_number).performTextInput("fig-007357")
         tap(R.string.minifigs_add_button)
-        assertEquals(listOf("fig-007357"), figuren.map { it.nummer })
+        assertEquals(listOf("fig-007357"), figures.map { it.number })
     }
 
     @Test
     fun `an unreadable quantity disables Add`() {
         showPart()
-        feld(R.string.common_quantity).performTextClearance()
-        feld(R.string.common_quantity).performTextInput("0")
+        field(R.string.common_quantity).performTextClearance()
+        field(R.string.common_quantity).performTextInput("0")
         compose.waitForIdle()
         button(R.string.parts_add_button).assertIsNotEnabled()
-        compose.onNodeWithText(text(R.string.erfassen_menge_ungueltig)).assertExists()
+        compose.onNodeWithText(text(R.string.record_quantity_invalid)).assertExists()
     }
 
     @Test
     fun `back asks first when there are inputs`() {
         showPart()
-        feld(R.string.parts_part_number).performTextInput("3001")
+        field(R.string.parts_part_number).performTextInput("3001")
         compose.waitForIdle()
-        zurueck()
-        assertEquals("Zurück verwarf das Getippte ohne Rückfrage", 0, closed)
-        compose.onNodeWithText(text(R.string.erfassen_verwerfen_titel)).assertExists()
-        tap(R.string.erfassen_verwerfen)
+        back()
+        assertEquals("Back discarded the typed text without asking", 0, closed)
+        compose.onNodeWithText(text(R.string.record_discard_title)).assertExists()
+        tap(R.string.record_discard)
         assertEquals(1, closed)
     }
 
     @Test
     fun `back closes an empty dialog immediately`() {
         showPart()
-        zurueck()
-        assertEquals("Ein leerer Dialog schliesst ohne Frage", 1, closed)
+        back()
+        assertEquals("An empty dialog closes without asking", 1, closed)
     }
 
     @Test
     fun `tapping outside closes only an empty dialog`() {
-        assertTrue(addClosable(geaendert = false).dismissOnClickOutside)
-        assertFalse(addClosable(geaendert = true).dismissOnClickOutside)
-        assertTrue("Zurück bleibt an und fragt dann nach", addClosable(geaendert = true).dismissOnBackPress)
+        assertTrue(addClosable(changed = false).dismissOnClickOutside)
+        assertFalse(addClosable(changed = true).dismissOnClickOutside)
+        assertTrue("Back stays open and then asks", addClosable(changed = true).dismissOnBackPress)
     }
 }

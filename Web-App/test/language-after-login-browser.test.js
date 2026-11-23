@@ -14,31 +14,31 @@ test('English UI without reloading', { timeout: 120_000 }, async t => {
   // Without administrator role: the administrator path loaded the dictionary on the side and hid the bug.
   const app = await startApp(t, {
     name: `sprache_${process.pid}`,
-    sprache: 'en',
-    bestand: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
+    language: 'en',
+    holding: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
   });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   // Like a visitor with a German browser: log out, remember German, reload
   // (the page then only brings the German dictionary) and log in again.
-  const { b, bis } = app;
-  await b.auswerten(`document.getElementById('btn-logout').click(); true`);
-  await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'abgemeldet');
-  await b.auswerten(`localStorage.setItem('bim_lang', 'de'); location.reload(); true`);
-  await app.warte(500);
-  await bis(
+  const { b, until } = app;
+  await b.evaluate(`document.getElementById('btn-logout').click(); true`);
+  await until(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'abgemeldet');
+  await b.evaluate(`localStorage.setItem('bim_lang', 'de'); location.reload(); true`);
+  await app.sleep(500);
+  await until(
     `typeof document.getElementById('btn-login')?.onclick === 'function' && !window.I18N_EN`,
     'Anmeldemaske nur deutsch',
   );
-  await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(`sprache_${process.pid}`)};
+  await b.evaluate(`document.getElementById('lu').value = ${JSON.stringify(`sprache_${process.pid}`)};
     document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('btn-login').click(); true`);
-  await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet', 300);
-  await app.warte(1500);
+  await until(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'loggedIn', 300);
+  await app.sleep(1500);
   assert.equal(
-    await app.b.auswerten(`document.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim()`),
+    await app.b.evaluate(`document.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim()`),
     'Build list',
   );
-  assert.equal(await app.b.auswerten(`document.documentElement.lang`), 'en');
+  assert.equal(await app.b.evaluate(`document.documentElement.lang`), 'en');
 });

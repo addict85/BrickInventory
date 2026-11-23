@@ -2,10 +2,10 @@
  * src/devices/deviceChallenge.ts. Browser sessions stay with password and
  * second factor: they have no keystore. */
 import type { Request, Response, NextFunction } from 'express';
-import { familyFrom, type Schrittaktion } from '../../devices';
+import { familyFrom, type StepAction } from '../../devices';
 import { reportError } from '../../infra/error';
 import { sendError } from '../../http/httpResponse';
-import { istVerwalter } from './login';
+import { isAdmin } from './login';
 import type { AccountServices } from '../area';
 import { routeForRequest } from '../../contract';
 
@@ -15,13 +15,13 @@ export function isAppToken(req: Request): boolean {
 }
 
 export function requireRelease(
-  konto: AccountServices,
+  account: AccountServices,
   req: Request,
   res: Response,
   next: NextFunction,
-  aktion: Schrittaktion,
+  action: StepAction,
 ): void {
-  void released(konto, req, res, aktion).then(ok => {
+  void released(account, req, res, action).then(ok => {
     if (ok) next();
   });
 }
@@ -29,42 +29,42 @@ export function requireRelease(
 /** Like requireRelease, as a value: for routes that only do more for administrators.
  * With `false` the rejection has already been sent. */
 export async function released(
-  konto: AccountServices,
+  account: AccountServices,
   req: Request,
   res: Response,
-  aktion: Schrittaktion,
+  action: StepAction,
 ): Promise<boolean> {
   if (!isAppToken(req)) return true;
   const f = familyFrom(req.apiUser);
   try {
     // Without a family (no created_at) there is no key: closed, not open.
-    const p = f ? await konto.pruefeFreigabe(f, aktion) : 'kein_schluessel';
+    const p = f ? await account.checkApproval(f, action) : 'kein_schluessel';
     if (p === 'frei') return true;
-    sendError(req, res, 'verboten', p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
+    sendError(req, res, 'forbidden', p === 'kein_schluessel' ? 'device_key_missing' : 'step_approval_required');
   } catch (e) {
     reportError('schrittschutz', e);
-    sendError(req, res, 'nicht_verfuegbar', 'server_ausgelastet');
+    sendError(req, res, 'unavailable', 'server_busy');
   }
   return false;
 }
 
 /** For read paths that show administrators more: an app token without release
  * sees there what every account sees instead of getting a rejection. */
-export async function asAdmin(konto: AccountServices, req: Request): Promise<boolean> {
-  if (!istVerwalter(req)) return false;
+export async function asAdmin(account: AccountServices, req: Request): Promise<boolean> {
+  if (!isAdmin(req)) return false;
   if (!isAppToken(req)) return true;
   const f = familyFrom(req.apiUser);
-  return !!f && (await konto.pruefeFreigabe(f, 'verwaltung')) === 'frei';
+  return !!f && (await account.checkApproval(f, 'admin')) === 'frei';
 }
 
 /** Behind loginAtInbox, before reading the body. Which steps are protected is said by
- * the marker `schritt` on the contract; res.locals.schritt records what was released here,
+ * the marker `schritt` on the contract; res.locals.step records what was released here,
  * so vertragsRouter checks at the route itself (a second line, in case the mapping here goes wrong). */
-export function stepChutzAtInbox(konto: AccountServices) {
+export function stepProtectionAtInbox(account: AccountServices) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const aktion = routeForRequest(req.method, req.baseUrl + req.path)?.schritt;
-    res.locals.schritt = aktion ?? null;
-    if (aktion) requireRelease(konto, req, res, next, aktion);
+    const action = routeForRequest(req.method, req.baseUrl + req.path)?.step;
+    res.locals.step = action ?? null;
+    if (action) requireRelease(account, req, res, next, action);
     else next();
   };
 }

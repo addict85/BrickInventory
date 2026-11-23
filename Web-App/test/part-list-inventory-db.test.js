@@ -3,6 +3,11 @@
  *
  * Counter-check (carried out): the LEFT JOIN including multiplication set back to
  * `SUM(p.quantity)` → step 1 turns red, the others stay green.
+ *
+ * Counter-checks (22.11.2026, each alone, in public/js/init.js):
+ *   A  the demand merged by `${blNum}|…` again → red “demand and inventory …” (one row)
+ *   B  data-part with p.part_number instead of the BrickLink number → red the same test
+ *   C  plFillStock sends the parts tab's stored filter instead of the own choice → red “the inventory reconciliation …”
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -12,7 +17,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { ownedQuantitiesQuery } = _req('src/parts/queries.js');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
@@ -38,27 +43,27 @@ async function seed() {
   await holdsSet(db, UID, '10276-1', 1);
 
   // Parts FROM the sets (source stays empty — exactly as partsImport.ts creates them).
-  const setTeil = async (setNr, num, farbe, menge) => {
+  const setPart = async (setNr, num, color, quantity) => {
     // Description into the catalog, stock into parts (migration 0034).
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,'Brick')
                   ON CONFLICT (part_number) DO NOTHING`,
       [num],
     );
-    await holdsPart(db, UID, num, { setNumber: setNr, menge: menge, colorId: farbe });
+    await holdsPart(db, UID, num, { setNumber: setNr, quantity: quantity, colorId: color });
   };
-  await setTeil('60052-1', '3001', 0, 3); // 3 per kit, owned twice → 6
-  await setTeil('10276-1', '3002', 0, 5); // 5 per kit, owned once   → 5
+  await setPart('60052-1', '3001', 0, 3); // 3 per kit, owned twice → 6
+  await setPart('10276-1', '3002', 0, 5); // 5 per kit, owned once   → 5
 
   // Captured manually: hangs on no set.
-  await holdsPart(db, UID, '3003', { menge: 7, colorId: 0 });
+  await holdsPart(db, UID, '3003', { quantity: 7, colorId: 0 });
 
   // Part row whose set no longer stands in `sets` — the LEFT JOIN case.
-  await setTeil('99999-1', '3004', 0, 4);
+  await setPart('99999-1', '3004', 0, 4);
 
   // Minifigures: one from the set owned twice, one captured manually.
-  await holdsMinifig(db, UID, 'trn241', { setNumber: '60052-1', menge: 1 });
-  await holdsMinifig(db, UID, 'cty0500', { menge: 2 });
+  await holdsMinifig(db, UID, 'trn241', { setNumber: '60052-1', quantity: 1 });
+  await holdsMinifig(db, UID, 'cty0500', { quantity: 2 });
 }
 
 async function dbReachable() {
@@ -73,7 +78,7 @@ async function dbReachable() {
 test('inventory reconciliation of the parts list', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();
@@ -81,7 +86,7 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     await db.pool.end().catch(() => {});
   });
 
-  const frage = [
+  const question = [
     { part_number: '3001', color_id: 0 },
     { part_number: '3002', color_id: 0 },
     { part_number: '3003', color_id: 0 },
@@ -91,30 +96,30 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     { part_number: 'trn241', color_id: 0 },
     { part_number: 'cty0500', color_id: 0 },
   ];
-  const bestand = await ownedQuantitiesQuery([UID], frage);
+  const holding = await ownedQuantitiesQuery([UID], question);
 
   await t.test('a set owned twice delivers its parts twice', () => {
     assert.equal(
-      bestand['3001|0']?.gesamt,
+      holding['3001|0']?.total,
       6,
-      'Genau Marcos Befund: 3 Stück je Bausatz, das Set zweimal besessen — ' +
-        `erwartet 6, bekommen ${bestand['3001|0']?.gesamt}. Zählt sets.quantity nicht mit?`,
+      'Exactly what Marco reported: 3 pieces per kit, the set owned twice — ' +
+        `expected 6, got ${holding['3001|0']?.total}. Is sets.quantity not counted?`,
     );
-    assert.equal(bestand['3001|0']?.lose, 0, 'Ein Set-Teil ist nicht „lose"');
+    assert.equal(holding['3001|0']?.loose, 0, 'A set part is not „lose"');
   });
 
   await t.test('a set owned once stays as it was', () => {
     // The opposite direction: the multiplication must not make more out of every
     // row, but only out of those with a piece count above one.
-    assert.equal(bestand['3002|0']?.gesamt, 5);
+    assert.equal(holding['3002|0']?.total, 5);
   });
 
   await t.test('manually captured parts are NEVER multiplied', () => {
-    assert.equal(bestand['3003|0']?.gesamt, 7);
+    assert.equal(holding['3003|0']?.total, 7);
     assert.equal(
-      bestand['3003|0']?.lose,
+      holding['3003|0']?.loose,
       7,
-      'Manuell erfasste Teile sind genau das, was „nur manuell erfasste Teile" zählt',
+      'Manually recorded parts are exactly what „nur manuell erfasste Teile“ counts',
     );
   });
 
@@ -124,24 +129,24 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     // missing, even if it stood in the stock — silently, because „not
     // found" looks like „I don't have it".
     assert.equal(
-      bestand['trn241|0']?.gesamt,
+      holding['trn241|0']?.total,
       2,
-      'Die Figur steckt in einem zweimal besessenen Set — erwartet 2, bekommen ' +
-        `${bestand['trn241|0']?.gesamt}. Wird die Tabelle minifigs gar nicht gelesen?`,
+      'The figure is in a set owned twice — expected 2, got ' +
+        `${holding['trn241|0']?.total}. Is the minifigs table not read at all?`,
     );
-    assert.equal(bestand['trn241|0']?.lose, 0, 'Eine Figur aus einem Set ist nicht „lose"');
+    assert.equal(holding['trn241|0']?.loose, 0, 'A figure from a set is not „lose"');
   });
 
   await t.test('manually captured figures count as loose', () => {
-    assert.equal(bestand['cty0500|0']?.gesamt, 2);
-    assert.equal(bestand['cty0500|0']?.lose, 2);
+    assert.equal(holding['cty0500|0']?.total, 2);
+    assert.equal(holding['cty0500|0']?.loose, 2);
   });
 
   await t.test('a part row without a set does not drop out of the response', () => {
     // The reason for LEFT instead of INNER: a deleted set would otherwise let its
     // part rows vanish without a trace — and the comparison would report a
     // part as missing that stands there.
-    assert.equal(bestand['3004|0']?.gesamt, 4, 'Ohne passende sets-Zeile wurde der Posten ganz weggejoint');
+    assert.equal(holding['3004|0']?.total, 4, 'Without a matching sets row the item was joined away entirely');
   });
 });
 
@@ -151,34 +156,56 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
  * Counter-check (carried out): key set back to `${blNum}|…` →
  * this step turns red.
  */
-test('demand and inventory are merged via the same number', () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const { ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'init.js'), 'utf8'));
+/** The part list in the real bundle: one set whose two mold variants share one BrickLink number. */
+async function partListUi() {
+  const { openUi, waitFor } = require('./helpers/ui');
+  const part = (pn, q) => ({
+    part_number: pn,
+    bl_part_number: '3001',
+    color_id: 5,
+    color_name: 'Rot',
+    part_name: 'Brick 2x4',
+    total_quantity: q,
+  });
+  const ui = await openUi({
+    '/v2/sets/info/10294-1': { success: true, name: 'Titanic', in_catalog: true },
+    '/v2/parts/bl-color-map': { success: true, map: { 5: 5 } },
+    '/v2/sets/10294-1/parts-list': { success: true, parts: [part('3001a', 2), part('3001b', 3)] },
+    '/v2/sets/10294-1/minifigs-list': { success: true, figs: [] },
+    '/v2/parts/owned': {
+      success: true,
+      holding: { '3001a|5': { total: 2, loose: 2 }, '3001b|5': { total: 1, loose: 1 } },
+    },
+  });
+  const { d } = ui;
+  d.getElementById('pl-setnr').value = '10294-1';
+  d.getElementById('pl-setnr').dispatchEvent(new ui.w.KeyboardEvent('keydown', { key: 'Enter' }));
+  assert.ok(await waitFor(() => d.querySelectorAll('.pl-have-input').length === 2), 'the two variants are not listed');
+  return ui;
+}
 
-  assert.match(
-    src,
-    /const key = `\$\{p\.part_number\}\|\$\{p\.color_id\s*\|\|\s*0\}`/,
-    'Der Bedarf wird nicht (mehr) nach der Rebrickable-Nummer zusammengefasst. ' +
-      'Fasst er nach der BrickLink-Nummer zusammen, laufen Formvarianten zu einer ' +
-      'Zeile zusammen, deren Bestand nur für eine der beiden Nummern gesucht wird.',
-  );
-  assert.ok(!/const key = `\$\{blNum\}/.test(src), 'Der alte BrickLink-Schlüssel steht wieder da');
-
-  // The demand side: the same component, so that both match.
-  assert.match(
-    src,
-    /const pkey = `\$\{(?:esc\()?p\.part_number\)?\}__\$\{p\.color_id\s*\|\|\s*0\}`/,
-    'Die Bestandsabfrage fragt nicht mehr mit der Rebrickable-Nummer',
-  );
-
-  // And the display stays BrickLink — exactly Marco's specification.
-  assert.match(
-    src,
-    /data-part="\$\{p\.bl_part_number\s*\|\|\s*p\.part_number\}"/,
-    'Die Anzeige zeigt nicht mehr die BrickLink-Nummer',
-  );
+test('demand and inventory are merged via the same number', async () => {
+  // Merged by the Rebrickable number: two variants stay two rows, each finds its own holding.
+  const { w, d, waitFor } = await partListUi();
+  try {
+    const rows = [...d.querySelectorAll('.pl-have-input')];
+    assert.deepEqual(
+      rows.map(el => [el.dataset.key, el.dataset.part, el.dataset.need]),
+      [
+        ['3001a__5', '3001', '2'],
+        ['3001b__5', '3001', '3'],
+      ],
+      'the display shows the BrickLink number, the key stays Rebrickable',
+    );
+    d.getElementById('btn-pl-stock').click();
+    assert.ok(await waitFor(() => rows[0].value === '2'));
+    assert.deepEqual(
+      rows.map(el => el.value),
+      ['2', '1'],
+    );
+  } finally {
+    w.close();
+  }
 });
 
 /**
@@ -186,23 +213,25 @@ test('demand and inventory are merged via the same number', () => {
  *
  * Counter-check (carried out): `scopeQuery('parts')` reinserted → red.
  */
-test('the inventory reconciliation reads its scope from its own choice', () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const { ohneKommentare } = require('./helpers/sources');
-  const js = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'init.js'), 'utf8'));
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-
-  assert.ok(js.includes("G('pl-bestand-subs')"), 'Die Wahl „Unterkonten mit einbeziehen" wird nicht gelesen');
-  assert.ok(
-    js.includes("'?accounts=own'"),
-    'Ohne Haken muss `accounts=own` mitreisen — sonst zählt der Haushalt immer mit',
-  );
-  assert.ok(
-    !js.includes("scopeQuery('parts')"),
-    'Der Abgleich hängt wieder am Kontofilter des Teile-Reiters. Der steht nach ' +
-      'jeder Anmeldung auf „Alle Konten" und beantwortet hier eine Frage, die ' +
-      'niemand an dieser Stelle gestellt hat.',
-  );
-  assert.ok(html.includes('id="pl-bestand-subs"'), 'Die Wahl fehlt im Markup');
+test('the inventory reconciliation reads its scope from its own choice', async () => {
+  // Not the parts tab's account filter: without the tick only the own account, with it the household.
+  const { w, d, waitFor, calls } = await partListUi();
+  const owned = () => calls.filter(a => a.url.includes('/v2/parts/owned')).map(a => a.url.replace(/^.*\/api/, ''));
+  try {
+    w.localStorage.setItem('bim_scope_parts', '7');
+    d.getElementById('btn-pl-stock').click();
+    assert.ok(await waitFor(() => owned().length === 1));
+    assert.ok(await waitFor(() => !d.getElementById('btn-pl-stock').disabled), 'the button stays busy');
+    d.getElementById('pl-stock-subs').checked = true;
+    d.getElementById('btn-pl-stock').click();
+    assert.ok(await waitFor(() => owned().length === 2));
+    assert.deepEqual(owned(), ['/v2/parts/owned?accounts=own', '/v2/parts/owned']);
+    const body = JSON.parse(calls.find(a => a.url.includes('/v2/parts/owned')).body);
+    assert.deepEqual(body.parts, [
+      { part_number: '3001a', color_id: 5 },
+      { part_number: '3001b', color_id: 5 },
+    ]);
+  } finally {
+    w.close();
+  }
 });

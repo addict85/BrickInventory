@@ -1,5 +1,7 @@
 /**
  * Frontend tests for public/js/mobile.js in jsdom.
+ *
+ * Counter-check: in public/js/mobile.js no cell gets its data-label → red “data-label comes from the header row”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -55,11 +57,7 @@ test('colspan does not shift the assignment', () => {
     </table>`);
   const tds = [...dom.window.document.querySelectorAll('tbody td')];
   assert.equal(tds[0].getAttribute('data-label'), 'A');
-  assert.equal(
-    tds[1].getAttribute('data-label'),
-    'C',
-    'Nach einem colspan=2 muss die nächste Zelle Spalte C treffen, nicht B',
-  );
+  assert.equal(tds[1].getAttribute('data-label'), 'C', 'After a colspan=2 the next cell must hit column C, not B');
 });
 
 test('empty column headers yield an empty label', () => {
@@ -119,7 +117,7 @@ test('a table is processed only once', () => {
   assert.equal(
     table.dataset.labelled,
     '1',
-    'Ohne Markierung liefe der Observer bei jeder DOM-Änderung erneut über alle Tabellen',
+    'Without a marker the observer would run over all tables again on every DOM change',
   );
 });
 
@@ -133,13 +131,13 @@ test('mobile.css covers both themes and lives entirely in media queries', () => 
     // mobile.css only creates that inside of @media (checked below).
     .replace(/@container[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '')
     .trim();
-  assert.equal(outside, '', `Regeln ausserhalb von @media würden den Desktop treffen:\n${outside.slice(0, 300)}`);
+  assert.equal(outside, '', `Rules outside @media would hit the desktop:\n${outside.slice(0, 300)}`);
 
   const withoutMedia = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
-  assert.doesNotMatch(withoutMedia, /container\s*:/, 'Ein Container ausserhalb von @media verändert auch den Desktop');
-  assert.match(css, /\[data-theme="brick"\]/, 'Das Stein-Design braucht eigene Regeln für Noppen und Innenabstände');
-  assert.match(css, /#login-screen/, 'Die Login-Seite muss mit abgedeckt sein');
-  assert.match(css, /font-size:\s*16px/, 'Unter 16px zoomt iOS beim Fokussieren in Eingabefelder hinein');
+  assert.doesNotMatch(withoutMedia, /container\s*:/, 'A container outside @media changes the desktop too');
+  assert.match(css, /\[data-theme="brick"\]/, 'The brick design needs its own rules for studs and paddings');
+  assert.match(css, /#login-screen/, 'The login page must be covered too');
+  assert.match(css, /font-size:\s*16px/, 'Below 16px iOS zooms into input fields on focus');
 });
 
 test('index.html loads mobile.css after both themes', () => {
@@ -147,10 +145,10 @@ test('index.html loads mobile.css after both themes', () => {
   const iTheme = html.indexOf('themes/brick.css');
   const iMobile = html.indexOf('mobile.css');
   const iBase = html.indexOf('styles.css');
-  assert.ok(iMobile > 0, 'mobile.css wird nicht eingebunden');
+  assert.ok(iMobile > 0, 'mobile.css is not included');
   assert.ok(
     iMobile > iTheme && iMobile > iBase,
-    'mobile.css muss NACH styles.css und dem Theme kommen, sonst gewinnt das Theme',
+    'mobile.css must come AFTER styles.css and the theme, otherwise the theme wins',
   );
   // Since the bundling, mobile.js no longer stands as its own <script> tag
   // in index.html but in js/app.bundle.js. Hence what is checked is that it
@@ -158,10 +156,6 @@ test('index.html loads mobile.css after both themes', () => {
   // Since the switch to ES modules there is no file list any more but
   // a module graph: js/main.js imports the parts, esbuild bundles them.
   const entry = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'main.js'), 'utf8');
-  assert.match(
-    entry,
-    /'\.\/mobile\.js'/,
-    'mobile.js wird von js/main.js nicht importiert und würde nicht ausgeliefert',
-  );
-  assert.match(html, /app\.bundle\.js/, 'Das Frontend-Bündel wird nicht eingebunden');
+  assert.match(entry, /'\.\/mobile\.js'/, 'mobile.js is not imported by js/main.js and would not be shipped');
+  assert.match(html, /app\.bundle\.js/, 'The frontend bundle is not included');
 });

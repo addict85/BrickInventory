@@ -3,19 +3,19 @@
  * code, the browser confirms with the code the app shows, the app collects
  * its token. Returns the first response that is not 200, otherwise the collection.
  *
- * @typedef {{ status: number, body: any } & Record<string, any>} Antwort
- * @param {(pfad: string, body: object, kopf: Record<string, string>) => Promise<Antwort>} post
- *        POST under /api/v1/auth
- * @param {{ token: string, kopplung: number }} qr  the response of /qr-token
- * @param {Record<string, string>} [sitzung]  headers of the browser session (say the cookie)
- * @returns {Promise<Antwort>}
+ * @typedef {{ status: number, body: any } & Record<string, any>} Reply
+ * @param {(path: string, body: object, head: Record<string, string>) => Promise<Reply>} post
+ *        POST under /api/v2/auth
+ * @param {{ token: string, pairing: number }} qr  the response of /qr-token
+ * @param {Record<string, string>} [session]  headers of the browser session (say the cookie)
+ * @returns {Promise<Reply>}
  */
-async function pairQr(post, qr, sitzung = {}) {
-  const meldung = await post('/qr-login', { token: qr.token }, {});
-  if (meldung.status !== 200) return meldung;
-  const ja = await post(`/qr-kopplung/${qr.kopplung}/bestaetigen`, { code: meldung.body.code }, sitzung);
-  if (ja.status !== 200) return ja;
-  return post('/qr-login/abholen', { abholung: meldung.body.abholung }, {});
+async function pairQr(post, qr, session = {}) {
+  const message = await post('/qr-login', { token: qr.token }, {});
+  if (message.status !== 200) return message;
+  const yes = await post(`/qr-pairing/${qr.pairing}/confirm`, { code: message.body.code }, session);
+  if (yes.status !== 200) return yes;
+  return post('/qr-login/collect', { pickup: message.body.pickup }, {});
 }
 
 module.exports = { pairQr };

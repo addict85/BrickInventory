@@ -1,5 +1,5 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { mit, buildArea, type Inspect } from '../infra/area';
+import { bound, buildArea, type Inspect } from '../infra/area';
 import { managementJobTypes } from './jobTypes';
 import * as dataExport from './dataExport';
 import * as diagnostics from './diagnostics';
@@ -8,43 +8,43 @@ import * as health from './health';
 import * as jobMonitor from './jobMonitor';
 import * as saveSettings from './saveSettings';
 import * as background from './background';
-import { zugang, type ManagementDependencies, type ManagementContext } from './context';
+import { access, type ManagementDependencies, type ManagementContext } from './context';
 
 export type { ManagementDependencies, ManagementContext } from './context';
 
 export function createManagement(a: ManagementDependencies, inspect?: Inspect<ManagementContext>) {
   return buildArea(
     a,
-    zugang,
+    access,
     (k: ManagementContext) => ({
       jobTypes: () => managementJobTypes(k),
-      dataZip: mit(k)(dataExport.dataZip),
-      importConfig: mit(k)(dataExport.importConfig),
-      exportConfig: mit(k)(dataExport.exportConfig),
-      priceProbe: mit(k)(diagnostics.priceProbe),
-      imageProbe: mit(k)(diagnostics.imageProbe),
-      imageDiagnostics: mit(k)(diagnostics.imageDiagnostics),
-      cacheStats: mit(k)(service.cacheStats),
-      requeueInstructions: mit(k)(service.requeueInstructions),
-      priceJobStatus: mit(k)(service.priceJobStatus),
-      queueCatalogImages: mit(k)(service.queueCatalogImages),
-      forgetImageMisses: mit(k)(service.forgetImageMisses),
-      serverLogSince: mit(k)(service.serverLogSince),
-      clearCaches: mit(k)(service.clearCaches),
-      bricksetLimitSet: mit(k)(service.bricksetLimitSet),
-      runPriceJobNow: mit(k)(service.runPriceJobNow),
-      reloadMissingImages: mit(k)(service.reloadMissingImages),
-      runCatalogSyncNow: mit(k)(service.runCatalogSyncNow),
-      retryBrickset: mit(k)(service.retryBrickset),
-      removeBrickset: mit(k)(service.removeBrickset),
-      setJobSchedule: mit(k)(service.setJobSchedule),
-      checkSource: mit(k)(service.checkSource),
-      healthReport: mit(k)(health.healthReport),
-      databaseReady: mit(k)(health.databaseReady),
-      jobMonitor: mit(k)(jobMonitor.jobMonitor),
-      saveSettings: mit(k)(saveSettings.saveSettings),
-      jobsOverview: mit(k)(background.jobsOverview),
-      clearJobType: mit(k)(background.clearJobType),
+      dataZip: bound(k)(dataExport.dataZip),
+      importConfig: bound(k)(dataExport.importConfig),
+      exportConfig: bound(k)(dataExport.exportConfig),
+      priceProbe: bound(k)(diagnostics.priceProbe),
+      imageProbe: bound(k)(diagnostics.imageProbe),
+      imageDiagnostics: bound(k)(diagnostics.imageDiagnostics),
+      cacheStats: bound(k)(service.cacheStats),
+      requeueInstructions: bound(k)(service.requeueInstructions),
+      priceJobStatus: bound(k)(service.priceJobStatus),
+      queueCatalogImages: bound(k)(service.queueCatalogImages),
+      forgetImageMisses: bound(k)(service.forgetImageMisses),
+      serverLogSince: bound(k)(service.serverLogSince),
+      clearCaches: bound(k)(service.clearCaches),
+      bricksetLimitSet: bound(k)(service.bricksetLimitSet),
+      runPriceJobNow: bound(k)(service.runPriceJobNow),
+      reloadMissingImages: bound(k)(service.reloadMissingImages),
+      runCatalogSyncNow: bound(k)(service.runCatalogSyncNow),
+      retryBrickset: bound(k)(service.retryBrickset),
+      removeBrickset: bound(k)(service.removeBrickset),
+      setJobSchedule: bound(k)(service.setJobSchedule),
+      checkSource: bound(k)(service.checkSource),
+      healthReport: bound(k)(health.healthReport),
+      databaseReady: bound(k)(health.databaseReady),
+      jobMonitor: bound(k)(jobMonitor.jobMonitor),
+      saveSettings: bound(k)(saveSettings.saveSettings),
+      jobsOverview: bound(k)(background.jobsOverview),
+      clearJobType: bound(k)(background.clearJobType),
     }),
     inspect,
   );

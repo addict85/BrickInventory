@@ -8,7 +8,7 @@
  * every price fails, as in the test environment.
  *
  * Counter-checks (measured 05.11.2026, each on its own):
- *   A  in routes/api_v1/finance.ts `sets: uebersetzt(…)` removed → red:
+ *   A  in routes/api/finance.ts `sets: uebersetzt(…)` removed → red:
  *      “price errors in English” (German text)
  *   B  in fetchPrice (src/finances/calculation/prices.ts) again throw new
  *      Error(`… — kein BrickLink-Preis gefunden`) → red: “price errors in
@@ -43,24 +43,24 @@ test('server texts in the language of the request', { concurrency: 1 }, async t 
     [uid],
   );
   await adminWithFactor(_req, uid);
-  const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
-  const hole = async (pfad, sprache) =>
-    (await fetch(`${base}/api/v1/${pfad}`, { headers: { 'Accept-Language': sprache } })).json();
+  const { base } = testServer(_req, { session: { userId: uid, isAdmin: 1 }, t });
+  const hole = async (path, language) =>
+    (await fetch(`${base}/api/v2/${path}`, { headers: { 'Accept-Language': language } })).json();
 
   await t.test('price errors in English', async () => {
     const en = (await hole('finance/valuation', 'en')).sets.find(s => s.set_number === '10294-1');
-    assert.ok(en.error_code, `ohne Code: ${JSON.stringify(en.error)}`);
+    assert.ok(en.error_code, `without a code: ${JSON.stringify(en.error)}`);
     assert.doesNotMatch(en.error, /kein |Keine |Zugangsdaten|nicht /, en.error);
     const de = (await hole('finance/valuation', 'de')).sets.find(s => s.set_number === '10294-1');
     assert.equal(de.error_code, en.error_code);
-    assert.notEqual(de.error, en.error, 'der deutsche Text ist ein anderer');
+    assert.notEqual(de.error, en.error, 'the German text is a different one');
   });
 
   await t.test('tiles with codes', async () => {
     const jobs = (await hole('admin/jobs', 'en')).jobs;
-    assert.deepEqual(jobs.bricksetRetry.sub_teile, [{ code: 'keine_ausstehenden' }]);
-    assert.deepEqual(jobs.pdfJobs?.sub_teile ?? [{ code: 'no_active' }], [{ code: 'no_active' }]);
+    assert.deepEqual(jobs.bricksetRetry.sub_parts, [{ code: 'none_pending' }]);
+    assert.deepEqual(jobs.pdfJobs?.sub_parts ?? [{ code: 'no_active' }], [{ code: 'no_active' }]);
     for (const [name, k] of Object.entries(jobs))
-      if (k.sub_teile) for (const s of k.sub_teile) assert.match(s.code, /^[a-z_]+$/, `${name}: ${s.code}`);
+      if (k.sub_parts) for (const s of k.sub_parts) assert.match(s.code, /^[a-z_]+$/, `${name}: ${s.code}`);
   });
 });

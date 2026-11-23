@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.services.service
 
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -11,6 +10,16 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import ch.brickinventoryapp.data.di.Scopes
+import ch.brickinventoryapp.data.onlyUnlocked
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.repository.errorTextToCode
+import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.data.service.partListsSelection
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.model.domain.PdfProgress
+import ch.brickinventoryapp.model.domain.PdfStep
+import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.resources.R
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -19,15 +28,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.data.di.Scopes
-import ch.brickinventoryapp.data.onlyUnlocked
-import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.errorTextToCode
-import ch.brickinventoryapp.data.service.PdfFailure
-import ch.brickinventoryapp.data.service.partListsSelection
-import ch.brickinventoryapp.model.domain.PdfProgress
-import ch.brickinventoryapp.model.domain.PdfStep
 
 /**
  * Foreground service for the parts list's PDF export: it keeps the process awake
@@ -40,7 +40,7 @@ class PdfExportService : Service() {
     companion object {
         const val CHANNEL_ID      = "pdf_export_channel"
         const val NOTIFICATION_ID = 43
-        /** The completion notification; [PartListsAufraeumer] removes it along with the file. */
+        /** The completion notification; [PartListsCleaner] removes it along with the file. */
         const val DONE_ID = NOTIFICATION_ID + 1
 
         fun start(context: Context) {
@@ -62,19 +62,19 @@ class PdfExportService : Service() {
         LanguageManager.localizedContext(this)
     }
 
-    private val satz: Satz = { id, args -> loc.getString(id, *args.toTypedArray()) }
+    private val sentence: Sentence = { id, args -> loc.getString(id, *args.toTypedArray()) }
 
     @Inject lateinit var areas: Scopes
 
     // Lives with the service (onDestroy cancels it). lazy, because Hilt only sets
     // the fields in super.onCreate().
     private val serviceScope by lazy { CoroutineScope(SupervisorJob() + areas.io) }
-    private var begleitung: Job? = null
+    private var companion: Job? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        fangeAusserAbbruch {
+        catchUnlessCancelled {
             ServiceCompat.startForeground(
                 this, NOTIFICATION_ID,
                 buildNotification(loc.getString(R.string.notif_pdf_running)),
@@ -87,17 +87,17 @@ class PdfExportService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // The job runs in the manager; the service only shows its state and ends with it.
-        if (begleitung?.isActive != true) {
-            begleitung = serviceScope.launch {
+        if (companion?.isActive != true) {
+            companion = serviceScope.launch {
                 manager.state.collect { s ->
                     when (s) {
-                        is PdfExportState.Running -> updateNotification(progressText(s.fortschritt, satz))
+                        is PdfExportState.Running -> updateNotification(progressText(s.progress, sentence))
                         is PdfExportState.Done -> {
                             showFinalNotification(loc.getString(R.string.notif_pdf_done_tap), openPdfIntent())
                             stopSelf()
                         }
                         is PdfExportState.Error -> {
-                            showFinalNotification(loc.getString(R.string.notif_pdf_failed, errorText(s.grund, satz)), null)
+                            showFinalNotification(loc.getString(R.string.notif_pdf_failed, errorText(s.reason, sentence)), null)
                             stopSelf()
                         }
                         PdfExportState.Idle -> {}
@@ -109,7 +109,7 @@ class PdfExportService : Service() {
     }
 
     private fun openPdfIntent(): PendingIntent {
-        val view = partListsSelection(this, loc.getString(R.string.pdfexp_oeffnen_mit))
+        val view = partListsSelection(this, loc.getString(R.string.pdfexp_open_with))
         return PendingIntent.getActivity(
             this, 0, view,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -165,29 +165,29 @@ class PdfExportService : Service() {
 }
 
 /** A string from resources; in the service from the context in the app's language, in the test a number. */
-internal typealias Satz = (id: Int, args: List<Any>) -> String
+internal typealias Sentence = (id: Int, args: List<Any>) -> String
 
 /** The string for a step, as the notification shows it. */
-internal fun progressText(f: PdfProgress, satz: Satz): String = when (f.schritt) {
-    PdfStep.STARTET -> satz(R.string.pdfexp_starting, emptyList())
-    PdfStep.IMAGES_LOAD -> satz(R.string.pdfexp_loading_images, emptyList())
-    PdfStep.CREATED -> f.restSeconds?.takeIf { it > 0 }?.let { satz(R.string.pdfexp_creating_eta, listOf(it)) }
-        ?: satz(R.string.pdfexp_almost_done, emptyList())
-    PdfStep.COMPLETION -> satz(R.string.pdfexp_finalizing, emptyList())
-    PdfStep.DOWNLOAD -> satz(R.string.pdfexp_downloading, emptyList())
+internal fun progressText(f: PdfProgress, sentence: Sentence): String = when (f.step) {
+    PdfStep.STARTING -> sentence(R.string.pdfexp_starting, emptyList())
+    PdfStep.IMAGES_LOAD -> sentence(R.string.pdfexp_loading_images, emptyList())
+    PdfStep.CREATED -> f.restSeconds?.takeIf { it > 0 }?.let { sentence(R.string.pdfexp_creating_eta, listOf(it)) }
+        ?: sentence(R.string.pdfexp_almost_done, emptyList())
+    PdfStep.COMPLETION -> sentence(R.string.pdfexp_finalizing, emptyList())
+    PdfStep.DOWNLOAD -> sentence(R.string.pdfexp_downloading, emptyList())
 }
 
 /** Never empty: without a string from the server, the error code speaks, otherwise the kind of error. */
-internal fun errorText(grund: PdfFailure, satz: Satz): String = when (grund) {
-    is PdfFailure.Auftrag -> grund.satz?.takeIf { it.isNotBlank() } ?: satz(R.string.pdfexp_server_error, emptyList())
-    is PdfFailure.Abruf -> grund.fehler.message.takeIf { it.isNotBlank() }
-        ?: errorTextToCode(grund.fehler.code)?.let { satz(it, emptyList()) }
-        ?: when (val f = grund.fehler) {
-            is Ergebnis.Fehler.Server -> satz(R.string.pdfexp_http_error, listOf(f.status))
-            is Ergebnis.Fehler.Netz, Ergebnis.Fehler.Abgebrochen -> satz(R.string.err_network, emptyList())
-            Ergebnis.Fehler.Zeitueberschreitung -> satz(R.string.err_timeout, emptyList())
-            is Ergebnis.Fehler.Abgewiesen -> satz(R.string.err_session_expired, emptyList())
-            Ergebnis.Fehler.Klartext -> satz(R.string.err_klartext, emptyList())
-            is Ergebnis.Fehler.LeereAntwort, is Ergebnis.Fehler.Absage, is Ergebnis.Fehler.Unbekannt -> satz(R.string.pdfexp_unknown_error, emptyList())
+internal fun errorText(reason: PdfFailure, sentence: Sentence): String = when (reason) {
+    is PdfFailure.Job -> reason.sentence?.takeIf { it.isNotBlank() } ?: sentence(R.string.pdfexp_server_error, emptyList())
+    is PdfFailure.Fetch -> reason.error.message.takeIf { it.isNotBlank() }
+        ?: errorTextToCode(reason.error.code)?.let { sentence(it, emptyList()) }
+        ?: when (val f = reason.error) {
+            is Outcome.Failure.Server -> sentence(R.string.pdfexp_http_error, listOf(f.status))
+            is Outcome.Failure.Network, Outcome.Failure.Cancelled -> sentence(R.string.err_network, emptyList())
+            Outcome.Failure.Timeout -> sentence(R.string.err_timeout, emptyList())
+            is Outcome.Failure.Rejected -> sentence(R.string.err_session_expired, emptyList())
+            Outcome.Failure.Plaintext -> sentence(R.string.err_plaintext, emptyList())
+            is Outcome.Failure.EmptyResponse, is Outcome.Failure.Refusal, is Outcome.Failure.Unknown -> sentence(R.string.pdfexp_unknown_error, emptyList())
         }
 }

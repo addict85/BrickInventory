@@ -1,17 +1,17 @@
 /** Public: Google fetches it before Android gives the app the domain's passkeys. */
 import express from 'express';
 import { assetlinks } from '../src/factors';
-import type { Konfig } from '../src/infra/config';
+import type { AppConfig } from '../src/infra/config';
 
-export function buildWellKnownRouter(konfig: Pick<Konfig, 'androidZertifikate' | 'androidPaket'>) {
+export function buildWellKnownRouter(config: Pick<AppConfig, 'androidCertificates' | 'androidPackage'>) {
   const router = express.Router();
 
   router.get('/.well-known/assetlinks.json', (_req, res) => {
-    const dokument = assetlinks(konfig);
-    if (!dokument)
-      return res.status(404).type('text/plain').send('Keine App eingetragen (PASSKEY_ANDROID_ZERTIFIKATE).\n');
+    const document = assetlinks(config);
+    if (!document)
+      return res.status(404).type('text/plain').send('Keine App eingetragen (PASSKEY_ANDROID_CERTIFICATES).\n');
     res.set('Cache-Control', 'public, max-age=3600');
-    res.json(dokument);
+    res.json(document);
   });
   return router;
 }

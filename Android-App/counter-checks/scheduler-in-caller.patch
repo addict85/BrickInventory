@@ -1,0 +1,17 @@
+Gegenprobe: Der Alarmplaner ruft WorkManager auf dem Thread des Aufrufers
+Modul: core-services
+Test: ch.brickinventoryapp.services.AlarmScheduleTest
+Rot: the scheduler switches to its dispatcher for WorkManager
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt
+@@ -18,7 +18,7 @@
+     @param:ApplicationContext private val context: Context,
+     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+ ) : AlarmPlanner {
+-    override suspend fun schedule(an: Boolean): Throwable? = withContext(io) {
++    override suspend fun schedule(an: Boolean): Throwable? = run {
+         PriceAlarmWorker.schedule(context, an)
+     }
+ }

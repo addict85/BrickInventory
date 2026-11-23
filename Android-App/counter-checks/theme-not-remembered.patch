@@ -1,0 +1,17 @@
+Gegenprobe: Das Design des Servers geht nicht in die Ablage
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
+Rot: the server's design applies and is remembered, without a response the remembered one stays
+
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Session.kt
+@@ -120,7 +120,7 @@
+ 
+     override fun languageChanged(language: String) = _state.update { it.copy(language = language) }
+ 
+-    override fun setDesign(theme: Design) = values.setDesign(theme)
++    override fun setDesign(theme: Design) = Unit
+ 
+     override fun serverStartChanged(state: StartStateView?) = _state.update { it.copy(startupStatus = state) }
+ 

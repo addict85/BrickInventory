@@ -1,0 +1,17 @@
+Gegenprobe: Der Speicherspiegel nimmt ein Klartext-Token älterer Fassungen wieder als Anmeldung
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenVaultTest
+Rot: a plaintext token of older versions never counts and is removed at start
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -261,7 +261,7 @@
+         mirror<List<String?>, String>({ raw(it, ADDRESS) }, _serverUrlState) { r, report ->
+             readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, lock = lock)
+         }
+-        mirror<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { secret, report ->
++        mirror<String?, String>({ it[AUTH_TOKEN_ENC] ?: it[AUTH_TOKEN]?.let(vault::encrypt) }, _authTokenState) { secret, report ->
+             readToken(vault, secret, null, report, lock = lock)
+         }
+         mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->

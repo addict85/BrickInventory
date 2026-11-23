@@ -1,0 +1,24 @@
+// In the body of k.transact(async t => …) k is still visible; a query through it
+// would run beside the transaction (at runtime an unbound query). The body asks via t.
+language js
+
+`$z.$m($rumpf, $...)` where {
+  $m <: or { `transact`, `transaction` },
+  $rumpf <: or {
+    `async ($p) => $b`,
+    `($p) => $b`,
+    `async $p => $b`,
+    `$p => $b`,
+    `async function ($p) { $b }`,
+    `function ($p) { $b }`
+  },
+  $b <: contains JsIdentifierExpression() as $treffer where {
+    $treffer <: or { `k`, `sk`, `kx`, $z },
+    not $treffer <: $p
+  },
+  register_diagnostic(
+    span=$treffer,
+    message="Äusserer Zugang im Rumpf einer Transaktion: über den Kontext der Transaktion (t) fragen.",
+    severity="error"
+  )
+}

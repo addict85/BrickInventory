@@ -1,0 +1,17 @@
+Gegenprobe: Teile-Detail auch auf dem Tablet als Dialog statt neben der Liste
+Modul: app
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: tablet shows part and list side by side
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/PartsGraph.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/PartsGraph.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/PartsGraph.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/PartsGraph.kt
+@@ -240,7 +240,7 @@
+     list: @Composable (openManual: (ItemKind, String, Int, String) -> Unit) -> Unit,
+ ) {
+     BoxWithConstraints(Modifier.fillMaxSize()) {
+-        val sideBySide = listAndDetail(maxWidth.value)
++        val sideBySide = maxWidth.value < 0f
+         val setItem by detailVm.setItemState.collectAsStateWithLifecycle()
+         val storage by detailVm.storageState.collectAsStateWithLifecycle()
+         // Type, number, color, title of the open manual entry; a list because it can be saved.

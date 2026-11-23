@@ -7,55 +7,55 @@ const QUANTITY_WORD =
 /** Must match `QUALITY` in setNumberCandidates() (Kotlin). */
 export const QUALITY = [5, 4, 6, 7, 3];
 
-function qualityIndex(stellen: number): number {
-  const i = QUALITY.indexOf(stellen);
+function qualityIndex(places: number): number {
+  const i = QUALITY.indexOf(places);
   // indexOf would otherwise return -1, and the unknown length would win everything.
   return i < 0 ? QUALITY.length : i;
 }
 
-/** `jahr`: the current one; a number beyond it is not a release year.
+/** `year`: the current one; a number beyond it is not a release year.
  * @returns candidates in descending quality; empty if nothing remains */
-export function setnummerCandidates(titel: string, jahr: number): string[] {
-  if (!titel) return [];
-  const yearLimit = jahr + 1;
+export function setNumberCandidates(title: string, year: number): string[] {
+  if (!title) return [];
+  const yearLimit = year + 1;
 
-  type Candidate = { wert: string; withSuffix: boolean; withHash: boolean; jahr: boolean; quality: number };
-  const gefunden: Candidate[] = [];
+  type Candidate = { value: string; withSuffix: boolean; withHash: boolean; year: boolean; quality: number };
+  const found: Candidate[] = [];
 
   // Three to seven digits: three-digit old sets and seven-digit
   // order numbers of large sets.
-  const muster = /(#\s*)?\b(\d{3,7})(-\d{1,2})?\b/g;
-  for (let treffer = muster.exec(titel); treffer !== null; treffer = muster.exec(titel)) {
+  const pattern = /(#\s*)?\b(\d{3,7})(-\d{1,2})?\b/g;
+  for (let hits = pattern.exec(title); hits !== null; hits = pattern.exec(title)) {
     // Under noUncheckedIndexedAccess TypeScript does not know that the pattern
     // guarantees treffer[2].
-    const digits = treffer[2];
+    const digits = hits[2];
     if (!digits) continue;
-    const suffix = treffer[3] ?? '';
-    const danach = titel.slice(treffer.index + treffer[0].length);
-    if (QUANTITY_WORD.test(danach)) continue; // Rule 1: part count
-    const zahl = parseInt(digits, 10);
+    const suffix = hits[3] ?? '';
+    const after = title.slice(hits.index + hits[0].length);
+    if (QUANTITY_WORD.test(after)) continue; // Rule 1: part count
+    const number = parseInt(digits, 10);
     // With a variant suffix it is no longer a year but a set number.
-    const jahr = !suffix && digits.length === 4 && zahl >= 1949 && zahl <= yearLimit;
-    gefunden.push({
-      wert: digits + suffix,
+    const year = !suffix && digits.length === 4 && number >= 1949 && number <= yearLimit;
+    found.push({
+      value: digits + suffix,
       withSuffix: !!suffix,
-      withHash: !!treffer[1],
-      jahr,
+      withHash: !!hits[1],
+      year,
       quality: qualityIndex(digits.length),
     });
   }
 
-  const eindeutig = gefunden.filter((k, i) => gefunden.findIndex(a => a.wert === k.wert) === i);
+  const unique = found.filter((k, i) => found.findIndex(a => a.value === k.value) === i);
 
   // Array.prototype.sort is stable: on a tie the order in the title stays.
-  return eindeutig
+  return unique
     .slice()
     .sort(
       (a, b) =>
         Number(b.withSuffix) - Number(a.withSuffix) ||
         Number(b.withHash) - Number(a.withHash) ||
-        Number(a.jahr) - Number(b.jahr) ||
+        Number(a.year) - Number(b.year) ||
         a.quality - b.quality,
     )
-    .map(k => k.wert);
+    .map(k => k.value);
 }

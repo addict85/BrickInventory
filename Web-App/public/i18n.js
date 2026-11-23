@@ -13,7 +13,7 @@ if (window.I18N_DE) I18N.de = window.I18N_DE;
 if (window.I18N_EN) I18N.en = window.I18N_EN;
 
 /**
- * Load a language file before retranslating: otherwise key names would stand there for half a second.
+ * Load a language file before retranslating: otherwise key names would state there for half a second.
  * If it fails, the previous language stays — the caller checks I18N[lang].
  * @param {string} lang 'de' or 'en'
  * @returns {Promise<void>}
@@ -44,11 +44,11 @@ export let LANG = localStorage.getItem('bim_lang') || _browserLang;
 let _currency = 'EUR';
 /** @param {string | null | undefined} cur */
 export function setNumbersCurrency(cur) {
-  const neu = String(cur || 'EUR').toUpperCase();
-  if (neu === _currency) return;
-  _currency = neu;
+  const newValue = String(cur || 'EUR').toUpperCase();
+  if (newValue === _currency) return;
+  _currency = newValue;
   if (typeof document !== 'undefined')
-    document.querySelectorAll('[data-i18n-betrag]').forEach(el => {
+    document.querySelectorAll('[data-i18n-amount]').forEach(el => {
       writeI18n(/** @type {HTMLElement} */ (el));
     });
 }
@@ -60,8 +60,8 @@ export function setNumbersCurrency(cur) {
  */
 export function locale() {
   const browser = (typeof navigator !== 'undefined' && navigator.language) || '';
-  const passt = new RegExp(`^${LANG === 'en' ? 'en' : 'de'}-[A-Za-z]{2}$`).test(browser);
-  if (passt) return browser;
+  const fits = new RegExp(`^${LANG === 'en' ? 'en' : 'de'}-[A-Za-z]{2}$`).test(browser);
+  if (fits) return browser;
   if (LANG === 'en') return 'en-GB';
   return _currency === 'CHF' ? 'de-CH' : 'de-DE';
 }
@@ -91,9 +91,9 @@ function _i18nEsc(v) {
  * @param {Record<string, unknown>} [vars]
  */
 function pluralKey(dict, key, vars) {
-  const zahl = vars ? (vars.n ?? vars.count) : undefined;
-  if (typeof zahl !== 'number' || !Number.isFinite(zahl)) return key;
-  const form = key + '_' + new Intl.PluralRules(locale()).select(zahl);
+  const number = vars ? (vars.n ?? vars.count) : undefined;
+  if (typeof number !== 'number' || !Number.isFinite(number)) return key;
+  const form = key + '_' + new Intl.PluralRules(locale()).select(number);
   return dict[form] || I18N.de?.[form] ? form : key;
 }
 
@@ -280,7 +280,7 @@ export function colorName(en) {
     out.push(de === undefined ? tok : de); // unknown: leave it English
   }
 
-  // Attach known modifiers to the next word ("Dunkelbläulichgrau"), leave unknown words separate.
+  // Attach known modifiers to the next word (dark + bluish + grey become one word), leave unknown words separate.
   // Decided on the previous token, not on the compound — otherwise the chain would break after the second link
   // ab.
   let res = '';
@@ -312,12 +312,12 @@ function writeI18n(el) {
       vars = JSON.parse(el.dataset.i18nVars);
     } catch (_) {}
   }
-  // data-i18n-betrag: an example amount in the UI's number format ("e.g. 79.99").
-  if (el.dataset.i18nBetrag)
+  // data-i18n-amount: an example amount in the UI's number format ("e.g. 79.99").
+  if (el.dataset.i18nAmount)
     vars = {
       ...vars,
-      betrag: new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, useGrouping: false }).format(
-        Number(el.dataset.i18nBetrag),
+      amount: new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, useGrouping: false }).format(
+        Number(el.dataset.i18nAmount),
       ),
     };
   const val = tRaw(key ?? '', vars);
@@ -335,6 +335,27 @@ function writeI18n(el) {
     text.textContent = val;
     el.replaceChildren(svg, text);
   } else el.textContent = val;
+}
+
+/** Append (or retranslate) the new-tab marker of a static link. @param {HTMLElement} a */
+function markNewTab(a) {
+  let hint = a.querySelector(':scope > .new-tab');
+  if (!hint) {
+    hint = document.createElement('span');
+    hint.className = 'new-tab';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'ico');
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#i-extern');
+    svg.appendChild(use);
+    const text = document.createElement('span');
+    text.className = 'vh';
+    hint.append(svg, text);
+    a.appendChild(hint);
+  }
+  const text = hint.querySelector('.vh');
+  if (text) text.textContent = tRaw('common.new_tab');
 }
 
 /**
@@ -368,6 +389,10 @@ export function applyLang(lang, persist) {
     el.setAttribute('aria-label', tRaw(el.dataset.i18nAria ?? ''));
   });
 
+  // Static links into a new tab get the same marker as rendered ones (newTabHint in js/dom.js);
+  // the pass runs after data-i18n because that replaces the link's children.
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('a[target="_blank"]')).forEach(markNewTab);
+
   // Re-render nav tab labels
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ntab[data-i18n-tab]')).forEach(el => {
     const label = el.querySelector('.tab-label');
@@ -380,7 +405,7 @@ export function applyLang(lang, persist) {
 
   // Saving (account.js) and reloading the open tab (navigation.js) listen to this
   // event: the translation itself knows no view.
-  emit('spracheGewechselt', { sprache: lang, speichern: !!persist, realSwitch: !!isRealSwitch });
+  emit('languageChanged', { language: lang, save: !!persist, realSwitch: !!isRealSwitch });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,16 @@
+Gegenprobe: Der Zurück-Pfeil einer Mehr-Unterseite führt immer auf „Mehr“, die Zurück-Geste an den vorigen Eintrag
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: the arrow of a More subpage goes the same way as the back gesture
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -193,7 +193,6 @@
+     // a previous entry (entry from outside) does it lead to “More”.
+     val moreSubpage = currentDest != null && currentDest.isOneOf(MORE) && !currentDest.hasRoute<AppTarget.More>()
+     fun backFromMore() {
+-        if (navController.previousBackStackEntry != null && navController.popBackStack()) return
+         if (!navController.popBackStack(AppTarget.More, inclusive = false)) navController.toTab(AppTarget.More)
+     }
+     TopAppBar(

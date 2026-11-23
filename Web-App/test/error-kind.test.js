@@ -4,16 +4,16 @@
  * the routes' error path (handleRouteError) makes of it.
  *
  * Counter-checks (measured 09.11.2026, each alone):
- *   A  in STATUS_THE_KIND `konflikt: 400` → red: “every kind yields its status”
- *      (konflikt 400 instead of 409)
+ *   A  in STATUS_THE_KIND `conflict: 400` → red: “every kind yields its status”
+ *      (conflict 400 instead of 409)
  *   B  in handleRouteError again `typeof e.status === 'number' ? e.status : 500`
  *      instead of statusOf(e) → red: “every kind yields its status” (all 500)
  *   C  `import { statusOf } from '../http/fehlerArt'` in src/sets/service.ts →
  *      red: “only src/http maps kinds to status …”
- *   D  in src/infra/geld.ts a status number 400 appended to fachfehler() → red:
+ *   D  in src/infra/money.ts a status number 400 appended to fachfehler() → red:
  *      the same check, list `status`
  *   E  (15.11.2026) in sendError `res.status(500)` instead of STATUS_THE_KIND[art] → red:
- *      “every kind yields its status” (sendError ungueltig: 500 instead of 400)
+ *      “every kind yields its status” (sendError invalid: 500 instead of 400)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,22 +22,22 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const ohneKommentare = require('./helpers/sources').ohneKommentare;
+const withoutComments = require('./helpers/sources').withoutComments;
 const { handleRouteError, sendError } = _req('src/http/httpResponse.js');
 const { STATUS_THE_KIND } = _req('src/http/errorKind.js');
-const { fachfehler, asDuplicate } = _req('src/infra/errorTexts.js');
+const { failDomain, asDuplicate } = _req('src/infra/errorTexts.js');
 
 /** What handleRouteError writes to a response. */
-function antwort(e) {
+function response(e) {
   let status = 0,
-    rumpf = null;
+    body = null;
   const res = {
     headersSent: false,
     status(c) {
       status = c;
       return {
         json(b) {
-          rumpf = b;
+          body = b;
         },
       };
     },
@@ -52,96 +52,98 @@ function antwort(e) {
     console.warn = warn;
     console.error = err;
   }
-  return { status, code: rumpf?.code };
+  return { status, code: body?.code };
 }
-const geworfen = fn => {
+const thrown = fn => {
   try {
     fn();
   } catch (e) {
     return e;
   }
-  throw new Error('nichts geworfen');
+  throw new Error('nothing thrown');
 };
 
 test('every kind yields its status', () => {
-  const erwartet = {
-    ungueltig: 400,
-    nicht_angemeldet: 401,
-    verboten: 403,
-    nicht_gefunden: 404,
-    konflikt: 409,
-    zu_gross: 413,
-    falscher_typ: 415,
-    zu_langsam: 408,
-    nicht_mehr_da: 410,
-    nicht_verarbeitbar: 422,
-    zu_viele: 429,
-    speicher_voll: 507,
-    intern: 500,
-    fremddienst: 502,
-    nicht_verfuegbar: 503,
-    zeitueberschreitung: 504,
-    falscher_host: 421,
-    zu_alt: 426,
+  const expected = {
+    invalid: 400,
+    not_signed_in: 401,
+    forbidden: 403,
+    not_found: 404,
+    conflict: 409,
+    too_large: 413,
+    unsupported_type: 415,
+    request_timeout: 408,
+    gone: 410,
+    unprocessable: 422,
+    too_many: 429,
+    storage_full: 507,
+    internal: 500,
+    upstream: 502,
+    unavailable: 503,
+    upstream_timeout: 504,
+    misdirected: 421,
+    upgrade_required: 426,
   };
-  assert.deepEqual(Object.keys(STATUS_THE_KIND).sort(), Object.keys(erwartet).sort());
-  for (const [art, status] of Object.entries(erwartet)) {
+  assert.deepEqual(Object.keys(STATUS_THE_KIND).sort(), Object.keys(expected).sort());
+  for (const [kind, status] of Object.entries(expected)) {
     assert.deepEqual(
-      antwort(geworfen(() => fachfehler(art, 'set_nicht_gefunden'))),
-      { status, code: 'set_nicht_gefunden' },
-      art,
+      response(thrown(() => failDomain(kind, 'set_not_found'))),
+      { status, code: 'set_not_found' },
+      kind,
     );
     // Whoever answers themselves (guards, HTTP sides) names the kind; the same table chooses the status.
-    let gesendet = 0;
+    let sent = 0;
     const res = {
       status: c => {
-        gesendet = c;
+        sent = c;
         return { json: () => {} };
       },
     };
-    sendError({ headers: {} }, res, art, 'set_nicht_gefunden');
-    assert.equal(gesendet, status, `sendError ${art}`);
+    sendError({ headers: {} }, res, kind, 'set_not_found');
+    assert.equal(sent, status, `sendError ${kind}`);
   }
 });
 
 test('a duplicate from the database becomes a conflict', () => {
-  const e = geworfen(() => asDuplicate('benutzername_vergeben')({ code: '23505' }));
-  assert.equal(e.art, 'konflikt');
-  assert.deepEqual(antwort(e), { status: 409, code: 'benutzername_vergeben' });
+  const e = thrown(() => asDuplicate('username_taken')({ code: '23505' }));
+  assert.equal(e.kind, 'conflict');
+  assert.deepEqual(response(e), { status: 409, code: 'username_taken' });
   // A foreign error with its own status (body parser) keeps it.
-  assert.equal(antwort(Object.assign(new Error('x'), { status: 413, type: 'entity.too.large' })).status, 413);
+  assert.equal(response(Object.assign(new Error('x'), { status: 413, type: 'entity.too.large' })).status, 413);
 });
 
 /** All TypeScript sources except src/http and the test helpers. */
-function dienste() {
-  const raus = [];
-  (function lauf(d) {
+function services() {
+  const result = [];
+  (function run(d) {
     for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
       const rel = path.posix.join(d, e.name);
-      if (e.isDirectory()) lauf(rel);
-      else if (e.name.endsWith('.ts')) raus.push(rel);
+      if (e.isDirectory()) run(rel);
+      else if (e.name.endsWith('.ts')) result.push(rel);
     }
   })('src');
   // The HTTP sides of the scopes (src/<bereich>/http/) belong to the HTTP layer.
-  return raus.filter(d => !d.startsWith('src/http/') && !/^src\/[^/]+\/http\//.test(d));
+  return result.filter(d => !d.startsWith('src/http/') && !/^src\/[^/]+\/http\//.test(d));
 }
 
 test('only src/http maps kinds to status, no service names a status', () => {
-  const liste = dienste();
-  assert.ok(liste.length > 200, `nur ${liste.length} Dienste gefunden — greift die Suche noch?`);
-  const treffer = liste.filter(d => /from '[./]+\/http\/fehlerArt'/.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
-  assert.deepEqual(treffer, []);
+  const list = services();
+  assert.ok(list.length > 200, `only ${list.length} services found — does the search still match?`);
+  const IMPORT = /from '[./]+\/http\/errorKind'/;
+  assert.ok(IMPORT.test("from '../http/errorKind'"), 'self-proof: the pattern finds the import');
+  const hits = list.filter(d => IMPORT.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
+  assert.deepEqual(hits, []);
 
   // No service names a status: a number as the second argument would mean that
   // someone brings back the former form (code and status number).
   const status = [];
-  for (const d of liste) {
-    const s = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
-    for (const m of s.matchAll(/\b(?:fehlerWerfen|fachfehler|fileError)\([^)]*?,\s*\d{3}\b/g))
-      status.push(`${d}: ${m[0]}`);
-    for (const m of s.matchAll(/new Fachfehler\(\s*'[a-z_]+',\s*\d{3}/g)) status.push(`${d}: ${m[0]}`);
+  for (const d of list) {
+    const s = withoutComments(fs.readFileSync(path.join(ROOT, d), 'utf8'));
+    for (const m of s.matchAll(/\b(?:failDomain|fileError)\([^)]*?,\s*\d{3}\b/g)) status.push(`${d}: ${m[0]}`);
+    for (const m of s.matchAll(/new DomainError\(\s*'[a-z_]+',\s*\d{3}/g)) status.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(status, []);
   // Self-proof of the search on a probe.
-  assert.ok(/\b(?:fehlerWerfen|fachfehler|fileError)\([^)]*?,\s*\d{3}\b/.test("fehlerWerfen('x', 400)"));
+  assert.ok(/\b(?:failDomain|fileError)\([^)]*?,\s*\d{3}\b/.test("failDomain('x', 400)"));
+  assert.ok(/new DomainError\(\s*'[a-z_]+',\s*\d{3}/.test("new DomainError('x', 400)"));
 });

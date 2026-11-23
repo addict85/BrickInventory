@@ -1,8 +1,10 @@
 package ch.brickinventoryapp.state
 
+import ch.brickinventoryapp.data.catalog.CatalogRepository
+import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.model.domain.CatalogMetaView
-import ch.brickinventoryapp.data.repository.CatalogRepository
-import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -10,14 +12,12 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.TestApi
 
 /**
  * The store ONLY steps in when the server is not reachable — and then says
  * that it is.
  *
- * `Offlineablage.reconciledSingle()` (Abruf.kt) with a real server (MockWebServer) and
+ * `OfflineStore.reconciledSingle()` (Fetch.kt) with a real server (MockWebServer) and
  * the store in memory; CatalogRepository.getCatalogMeta() is only the vehicle.
  *
  * Counter-checks (measured 28.10.2026, kotlinc against the data layer; the rule
@@ -25,8 +25,7 @@ import ch.brickinventoryapp.testing.TestApi
  *   A  the old rule restored („bei jedem Fehler ausser 401 die Platte“) →
  *      red: „a server error is not hidden by old data“ and
  *      „a 404 is not hidden by old data“
- *   B  in the fallback `stand = stand` left out → red: „ohne Verbindung kommen
- *      die gespeicherten Daten, als veraltet gekennzeichnet“
+ *   B  in the fallback `state = state` left out → red: „ohne Verbindung kommen die gespeicherten Daten, als veraltet gekennzeichnet“
  *   C  the transient condition left out (fallback on every error) →
  *      red: „an expired session is not hidden by the cache“, plus
  *      the two from A
@@ -38,49 +37,49 @@ class RepoCacheFallbackTest {
     private lateinit var cacheDir: File
 
     /** A valid catalog response with a recognizable year. */
-    private fun antwort(jahr: Int) =
-        """{"success":true,"themes":[],"year_min":$jahr,"year_max":$jahr,"year_counts":[]}"""
+    private fun response(year: Int) =
+        """{"success":true,"themes":[],"year_min":$year,"year_max":$year,"year_counts":[]}"""
 
     @Before
-    fun auf() {
+    fun setUp() {
         server = MockWebServer()
         server.start()
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-cache-${System.nanoTime()}")
         cacheDir.mkdirs()
-        repo = testCatalogRepository(TestApi.fuer(server))
+        repo = testCatalogRepository(TestApi.forTarget(server))
     }
 
     @After
-    fun zu() {
+    fun tearDown() {
         runCatching { server.shutdown() }
         cacheDir.deleteRecursively()
     }
 
-    private fun erfolg(r: Ergebnis<*>): Ergebnis.Erfolg<*> {
-        assert(r is Ergebnis.Erfolg) { "Erwartet wurde ein Erfolg, kam aber: $r" }
-        return r as Ergebnis.Erfolg<*>
+    private fun success(r: Outcome<*>): Outcome.Success<*> {
+        assert(r is Outcome.Success) { "expected a success, but got: $r" }
+        return r as Outcome.Success<*>
     }
 
-    private suspend fun fillCache(jahr: Int = 1999) {
-        server.enqueue(TestApi.antwort(antwort(jahr)))
-        val frisch = erfolg(repo.getCatalogMeta())
-        assert(!frisch.veraltet) { "Eine frische Antwort darf nicht als veraltet gelten: $frisch" }
+    private suspend fun fillCache(year: Int = 1999) {
+        server.enqueue(TestApi.response(response(year)))
+        val fresh = success(repo.getCatalogMeta())
+        assert(!fresh.stale) { "a fresh answer must not count as stale: $fresh" }
     }
 
     @Test
     fun `without a connection the saved data comes, marked as outdated`() = runTest {
-        val vorher = System.currentTimeMillis() - 2000
+        val before = System.currentTimeMillis() - 2000
         fillCache(1999)
         server.shutdown()   // Connection refused: a real network error
 
-        val r = erfolg(repo.getCatalogMeta())
-        assert((r.data as CatalogMetaView).jahrMin == 1999) { "Nicht die gespeicherten Daten: $r" }
-        val stand = r.stand
-        assert(stand != null && r.veraltet) {
-            "Der Rückfall trägt keinen Stand — die Liste sähe frisch aus: $r"
+        val r = success(repo.getCatalogMeta())
+        assert((r.data as CatalogMetaView).yearMin == 1999) { "not the stored data: $r" }
+        val state = r.state
+        assert(state != null && r.stale) {
+            "the fallback carries no timestamp — the list would look fresh: $r"
         }
-        assert(stand!! in vorher..System.currentTimeMillis()) {
-            "Der Stand ist nicht der Zeitpunkt der Ablage: $stand"
+        assert(state!! in before..System.currentTimeMillis()) {
+            "the timestamp is not the time of storing: $state"
         }
     }
 
@@ -89,8 +88,8 @@ class RepoCacheFallbackTest {
         fillCache()
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getCatalogMeta()
-        assert(r == Ergebnis.Fehler.Server(500)) {
-            "Ein 500 ist eine Auskunft des Servers, kein Netzausfall — er muss " +
+        assert(r == Outcome.Failure.Server(500)) {
+            "A 500 is information from the server, not a network outage — it must " +
                 "durchkommen. Bekommen: $r"
         }
     }
@@ -98,9 +97,9 @@ class RepoCacheFallbackTest {
     @Test
     fun `a 404 is not hidden by old data`() = runTest {
         fillCache()
-        server.enqueue(TestApi.antwort("""{"success":false,"error":"Nicht gefunden"}""", 404))
+        server.enqueue(TestApi.response("""{"success":false,"error":"Nicht gefunden"}""", 404))
         val r = repo.getCatalogMeta()
-        assert(r is Ergebnis.Fehler && r.message == "Nicht gefunden") { "Bekommen: $r" }
+        assert(r is Outcome.Failure && r.message == "Nicht gefunden") { "Bekommen: $r" }
     }
 
     @Test
@@ -108,18 +107,18 @@ class RepoCacheFallbackTest {
         fillCache()
         server.enqueue(MockResponse().setResponseCode(401))
         val r = repo.getCatalogMeta()
-        assert(r is Ergebnis.Fehler.Abgewiesen) {
-            "Bei 401 darf der Cache NICHT einspringen, sonst läuft die Abmeldung ins Leere: $r"
+        assert(r is Outcome.Failure.Rejected) {
+            "On 401 the cache must NOT step in, otherwise the sign-out comes to nothing: $r"
         }
     }
 
     @Test
     fun `fresh data replaces the saved data`() = runTest {
         fillCache(1999)
-        server.enqueue(TestApi.antwort(antwort(2024)))
-        val neu = erfolg(repo.getCatalogMeta())
-        assert((neu.data as CatalogMetaView).jahrMin == 2024 && neu.stand == null) {
-            "Erst Netz, dann Platte — bekommen: $neu"
+        server.enqueue(TestApi.response(response(2024)))
+        val newValue = success(repo.getCatalogMeta())
+        assert((newValue.data as CatalogMetaView).yearMin == 2024 && newValue.state == null) {
+            "network first, then disk — got: $newValue"
         }
     }
 
@@ -127,8 +126,8 @@ class RepoCacheFallbackTest {
     fun `without saved data a network error stays an error`() = runTest {
         server.shutdown()
         val r = repo.getCatalogMeta()
-        assert(r is Ergebnis.Fehler && r.transient) {
-            "Ohne Cache-Eintrag gibt es nichts zurückzufallen. Bekommen: $r"
+        assert(r is Outcome.Failure && r.transient) {
+            "without a cache entry there is nothing to fall back to. Got: $r"
         }
     }
 }

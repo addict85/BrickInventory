@@ -1,0 +1,17 @@
+Gegenprobe: Katalog-Detail auch auf dem Tablet einspaltig
+Modul: app
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: catalog detail stands in two columns on the tablet, add before BrickLink
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
+@@ -228,7 +228,7 @@
+         // Two columns from "expanded" on, like the set detail: image left, details and
+         // actions right. Single-column, the table and buttons ran across the whole
+         // tablet width, "Year" stood an arm's length from "2022".
+-        if (twoColumn(maxWidth.value)) {
++        if (false && twoColumn(maxWidth.value)) {
+             Row(Modifier.fillMaxSize().padding(horizontal = Spacing.large),
+                 horizontalArrangement = Arrangement.spacedBy(Spacing.veryLarge)) {
+                 Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Spacing.large),

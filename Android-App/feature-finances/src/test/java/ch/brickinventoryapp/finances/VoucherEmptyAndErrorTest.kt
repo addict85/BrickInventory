@@ -6,11 +6,12 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import ch.brickinventoryapp.finances.ui.GutscheinUiState
-import ch.brickinventoryapp.finances.ui.screens.GutscheineCard
-import ch.brickinventoryapp.model.ui.Fehlerklasse
-import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.finances.ui.VoucherUiState
+import ch.brickinventoryapp.finances.ui.screens.VoucherCardActions
+import ch.brickinventoryapp.finances.ui.screens.VouchersCard
+import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
@@ -26,9 +27,9 @@ import org.robolectric.annotation.Config
  * class and offers a retry; the empty list says as a heading that there
  * are none yet, and underneath, what the page is for.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
- *   gutschein-fehler-ohne-klasse  ErrorHint without fehler.art → red “a server error …”
- *   gutschein-leer-nur-satz       empty state again only the gray line → red “without vouchers …”
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
+ *   voucher-error-without-class  ErrorHint without failure.kind → red “a server error …”
+ *   voucher-empty-sentence-only       empty state again only the gray line → red “without vouchers …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH")
@@ -39,13 +40,12 @@ class VoucherEmptyAndErrorTest {
 
     private fun text(id: Int) = compose.activity.getString(id)
 
-    private fun zeige(zustand: GutscheinUiState, onErneut: () -> Unit = {}) {
+    private fun show(condition: VoucherUiState, onAgain: () -> Unit = {}) {
         compose.setContent {
             BrickInventoryManagerTheme {
-                GutscheineCard(zustand = zustand, onFeld = { _, _, _, _ -> }, switchOnPin = {}, editOn = {},
-                    onAbbrechen = {}, onSpeichern = {}, deleteOn = {}, openOnPdf = {}, onKopieren = { _, _ -> },
-                    onBalance = {}, cancelOnBalance = {}, onErneut = onErneut,
-                    onBestaetigen = { _, _ -> }, cancelOnConfirmation = {})
+                VouchersCard(condition = condition, actions = object : VoucherCardActions {
+                    override fun reload() = onAgain()
+                })
             }
         }
         compose.waitForIdle()
@@ -53,21 +53,21 @@ class VoucherEmptyAndErrorTest {
 
     @Test
     fun `a server error names the advice of its class and reloads on request`() {
-        var erneut = 0
-        zeige(GutscheinUiState(abruf = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text("Serverfehler (502)")))) { erneut++ }
-        compose.onNodeWithText(text(R.string.fehler_server_titel)).fetchSemanticsNode("Überschrift der Klasse fehlt")
-        compose.onNodeWithText(text(R.string.fehler_server_text)).fetchSemanticsNode("Rat der Klasse fehlt")
+        var again = 0
+        show(VoucherUiState(fetch = Load.Failure(ErrorClass.SERVER, Message.Text("Serverfehler (502)")))) { again++ }
+        compose.onNodeWithText(text(R.string.error_server_title)).fetchSemanticsNode("Überschrift der Klasse fehlt")
+        compose.onNodeWithText(text(R.string.error_server_text)).fetchSemanticsNode("Rat der Klasse fehlt")
         compose.onNodeWithText("Serverfehler (502)").fetchSemanticsNode("Der Satz des Servers fehlt")
         compose.onNodeWithText(text(R.string.common_retry)).performClick()
-        assertEquals(1, erneut)
+        assertEquals(1, again)
     }
 
     @Test
     fun `without vouchers a heading stands and below it what the page is for`() {
-        zeige(GutscheinUiState())
-        val titel = compose.onNodeWithText(text(R.string.vouchers_empty)).fetchSemanticsNode("Titel fehlt")
-        assertTrue("„Noch keine Gutscheine“ ist keine Überschrift",
-            titel.config.getOrNull(SemanticsProperties.Heading) != null)
+        show(VoucherUiState())
+        val title = compose.onNodeWithText(text(R.string.vouchers_empty)).fetchSemanticsNode("Titel fehlt")
+        assertTrue("“Noch keine Gutscheine” is not a heading",
+            title.config.getOrNull(SemanticsProperties.Heading) != null)
         compose.onNodeWithText(text(R.string.vouchers_empty_hint)).fetchSemanticsNode("Erklärung fehlt")
     }
 }

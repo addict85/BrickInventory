@@ -1,29 +1,34 @@
+/**
+ * Counter-check: fromUs() in public/js/error-capture.js always returns true → red “an extension triggers no error with us”.
+ * Counter-check: the fromUs() check removed from the error listener, and in a second run from the
+ * rejection listener → red “both listeners go through the check” each time.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'error-capture.js'), 'utf8');
+const SOURCE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'error-capture.js'), 'utf8');
 
 /**
  * The safety net only catches OUR errors.
  */
 
 /** Take `fromUs` literally from fehlerfang.js and run it with a provided origin. */
-function fetchOfUs(ursprung = 'https://lego.bigolin.online') {
-  const auf = QUELLE.indexOf('function fromUs(');
-  assert.ok(auf > 0, 'fromUs() steht nicht mehr in fehlerfang.js — heisst die Regel noch so?');
-  const zu = QUELLE.indexOf('\n}', auf) + 2;
-  const text = QUELLE.slice(auf, zu);
+function fetchOfUs(originValue = 'https://lego.bigolin.online') {
+  const opened = SOURCE.indexOf('function fromUs(');
+  assert.ok(opened > 0, 'fromUs() is no longer in fehlerfang.js — is the rule still called that?');
+  const closed = SOURCE.indexOf('\n}', opened) + 2;
+  const text = SOURCE.slice(opened, closed);
   assert.ok(
     text.includes('location.origin'),
-    'fromUs() vergleicht nicht mehr gegen den eigenen Ursprung — greift der Schnitt noch?',
+    'fromUs() no longer compares against the own origin — does the cut still work?',
   );
   // eslint-disable-next-line no-new-func
-  return new Function('location', `${text}; return fromUs;`)({ origin: ursprung });
+  return new Function('location', `${text}; return fromUs;`)({ origin: originValue });
 }
 
-const withStack = (nachricht, stapel) => Object.assign(new Error(nachricht), { stack: stapel });
+const withStack = (message, stack) => Object.assign(new Error(message), { stack: stack });
 const UNS = 'https://lego.bigolin.online';
 
 test('an extension triggers no error with us', () => {
@@ -35,16 +40,16 @@ test('an extension triggers no error with us', () => {
       '    at Object.connect (chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/inpage.js:4:42708)\n' +
       '    at chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/inpage.js:7:84292',
   );
-  assert.equal(fromUs(metamask), false, 'MetaMask gilt weiter als unser Fehler');
+  assert.equal(fromUs(metamask), false, 'MetaMask still counts as our error');
   assert.equal(
     fromUs(withStack('x', 'Error: x\n    at moz-extension://abc/inpage.js:1:1')),
     false,
-    'Firefox-Erweiterungen gelten als unser Fehler',
+    'Firefox extensions count as our error',
   );
   assert.equal(
     fromUs(withStack('x', 'Error: x\n    at https://cdn.example.com/w.js:1:1')),
     false,
-    'Ein fremder Host gilt als unser Fehler',
+    'A foreign host counts as our error',
   );
 });
 
@@ -53,19 +58,19 @@ test('our own errors still arrive', () => {
   assert.equal(
     fromUs(withStack('kaputt', `TypeError: kaputt\n    at h (${UNS}/js/app.bundle.js:428:12)`)),
     true,
-    'Ein Fehler aus unserem Bundle wird verschluckt',
+    'An error from our bundle is swallowed',
   );
   assert.equal(
     fromUs(withStack('kaputt', `Error: kaputt\n    at ${UNS}/:17:3`)),
     true,
-    'Ein Fehler aus der Seite selbst wird verschluckt',
+    'An error from the page itself is swallowed',
   );
   // An extension that calls OUR code and triggers something there is
   // our error: the stack names both, and one address of ours suffices.
   assert.equal(
     fromUs(withStack('x', `Error: x\n    at chrome-extension://abc/inpage.js:1:1\n    at ${UNS}/js/app.bundle.js:9:1`)),
     true,
-    'Ein Fehler in unserem Code wird verschluckt, weil eine Erweiterung ihn ausgeloest hat',
+    'An error in our code is swallowed because an extension triggered it',
   );
 });
 
@@ -74,13 +79,9 @@ test('when in doubt the error counts as ours', () => {
   // exactly against that this net exists. Without a stack or without a recognizable
   // address it is therefore still reported.
   const fromUs = fetchOfUs(UNS);
-  assert.equal(fromUs('nur ein Text'), true, 'Eine Ablehnung ohne Stapel wird verschluckt');
-  assert.equal(fromUs(undefined), true, 'Eine Ablehnung ohne Wert wird verschluckt');
-  assert.equal(
-    fromUs(withStack('x', 'Error: x\n    at <anonymous>')),
-    true,
-    'Ein Stapel ohne Adresse wird verschluckt',
-  );
+  assert.equal(fromUs('nur ein Text'), true, 'A rejection without a stack is swallowed');
+  assert.equal(fromUs(undefined), true, 'A rejection without a value is swallowed');
+  assert.equal(fromUs(withStack('x', 'Error: x\n    at <anonymous>')), true, 'A stack without an address is swallowed');
 });
 
 test('a foreign host with our name as its start does not count as ours', () => {
@@ -90,47 +91,43 @@ test('a foreign host with our name as its start does not count as ours', () => {
   assert.equal(
     fromUs(withStack('x', `Error: x\n    at ${UNS}.boeswillig.example/w.js:1:1`)),
     false,
-    'Ein fremder Host, der mit unserem Ursprung anfaengt, gilt als unserer',
+    'A foreign host that starts with our origin counts as ours',
   );
 });
 
 test('both listeners go through the check', () => {
-  // Not only the one for rejections: `window.onerror` catches script errors, and
-  // those of an extension land there just the same.
-  // Braces counted instead of `indexOf('});')`: without a curly block that would hit the next listener.
-  const argument = (text, ab) => {
-    let tiefe = 0;
-    for (let i = text.indexOf('(', ab); i < text.length; i++) {
-      if (text[i] === '(') tiefe++;
-      else if (text[i] === ')' && --tiefe === 0) return text.slice(ab, i + 1);
-    }
-    return '';
-  };
-  for (const ereignis of ['unhandledrejection', 'error']) {
-    const i = QUELLE.indexOf(`addEventListener('${ereignis}'`);
-    assert.ok(i > 0, `Der Lauscher fuer '${ereignis}' fehlt`);
-    const block = argument(QUELLE, i);
-    assert.ok(
-      block.includes(`'${ereignis}'`) && block.length > 30,
-      `Der Lauscher fuer '${ereignis}' liess sich nicht herausschneiden — greift die Suche noch?`,
-    );
-    assert.match(
-      block,
-      /fromUs\(/,
-      `Der Lauscher fuer '${ereignis}' meldet ungeprueft — dann kommen fremde ` + 'Fehler weiter als unsere an.',
-    );
+  // Not only rejections: window 'error' catches script errors, and those of an extension land there too.
+  // One window per listener: reportUnexpected() swallows a second report within five seconds.
+  const { JSDOM } = require('jsdom');
+  for (const name of ['unhandledrejection', 'error']) {
+    const w = new JSDOM('<!doctype html><body></body>', { runScripts: 'outside-only', url: UNS + '/' }).window;
+    const toasts = [];
+    w.toast = text => toasts.push(text);
+    w.tRaw = key => key;
+    w.console.error = () => {};
+    w.eval(`${SOURCE.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '')}\nbindGlobalErrorHandlers();`);
+    const fire = error => {
+      const ev = new w.Event(name);
+      Object.assign(ev, name === 'error' ? { error, message: error.message } : { reason: error });
+      w.dispatchEvent(ev);
+    };
+    fire(withStack('x', 'Error: x\n    at chrome-extension://abc/inpage.js:1:1'));
+    assert.deepEqual(toasts, [], `${name}: an error of an extension is reported as ours`);
+    fire(withStack('y', `Error: y\n    at ${UNS}/js/app.bundle.js:1:1`));
+    assert.deepEqual(toasts, ['api.unexpected'], `${name}: our own error does not arrive`);
+    w.close();
   }
 });
 
 test('no leftover debugging in the delivered state', () => {
   // The second finding from the same console
-  const ordner = path.join(__dirname, '..', 'public', 'js');
-  const dateien = fs.readdirSync(ordner).filter(n => n.endsWith('.js') && n !== 'app.bundle.js');
-  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
+  const dir = path.join(__dirname, '..', 'public', 'js');
+  const files = fs.readdirSync(dir).filter(n => n.endsWith('.js') && n !== 'app.bundle.js');
+  assert.ok(files.length >= 10, `Only ${files.length} scripts — does the search still match?`);
 
   const traces = [];
-  for (const name of dateien) {
-    fs.readFileSync(path.join(ordner, name), 'utf8')
+  for (const name of files) {
+    fs.readFileSync(path.join(dir, name), 'utf8')
       .split('\n')
       .forEach((z, i) => {
         if (/^\s*\/\//.test(z)) return;
@@ -143,7 +140,7 @@ test('no leftover debugging in the delivered state', () => {
   assert.deepEqual(
     traces,
     [],
-    'Diese console.log sehen nach Fehlersuche aus und stehen im ' +
-      'Auslieferungsstand. Sie stehen zwischen den echten Meldungen.',
+    'These console.log calls look like debugging and are in the ' +
+      'shipped state. They sit between the real messages.',
   );
 });

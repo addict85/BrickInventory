@@ -13,18 +13,18 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, takt, warte } = require('./helpers/ui');
+const { openUi, tick, waitFor } = require('./helpers/ui');
 
-async function record(antwort, sprache = 'de') {
-  const o = await openUi({ '/v1/sets/add-stream': antwort }, { sprache });
+async function record(response, language = 'de') {
+  const o = await openUi({ '/v2/sets/add-stream': response }, { language });
   const { d, w } = o;
-  d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
-  await takt(20);
-  const feld = d.getElementById('add-num');
-  feld.value = antwort.set_number;
-  feld.dispatchEvent(new w.Event('input', { bubbles: true }));
+  d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
+  await tick(20);
+  const field = d.getElementById('add-num');
+  field.value = response.set_number;
+  field.dispatchEvent(new w.Event('input', { bubbles: true }));
   d.getElementById('btn-add').click();
-  await warte(() => d.querySelector('#toasts .toast'), 3000);
+  await waitFor(() => d.querySelector('#toasts .toast'), 3000);
   return o;
 }
 
@@ -34,12 +34,12 @@ test('without catalog data: saved, the rest follows', async () => {
     action: 'added',
     set_number: '99071-1',
     name: 'Set 99071-1',
-    katalog_offen: true,
+    catalog_pending: true,
   });
   try {
     const t = d.querySelector('#toasts .toast');
     assert.match(t.textContent, /99071-1 gespeichert — Name und Bild kommen nach/);
-    assert.ok(t.classList.contains('info'), 'als Erfolg gemeldet');
+    assert.ok(t.classList.contains('info'), 'reported as success');
   } finally {
     w.close();
   }
@@ -51,7 +51,7 @@ test('with catalog data: added', async () => {
     action: 'added',
     set_number: '10294-1',
     name: 'Titanic',
-    katalog_offen: false,
+    catalog_pending: false,
   });
   try {
     assert.match(d.querySelector('#toasts .toast').textContent, /10294-1 hinzugefügt!/);
@@ -66,7 +66,7 @@ test('updated', async () => {
     action: 'updated',
     set_number: '10294-1',
     name: 'Titanic',
-    katalog_offen: false,
+    catalog_pending: false,
   });
   try {
     assert.equal(d.querySelector('#toasts .toast .toast-text').textContent, 'Set 10294-1 aktualisiert!');
@@ -77,7 +77,7 @@ test('updated', async () => {
 
 test('English: added', async () => {
   const { w, d } = await record(
-    { success: true, action: 'added', set_number: '10294-1', name: 'Titanic', katalog_offen: false },
+    { success: true, action: 'added', set_number: '10294-1', name: 'Titanic', catalog_pending: false },
     'en',
   );
   try {
@@ -89,7 +89,7 @@ test('English: added', async () => {
 
 test('English: updated', async () => {
   const { w, d } = await record(
-    { success: true, action: 'updated', set_number: '10294-1', name: 'Titanic', katalog_offen: false },
+    { success: true, action: 'updated', set_number: '10294-1', name: 'Titanic', catalog_pending: false },
     'en',
   );
   try {

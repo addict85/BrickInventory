@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Text recognition reads the set number from the INSTRUCTION. There is no barcode there,
@@ -16,7 +16,7 @@ import ch.brickinventoryapp.testing.Quellen
  * KNOWN LIMIT, deliberately left so: if two numbers are equally plausible,
  * the wrong one can win. Against that stands the confirmation dialog with image and
  * name — and it explicitly says that the number is
- * guessed (BarcodeUiState.unsicher). It is part of the design, not just
+ * guessed (the uncertain flag of BarcodeUiState). It is part of the design, not just
  * politeness.
  */
 class OcrSetNumberTest {
@@ -27,24 +27,24 @@ class OcrSetNumberTest {
     @Test
     fun `text recognition runs ONLY when adding, not in the price comparison`() {
         // The switch is OFF: that way no future caller inherits text recognition.
-        val screen = code(File(Quellen.root,
+        val screen = code(File(Sources.root,
             "collection/ui/screens/BarcodeScannerScreen.kt").readText())
         assert(screen.contains("ocrEnabled: Boolean = false")) {
-            "Der Standard muss AUS sein — sonst bekommt jeder Aufrufer die Texterkennung ungefragt"
+            "the default must be OFF — otherwise every caller gets text recognition unasked"
         }
 
         // The scanner for gallery and parts list switches it on …
-        val tools = code(File(Quellen.root,
-            "collection/ui/SammlungGraph.kt").readText())
+        val tools = code(File(Sources.root,
+            "collection/ui/CollectionGraph.kt").readText())
         assert(tools.contains("ocrEnabled = true")) {
-            "Beim Erfassen fehlt die Texterkennung — genau dort ist sie gewollt"
+            "text recognition is missing in entry — exactly there it is wanted"
         }
 
         // … the price comparison does not.
-        val comparison = code(File(Quellen.root,
+        val comparison = code(File(Sources.root,
             "collection/ui/screens/ComparisonScreen.kt").readText())
         assert(!comparison.contains("ocrEnabled")) {
-            "Der Preisvergleich schaltet die Texterkennung ein — dort ist sie ausdrücklich nicht gewollt"
+            "the price comparison switches text recognition on — there it is explicitly not wanted"
         }
     }
 

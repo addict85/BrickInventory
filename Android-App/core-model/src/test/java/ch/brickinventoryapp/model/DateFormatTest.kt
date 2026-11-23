@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.model
 
 import ch.brickinventoryapp.model.util.DateYear
+import ch.brickinventoryapp.model.util.fmtClockTime
 import ch.brickinventoryapp.model.util.fmtDatum
 import ch.brickinventoryapp.model.util.fmtStatus
-import ch.brickinventoryapp.model.util.fmtUhrzeit
 import org.junit.Test
 import java.time.Instant
 import java.time.ZoneOffset
@@ -23,7 +23,7 @@ import java.util.Locale
  * treated like VOLL → red as well; in fmtStatus the date again fixed as
  * dd.MM.yyyy → red “the state follows the same form”. English again „$t/$m/$jj“
  * → red “one form per language …”. timeOfDayFormat() again fixed „HH:mm“ → red “the time
- * follows the device's 12 or 24 hour setting” (gegenproben/uhrzeit-fest-24-stunden.patch,
+ * follows the device's 12 or 24 hour setting” (counter-checks/time-fixed-24-hours.patch,
  * measured with kotlinc).
  */
 class DateFormatTest {
@@ -37,8 +37,8 @@ class DateFormatTest {
         assert(fmtDatum(tag, DE) == "01.08.2026") { fmtDatum(tag, DE).toString() }
         assert(fmtDatum(tag, Locale.forLanguageTag("en-GB")) == "1 Aug 2026")
         assert(fmtDatum(tag, Locale.forLanguageTag("en-US")) == "Aug 1, 2026")
-        assert(fmtDatum(tag, DE, DateYear.OHNE) == "01.08.") { fmtDatum(tag, DE, DateYear.OHNE).toString() }
-        assert(fmtDatum(tag, Locale.forLanguageTag("en-GB"), DateYear.OHNE) == "1 Aug")
+        assert(fmtDatum(tag, DE, DateYear.WITHOUT) == "01.08.") { fmtDatum(tag, DE, DateYear.WITHOUT).toString() }
+        assert(fmtDatum(tag, Locale.forLanguageTag("en-GB"), DateYear.WITHOUT) == "1 Aug")
         // No digit form „dd/mm“ in English: it reads differently depending on the country.
         for (land in listOf("en-GB", "en-US")) {
             val l = Locale.forLanguageTag(land)
@@ -72,26 +72,26 @@ class DateFormatTest {
             fmtStatus(millis, us, utc, twentyFour = false)
         }
         assert(fmtStatus(millis, us, utc, twentyFour = true) == "Aug 1, 2026 21:05")
-        assert(fmtStatus(millis, DE, utc, twentyFour = true, jahr = DateYear.OHNE) == "01.08. 21:05") {
-            fmtStatus(millis, DE, utc, twentyFour = true, jahr = DateYear.OHNE)
+        assert(fmtStatus(millis, DE, utc, twentyFour = true, year = DateYear.WITHOUT) == "01.08. 21:05") {
+            fmtStatus(millis, DE, utc, twentyFour = true, year = DateYear.WITHOUT)
         }
-        val zwoelf = fmtStatus(millis, DE, utc, twentyFour = false)
-        assert(zwoelf.startsWith("01.08.2026 9:05 ")) { zwoelf }
-        val clock = fmtUhrzeit("2026-08-01T21:05:09Z", us, twentyFour = false)!!
+        val twelve = fmtStatus(millis, DE, utc, twentyFour = false)
+        assert(twelve.startsWith("01.08.2026 9:05 ")) { twelve }
+        val clock = fmtClockTime("2026-08-01T21:05:09Z", us, twentyFour = false)!!
         assert(Regex("""^\d{1,2}:05:09 (AM|PM)$""").matches(clock)) { clock }
     }
 
     @Test
     fun `timestamps with and without milliseconds give the same date`() {
-        val erwartet = "03.09.2026"
-        for (eingabe in listOf(
+        val expected = "03.09.2026"
+        for (input in listOf(
             "2026-09-03T15:00:32.194Z",   // with milliseconds
             "2026-09-03T15:00:32Z",       // without — the old version gave null here
             "2026-09-03T15:00:32+02:00",  // with zone offset
             "2026-09-03",                 // only the day
         )) {
-            assert(fmtDatum(eingabe, DE) == erwartet) {
-                "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe, DE)}, erwartet $erwartet"
+            assert(fmtDatum(input, DE) == expected) {
+                "fmtDatum(\"$input\") gave ${fmtDatum(input, DE)}, expected $expected"
             }
         }
     }
@@ -102,11 +102,11 @@ class DateFormatTest {
     }
 
     /**
-     * The time for the log — see fmtUhrzeit.
+     * The time for the log — see fmtClockTime.
      *
      * ── Why there is no check against a fixed time ──────────────────────────
      *
-     * fmtUhrzeit converts DELIBERATELY into the device's zone (unlike
+     * fmtClockTime converts DELIBERATELY into the device's zone (unlike
      * fmtDatum; the reasoning stands there). An assertion like
      * `== "17:00:32"` would thus depend on the time zone of the machine on
      * which the test runs — green here, red in the GitHub job or vice versa. A
@@ -120,15 +120,15 @@ class DateFormatTest {
      */
     @Test
     fun `time has the right form and computes consistently`() {
-        for (eingabe in listOf(
+        for (input in listOf(
             "2026-09-03T15:00:32.194Z",   // with milliseconds
             "2026-09-03T15:00:32Z",       // without
             "2026-09-03T15:00:32+02:00",  // with zone offset
             "2026-09-03T15:00:32",        // without zone — counts as UTC
         )) {
-            val u = fmtUhrzeit(eingabe)
+            val u = fmtClockTime(input)
             assert(u != null && Regex("""\d\d:\d\d:\d\d""").matches(u)) {
-                "fmtUhrzeit(\"$eingabe\") ergab $u, erwartet HH:MM:SS"
+                "fmtClockTime(\"$input\") gave $u, expected HH:MM:SS"
             }
             // Only the SECONDS, not minutes and seconds: there are zones with
             // half-hour offset (India +05:30), there the conversion
@@ -137,30 +137,30 @@ class DateFormatTest {
             // — an assertion that holds only by chance because here
             // and in the GitHub job UTC is set.
             assert(u!!.endsWith(":32")) {
-                "fmtUhrzeit(\"$eingabe\") ergab $u — die Sekunden aendert keine Zone"
+                "fmtClockTime(\"$input\") gave $u — no zone changes the seconds"
             }
         }
-        val early = fmtUhrzeit("2026-09-03T10:00:00Z")!!.take(2).toInt()
-        val spaet = fmtUhrzeit("2026-09-03T11:00:00Z")!!.take(2).toInt()
-        assert((spaet - early + 24) % 24 == 1) {
-            "Eine Stunde Unterschied ergab $early → $spaet"
+        val early = fmtClockTime("2026-09-03T10:00:00Z")!!.take(2).toInt()
+        val late = fmtClockTime("2026-09-03T11:00:00Z")!!.take(2).toInt()
+        assert((late - early + 24) % 24 == 1) {
+            "one hour difference gave $early → $late"
         }
     }
 
     @Test
     fun `unusable times give null, not nonsense`() {
-        for (eingabe in listOf(null, "", "gleich", "2026-09-03")) {
-            assert(fmtUhrzeit(eingabe) == null) {
-                "fmtUhrzeit(\"$eingabe\") ergab ${fmtUhrzeit(eingabe)}, erwartet null"
+        for (input in listOf(null, "", "gleich", "2026-09-03")) {
+            assert(fmtClockTime(input) == null) {
+                "fmtClockTime(\"$input\") gave ${fmtClockTime(input)}, expected null"
             }
         }
     }
 
     @Test
     fun `unusable inputs give null, not nonsense`() {
-        for (eingabe in listOf(null, "", "morgen", "2026-9-3", "03.09.2026")) {
-            assert(fmtDatum(eingabe, DE) == null) {
-                "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe, DE)}, erwartet null"
+        for (input in listOf(null, "", "morgen", "2026-9-3", "03.09.2026")) {
+            assert(fmtDatum(input, DE) == null) {
+                "fmtDatum(\"$input\") gave ${fmtDatum(input, DE)}, expected null"
             }
         }
     }

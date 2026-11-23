@@ -10,13 +10,13 @@ import org.junit.Test
  * access throws „WorkManager is not initialized properly“ and the Hilt workers would have no factory.
  *
  * Counter-check: BrickInventoryApp without Configuration.Provider
- * (gegenproben/app-ohne-workmanager-konfiguration.patch) → red “the app supplies …”.
+ * (counter-checks/app-without-workmanager-configuration.patch) → red “the app supplies …”.
  */
 class WorkManagerConfigurationTest {
 
     @Test
     fun `the app supplies WorkManager its configuration itself`() {
-        assertTrue("BrickInventoryApp ist kein Configuration.Provider",
+        assertTrue("BrickInventoryApp is not a Configuration.Provider",
             Configuration.Provider::class.java.isAssignableFrom(BrickInventoryApp::class.java))
     }
 }

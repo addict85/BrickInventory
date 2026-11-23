@@ -41,27 +41,27 @@ async function seed() {
   return id;
 }
 
-const schalte = an =>
+const toggle = an =>
   db.exec(`CREATE OR REPLACE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT ${an} $$`);
 async function withBrake(fn) {
-  await schalte(true);
+  await toggle(true);
   try {
     return await fn();
   } finally {
-    await schalte(false);
+    await toggle(false);
   }
 }
 
 test('accesses end completely or not at all', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const uid = await seed();
   const K = _req('src/account/accounts.js');
   const A = _req('src/account/deviceToken.js');
-  const zugangsende = _req('src/account/accessEnd.js');
+  const accessExpiry = _req('src/account/accessEnd.js');
   const tokens = async () =>
     (await db.all('SELECT token FROM api_tokens WHERE user_id=$1 ORDER BY token', [uid])).map(z => z.token);
-  const stand = () => db.get('SELECT password_hash, session_version FROM users WHERE id=$1', [uid]);
+  const state = () => db.get('SELECT password_hash, session_version FROM users WHERE id=$1', [uid]);
   await db.run(`INSERT INTO api_tokens (token, user_id) VALUES ('t1', $1), ('t2', $1)`, [uid]);
   const link = A.tokenDigest('ruecksetz-link');
   await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + interval '1 hour' WHERE id = $2`, [
@@ -70,31 +70,27 @@ test('accesses end completely or not at all', { concurrency: 1 }, async t => {
   ]);
 
   await t.test('reset: password and token stay', async () => {
-    const vorher = await stand();
+    const prior = await state();
     await withBrake(() => assert.rejects(K.setPasswordBack(link, 'ein-neues-langes-Passwort'), /erzwungen/));
-    assert.deepEqual(
-      await stand(),
-      vorher,
-      'Passwort oder Sitzungsversion geändert, obwohl der letzte Schritt scheiterte',
-    );
+    assert.deepEqual(await state(), prior, 'Password or session version changed although the last step failed');
     assert.deepEqual(await tokens(), ['t1', 't2']);
     const z = await db.get('SELECT reset_token FROM users WHERE id=$1', [uid]);
-    assert.equal(z.reset_token, link, 'der Link ist verbraucht, obwohl nichts galt');
+    assert.equal(z.reset_token, link, 'the link is used up although nothing took effect');
   });
 
   await t.test('other accesses: the token stays', async () => {
     await withBrake(() =>
-      assert.rejects(zugangsende.endOther(uid, { sitzung: null, token: null, zugaenge: true }), /erzwungen/),
+      assert.rejects(accessExpiry.endOther(uid, { session: null, token: null, accesses: true }), /erzwungen/),
     );
     assert.deepEqual(await tokens(), ['t1', 't2']);
   });
 
   await t.test('without errors: everything applies', async () => {
-    const vorher = await stand();
+    const prior = await state();
     assert.equal(await K.setPasswordBack(link, 'ein-neues-langes-Passwort'), uid);
-    const nachher = await stand();
-    assert.notEqual(nachher.password_hash, 'alt');
-    assert.ok(nachher.session_version > vorher.session_version);
+    const later = await state();
+    assert.notEqual(later.password_hash, 'alt');
+    assert.ok(later.session_version > prior.session_version);
     assert.deepEqual(await tokens(), []);
   });
 });

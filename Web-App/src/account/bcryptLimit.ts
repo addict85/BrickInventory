@@ -2,92 +2,92 @@ import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
 import { newPool } from './bcryptPool';
-import { konfig } from '../infra/config';
+import { config } from '../infra/config';
 
 /** Every password check costs computing time and memory (argon2id, old bcrypt hashes, passwordHash.ts).
  * The brakes per address and account do not help against many addresses; this limit fixes the
  * number of concurrent runs, and whoever would have to wait too long gets 503. */
 export class BcryptOverload extends Error {
   status = 503;
-  code = 'server_ausgelastet' as const;
+  code = 'server_busy' as const;
   constructor() {
     super('bcrypt: zu viele gleichzeitige Prüfungen');
   }
 }
 
-export interface Schranke {
+export interface Gate {
   /** vorrang: to the front of the queue and never rejected because of its length. */
-  mit<T>(work: () => Promise<T>, priority?: boolean): Promise<T>;
-  stand(): { laufend: number; wartend: number };
+  run<T>(work: () => Promise<T>, priority?: boolean): Promise<T>;
+  state(): { running: number; waiting: number };
 }
 
-export function newLimit(gleichzeitig: number, waitingAtMost: number, waitTimeMs: number): Schranke {
-  let laufend = 0;
+export function newLimit(concurrent: number, waitingAtMost: number, waitTimeMs: number): Gate {
+  let running = 0;
   const queue: (() => void)[] = [];
-  const platz = (priority: boolean): Promise<void> => {
-    if (laufend < gleichzeitig) {
-      laufend++;
+  const slot = (priority: boolean): Promise<void> => {
+    if (running < concurrent) {
+      running++;
       return Promise.resolve();
     }
     if (!priority && queue.length >= waitingAtMost) return Promise.reject(new BcryptOverload());
-    return new Promise((weiter, abbrechen) => {
-      const los = () => {
-        clearTimeout(frist);
-        weiter();
+    return new Promise((next, cancel) => {
+      const go = () => {
+        clearTimeout(deadline);
+        next();
       };
-      const frist = setTimeout(() => {
-        queue.splice(queue.indexOf(los), 1);
-        abbrechen(new BcryptOverload());
+      const deadline = setTimeout(() => {
+        queue.splice(queue.indexOf(go), 1);
+        cancel(new BcryptOverload());
       }, waitTimeMs);
-      if (priority) queue.unshift(los);
-      else queue.push(los);
+      if (priority) queue.unshift(go);
+      else queue.push(go);
     });
   };
-  // The free slot goes directly to the next waiting one, `laufend` then stays the same.
-  const frei = () => {
-    const naechster = queue.shift();
-    if (naechster) naechster();
-    else laufend--;
+  // The free slot goes directly to the next waiting one, `running` then stays the same.
+  const free = () => {
+    const next = queue.shift();
+    if (next) next();
+    else running--;
   };
   return {
-    async mit(work, priority = false) {
-      await platz(priority);
+    async run(work, priority = false) {
+      await slot(priority);
       try {
         return await work();
       } finally {
-        frei();
+        free();
       }
     },
-    stand: () => ({ laufend, wartend: queue.length }),
+    state: () => ({ running, waiting: queue.length }),
   };
 }
 
 /** Cores according to the cgroup quota (v2 cpu.max, v1 cfs_quota), null without a quota. */
-export function quotaCores(wurzel = '/sys/fs/cgroup'): number | null {
-  const lies = (f: string) => {
+export function quotaCores(root = '/sys/fs/cgroup'): number | null {
+  const read = (f: string) => {
     try {
-      return fs.readFileSync(path.join(wurzel, f), 'utf8').trim();
+      return fs.readFileSync(path.join(root, f), 'utf8').trim();
     } catch {
       return '';
     }
   };
-  const [v2q, v2p] = lies('cpu.max').split(/\s+/);
+  const [v2q, v2p] = read('cpu.max').split(/\s+/);
   const [quote, period] = v2q
     ? [Number(v2q), Number(v2p)]
-    : [Number(lies('cpu/cpu.cfs_quota_us')), Number(lies('cpu/cpu.cfs_period_us'))];
+    : [Number(read('cpu/cpu.cfs_quota_us')), Number(read('cpu/cpu.cfs_period_us'))];
   return quote > 0 && period > 0 ? Math.max(1, Math.ceil(quote / period)) : null;
 }
 
 /** Every worker takes a good 12 MB; the host's cores say nothing about the
- * container's memory limit. BCRYPT_ARBEITER raises the default of 4. */
-export function bcryptArbeiter(
-  gesetzt = konfig().bcryptArbeiter,
-  kerne = os.availableParallelism(),
-  kontingent = quotaCores(),
+ * container's memory limit. BCRYPT_WORKERS raises the default of 4. */
+export function bcryptWorkers(
+  assigned = config().bcryptWorker,
+  cores = os.availableParallelism(),
+  quota = quotaCores(),
 ): number {
-  return gesetzt ?? Math.max(2, Math.min(kerne, kontingent ?? kerne, 4));
+  return assigned ?? Math.max(2, Math.min(cores, quota ?? cores, 4));
 }
 
-const KERNE = bcryptArbeiter();
-export const bcryptSchranke = newLimit(KERNE, KERNE * 8, 5000);
-export const bcryptPool = newPool(KERNE);
+const CORES = bcryptWorkers();
+export const bcryptGate = newLimit(CORES, CORES * 8, 5000);
+export const bcryptPool = newPool(CORES);

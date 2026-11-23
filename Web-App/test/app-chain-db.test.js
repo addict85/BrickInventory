@@ -6,7 +6,7 @@
  * Counter-checks (measured on 11.11.2026):
  *   A  in apiInbox() `readBody` placed before `loginAtInbox` → red:
  *      “unauthenticated: 401 before the body” (413 instead of 401, the body was read)
- *   B  in routes/api_v1/middleware.ts the limit for unauthenticated set to 256kb → red:
+ *   B  in routes/api/middleware.ts the limit for unauthenticated set to 256kb → red:
  *      “unauthenticated: more than 16 KB is too much”
  *   C  in apiInbox() `loginAtInbox` not mounted → red:
  *      “unauthenticated: 401 before the body” (the route answered itself)
@@ -24,8 +24,8 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 const json = n => JSON.stringify({ username: 'x', password: 'y', fill: 'a'.repeat(n) });
-const post = (base, pfad, rumpf) =>
-  fetch(base + pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: rumpf });
+const post = (base, path, body) =>
+  fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body });
 
 test('login and body limit in the real chain', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
@@ -36,27 +36,27 @@ test('login and body limit in the real chain', { concurrency: 1 }, async t => {
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [name])).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
 
-  const ohne = testServer(_req, { sitzung: {}, t });
-  const mit = testServer(_req, { sitzung: { userId: uid, username: name }, t });
+  const without = testServer(_req, { session: {}, t });
+  const withIt = testServer(_req, { session: { userId: uid, username: name }, t });
 
   await t.test('unauthenticated: 401 before the body', async () => {
-    const r = await post(ohne.base, '/api/v1/sets', json(300 * 1024));
+    const r = await post(without.base, '/api/v2/sets', json(300 * 1024));
     assert.equal(r.status, 401);
   });
 
   await t.test('unauthenticated: more than 16 KB is too much', async () => {
-    assert.equal((await post(ohne.base, '/api/v1/auth/login', json(20 * 1024))).status, 413);
+    assert.equal((await post(without.base, '/api/v2/auth/login', json(20 * 1024))).status, 413);
     assert.notEqual(
-      (await post(ohne.base, '/api/v1/auth/login', json(1024))).status,
+      (await post(without.base, '/api/v2/auth/login', json(1024))).status,
       413,
-      'ein kleiner Rumpf muss durchkommen, sonst bewiese die 413 oben nichts',
+      'a small body must get through, otherwise the 413 above would prove nothing',
     );
   });
 
   await t.test('authenticated: 20 KB go through, 300 KB do not', async () => {
-    const klein = await post(mit.base, '/api/v1/sets', json(20 * 1024));
-    assert.notEqual(klein.status, 413);
-    assert.notEqual(klein.status, 401, 'die gestellte Sitzung kam nicht an');
-    assert.equal((await post(mit.base, '/api/v1/sets', json(300 * 1024))).status, 413);
+    const small = await post(withIt.base, '/api/v2/sets', json(20 * 1024));
+    assert.notEqual(small.status, 413);
+    assert.notEqual(small.status, 401, 'the provided session did not arrive');
+    assert.equal((await post(withIt.base, '/api/v2/sets', json(300 * 1024))).status, 413);
   });
 });

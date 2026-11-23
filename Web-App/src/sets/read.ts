@@ -2,22 +2,18 @@ import { forSet, mergeInstructions } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { reportError } from '../infra/error';
 import * as repo from './repository/sets';
-import { asIds, type Sicht, type ScopeInput as Blickfeld } from '../household';
+import { asIds, type Viewer, type ScopeInput as Scope } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../inventory';
 
 // Read queries; condition from the acquisitions.
 
-import type { Abfrage } from '../contract';
-import { versuche } from '../infra/result';
+import type { Query } from '../contract';
+import { attempts } from '../infra/result';
 import type { SetsContext } from './context';
 
 /** Filtering and sorting on the server, so that they work together with page-wise
  * loading. Without page_size everything — that is how the Android app calls. */
-export async function setsLesen(
-  sk: SetsContext,
-  userIdChoice: Sicht | Blickfeld,
-  query: Abfrage<'GET /api/v1/sets'> = {},
-) {
+export async function readSets(sk: SetsContext, userIdChoice: Viewer | Scope, query: Query<'GET /api/v2/sets'> = {}) {
   const userId = await sk.household.scopeFrom(userIdChoice);
   // asIds(), so that older callers with a bare ID keep working.
   const uids = asIds(userId);
@@ -30,8 +26,8 @@ export async function setsLesen(
     theme,
     sort,
     storage: query.storage,
-    seite: size ? { groesse: size, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * size } : null,
-    themen: !!page_size && parseInt(String(page), 10) <= 1,
+    page: size ? { size: size, offset: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * size } : null,
+    themes: !!page_size && parseInt(String(page), 10) <= 1,
   });
 
   // Instructions only for the sets of THIS page; without sets both queries are dropped.
@@ -67,7 +63,7 @@ export async function setsLesen(
   }));
 
   // One query for the whole page instead of one per row.
-  const withOwners = await sk.household.besitzerAnhaengen(uids, mapped);
+  const withOwners = await sk.household.attachOwners(uids, mapped);
 
   // With a total count for infinite scroll; without pagination total is the length.
   return {
@@ -78,14 +74,14 @@ export async function setsLesen(
 }
 
 // One used acquisition makes the set used; the rule lives only here.
-export async function zustandsAggregat(sk: SetsContext, userId: Blickfeld, setNumber: string) {
+export async function conditionAggregate(sk: SetsContext, userId: Scope, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setEntryMetrics(sk.db, uids, setNumber);
   const acqCount = Number(acq?.acq_count) || 0;
   const usedCount = Number(acq?.used_count) || 0;
   return {
     condition: conditionFromAcquisitions(acqCount, usedCount),
-    // The same fields as setsLesen(sk): the tile is updated after saving without
+    // The same fields as readSets(sk): the tile is updated after saving without
     // reloading and would otherwise lose the second badge.
     conditions: conditionsFromAcquisitions(acqCount, usedCount),
     acq_count: acqCount,
@@ -98,16 +94,16 @@ export async function zustandsAggregat(sk: SetsContext, userId: Blickfeld, setNu
 /** So that the write endpoints update the tile without reloading. */
 export async function withSetAggregate<T extends object>(
   sk: SetsContext,
-  userId: Blickfeld,
+  userId: Scope,
   setNumber: string,
   payload: T,
 ) {
   const uids = asIds(userId);
-  const agg = await versuche('sets-handler:zustandsAggregat', zustandsAggregat(sk, uids, setNumber));
-  return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
+  const agg = await attempts('sets-handler:zustandsAggregat', conditionAggregate(sk, uids, setNumber));
+  return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.value } } : payload;
 }
 
-export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, setNumber: string) {
+export async function readSet(sk: SetsContext, userIdChoice: Viewer | Scope, setNumber: string) {
   const userId = await sk.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
@@ -118,11 +114,11 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
     repo.ownInstructionsOfSets(sk.db, uids, setNumber),
   ]);
   if (!set) return null;
-  // The same fields as setsLesen(sk), so that a client can overwrite the tile with the
+  // The same fields as readSets(sk), so that a client can overwrite the tile with the
   // detail.
-  const agg = await zustandsAggregat(sk, uids, setNumber);
+  const agg = await conditionAggregate(sk, uids, setNumber);
   // The purchase addresses from the server: one address in four places would be four truths.
-  const [bricklink, preisvergleich] = await Promise.all([
+  const [bricklink, priceComparison] = await Promise.all([
     sk.catalog.resolveBlLink(setNumber).catch((e: unknown) => {
       reportError('setdetail:bricklink', e);
       return null;
@@ -130,14 +126,14 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
     Promise.resolve(forSet(setNumber, set.name)),
   ]);
   const { owner_ids, ...withoutIds } = set;
-  const [withOwners] = await sk.household.besitzerAnhaengen(uids, [
+  const [withOwners] = await sk.household.attachOwners(uids, [
     uids.length > 1 ? { ...withoutIds, owner_ids } : withoutIds,
   ]);
   return {
     ...withOwners,
     ...agg,
     bricklink,
-    preisvergleich_url: preisvergleich,
+    price_comparison_url: priceComparison,
     image_local: resolveImageLocal(set.image_local),
     instructions: mergeInstructions(shared, uploaded),
   };

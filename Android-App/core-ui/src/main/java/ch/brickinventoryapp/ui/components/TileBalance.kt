@@ -8,14 +8,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 
 /**
- * Keeps a grid tile as tall as its neighbors when its name turns out shorter: [zeilen]
+ * Keeps a grid tile as tall as its neighbors when its name turns out shorter: [rows]
  * lines in bodyMedium, at the foot instead of as a gap below the name (minLines = 2 left
  * a blank line there).
  */
 @Composable
-fun TileBalance(zeilen: Int) {
-    val hoehe = with(LocalDensity.current) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
+fun TileBalance(rows: Int) {
+    val height = with(LocalDensity.current) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
     // Also a child of the column even without a missing line: with spacedBy every child costs the
     // spacing, and only the compensated tile would be taller by it.
-    Spacer(Modifier.height(hoehe * zeilen.coerceAtLeast(0)))
+    Spacer(Modifier.height(height * rows.coerceAtLeast(0)))
 }

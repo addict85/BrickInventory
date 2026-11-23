@@ -25,18 +25,18 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 
-const gesendet = [];
+const sent = [];
 S.replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (_an, _name, type, o) => {
-    gesendet.push({ type, bis: o.bis });
+    sent.push({ type, until: o.bis });
     return { success: true };
   },
 });
 const db = S.testData();
-const { hashePassword } = _req('src/account/passwordHash.js');
+const { hashPassword } = _req('src/account/passwordHash.js');
 const { searchValue } = _req('src/infra/secret.js');
 
 test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000 }, async t => {
@@ -48,7 +48,7 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
     await db.get(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified)
        VALUES ($1, $1 || '@beispiel.de', $2, true, true) RETURNING id`,
-      [NAME, await hashePassword(PASS)],
+      [NAME, await hashPassword(PASS)],
     )
   ).id;
   await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [uid]);
@@ -58,53 +58,53 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
     await db.pool.end().catch(() => {});
   });
   const alt = code => crypto.createHash('sha256').update(code.replace(/-/g, '')).digest('hex');
-  const code = async (hash, frist) =>
+  const code = async (hash, deadline) =>
     db.run('INSERT INTO second_factor_codes (user_id, code_hash, old_valid_until) VALUES ($1, $2, $3)', [
       uid,
       hash,
-      frist,
+      deadline,
     ]);
-  const { base } = testServer(_req, { sitzung: {}, t });
-  const anmelden = async c => {
+  const { base } = testServer(_req, { session: {}, t });
+  const signIn = async c => {
     await db.run('DELETE FROM rate_limit_attempts');
-    const r = await fetch(`${base}/api/v1/auth/login`, {
+    const r = await fetch(`${base}/api/v2/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: NAME, password: PASS, code: c, ohne_token: false, label: 'Probe' }),
+      body: JSON.stringify({ username: NAME, password: PASS, code: c, without_token: false, label: 'Probe' }),
     });
     return r.status;
   };
-  const waitOnMail = () => bis(() => gesendet.length > 0, 1000);
+  const waitOnMail = () => until(() => sent.length > 0, 1000);
 
   await t.test('a code of the old kind applies until the deadline, with mail and hint in the profile', async () => {
-    const bis = new Date(Date.now() + 3 * 86_400_000);
-    await code(alt('abcde12345'), bis);
-    await code(alt('fghij67890'), bis);
-    gesendet.length = 0;
-    assert.equal(await anmelden('abcde-12345'), 200);
+    const until = new Date(Date.now() + 3 * 86_400_000);
+    await code(alt('abcde12345'), until);
+    await code(alt('fghij67890'), until);
+    sent.length = 0;
+    assert.equal(await signIn('abcde-12345'), 200);
     await waitOnMail();
     assert.deepEqual(
-      gesendet.map(g => [g.type, Date.parse(g.bis)]),
-      [['alte_codes_ablauf', bis.getTime()]],
+      sent.map(g => [g.type, Date.parse(g.until)]),
+      [['old_codes_expiry', until.getTime()]],
     );
-    const stand = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
-    assert.equal(Date.parse(stand.alte_codes_bis), bis.getTime());
+    const state = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
+    assert.equal(Date.parse(state.old_codes_until), until.getTime());
   });
 
   await t.test('an expired code of the old kind no longer applies', async () => {
     await code(alt('klmno13579'), new Date(Date.now() - 60_000));
-    assert.equal(await anmelden('klmno-13579'), 401);
+    assert.equal(await signIn('klmno-13579'), 401);
   });
 
   await t.test('a code of the new kind lifts the deadline for its set', async () => {
     await db.run('DELETE FROM second_factor_codes WHERE user_id = $1', [uid]);
-    const neu = 'abcd-efgh-ijkl-mnop';
-    const frist = new Date(Date.now() + 86_400_000);
-    await code(searchValue('zweiter-faktor-code', `${uid}:${neu.replace(/-/g, '')}`), frist);
-    await code('anderer-code-desselben-satzes', frist);
-    assert.equal(await anmelden(neu), 200);
-    const stand = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
-    assert.deepEqual([stand.codes_uebrig, stand.alte_codes_bis], [1, null]);
+    const fresh = 'abcd-efgh-ijkl-mnop';
+    const deadline = new Date(Date.now() + 86_400_000);
+    await code(searchValue('zweiter-faktor-code', `${uid}:${fresh.replace(/-/g, '')}`), deadline);
+    await code('anderer-code-desselben-satzes', deadline);
+    assert.equal(await signIn(fresh), 200);
+    const state = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
+    assert.deepEqual([state.codes_left, state.old_codes_until], [1, null]);
   });
 
   await t.test('the migration is repeatable and leaves new codes without a deadline', async () => {

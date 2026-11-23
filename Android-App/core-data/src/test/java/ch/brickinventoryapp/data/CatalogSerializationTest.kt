@@ -5,16 +5,16 @@ import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.contract.CatalogSetDetailResponse
 import ch.brickinventoryapp.contract.CatalogSetsResponse
 import ch.brickinventoryapp.data.util.BrickLinkUrls
+import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.model.json.BrickJson
 
 /**
  * Client-side API contract: the catalog models must parse real
- * server responses of the /api/v1/catalog endpoints — including unknown
+ * server responses of the /api/v2/catalog endpoints — including unknown
  * extra fields (the server may extend without breaking the app) and
  * missing optional fields. The JSON payloads match the format
  * that the server's integration test (test/catalog-api.test.js in the

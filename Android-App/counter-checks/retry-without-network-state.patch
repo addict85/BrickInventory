@@ -1,0 +1,17 @@
+Gegenprobe: Ohne Netz wartet die Wiederholung trotzdem
+Modul: core-data
+Test: ch.brickinventoryapp.data.RetryTest
+Rot: without network there is no waiting
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
+@@ -46,7 +46,7 @@
+             var pause = firstPause
+             repeat(attempts - 1) {
+                 val r = call()
+-                if (r !is Outcome.Failure || !r.transient || network() == Kind.NO_NETWORK) return r
++                if (r !is Outcome.Failure || !r.transient) return r
+                 wait(pause)
+                 pause = (pause * 2).coerceAtMost(HIGHEST_PAUSE_MS)
+             }

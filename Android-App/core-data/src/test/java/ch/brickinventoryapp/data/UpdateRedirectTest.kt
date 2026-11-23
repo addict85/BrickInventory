@@ -22,8 +22,8 @@ import java.io.IOException
  * the rule for GitHub itself is checked by the last case.
  *
  * Counter-checks (05.11.2026, measured with kotlinc locally):
- *   A  in UpdateRedirects the check `erlaubt(anfrage.url)` removed
- *      (gegenproben/update-umleitung-ueberall.patch) → red “a redirect to a foreign host …”
+ *   A  in UpdateRedirects the check `allowed(request.url)` removed
+ *      (counter-checks/update-redirect-anywhere.patch) → red “a redirect to a foreign host …”
  *   B  updateTargetAllowed() with `url.host.endsWith("githubusercontent.com")` without dot →
  *      red “only GitHub and its CDN …”
  *   C  MAX_REDIRECTS = 1 (Counter-check of 12.11.2026) → red “the fixed link via
@@ -32,63 +32,63 @@ import java.io.IOException
 class UpdateRedirectTest {
 
     private val start = MockWebServer().apply { start() }
-    private val ziel = MockWebServer().apply { start() }
-    private val fremd = MockWebServer().apply { start() }
+    private val target = MockWebServer().apply { start() }
+    private val foreign = MockWebServer().apply { start() }
 
     @After
-    fun zu() = listOf(start, ziel, fremd).forEach { runCatching { it.shutdown() } }
+    fun tearDown() = listOf(start, target, foreign).forEach { runCatching { it.shutdown() } }
 
     /** As on the device, only the two test servers count as „GitHub“. */
     private val client = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
-        .addInterceptor(UpdateRedirects { url: HttpUrl -> url.port == start.port || url.port == ziel.port })
+        .addInterceptor(UpdateRedirects { url: HttpUrl -> url.port == start.port || url.port == target.port })
         .build()
 
     private fun fetch(url: String) = client.newCall(Request.Builder().url(url).build()).execute().use { it.code to it.body.string() }
 
     @Test
     fun `a redirect within GitHub is followed`() {
-        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", ziel.url("/objekt.apk")))
-        ziel.enqueue(MockResponse().setBody("apk"))
+        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", target.url("/objekt.apk")))
+        target.enqueue(MockResponse().setBody("apk"))
         assertEquals(200 to "apk", fetch(start.url("/release").toString()))
-        assertEquals("/objekt.apk", ziel.takeRequest().path)
+        assertEquals("/objekt.apk", target.takeRequest().path)
     }
 
     /** Like GitHub for `/releases/latest/download/…`: first to the tag, then into the CDN. */
     @Test
     fun `the fixed link via releases-latest follows two redirects`() {
-        val fassung = "/addict85/BrickInventory/releases/download/android-v1/version-signiert.json"
-        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", fassung))
-        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", ziel.url("/objekt")))
-        ziel.enqueue(MockResponse().setBody("{}"))
+        val version = "/addict85/BrickInventory/releases/download/android-v1/version-signiert.json"
+        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", version))
+        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", target.url("/objekt")))
+        target.enqueue(MockResponse().setBody("{}"))
         assertEquals(200 to "{}", fetch(start.url("/addict85/BrickInventory/releases/latest/download/version-signiert.json").toString()))
         assertEquals("/addict85/BrickInventory/releases/latest/download/version-signiert.json", start.takeRequest().path)
-        assertEquals(fassung, start.takeRequest().path)
-        assertEquals("/objekt", ziel.takeRequest().path)
+        assertEquals(version, start.takeRequest().path)
+        assertEquals("/objekt", target.takeRequest().path)
     }
 
     @Test
     fun `a redirect to a foreign host is not even connected`() {
-        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", fremd.url("/spiegel.apk")))
+        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", foreign.url("/spiegel.apk")))
         try {
             fetch(start.url("/release").toString())
-            fail("Die Umleitung auf einen fremden Host ging durch")
+            fail("The redirect to a foreign host went through")
         } catch (_: IOException) {
-            // erwartet
+            // expected
         }
-        assertEquals("Der fremde Host sah die Anfrage", 0, fremd.requestCount)
+        assertEquals("The foreign host saw the request", 0, foreign.requestCount)
     }
 
     @Test
     fun `only GitHub and its CDN, only via https on 443`() {
-        for (gut in listOf("https://github.com/a/b/releases/download/x/y.apk", "https://github.com/a/b/releases/latest/download/y.json",
+        for (good in listOf("https://github.com/a/b/releases/download/x/y.apk", "https://github.com/a/b/releases/latest/download/y.json",
                            "https://objects.githubusercontent.com/z",
                            "https://release-assets.githubusercontent.com/z")) {
-            assertTrue(gut, updateTargetAllowed(gut.toHttpUrl()))
+            assertTrue(good, updateTargetAllowed(good.toHttpUrl()))
         }
-        for (boese in listOf("http://github.com/a", "https://github.com:8443/a", "https://evil.example/a",
+        for (evil in listOf("http://github.com/a", "https://github.com:8443/a", "https://evil.example/a",
                              "https://githubusercontent.com.evil.example/a", "https://evilgithubusercontent.com/a",
                              "https://gist.github.com.evil.example/a")) {
-            assertFalse(boese, updateTargetAllowed(boese.toHttpUrl()))
+            assertFalse(evil, updateTargetAllowed(evil.toHttpUrl()))
         }
     }
 }

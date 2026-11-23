@@ -18,7 +18,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { PassThrough } = require('node:stream');
 const { EventEmitter } = require('node:events');
-const { warte, bis } = require('./helpers/time');
+const { sleep, until } = require('./helpers/time');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -54,7 +54,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
   if (!db) return;
   const A = Object.assign(
     {},
-    { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').auftraege },
+    { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').jobs },
   );
   const { createWorker } = _req('jobs/jobWorker.js');
   t.after(async () => {
@@ -63,41 +63,41 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
   });
 
   await t.test('a job without its own sign of life runs exactly once', async () => {
-    await db.run("DELETE FROM jobs WHERE type = 'wechselkurse'");
+    await db.run("DELETE FROM jobs WHERE type = 'exchange_rates'");
     let starts = 0;
     // Two workers like two processes: the second must not take over the row while the first works.
     // The work takes longer than the deadline (1 s): only the own heartbeat holds the row.
     const editor = {
-      wechselkurse: {
-        ausfuehren: async () => {
+      exchange_rates: {
+        run: async () => {
           starts++;
-          await warte(4500);
+          await sleep(4500);
         },
       },
     };
     const w = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
       parallel: 2,
       deadlineSec: 1,
-      taktMs: 300,
+      tickMs: 300,
     });
     const w2 = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
       parallel: 2,
       deadlineSec: 1,
-      taktMs: 300,
+      tickMs: 300,
     });
-    const id = await A.placeJobOne('wechselkurse', {}, { schluessel: `pacht-${process.pid}` });
+    const id = await A.placeJobOne('exchange_rates', {}, { key: `pacht-${process.pid}` });
     const status = async () => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
-    w.starte();
-    await bis(async () => (await status()) === 'laeuft');
-    w2.starte();
-    await bis(async () => (await status()) === 'erledigt', 8000);
+    w.launch();
+    await until(async () => (await status()) === 'running');
+    w2.launch();
+    await until(async () => (await status()) === 'done', 8000);
     await w.stop(100);
     await w2.stop(100);
     const z = await db.get('SELECT status, attempts FROM jobs WHERE id = $1', [id]);
     assert.deepEqual(
       { starts, ...z },
-      { starts: 1, status: 'erledigt', attempts: 1 },
-      'ein Auftrag ohne eigenes Lebenszeichen läuft genau einmal',
+      { starts: 1, status: 'done', attempts: 1 },
+      'a job without its own heartbeat runs exactly once',
     );
   });
 
@@ -111,28 +111,24 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
       await a.query('BEGIN');
       // Connection A occupies and keeps its transaction open; B occupies via the service.
       const ra =
-        await a.query(`UPDATE jobs SET status = 'laeuft', locked_by = 'A', deadline_at = NOW() + INTERVAL '5 min'
+        await a.query(`UPDATE jobs SET status = 'running', locked_by = 'A', deadline_at = NOW() + INTERVAL '5 min'
                                  WHERE dedupe_key = 'x1' RETURNING id`);
       assert.equal(ra.rowCount, 1);
       assert.equal(
-        await A.belegeAuftrag(['csv_sync'], 60, 'B', ['csv_sync']),
+        await A.claimJob(['csv_sync'], 60, 'B', ['csv_sync']),
         null,
-        'B belegt, solange A noch nicht festgeschrieben hat',
+        'B claims while A has not committed yet',
       );
       await a.query('COMMIT');
     } finally {
       a.release();
     }
-    assert.equal(
-      await A.belegeAuftrag(['csv_sync'], 60, 'B', ['csv_sync']),
-      null,
-      'B belegt nach dem Festschreiben von A',
-    );
-    const laufend = await db.all("SELECT locked_by FROM jobs WHERE type = 'csv_sync' AND status = 'laeuft'");
+    assert.equal(await A.claimJob(['csv_sync'], 60, 'B', ['csv_sync']), null, 'B claims after A has committed');
+    const running = await db.all("SELECT locked_by FROM jobs WHERE type = 'csv_sync' AND status = 'running'");
     assert.deepEqual(
-      laufend.map(z => z.locked_by),
+      running.map(z => z.locked_by),
       ['A'],
-      'die zweite Verbindung belegt keinen zweiten csv_sync',
+      'the second connection does not claim a second csv_sync',
     );
     await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
   });
@@ -143,20 +139,20 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     const w = createWorker(
       require('./helpers/sources').testServices().jobQueue,
       { csv_sync: EDITOR.csv_sync },
-      { deadlineSec: 60, taktMs: 100 },
+      { deadlineSec: 60, tickMs: 100 },
     );
     const id = await A.placeJobOne('csv_sync', {});
     downloadRunning = false;
-    w.starte();
+    w.launch();
     t.after(() => w.stop(0));
-    await bis(() => w.laufend() > 0);
-    assert.equal(w.laufend(), 1, 'der Abgleich läuft');
-    assert.ok(await bis(() => downloadRunning), 'der Download hat begonnen');
+    await until(() => w.running() > 0);
+    assert.equal(w.running(), 1, 'the sync is running');
+    assert.ok(await until(() => downloadRunning), 'the download has started');
     const start = Date.now();
-    assert.ok(await A.abortAb(id));
-    await bis(() => w.laufend() === 0);
+    assert.ok(await A.abortJob(id));
+    await until(() => w.running() === 0);
     const duration = Date.now() - start;
-    assert.ok(duration <= 2000, `Abbruch eines csv_sync im Download dauerte ${duration} ms`);
-    assert.equal((await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status, 'abgebrochen');
+    assert.ok(duration <= 2000, `Aborting a csv_sync during the download took ${duration} ms`);
+    assert.equal((await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status, 'cancelled');
   });
 });

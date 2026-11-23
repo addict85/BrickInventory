@@ -6,22 +6,22 @@ import {
   firstZipFile,
   readHistory,
   readDailyRates,
-  type Abruf,
-  type Kurs,
+  type Fetch,
+  type Rate,
 } from '../externalSources';
 import type { FinancesContext } from './context';
 
 const BLOCK = 5000;
 
 /** An existing day is overwritten: the ECB rarely corrects, but it does. */
-export async function saveRates(kx: FinancesContext, rates: Kurs[]): Promise<number> {
+export async function saveRates(kx: FinancesContext, rates: Rate[]): Promise<number> {
   let n = 0;
   for (let i = 0; i < rates.length; i += BLOCK) {
-    const teil = rates.slice(i, i + BLOCK);
-    const r = await kx.wechselkurse.writeRates(
-      teil.map(k => k.tag),
-      teil.map(k => k.waehrung),
-      teil.map(k => String(k.je_eur)),
+    const part = rates.slice(i, i + BLOCK);
+    const r = await kx.exchangeRates.writeRates(
+      part.map(k => k.tag),
+      part.map(k => k.currency),
+      part.map(k => String(k.per_eur)),
     );
     n += r?.changes ?? 0;
   }
@@ -30,46 +30,46 @@ export async function saveRates(kx: FinancesContext, rates: Kurs[]): Promise<num
 
 export async function reloadRates(
   k: FinancesContext,
-  abruf: Abruf = k.externalSources.quellen.ecbFetch,
+  download: Fetch = k.externalSources.sources.ecbFetch,
   signal?: AbortSignal,
-): Promise<{ quelle: 'historie' | 'tag'; rates: number }> {
-  const leer = !(await k.wechselkurse.givesEsRates());
-  const rates = leer
-    ? readHistory(firstZipFile(await abruf(ECB_HISTORY, signal)).toString('utf8'))
-    : readDailyRates((await abruf(ECB_DAILY_RATES, signal)).toString('utf8'));
-  if (!rates.length) throw new Error(`EZB lieferte keine Kurse (${leer ? 'Historie' : 'Tageskurse'})`);
-  return { quelle: leer ? 'historie' : 'tag', rates: await saveRates(k, rates) };
+): Promise<{ source: 'historie' | 'tag'; rates: number }> {
+  const noRatesYet = !(await k.exchangeRates.givesEsRates());
+  const rates = noRatesYet
+    ? readHistory(firstZipFile(await download(ECB_HISTORY, signal)).toString('utf8'))
+    : readDailyRates((await download(ECB_DAILY_RATES, signal)).toString('utf8'));
+  if (!rates.length) throw new Error(`EZB lieferte keine Kurse (${noRatesYet ? 'Historie' : 'Tageskurse'})`);
+  return { source: noRatesYet ? 'historie' : 'tag', rates: await saveRates(k, rates) };
 }
 
 /** 15:30 UTC is after the ECB's publication. One key of its own per
  * day: a failed attempt must not block the next day. */
-export async function planeKursabruf(
+export async function scheduleRateFetch(
   k: FinancesContext,
-  jetzt = k.uhr.datum(),
+  now = k.clock.date(),
   morgen = false,
 ): Promise<string | null> {
-  const ziel = new Date(
-    Date.UTC(jetzt.getUTCFullYear(), jetzt.getUTCMonth(), jetzt.getUTCDate() + (morgen ? 1 : 0), 15, 30),
+  const target = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + (morgen ? 1 : 0), 15, 30),
   );
-  const sek = Math.max(0, Math.round((ziel.getTime() - jetzt.getTime()) / 1000));
+  const sec = Math.max(0, Math.round((target.getTime() - now.getTime()) / 1000));
   return k.jobQueue.placeJobOne(
-    'wechselkurse',
+    'exchange_rates',
     {},
     {
-      schluessel: `wechselkurse:${ziel.toISOString().slice(0, 10)}`,
-      afterSeconds: morgen ? sek : 0,
+      key: `exchange_rates:${target.toISOString().slice(0, 10)}`,
+      afterSeconds: morgen ? sec : 0,
       maxAttempts: 6,
     },
   );
 }
 
 /** Schedule the next day first, then load: if loading fails, the schedule is already in place. */
-export async function kursauftrag(
+export async function rateJob(
   k: FinancesContext,
-  abruf: Abruf = k.externalSources.quellen.ecbFetch,
-  lauf?: JobRun,
+  download: Fetch = k.externalSources.sources.ecbFetch,
+  run?: JobRun,
 ): Promise<void> {
-  await planeKursabruf(k, k.uhr.datum(), true);
-  const r = await reloadRates(k, abruf, lauf?.signal);
-  console.log(`[wechselkurse] ${r.rates} Kurse aus der EZB-${r.quelle === 'historie' ? 'Historie' : 'Tagesdatei'}`);
+  await scheduleRateFetch(k, k.clock.date(), true);
+  const r = await reloadRates(k, download, run?.signal);
+  console.log(`[wechselkurse] ${r.rates} Kurse aus der EZB-${r.source === 'historie' ? 'Historie' : 'Tagesdatei'}`);
 }

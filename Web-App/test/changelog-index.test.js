@@ -1,5 +1,7 @@
 /**
  * The index of the fix history and the parts in CHANGELOG/ must match.
+ *
+ * Counter-check: a file name in the table of CHANGELOG-fixes.md misspelled → red “every part is in the index and vice versa”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,30 +27,30 @@ function onDisk() {
 }
 
 test('every part is in the index and vice versa', () => {
-  const tabelle = fromTable().sort();
+  const table = fromTable().sort();
   const disk = onDisk();
 
-  assert.ok(disk.length >= 5, `Nur ${disk.length} Teile gefunden — liegt die Historie noch in CHANGELOG/?`);
-  assert.deepEqual(tabelle, disk, 'Tabelle in CHANGELOG-fixes.md und Ordner CHANGELOG/ laufen auseinander');
+  assert.ok(disk.length >= 5, `Only ${disk.length} parts found — is the history still in CHANGELOG/?`);
+  assert.deepEqual(table, disk, 'Table in CHANGELOG-fixes.md and folder CHANGELOG/ drift apart');
 });
 
 test('no addendum is in two parts', () => {
-  const gesehen = new Map(); // number → file
-  const doppelt = [];
+  const seen = new Map(); // number → file
+  const twice = [];
   for (const f of onDisk()) {
     const src = fs.readFileSync(path.join(DIR, f), 'utf8');
     for (const m of src.matchAll(/^## Nachtrag (\d+)\b/gm)) {
       const n = Number(m[1]);
-      if (gesehen.has(n)) doppelt.push(`Nachtrag ${n}: ${gesehen.get(n)} und ${f}`);
-      else gesehen.set(n, f);
+      if (seen.has(n)) twice.push(`Nachtrag ${n}: ${seen.get(n)} und ${f}`);
+      else seen.set(n, f);
     }
   }
-  assert.deepEqual(doppelt, [], `Nachtrag mehrfach abgelegt:\n  ${doppelt.join('\n  ')}`);
+  assert.deepEqual(twice, [], `Addendum filed several times:\n  ${twice.join('\n  ')}`);
 
   // Lower bound for the same reason as in require-exports.test.js: if the
   // search pattern breaks (say because headings are named differently), this rule would
   // silently check nothing anymore and stay green.
-  assert.ok(gesehen.size > 100, `Nur ${gesehen.size} nummerierte Nachträge gefunden — greift das Muster noch?`);
+  assert.ok(seen.size > 100, `Only ${seen.size} numbered addenda found — does the pattern still match?`);
 });
 
 test('the file name matches the content', () => {
@@ -56,31 +58,29 @@ test('the file name matches the content', () => {
   // 151, 152 and 153 landed in `12-nachtraege-126-150.md`. All previous checks
   // stayed green — the numbers did not overlap, every file was in the
   // index, every reference was right. Only the file was named something other than …
-  const daneben = [];
+  const beside = [];
   for (const f of onDisk()) {
-    const spanne = f.match(/nachtraege-(\d+)-(\d+)\.md$/);
-    if (!spanne) continue; // 01-frueh-N.md
-    const [von, bis] = [Number(spanne[1]), Number(spanne[2])];
+    const span = f.match(/nachtraege-(\d+)-(\d+)\.md$/);
+    if (!span) continue; // 01-frueh-N.md
+    const [from, until] = [Number(span[1]), Number(span[2])];
     const src = fs.readFileSync(path.join(DIR, f), 'utf8');
     for (const m of src.matchAll(/^## Nachtrag (\d+)\b/gm)) {
       const n = Number(m[1]);
-      if (n < von || n > bis) daneben.push(`${f} enthält Nachtrag ${n} (Spanne ${von}–${bis})`);
+      if (n < from || n > until) beside.push(`${f} enthält Nachtrag ${n} (Spanne ${from}–${until})`);
     }
   }
   assert.deepEqual(
-    daneben,
+    beside,
     [],
-    'Eintrag in der falschen Datei — beim Überschreiten einer Fünfundzwanziger-' +
-      'Grenze gehört eine neue Datei angelegt:\n  ' +
-      daneben.join('\n  '),
+    `Entry in the wrong file — when crossing a boundary of twenty-five a new file must be created:\n  ${beside.join('\n  ')}`,
   );
 });
 
 test('every part names at the start where it belongs', () => {
-  const ohne = onDisk().filter(
+  const without = onDisk().filter(
     f => !fs.readFileSync(path.join(DIR, f), 'utf8').slice(0, 400).includes('CHANGELOG-fixes.md'),
   );
-  assert.deepEqual(ohne, [], 'Diese Teile verweisen nicht zurück auf den Index: ' + ohne.join(', '));
+  assert.deepEqual(without, [], `These parts do not link back to the index: ${without.join(', ')}`);
 });
 
 test('the index itself stays short', () => {
@@ -89,7 +89,7 @@ test('the index itself stays short', () => {
   const kb = fs.statSync(INDEX).size / 1024;
   assert.ok(
     kb < 20,
-    `CHANGELOG-fixes.md ist wieder auf ${kb.toFixed(0)} KB gewachsen — ` +
-      'gehören die neuen Einträge in einen Teil unter CHANGELOG/?',
+    `CHANGELOG-fixes.md has grown to ${kb.toFixed(0)} KB again — ` +
+      'do the new entries belong in a part under CHANGELOG/?',
   );
 });

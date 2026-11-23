@@ -1,42 +1,42 @@
 /** Distinguishes "failed" from "empty": a substitute value after an error looked like an empty response. */
-import { fehlertext, reportError, checkFallbackInTransaction } from './error';
+import { errorMessage, reportError, checkFallbackInTransaction } from './error';
 
-export interface Fehlschlag {
-  kontext: string;
-  grund: string;
+export interface Failure {
+  context: string;
+  reason: string;
 }
 
-export type Ergebnis<T, F = Fehlschlag> = { ok: true; wert: T } | { ok: false; fehler: F };
+export type Result<T, F = Failure> = { ok: true; value: T } | { ok: false; error: F };
 
-export const succeeded = <T>(wert: T): Ergebnis<T, never> => ({ ok: true, wert });
-export const gescheitert = <F>(fehler: F): Ergebnis<never, F> => ({ ok: false, fehler });
+export const succeeded = <T>(value: T): Result<T, never> => ({ ok: true, value });
+export const failed = <F>(error: F): Result<never, F> => ({ ok: false, error });
 
 /** Reports the error to the log and passes it on as a result; the caller has to decide. */
-export async function versuche<T>(kontext: string, work: Promise<T> | (() => Promise<T>)): Promise<Ergebnis<T>> {
+export async function attempts<T>(context: string, work: Promise<T> | (() => Promise<T>)): Promise<Result<T>> {
   try {
     return succeeded(await (typeof work === 'function' ? work() : work));
   } catch (e) {
-    checkFallbackInTransaction(kontext, e);
-    reportError(kontext, e);
-    return gescheitert({ kontext, grund: fehlertext(e) || 'Unbekannter Fehler' });
+    checkFallbackInTransaction(context, e);
+    reportError(context, e);
+    return failed({ context, reason: errorMessage(e) || 'Unbekannter Fehler' });
   }
 }
 
 /** Collects which parts of a response carry only substitute values. The response names
  * them in `degradiert`, otherwise a 0 after an error would look like a real 0. */
 export class Degradations {
-  readonly teile: string[] = [];
-  async oder<T, E>(teil: string, work: Promise<T> | (() => Promise<T>), ersatz: E): Promise<T | E> {
-    const r = await versuche(teil, work);
-    if (!r.ok && !this.teile.includes(teil)) this.teile.push(teil);
-    return r.ok ? r.wert : ersatz;
+  readonly parts: string[] = [];
+  async orElse<T, E>(part: string, work: Promise<T> | (() => Promise<T>), spare: E): Promise<T | E> {
+    const r = await attempts(part, work);
+    if (!r.ok && !this.parts.includes(part)) this.parts.push(part);
+    return r.ok ? r.value : spare;
   }
-  angabe(): { degradiert?: string[] } {
-    return this.teile.length ? { degradiert: [...this.teile] } : {};
+  detail(): { degraded?: string[] } {
+    return this.parts.length ? { degraded: [...this.parts] } : {};
   }
 }
 
 /** The value or, after a failure, the explicitly named substitute. */
-export function valueOr<T, E>(e: Ergebnis<T, unknown>, ersatz: E): T | E {
-  return e.ok ? e.wert : ersatz;
+export function valueOr<T, E>(e: Result<T, unknown>, spare: E): T | E {
+  return e.ok ? e.value : spare;
 }

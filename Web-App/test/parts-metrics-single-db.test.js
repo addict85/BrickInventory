@@ -33,34 +33,34 @@ test('parts metrics with individually captured parts', { concurrency: 1 }, async
   const A = `kz-einzeln-${process.pid}`,
     B = `kz-gemischt-${process.pid}`;
   const SN = `KE${process.pid}-1`;
-  const TEILE = ['ke1', 'ke2', 'ke3', 'ke4'];
+  const PARTS = ['ke1', 'ke2', 'ke3', 'ke4'];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[A, B]]);
   const UA = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [A])).id;
   const UB = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [B])).id;
-  for (const nr of TEILE)
+  for (const nr of PARTS)
     await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, $1) ON CONFLICT DO NOTHING`, [nr]);
   try {
     // Account A: only individual parts, four kinds in four colors.
-    for (const [i, nr] of TEILE.entries()) await holdsPart(db, UA, nr, { colorId: [1, 4, 15, 0][i], menge: 25 });
+    for (const [i, nr] of PARTS.entries()) await holdsPart(db, UA, nr, { colorId: [1, 4, 15, 0][i], quantity: 25 });
     // Account B: a set with ke1/color 1 (×3) and ke2/color 4 (×2), plus individually
     // ke1/color 1 (the same kind) and ke3/color 15 (new kind and color).
     await holdsSet(db, UB, SN, 1);
-    await holdsPart(db, UB, 'ke1', { setNumber: SN, colorId: 1, menge: 3 });
-    await holdsPart(db, UB, 'ke2', { setNumber: SN, colorId: 4, menge: 2 });
-    await holdsPart(db, UB, 'ke1', { colorId: 1, menge: 7 });
-    await holdsPart(db, UB, 'ke3', { colorId: 15, menge: 1 });
+    await holdsPart(db, UB, 'ke1', { setNumber: SN, colorId: 1, quantity: 3 });
+    await holdsPart(db, UB, 'ke2', { setNumber: SN, colorId: 4, quantity: 2 });
+    await holdsPart(db, UB, 'ke1', { colorId: 1, quantity: 7 });
+    await holdsPart(db, UB, 'ke3', { colorId: 15, quantity: 1 });
 
     await t.test('only individual parts: 4 kinds in 4 colors', async () => {
       const s = await H.partStatsQuery(UA);
       assert.equal(s.unique_parts, 4);
       assert.equal(s.unique_colors, 4);
-      assert.equal(s.total_parts, 0, 'keine Set-Teile');
+      assert.equal(s.total_parts, 0, 'no set parts');
       assert.equal(s.manual_parts, 100);
     });
     await t.test('the total does not count individual parts twice', async () => {
       const s = await H.partStatsQuery(UB);
       assert.equal(s.total_parts, 5, 'Set-Teile 3 + 2');
-      assert.equal(s.manual_parts, 8, 'einzeln 7 + 1');
+      assert.equal(s.manual_parts, 8, 'individually 7 + 1');
       assert.equal(s.unique_parts, 3);
       assert.equal(s.unique_colors, 3);
     });
@@ -71,14 +71,14 @@ test('parts metrics with individually captured parts', { concurrency: 1 }, async
         ..._req('src/parts/repository/partsList.js'),
         ...require('./helpers/sources').testArea('parts').partsList,
       };
-      const zsf = await repo.stats([UB], true);
-      assert.deepEqual(zsf, live);
+      const summary = await repo.stats([UB], true);
+      assert.deepEqual(summary, live);
       assert.deepEqual(await H.partStatsQuery(UB), live);
     });
   } finally {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[UA, UB]]);
     await db.run('DELETE FROM set_parts WHERE set_number=$1', [SN]);
-    await db.run('DELETE FROM part_catalog WHERE part_number = ANY($1)', [TEILE]);
+    await db.run('DELETE FROM part_catalog WHERE part_number = ANY($1)', [PARTS]);
     await db.pool.end().catch(() => {});
   }
 });

@@ -1,31 +1,31 @@
 /** The only place where a domain error kind becomes an HTTP status. */
-import { Fachfehler, type ErrorKind } from '../infra/errorTexts';
+import { DomainError, type ErrorKind } from '../infra/errorTexts';
 
 export const STATUS_THE_KIND: Readonly<Record<ErrorKind, number>> = {
-  ungueltig: 400,
-  nicht_angemeldet: 401,
-  verboten: 403,
-  nicht_gefunden: 404,
-  konflikt: 409,
-  zu_gross: 413,
-  falscher_typ: 415,
-  zu_langsam: 408,
-  nicht_mehr_da: 410,
-  nicht_verarbeitbar: 422,
-  zu_viele: 429,
-  speicher_voll: 507,
-  intern: 500,
-  fremddienst: 502,
-  nicht_verfuegbar: 503,
-  zeitueberschreitung: 504,
-  falscher_host: 421,
-  zu_alt: 426,
+  invalid: 400,
+  not_signed_in: 401,
+  forbidden: 403,
+  not_found: 404,
+  conflict: 409,
+  too_large: 413,
+  unsupported_type: 415,
+  request_timeout: 408,
+  gone: 410,
+  unprocessable: 422,
+  too_many: 429,
+  storage_full: 507,
+  internal: 500,
+  upstream: 502,
+  unavailable: 503,
+  upstream_timeout: 504,
+  misdirected: 421,
+  upgrade_required: 426,
 };
 
 /** Status of a thrown error: domain errors by kind, errors from Express
  * or libraries by their own `status`, everything else 500. */
 export function statusOf(e: unknown): number {
-  if (e instanceof Fachfehler) return STATUS_THE_KIND[e.art] ?? 500;
+  if (e instanceof DomainError) return STATUS_THE_KIND[e.kind] ?? 500;
   const s = (e as { status?: unknown } | null | undefined)?.status;
   return typeof s === 'number' ? s : 500;
 }

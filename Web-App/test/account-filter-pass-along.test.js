@@ -14,63 +14,63 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/ui');
+const { openUi, switchTab } = require('./helpers/ui');
 
 // The CSV import status is polled on a timer, not by the filter change: if
 // a poll falls into the window, it is not a fetch behind the account filter.
-const BACKGROUND = new Set(['/api/v1/sets/import/csv/status']);
+const BACKGROUND = new Set(['/api/v2/sets/import/csv/status']);
 
 /** What every tab must refetch after the change — with the filter. */
 const NEW_LOADED = {
-  gallery: ['/v1/sets', '/v1/stats'],
-  parts: ['/v1/parts', '/v1/parts/manual', '/v1/parts/stats', '/v1/parts/colors', '/v1/parts/categories'],
-  minifigs: ['/v1/minifigs', '/v1/minifigs/manual', '/v1/minifigs/stats'],
+  gallery: ['/v2/sets', '/v2/stats'],
+  parts: ['/v2/parts', '/v2/parts/manual', '/v2/parts/stats', '/v2/parts/colors', '/v2/parts/categories'],
+  minifigs: ['/v2/minifigs', '/v2/minifigs/manual', '/v2/minifigs/stats'],
   finance: [
-    '/v1/finance/valuation',
-    '/v1/finance/parts-valuation',
-    '/v1/finance/minifigs-valuation',
-    '/v1/finance/pnl',
+    '/v2/finance/valuation',
+    '/v2/finance/parts-valuation',
+    '/v2/finance/minifigs-valuation',
+    '/v2/finance/pnl',
   ],
 };
 
 test('every fetch behind the account filter passes the account filter along', async () => {
-  const { w, d, aufrufe, ruhig } = await openUi({
-    '/v1/sets/household-members': {
+  const { w, d, calls, settle } = await openUi({
+    '/v2/sets/household-members': {
       success: true,
       members: [
-        { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-        { id: 2, username: 'ben', is_self: false, tiefe: 1 },
+        { id: 1, username: 'anna', is_self: true, depth: 0 },
+        { id: 2, username: 'ben', is_self: false, depth: 1 },
       ],
     },
   });
   try {
-    for (const [ansicht, pfade] of Object.entries(NEW_LOADED)) {
-      await reiter(w, ansicht);
-      await ruhig();
-      const filter = d.getElementById(`scope-${ansicht}`);
+    for (const [viewName, paths] of Object.entries(NEW_LOADED)) {
+      await switchTab(w, viewName);
+      await settle();
+      const filter = d.getElementById(`scope-${viewName}`);
       assert.ok(
         [...filter.options].some(o => o.value === '2'),
-        `${ansicht}: kein Unterkonto im Filter`,
+        `${viewName}: no sub-account in the filter`,
       );
-      const ab = aufrufe.length;
+      const ab = calls.length;
       filter.value = '2';
       filter.dispatchEvent(new w.Event('change', { bubbles: true }));
-      await ruhig();
-      const neu = aufrufe
+      await settle();
+      const fresh = calls
         .slice(ab)
         .filter(a => a.method === 'GET')
         .map(a => new URL(a.url, 'http://localhost'))
         .filter(u => !BACKGROUND.has(u.pathname));
-      const geholt = new Set(neu.map(u => u.pathname.replace(/^\/api/, '')));
+      const fetched = new Set(fresh.map(u => u.pathname.replace(/^\/api/, '')));
       assert.deepEqual(
-        pfade.filter(p => !geholt.has(p)),
+        paths.filter(p => !fetched.has(p)),
         [],
-        `${ansicht}: nicht neu geladen`,
+        `${viewName}: not reloaded`,
       );
       assert.deepEqual(
-        neu.filter(u => u.searchParams.get('accounts') !== '2').map(u => u.pathname + u.search),
+        fresh.filter(u => u.searchParams.get('accounts') !== '2').map(u => u.pathname + u.search),
         [],
-        `${ansicht}: ohne Kontofilter geholt`,
+        `${viewName}: fetched without account filter`,
       );
     }
   } finally {

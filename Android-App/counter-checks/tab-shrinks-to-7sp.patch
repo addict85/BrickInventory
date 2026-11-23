@@ -1,0 +1,17 @@
+Gegenprobe: Reiterbeschriftung schrumpft wieder bis fest 7 sp
+Modul: app
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: tab bar never shrinks below the normal font size
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -381,7 +381,7 @@
+  */
+ internal fun tabSet(widths: List<Float>, chosen: Int, total: Float, edge: Float, minTarget: Float, font: Float): TabSet {
+     val share = total / widths.size - edge
+-    val floor = minOf(font, TAB_MIN_SCALE) / font
++    val floor = 7f / (12f * font)
+     val factor = minOf(1f, share / (widths.maxOrNull() ?: 1f))
+     if (factor >= floor || chosen < 0 || widths.size < 2) return TabSet(true, maxOf(factor, floor), chosen, 1f)
+     val needed = widths[chosen] + edge

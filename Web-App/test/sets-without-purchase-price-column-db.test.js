@@ -1,7 +1,9 @@
 /**
- * Since db/basis.sql the state BEFORE this migration no longer exists: the
+ * Since db/base.sql the state BEFORE this migration no longer exists: the
  * cases on bolt, addendum and intermediate state are dropped. What is checked is
  * the final state and the read paths.
+ *
+ * Counter-check: a condition column added to sets in db/base.sql → red “after the complete schema setup sets has no purchase price and no condition”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,7 +12,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Aftermath: leave a cleaned-up database behind
@@ -28,14 +30,14 @@ test.after(async () => {
   } catch (e) {
     // Do not swallow: if the database stays broken, the next files fail
     // on something that has nothing to do with them.
-    console.error('[sets-ohne-kaufpreisspalte] Aufraeumen fehlgeschlagen:', e.message);
+    console.error('[sets-ohne-kaufpreisspalte] cleanup failed:', e.message);
   }
   await db.pool.end().catch(() => {});
 });
 
 /** Column names of a table, from the catalog. */
-const columnsOf = async tabelle =>
-  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
+const columnsOf = async table =>
+  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [table]))
     .map(r => r.column_name)
     .sort();
 
@@ -45,7 +47,7 @@ test('after the complete schema setup sets has no purchase price and no conditio
   try {
     await db.run('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -55,7 +57,7 @@ test('after the complete schema setup sets has no purchase price and no conditio
   await db.initSchema();
 
   // The state before the migrations no longer exists: an empty
-  // database gets db/basis.sql. What is checked is the final state.
+  // database gets db/base.sql. What is checked is the final state.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -63,26 +65,29 @@ test('after the complete schema setup sets has no purchase price and no conditio
     client.release();
   }
 
-  const nachher = await columnsOf('sets');
+  const later = await columnsOf('sets');
   // `quantity` stood here too — until migration 0036 deleted it. What is checked
   // now is `user_id` and `set_number`: which account holds which set,
   // that is what remains of the row. (That quantity is ROUTE is checked by
   // test/set-quantity-from-entries-db.test.js.)
   assert.ok(
-    nachher.includes('user_id') && nachher.includes('set_number'),
-    `Die Spaltenliste von sets sieht falsch aus: ${nachher.join(', ')}`,
+    later.includes('user_id') && later.includes('set_number'),
+    `The column list of sets looks wrong: ${later.join(', ')}`,
   );
   for (const sp of ['purchase_price', 'condition']) {
     assert.ok(
-      !nachher.includes(sp),
-      `sets.${sp} ist nach allen Migrationen noch da — Migration 0032 hat nicht ` +
-        'gelöscht, oder etwas legt die Spalte danach wieder an.',
+      !later.includes(sp),
+      `sets.${sp} is still there after all migrations — migration 0032 did not ` +
+        'delete it, or something creates the column again afterwards.',
     );
   }
 
   // And they have not disappeared but moved.
-  const erfassung = await columnsOf('set_acquisitions');
+  const acquisition = await columnsOf('set_acquisitions');
   for (const sp of ['purchase_price', 'condition', 'quantity', 'created_at']) {
-    assert.ok(erfassung.includes(sp), `set_acquisitions.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
+    assert.ok(
+      acquisition.includes(sp),
+      `set_acquisitions.${sp} is missing — then the purchase price exists nowhere any more`,
+    );
   }
 });

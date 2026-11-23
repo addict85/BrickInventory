@@ -1,5 +1,7 @@
 /**
  * Duplicate translation keys.
+ *
+ * Counter-check: 'login.submit' a second time in public/locales/de.js → red “no duplicate keys in i18n (de)”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,7 +12,7 @@ const assert = require('node:assert/strict');
 function keysOf(lang) {
   const src = require('./helpers/sources').localeSource(lang);
   const keys = [...src.matchAll(/^\s*'([^']+)':/gm)].map(m => m[1]);
-  assert.ok(keys.length > 100, `Sprachdatei ${lang}: nur ${keys.length} Schlüssel gefunden`);
+  assert.ok(keys.length > 100, `Language file ${lang}: only ${keys.length} keys found`);
   return keys;
 }
 
@@ -23,9 +25,9 @@ for (const lang of ['de', 'en']) {
     assert.deepEqual(
       [...dupes],
       [],
-      `Doppelt vergeben — der spätere Eintrag überschreibt den früheren still: ${[...dupes].join(', ')}`,
+      `Assigned twice — the later entry silently overwrites the earlier one: ${[...dupes].join(', ')}`,
     );
-    assert.ok(keys.length > 500, `Nur ${keys.length} Schlüssel gefunden — Blockerkennung kaputt?`);
+    assert.ok(keys.length > 500, `Only ${keys.length} keys found — block detection broken?`);
   });
 }
 
@@ -34,6 +36,6 @@ test('de and en have the same key stock', () => {
     en = new Set(keysOf('en'));
   const onlyDe = [...de].filter(k => !en.has(k));
   const onlyEn = [...en].filter(k => !de.has(k));
-  assert.deepEqual(onlyDe, [], `Nur auf Deutsch vorhanden: ${onlyDe.join(', ')}`);
-  assert.deepEqual(onlyEn, [], `Nur auf Englisch vorhanden: ${onlyEn.join(', ')}`);
+  assert.deepEqual(onlyDe, [], `Only present in German: ${onlyDe.join(', ')}`);
+  assert.deepEqual(onlyEn, [], `Only present in English: ${onlyEn.join(', ')}`);
 });

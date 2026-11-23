@@ -30,10 +30,10 @@ import org.robolectric.annotation.GraphicsMode
  * NATIVE, because the default LEGACY Text doesn't really measure: the
  * long label never wrapped, and both counter-checks stayed green.
  *
- * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
- *   segmente-ungleich-hoch       segment row without height(IntrinsicSize.Min): fillMaxHeight
+ * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
+ *   segments-unequal-height       segment row without height(IntrinsicSize.Min): fillMaxHeight
  *                                stretches each segment to the full height → red „alle Segmente …“
- *   segment-haekchen-ueber-rand  label back with the full inner width → red „das Haekchen …“
+ *   segment-checkmark-over-edge  label back with the full inner width → red „das Haekchen …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -45,11 +45,11 @@ class SegmentChoiceTest {
 
     private val lang = "Vorgabe aus den Hintergrundarbeiten"
 
-    private fun zeige() {
+    private fun show() {
         compose.setContent {
             BrickInventoryManagerTheme {
                 Box(Modifier.width(300.dp)) {
-                    SegmentChoice(listOf(1 to lang, 2 to "Neu", 3 to "Gebraucht"), gewaehlt = 1, onWahl = {})
+                    SegmentChoice(listOf(1 to lang, 2 to "Neu", 3 to "Gebraucht"), chosen = 1, onChoice = {})
                 }
             }
         }
@@ -62,25 +62,25 @@ class SegmentChoiceTest {
 
     @Test
     fun `all segments are equally high and not higher than needed, even if one has two lines`() {
-        zeige()
+        show()
         val heights = segments().map { it.size.height }
-        assertEquals("Drei Segmente erwartet", 3, heights.size)
+        assertEquals("three segments expected", 3, heights.size)
         assertTrue("Ungleich hoch: $heights", heights.distinct().size == 1)
-        val beschriftung = compose.onNode(hasText(lang), useUnmergedTree = true).fetchSemanticsNode().size.height
-        val atMost = beschriftung + with(compose.density) { 48.dp.roundToPx() }
-        assertTrue("Segmente $heights px hoch, die Beschriftung braucht $beschriftung px", heights.first() <= atMost)
+        val label = compose.onNode(hasText(lang), useUnmergedTree = true).fetchSemanticsNode().size.height
+        val atMost = label + with(compose.density) { 48.dp.roundToPx() }
+        assertTrue("segments $heights px high, the label needs $label px", heights.first() <= atMost)
     }
 
     @Test
     fun `the check mark next to the long label stays in the segment`() {
-        zeige()
+        show()
         val segment = segments().first()
-        val beschriftung = compose.onNode(hasText(lang), useUnmergedTree = true).fetchSemanticsNode()
-        val dichte = compose.density
-        val checkmark = with(dichte) { (SegmentedButtonDefaults.IconSize + 8.dp).toPx() }
-        val air = with(dichte) { CHECKMARK_AIR.toPx() }
-        val noetig = beschriftung.size.width + checkmark + 2 * air
-        assertTrue("Beschriftung ${beschriftung.size.width} px und Häkchen brauchen $noetig px, " +
-            "das Segment hat ${segment.size.width} px", noetig <= segment.size.width + 1f)
+        val label = compose.onNode(hasText(lang), useUnmergedTree = true).fetchSemanticsNode()
+        val density = compose.density
+        val checkmark = with(density) { (SegmentedButtonDefaults.IconSize + 8.dp).toPx() }
+        val air = with(density) { CHECKMARK_AIR.toPx() }
+        val needed = label.size.width + checkmark + 2 * air
+        assertTrue("label ${label.size.width} px and checkmark need $needed px, " +
+            "the segment has ${segment.size.width} px", needed <= segment.size.width + 1f)
     }
 }

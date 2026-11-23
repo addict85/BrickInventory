@@ -1,3 +1,6 @@
+/**
+ * Counter-check: a failing query with logAndContinue at the start of initSchema() (db/schemaStart.ts) → red “the schema start reports no swallowed error”.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -23,26 +26,26 @@ test('the schema start reports no swallowed error', async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const gemeldet = [];
+  const reported = [];
   const realWarn = console.warn;
   console.warn = (...args) => {
     const text = args.map(a => (typeof a === 'string' ? a : String(a?.message ?? a))).join(' ');
-    if (text.includes('[weiter-trotz-fehler]')) gemeldet.push(text);
+    if (text.includes('[weiter-trotz-fehler]')) reported.push(text);
     realWarn.apply(console, args);
   };
 
   try {
-    if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+    if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
   } finally {
     console.warn = realWarn;
   }
 
   assert.deepEqual(
-    gemeldet,
+    reported,
     [],
-    'Der Schemastart hat Fehler verschluckt und nur protokolliert:\n  ' +
-      gemeldet.join('\n  ') +
-      '\nJede dieser Zeilen ist ein Schritt, der NICHT gelaufen ist — die ' +
-      'Datenbank steht danach anders da, als der Start behauptet.',
+    'The schema start swallowed errors and only logged them:\n  ' +
+      reported.join('\n  ') +
+      '\nEach of these lines is a step that did NOT run — the ' +
+      'database is afterwards in a different state than the start claims.',
   );
 });

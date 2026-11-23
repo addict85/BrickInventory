@@ -1,0 +1,17 @@
+Gegenprobe: Der QR-Dialog übernimmt ohne den Haken zum Ziel
+Modul: feature-login
+Test: ch.brickinventoryapp.login.QrSuggestionDialogTest
+Rot: it is taken over only after the yes to the named server
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupQr.kt
+@@ -104,7 +104,7 @@
+             }
+         },
+         confirmButton = {
+-            TextButton(enabled = qrAdoptable(qrLocked, targetConfirmed, type, input), onClick = {
++            TextButton(enabled = qrAdoptable(qrLocked, true, type, input), onClick = {
+                 val fp = suggestion.fingerprint
+                 val check = if (type) fp?.let { Transcript.of(input, it) } ?: Transcript.FITS_NOT else Transcript.MATCHES
+                 if (check != Transcript.MATCHES) {

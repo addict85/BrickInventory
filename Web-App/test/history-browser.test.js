@@ -15,77 +15,77 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { startApp, warte } = require('./helpers/app-browser');
+const { startApp, sleep } = require('./helpers/app-browser');
 const { patternCollection } = require('./helpers/inventory');
 
-const ZUSTAND = `({ url: location.hash, ansicht: document.querySelector('.tab.active')?.id,
-  dialoge: [...document.querySelectorAll('.ovl.open')].map(o => o.id) })`;
+const CONDITION = `({ url: location.hash, viewName: document.querySelector('.tab.active')?.id,
+  dialogs: [...document.querySelectorAll('.ovl.open')].map(o => o.id) })`;
 
 test('address and history', { timeout: 180_000 }, async t => {
-  const app = await startApp(t, { name: `verlauf_${process.pid}`, bestand: patternCollection });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `verlauf_${process.pid}`, holding: patternCollection });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
+  const { b, until, settle } = app;
   // Startup loads settings and prices afterwards; only then is the state fixed.
-  await ruhig();
-  const zustand = () => b.auswerten(ZUSTAND);
-  const zurueck = async () => {
-    await b.auswerten('history.back(); true');
-    await warte(400);
+  await settle();
+  const condition = () => b.evaluate(CONDITION);
+  const back = async () => {
+    await b.evaluate('history.back(); true');
+    await sleep(400);
   };
 
   await t.test('tabs write the address', async () => {
-    await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-    await b.auswerten(`document.querySelector('.ntab[data-tab="wanted"]').click(); true`);
-    assert.equal((await zustand()).url, '#/merkliste');
-    await zurueck();
-    assert.deepEqual(await zustand(), { url: '#/finanzen', ansicht: 'tab-finance', dialoge: [] });
+    await b.evaluate(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
+    await b.evaluate(`document.querySelector('.ntab[data-tab="wanted"]').click(); true`);
+    assert.equal((await condition()).url, '#/merkliste');
+    await back();
+    assert.deepEqual(await condition(), { url: '#/finanzen', viewName: 'tab-finance', dialogs: [] });
   });
 
   await t.test('back closes the dialog', async () => {
-    await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-    await bis(`!!document.querySelector('#gallery [data-click="openModal"]')`, 'Kacheln');
-    await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
-    await ruhig();
-    const offen = await zustand();
-    assert.deepEqual(offen.dialoge, ['set-modal']);
-    assert.match(offen.url, /^#\/sammlung\/set\/\d+-\d+$/);
-    await zurueck();
-    assert.deepEqual(await zustand(), { url: '#/sammlung', ansicht: 'tab-gallery', dialoge: [] });
+    await b.evaluate(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
+    await until(`!!document.querySelector('#gallery [data-click="openModal"]')`, 'Kacheln');
+    await b.evaluate(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
+    await settle();
+    const open = await condition();
+    assert.deepEqual(open.dialogs, ['set-modal']);
+    assert.match(open.url, /^#\/sammlung\/set\/\d+-\d+$/);
+    await back();
+    assert.deepEqual(await condition(), { url: '#/sammlung', viewName: 'tab-gallery', dialogs: [] });
     // Closed with the button: the dialog's entry drops, back leads to the previous view.
-    await b.auswerten(`history.forward(); true`);
-    await warte(800);
-    assert.deepEqual((await zustand()).dialoge, ['set-modal']);
-    await b.auswerten(`document.querySelector('#set-modal [data-dialog-zu]').click(); true`);
-    await warte(400);
-    await zurueck();
-    assert.equal((await zustand()).ansicht, 'tab-finance');
+    await b.evaluate(`history.forward(); true`);
+    await sleep(800);
+    assert.deepEqual((await condition()).dialogs, ['set-modal']);
+    await b.evaluate(`document.querySelector('#set-modal [data-dialog-close]').click(); true`);
+    await sleep(400);
+    await back();
+    assert.equal((await condition()).viewName, 'tab-finance');
   });
 
   await t.test('filters in the address', async () => {
-    await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-    await b.auswerten(
+    await b.evaluate(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
+    await b.evaluate(
       `const f = document.getElementById('gs'); f.value = 'Tree'; f.dispatchEvent(new Event('input', { bubbles: true })); true`,
     );
-    assert.equal((await zustand()).url, '#/sammlung?suche=Tree');
+    assert.equal((await condition()).url, '#/sammlung?suche=Tree');
   });
 
   await t.test('reloading opens the view of the address', async () => {
-    await b.auswerten(`location.hash = '#/finanzen'; location.reload(); true`);
-    await ruhig();
-    await bis(
+    await b.evaluate(`location.hash = '#/finanzen'; location.reload(); true`);
+    await settle();
+    await until(
       `getComputedStyle(document.getElementById('app')).display !== 'none' && !!document.querySelector('.tab.active')`,
-      'App nach Neuladen',
+      'App after reload',
       300,
     );
-    await bis(`document.querySelector('.tab.active')?.id === 'tab-finance'`, 'Finanzen nach Neuladen');
-    await b.auswerten(`location.hash = '#/sammlung?suche=Tree'; location.reload(); true`);
-    await ruhig();
-    await bis(
+    await until(`document.querySelector('.tab.active')?.id === 'tab-finance'`, 'Finances after reload');
+    await b.evaluate(`location.hash = '#/sammlung?suche=Tree'; location.reload(); true`);
+    await settle();
+    await until(
       `document.querySelector('.tab.active')?.id === 'tab-gallery' && document.getElementById('gs').value === 'Tree'`,
-      'Suche nach Neuladen',
+      'Search after reload',
     );
   });
 });

@@ -8,7 +8,7 @@ export interface ChartPoint {
 }
 
 /** One measurement: day and price (rule: marketPriceFrom). */
-export interface Messung {
+export interface Measurement {
   recorded_at: unknown;
   avg_price?: number | string | null;
   qty_avg_price?: number | string | null;
@@ -22,8 +22,8 @@ export interface ChartSeries {
 }
 
 /** @param inputs Per series a name and the raw rows (recorded_at, avg_price). */
-export function buildChart(inputs: Array<{ name: string; rows: Messung[] }>) {
-  const valueFor = (r: Messung) => marketPriceFrom(r) ?? 0;
+export function buildChart(inputs: Array<{ name: string; rows: Measurement[] }>) {
+  const valueFor = (r: Measurement) => marketPriceFrom(r) ?? 0;
 
   // Only days on which a series has a value: the axis shows measurement points,
   // not every calendar day.

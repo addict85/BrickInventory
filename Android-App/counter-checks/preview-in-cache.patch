@@ -1,0 +1,17 @@
+Gegenprobe: die Vorschau-Ablage liegt unter cacheDir, wo Android aufräumen darf
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewDeviceTest
+Rot: the store lies under filesDir, where Android does not clean up
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/PreviewMemory.kt
+@@ -30,7 +30,7 @@
+     private val names: () -> ByteArray,
+ ) : PreviewStore {
+     @Inject constructor(@ApplicationContext context: Context, store: StoreKey) :
+-        this({ File(context.filesDir, "vorschau") }, StoreCipher { store.forTarget("vorschau") }, { store.forTarget("namen") })
++        this({ File(context.cacheDir, "vorschau") }, StoreCipher { store.forTarget("vorschau") }, { store.forTarget("namen") })
+ 
+     companion object {
+         /**

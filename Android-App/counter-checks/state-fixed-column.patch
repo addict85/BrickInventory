@@ -1,0 +1,17 @@
+Gegenprobe: Zustand-Beschriftung bei jeder Schrift in der festen Spalte
+Modul: app
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: state row breaks no word at 200 percent
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TableRow.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TableRow.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TableRow.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TableRow.kt
+@@ -172,7 +172,7 @@
+ ) {
+     // From 130% text size the label sits above the choice: in the fixed column
+     // next to it, „Zustan|d“ broke in the middle of the word.
+-    if (LocalDensity.current.fontScale > 1.3f) {
++    if (false) {
+         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+             Text(stringResource(R.string.common_condition), style = MaterialTheme.typography.bodyMedium)
+             ConditionToggle(selected = condition, onSelect = onUiState, options = options)

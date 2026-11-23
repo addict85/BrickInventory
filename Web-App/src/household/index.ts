@@ -5,6 +5,6 @@ export {
   asIds,
   scopeKind,
 } from './rules';
-export type { Blickfeld, ScopeInput, ScopeMode, Schreiber, Sicht } from './rules';
+export type { Scope, ScopeInput, ScopeMode, Writer, Viewer } from './rules';
 export { createHousehold } from './area';
 export type { HouseholdDependencies, HouseholdServices, HouseholdContext } from './area';

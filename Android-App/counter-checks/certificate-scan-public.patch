@@ -1,0 +1,17 @@
+Gegenprobe: Der Scan wird auch unter einer öffentlichen CA angeboten
+Modul: app
+Test: ch.brickinventoryapp.app.CertificateDialogTest
+Rot: under a public CA there is nothing to scan
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+@@ -87,7 +87,7 @@
+     var codeFinding by rememberSaveable(question.fingerprint) { mutableStateOf<CodeCheck?>(null) }
+     val public = question.kind == CertificateUnresolved.Kind.FIRST_CONTACT || question.kind == CertificateUnresolved.Kind.KEY_NEW
+     // Only where the web app knows the fingerprint: under a public CA it shows none.
+-    val scan = codeScan.takeIf { !public }
++    val scan = codeScan
+     if (scanning && scan != null) {
+         ScannerDialog(scan, onDone = { scanning = false }) { codeFinding = it }
+         return

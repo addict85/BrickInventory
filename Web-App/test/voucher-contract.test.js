@@ -13,21 +13,21 @@ const assert = require('node:assert/strict');
 const { buildAndRequire } = require('./helpers/sources');
 
 const _req = buildAndRequire();
-const { routen } = _req('src/contract/vouchers.js');
-const anlegen = routen['POST /api/v1/vouchers'].eingabe;
-const aendern = routen['PUT /api/v1/vouchers/:id'].eingabe;
+const { routes } = _req('src/contract/vouchers.js');
+const create = routes['POST /api/v2/vouchers'].input;
+const changeIt = routes['PUT /api/v2/vouchers/:id'].input;
 
 /** The code with which the contract rejects (as the contract router reads it). */
-function code(schema, rumpf) {
-  const r = schema.safeParse(rumpf);
+function code(schema, body) {
+  const r = schema.safeParse(body);
   if (r.success) return null;
-  return r.error.issues[0]?.params?.fehler?.code ?? r.error.issues[0]?.code;
+  return r.error.issues[0]?.params?.error?.code ?? r.error.issues[0]?.code;
 }
 
 test('number, PIN and currency arrive in the domain format', () => {
-  const r = anlegen.parse({ number: '5045 0763-7445', pin: ' 5225 ', amount: 40, currency: 'chf' });
+  const r = create.parse({ number: '5045 0763-7445', pin: ' 5225 ', amount: 40, currency: 'chf' });
   assert.deepEqual(r, { number: '504507637445', pin: '5225', amount: 40, currency: 'CHF' });
-  assert.deepEqual(anlegen.parse({ number: '1234', amount: 1, pin: '', currency: '' }), {
+  assert.deepEqual(create.parse({ number: '1234', amount: 1, pin: '', currency: '' }), {
     number: '1234',
     pin: null,
     amount: 1,
@@ -36,16 +36,16 @@ test('number, PIN and currency arrive in the domain format', () => {
 });
 
 test("the contract rejects unusable values with the rule's code", () => {
-  assert.equal(code(anlegen, { number: 'abc', amount: 10 }), 'nummer_ungueltig');
-  assert.equal(code(anlegen, { number: '12', amount: 10 }), 'nummer_ungueltig');
-  assert.equal(code(anlegen, { number: 1234567, amount: 10 }), 'nummer_ungueltig');
-  assert.equal(code(anlegen, { number: '1234567', amount: 10, pin: 'ab' }), 'pin_ungueltig');
-  assert.equal(code(anlegen, { number: '1234567', amount: 10, currency: 'Franken' }), 'waehrung_ungueltig');
+  assert.equal(code(create, { number: 'abc', amount: 10 }), 'number_invalid');
+  assert.equal(code(create, { number: '12', amount: 10 }), 'number_invalid');
+  assert.equal(code(create, { number: 1234567, amount: 10 }), 'number_invalid');
+  assert.equal(code(create, { number: '1234567', amount: 10, pin: 'ab' }), 'pin_invalid');
+  assert.equal(code(create, { number: '1234567', amount: 10, currency: 'Franken' }), 'currency_invalid');
 });
 
 test('when changing the mask may come back, empty means remove', () => {
-  assert.deepEqual(aendern.parse({ number: '…1166', pin: '•••' }), { number: '…1166', pin: '•••' });
-  assert.deepEqual(aendern.parse({ pin: '', currency: '' }), { pin: '', currency: '' });
-  assert.equal(code(aendern, { number: '…11' }), 'nummer_ungueltig');
-  assert.equal(code(aendern, { pin: '••' }), 'pin_ungueltig');
+  assert.deepEqual(changeIt.parse({ number: '…1166', pin: '•••' }), { number: '…1166', pin: '•••' });
+  assert.deepEqual(changeIt.parse({ pin: '', currency: '' }), { pin: '', currency: '' });
+  assert.equal(code(changeIt, { number: '…11' }), 'number_invalid');
+  assert.equal(code(changeIt, { pin: '••' }), 'pin_invalid');
 });

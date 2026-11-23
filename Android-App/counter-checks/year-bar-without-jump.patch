@@ -1,0 +1,17 @@
+Gegenprobe: Der Tipp mit TalkBack oeffnet kein Sprungmenue
+Modul: app
+Test: ch.brickinventoryapp.app.UiUniformTest
+Rot: year bar jumps via a menu of the years
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScrubber.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScrubber.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScrubber.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScrubber.kt
+@@ -94,7 +94,7 @@
+                 .semantics {
+                     contentDescription = jumpName
+                     role = Role.Button
+-                    onClick { jumpMenu = true; true }
++                    onClick { true }
+                 }
+                 .focusable()
+                 .onKeyEvent { e -> e.opensMenu().also { if (it) jumpMenu = true } }

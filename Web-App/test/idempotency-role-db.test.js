@@ -41,27 +41,27 @@ test('idempotency: admin responses only for the admin role', { concurrency: 1 },
     scope: 'app',
   });
 
-  const sitzung = { userId: uid, username: name, isAdmin: true, mussPasswortAendern: false };
-  const verwalter = testServer(_req, { sitzung, t });
-  const ohne = testServer(_req, { sitzung: {}, t });
+  const session = { userId: uid, username: name, isAdmin: true, mustChangePassword: false };
+  const admin = testServer(_req, { session, t });
+  const without = testServer(_req, { session: {}, t });
 
-  const schluessel = `rolle-${process.pid}-${Date.now()}`;
-  const senden = (base, kopf = {}) =>
-    fetch(`${base}/api/v1/admin/default-condition`, {
+  const key = `rolle-${process.pid}-${Date.now()}`;
+  const sendIt = (base, head = {}) =>
+    fetch(`${base}/api/v2/admin/default-condition`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': schluessel, ...kopf },
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key, ...head },
       body: JSON.stringify({ condition: 'U' }),
     });
 
-  const erst = await senden(verwalter.base);
-  assert.equal(erst.status, 200, 'die Verwalter-Anfrage selbst geht durch');
+  const erst = await sendIt(admin.base);
+  assert.equal(erst.status, 200, 'the admin request itself goes through');
   assert.equal((await erst.json()).condition, 'U');
 
-  const nochmal = await senden(verwalter.base);
-  assert.equal(nochmal.headers.get('idempotent-replay'), 'true', 'dieselbe Rolle bekommt die Wiederholung');
+  const again = await sendIt(admin.base);
+  assert.equal(again.headers.get('idempotent-replay'), 'true', 'the same role gets the replay');
 
-  const app = await senden(ohne.base, { Authorization: `Bearer ${appToken}` });
-  assert.notEqual(app.headers.get('idempotent-replay'), 'true', 'ein App-Token bekommt die Verwalter-Antwort nicht');
-  assert.equal(app.status, 422, 'ein App-Token bekommt die Verwalter-Antwort nicht');
-  assert.equal((await app.json()).code, 'idempotenz_schluessel_anders');
+  const app = await sendIt(without.base, { Authorization: `Bearer ${appToken}` });
+  assert.notEqual(app.headers.get('idempotent-replay'), 'true', 'an app token does not get the admin response');
+  assert.equal(app.status, 422, 'an app token does not get the admin response');
+  assert.equal((await app.json()).code, 'idempotency_key_mismatch');
 });

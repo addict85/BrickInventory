@@ -17,18 +17,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
-const { baseTheMetrics, totalGuvPercent } = _req('src/finances/calculation/profitLoss.js');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { baseTheMetrics, totalPnlPercent } = _req('src/finances/calculation/profitLoss.js');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 /** Number from formatted text, whatever separators the language sets: “1’863.90”, “1.863,90 €”, “−21,8 %”. */
-const betrag = s => {
+const amount = s => {
   const m = String(s).match(/([−+-]?)\s*(\d[\d’'.,\u202f\u00a0]*)/);
   if (!m) return NaN;
-  const roh = m[2].replace(/[’'\u202f\u00a0]/g, '').replace(/[.,]$/, '');
-  const dec = roh.match(/[.,](\d{1,2})$/);
-  const ganz = (dec ? roh.slice(0, -dec[0].length) : roh).replace(/[.,]/g, '');
-  const v = Number(ganz + (dec ? '.' + dec[1] : ''));
+  const raw = m[2].replace(/[’'\u202f\u00a0]/g, '').replace(/[.,]$/, '');
+  const dec = raw.match(/[.,](\d{1,2})$/);
+  const whole = (dec ? raw.slice(0, -dec[0].length) : raw).replace(/[.,]/g, '');
+  const v = Number(whole + (dec ? '.' + dec[1] : ''));
   return m[1] === '−' || m[1] === '-' ? -v : v;
 };
 
@@ -45,42 +45,42 @@ const SETS = [
   ['71043-1', 99.99, 0],
   ['40000-1', null, 45],
 ];
-const zeilen = [
+const lines = [
   ...SETS.map(([, k, m]) => ({ purchase_price: k, current_price: m, quantity: 1 })),
   { purchase_price: 0.12, current_price: 0, quantity: 250 },
   { purchase_price: 4.5, current_price: 0, quantity: 2 },
 ];
 
 test('server: a gift counts, without market or purchase price not', () => {
-  const b = baseTheMetrics(zeilen);
-  assert.equal(b.basis_marktwert, '1863.90');
-  assert.equal(b.basis_einstand, '1529.98');
-  assert.equal(b.basis_guv_betrag, '333.92');
+  const b = baseTheMetrics(lines);
+  assert.equal(b.baseline_market_value, '1863.90');
+  assert.equal(b.baseline_cost, '1529.98');
+  assert.equal(b.baseline_pnl_amount, '333.92');
   assert.deepEqual(
-    [b.positionen, b.positionen_bewertet, b.positionen_ohne_marktpreis, b.positionen_ohne_kaufpreis],
+    [b.positions, b.positions_valued, b.positions_without_market_price, b.positions_without_purchase_price],
     [11, 4, 6, 1],
   );
-  assert.equal(b.ohne_marktpreis_einstand, '438.96');
-  assert.equal(b.ohne_kaufpreis_marktwert, '45.00');
-  assert.equal(totalGuvPercent(zeilen), '21.8');
+  assert.equal(b.cost_without_market_price, '438.96');
+  assert.equal(b.market_value_without_purchase_price, '45.00');
+  assert.equal(totalPnlPercent(lines), '21.8');
 });
 
 test('UI: cost basis + P/L = market value, percent matches, basis named', async () => {
-  const b = baseTheMetrics(zeilen);
-  const pct = totalGuvPercent(zeilen);
+  const b = baseTheMetrics(lines);
+  const pct = totalPnlPercent(lines);
   const sets = SETS.map(([nr, k, m]) => ({
     set_number: nr,
     name: nr,
     quantity: 1,
     purchase_price: k,
     avg_price: m,
-    wert_gesamt: m,
+    value_total: m,
     acquisitions: [],
     ...(m ? {} : { error: 'kein Preis' }),
   }));
   const { w, d } = await openUi({
-    '/v1/finance/valuation': { success: true, currency: 'EUR', totals: { min: '0', avg: '1908.90', max: '0' }, sets },
-    '/v1/finance/parts-valuation': {
+    '/v2/finance/valuation': { success: true, currency: 'EUR', totals: { min: '0', avg: '1908.90', max: '0' }, sets },
+    '/v2/finance/parts-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '0',
@@ -95,7 +95,7 @@ test('UI: cost basis + P/L = market value, percent matches, basis named', async 
         },
       ],
     },
-    '/v1/finance/minifigs-valuation': {
+    '/v2/finance/minifigs-valuation': {
       success: true,
       currency: 'EUR',
       total_value: '0',
@@ -110,16 +110,16 @@ test('UI: cost basis + P/L = market value, percent matches, basis named', async 
         },
       ],
     },
-    '/v1/finance/pnl': {
+    '/v2/finance/pnl': {
       success: true,
       currency: 'EUR',
       sets: [],
-      totals: { purchase: '1968.94', grand_total: '1908.90', pnl_prozent: Number(pct), pnl_pct: pct, ...b },
+      totals: { purchase: '1968.94', grand_total: '1908.90', pnl_percent: Number(pct), pnl_pct: pct, ...b },
     },
-    '/v1/finance/portfolio-history': {
+    '/v2/finance/portfolio-history': {
       success: true,
       currency: 'EUR',
-      messpunkte: 3,
+      data_points: 3,
       period_change_pct: 6.7,
       points: [
         { x_label: 'Sep', value: 1700 },
@@ -129,26 +129,26 @@ test('UI: cost basis + P/L = market value, percent matches, basis named', async 
     },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#fin-tbl tfoot') && d.getElementById('fin-sum').dataset.geladen);
-    const einstand = betrag(text(d.getElementById('fin-einstand')));
-    const wert = betrag(text(d.getElementById('fin-wert')));
-    const guv = betrag(text(d.getElementById('fin-pnl-sub')));
-    const prozent = betrag(text(d.getElementById('fin-total-pnl')));
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#fin-tbl tfoot') && d.getElementById('fin-sum').dataset.loaded);
+    const entryPrice = amount(text(d.getElementById('fin-cost-basis')));
+    const value = amount(text(d.getElementById('fin-value')));
+    const pnl = amount(text(d.getElementById('fin-pnl-sub')));
+    const percentValue = amount(text(d.getElementById('fin-total-pnl')));
     assert.equal(
-      Math.round((einstand + guv) * 100),
-      Math.round(wert * 100),
-      `Einstand + G/V = Marktwert: ${einstand} + ${guv} ≠ ${wert}`,
+      Math.round((entryPrice + pnl) * 100),
+      Math.round(value * 100),
+      `Cost basis + P/L = market value: ${entryPrice} + ${pnl} ≠ ${value}`,
     );
-    assert.equal(prozent, Math.round((guv / einstand) * 1000) / 10, 'Prozent passt nicht zum Betrag');
-    assert.equal(wert, 1863.9);
+    assert.equal(percentValue, Math.round((pnl / entryPrice) * 1000) / 10, 'Percent does not match the amount');
+    assert.equal(value, 1863.9);
     const basis = text(d.getElementById('fin-basis'));
-    assert.ok(!d.getElementById('fin-basis').hidden, 'Basiszeile fehlt');
+    assert.ok(!d.getElementById('fin-basis').hidden, 'Base row is missing');
     assert.match(basis, /4 von 11 Positionen/);
     assert.match(basis, /6 Positionen ohne Marktpreis nicht gerechnet \(Kaufpreis [^)]*438[.,]96/);
-    assert.match(basis, /1 Position ohne Kaufpreis nicht gerechnet/, 'Zeile nennt die Position ohne Kaufpreis');
-    await warte(() => text(d.getElementById('portfolio-current')) !== '—');
-    assert.equal(betrag(text(d.getElementById('portfolio-current'))), wert, 'Diagrammkopf = Marktwert-Karte');
+    assert.match(basis, /1 Position ohne Kaufpreis nicht gerechnet/, 'Row names the position without a purchase price');
+    await waitFor(() => text(d.getElementById('portfolio-current')) !== '—');
+    assert.equal(amount(text(d.getElementById('portfolio-current'))), value, 'Diagrammkopf = Marktwert-Karte');
   } finally {
     w.close();
   }

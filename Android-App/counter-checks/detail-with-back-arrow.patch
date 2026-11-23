@@ -1,0 +1,21 @@
+Gegenprobe: Detail neben der Liste mit Zurück-Pfeil statt Schliessen
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: tablet shows wishlist and detail side by side
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
+@@ -82,10 +82,10 @@
+  */
+ @Composable
+ fun BackButton(onClick: () -> Unit, close: Boolean = LocalInDetailArea.current) {
+-    val text = stringResource(if (close) R.string.detail_close else R.string.common_back)
++    val text = stringResource(if (false) R.string.detail_close else R.string.common_back)
+     WithTooltip(text) {
+         IconButton(onClick = onClick) {
+-            Icon(if (close) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack, contentDescription = text)
++            Icon(if (false) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack, contentDescription = text)
+         }
+     }
+ }

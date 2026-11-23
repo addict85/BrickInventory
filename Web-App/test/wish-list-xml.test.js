@@ -14,45 +14,45 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
-const BOESE = '03:00"><img id="eingeschleust" src="x">';
+const EVIL = '03:00"><img id="eingeschleust" src="x">';
 
 test('the schedule inserts server values escaped', async () => {
   const o = await openUi({
-    '/v1/admin/job-status': { success: true, job: { running: false } },
-    '/v1/admin/auftraege': {
+    '/v2/admin/job-status': { success: true, job: { running: false } },
+    '/v2/admin/job-queue': {
       success: true,
-      auftraege: [],
-      zusammenfassung: [],
-      job_prozess: { laeuft: true },
-      bildbedarf: 0,
-      pausen: [],
+      jobs: [],
+      summary: [],
+      job_process: { running: true },
+      image_demand: 0,
+      pauses: [],
     },
-    '/v1/admin/jobs': {
+    '/v2/admin/jobs': {
       success: true,
       jobs: { priceJob: { status: 'idle', progress: 0, total: 0 }, imgDl: { status: 'idle', progress: 0, total: 0 } },
-      schedules: { priceJob: { type: 'daily', time: BOESE }, imgDl: { type: 'interval', minutes: 15 } },
+      schedules: { priceJob: { type: 'daily', time: EVIL }, imgDl: { type: 'interval', minutes: 15 } },
       db: { csvCache: {}, blMapping: {} },
     },
   });
   try {
-    await reiter(o.w, 'monitor');
+    await switchTab(o.w, 'monitor');
     assert.ok(
-      await warte(() => o.d.querySelectorAll('#monitor-content .mon-plan').length === 2),
+      await waitFor(() => o.d.querySelectorAll('#monitor-content .mon-plan').length === 2),
       'Hintergrundarbeiten',
     );
-    assert.equal(o.d.getElementById('eingeschleust'), null, 'Hintergrundarbeiten: ein Wert wurde zu Markup');
-    assert.ok(o.d.querySelector('#monitor-content .mon-plan').textContent.includes(BOESE));
-    await reiter(o.w, 'settings');
+    assert.equal(o.d.getElementById('eingeschleust'), null, 'background jobs: a value became markup');
+    assert.ok(o.d.querySelector('#monitor-content .mon-plan').textContent.includes(EVIL));
+    await switchTab(o.w, 'settings');
     assert.ok(
-      await warte(() => o.d.querySelectorAll('#einst-zeitplaene .job-sched-input').length === 2),
-      'Einstellungen',
+      await waitFor(() => o.d.querySelectorAll('#settings-schedules .job-sched-input').length === 2),
+      'settings',
     );
-    assert.equal(o.d.getElementById('eingeschleust'), null, 'Einstellungen: ein Wert wurde zu Markup');
-    assert.equal(o.d.querySelector('.mon-minuten').value, '15');
-    assert.equal(o.d.querySelector('.mon-zeit').value, BOESE, 'der Wert kam nicht unverändert ins Feld');
-    assert.equal(o.d.querySelector('.mon-zeit').dataset.arg, 'priceJob');
+    assert.equal(o.d.getElementById('eingeschleust'), null, 'settings: a value became markup');
+    assert.equal(o.d.querySelector('.mon-minutes').value, '15');
+    assert.equal(o.d.querySelector('.mon-time').value, EVIL, 'the value did not arrive unchanged in the field');
+    assert.equal(o.d.querySelector('.mon-time').dataset.arg, 'priceJob');
   } finally {
     o.w.close();
   }

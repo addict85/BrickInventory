@@ -1,0 +1,18 @@
+Gegenprobe: Das Teil aus Sets zeigt sein Bild wieder 140 dp hoch
+Modul: app
+Test: ch.brickinventoryapp.app.UiUniformTest
+Rot: part from sets has the same header as a self-added one
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/dialogs/SetItemDetailDialog.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/dialogs/SetItemDetailDialog.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/dialogs/SetItemDetailDialog.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/dialogs/SetItemDetailDialog.kt
+@@ -186,7 +186,8 @@
+         header?.categoryName?.let { add(stringResource(R.string.setitem_category) to category(it)) }
+         if (header?.isSpare == true) add(stringResource(R.string.parts_spare_tag) to "✓")
+     }
+-    PartDetailHeader(image, imageLoader, header?.name, chips, onZoom = onZoom)
++    ch.brickinventoryapp.ui.components.ProductImage(model = image, imageLoader = imageLoader, contentDescription = header?.name,
++        contentScale = androidx.compose.ui.layout.ContentScale.Fit, modifier = Modifier.fillMaxWidth().height(140.dp))
+     Spacer(Modifier.height(Spacing.small))
+     if (header != null) SetItemStorageRow(header, storageUiState, actions)
+     Spacer(Modifier.height(Spacing.medium))

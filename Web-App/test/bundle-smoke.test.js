@@ -4,6 +4,12 @@
  * “every handler from the markup is registered” has run since 08.11.2026 on the
  * running bundle in actions-dispatcher-ui.test.js (counter-check:
  * `closePwModal,` deleted from registerActions() → red there).
+ *
+ * Counter-checks (22.11.2026, each alone):
+ *   A  bindGlobalErrorHandlers() without the 'unhandledrejection' listener → red “unhandled errors …”
+ *   B  the same without the 'error' listener → red the same test (script error)
+ *   C  in apiRaw `if (res.status === 401) emit('sessionEnded', path)` removed → red “a 401 leads back …”
+ *   D  showLogin() called without `expired: true` on sessionEnded → red the same test (no reason)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,23 +17,23 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { BUENDEL: BUNDLE, placeBundleSafe } = require('./helpers/bundle');
+const { BUNDLE_FILE: BUNDLE, placeBundleSafe } = require('./helpers/bundle');
 const { portOf } = require('./helpers/server');
 placeBundleSafe();
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 test('the bundle is built', () => {
-  assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js fehlt trotz placeBundleSafe()');
+  assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js is missing despite placeBundleSafe()');
 });
 
 test('index.html loads the bundle and the language file in the right order', () => {
   const iLocale = HTML.indexOf('/locales/');
   const iBundle = HTML.indexOf('app.bundle.js');
-  assert.ok(iLocale > 0, 'Sprachdatei fehlt');
-  assert.ok(iBundle > 0, 'Bündel fehlt');
+  assert.ok(iLocale > 0, 'Language file is missing');
+  assert.ok(iBundle > 0, 'Bundle is missing');
   assert.ok(
     iLocale < iBundle,
-    'Die Sprachdatei muss VOR dem Bündel stehen — i18n.js liest window.I18N_DE beim Auswerten',
+    'The language file must come BEFORE the bundle — i18n.js reads window.I18N_DE on evaluation',
   );
 });
 
@@ -49,9 +55,9 @@ test('the bundle can be evaluated without throwing', async () => {
   try {
     window.eval(fs.readFileSync(BUNDLE, 'utf8'));
   } catch (e) {
-    assert.fail(`Bündel wirft beim Auswerten: ${e.message}`);
+    assert.fail(`Bundle throws on evaluation: ${e.message}`);
   }
-  assert.deepEqual(errors, [], `Fehler beim Auswerten: ${errors.join('; ')}`);
+  assert.deepEqual(errors, [], `Errors on evaluation: ${errors.join('; ')}`);
 
   // Close the window, otherwise the app keeps the process open: startApp() sets up
   // intervals for status queries, and jsdom timers keep running as real
@@ -64,15 +70,15 @@ test('api() delivers an object on every failure instead of throwing', async () =
   // Where this test comes from
   const http = require('node:http');
   const srv = http.createServer((q, r) => {
-    const sende = (code, typ, body) => {
-      r.writeHead(code, { 'content-type': typ });
+    const send = (code, typeName, body) => {
+      r.writeHead(code, { 'content-type': typeName });
       r.end(body);
     };
-    if (q.url === '/api/html502') return sende(502, 'text/html', '<html>502 Bad Gateway</html>');
+    if (q.url === '/api/html502') return send(502, 'text/html', '<html>502 Bad Gateway</html>');
     if (q.url === '/api/json500')
-      return sende(500, 'application/json', JSON.stringify({ success: false, error: 'kaputt' }));
-    if (q.url === '/api/bare500') return sende(500, 'application/json', JSON.stringify({ message: 'oops' }));
-    return sende(200, 'application/json', JSON.stringify({ success: true, wert: 42 }));
+      return send(500, 'application/json', JSON.stringify({ success: false, error: 'kaputt' }));
+    if (q.url === '/api/bare500') return send(500, 'application/json', JSON.stringify({ message: 'oops' }));
+    return send(200, 'application/json', JSON.stringify({ success: true, wert: 42 }));
   });
   await new Promise(r => srv.listen(0, () => r(null)));
   const port = portOf(srv);
@@ -108,18 +114,18 @@ test('api() delivers an object on every failure instead of throwing', async () =
     const core = await import(`file://${path.join(ROOT, 'public', 'js', 'api.js')}`);
 
     const ok = await core.api('GET', '/ok');
-    assert.equal(ok.success, true, 'Der Normalfall muss unverändert durchgehen');
+    assert.equal(ok.success, true, 'The normal case must pass through unchanged');
     assert.equal(ok.wert, 42);
 
     // The case that used to throw: error status with an HTML body.
     const html = await core.api('GET', '/html502');
-    assert.equal(html.success, false, 'Eine HTML-Fehlerseite muss als Fehlschlag ankommen');
+    assert.equal(html.success, false, 'An HTML error page must arrive as a failure');
     assert.equal(html.status, 502);
-    assert.ok(html.error, 'Ohne Text hätte der Aufrufer nichts anzuzeigen');
+    assert.ok(html.error, 'Without a text the caller would have nothing to show');
 
     // Server error WITH its own message: it must be passed through.
     const json = await core.api('GET', '/json500');
-    assert.equal(json.error, 'kaputt', 'Die Servermeldung darf nicht überschrieben werden');
+    assert.equal(json.error, 'kaputt', 'The server message must not be overwritten');
 
     // JSON without success/error (e.g. from an intermediate layer) is completed.
     const bare = await core.api('GET', '/bare500');
@@ -128,57 +134,62 @@ test('api() delivers an object on every failure instead of throwing', async () =
 
     // Network error: no status, but the same shape.
     globalThis.fetch = () => Promise.reject(new Error('offline'));
-    const netz = await core.api('GET', '/x');
-    assert.equal(netz.success, false);
-    assert.equal(netz.networkError, true, 'Offline soll unterscheidbar bleiben');
+    const net = await core.api('GET', '/x');
+    assert.equal(net.success, false);
+    assert.equal(net.networkError, true, 'Offline should remain distinguishable');
   } finally {
     srv.close();
     dom.window.close();
   }
 });
 
-test('unhandled errors do not only end up in the console', () => {
-  // Addition to the test above: api() covers the normal case, but not an
-  // error in a callback or a promise that nobody collects. Without a
-  // safety net the user sees nothing of it — they click, and simply
-  // nothing happens.
-  const init = fs.readFileSync(path.join(ROOT, 'public', 'js', 'error-capture.js'), 'utf8');
-  assert.match(init, /addEventListener\('unhandledrejection'/, 'Abgewiesene Zusagen brauchen ein Auffangnetz');
-  assert.match(init, /addEventListener\('error'/, 'Skriptfehler ebenso');
-  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'session.js'), 'utf8');
-  assert.match(
-    sitzung,
-    /startApp\(\)\s*\{\s*\n\s*bindGlobalErrorHandlers\(\);/,
-    'Die Handler müssen VOR allem anderen hängen, sonst fehlt gerade der Startfehler',
-  );
+test('unhandled errors do not only end up in the console', async () => {
+  // In the real bundle: a rejected promise and a script error from our own code show a message.
+  const { openUi, waitFor } = require('./helpers/ui');
+  const { de } = require('./helpers/sources').loadTranslations();
+  const ours = { stack: 'Error: kaputt\n    at http://localhost/js/app.bundle.js:1:1' };
+  // One window per kind: the net reports at most one message per five seconds.
+  /** @type {[string, (w: any) => void][]} */
+  const kinds = [
+    [
+      'promise',
+      w => {
+        const rejection = new w.Event('unhandledrejection');
+        Object.assign(rejection, { reason: ours });
+        w.dispatchEvent(rejection);
+      },
+    ],
+    ['script', w => w.dispatchEvent(new w.ErrorEvent('error', { error: ours, message: 'kaputt' }))],
+  ];
+  for (const [kind, raise] of kinds) {
+    const { w, d } = await openUi();
+    w.console.error = () => {};
+    try {
+      raise(w);
+      const toasts = () => d.getElementById('toasts')?.textContent || '';
+      assert.ok(await waitFor(() => toasts().includes(de['api.unexpected'])), `${kind}: ${toasts()}`);
+    } finally {
+      w.close();
+    }
+  }
 });
 
-test('a 401 leads back to the login, not into a dead UI', () => {
-  // Where this test comes from
-  const core = require('./helpers/sources').coreSource();
-  assert.match(
-    core,
-    /if \(res\.status === 401\) emit\('sitzungBeendet', path\);/,
-    'Der 401 muss zentral behandelt werden, nicht an 88 Aufrufstellen',
-  );
-  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'session.js'), 'utf8');
-  const von = sitzung.indexOf("subscribe('sitzungBeendet'");
-  assert.ok(von > 0, 'Niemand reagiert auf das Sitzungsende');
-  const fn = sitzung.slice(von, sitzung.indexOf('\n});\n', von));
-  assert.match(fn, /if \(!loggedInAccount\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
-  assert.match(fn, /\/auth\/me/, '/auth/me beantwortet mit 401 nur „nicht angemeldet"');
-  assert.match(fn, /\/auth\/login/, 'Ein falsches Passwort ist kein Sitzungsende');
-  assert.match(fn, /showLogin\(\{ abgelaufen: true[,}]/, 'Die Anmeldemaske muss zurückkommen');
-  // The message appears once in the login card (showLogin), not as a toast.
-  assert.match(
-    core,
-    /o\.abgelaufen \? (o\.hinweis \|\| )?tRaw\('auth\.session_expired'\)/,
-    'Ohne Meldung wüsste niemand, warum',
-  );
-
-  // The text must exist in both languages — otherwise the key is shown.
-  for (const lang of ['de', 'en']) {
-    const dict = fs.readFileSync(path.join(ROOT, 'public', 'locales', `${lang}.js`), 'utf8');
-    assert.ok(dict.includes("'auth.session_expired'"), `${lang}.js: Text fehlt`);
+test('a 401 leads back to the login, not into a dead UI', async () => {
+  const { openUi, switchTab, waitFor } = require('./helpers/ui');
+  const { de } = require('./helpers/sources').loadTranslations();
+  const { w, d } = await openUi({
+    '/v2/parts': { $status: 401, success: false, error: 'Nicht angemeldet', code: 'not_signed_in' },
+  });
+  try {
+    assert.equal(d.getElementById('login-screen').style.display, 'none', 'precondition: signed in');
+    await switchTab(w, 'parts');
+    assert.ok(await waitFor(() => d.getElementById('login-screen').style.display === 'flex'), 'no login after 401');
+    assert.equal(d.getElementById('app').style.display, 'none');
+    assert.ok(
+      await waitFor(() => (d.getElementById('login-hint')?.textContent || '').includes(de['auth.session_expired'])),
+      `no reason given: ${d.getElementById('login-hint')?.textContent}`,
+    );
+  } finally {
+    w.close();
   }
 });

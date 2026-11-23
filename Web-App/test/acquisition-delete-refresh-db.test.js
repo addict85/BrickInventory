@@ -1,5 +1,7 @@
 /**
  * Delete an entry → price and condition of the RESPONSE are determined ANEW.
+ *
+ * Counter-check: in deleteAcquisition() (src/collection/acquisitions.ts) the removal of the entry skipped → red “deleting an acquisition redetermines price and condition of the parent row”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -23,10 +25,10 @@ test('deleting an acquisition redetermines price and condition of the parent row
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
+  const { base, srv } = testServer(_req, { session: { userId: uid }, t });
 
   // Two entries; the parent row carries the value of the NEWEST.
-  const aufbauen = async () => {
+  const setUp = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     // Only the stock row, without numbers: quantity, price and condition are in
@@ -45,7 +47,7 @@ test('deleting an acquisition redetermines price and condition of the parent row
       [uid, SN],
     );
   };
-  const neueste = async () =>
+  const latest = async () =>
     (
       await db.get(
         `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
@@ -55,13 +57,13 @@ test('deleting an acquisition redetermines price and condition of the parent row
     ).id;
   // What the tile sees: the aggregate from the entries plus the quantity of the
   // sets row (which the delete path still recomputes).
-  const eltern = async () => {
+  const parents = async () => {
     // “Does the row exist?" and “how many copies?" are, since migration 0036,
     // two questions to two tables — before, the column answered both
     // at once. The order stays: without a stock row there is no
     // parent information, even if entries should still be lying around.
     if (!(await haltRow(db, uid, SN))) return undefined;
-    const agg = await _req('src/sets/read.js').zustandsAggregat(
+    const agg = await _req('src/sets/read.js').conditionAggregate(
       require('./helpers/sources').testContext('sets'),
       [uid],
       SN,
@@ -77,57 +79,53 @@ test('deleting an acquisition redetermines price and condition of the parent row
     // 0. Before deleting: two entries, 7.41 and 9.48, one copy each.
     //    The old column would have carried 9.48 (price of the newest entry).
     //    The response must show the quantity-weighted mean.
-    await aufbauen();
-    const vorher = await eltern();
+    await setUp();
+    const prior = await parents();
     assert.equal(
-      Number(vorher.purchase_price),
+      Number(prior.purchase_price),
       8.445,
-      'Der gezeigte Preis ist nicht der Mittelwert über die Erfassungen — ' +
-        'bei 9.48 steht dort weiterhin der Wert der NEUESTEN Erfassung',
+      'The shown price is not the mean over the acquisitions — ' +
+        'at 9.48 it still shows the value of the NEWEST acquisition',
     );
-    assert.equal(vorher.condition, 'U', 'Eine gebrauchte Erfassung macht das Set gebraucht');
+    assert.equal(prior.condition, 'U', 'A used acquisition makes the set used');
 
     // 1. Marco's case: delete the newest entry.
-    await aufbauen();
-    let r = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${await neueste()}`, { method: 'DELETE' });
+    await setUp();
+    let r = await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${await latest()}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
-    let e = await eltern();
+    let e = await parents();
     assert.equal(
       Number(e.purchase_price),
       7.41,
-      'Die Kachel zeigt den Preis der GELÖSCHTEN Zeile — sie muss der verbliebenen folgen',
+      'The tile shows the price of the DELETED row — it must follow the remaining one',
     );
     // 7.41 is also the mean here, because only one entry is
     // left. Substep 2 below separates the two readings.
-    assert.equal(e.condition, 'U', 'Auch der Zustand muss der verbliebenen Erfassung folgen, nicht der gelöschten');
-    assert.equal(Number(e.quantity), 1, 'Die Menge muss weiterhin stimmen');
+    assert.equal(e.condition, 'U', 'The condition must also follow the remaining acquisition, not the deleted one');
+    assert.equal(Number(e.quantity), 1, 'The quantity must still be correct');
 
     // 2. Opposite direction: deleting an OLDER entry must not change
     //    anything in the price — the newest one stays after all.
-    await aufbauen();
-    const alte = (
+    await setUp();
+    const old = (
       await db.all(
         `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
         ORDER BY created_at ASC, id ASC`,
         [uid, SN],
       )
     )[0].id;
-    r = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${alte}`, { method: 'DELETE' });
+    r = await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${old}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
-    e = await eltern();
-    assert.equal(
-      Number(e.purchase_price),
-      9.48,
-      'Beim Löschen einer älteren Erfassung darf der Preis der neuesten stehen bleiben',
-    );
+    e = await parents();
+    assert.equal(Number(e.purchase_price), 9.48, 'Deleting an older acquisition may keep the price of the newest');
 
     // 3. Delete the last entry: none is left — and since then
     //  no parent row either.
-    await aufbauen();
+    await setUp();
     for (const row of await db.all(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])) {
-      await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${row.id}`, { method: 'DELETE' });
+      await fetch(`${base}/api/v2/sets/${SN}/acquisitions/${row.id}`, { method: 'DELETE' });
     }
-    assert.equal(await eltern(), undefined, 'Ohne Erfassungen darf keine Set-Zeile mit Menge 0 zurückbleiben');
+    assert.equal(await parents(), undefined, 'Without acquisitions no set row with quantity 0 may remain');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]).catch(() => {});

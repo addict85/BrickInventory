@@ -1,5 +1,5 @@
-import { encrypt, decrypt, umschluesseln, kontext } from '../infra/secret';
-import { fachfehler, fileError } from '../infra/errorTexts';
+import { encrypt, decrypt, rekey, context } from '../infra/secret';
+import { failDomain, fileError } from '../infra/errorTexts';
 import { GLOBAL_RULES, DESIGNS, type GlobalKey } from '../contract/globalRules';
 import * as repo from './repository/values';
 import type { DbInterface } from '../../db/database';
@@ -36,7 +36,7 @@ function reveal(key: string, value: string | null | undefined): string | null | 
 }
 
 /** The name in the context: an SMTP password copied into an API key's row stays unreadable. */
-const globalContext = (key: string) => kontext('global_settings.value', key);
+const globalContext = (key: string) => context('global_settings.value', key);
 
 export async function getGlobalSetting(k: SettingsContext, key: string): Promise<string | null>;
 export async function getGlobalSetting<T>(k: SettingsContext, key: string, fallback: T): Promise<string | T>;
@@ -64,7 +64,7 @@ export async function writeUserSetting(k: SettingsContext, userId: number, key: 
   const v = String(value).trim();
   if (key === 'currency') throw new Error('Currency only via setUserSetting');
   const rule = USER_RULES[key];
-  if (rule && !rule(v)) fachfehler('ungueltig', 'wert_ungueltig');
+  if (rule && !rule(v)) failDomain('invalid', 'value_invalid');
   await k.repository.writeUserValue(userId, key, v);
 }
 
@@ -105,11 +105,11 @@ export function isValidGlobalValue(key: string, value: unknown): boolean {
 
 /** Over NOTIFY: the job process and every other web process also write global values. */
 const globalChange = (k: SettingsContext) =>
-  k.faecher.fach('globalChange', () => processEvent('globalChange', 'globale_einstellung'));
+  k.compartments.slot('globalChange', () => processEvent('globalChange', 'globale_einstellung'));
 /** For caches computed from global values: they clear themselves instead of every
  * write site having to know about them. */
 export function onGlobalChange(k: SettingsContext, fn: () => void): () => void {
-  return globalChange(k).horche(fn);
+  return globalChange(k).listen(fn);
 }
 
 /** From now on, a change in another process also clears the caches here. */
@@ -122,8 +122,8 @@ export async function setGlobalSetting(k: SettingsContext, key: string, value: u
   const r = ruleFor(key)?.safeParse(value);
   if (!r?.success)
     throw (
-      (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ??
-      fileError('ungueltig', 'wert_ungueltig')
+      (r?.error.issues[0] as { params?: { error?: unknown } } | undefined)?.params?.error ??
+      fileError('invalid', 'value_invalid')
     );
   await k.repository.writeGlobalValue(key, SECRET_KEYS.has(key) ? encrypt(r.data, globalContext(key)) : r.data);
   await notifyGlobalChange(k);
@@ -131,7 +131,7 @@ export async function setGlobalSetting(k: SettingsContext, key: string, value: u
 
 /** Also after a transaction COMMITs: a cache that read in between would keep the old value. */
 export async function notifyGlobalChange(k: SettingsContext): Promise<void> {
-  await globalChange(k).melde(k.db.notification);
+  await globalChange(k).report(k.db.notification);
 }
 
 /** Open only at exactly '1'; a missing row stays closed. */
@@ -143,8 +143,8 @@ export async function registrationOpen(k: SettingsContext): Promise<boolean> {
 export async function reencryptLegacyGlobalValues(k: SettingsContext): Promise<number> {
   let n = 0;
   for (const z of await k.repository.globalValues([...SECRET_KEYS])) {
-    const neu = umschluesseln(z.value, globalContext(z.key));
-    if (neu && (await k.repository.replaceGlobalValue(z.key, z.value, neu))) n++;
+    const fresh = rekey(z.value, globalContext(z.key));
+    if (fresh && (await k.repository.replaceGlobalValue(z.key, z.value, fresh))) n++;
   }
   return n;
 }
@@ -221,10 +221,10 @@ export async function globalValuesWithoutSecrets(k: SettingsContext): Promise<Re
 export async function themeFor(
   k: SettingsContext,
   userId?: number | null,
-): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
+): Promise<{ theme: string; preset: string; own: string | null }> {
   const g = await getGlobalSetting(k, 'app_theme');
-  const vorgabe = g && DESIGNS.includes(g) ? g : 'classic';
+  const preset = g && DESIGNS.includes(g) ? g : 'classic';
   const u = userId ? await k.repository.userValue(userId, 'app_theme') : null;
-  const eigenes = u && DESIGNS.includes(u) ? u : null;
-  return { theme: eigenes ?? vorgabe, vorgabe, eigenes };
+  const own = u && DESIGNS.includes(u) ? u : null;
+  return { theme: own ?? preset, preset, own };
 }

@@ -1,5 +1,7 @@
 /**
  * “Can I build this?" — the comparison between parts list and own stock.
+ *
+ * Counter-check: in src/parts/queries.ts loose taken from total → red “counts per part AND color, not per part number”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -9,7 +11,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { holdsPart } = require('./helpers/inventory');
 
@@ -36,7 +38,7 @@ async function seed() {
   // part numbers: only that way does a slipped pairing show.
   // The column `quelle` is ROUTE: holdsPart() derives it from the set number
   // — a row with a set is a set part, one without a manual one. …
-  const teile = [
+  const parts = [
     // user, number, color, quantity, set
     [U.ich, '3001', 4, 6, '10179-1'],
     [U.ich, '3001', 4, 2, null],
@@ -45,7 +47,7 @@ async function seed() {
     [U.kind, '3001', 4, 1, null],
     [U.fremd, '3001', 4, 99, null],
   ];
-  for (const [uid, num, farbe, menge, set] of teile) {
+  for (const [uid, num, color, quantity, set] of parts) {
     // Since migration 0034 the name belongs in the catalog, not on the
     // Bestandszeile.
     await db.run(
@@ -53,7 +55,7 @@ async function seed() {
        ON CONFLICT (part_number) DO NOTHING`,
       [num, 'Teil ' + num],
     );
-    await holdsPart(db, uid, num, { setNumber: set, menge, colorId: farbe });
+    await holdsPart(db, uid, num, { setNumber: set, quantity, colorId: color });
   }
 }
 
@@ -69,7 +71,7 @@ async function dbReachable() {
 test('inventory reconciliation against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();
@@ -90,19 +92,19 @@ test('inventory reconciliation against a real database', async t => {
       ],
     );
     // 6 from the set + 2 loose = 8 total, of which 2 loose.
-    assert.deepEqual(b['3001|4'], { gesamt: 8, lose: 2 });
+    assert.deepEqual(b['3001|4'], { total: 8, loose: 2 });
     // The same number, another color — must not mix.
-    assert.deepEqual(b['3001|5'], { gesamt: 3, lose: 3 });
+    assert.deepEqual(b['3001|5'], { total: 3, loose: 3 });
     // Another number, the same color — just as little.
-    assert.deepEqual(b['3002|4'], { gesamt: 10, lose: 0 });
+    assert.deepEqual(b['3002|4'], { total: 10, loose: 0 });
   });
 
   await t.test('"lose" excludes what is in a set', async () => {
     // The actual point of the second number: a part in a built
     // set one owns, but one would have to take apart another set for it.
     const b = await ownedQuantitiesQuery([U.ich], [{ part_number: '3002', color_id: 4 }]);
-    assert.equal(b['3002|4'].gesamt, 10);
-    assert.equal(b['3002|4'].lose, 0, 'Ein Set-Teil darf nicht als lose gelten');
+    assert.equal(b['3002|4'].total, 10);
+    assert.equal(b['3002|4'].loose, 0, 'A set part must not count as loose');
   });
 
   await t.test('what is not there is missing in the response', async () => {
@@ -116,14 +118,14 @@ test('inventory reconciliation against a real database', async t => {
 
   await t.test('the scope decides, not the request', async () => {
     // Without this limit the comparison would be a way of counting foreign stocks.
-    const nurIch = await ownedQuantitiesQuery([U.ich], [{ part_number: '3001', color_id: 4 }]);
+    const onlyMe = await ownedQuantitiesQuery([U.ich], [{ part_number: '3001', color_id: 4 }]);
     const withKind = await ownedQuantitiesQuery(await household.scopeIds(U.ich, 'all'), [
       { part_number: '3001', color_id: 4 },
     ]);
-    assert.equal(nurIch['3001|4'].gesamt, 8);
-    assert.equal(withKind['3001|4'].gesamt, 9, 'Das Unterkonto muss mitzählen');
+    assert.equal(onlyMe['3001|4'].total, 8);
+    assert.equal(withKind['3001|4'].total, 9, 'The sub-account must count too');
     // 99 pieces lie with 'fremd' — they must not appear anywhere.
-    assert.ok(withKind['3001|4'].gesamt < 99, 'Ein fremder Bestand ist durchgeschlagen');
+    assert.ok(withKind['3001|4'].total < 99, 'A foreign stock leaked through');
   });
 
   await t.test('duplicate requests and empty inputs do not run into nothing', async () => {
@@ -136,7 +138,7 @@ test('inventory reconciliation against a real database', async t => {
         { part_number: '3001' }, // without color → 0
       ],
     );
-    assert.equal(b['3001|4'].gesamt, 8, 'Eine doppelte Anfrage darf nicht doppelt zählen');
+    assert.equal(b['3001|4'].total, 8, 'A duplicate request must not count twice');
     assert.deepEqual(await ownedQuantitiesQuery([U.ich], []), {});
   });
 
@@ -144,10 +146,10 @@ test('inventory reconciliation against a real database', async t => {
     // A parts list over many sets must not build an unbounded query.
     // MEASURED: the cap applies, the response stays empty instead of throwing.
     assert.equal(typeof MAX_OWNED_PARTS, 'number');
-    const viele = Array.from({ length: MAX_OWNED_PARTS + 50 }, (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
-    viele.push({ part_number: '3001', color_id: 4 }); // stands BEHIND the cap
-    const b = await ownedQuantitiesQuery([U.ich], viele);
-    assert.deepEqual(b, {}, 'Alles hinter dem Deckel muss wegfallen — auch Vorhandenes');
+    const many = Array.from({ length: MAX_OWNED_PARTS + 50 }, (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
+    many.push({ part_number: '3001', color_id: 4 }); // stands BEHIND the cap
+    const b = await ownedQuantitiesQuery([U.ich], many);
+    assert.deepEqual(b, {}, 'Everything beyond the cap must drop out — existing items too');
   });
 
   await db.pool.end().catch(() => {});

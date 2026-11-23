@@ -1,7 +1,7 @@
 /** A process of its own for the catalog import, so the import's large heap
  * does not hit the job process. The work is done by src/catalog/csvImport.ts. */
-import { fehlertext, logAndContinue } from '../src/infra/error';
-import { LESEVERTRAG } from '../src/services';
+import { errorMessage, logAndContinue } from '../src/infra/error';
+import { READ_CONTRACT } from '../src/services';
 import { createImportAccess, createCatalogImports, csvRow } from '../src/catalog';
 
 // Without an IPC channel to stderr instead of a TypeError.
@@ -12,9 +12,9 @@ function post(msg: Record<string, unknown>) {
 
 const db = createImportAccess();
 const pool = db.pool;
-const TASKS = createCatalogImports(db, post, LESEVERTRAG);
+const TASKS = createCatalogImports(db, post, READ_CONTRACT);
 
-type Aufgabe = keyof typeof TASKS;
+type Task = keyof typeof TASKS;
 
 // The error is already reported; a second one while closing does not hold up the exit.
 async function endWithError() {
@@ -32,13 +32,13 @@ process.on('message', async (msg: { task?: string } | null) => {
     return endWithError();
   }
   try {
-    const total = await TASKS[task as Aufgabe]();
+    const total = await TASKS[task as Task]();
     post({ type: 'done', filename: task, total });
     post({ type: 'complete', task });
     await pool.end();
     process.exit(0);
   } catch (e) {
-    post({ type: 'error', task, error: fehlertext(e) });
+    post({ type: 'error', task, error: errorMessage(e) });
     await endWithError();
   }
 });

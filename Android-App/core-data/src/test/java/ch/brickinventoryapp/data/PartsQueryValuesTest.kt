@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.api.asQuery
 import ch.brickinventoryapp.data.api.withSetsAsQuery
-import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.data.SparePartChoice
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -10,7 +10,7 @@ import org.junit.Test
  * The parts list carries its filters as types into the API layer; only there
  * do they become the values the server reads (parts-spare, with_sets).
  *
- * Counter-check: gegenproben/ersatzteile-vertauscht.patch, OHNE and NUR swapped in
+ * Counter-check: counter-checks/spare-parts-swapped.patch, OHNE and NUR swapped in
  * asQuery() → red “every spare part choice has the web app's value”
  * (measured locally on the cut-out PartsApi.kt).
  */
@@ -20,7 +20,7 @@ class PartsQueryValuesTest {
     fun `every spare part choice has the web app's value`() {
         assertEquals(
             listOf(null, "0", "1"),
-            listOf(Ersatzteilwahl.ALLE, Ersatzteilwahl.OHNE, Ersatzteilwahl.NUR).map { it.asQuery() },
+            listOf(SparePartChoice.ALL, SparePartChoice.WITHOUT, SparePartChoice.ONLY).map { it.asQuery() },
         )
     }
 

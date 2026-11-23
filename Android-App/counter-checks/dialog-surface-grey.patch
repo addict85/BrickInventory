@@ -1,0 +1,17 @@
+Gegenprobe: Dialogfläche ein Grau wie outlineVariant
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.LockedContrastTest
+Rot: dialog text keeps 4,5 to 1 and the dialog stands out with 3 to 1 from the background
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/LockedState.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/LockedState.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/LockedState.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/LockedState.kt
+@@ -35,7 +35,7 @@
+ }
+ 
+ /** Surface of a dialog: in light mode surface, so it clearly stands out from the darkened background. */
+-fun windowSurface(s: ColorScheme): Color = if (s.surface.luminance() > 0.5f) s.surface else s.surfaceContainerHigh
++fun windowSurface(s: ColorScheme): Color = if (s.surface.luminance() > 0.5f) s.outlineVariant else s.surfaceContainerHigh
+ 
+ @Composable
+ fun windowSurface(): Color = windowSurface(MaterialTheme.colorScheme)

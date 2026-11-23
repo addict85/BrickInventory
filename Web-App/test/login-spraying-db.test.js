@@ -41,13 +41,13 @@ test('limit per address across all names', { concurrency: 1 }, async t => {
       [NAME, bcrypt.hashSync('richtig-geheim', 4)],
     )
   ).id;
-  const aufraeumen = () =>
+  const cleanUp = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE 'probe-alt|%' OR key = 'probe-neu|x'`, [
       `%${IP}%`,
     ]);
-  await aufraeumen();
+  await cleanUp();
   t.after(async () => {
-    await aufraeumen();
+    await cleanUp();
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`%konto:${uid}`]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
@@ -56,30 +56,30 @@ test('limit per address across all names', { concurrency: 1 }, async t => {
   const lim = _req('src/account/loginLimiter.js');
 
   await t.test('after 30 failed attempts against different names the address is locked', async () => {
-    const anfrage = { ip: IP, socket: {}, headers: {} };
-    for (let i = 0; i < lim.MAX_JE_ADDRESS; i++) {
-      const r = await checkCredentials(anfrage, `${NAME}_gibtsnicht_${i}`, 'falsch');
-      assert.equal(r.absage?.art, 'nicht_angemeldet', `Versuch ${i + 1}`);
+    const request = { ip: IP, socket: {}, headers: {} };
+    for (let i = 0; i < lim.MAX_PER_ADDRESS; i++) {
+      const r = await checkCredentials(request, `${NAME}_gibtsnicht_${i}`, 'falsch');
+      assert.equal(r.refusal?.kind, 'not_signed_in', `Attempt ${i + 1}`);
     }
-    const r = await checkCredentials(anfrage, NAME, 'richtig-geheim');
-    assert.equal(r.absage?.art, 'zu_viele');
+    const r = await checkCredentials(request, NAME, 'richtig-geheim');
+    assert.equal(r.refusal?.kind, 'too_many');
   });
 
   await t.test('whoever has already logged in from here gets in despite the locked address', async () => {
-    const anfrage = { ip: IP, socket: {}, headers: {} };
+    const request = { ip: IP, socket: {}, headers: {} };
     await lim.loginSucceeded(IP, NAME);
-    const r = await checkCredentials(anfrage, NAME, 'richtig-geheim');
-    assert.equal(r.ok, true, `bekannt: trotz gesperrter Adresse angemeldet (${JSON.stringify(r.absage)})`);
+    const r = await checkCredentials(request, NAME, 'richtig-geheim');
+    assert.equal(r.ok, true, `known: signed in despite a locked address (${JSON.stringify(r.refusal)})`);
     assert.equal(
-      (await checkCredentials(anfrage, `${NAME}_gibtsnicht_x`, 'falsch')).absage?.art,
-      'zu_viele',
-      'ein anderer Name bleibt gesperrt',
+      (await checkCredentials(request, `${NAME}_gibtsnicht_x`, 'falsch')).refusal?.kind,
+      'too_many',
+      'another name stays locked',
     );
-    for (let i = 0; i < lim.MAX_ATTEMPTS; i++) await checkCredentials(anfrage, NAME, 'falsch');
+    for (let i = 0; i < lim.MAX_ATTEMPTS; i++) await checkCredentials(request, NAME, 'falsch');
     assert.equal(
-      (await checkCredentials(anfrage, NAME, 'richtig-geheim')).absage?.art,
-      'zu_viele',
-      'die Sperre je Adresse und Konto bleibt',
+      (await checkCredentials(request, NAME, 'richtig-geheim')).refusal?.kind,
+      'too_many',
+      'the lock per address and account stays',
     );
   });
 

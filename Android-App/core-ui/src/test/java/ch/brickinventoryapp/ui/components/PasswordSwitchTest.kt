@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui.components
 
-import ch.brickinventoryapp.ui.components.PasswordFieldError.AKTUELL
-import ch.brickinventoryapp.ui.components.PasswordFieldError.NEU
-import ch.brickinventoryapp.ui.components.PasswordFieldError.WIEDERHOLUNG
+import ch.brickinventoryapp.ui.components.PasswordFieldError.CURRENT
+import ch.brickinventoryapp.ui.components.PasswordFieldError.NEW
+import ch.brickinventoryapp.ui.components.PasswordFieldError.RETRY
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -11,25 +11,24 @@ import org.junit.Test
  * gets the cursor (account and start password).
  *
  * Counter-check (measured locally, JVM):
- *   passwort-wiederholung-ungeprueft  repetition check removed → red „verschiedene
- *                                     Wiederholung …“ and „leer …“
+ *   password-repeat-unchecked  repetition check removed → red „verschiedene Wiederholung …“ and „leer …“
  */
 class PasswordSwitchTest {
 
     @Test
     fun `empty the current and the new field are marked, a missing repetition too`() {
-        assertEquals(listOf(AKTUELL, NEU), passwordSwitchError("", "", ""))
-        assertEquals(listOf(AKTUELL, WIEDERHOLUNG), passwordSwitchError("", "zwoelf-zeichen", ""))
+        assertEquals(listOf(CURRENT, NEW), passwordSwitchError("", "", ""))
+        assertEquals(listOf(CURRENT, RETRY), passwordSwitchError("", "zwoelf-zeichen", ""))
     }
 
     @Test
     fun `a too short new password is an error, a long one is not`() {
-        assertEquals(listOf(NEU), passwordSwitchError("alt", "kurz", "kurz"))
+        assertEquals(listOf(NEW), passwordSwitchError("alt", "kurz", "kurz"))
         assertEquals(emptyList<PasswordFieldError>(), passwordSwitchError("alt", "zwoelf-zeichen", "zwoelf-zeichen"))
     }
 
     @Test
     fun `a different repetition is an error`() {
-        assertEquals(listOf(WIEDERHOLUNG), passwordSwitchError("alt", "zwoelf-zeichen", "zwoelf-zeicheN"))
+        assertEquals(listOf(RETRY), passwordSwitchError("alt", "zwoelf-zeichen", "zwoelf-zeicheN"))
     }
 }

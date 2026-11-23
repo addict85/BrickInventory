@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Rebrickable provided at the wiring (testSources); `fetches` counts what was asked.
@@ -51,7 +51,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -67,15 +67,15 @@ test('the shared catalog', { concurrency: 1 }, async t => {
     }
   }
 
-  const neu = async name =>
+  const fresh = async name =>
     (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
-  const A = await neu('anna'),
-    B = await neu('bruno');
+  const A = await fresh('anna'),
+    B = await fresh('bruno');
 
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const { catalogPart } = _req('src/catalog/catalogMaintenance.js');
-  const gemeinsam = nr =>
+  const common = nr =>
     db.get(
       `SELECT pc.part_name, pcc.image_url
        FROM (SELECT $1::text AS nr) q
@@ -83,7 +83,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
        LEFT JOIN part_color_catalog pcc ON pcc.part_number = q.nr AND pcc.color_id = 4`,
       [nr],
     );
-  const eigen = (uid, nr) =>
+  const own = (uid, nr) =>
     db.get(
       `SELECT te.part_name, tfe.image_url
        FROM (SELECT $1::int AS u, $2::text AS nr) q
@@ -101,20 +101,20 @@ test('the shared catalog', { concurrency: 1 }, async t => {
       part_name: 'Annas Name',
       image_url: 'https://cdn.rebrickable.com/media/anna.jpg',
     });
-    assert.deepEqual(fetches, [], 'mit Namen wird nicht nachgeschlagen');
+    assert.deepEqual(fetches, [], 'with a name no lookup happens');
     assert.deepEqual(
-      { ...(await eigen(A, '3001')) },
+      { ...(await own(A, '3001')) },
       { part_name: 'Annas Name', image_url: 'https://cdn.rebrickable.com/media/anna.jpg' },
     );
-    assert.deepEqual({ ...(await gemeinsam('3001')) }, { part_name: null, image_url: null });
+    assert.deepEqual({ ...(await common('3001')) }, { part_name: null, image_url: null });
   });
 
   await t.test('another account still asks Rebrickable', async () => {
     fetches = [];
     await addManualPart(B, { part_number: '3001', color_id: 4, quantity: 1 });
-    assert.deepEqual(fetches, ['lookupPart 3001'], 'Annas Eingabe zählt für Bruno nicht als bekannt');
+    assert.deepEqual(fetches, ['lookupPart 3001'], 'Anna’s input does not count as known for Bruno');
     assert.deepEqual(
-      { ...(await gemeinsam('3001')) },
+      { ...(await common('3001')) },
       { part_name: 'Brick 2 x 4', image_url: 'https://cdn.rebrickable.com/media/parts/3001.jpg' },
     );
     assert.equal((await catalogPart('3001', 4, B)).name, 'Brick 2 x 4');
@@ -123,8 +123,8 @@ test('the shared catalog', { concurrency: 1 }, async t => {
   await t.test('the verified value takes precedence, the own detail is kept', async () => {
     await addManualPart(A, { part_number: '3001', color_id: 4, quantity: 1, part_name: 'Neuer Name' });
     assert.equal((await catalogPart('3001', 4, A)).name, 'Brick 2 x 4');
-    assert.equal((await gemeinsam('3001')).part_name, 'Brick 2 x 4');
-    assert.equal((await eigen(A, '3001')).part_name, 'Annas Name');
+    assert.equal((await common('3001')).part_name, 'Brick 2 x 4');
+    assert.equal((await own(A, '3001')).part_name, 'Annas Name');
   });
 
   await t.test('a foreign image host does not get into the own details', async () => {
@@ -135,7 +135,7 @@ test('the shared catalog', { concurrency: 1 }, async t => {
       part_name: 'Mit Zählpixel',
       image_url: 'https://zaehler.example/pixel.png',
     });
-    const z = await eigen(A, '3002');
+    const z = await own(A, '3002');
     assert.equal(z.part_name, 'Mit Zählpixel');
     assert.equal(z.image_url ?? null, null);
   });

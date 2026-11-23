@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.components
 
-import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -39,8 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.Shapes
+import ch.brickinventoryapp.ui.theme.Spacing
 import coil3.ImageLoader
-import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlin.math.roundToInt
 
 /**
@@ -59,8 +59,8 @@ fun ZoomableImageDialog(
 ) {
     var zoomScale by remember { mutableStateOf(1f) }
     var zoomOffset by remember { mutableStateOf(Offset.Zero) }
-    fun setzeZoom(faktor: Float) {
-        zoomScale = faktor.coerceIn(ZOOM_MIN, ZOOM_MAX)
+    fun setZoom(factor: Float) {
+        zoomScale = factor.coerceIn(ZOOM_MIN, ZOOM_MAX)
         if (zoomScale <= ZOOM_MIN) zoomOffset = Offset.Zero
     }
 
@@ -80,21 +80,21 @@ fun ZoomableImageDialog(
                     }
                 }
                 .pointerInput(Unit) {
-                    detectTapGestures(onDoubleTap = { setzeZoom(if (zoomScale > ZOOM_MIN + 0.01f) ZOOM_MIN else ZOOM_DOPPELTIPP) })
+                    detectTapGestures(onDoubleTap = { setZoom(if (zoomScale > ZOOM_MIN + 0.01f) ZOOM_MIN else ZOOM_DOUBLE_TAP) })
                 }
         ) {
-            ProduktBild(
+            ProductImage(
                 model = imageUrl,
                 imageLoader = imageLoader,
                 contentDescription = contentDescription,
                 fallbackSize = 96.dp,
                 // The dialog follows the theme; only the image sits on (dimmed in the dark theme) white.
-                bildgrund = true,
+                imageBackground = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .align(Alignment.Center)
-                    .padding(Abstaende.veryLarge)
+                    .padding(Spacing.veryLarge)
                     .graphicsLayer(
                         scaleX = zoomScale, scaleY = zoomScale,
                         translationX = zoomOffset.x, translationY = zoomOffset.y
@@ -102,34 +102,34 @@ fun ZoomableImageDialog(
                 contentScale = ContentScale.Fit
             )
             CloseButton(onDismiss)
-            ImageZoomBar(zoomScale, ::setzeZoom, Modifier.align(Alignment.BottomCenter).padding(bottom = Abstaende.veryLarge))
+            ImageZoomBar(zoomScale, ::setZoom, Modifier.align(Alignment.BottomCenter).padding(bottom = Spacing.veryLarge))
         }
     }
 }
 
 /** Minus, factor and plus; the factor doubles as „back to 100%“. */
 @Composable
-private fun ImageZoomBar(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier) {
+private fun ImageZoomBar(zoom: Float, setZoom: (Float) -> Unit, modifier: Modifier) {
     Row(
-        modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape = Formen.chip).padding(horizontal = Abstaende.tiny),
+        modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape = Shapes.chip).padding(horizontal = Spacing.tiny),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MitTooltip(stringResource(R.string.pdfview_zoom_out)) {
+        WithTooltip(stringResource(R.string.pdfview_zoom_out)) {
             val an = zoom > ZOOM_MIN + 0.01f
-            IconButton(onClick = { setzeZoom(zoom / ZOOM_STEP) }, enabled = an) {
+            IconButton(onClick = { setZoom(zoom / ZOOM_STEP) }, enabled = an) {
                 Icon(Icons.Default.ZoomOut, stringResource(R.string.pdfview_zoom_out), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (an) 1f else 0.38f))
             }
         }
         Box(
-            Modifier.clickable(onClickLabel = stringResource(R.string.pdfview_zoom_reset), role = Role.Button) { setzeZoom(ZOOM_MIN) }
+            Modifier.clickable(onClickLabel = stringResource(R.string.pdfview_zoom_reset), role = Role.Button) { setZoom(ZOOM_MIN) }
                 .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text("${(zoom * 100).roundToInt()} %", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium)
         }
-        MitTooltip(stringResource(R.string.pdfview_zoom_in)) {
+        WithTooltip(stringResource(R.string.pdfview_zoom_in)) {
             val an = zoom < ZOOM_MAX - 0.01f
-            IconButton(onClick = { setzeZoom(zoom * ZOOM_STEP) }, enabled = an) {
+            IconButton(onClick = { setZoom(zoom * ZOOM_STEP) }, enabled = an) {
                 Icon(Icons.Default.ZoomIn, stringResource(R.string.pdfview_zoom_in), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (an) 1f else 0.38f))
             }
         }
@@ -139,12 +139,12 @@ private fun ImageZoomBar(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modi
 private const val ZOOM_MIN = 1f
 private const val ZOOM_MAX = 6f
 private const val ZOOM_STEP = 1.5f
-private const val ZOOM_DOPPELTIPP = 2f
+private const val ZOOM_DOUBLE_TAP = 2f
 
 /** Top right on its own circle: the image fills the screen, the button must stand out from it. */
 @Composable
 private fun BoxScope.CloseButton(onDismiss: () -> Unit) {
-    MitTooltip(stringResource(R.string.detail_close), Modifier.align(Alignment.TopEnd)) {
+    WithTooltip(stringResource(R.string.detail_close), Modifier.align(Alignment.TopEnd)) {
         IconButton(
             onClick = onDismiss,
             modifier = Modifier

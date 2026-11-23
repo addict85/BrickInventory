@@ -1,12 +1,12 @@
 /**
  * The hint about a proxy in front of Caddy (all clients with one address) does
- * not only stand in the log: GET /api/v1/admin/jobs carries it for admins, and
+ * not only stand in the log: GET /api/v2/admin/jobs carries it for admins, and
  * the background jobs show it (proxy-hint-ui.test.js).
  *
  * Counter-checks (measured 13.11.2026, each on its own):
  *   A  `remember(…)` deleted in onlyClientAddress() → red: “after the
  *      hint in the log it is in the response” (null)
- *   B  `proxy_hinweis` deleted from the response in routes/api_v1/admin.ts →
+ *   B  `proxy_hinweis` deleted from the response in routes/api/admin.ts →
  *      red: “without a hint: null” and “after the hint …” (undefined)
  *   C  startup/app.ts does not put the hint provider into app.locals → red: “the
  *      app puts its hint provider where …”
@@ -21,71 +21,71 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
-const { proxyHinweis, EINE_ADDRESS } = _req('src/http/proxyHint.js');
+const { proxyHint, ONE_ADDRESS } = _req('src/http/proxyHint.js');
 
 test('proxy hint in the response for administrators', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const NAME = `proxyhinweis-${process.pid}`;
   // The owner role creates accounts: the runtime role only writes names into users (0117).
-  const daten = require('./helpers/sources').testData();
-  await daten.run('DELETE FROM users WHERE username=$1', [NAME]);
+  const data = require('./helpers/sources').testData();
+  await data.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (
-    await daten.get(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true) RETURNING id`, [NAME])
+    await data.get(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true) RETURNING id`, [NAME])
   ).id;
   t.after(async () => {
-    await daten.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
+    await data.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
   // Like startup/app.ts: the hint provider lies on the app object, the administration reads it there.
-  let jetzt = 0;
-  const meldungen = [];
-  const mw = proxyHinweis(
+  let now = 0;
+  const messages = [];
+  const mw = proxyHint(
     '172.28.73.10',
-    m => meldungen.push(m),
-    () => jetzt,
+    m => messages.push(m),
+    () => now,
   );
   await adminWithFactor(_req, uid);
-  const { app, base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
-  app.locals.proxyHinweis = mw;
-  const jobs = async () => (await fetch(`${base}/api/v1/admin/jobs`)).json();
+  const { app, base } = testServer(_req, { session: { userId: uid, isAdmin: 1 }, t });
+  app.locals.proxyHint = mw;
+  const jobs = async () => (await fetch(`${base}/api/v2/admin/jobs`)).json();
 
   await t.test('without a hint: null', async () => {
     const d = await jobs();
     assert.equal(d.success, true);
-    assert.equal(d.proxy_hinweis, null);
+    assert.equal(d.proxy_hint, null);
   });
 
   await t.test('after the hint in the log it is in the response', async () => {
     // For one hour only the address of the proxy in front, as behind Nginx Proxy Manager with `keiner`.
-    for (let i = 0; i <= EINE_ADDRESS.anfragen; i++) {
-      jetzt = Math.round((i / EINE_ADDRESS.anfragen) * 61 * 60_000);
+    for (let i = 0; i <= ONE_ADDRESS.requests; i++) {
+      now = Math.round((i / ONE_ADDRESS.requests) * 61 * 60_000);
       const ip = '::ffff:172.28.73.20';
       mw({ ip, socket: { remoteAddress: '172.28.73.10' }, headers: { 'x-forwarded-for': ip } }, {}, () => {});
     }
-    assert.equal(meldungen.length, 1, 'Hinweis im Protokoll');
-    const h = (await jobs()).proxy_hinweis;
-    assert.deepEqual([h?.art, h?.vars?.ip], ['eine_adresse', '172.28.73.20'], JSON.stringify(h));
-    assert.ok(h.vars.minuten >= 60 && h.vars.anzahl >= EINE_ADDRESS.anfragen, JSON.stringify(h));
+    assert.equal(messages.length, 1, 'hint in the log');
+    const h = (await jobs()).proxy_hint;
+    assert.deepEqual([h?.kind, h?.vars?.ip], ['single_address', '172.28.73.20'], JSON.stringify(h));
+    assert.ok(h.vars.minutes >= 60 && h.vars.count >= ONE_ADDRESS.requests, JSON.stringify(h));
   });
 
   await t.test('the app puts its hint provider where the administration reads', () => {
-    const echt = _req('startup/app.js').baueApp({
+    const original = _req('startup/app.js').buildApp({
       pool: db.systemPool,
-      konfig: _req('src/infra/config.js').konfig(),
-      sitzungsGeheimnis: 'p'.repeat(48),
-      dienste: require('./helpers/sources').testServices(),
+      config: _req('src/infra/config.js').config(),
+      sessionSecret: 'p'.repeat(48),
+      services: require('./helpers/sources').testServices(),
     });
     const { proxyHintStatus } = _req('src/http/proxyHint.js');
-    assert.equal(proxyHintStatus(echt), null);
-    const leise = console.warn;
+    assert.equal(proxyHintStatus(original), null);
+    const quiet = console.warn;
     console.warn = () => {};
     try {
       const req = { socket: { remoteAddress: '172.28.73.30' }, headers: { 'x-forwarded-for': '198.51.100.4' } };
-      echt.locals.proxyHinweis(req, {}, () => {});
+      original.locals.proxyHint(req, {}, () => {});
     } finally {
-      console.warn = leise;
+      console.warn = quiet;
     }
-    assert.deepEqual(proxyHintStatus(echt), { art: 'docker_netz', vars: { ip: '172.28.73.30' } });
+    assert.deepEqual(proxyHintStatus(original), { kind: 'docker_network', vars: { ip: '172.28.73.30' } });
   });
 });

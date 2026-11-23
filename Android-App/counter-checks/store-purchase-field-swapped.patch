@@ -1,0 +1,17 @@
+Gegenprobe: ein Kauf an manuellen Teilen vertauscht Kaufpreis und Durchschnitt
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.StoreVersionTest
+Rot: every field of every compartment survives the store
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreRows.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreRows.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreRows.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/StoreRows.kt
+@@ -359,7 +359,7 @@
+         setAddedAt = parseInstant(z.setAddedAt))
+ 
+     private fun purchase(a: ValuationPurchaseView) = ValuationPurchaseRow(id = a.id, condition = a.condition, quantity = a.quantity,
+-        purchasePrice = a.purchasePrice?.asDouble(), priceCut = a.avgPrice?.asDouble(), totalAvg = a.totalAvg,
++        purchasePrice = a.avgPrice?.asDouble(), priceCut = a.purchasePrice?.asDouble(), totalAvg = a.totalAvg,
+         valueTotal = a.valueTotal?.asDouble(), pnlPct = a.pnlPct, pnlPercent = a.pnlPercent, createdAt = time(a.createdAt))
+ 
+     private fun purchase(z: ValuationPurchaseRow) = ValuationPurchaseView(id = z.id, condition = z.condition, quantity = z.quantity,

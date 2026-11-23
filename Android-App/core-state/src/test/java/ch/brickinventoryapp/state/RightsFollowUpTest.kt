@@ -1,62 +1,62 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.session.followUpRights
+import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * After a 403 `nur_admins` the session catches up on its admin right from
+ * After a 403 `only_admins` the session catches up on its admin right from
  * /auth/me — once, not per rejected request. The chain before that
- * (ServerWaechter only reports on `nur_admins` for a token) is checked by
+ * (ServerGuard only reports on `only_admins` for a token) is checked by
  * ServerGuardTest; the management's query loop by
  * MonitoringViewModelBehaviorTest.
  *
  * Counter-checks:
  *   A  the check `if (!state.value.isAdmin) return false` removed → red
  *      „ein entzogenes Recht wird einmal nachgezogen …“ (second /me fetch)
- *   B  without a response, keeps the right (`me !is Erfolg -> return false`) → red
+ *   B  without a response, keeps the right (`me !is Success -> return false`) → red
  *      „ohne Antwort von /auth/me gilt das 403“
  */
 class RightsFollowUpTest {
 
-    private val paths = PfadServer()
-    private val t = TestDienste(paths.server)
-    private val konto = testAccountRepository(t.api)
+    private val paths = PathServer()
+    private val t = TestServices(paths.server)
+    private val account = testAccountRepository(t.api)
 
     @After
-    fun zu() { t.aufraeumen(); paths.server.shutdown() }
+    fun tearDown() { t.cleanUp(); paths.server.shutdown() }
 
     @Test
     fun `a revoked right is followed up once, then no longer asked`() = runBlocking {
-        paths.antworten["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":false}}"""
-        t.sitzung.angemeldet(admin = true)
-        assertTrue("Beim Übergang gibt es eine Meldung", t.sitzung.followUpRights(konto))
-        assertFalse(t.sitzung.state.value.isAdmin)
-        assertTrue("Angemeldet bleibt man", t.sitzung.state.value.isLoggedIn)
-        assertFalse("Ein zweites 403 meldet nichts mehr", t.sitzung.followUpRights(konto))
-        assertEquals("Höchstens ein /auth/me je Übergang", 1, paths.requestsAn("/auth/me").size)
+        paths.responses["/api/v2/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":false}}"""
+        t.session.loggedIn(admin = true)
+        assertTrue("on the transition there is a message", t.session.followUpRights(account))
+        assertFalse(t.session.state.value.isAdmin)
+        assertTrue("one stays signed in", t.session.state.value.isLoggedIn)
+        assertFalse("a second 403 reports nothing any more", t.session.followUpRights(account))
+        assertEquals("at most one /auth/me per transition", 1, paths.requestsTo("/auth/me").size)
     }
 
     @Test
     fun `without a response from auth me the 403 applies`() = runBlocking {
-        paths.codes["/api/v1/auth/me"] = 500
-        t.sitzung.angemeldet(admin = true)
-        assertTrue(t.sitzung.followUpRights(konto))
-        assertFalse(t.sitzung.state.value.isAdmin)
+        paths.codes["/api/v2/auth/me"] = 500
+        t.session.loggedIn(admin = true)
+        assertTrue(t.session.followUpRights(account))
+        assertFalse(t.session.state.value.isAdmin)
     }
 
     @Test
     fun `if auth me still reports the right, it stays`() = runBlocking {
-        paths.antworten["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":true}}"""
-        t.sitzung.angemeldet(admin = true)
-        assertFalse(t.sitzung.followUpRights(konto))
-        assertTrue(t.sitzung.state.value.isAdmin)
+        paths.responses["/api/v2/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":true}}"""
+        t.session.loggedIn(admin = true)
+        assertFalse(t.session.followUpRights(account))
+        assertTrue(t.session.state.value.isAdmin)
     }
 }

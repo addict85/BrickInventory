@@ -24,7 +24,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-function konfig() {
+function config() {
   const r = spawnSync(
     'docker',
     ['compose', '-f', path.join(ROOT, 'compose.yaml'), '--profile', 'tools', 'config', '--format', 'json'],
@@ -40,26 +40,26 @@ function konfig() {
       },
     },
   );
-  if (r.error || r.status !== 0) return { fehler: r.error?.message || r.stderr };
+  if (r.error || r.status !== 0) return { error: r.error?.message || r.stderr };
   return { j: JSON.parse(r.stdout) };
 }
 
 /** @param {import('node:test').TestContext} t */
-function withKonfig(t) {
-  const { j, fehler } = konfig();
+function withConfig(t) {
+  const { j, error } = config();
   if (!j) {
-    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${fehler}`);
-    t.skip(`no docker compose: ${fehler}`);
+    if (process.env.CI) assert.fail(`docker compose config in the CI run: ${error}`);
+    t.skip(`no docker compose: ${error}`);
   }
   return j;
 }
 
 test('every service has limited logs', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
-  const dienste = Object.entries(j.services);
-  assert.ok(dienste.length >= 6, Object.keys(j.services).join(', '));
-  const ohne = dienste
+  const services = Object.entries(j.services);
+  assert.ok(services.length >= 6, Object.keys(j.services).join(', '));
+  const without = services
     .filter(
       ([, d]) =>
         !(
@@ -70,50 +70,50 @@ test('every service has limited logs', t => {
         ),
     )
     .map(([n, d]) => `${n}: ${JSON.stringify(d.logging ?? null)}`);
-  assert.deepEqual(ohne, []);
+  assert.deepEqual(without, []);
 });
 
 test('every tmpfs is without exec, without setuid and limited in size', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
-  const falsch = [];
+  const wrong = [];
   for (const [n, d] of Object.entries(j.services))
-    for (const eintrag of d.tmpfs ?? []) {
-      const optionen = eintrag.split(':')[1]?.split(',') ?? [];
-      const noetig = [eintrag.startsWith('/var/run/postgresql') ? 'nosuid' : 'noexec', 'nosuid', 'nodev'];
-      if (!noetig.every(o => optionen.includes(o)) || !optionen.some(o => /^size=\d+[km]$/.test(o)))
-        falsch.push(`${n}: ${eintrag}`);
+    for (const entryRow of d.tmpfs ?? []) {
+      const options = entryRow.split(':')[1]?.split(',') ?? [];
+      const needed = [entryRow.startsWith('/var/run/postgresql') ? 'nosuid' : 'noexec', 'nosuid', 'nodev'];
+      if (!needed.every(o => options.includes(o)) || !options.some(o => /^size=\d+[km]$/.test(o)))
+        wrong.push(`${n}: ${entryRow}`);
     }
-  assert.deepEqual(falsch, []);
+  assert.deepEqual(wrong, []);
   assert.ok(
     Object.values(j.services).filter(d => d.tmpfs?.length).length >= 4,
-    'die Liste der tmpfs ist leer — greift die Prüfung?',
+    'the list of tmpfs is empty — does the check still match?',
   );
 });
 
 test('the database hangs only in internal networks and only writes to data and socket', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
   const pg = j.services.postgres;
-  const netze = Object.keys(pg.networks ?? {});
-  assert.ok(netze.length >= 1, 'postgres hängt in keinem Netz');
-  for (const n of netze)
-    assert.equal(j.networks[n]?.internal, true, `postgres hängt im Netz ${n} mit Weg nach draussen`);
+  const networkList = Object.keys(pg.networks ?? {});
+  assert.ok(networkList.length >= 1, 'postgres is in no network');
+  for (const n of networkList)
+    assert.equal(j.networks[n]?.internal, true, `postgres is in network ${n} with a way out`);
   for (const d of ['app', 'jobs', 'db-rolle'])
     assert.ok(
-      netze.some(n => Object.keys(j.services[d].networks ?? {}).includes(n)),
-      `${d} erreicht postgres nicht`,
+      networkList.some(n => Object.keys(j.services[d].networks ?? {}).includes(n)),
+      `${d} does not reach postgres`,
     );
-  assert.ok(!netze.some(n => Object.keys(j.services.caddy.networks ?? {}).includes(n)), 'caddy erreicht postgres');
-  assert.equal(pg.read_only, true, 'postgres: read_only fehlt');
+  assert.ok(!networkList.some(n => Object.keys(j.services.caddy.networks ?? {}).includes(n)), 'caddy reaches postgres');
+  assert.equal(pg.read_only, true, 'postgres: read_only is missing');
   assert.ok(
     (pg.tmpfs ?? []).some(e => e.startsWith('/var/run/postgresql:')),
-    'postgres: Socket-Ordner nicht als tmpfs',
+    'postgres: socket folder not a tmpfs',
   );
 });
 
 test('pgweb no longer exists, not even in the tools profile', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
   assert.equal(j.services.pgweb, undefined);
   assert.ok(!Object.keys(j.networks ?? {}).some(n => /pgweb/.test(n)), Object.keys(j.networks ?? {}).join(', '));
@@ -122,10 +122,10 @@ test('pgweb no longer exists, not even in the tools profile', t => {
 // Counter-check (measured 11.11.2026): caddy-rechte back to `brickinventory-caddy:2.11.8`
 // → red “caddy-rechte takes the same signed image”.
 test('Caddy comes as a signed image by digest, built itself from base images by digest', t => {
-  const j = withKonfig(t);
+  const j = withConfig(t);
   if (!j) return;
   const c = j.services.caddy;
-  assert.equal(c.image, `addict85/brickinventory-caddy@sha256:${'0'.repeat(64)}`, 'caddy zieht nicht CADDY_IMAGE');
+  assert.equal(c.image, `addict85/brickinventory-caddy@sha256:${'0'.repeat(64)}`, 'caddy does not pull CADDY_IMAGE');
   assert.equal(c.pull_policy, 'missing');
   assert.equal(j.services['caddy-rechte'].image, c.image, 'caddy-rechte nimmt dasselbe signierte Image');
   // `up -d --build` with own CADDY_IMAGE still builds from Dockerfile.caddy.

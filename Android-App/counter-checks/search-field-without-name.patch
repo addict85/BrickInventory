@@ -1,0 +1,17 @@
+Gegenprobe: Suchfeld ohne contentDescription: Nach der Eingabe hat es keinen Namen mehr
+Modul: app
+Test: ch.brickinventoryapp.app.AccessibilityTest
+Rot: search field keeps its name after input and wraps at 200 percent
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SearchField.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SearchField.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SearchField.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SearchField.kt
+@@ -76,7 +76,7 @@
+         },
+         // The placeholder disappears on the first keystroke; the field's name stays.
+         modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Spacing.small)
+-            .semantics { contentDescription = placeholder },
++            .semantics { },
+         singleLine = true,
+         shape = Shapes.card,
+     )

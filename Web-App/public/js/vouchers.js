@@ -1,30 +1,31 @@
-import { echt, registerActions } from './registry.js';
+import { genuine, registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { api, apiRaw } from './api.js';
-import { ico, G, setzeHtml } from './dom.js';
-import { fmtDatum, fmtN, amountForField } from './format.js';
-import { responseError, amountFromField, feldFehler } from './form.js';
+import { ico, G, setHtml } from './dom.js';
+import { fmtDate, fmtN, amountForField } from './format.js';
+import { responseError, amountFromField, fieldError } from './form.js';
 import { toast } from './messages.js';
 import { openPdfViewer } from './pdfviewer.js';
 import { accountCurrency, settingsSnapshot } from './state.js';
 import { html, joinHtml } from './escaping.js';
-import { bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
+import { confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
+import { deleteRestorable } from './deletion.js';
 
-// Vouchers (LEGO gift cards) stand directly in the profile instead of in a tab of their own: they should be quickly
+// Vouchers (LEGO gift cards) state directly in the profile instead of in a tab of their own: they should be quickly
 // reachable and, as in the app, be captured, changed and shown.
 
 /** The most recently loaded list — for the buttons that point to a row. */
-/** @type {import('../../frontend-types/contract').Gutschein[]} */
+/** @type {import('../../frontend-types/contract').Voucher[]} */
 let _vouchers = [];
 /** The most recently loaded vouchers, for reading by the balance lookup. */
-export const gutscheine = () => _vouchers;
+export const vouchers = () => _vouchers;
 
 /** The id of the voucher currently being edited; null = new entry. */
 /** @type {number | string | null} */
 let _edited = null;
 
 /** @param {string} id */
-const el = (/** @type {string} */ id) => /** @type {Feld} */ (document.getElementById(id));
+const el = (/** @type {string} */ id) => /** @type {Field} */ (document.getElementById(id));
 
 // The handlers take the id as the FIRST argument and no event: the dispatcher in actions.js passes
 // `data-arg`, `data-arg2` … through in this order and appends the event LAST. An `(ev, id)`
@@ -42,14 +43,14 @@ const _plaintext = new Map();
  */
 async function fetchPlaintext(id) {
   if (_plaintext.has(id)) return _plaintext.get(id);
-  const password = await bestaetigeMitPasswort(
-    tRaw('vouchers.klartext_title'),
-    tRaw('vouchers.klartext_text'),
-    'schloss',
-    { knopf: 'confirm.btn.anzeigen', art: 'bp' },
+  const password = await confirmDeleteWithPassword(
+    tRaw('vouchers.plain_text_title'),
+    tRaw('vouchers.plain_text_text'),
+    'lock',
+    { button: 'confirm.btn.show', kind: 'bp' },
   );
   if (password === null) return null;
-  const d = await withSecondFactor(z => api('POST', `/v1/vouchers/${id}/klartext`, { password, ...z }));
+  const d = await withSecondFactor(z => api('POST', `/v2/vouchers/${id}/plaintext`, { password, ...z }));
   if (!d?.success) {
     if (d) toast(d.error || tRaw('vouchers.load_error'), 'error');
     return null;
@@ -69,16 +70,16 @@ const COPY_ICON_SVG = html`<svg viewBox="0 0 24 24" width="14" height="14" fill=
   height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 
 /** "6123-4567-8901" and "612345678901" → "6123 4567 8901". */
-/** @param {unknown} roh */
-export function groupNumber(roh) {
-  return String(roh ?? '')
+/** @param {unknown} raw */
+export function groupNumber(raw) {
+  return String(raw ?? '')
     .replace(/[\s-]/g, '')
     .replace(/(\d{4})(?=\d)/g, '$1 ');
 }
 
 /** The currency of the issuing country's cards; without a country that of the account. */
 /** @type {Record<string, string>} */
-const LAND_CURRENCY = {
+const COUNTRY_CURRENCY = {
   'de-CH': 'CHF',
   'de-DE': 'EUR',
   'de-AT': 'EUR',
@@ -88,49 +89,47 @@ const LAND_CURRENCY = {
   'en-GB': 'GBP',
   'en-US': 'USD',
 };
-/** Without a stored issuing country, the country of the account currency (like landFuerWaehrung in the server). */
+/** Without a stored issuing country, the country of the account currency (as the server derives it). */
 /** @type {Record<string, string>} */
-export const LAND_TO_CURRENCY = { CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' };
-export function landCurrency() {
-  const land = G('gutschein-land')?.value || settingsSnapshot?.gutschein_land || '';
-  return LAND_CURRENCY[land] || accountCurrency;
+export const COUNTRY_TO_CURRENCY = { CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' };
+export function countryCurrency() {
+  const country = G('voucher-country')?.value || settingsSnapshot?.voucher_country || '';
+  return COUNTRY_CURRENCY[country] || accountCurrency;
 }
 
 /** Suggestion in the form and the sentence below it if the chosen currency differs. */
-function waehrungPruefen() {
-  const feld = G('v-currency'),
-    hinweis = el('v-currency-hinweis');
-  if (!feld || !hinweis) return;
-  const soll = landCurrency();
-  hinweis.hidden = feld.value === soll;
-  hinweis.textContent = tRaw('vouchers.waehrung_hinweis', { w: soll });
+function checkCurrency() {
+  const field = G('v-currency'),
+    hint = el('v-currency-hint');
+  if (!field || !hint) return;
+  const should = countryCurrency();
+  hint.hidden = field.value === should;
+  hint.textContent = tRaw('vouchers.currency_hint', { w: should });
 }
 
-/** @param {import('../../frontend-types/contract').Gutschein} g */
-function zeile(g) {
+/** @param {import('../../frontend-types/contract').Voucher} g */
+function row(g) {
   const k = _plaintext.get(g.id);
   const openPin = _visible.has(g.id) && !!k;
   // The number in groups of four: 19 digits in one go cannot be read when typing them at the checkout, and
   // that is exactly what it is for. First remove the own separators, otherwise they count ("6123 -456 7-89"). Still the
   // RAW number is copied — with spaces no payment field accepts it.
-  const nummer = groupNumber(k ? k.number : g.number);
+  const number = groupNumber(k ? k.number : g.number);
   return html`
     <div class="voucher-row" data-id="${g.id}">
       <div class="voucher-main">
         <div class="voucher-num-row">
-          <span class="voucher-num">${nummer}</span>
-          <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="nummer"
+          <span class="voucher-num">${number}</span>
+          <button class="v-btn" data-click="copyVoucher" data-arg="${g.id}" data-arg2="number"
                   title="${tRaw('vouchers.copy_number')}"
-                  aria-label="${tRaw('vouchers.copy_number')}">${COPY_ICON_SVG}<span class="v-btn-text">${tRaw('vouchers.kurz_kopieren')}</span></button>
+                  aria-label="${tRaw('vouchers.copy_number')}">${COPY_ICON_SVG}<span class="v-btn-text">${tRaw('vouchers.short_copy')}</span></button>
         </div>
         <div class="voucher-meta">
           <span class="voucher-amount">${fmtN(g.amount, g.currency)}</span>
-          ${landCurrency() && g.currency !== landCurrency() ? html`<span class="voucher-abweichung">${tRaw('vouchers.waehrung_abweichend', { w: landCurrency() })}</span>` : ''}
-          <!-- Der Stand NEBEN dem Betrag, nicht statt ihm: „250 CHF" allein
-               ist keine Auskunft, „250 CHF, abgefragt am 15.10." ist eine.
-               Und eine Karte, deren Guthaben noch nie abgefragt wurde, sagt
-               das — im WORT, nicht durch eine Farbe. -->
-          <span class="voucher-stand">${g.guthaben_geprueft_am ? tRaw('vouchers.balance_as_of', { datum: fmtDatum(g.guthaben_geprueft_am) }) : tRaw('vouchers.balance_never')}${g.hat_pdf ? '' : html` · <span class="voucher-nopdf">${tRaw('vouchers.no_pdf_kurz')}</span>`}</span>
+          ${countryCurrency() && g.currency !== countryCurrency() ? html`<span class="voucher-deviation">${tRaw('vouchers.currency_different', { w: countryCurrency() })}</span>` : ''}
+          <!-- The status NEXT TO the amount, not instead of it: an amount alone says nothing
+               without the date it was queried; a never queried card says so in WORDS, not by colour. -->
+          <span class="voucher-status">${g.balance_checked_at ? tRaw('vouchers.balance_as_of', { date: fmtDate(g.balance_checked_at) }) : tRaw('vouchers.balance_never')}${g.has_pdf ? '' : html` · <span class="voucher-nopdf">${tRaw('vouchers.no_pdf_short')}</span>`}</span>
         </div>
       </div>
       <div class="voucher-pin">
@@ -138,26 +137,26 @@ function zeile(g) {
         <code>${g.pin ? (openPin ? k.pin : '••••') : '–'}</code>
         ${
           g.pin
-            ? html`<button class="v-btn" data-click="gutscheinPinUmschalten" data-arg="${g.id}"
+            ? html`<button class="v-btn" data-click="toggleVoucherPin" data-arg="${g.id}"
                      title="${tRaw(openPin ? 'vouchers.pin_hide' : 'vouchers.pin_show')}"
                      aria-label="${tRaw(openPin ? 'vouchers.pin_hide' : 'vouchers.pin_show')}">
-                     ${ico(openPin ? 'auge-zu' : 'auge')}<span class="v-btn-text">${tRaw(openPin ? 'vouchers.kurz_verbergen' : 'vouchers.kurz_anzeigen')}</span></button>
-                   <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="pin"
+                     ${ico(openPin ? 'eye-close' : 'eye')}<span class="v-btn-text">${tRaw(openPin ? 'vouchers.short_hide' : 'vouchers.short_show')}</span></button>
+                   <button class="v-btn" data-click="copyVoucher" data-arg="${g.id}" data-arg2="pin"
                      title="${tRaw('vouchers.copy_pin')}"
-                     aria-label="${tRaw('vouchers.copy_pin')}">${COPY_ICON_SVG}<span class="v-btn-text">${tRaw('vouchers.kurz_kopieren')}</span></button>`
+                     aria-label="${tRaw('vouchers.copy_pin')}">${COPY_ICON_SVG}<span class="v-btn-text">${tRaw('vouchers.short_copy')}</span></button>`
             : ''
         }
       </div>
       <div class="voucher-actions">
-        <button class="btn bs btn-sm v-text" type="button" data-click="gutscheinBearbeiten" data-arg="${g.id}"
-                aria-label="${tRaw('common.edit')}: ${nummer}">${ico('bearbeiten')}<span>${tRaw('common.edit')}</span></button>
-        <details class="mehr-menue v-mehr">
-          <summary class="btn bs btn-sm v-text" aria-label="${tRaw('vouchers.mehr')}: ${nummer}">${ico('menue')}<span>${tRaw('vouchers.mehr')}</span></summary>
-          <div class="mehr-liste">
-            ${g.pin ? html`<button class="btn bs btn-sm v-text" type="button" data-click="guthabenAbfragen" data-arg="${g.id}">${ico('aktualisieren')}<span>${tRaw('vouchers.balance_one')}</span></button>` : ''}
-            ${g.hat_pdf ? html`<button class="btn bs btn-sm v-text" type="button" data-click="gutscheinPdfOeffnen" data-arg="${g.id}">${ico('datei')}<span>${tRaw('vouchers.pdf_open')}</span></button>` : ''}
-            <button class="btn bs btn-sm v-text v-btn-gefahr" type="button" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
-                    aria-label="${tRaw('common.delete')}: ${nummer}">${ico('loeschen')}<span>${tRaw('common.delete')}</span></button>
+        <button class="btn bs btn-sm v-text" type="button" data-click="editVoucher" data-arg="${g.id}"
+                aria-label="${tRaw('common.edit')}: ${number}">${ico('edit')}<span>${tRaw('common.edit')}</span></button>
+        <details class="more-menu v-more">
+          <summary class="btn bs btn-sm v-text" aria-label="${tRaw('vouchers.more')}: ${number}">${ico('menu')}<span>${tRaw('vouchers.more')}</span></summary>
+          <div class="more-list">
+            ${g.pin ? html`<button class="btn bs btn-sm v-text" type="button" data-click="queryBalance" data-arg="${g.id}">${ico('refresh')}<span>${tRaw('vouchers.balance_one')}</span></button>` : ''}
+            ${g.has_pdf ? html`<button class="btn bs btn-sm v-text" type="button" data-click="openVoucherPdf" data-arg="${g.id}">${ico('file')}<span>${tRaw('vouchers.pdf_open')}</span></button>` : ''}
+            <button class="btn bs btn-sm v-text v-btn-danger" type="button" data-click="deleteVoucher"${genuine()} data-arg="${g.id}"
+                    aria-label="${tRaw('common.delete')}: ${number}">${ico('delete')}<span>${tRaw('common.delete')}</span></button>
           </div>
         </details>
       </div>
@@ -165,29 +164,30 @@ function zeile(g) {
 }
 
 /** Load and draw the list. */
-export async function ladeGutscheine() {
-  const liste = el('vouchers-list');
-  if (!liste) return;
-  const d = await api('GET', '/v1/vouchers');
+export async function loadVouchers() {
+  const list = el('vouchers-list');
+  if (!list) return;
+  const d = await api('GET', '/v2/vouchers');
   if (!d?.success) {
-    setzeHtml(liste, html`<div class="voucher-leer">${tRaw('vouchers.load_error')}</div>`);
+    setHtml(list, html`<div class="voucher-empty">${tRaw('vouchers.load_error')}</div>`);
     return;
   }
   _vouchers = d.vouchers || [];
-  const landField = G('gutschein-land');
-  if (landField) landField.value = settingsSnapshot?.gutschein_land || LAND_TO_CURRENCY[accountCurrency] || 'de-CH';
-  showLandCurrency();
+  const countryField = G('voucher-country');
+  if (countryField)
+    countryField.value = settingsSnapshot?.voucher_country || COUNTRY_TO_CURRENCY[accountCurrency] || 'de-CH';
+  showCountryCurrency();
   const cur = G('v-currency');
-  if (cur && !_edited && !G('v-amount')?.value) cur.value = landCurrency();
-  waehrungPruefen();
-  setzeHtml(
-    liste,
+  if (cur && !_edited && !G('v-amount')?.value) cur.value = countryCurrency();
+  checkCurrency();
+  setHtml(
+    list,
     _vouchers.length
-      ? joinHtml(_vouchers.map(zeile))
-      : html`<div class="voucher-leer" data-i18n="vouchers.empty">${tRaw('vouchers.empty')}</div>`,
+      ? joinHtml(_vouchers.map(row))
+      : html`<div class="voucher-empty" data-i18n="vouchers.empty">${tRaw('vouchers.empty')}</div>`,
   );
   // Sum, "query all" and export have nothing to do without vouchers.
-  document.querySelectorAll('[data-nur-mit-gutscheinen]').forEach(e => {
+  document.querySelectorAll('[data-only-with-vouchers]').forEach(e => {
     /** @type {HTMLElement} */ (e).hidden = !_vouchers.length;
   });
 
@@ -196,34 +196,34 @@ export async function ladeGutscheine() {
   const sumEl = el('vouchers-total');
   if (sumEl) {
     /** @type {Map<string, number>} */
-    const je = new Map();
-    for (const g of _vouchers) je.set(g.currency, (je.get(g.currency) || 0) + g.amount);
-    sumEl.textContent = [...je].map(([w, betrag]) => fmtN(betrag, w)).join(' · ');
+    const per = new Map();
+    for (const g of _vouchers) per.set(g.currency, (per.get(g.currency) || 0) + g.amount);
+    sumEl.textContent = [...per].map(([w, voucherAmount]) => fmtN(voucherAmount, w)).join(' · ');
   }
 }
 
 function clearForm() {
   _edited = null;
   const cur = G('v-currency');
-  if (cur) cur.value = landCurrency();
-  waehrungPruefen();
+  if (cur) cur.value = countryCurrency();
+  checkCurrency();
   for (const id of ['v-number', 'v-pin', 'v-amount']) {
     const e = el(id);
     if (e) e.value = '';
   }
-  const datei = el('v-pdf');
-  if (datei) {
-    datei.value = '';
-    gutscheinDateiGewaehlt.call(datei);
+  const file = el('v-pdf');
+  if (file) {
+    file.value = '';
+    voucherFileSelected.call(file);
   }
-  const titel = el('vouchers-form-title');
-  if (titel) titel.textContent = tRaw('vouchers.add');
-  const abbrechen = el('v-cancel');
-  if (abbrechen) abbrechen.style.display = 'none';
+  const title = el('vouchers-form-title');
+  if (title) title.textContent = tRaw('vouchers.add');
+  const cancel = el('v-cancel');
+  if (cancel) cancel.style.display = 'none';
 }
 
 /** @param {string} id */
-export function gutscheinBearbeiten(id) {
+export function editVoucher(id) {
   const g = _vouchers.find(x => String(x.id) === String(id));
   if (!g) return;
   _edited = g.id;
@@ -243,7 +243,7 @@ export function gutscheinBearbeiten(id) {
   el('v-number').focus();
 }
 
-export function gutscheinAbbrechen() {
+export function cancelVoucher() {
   clearForm();
   const pdfRow = el('v-pdf').parentElement;
   if (pdfRow) pdfRow.style.display = '';
@@ -251,164 +251,151 @@ export function gutscheinAbbrechen() {
 
 /** Server error codes → field in the form (message at the field instead of a toast). */
 const VOUCHER_FIELDS = {
-  nummer_ungueltig: 'v-number',
-  gutschein_existiert: 'v-number',
-  pin_ungueltig: 'v-pin',
-  betrag_ungueltig: 'v-amount',
-  waehrung_ungueltig: 'v-currency',
+  number_invalid: 'v-number',
+  voucher_exists: 'v-number',
+  pin_invalid: 'v-pin',
+  amount_invalid: 'v-amount',
+  currency_invalid: 'v-currency',
 };
 
-/**
- * Save, one button for both paths: if a file is in the field, the server reads it, and filled-in fields
- * win. That way one can upload a PDF and add the amount oneself if it does not yield it.
- */
-export async function gutscheinSpeichern() {
-  const number = el('v-number').value.trim();
-  const pin = el('v-pin').value.trim();
-  const betrag = amountFromField('v-amount', 'common.betrag_negativ');
-  const datei = el('v-pdf')?.files?.[0] || null;
-  // All gaps at once: the server reported them one after the other. A PDF can deliver number and amount.
-  const leer = datei ? [] : [!number && 'v-number', betrag.ok && betrag.wert === null && 'v-amount'];
-  const fehlt = /** @type {string[]} */ (leer.filter(Boolean));
-  for (const id of fehlt) feldFehler(id, tRaw('vouchers.pflicht_fehlt'));
-  if (!betrag.ok || fehlt.length) {
-    el(fehlt[0] ?? 'v-amount')?.focus();
+/** @typedef {{ number: string, pin: string, amount: number | string, currency: string }} VoucherInput */
+
+/** @param {VoucherInput} v */
+async function updateVoucher(v) {
+  const d = await api('PUT', `/v2/vouchers/${_edited}`, v);
+  if (!d?.success) {
+    responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
     return;
   }
-  const amount = betrag.wert ?? '';
-  const currency = el('v-currency')?.value || 'CHF';
+  _plaintext.delete(_edited);
+  toast(tRaw('vouchers.saved'), 'success');
+  clearForm();
+  const pdfRow = el('v-pdf').parentElement;
+  if (pdfRow) pdfRow.style.display = '';
+  await loadVouchers();
+}
 
-  if (_edited) {
-    const d = await api('PUT', `/v1/vouchers/${_edited}`, { number, pin, amount, currency });
-    if (!d?.success) {
-      responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
-      return;
-    }
-    _plaintext.delete(_edited);
+/** The PDF did not yield enough. What WAS read is filled in — the user adds the rest and presses once
+ * more, with the same file. That is the difference between "did not work" and "the amount is still
+ * missing here". @param {{ number?: string, pin?: string, amount?: number | string | null, currency?: string }} g what the server read @param {VoucherInput} v */
+function fillFromPdf(g, v) {
+  if (g.number && !v.number) el('v-number').value = g.number;
+  if (g.pin && !v.pin) el('v-pin').value = g.pin;
+  if (g.amount != null && v.amount === '') el('v-amount').value = amountForField(g.amount);
+  if (g.currency && el('v-currency')) el('v-currency').value = g.currency;
+}
+
+/** FormData instead of api(): the helper sends JSON. A file only goes as multipart, and the browser sets
+ * `Content-Type` itself in the process (including boundary) — setting it here breaks the request. Only
+ * filled-in fields are sent: an empty field would overwrite what was read from the PDF with nothing.
+ * @param {File} file @param {VoucherInput} v */
+async function uploadVoucherPdf(file, v) {
+  const form = new FormData();
+  form.append('file', file);
+  if (v.number) form.append('number', v.number);
+  if (v.pin) form.append('pin', v.pin);
+  if (v.amount !== '') form.append('amount', String(v.amount));
+  if (v.currency) form.append('currency', v.currency);
+  let r, d;
+  try {
+    r = await apiRaw('POST', '/v2/vouchers/pdf', { body: form });
+    d = await r.json();
+  } catch {
+    toast(tRaw('vouchers.save_error'), 'error');
+    return;
+  }
+  if (r.status === 422) {
+    fillFromPdf(d?.parsed || {}, v);
+    toast(tRaw('vouchers.pdf_incomplete'), 'error');
+    return;
+  }
+  if (!d?.success) {
+    responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
+    return;
+  }
+  // Whether a PDF yielded one or several vouchers is decided by the server; `multiple` says so. Then
+  // the same message as for CSV imports, so that nobody reads "saved" for three vouchers and guesses.
+  if (d.multiple) {
+    toast(
+      tRaw('import.summary', { added: d.multiple.added, updated: d.multiple.updated, errors: d.multiple.errors }),
+      d.multiple.errors ? 'info' : 'success',
+    );
+  } else {
     toast(tRaw('vouchers.saved'), 'success');
-    clearForm();
-    const pdfRow = el('v-pdf').parentElement;
-    if (pdfRow) pdfRow.style.display = '';
-    await ladeGutscheine();
-    return;
   }
+  clearForm();
+  await loadVouchers();
+}
 
-  if (datei) {
-    // FormData instead of api(): the helper sends JSON. A file only goes as multipart, and the browser sets `Content-Type`
-    // itself in the process (including boundary) — setting it here breaks the request.
-    const form = new FormData();
-    form.append('file', datei);
-    // Only send filled-in fields: an empty field would overwrite what was read from the PDF — with
-    // nichts.
-    if (number) form.append('number', number);
-    if (pin) form.append('pin', pin);
-    if (amount !== '') form.append('amount', String(amount));
-    if (currency) form.append('currency', currency);
-    let r, d;
-    try {
-      r = await apiRaw('POST', '/v1/vouchers/pdf', { body: form });
-      d = await r.json();
-    } catch {
-      toast(tRaw('vouchers.save_error'), 'error');
-      return;
-    }
-
-    if (r.status === 422) {
-      // The PDF did not yield enough. What WAS read is filled in — the user adds the rest and
-      // presses once more, with the same file. That is the difference between "did not work" and
-      // "the amount is still missing here".
-      const g = d?.gelesen || {};
-      if (g.number && !number) el('v-number').value = g.number;
-      if (g.pin && !pin) el('v-pin').value = g.pin;
-      if (g.amount != null && amount === '') el('v-amount').value = amountForField(g.amount);
-      if (g.currency && el('v-currency')) el('v-currency').value = g.currency;
-      toast(tRaw('vouchers.pdf_incomplete'), 'error');
-      return;
-    }
-    if (!d?.success) {
-      responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
-      return;
-    }
-
-    // Whether a PDF yielded one or several vouchers is decided by the server; `mehrere` says so. Then
-    // the same message as for CSV imports, so that nobody reads "saved" for three vouchers and guesses.
-    if (d.mehrere) {
-      toast(
-        tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated, errors: d.mehrere.errors }),
-        d.mehrere.errors ? 'info' : 'success',
-      );
-    } else {
-      toast(tRaw('vouchers.saved'), 'success');
-    }
-    clearForm();
-    await ladeGutscheine();
-    return;
-  }
-
-  const d = await api('POST', '/v1/vouchers', { number, pin, amount, currency });
+/** @param {VoucherInput} v */
+async function createVoucher(v) {
+  const d = await api('POST', '/v2/vouchers', v);
   if (!d?.success) {
     responseError(d, VOUCHER_FIELDS, tRaw('vouchers.save_error'));
     return;
   }
   toast(tRaw('vouchers.saved'), 'success');
   clearForm();
-  await ladeGutscheine();
+  await loadVouchers();
 }
 
-/** @param {string} id */
-export async function gutscheinLoeschen(id) {
-  const g = _vouchers.find(x => String(x.id) === String(id));
-  if (!g) return;
-  const password = await bestaetigeMitPasswort(
-    tRaw('vouchers.delete_title'),
-    tRaw('vouchers.delete_confirm', { nummer: groupNumber(g.number) }),
-    'loeschen',
-    { knopf: 'confirm.btn.endgueltig_loeschen', art: 'bd' },
-  );
-  if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', `/v1/vouchers/${id}`, { password, ...z }));
-  if (d === null) return;
-  if (!d?.success) {
-    toast(d?.error || tRaw('vouchers.delete_error'), 'error');
+/**
+ * Save, one button for both paths: if a file is in the field, the server reads it, and filled-in fields
+ * win. That way one can upload a PDF and add the amount oneself if it does not yield it.
+ */
+export async function saveVoucher() {
+  const number = el('v-number').value.trim();
+  const pin = el('v-pin').value.trim();
+  const voucherAmount = amountFromField('v-amount', 'common.value_negative');
+  const file = el('v-pdf')?.files?.[0] || null;
+  // All gaps at once: the server reported them one after the other. A PDF can deliver number and amount.
+  const empty = file ? [] : [!number && 'v-number', voucherAmount.ok && voucherAmount.value === null && 'v-amount'];
+  const missing = /** @type {string[]} */ (empty.filter(Boolean));
+  for (const id of missing) fieldError(id, tRaw('vouchers.required_missing'));
+  if (!voucherAmount.ok || missing.length) {
+    el(missing[0] ?? 'v-amount')?.focus();
     return;
   }
-  // Undo creates the card anew: only with fetched plaintext and without a PDF, which would get lost.
-  const k = _plaintext.get(g.id);
-  _plaintext.delete(g.id);
-  toast(
-    tRaw('vouchers.deleted'),
-    'success',
-    g.hat_pdf || !k
-      ? undefined
-      : {
-          text: tRaw('trash.undo'),
-          bleibt: true,
-          fn: async () => {
-            const r = await api('POST', '/v1/vouchers', {
-              number: k.number,
-              pin: k.pin || '',
-              amount: g.amount,
-              currency: g.currency,
-            });
-            if (!r?.success) {
-              toast(r?.error || tRaw('vouchers.save_error'), 'error');
-              return;
-            }
-            toast(tRaw('trash.restored'), 'success');
-            await ladeGutscheine();
-          },
-        },
-  );
-  await ladeGutscheine();
+  const v = { number, pin, amount: voucherAmount.value ?? '', currency: el('v-currency')?.value || 'CHF' };
+  if (_edited) await updateVoucher(v);
+  else if (file) await uploadVoucherPdf(file, v);
+  else await createVoucher(v);
 }
 
 /** @param {string} id */
-export async function gutscheinPinUmschalten(id) {
+export async function deleteVoucher(id) {
+  const g = _vouchers.find(x => String(x.id) === String(id));
+  if (!g) return;
+  // The password stays (a voucher is cash), but the server keeps the card for the undo: the toast
+  // restores it with PIN and PDF, as with the wanted list (js/deletion.js).
+  const password = await confirmDeleteWithPassword(
+    tRaw('vouchers.delete_title'),
+    tRaw('vouchers.delete_confirm', { number: groupNumber(g.number) }),
+    'delete',
+    { button: 'common.delete', kind: 'bd' },
+  );
+  if (password === null) return;
+  _plaintext.delete(g.id);
+  await deleteRestorable({
+    request: () => withSecondFactor(z => api('DELETE', `/v2/vouchers/${id}`, { password, ...z })),
+    message: tRaw('vouchers.deleted'),
+    undo: async () => {
+      const r = await api('POST', `/v2/vouchers/${id}/restore`);
+      if (!r?.success) toast(r?.error || tRaw('vouchers.save_error'), 'error');
+      return !!r?.success;
+    },
+    after: loadVouchers,
+  });
+  await loadVouchers();
+}
+
+/** @param {string} id */
+export async function toggleVoucherPin(id) {
   const n = Number(id);
   if (_visible.has(n)) _visible.delete(n);
   else if (await fetchPlaintext(n)) _visible.add(n);
   else return;
-  ladeGutscheine();
+  loadVouchers();
 }
 
 /**
@@ -416,82 +403,84 @@ export async function gutscheinPinUmschalten(id) {
  * buttons of its own for that would be duplicates.
  */
 /** @param {string} id */
-export async function gutscheinPdfOeffnen(id) {
+export async function openVoucherPdf(id) {
   const g = _vouchers.find(x => String(x.id) === String(id));
-  const f = await pdfFreigabe(`/v1/vouchers/${id}/pdf-freigabe`);
+  const f = await pdfRelease(`/v2/vouchers/${id}/pdf-grant`);
   if (!f) return;
-  const r = await apiRaw('GET', `/v1/vouchers/${id}/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
+  const r = await apiRaw('GET', `/v2/vouchers/${id}/pdf?ticket=${encodeURIComponent(f.ticket)}`, {
+    signal: f.deadline,
+  });
   if (!r.ok) {
     toast((await r.json().catch(() => ({}))).error || tRaw('settings.error'), 'error');
     return;
   }
-  const daten = await r.arrayBuffer();
-  openPdfViewer(URL.createObjectURL(new Blob([daten], { type: 'application/pdf' })), g ? g.number : 'PDF', {
-    daten,
-    fileName: `gutschein-${id}.pdf`,
+  const data = await r.arrayBuffer();
+  openPdfViewer(URL.createObjectURL(new Blob([data], { type: 'application/pdf' })), g ? g.number : 'PDF', {
+    data,
+    fileName: `voucher-${id}.pdf`,
   });
 }
 
 /**
  * Confirmation, then a ticket for exactly one fetch of the PDF (60 s).
- * @param {string} pfad
+ * @param {string} path
  */
-async function pdfFreigabe(pfad) {
-  const password = await bestaetigeMitPasswort(
-    tRaw('vouchers.pdf_freigabe_title'),
-    tRaw('vouchers.pdf_freigabe_text'),
-    'schloss',
-    { knopf: 'confirm.btn.pdf_oeffnen', art: 'bp' },
+async function pdfRelease(path) {
+  const password = await confirmDeleteWithPassword(
+    tRaw('vouchers.pdf_release_title'),
+    tRaw('vouchers.pdf_release_text'),
+    'lock',
+    { button: 'confirm.btn.pdf_open', kind: 'bp' },
   );
   if (password === null) return null;
-  const d = await withSecondFactor(z => api('POST', pfad, { password, ...z }));
+  const d = await withSecondFactor(z => api('POST', path, { password, ...z }));
   if (!d?.success) {
     if (d) toast(d.error || tRaw('settings.error'), 'error');
     return null;
   }
   // After the deadline the ticket no longer applies; a hanging fetch then aborts.
-  return { ticket: d.ticket, frist: AbortSignal.timeout(d.gueltig_sek * 1000) };
+  return { ticket: d.ticket, deadline: AbortSignal.timeout(d.valid_seconds * 1000) };
 }
 
 /**
  * Copy number or PIN, raw instead of grouped: the spaces are a reading aid at the checkout, a
  * payment field does not accept them. navigator.clipboard needs HTTPS, hence the fallback.
  */
-/** @param {string} id @param {string} feld */
-export async function gutscheinKopieren(id, feld) {
+/** @param {string} id @param {string} field */
+export async function copyVoucher(id, field) {
   const g = _vouchers.find(x => String(x.id) === String(id));
   if (!g) return;
   const k = await fetchPlaintext(g.id);
   if (!k) return;
-  const wert = feld === 'pin' ? k.pin || '' : String(k.number);
-  if (!wert) return;
-  let geklappt = false;
+  const value = field === 'pin' ? k.pin || '' : String(k.number);
+  if (!value) return;
+  let worked = false;
   try {
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(wert);
-      geklappt = true;
+      await navigator.clipboard.writeText(value);
+      worked = true;
     }
   } catch {
-    geklappt = false;
+    worked = false;
   }
-  if (!geklappt) {
+  if (!worked) {
     try {
-      const feldchen = document.createElement('textarea');
-      feldchen.value = wert;
+      const smallField = document.createElement('textarea');
+      smallField.value = value;
       // Outside the view instead of `display:none`: a hidden element cannot be selected, and
       // without a selection execCommand copies nothing.
-      feldchen.style.cssText = 'position:fixed;top:-1000px;opacity:0';
-      document.body.appendChild(feldchen);
-      feldchen.select();
-      geklappt = document.execCommand('copy');
-      feldchen.remove();
+      smallField.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(smallField);
+      smallField.select();
+      worked = document.execCommand('copy');
+      smallField.remove();
     } catch {
-      geklappt = false;
+      worked = false;
     }
   }
   toast(
-    tRaw(geklappt ? (feld === 'pin' ? 'vouchers.copied_pin' : 'vouchers.copied_number') : 'vouchers.copy_error'),
-    geklappt ? 'success' : 'error',
+    tRaw(worked ? (field === 'pin' ? 'vouchers.copied_pin' : 'vouchers.copied_number') : 'vouchers.copy_error'),
+    worked ? 'success' : 'error',
   );
 }
 
@@ -499,13 +488,13 @@ export async function gutscheinKopieren(id, feld) {
  * All vouchers as one PDF, via fetch instead of a link: the header X-Gutschein-Befunde says where the amount
  * could not be replaced — an <a href> would throw away exactly this information.
  */
-async function gutscheineExportieren() {
-  const f = await pdfFreigabe('/v1/vouchers/export/pdf-freigabe');
+async function exportVouchers() {
+  const f = await pdfRelease('/v2/vouchers/export/pdf-grant');
   if (!f) return;
   toast(tRaw('vouchers.export_running'), 'info');
   try {
-    const r = await apiRaw('GET', `/v1/vouchers/export/pdf?ticket=${encodeURIComponent(f.ticket)}`, {
-      signal: f.frist,
+    const r = await apiRaw('GET', `/v2/vouchers/export/pdf?ticket=${encodeURIComponent(f.ticket)}`, {
+      signal: f.deadline,
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
@@ -513,11 +502,11 @@ async function gutscheineExportieren() {
       return;
     }
     const blob = await r.blob();
-    /** @type {{ art?: string, grund?: string, number?: string }[]} */
-    let befunde = [];
+    /** @type {{ kind?: string, reason?: string, number?: string }[]} */
+    let findings = [];
     try {
-      const kopf = r.headers.get('X-Gutschein-Befunde');
-      if (kopf) befunde = JSON.parse(atob(kopf));
+      const header = r.headers.get('X-Gutschein-Befunde');
+      if (header) findings = JSON.parse(atob(header));
     } catch {
       /* without findings the PDF is fine anyway */
     }
@@ -526,7 +515,7 @@ async function gutscheineExportieren() {
     // is readable, otherwise from the date.
     const name =
       (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] ||
-      `brickinventory-gutscheine-${new Date().toISOString().slice(0, 10)}.pdf`;
+      `brickinventory-vouchers-${new Date().toISOString().slice(0, 10)}.pdf`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -538,19 +527,19 @@ async function gutscheineExportieren() {
 
     // The findings: 'unveraendert' now means exactly one thing — it should have been replaced and could not be.
     // "Was already right" is a kind of its own and no longer an open item.
-    const offen = befunde.filter(b => b.art === 'unveraendert' && b.grund);
-    if (!offen.length) {
-      toast(tRaw('vouchers.export_done', { n: befunde.length }), 'success');
+    const open = findings.filter(b => b.kind === 'unveraendert' && b.reason);
+    if (!open.length) {
+      toast(tRaw('vouchers.export_done', { n: findings.length }), 'success');
     } else {
       // tRaw instead of t(), because a toast is plain text: t() escapes, and 9'325 would visibly become
       // "9&#39;325". The numbers are in the message, so that one knows which card on paper carries the old
       // amount.
       toast(
-        tRaw('vouchers.export_done', { n: befunde.length }) +
+        tRaw('vouchers.export_done', { n: findings.length }) +
           ' — ' +
-          tRaw('vouchers.export_offen', { n: offen.length }) +
+          tRaw('vouchers.export_open', { n: open.length }) +
           ': ' +
-          offen.map(b => b.number).join(', '),
+          open.map(b => b.number).join(', '),
         'info',
       );
     }
@@ -566,60 +555,61 @@ async function gutscheineExportieren() {
  * voucher section, and whoever chooses something there expects it to apply. The server only accepts the value from an
  * admin — that is why the field is not even visible for everyone else (`admin-only` in index.html).
  */
-export async function gutscheinLandSpeichern() {
-  const feld = el('gutschein-land');
-  if (!feld) return;
-  const d = await api('POST', '/v1/settings', { gutschein_land: feld.value });
-  if (d?.success && settingsSnapshot) settingsSnapshot.gutschein_land = G('gutschein-land')?.value;
+export async function saveVoucherCountry() {
+  const field = el('voucher-country');
+  if (!field) return;
+  const d = await api('POST', '/v2/settings', { voucher_country: field.value });
+  if (d?.success && settingsSnapshot) settingsSnapshot.voucher_country = G('voucher-country')?.value;
   if (!_edited) {
     const cur = G('v-currency');
-    if (cur) cur.value = landCurrency();
+    if (cur) cur.value = countryCurrency();
   }
-  waehrungPruefen();
-  showLandCurrency();
-  await ladeGutscheine();
+  checkCurrency();
+  showCountryCurrency();
+  await loadVouchers();
   toast(d?.success ? tRaw('settings.saved') : d?.error || tRaw('settings.error'), d?.success ? 'success' : 'error');
 }
 
 /** The name of the chosen file next to the button — the native field showed it itself. @this {HTMLInputElement | undefined} */
-function gutscheinDateiGewaehlt() {
+function voucherFileSelected() {
   const name = el('v-pdf-name');
   if (!name) return;
-  const datei = this?.files?.[0];
-  name.textContent = datei ? datei.name : tRaw('vouchers.pdf_none');
+  const file = this?.files?.[0];
+  name.textContent = file ? file.name : tRaw('vouchers.pdf_none');
 }
 
 /** Below the issuing country: in which currency its cards are denominated. */
-function showLandCurrency() {
-  const z = el('gutschein-land-waehrung');
-  if (z) z.textContent = tRaw('vouchers.land_waehrung', { w: landCurrency() });
+function showCountryCurrency() {
+  const z = el('voucher-country-currency');
+  if (z) z.textContent = tRaw('vouchers.country_currency', { w: countryCurrency() });
 }
 
 registerActions({
-  waehrungPruefen,
-  gutscheinDateiGewaehlt,
-  gutscheineExportieren,
-  ladeGutscheine,
-  gutscheinSpeichern,
-  gutscheinBearbeiten,
-  gutscheinAbbrechen,
-  gutscheinLoeschen,
-  gutscheinPinUmschalten,
-  gutscheinPdfOeffnen,
-  gutscheinKopieren,
-  gutscheinLandSpeichern,
+  checkCurrency,
+  voucherFileSelected,
+  exportVouchers,
+  loadVouchers,
+  saveVoucher,
+  editVoucher,
+  cancelVoucher,
+  deleteVoucher,
+  toggleVoucherPin,
+  openVoucherPdf,
+  copyVoucher,
+  saveVoucherCountry,
 });
 
 // "More" collapses as soon as someone taps next to it, chooses inside it or presses Escape.
 if (typeof document !== 'undefined') {
   document.addEventListener('click', ev => {
-    const ziel = ev.target instanceof Element ? ev.target : null;
-    for (const d of document.querySelectorAll('details.v-mehr[open]'))
-      if (!d.contains(ziel) || ziel?.closest('.mehr-liste button')) /** @type {HTMLDetailsElement} */ (d).open = false;
+    const target = ev.target instanceof Element ? ev.target : null;
+    for (const d of document.querySelectorAll('details.v-more[open]'))
+      if (!d.contains(target) || target?.closest('.more-list button'))
+        /** @type {HTMLDetailsElement} */ (d).open = false;
   });
   document.addEventListener('keydown', ev => {
     if (ev.key !== 'Escape') return;
-    for (const d of document.querySelectorAll('details.v-mehr[open]')) {
+    for (const d of document.querySelectorAll('details.v-more[open]')) {
       /** @type {HTMLDetailsElement} */ (d).open = false;
       if (d.contains(document.activeElement)) /** @type {HTMLElement|null} */ (d.querySelector('summary'))?.focus();
     }

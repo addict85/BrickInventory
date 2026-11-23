@@ -97,7 +97,7 @@ test('signing and publishing only from main, and Gradle never sees the key', () 
     'der Beschreibungsschlüssel in eigener Environment',
   );
   const schluessel = schrittIn(apk, 'Release-Schlüssel bereitstellen');
-  assert.ok(schluessel.includes('\n        if: inputs.echt\n'), 'Secrets nur im echten Lauf');
+  assert.match(schluessel, /\n {8}if: inputs\.echt(?: && [^\n]+)?\n/, 'Secrets nur im echten Lauf');
   for (const geheim of ['KEYSTORE_BASE64', 'KEYSTORE_PASSWORT', 'KEY_ALIAS', 'KEY_PASSWORT'])
     assert.match(schluessel, new RegExp(`: \\$\\{\\{ secrets\\.${geheim} \\}\\}`), `${geheim} fehlt`);
   assert.match(
@@ -110,12 +110,15 @@ test('signing and publishing only from main, and Gradle never sees the key', () 
   for (const geheim of ['BESCHREIBUNG_SCHLUESSEL', 'BESCHREIBUNG_PASS'])
     assert.match(bschluessel, new RegExp(`: \\$\\{\\{ secrets\\.${geheim} \\}\\}`), `${geheim} fehlt`);
   assert.match(schrittIn(apk, 'Signieren'), /ECHT: \$\{\{ inputs\.echt \}\}/);
-  // Only these two steps name secrets; no other step of an Android workflow.
+  // Only these steps name secrets; no other step of an Android workflow. The ruleset check
+  // reads with its own read-only token, nothing else.
+  const regeln = schrittIn(apk, 'Rulesets ohne Umgehung');
+  assert.deepEqual(regeln.match(/secrets\.\w+/g), ['secrets.REGELN_LESETOKEN']);
   const andere = ['android.yml', 'android-signieren.yml', 'android-release.yml', 'android-bescheinigung.yml'].flatMap(
     d =>
       lies(d)
         .split(/\n {6}- name: /)
-        .filter(t => !/^(Release-Schlüssel|Beschreibungsschlüssel) bereitstellen\n/.test(t))
+        .filter(t => !/^((Release-Schlüssel|Beschreibungsschlüssel) bereitstellen|Rulesets ohne Umgehung)\n/.test(t))
         .join('\n')
         .split('\n')
         .filter(z => !z.trimStart().startsWith('#') && /secrets\./.test(z))
@@ -209,7 +212,7 @@ test('signing in separate jobs without project code, checked and published after
 // Counter-checks (measured 02.11.2026): in the job `pruefsummen-vorschlagen` again
 // `git push origin "HEAD:$GITHUB_REF_NAME"` → red (push target not the own
 // branch); `pull-requests: write` additionally in the job `pruefsummen` → red „… nur
-// der vorschlagende Job …“; in the job `bildschirmfotos-einchecken` the PNG check
+// der vorschlagende Job …“; in the job `screenshots-commit` the PNG check
 // removed → red „eingecheckt wird nur PNG“.
 test('checksums come as a pull request, screenshots only as PNG', () => {
   const yml = fs
@@ -240,16 +243,16 @@ test('checksums come as a pull request, screenshots only as PNG', () => {
     'build',
     'uebergabe',
     'signieren',
-    'gegenproben',
+    'counter-checks',
     'pruefsummen',
     'pruefsummen-zusammenfassen',
-    'bildschirmfotos',
-    'bildschirmfotos-einchecken',
+    'screenshots',
+    'screenshots-commit',
   ])
     assert.doesNotMatch(job(name), /pull-requests: write/, `${name}: nur der vorschlagende Job legt Pull-Requests an`);
-  const bilder = job('bildschirmfotos-einchecken');
+  const bilder = job('screenshots-commit');
   assert.match(bilder, /89504e470d0a1a0a/, 'eingecheckt wird nur PNG');
-  assert.match(bilder, /git add Android-App\/app\/src\/test\/bildschirmfotos\/\*\.png/);
+  assert.match(bilder, /git add Android-App\/app\/src\/test\/screenshots\/\*\.png/);
 });
 
 /** The run block of a step, without the YAML indentation. */
@@ -465,4 +468,86 @@ esac
     0,
     'ein ausgenommenes Etikett gilt als geschützt',
   );
+});
+
+/** A `gh api` stand-in: the answer for a path lies in <path with _ for /?&=>.json; --jq like gh. */
+function apiOrt(t) {
+  const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'api-'));
+  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(ort, 'gh'),
+    `#!/bin/bash
+shift; P=$1; shift; JQ=
+while [ $# -gt 0 ]; do case $1 in --jq) JQ=$2; shift 2 ;; *) shift ;; esac; done
+F="$GH_ERSATZ/$(printf '%s' "$P" | tr '/?&=' '____').json"
+[ -f "$F" ] || exit 1
+if [ -n "$JQ" ]; then jq -r "$JQ" "$F"; else cat "$F"; fi
+`,
+    { mode: 0o755 },
+  );
+  const antwort = (pfad, wert) =>
+    fs.writeFileSync(path.join(ort, pfad.replace(/[/?&=]/g, '_') + '.json'), JSON.stringify(wert));
+  const lauf = (skript, env = {}) =>
+    spawnSync('bash', ['-e', '-c', skript], {
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${ort}:${process.env.PATH}`, GH_ERSATZ: ort, GITHUB_REPOSITORY: 'o/r', ...env },
+    });
+  return { antwort, lauf };
+}
+
+// Four eyes: whoever sets the tag does not approve their own run, in both environments.
+// Counter-checks (local, node --test): in the job signatur the self-review check back to
+// `::warning` without exit → red „release: eigene Freigabe …“; the same in the job
+// beschreibung removed → red „release-beschreibung: eigene Freigabe …“.
+test('both environments refuse self-review', t => {
+  for (const [job, umgebung] of [
+    ['signatur', 'release'],
+    ['beschreibung', 'release-beschreibung'],
+  ]) {
+    const skript = runVon(jobIn('android-signieren.yml', job), 'Environment ist geschützt');
+    const api = apiOrt(t);
+    const umgebungMit = selbst =>
+      api.antwort(`repos/o/r/environments/${umgebung}`, {
+        can_admins_bypass: false,
+        deployment_branch_policy: { custom_branch_policies: true },
+        protection_rules: [{ type: 'required_reviewers', prevent_self_review: selbst, reviewers: [{ type: 'User' }] }],
+      });
+    api.antwort(`repos/o/r/environments/${umgebung}/deployment-branch-policies`, {
+      branch_policies: [{ type: 'branch', name: 'main' }],
+    });
+    umgebungMit(true);
+    const gut = api.lauf(skript, { UMGEBUNG: umgebung });
+    assert.equal(gut.status, 0, gut.stdout + gut.stderr);
+    umgebungMit(false);
+    const selbst = api.lauf(skript, { UMGEBUNG: umgebung });
+    assert.notEqual(selbst.status, 0, `${umgebung}: eigene Freigabe geht durch`);
+    assert.match(selbst.stdout, /Prevent self-review/);
+  }
+});
+
+// No bypass for main, for tags only the admin role (it alone creates tags, step 3).
+// Counter-checks (local, node --test): FREMD for branch rulesets fixed to 0 → red „ein
+// Umgehungsrecht auf main“; the `has("bypass_actors")` check removed → red „eine nicht
+// lesbare Bypass-Liste …“; the tag filter counting every actor → red „Admin-Rolle …“.
+test('signing only without bypass actors in the rulesets', t => {
+  const skript = runVon(lies('android-signieren.yml'), 'Rulesets ohne Umgehung');
+  const api = apiOrt(t);
+  const admin = { actor_type: 'RepositoryRole', actor_id: 5, bypass_mode: 'always' };
+  const app = { actor_type: 'Integration', actor_id: 77, bypass_mode: 'always' };
+  const stand = (main, tag) => {
+    api.antwort('repos/o/r/rules/branches/main', [{ type: 'pull_request', ruleset_id: 1 }]);
+    api.antwort('repos/o/r/rulesets?targets=tag&includes_parents=true&per_page=100', [
+      { id: 2, target: 'tag', enforcement: 'active' },
+    ]);
+    api.antwort('repos/o/r/rulesets/1?includes_parents=true', { name: 'main', target: 'branch', ...main });
+    api.antwort('repos/o/r/rulesets/2?includes_parents=true', { name: 'Etiketten', target: 'tag', ...tag });
+    return api.lauf(skript, { STANDARD: 'x' });
+  };
+  const gut = stand({ bypass_actors: [] }, { bypass_actors: [admin] });
+  assert.equal(gut.status, 0, 'Admin-Rolle bei den Etiketten ' + gut.stdout + gut.stderr);
+  assert.notEqual(stand({ bypass_actors: [admin] }, { bypass_actors: [] }).status, 0, 'ein Umgehungsrecht auf main');
+  const blind = stand({}, { bypass_actors: [] });
+  assert.notEqual(blind.status, 0, 'eine nicht lesbare Bypass-Liste gilt als leer');
+  assert.match(blind.stdout, /REGELN_LESETOKEN/);
+  assert.notEqual(stand({ bypass_actors: [] }, { bypass_actors: [app] }).status, 0, 'eine App in der Bypass-Liste der Etiketten');
 });

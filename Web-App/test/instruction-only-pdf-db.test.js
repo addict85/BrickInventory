@@ -1,11 +1,11 @@
 /**
  * A downloaded instruction only lands in the shared cache (and goes
  * from there to all accounts) if it starts with `%PDF-`. Measured on
- * setAnleitungenLaden: the sources and the network are replaced, database
+ * loadSetInstructions: the sources and the network are replaced, database
  * and disk are real.
  *
  * Counter-checks (measured on 08.11.2026, each alone):
- *   A  in setAnleitungenLaden() `PDF_START` no longer passed → red:
+ *   A  in loadSetInstructions() `PDF_START` no longer passed → red:
  *      “a file without %PDF- is not stored” (file lies there, path stands
  *      in the table)
  *   B  in downloadFile() the block `if (anfang && …)` removed → the same red
@@ -22,9 +22,9 @@ const { PassThrough } = require('node:stream');
 const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-anleitung-'));
-process.env.APP_ROOT = WURZEL;
-test.after(() => fs.rmSync(WURZEL, { recursive: true, force: true }));
+const ROOT_CERT = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-anleitung-'));
+process.env.APP_ROOT = ROOT_CERT;
+test.after(() => fs.rmSync(ROOT_CERT, { recursive: true, force: true }));
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
@@ -35,7 +35,7 @@ const URLS = ['https://cdn.rebrickable.com/media/echt.pdf', 'https://cdn.rebrick
 S.testSources(null, {
   scrapeInstructions: async () => URLS.map((url, i) => ({ url, description: `Anleitung ${i}` })),
 });
-const { setAnleitungenLaden } = _req('src/catalog/instructions.js');
+const { loadSetInstructions } = _req('src/catalog/instructions.js');
 
 const CONTENT = {
   [URLS[0]]: Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(3000, 7)]),
@@ -51,7 +51,7 @@ test('instructions only with a PDF start', async t => {
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [sn]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const echt = https.get;
+  const original = https.get;
   const fang = (/** @type {any} */ url, /** @type {any} */ _opt, /** @type {any} */ cb) => {
     /** @type {any} */ const req = new EventEmitter();
     req.setTimeout = () => req;
@@ -67,24 +67,26 @@ test('instructions only with a PDF start', async t => {
   };
   https.get = /** @type {any} */ (fang);
   t.after(() => {
-    https.get = echt;
+    https.get = original;
   });
 
-  await setAnleitungenLaden(sn, true);
+  await loadSetInstructions(sn, true);
 
-  const zeilen = await db.all('SELECT url, local_path FROM shared_instructions WHERE set_number = $1 ORDER BY url', [
+  const lines = await db.all('SELECT url, local_path FROM shared_instructions WHERE set_number = $1 ORDER BY url', [
     sn,
   ]);
-  const pfad = u => zeilen.find(z => z.url === u)?.local_path;
-  const onDisk = rel => fs.existsSync(path.join(WURZEL, rel));
+  const localPath = u => lines.find(z => z.url === u)?.local_path;
+  const onDisk = rel => fs.existsSync(path.join(ROOT_CERT, rel));
 
   await t.test('a real PDF is stored and registered', () => {
-    assert.ok(pfad(URLS[0]), 'der Pfad steht in der Tabelle');
-    assert.ok(onDisk(pfad(URLS[0])), 'die Datei liegt auf der Platte');
+    assert.ok(localPath(URLS[0]), 'the path is in the table');
+    assert.ok(onDisk(localPath(URLS[0])), 'the file is on disk');
   });
 
   await t.test('a file without %PDF- is not stored', () => {
-    assert.equal(pfad(URLS[1]), null, 'ohne Datei kein Pfad in der Tabelle');
-    assert.deepEqual(fs.readdirSync(path.join(WURZEL, 'data', 'instructions')).sort(), [path.basename(pfad(URLS[0]))]);
+    assert.equal(localPath(URLS[1]), null, 'no path in the table without a file');
+    assert.deepEqual(fs.readdirSync(path.join(ROOT_CERT, 'data', 'instructions')).sort(), [
+      path.basename(localPath(URLS[0])),
+    ]);
   });
 });

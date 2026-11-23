@@ -8,14 +8,14 @@ test('border and text alternating', () => {
   const s = new DefaultSerializer();
   s.writeHeader();
   s.writeValue({ type: 'test:diagnostic', data: { nesting: 0, message: 'rahmen', file: __filename } });
-  const nutzlast = s.releaseBuffer();
+  const payload = s.releaseBuffer();
   const k = new DefaultSerializer();
   k.writeHeader();
-  const laenge = Buffer.alloc(4);
-  laenge.writeUInt32BE(nutzlast.length);
-  const rahmen = Buffer.concat([k.releaseBuffer(), laenge, nutzlast]);
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(payload.length);
+  const frame = Buffer.concat([k.releaseBuffer(), len, payload]);
   for (let i = 0; i < 300; i++) {
-    process.stdout.write(rahmen);
+    process.stdout.write(frame);
     process.stdout.write('✅ PostgreSQL schema ready\n');
   }
 });

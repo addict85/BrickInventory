@@ -17,7 +17,7 @@ plugins {
 // CI compares against them as soon as some are checked in, and
 // records otherwise (android.yml, step „Bildschirmfotos vergleichen oder aufnehmen?“).
 roborazzi {
-    outputDir.set(file("src/test/bildschirmfotos"))
+    outputDir.set(file("src/test/screenshots"))
 }
 
 // Version from Git so that the same state yields the same version: versionName from
@@ -26,11 +26,11 @@ roborazzi {
 // CI clones the full history for that (android.yml: fetch-depth: 0).
 val VERSION_CODE_BASE = 200_000_000
 fun git(vararg args: String): String? = runCatching {
-    val lauf = providers.exec {
+    val jobRun = providers.exec {
         commandLine("git", *args)
         isIgnoreExitValue = true
     }
-    if (lauf.result.get().exitValue == 0) lauf.standardOutput.asText.get().trim().ifEmpty { null } else null
+    if (jobRun.result.get().exitValue == 0) jobRun.standardOutput.asText.get().trim().ifEmpty { null } else null
 }.getOrNull()
 val commitCount: Int? = git("rev-list", "--count", "HEAD")?.toIntOrNull()
 val generatedVersionName: String =
@@ -50,8 +50,10 @@ ksp {
 android {
     // Robolectric reads the app's resources, fonts and manifest.
     testOptions.unitTests.isIncludeAndroidResources = true
-    // ModulgrenzenTest runs the same edge rule as the task modulkantenPruefen.
-    sourceSets.getByName("test").kotlin.directories.add("../build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten")
+    // The app's graphs with sample world and test ViewModels, for every test that runs a destination.
+    testFixtures.enable = true
+    // ModuleBoundariesTest runs the same edge rule as the task moduleEdgesCheck.
+    sourceSets.getByName("test").kotlin.directories.add("../build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges")
 
     namespace  = "ch.brickinventoryapp"
 
@@ -89,7 +91,7 @@ android {
                 storePassword = signatureValue("BRICK_KEYSTORE_PASSWORT", "brickKeystorePasswort")
                 keyAlias      = signatureValue("BRICK_KEY_ALIAS", "brickKeyAlias")
                 keyPassword   = signatureValue("BRICK_KEY_PASSWORT", "brickKeyPasswort")
-                // Like CI (apksigner in job signieren): no v1 — from minSdk 30
+                // Like CI (apksigner in the signing job): no v1 — from minSdk 30
                 // no device checks the JAR signature any more —, v3 for a later
                 // key rotation.
                 enableV1Signing = false
@@ -100,6 +102,12 @@ android {
     }
 
     buildTypes {
+        // Its own package next to the release: a debug build (debuggable, run-as can read
+        // its files) never replaces the signed app or reaches its data, and Play rejects it.
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             // findByName instead of getByName: without a keystore the configuration
             // does not exist, and `signingConfig = null` means
@@ -118,14 +126,14 @@ android {
     lint {
         // Lint runs on release builds and aborts on an error: a
         // finding of level Error is not a report but a defect. Warnings
-        // are counted by tools/lint-count.py against an upper limit. No baseline —
+        // are counted by `tools/lint-count.py` against an upper limit. No baseline —
         // what is reported gets fixed.
         checkReleaseBuilds = true
         abortOnError = true
         warningsAsErrors = false
         // A run here checks all modules as if they were one: resources from
         // core-resources count as used when an area reads them, and the
-        // report stays the one file that tools/lint-count.py counts.
+        // report stays the one file that `tools/lint-count.py` counts.
         checkDependencies = true
     }
 
@@ -156,7 +164,7 @@ android {
 }
 
 // Pin DataStore to the catalog's version: a transitive bump would yield
-// an APK different from the checked one. The 16 KB alignment is measured by tools/apk-alignment.py
+// an APK different from the checked one. The 16 KB alignment is measured by `tools/apk-alignment.py`
 // on the built APK.
 val datastore = libs.versions.datastore.get()
 configurations.configureEach {
@@ -232,11 +240,30 @@ dependencies {
     implementation(project(":feature-account"))
     implementation(project(":feature-management"))
     testImplementation(project(":core-testing"))
+    testImplementation(testFixtures(project(":core-state")))
+    // The fixtures compile against what the unit tests bring anyway; compileOnly, so the device
+    // tests (which see test fixtures too) get no Robolectric or test server on their classpath.
+    testFixturesCompileOnly(testFixtures(project(":core-state")))
+    testFixturesCompileOnly(platform(libs.androidx.compose.bom))
+    for (lib in listOf(libs.robolectric, libs.androidx.ui.test.junit4, libs.androidx.test.ext.junit,
+        libs.androidx.navigation.compose, libs.coil.compose, libs.hilt.android)) {
+        testFixturesCompileOnly(lib)
+    }
+    for (m in listOf(":core-model", ":core-resources", ":core-data", ":core-security", ":core-update", ":core-services", ":core-ui",
+        ":core-state", ":core-session", ":feature-collection", ":feature-parts", ":feature-finances", ":feature-account")) {
+        testFixturesCompileOnly(project(m))
+    }
+    // The same lower bounds as for the module's other classpaths (build-logic, androidxAtLeast).
+    for (lib in listOf(libs.androidx.arch.core.common, libs.androidx.arch.core.runtime, libs.androidx.tracing,
+        libs.androidx.emoji2, libs.androidx.emoji2.views.helper, libs.androidx.activity.ktx)) {
+        constraints.add("testFixturesCompileOnly", lib)
+    }
+    constraints.add("testFixturesCompileOnly", "com.google.guava:guava:${libs.versions.guavaAtLeast.get()}")
     // The test servers respond in wire format.
     testImplementation(project(":core-contract"))
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
-    // DevicesProtectionTest builds the TokenAblage on its own DataStore.
+    // DevicesProtectionTest builds the TokenStore on its own DataStore.
     testImplementation(libs.androidx.datastore)
     implementation(libs.androidx.core.ktx)
     // Splash screen instead of a white window on cold start (MainActivity.installSplashScreen).

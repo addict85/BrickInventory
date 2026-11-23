@@ -1,0 +1,17 @@
+Gegenprobe: the() legt einen festen Satz in Ergebnis.Fehler.Server statt den des Servers
+Modul: app
+Test: ch.brickinventoryapp.app.ErrorMessageLayerTest
+Rot: the data layer builds no message for the user
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Fetch.kt
+@@ -174,7 +174,7 @@
+             val text = body.text ?: ""
+             val code = ErrorCode.from(body.code)
+             if (response.code() == 401) Outcome.Failure.Rejected(text, code)
+-            else Outcome.Failure.Server(response.code(), text, code)
++            else Outcome.Failure.Server(response.code(), "Serverfehler", code)
+         }
+     } catch (e: kotlinx.coroutines.CancellationException) {
+         // Cancelled coroutines (e.g. search debounce replaces request) must

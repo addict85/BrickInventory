@@ -36,5 +36,5 @@ caddy/
 Thumbs.db
 *.swp
 
-# Abdeckungsbericht (npm run abdeckung)
+# Abdeckungsbericht (npm run coverage)
 coverage

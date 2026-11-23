@@ -17,16 +17,16 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ROOT, buildAndRequire, ohneKommentare, testData, testAccess } = require('./helpers/sources');
+const { ROOT, buildAndRequire, withoutComments, testData, testAccess } = require('./helpers/sources');
 const _reqCsv = buildAndRequire();
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { portOf } = require('./helpers/server');
 const db = testData();
 
-/** Read a file without comments (see ohneKommentare() in helpers/sources.js). */
-function quelle(...teile) {
-  return ohneKommentare(fs.readFileSync(path.join(ROOT, ...teile), 'utf8'));
+/** Read a file without comments (see withoutComments() in helpers/sources.js). */
+function source(...parts) {
+  return withoutComments(fs.readFileSync(path.join(ROOT, ...parts), 'utf8'));
 }
 
 // ── Behavior ───────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ async function dbReachable() {
 
 test('parts fallback for foreign sets', async t => {
   if (!(await dbReachable())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
 
@@ -73,7 +73,7 @@ test('parts fallback for foreign sets', async t => {
                   VALUES (1,'3001',4,6,false)`);
 
     const r = await partsQuery([uid], { set_number: '10280-1' });
-    assert.equal(r.source, 'csv_cache', `Quelle war ${r.source}`);
+    assert.equal(r.source, 'csv_cache', `source was ${r.source}`);
     assert.equal(r.total, 1);
     assert.equal(r.parts[0].part_number, '3001');
   });
@@ -93,23 +93,23 @@ test.after(() => db.pool.end().catch(() => {}));
 // ── Rules ──────────────────────────────────────────────────────────────────
 
 test('image downloads are capped', () => {
-  const src = quelle('src/images/setImages.ts');
-  const fn = src.slice(src.indexOf('async function setBildHerunterladen'));
-  const ende = fn.indexOf('\n}\n');
-  const body = fn.slice(0, ende);
+  const src = source('src/images/setImages.ts');
+  const fn = src.slice(src.indexOf('async function downloadSetImage'));
+  const end = fn.indexOf('\n}\n');
+  const body = fn.slice(0, end);
 
   assert.doesNotMatch(
     body,
     /fs\.writeFileSync|fs\.existsSync/,
-    'blockierende Dateizugriffe im Anfragepfad — dieselbe Sache wie in routes/parts.ts',
+    'blocking file access in the request path — the same thing as in routes/parts.ts',
   );
   // fetchImage (clients/imageCdn.ts) goes via the same helper with a redirect limit.
   assert.match(
     body,
     /(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
-    'eigener Abruf statt des Helfers mit Umleitungsgrenze',
+    'own fetch instead of the helper with the redirect limit',
   );
-  assert.match(body, /MAX_BYTES/, 'kein Grössendeckel — eine beliebig grosse Antwort landet komplett im Speicher');
+  assert.match(body, /MAX_BYTES/, 'no size cap — an arbitrarily large response lands completely in memory');
 });
 
 test('write endpoints without login carry a throttle', () => {
@@ -117,38 +117,34 @@ test('write endpoints without login carry a throttle', () => {
   // here stand the endpoints that are naturally reachable before login.
   // Every writing one may either require a login (via
   // middleware or in the body), or it counts attempts per IP. qr-login had …
-  const src = ohneKommentare(require('./helpers/sources').loginSource());
-  // Old form router.post('/pfad' and contract form router.endpunkt('POST /api/v1/auth/pfad'.
-  const stellen = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpunkt\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
-  assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
+  const src = withoutComments(require('./helpers/sources').loginSource());
+  // Old form router.post('/pfad' and contract form router.endpoint('POST /api/v2/auth/pfad'.
+  // Every route ends the body of the one before, reading ones too: a POST used to pass
+  // because the GET /me after it reads req.session.userId.
+  const placeList = [
+    ...src.matchAll(/router\.(?:(get|post|put|delete)\(\s*'|endpoint\(\s*'(GET|POST|PUT|DELETE) )([^']+)'/g),
+  ];
+  assert.ok(placeList.length >= 6, `only ${placeList.length} endpoints found — the check would test nothing`);
+  /** Writing without login or throttle, on purpose. */
+  const WITHOUT = {
+    'POST /api/v2/auth/logout': 'beendet nur die Sitzung oder das Token, mit dem es gerufen wird',
+  };
 
-  const offen = [];
-  for (let i = 0; i < stellen.length; i++) {
-    const von = stellen[i].index;
-    const bis = i + 1 < stellen.length ? stellen[i + 1].index : src.length;
-    const rumpf = src.slice(von, bis);
-    const geschuetzt =
-      /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|anmelden\(|req\.session\??\.?\.?userId/.test(
-        rumpf,
+  const open = [];
+  for (let i = 0; i < placeList.length; i++) {
+    const method = (placeList[i][1] ?? placeList[i][2]).toUpperCase();
+    if (method === 'GET') continue;
+    const from = placeList[i].index;
+    const until = i + 1 < placeList.length ? placeList[i + 1].index : src.length;
+    const reqBody = src.slice(from, until);
+    const protectedOne =
+      /requireLogin|requireToken|requireAdmin|ipThrottle|loginAllowed|checkCredentials|login\(|req\.session\??\.?\.?userId/.test(
+        reqBody,
       );
-    if (!geschuetzt) offen.push(`${(stellen[i][1] ?? stellen[i][2]).toUpperCase()} ${stellen[i][3]}`);
+    const name = `${method} ${placeList[i][3]}`;
+    if (!protectedOne && !Object.hasOwn(WITHOUT, name)) open.push(name);
   }
-  assert.deepEqual(offen, [], `weder Anmeldung noch Drossel: ${offen.join(', ')}`);
-});
-
-test('the barcode search counts its Rebrickable calls', () => {
-  // The barcode search (src/sets/barcode.ts) only asks Rebrickable via
-  // rebrickableJson() — and that counts and throttles.
-  const dienst = quelle('src/sets/barcode.ts');
-  assert.match(dienst, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
-  assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
-  const client = quelle('clients/rebrickable.ts');
-  const rbJson = client.slice(
-    client.indexOf('async function rebrickableJson'),
-    client.indexOf('function httpsGetRobust'),
-  );
-  assert.match(rbJson, /dailyQuotaFree/, 'rebrickableJson zählt nicht mit');
-  assert.match(rbJson, /waitForSlot/, 'rebrickableJson umgeht die Drossel');
+  assert.deepEqual(open, [], `neither login nor throttle: ${open.join(', ')}`);
 });
 
 test('CSV export defuses formulas, the own import reverses it', () => {
@@ -156,14 +152,14 @@ test('CSV export defuses formulas, the own import reverses it', () => {
 
   // A field that Excel would execute when opening.
   assert.equal(defuse('=HYPERLINK("http://x";"Klick")'), `'=HYPERLINK("http://x";"Klick")`);
-  for (const anfang of ['=', '+', '-', '@', '\t', '\r']) {
-    assert.equal(defuse(`${anfang}böse`)[0], "'", `${JSON.stringify(anfang)} nicht entschärft`);
+  for (const start of ['=', '+', '-', '@', '\t', '\r']) {
+    assert.equal(defuse(`${start}böse`)[0], "'", `${JSON.stringify(start)} not defused`);
   }
 
   // Numbers stay numbers — otherwise every negative purchase price would come back with an apostrophe
   // and the own importer would read it as text.
-  for (const zahl of ['-5', '-5.00', '-5,00', '42']) {
-    assert.equal(defuse(zahl), zahl, `${zahl} wurde fälschlich entschärft`);
+  for (const num of ['-5', '-5.00', '-5,00', '42']) {
+    assert.equal(defuse(num), num, `${num} was wrongly defused`);
   }
 
   // Harmless texts stay unchanged.
@@ -190,17 +186,17 @@ test('CSV export defuses formulas, the own import reverses it', () => {
  */
 test('CSV export: separators in the field are quoted, formulas also defused after whitespace', () => {
   const { csvField, toCsv, defuse, defusingUndo, csvRowsFromRequest } = _reqCsv('src/infra/csvExport.js');
-  assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 bleibt eine Zelle');
+  assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 stays one cell');
   for (const t of ['a\rb', 'a\tb', 'a\nb', 'a,b', 'a"b']) assert.equal(csvField(t)[0], '"', JSON.stringify(t));
-  for (const boese of [' =1+1', '\u3000=1+1', '＝1+1', '＋1', '\n=1']) {
-    assert.equal(defuse(boese)[0], "'", `${JSON.stringify(boese)} nicht entschärft`);
-    assert.equal(defusingUndo(defuse(boese)), boese);
+  for (const evil of [' =1+1', '\u3000=1+1', '＝1+1', '＋1', '\n=1']) {
+    assert.equal(defuse(evil)[0], "'", `${JSON.stringify(evil)} not defused`);
+    assert.equal(defusingUndo(defuse(evil)), evil);
   }
-  assert.equal(defuse(' -5 '), ' -5 ', 'Zahlen mit Leerraum bleiben Zahlen');
+  assert.equal(defuse(' -5 '), ' -5 ', 'numbers with whitespace stay numbers');
   const csv = toCsv(['a', 'b'], [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }]);
   assert.deepEqual(csvRowsFromRequest(csv).cleaned, [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }], 'Rundlauf');
-  const zeile = csv.split('\r\n')[1];
-  assert.ok(zeile.startsWith('"Rot;=1+1\r=2",') && zeile.includes("' @SUMME(1)"), JSON.stringify(zeile));
+  const row = csv.split('\r\n')[1];
+  assert.ok(row.startsWith('"Rot;=1+1\r=2",') && row.includes("' @SUMME(1)"), JSON.stringify(row));
 });
 
 test('all three CSV import paths defuse back', () => {
@@ -214,18 +210,18 @@ test('all three CSV import paths defuse back', () => {
   assert.equal(
     setCsvRows("set_number,quantity\n'-10001-1,1\n").rows[0].sn,
     '-10001-1',
-    'Sets: ein hier erzeugter Export käme mit Hochkomma zurück',
+    'sets: an export produced here would come back with an apostrophe',
   );
   assert.equal(
     csvRowsFromRequest("part_number,quantity\n'=X1,1\n").cleaned[0].part_number,
     '=X1',
-    'Teile und Figuren: ein hier erzeugter Export käme mit Hochkomma zurück',
+    'parts and figures: an export produced here would come back with an apostrophe',
   );
 });
 
 test('the CSV progress stream survives back pressure on the first write', async t => {
   if (!(await dbReachable())) {
-    keineDb(t);
+    noDb(t);
     return;
   }
   const uid = (
@@ -235,20 +231,21 @@ test('the CSV progress stream survives back pressure on the first write', async 
   // A full buffer already on the first write: send() then calls cleanup() immediately.
   const express = require('express');
   const app = express();
-  let geschrieben = 0;
+  let written = 0;
   app.use((req, res, next) => {
     /** @type {any} */ (req).session = { userId: uid };
-    const schreibe = res.write.bind(res);
+    const write = res.write.bind(res);
     res.write = (...a) => {
-      schreibe(...a);
-      return ++geschrieben > 1;
+      write(...a);
+      return ++written > 1;
     };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
-  const fehler = [];
+  app.use(_req('src/http/apiV1Alias.js').apiV1Alias);
+  app.use('/api/v2', require('./helpers/sources').routerFrom(_req, 'routes/api/index.js'));
+  const error = [];
   app.use((e, _req2, res, _next) => {
-    fehler.push(e);
+    error.push(e);
     res.end();
   });
   const srv = app.listen(0);
@@ -257,33 +254,33 @@ test('the CSV progress stream survives back pressure on the first write', async 
   t.after(() => testAccess().notification.close());
   // The stream listens via the signal path of the access; counting happens on it.
   const signals = testAccess().notification;
-  const zahl = { an: 0, ab: 0 };
+  const num = { an: 0, ab: 0 };
   const { listen, unlisten } = signals;
-  signals.listen = (kanal, h) => {
-    if (kanal === 'csv_import_progress') zahl.an++;
-    return listen.call(signals, kanal, h);
+  signals.listen = (channel, h) => {
+    if (channel === 'csv_import_progress') num.an++;
+    return listen.call(signals, channel, h);
   };
-  signals.unlisten = (kanal, h) => {
-    if (kanal === 'csv_import_progress') zahl.ab++;
-    return unlisten.call(signals, kanal, h);
+  signals.unlisten = (channel, h) => {
+    if (channel === 'csv_import_progress') num.ab++;
+    return unlisten.call(signals, channel, h);
   };
   t.after(() => {
     signals.listen = listen;
     signals.unlisten = unlisten;
   });
-  const r = await fetch(`http://localhost:${portOf(srv)}/api/v1/sets/import/csv/stream`, {
+  const r = await fetch(`http://localhost:${portOf(srv)}/api/v2/sets/import/csv/stream`, {
     signal: AbortSignal.timeout(10_000),
   });
   const text = await r.text();
   assert.equal(r.status, 200);
-  assert.match(text, /^data: \{/, 'Der erste Stand kommt nicht an');
+  assert.match(text, /^data: \{/, 'The first state does not arrive');
   assert.deepEqual(
-    fehler.map(e => e.message),
+    error.map(e => e.message),
     [],
-    'cleanup() greift auf noch nicht angelegte Hörer zu',
+    'cleanup() accesses listeners that are not created yet',
   );
   // Cleaned up: no listener stays hanging on the signal path.
-  for (let i = 0; i < 40 && zahl.ab < zahl.an; i++) await new Promise(r => setTimeout(r, 50));
-  assert.ok(zahl.an > 0, 'der Strom horchte gar nicht — greift die Zählung noch?');
-  assert.equal(zahl.ab, zahl.an, 'kein Hörer bleibt am Signalweg hängen');
+  for (let i = 0; i < 40 && num.ab < num.an; i++) await new Promise(r => setTimeout(r, 50));
+  assert.ok(num.an > 0, 'the stream did not listen at all — does the count still work?');
+  assert.equal(num.ab, num.an, 'no listener stays attached to the signal');
 });

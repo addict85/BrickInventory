@@ -10,9 +10,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ROOT, ohneKommentare, checkParameter } = require('./helpers/sources');
+const { ROOT, withoutComments, checkParameter } = require('./helpers/sources');
 
-const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+const read = rel => withoutComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 // The query that REDEEMS the token: registration and new address both carry
 // it in new_email_token since round 13 (verification_token is empty).
@@ -33,7 +33,7 @@ test('email verification only lives in one place', async t => {
     // type annotation is an improvement and must not knock over a
     // test.
     checkParameter(
-      lies('src/account/loginCheck.ts'),
+      read('src/account/loginCheck.ts'),
       'verifyEmailToken',
       ['token'],
       'die gemeinsame Verifikationslogik',
@@ -41,40 +41,37 @@ test('email verification only lives in one place', async t => {
   });
 
   await t.test('the verification query appears exactly once in the tree', () => {
-    const treffer = CANDIDATES.filter(rel => QUERY.test(lies(rel)));
+    const hits = CANDIDATES.filter(rel => QUERY.test(read(rel)));
     assert.deepEqual(
-      treffer,
+      hits,
       ['src/account/repository/accounts.ts'],
-      'Die Abfrage nach email_neu_token gehört ausschliesslich in ' +
-        'adoptEmailNew(). Gefunden in: ' +
-        treffer.join(', ') +
-        ' — damit ist die Doppelung aus einer früheren Runde zurück.',
+      `The query for email_neu_token belongs exclusively in adoptEmailNew(). Found in: ${hits.join(', ')} — so the duplication from an earlier round is back.`,
     );
   });
 
   await t.test('redeeming (email_verified=true) appears exactly once in the tree', () => {
-    const treffer = CANDIDATES.filter(rel => REDEEM.test(lies(rel)));
+    const hits = CANDIDATES.filter(rel => REDEEM.test(read(rel)));
     assert.deepEqual(
-      treffer,
+      hits,
       ['src/account/repository/accounts.ts'],
-      'Auch das Setzen von email_verified gehört nur an eine Stelle. ' + 'Gefunden in: ' + treffer.join(', '),
+      `Setting email_verified also belongs in one place only. Found in: ${hits.join(', ')}`,
     );
   });
 
   await t.test('the one remaining path calls the shared function', () => {
-    // The only path is POST /api/v1/auth/email-bestaetigen (the button on the
+    // The only path is POST /api/v2/auth/email-bestaetigen (the button on the
     // page behind the mail link). GET /verify in server.ts only delivers the
     // page; if it redeemed by itself again, a link scanner would already confirm.
     // The behavior is checked by sicherheit-server-grenzen-db on the real server.
     assert.match(
-      lies('routes/auth/registration.ts'),
+      read('routes/auth/registration.ts'),
       /verifyEmailToken\s*\(/,
-      'routes/auth/registration.ts löst den Token nicht über die gemeinsame Funktion ein',
+      'routes/auth/registration.ts does not redeem the token through the shared function',
     );
     assert.doesNotMatch(
-      lies('server.ts'),
+      read('server.ts'),
       /verifyEmailToken\s*\(/,
-      'server.ts löst wieder selbst Token ein — der Link allein bestätigte dann',
+      'server.ts redeems tokens itself again — the link alone would then confirm',
     );
   });
 

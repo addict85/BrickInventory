@@ -22,7 +22,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // The child process: listens, lets its connection be shot down and reports
@@ -30,24 +30,24 @@ const db = testData();
 const CHILD = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
 const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
-const db     = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const db     = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 const notify = db.notification;
-const { bis } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'time.js'))});
+const { until } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'time.js'))});
 const LISTEN = \`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND query LIKE 'LISTEN "reconnect_probe"%'\`;
 let empfangen = 0;
 process.on('uncaughtException', e => { console.log('CRASH:' + e.message); process.exit(7); });
 (async () => {
   notify.listen('reconnect_probe', () => { empfangen++; });
-  await bis(async () => (await db.pool.query(LISTEN)).rows.length > 0);
+  await until(async () => (await db.pool.query(LISTEN)).rows.length > 0);
   const alt = (await db.pool.query(LISTEN)).rows.map(z => z.pid);
   // Abriss serverseitig erzwingen — der reale Fall (Postgres-Neustart, Proxy).
   await db.run(\`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
                 WHERE datname = current_database() AND query LIKE 'LISTEN "reconnect_probe"%' AND pid <> pg_backend_pid()\`);
   // Ohne funktionierenden Wiederaufbau (erster Versuch nach ~1 s) kommt keine
   // neue Verbindung mit LISTEN; die alte zählt nicht.
-  const neu = async () => (await db.pool.query(LISTEN)).rows.filter(z => !alt.includes(z.pid)).length;
-  await bis(async () => await neu() > 0, 10_000);
-  const n = await neu();
+  const fresh = async () => (await db.pool.query(LISTEN)).rows.filter(z => !alt.includes(z.pid)).length;
+  await until(async () => await fresh() > 0, 10_000);
+  const n = await fresh();
   console.log('LISTEN_WIEDER_DA:' + n);
   await notify.close();
   await db.pool.end();
@@ -59,7 +59,7 @@ test('a drop of the LISTEN connection does NOT end the process and reconnects', 
   try {
     await db.pool.query('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -73,15 +73,14 @@ test('a drop of the LISTEN connection does NOT end the process and reconnects', 
       // Exit code != 0: evaluate the output anyway, it says what the cause was.
       const stdout = (e.stdout || '').toString();
       assert.fail(
-        `Der Kindprozess ist nicht sauber beendet worden (Exitcode ${e.status}). ` +
-          `Ausgabe: ${stdout.trim() || '(leer)'}`,
+        `The child process did not exit cleanly (exit code ${e.status}). ` + `Output: ${stdout.trim() || '(empty)'}`,
       );
     }
-    assert.ok(!out.includes('CRASH:'), `Der Abriss hat den Prozess abgeschossen: ${out.trim()}`);
+    assert.ok(!out.includes('CRASH:'), `The teardown killed the process: ${out.trim()}`);
     assert.match(
       out,
       /LISTEN_WIEDER_DA:[1-9]/,
-      `Nach dem Abriss steht kein LISTEN mehr — der Reconnect hat nicht gegriffen. Ausgabe: ${out.trim()}`,
+      `After the teardown there is no LISTEN any more — the reconnect did not work. Output: ${out.trim()}`,
     );
   } finally {
     fs.rmSync(file, { force: true });
@@ -99,7 +98,7 @@ test('close() during connection setup leaves no connection open', async t => {
   try {
     await probe.connect();
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   } finally {
     await probe.end().catch(() => {});
@@ -108,7 +107,7 @@ test('close() during connection setup leaves no connection open', async t => {
   const kind = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
 const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
-const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 const notify = db.notification;
 notify.listen('rennen_probe', () => {});
 notify.close().then(() => console.log('GESCHLOSSEN'));

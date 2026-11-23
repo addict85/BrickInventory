@@ -111,7 +111,7 @@
       "design": "brick",
       "token": "b100"
     },
-    "SlateBlueNoppe": {
+    "SlateBlueStud": {
       "design": "brick",
       "token": "b400"
     },
@@ -127,63 +127,63 @@
       "design": "brick",
       "token": "chart-used"
     },
-    "WerkbankAzur": {
+    "WorkbenchAzure": {
       "design": "werkbank",
       "token": "b600"
     },
-    "WerkbankAzurDunkel": {
+    "WorkbenchAzureDark": {
       "design": "werkbank",
       "token": "b50"
     },
-    "WerkbankAzurHell": {
+    "WorkbenchAzureLight": {
       "design": "werkbank",
       "token": "b700"
     },
-    "ChartNewWerkbank": {
+    "ChartNewWorkbench": {
       "design": "werkbank",
       "token": "chart-new"
     },
-    "ChartUsedWerkbank": {
+    "ChartUsedWorkbench": {
       "design": "werkbank",
       "token": "chart-used"
     },
-    "FaecherTinte": {
+    "FanInk": {
       "design": "farbfaecher",
       "token": "b600"
     },
-    "FaecherTinteHell": {
+    "FanInkLight": {
       "design": "farbfaecher",
       "token": "b50"
     },
-    "FaecherTinteDunkel": {
+    "FanInkDark": {
       "design": "farbfaecher",
       "token": "b700"
     },
-    "ChartNewFarbfaecher": {
+    "ChartNewColorFan": {
       "design": "farbfaecher",
       "token": "chart-new"
     },
-    "ChartUsedFarbfaecher": {
+    "ChartUsedColorFan": {
       "design": "farbfaecher",
       "token": "chart-used"
     },
-    "NoppeRot": {
+    "StudRed": {
       "design": "noppe",
       "token": "b600"
     },
-    "NoppeRotHell": {
+    "StudRedLight": {
       "design": "noppe",
       "token": "b50"
     },
-    "NoppeTinte": {
+    "StudInk": {
       "design": "noppe",
       "token": "ink"
     },
-    "ChartNewNoppe": {
+    "ChartNewStud": {
       "design": "noppe",
       "token": "chart-new"
     },
-    "ChartUsedNoppe": {
+    "ChartUsedStud": {
       "design": "noppe",
       "token": "chart-used"
     }
@@ -192,7 +192,7 @@
   "listen": {
     "faecher": {
       "praefix": "faecher",
-      "kotlin": "FaecherFarben",
+      "kotlin": "FanColors",
       "warum": "The theme fan of the design \"farbfaecher\": twelve tones of equal lightness and chroma, only the hue changes — that way no theme stands out louder than another. The mapping is theme number modulo twelve. DELIBERATELY a fixed list instead of a calculation: a color formula would have to be rebuilt identically in CSS and in Kotlin, and exactly such pairs drift apart. A list can be generated.",
       "werte": [
         "#c0392b",
@@ -211,7 +211,7 @@
     },
     "steine": {
       "praefix": "stein",
-      "kotlin": "SteinFarben",
+      "kotlin": "BrickColors",
       "warum": "The lid colors of the theme \"noppe\": six building brick tones the tile wall cycles through. They mean NOTHING — unlike the fan above, where the color is the theme. Here it gives rhythm, and that is exactly the catch of this theme: whoever knows the fan looks for information here that does not exist. Six and not twelve, so that the repetition stays readable as rhythm instead of chance. The mapping is the position in the list modulo six.",
       "werte": [
         "#d91f26",
@@ -224,7 +224,7 @@
     }
   },
   "_erbt_warum": "A theme can INHERIT the palette of another. \"hochglanz\" needs this: it is \"noppe\" as a glossy brochure — the same colors, plus layers (curvature, highlights, light streaks) that are not color values. Writing the eleven values down a second time would be a copy, and a copy does not follow along the next time.",
-  "_dunkel_warum": "The dark variant PER theme, active with <html data-dunkel> (device choice “dark when the system is dark”). Before, whoever wanted dark got the theme “werkbank” — i.e. a different theme. 'basis' assigns surfaces, gray axis and status colors for all themes (the same roles as in themes/werkbank.css); per theme only the brand colors stand here, lightened so that text and lines in them stay readable on a dark background. Text on the brand color is then dark (--auf-primaer). Werkbank is already dark and has no variant. Both UIs read this section: the generator creates the dark blocks in public/tokens.css and the app table ui/theme/DunkelTokens.kt from it.",
+  "_dunkel_warum": "The dark variant PER theme, active with <html data-dunkel> (device choice “dark when the system is dark”). Before, whoever wanted dark got the theme `werkbank` — i.e. a different theme. 'basis' assigns surfaces, gray axis and status colors for all themes (the same roles as in `themes/werkbank.css`); per theme only the brand colors stand here, lightened so that text and lines in them stay readable on a dark background. Text on the brand color is then dark (--auf-primaer). Werkbank is already dark and has no variant. Both UIs read this section: the generator creates the dark blocks in public/tokens.css and the app table ui/theme/DarkTokens.kt from it.",
   "dunkel": {
     "basis": {
       "s50": "#11151a",

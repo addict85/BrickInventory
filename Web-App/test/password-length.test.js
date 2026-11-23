@@ -3,7 +3,7 @@
  * path that sets a password checks it is shown by password-rule-db.test.js
  * (“passwords that are too short are rejected on all five paths”).
  *
- * Counter-check (measured 11.11.2026): `passwort_zu_kurz` in src/infra/errorTexts.ts
+ * Counter-check (measured 11.11.2026): `password_too_short` in src/infra/errorTexts.ts
  * set to „mindestens 8 Zeichen“ → red “the error message names the same number …”.
  */
 const test = require('node:test');
@@ -13,7 +13,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, withoutComments } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { PASSWORD_MIN_CHARS, passwordToShort } = _req('src/account/loginCheck.js');
 
@@ -29,7 +29,7 @@ test('the rule itself also holds for what is not a string', () => {
   // `undefined`, and `undefined < 8` is FALSE — a password as a JSON number
   // thus got past `password.length < 8`. Only the two places with
   // `String(password).length` caught it.
-  assert.equal(passwordToShort(123), true, 'Eine Zahl hat kein .length — sie darf nicht durchrutschen');
+  assert.equal(passwordToShort(123), true, 'A number has no .length — it must not slip through');
   // The opposite direction, so that the line above does not merely prove „everything is too
   // short": the number becomes its digit sequence, and that is long
   // enough (`String(123456789012)` has twelve characters).
@@ -37,39 +37,81 @@ test('the rule itself also holds for what is not a string', () => {
 });
 
 test('server and web app name the same number', () => {
-  const web = ohneKommentare(read('public/js/form.js'));
+  const web = withoutComments(read('public/js/form.js'));
   const webNumber = /export const PASSWORD_MIN_CHARS = (\d+)/.exec(web);
-  assert.ok(webNumber, 'Die Webapp fuehrt keine Konstante mehr — dann steht die Zahl wieder verstreut');
-  assert.equal(Number(webNumber[1]), PASSWORD_MIN_CHARS, 'Webapp und Server verlangen verschiedene Laengen');
+  assert.ok(webNumber, 'The web app no longer keeps a constant — then the number is scattered again');
+  assert.equal(Number(webNumber[1]), PASSWORD_MIN_CHARS, 'Web app and server demand different lengths');
 });
 
 test('the error message names the same number as the rule', () => {
   // The texts cannot follow the constant; a text that promises less
   // than the server demands leads the user into a refusal.
   const { errorText } = _req('src/infra/errorTexts.js');
-  for (const sprache of ['de', 'en'])
-    assert.match(errorText('passwort_zu_kurz', sprache), new RegExp(`\\b${PASSWORD_MIN_CHARS}\\b`), sprache);
+  for (const language of ['de', 'en'])
+    assert.match(errorText('password_too_short', language), new RegExp(`\\b${PASSWORD_MIN_CHARS}\\b`), language);
   // The web app fills in the number at runtime: there a placeholder, no number.
-  const texte = require('./helpers/sources').loadTranslations();
-  for (const sprache of ['de', 'en']) {
-    const text = texte[sprache]['settings.password.too_short'];
-    assert.ok(text, `settings.password.too_short fehlt in ${sprache}.js`);
-    assert.ok(text.includes('{n}'), `${sprache}.js schreibt die Zahl aus statt {n} zu benutzen`);
+  const texts = require('./helpers/sources').loadTranslations();
+  for (const language of ['de', 'en']) {
+    const text = texts[language]['settings.password.too_short'];
+    assert.ok(text, `settings.password.too_short is missing in ${language}.js`);
+    assert.ok(text.includes('{n}'), `${language}.js spells out the number instead of using {n}`);
   }
 });
 
-test('the web app checks before submitting', () => {
-  // Otherwise it would submit and only then show the server error.
-  const core = ohneKommentare(read('public/js/form.js'));
-  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
-  // Login, registration and resetting stand in sitzung.js since the rebuild.
-  const sitzung = ohneKommentare(read('public/js/session.js'));
-  const webCalls =
-    (core.match(/passwordRuleText\(/g) || []).length +
-    (settings.match(/passwordRuleText\(/g) || []).length +
-    (sitzung.match(/passwordRuleText\(/g) || []).length;
-  // Five places set a password in the web app: registering,
-  // resetting, changing, creating an account, resetting an account password.
-  // Plus the definition itself in formular.js.
-  assert.ok(webCalls >= 6, `Nur ${webCalls} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
+test('the web app checks before submitting', async () => {
+  // Real bundle in jsdom: every form that sets a password names the rule at once and sends nothing.
+  // Counter-checks (22.11.2026, each alone): the passwordRuleText check removed from btn-sav-pw
+  // (settings.js), btn-cu or btn-rpw (user-management.js), btn-register, btn-reset or btn-required
+  // (session.js) → red with the name of that form (rule not named, asked or sent anyway).
+  const { openUi, tick } = require('./helpers/ui');
+  const SHORT = 'kurz-1';
+  const { de } = require('./helpers/sources').loadTranslations();
+  const rule = de['settings.password.too_short'].replace('{n}', String(PASSWORD_MIN_CHARS));
+  const forms = {
+    'change password': { fields: { 'pw-n': SHORT, 'pw-r': SHORT }, button: 'btn-sav-pw', where: '#pw-n-error' },
+    'create account': { fields: { 'nu-n': 'carla', 'nu-p': SHORT }, button: 'btn-cu', where: '#nu-p-error' },
+    'reset account password': { fields: { 'rpw-uid': '7', 'rpw-v': SHORT }, button: 'btn-rpw', where: '#toasts' },
+    register: {
+      fields: { 'reg-user': 'carla', 'reg-email': 'c@example.org', 'reg-pass': SHORT, 'reg-pass2': SHORT },
+      button: 'btn-register',
+      where: '#reg-err',
+      signedOut: true,
+    },
+    'reset via link': {
+      fields: { 'reset-pass': SHORT, 'reset-pass2': SHORT },
+      button: 'btn-reset',
+      where: '#reset-err',
+      signedOut: true,
+    },
+    'required change': {
+      fields: { 'required-alt': 'alt-passwort-123', 'required-new': SHORT, 'required-repeat': SHORT },
+      button: 'btn-required',
+      where: '#required-err',
+    },
+  };
+  for (const [name, f] of Object.entries(forms)) {
+    const { w, d, calls, settle } = await openUi({}, { loggedIn: !f.signedOut });
+    try {
+      await settle();
+      const before = calls.length;
+      for (const [id, v] of Object.entries(f.fields)) {
+        const el = d.getElementById(id);
+        assert.ok(el, `${name}: field #${id} is missing`);
+        el.value = v;
+      }
+      assert.ok(d.getElementById(f.button), `${name}: button #${f.button} is missing`);
+      d.getElementById(f.button).click();
+      await tick(50);
+      const sent = calls.slice(before).filter(a => a.method !== 'GET');
+      assert.deepEqual(
+        sent.map(a => a.url),
+        [],
+        `${name}: a request went out with a too short password`,
+      );
+      assert.ok(d.querySelector(f.where)?.textContent.includes(rule), `${name}: the rule is not named at ${f.where}`);
+      assert.notEqual(d.getElementById('confirm-modal')?.style.display, 'flex', `${name}: asked before checking`);
+    } finally {
+      w.close();
+    }
+  }
 });

@@ -9,7 +9,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
@@ -41,7 +41,7 @@ async function seed() {
   ]) {
     await holdsSet(db, uid, sn, 1);
   }
-  for (const [uid, sn, num, farbe] of [
+  for (const [uid, sn, num, color] of [
     [U.ich, '10179-1', '3001', 4],
     [U.ich, '75192-1', '3001', 4],
     // THE SAME part in another color. Without this line the
@@ -57,7 +57,7 @@ async function seed() {
        ON CONFLICT (part_number) DO NOTHING`,
       [num, 'Teil ' + num],
     );
-    await holdsPart(db, uid, num, { setNumber: sn, menge: 1, colorId: farbe });
+    await holdsPart(db, uid, num, { setNumber: sn, quantity: 1, colorId: color });
   }
 }
 
@@ -73,7 +73,7 @@ async function dbReachable() {
 test('storage location against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();
@@ -86,14 +86,14 @@ test('storage location against a real database', async t => {
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const writable = await household.schreibbereich(U.ich);
+  const writable = await household.writeScope(U.ich);
 
   await t.test('a part lies at ONE place, not at one per set', async () => {
     // The same part is in two sets and thus in two rows. If setting
     // hit only one of them, one would have to maintain the same place per set — and
     // the overview showed the part in two boxes, one of which is empty.
     const n = await L.setLocation('part', writable, ['3001', '4'], 'Kiste 3');
-    assert.equal(n, 2, `${n} Zeilen getroffen, erwartet 2 (beide Sets)`);
+    assert.equal(n, 2, `${n} rows hit, expected 2 (both sets)`);
     const rows = await db.all(
       `SELECT t.color_id, l.name AS storage
          FROM parts t LEFT JOIN storage_locations l ON l.id = t.storage_id
@@ -107,14 +107,14 @@ test('storage location against a real database', async t => {
         [4, 'Kiste 3'],
         [5, null],
       ],
-      'Beide Zeilen der Farbe 4 müssen den Ort haben — und die Farbe 5 keinen',
+      'Both rows of color 4 must have the location — and color 5 none',
     );
   });
 
   await t.test('setting stays in the write scope', async () => {
     // Without this boundary the storage location would be a way to write into foreign
     // data — and inconspicuously at that, because nothing else changes.
-    const vorher =
+    const prior =
       (
         await db.get(
           `SELECT l.name AS storage FROM parts t
@@ -124,7 +124,7 @@ test('storage location against a real database', async t => {
         )
       )?.storage ?? null;
     await L.setLocation('part', writable, ['3001', '4'], 'Kiste 9');
-    const nachher =
+    const later =
       (
         await db.get(
           `SELECT l.name AS storage FROM parts t
@@ -133,7 +133,7 @@ test('storage location against a real database', async t => {
           [U.fremd],
         )
       )?.storage ?? null;
-    assert.equal(nachher, vorher, 'Eine fremde Zeile wurde verändert');
+    assert.equal(later, prior, 'A foreign row was changed');
 
     // Reset: the overview further down counts the same rows. Without
     // that it said „Kiste 9" instead of „Kiste 3" — the first draft of this
@@ -145,10 +145,10 @@ test('storage location against a real database', async t => {
 
   await t.test('empty means NULL, not a place called "nothing"', async () => {
     // An empty text would stand as its own entry in every selection list.
-    for (const eingabe of ['', '   ', null, undefined]) {
-      assert.equal(L.normalizeLocation(eingabe), null, `„${eingabe}" wurde nicht zu null`);
+    for (const input of ['', '   ', null, undefined]) {
+      assert.equal(L.normalizeLocation(input), null, `„${input}“ did not become null`);
     }
-    assert.equal(L.normalizeLocation('  Kiste 3  '), 'Kiste 3', 'Nicht getrimmt');
+    assert.equal(L.normalizeLocation('  Kiste 3  '), 'Kiste 3', 'Not trimmed');
 
     await L.setLocation('part', writable, ['3002', '4'], 'Regal B');
     await L.setLocation('part', writable, ['3002', '4'], null);
@@ -158,17 +158,17 @@ test('storage location against a real database', async t => {
         WHERE t.user_id=$1 AND t.part_number=$2`,
       [U.ich, '3002'],
     );
-    assert.equal(r.storage, null, 'Das Leeren hat den Ort nicht entfernt');
+    assert.equal(r.storage, null, 'Clearing did not remove the location');
   });
 
   await t.test('names that are too long are rejected, not truncated', async () => {
     // Truncating would mean: the database holds something other than what was entered,
     // and nobody learns of it.
-    assert.throws(() => L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS + 1)), /lagerort_zu_lang|zu lang/i);
+    assert.throws(() => L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS + 1)), /storage_too_long|zu lang/i);
     assert.equal(
       L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS)).length,
       L.LOCATION_MAX_CHARS,
-      'Die Grenze selbst muss noch durchgehen',
+      'The limit itself must still go through',
     );
   });
 
@@ -176,31 +176,31 @@ test('storage location against a real database', async t => {
     await L.setLocation('set', writable, ['10179-1'], 'Kiste 3');
     await L.setLocation('set', writable, ['75192-1'], 'Regal B');
 
-    const orte = await L.lagerorte(await household.scopeIds(U.ich, 'all'));
-    const karte = Object.fromEntries(orte.map(o => [o.ort, o]));
+    const locations = await L.storages(await household.scopeIds(U.ich, 'all'));
+    const card = Object.fromEntries(locations.map(o => [o.location, o]));
     // „Kiste 3" has a set AND two part rows — one place, not two
     // entries. Delivering two separate lists would mean that every UI
     // merges them itself, and each one on its own.
     // `figuren`: a minifigure carries a storage location too (migration 0024).
-    assert.deepEqual(karte['Kiste 3'], { ort: 'Kiste 3', sets: 1, teile: 2, figuren: 0 });
-    assert.deepEqual(karte['Regal B'], { ort: 'Regal B', sets: 1, teile: 0, figuren: 0 });
+    assert.deepEqual(card['Kiste 3'], { location: 'Kiste 3', sets: 1, parts: 2, minifigs: 0 });
+    assert.deepEqual(card['Regal B'], { location: 'Regal B', sets: 1, parts: 0, minifigs: 0 });
     // Alphabetical — the selection list should not differ on every call.
     assert.deepEqual(
-      orte.map(o => o.ort),
-      [...orte.map(o => o.ort)].sort(),
+      locations.map(o => o.location),
+      [...locations.map(o => o.location)].sort(),
     );
     // And nothing foreign.
-    assert.ok(!orte.some(o => o.ort === 'Kiste 9'), 'Ein fremder Ort ist aufgetaucht');
+    assert.ok(!locations.some(o => o.location === 'Kiste 9'), 'A foreign location appeared');
   });
 
   await t.test('the overview follows the scope', async () => {
-    await L.setLocation('set', await household.schreibbereich(U.kind), ['21318-1'], 'Kinderzimmer');
-    const oben = (await L.lagerorte(await household.scopeIds(U.ich, 'all'))).map(o => o.ort);
-    const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.ort);
-    assert.ok(oben.includes('Kinderzimmer'), 'Das Hauptkonto sieht den Ort des Kindes nicht');
+    await L.setLocation('set', await household.writeScope(U.kind), ['21318-1'], 'Kinderzimmer');
+    const upper = (await L.storages(await household.scopeIds(U.ich, 'all'))).map(o => o.location);
+    const lower = (await L.storages(await household.scopeIds(U.kind, 'all'))).map(o => o.location);
+    assert.ok(upper.includes('Kinderzimmer'), 'The main account does not see the location of the child');
     assert.ok(
-      !unten.includes('Kiste 3'),
-      'Das Unterkonto sieht einen Ort des Hauptkontos — das Blickfeld geht nur nach unten',
+      !lower.includes('Kiste 3'),
+      'The sub-account sees a location of the main account — the view only goes downwards',
     );
   });
 

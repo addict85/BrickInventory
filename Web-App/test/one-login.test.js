@@ -1,5 +1,7 @@
 /**
  * „Logged in" means something in ONE place, not in five.
+ *
+ * Counter-check: `req.session.userId` read in routes/api/minifigs.ts → red “no handler asks the session for the user identifier itself”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +18,7 @@ const ROUTES = path.join(__dirname, '..', 'routes');
  * uses it instead of defining it does not belong here.
  */
 const ALLOWED = {
-  'api_v1/middleware.ts':
+  'api/middleware.ts':
     'requireToken übersetzt die Sitzung IN die gemeinsame Form (req.apiUser). ' + 'Hier entsteht sie.',
   'auth/secondFactor.ts':
     'Nach dem Einrichten des Faktors enden alle anderen Zugänge; die eigene ' +
@@ -29,85 +31,85 @@ const ALLOWED = {
 };
 
 /** All .ts under routes/, also in subfolders. */
-function routesFiles(dir, praefix = '') {
-  const gefunden = [];
+function routesFiles(dir, prefix = '') {
+  const found = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) gefunden.push(...routesFiles(path.join(dir, e.name), praefix + e.name + '/'));
-    else if (e.name.endsWith('.ts')) gefunden.push([praefix + e.name, path.join(dir, e.name)]);
+    if (e.isDirectory()) found.push(...routesFiles(path.join(dir, e.name), prefix + e.name + '/'));
+    else if (e.name.endsWith('.ts')) found.push([prefix + e.name, path.join(dir, e.name)]);
   }
-  return gefunden;
+  return found;
 }
 
 test('no handler asks the session for the user identifier itself', () => {
-  const dateien = routesFiles(ROUTES);
-  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Router-Dateien gefunden — dann prüft der Rest nichts.`);
+  const files = routesFiles(ROUTES);
+  assert.ok(files.length >= 10, `Only ${files.length} router files found — then the rest checks nothing.`);
 
   const violations = [];
-  const gebraucht = new Set();
-  for (const [rel, voll] of dateien) {
+  const used = new Set();
+  for (const [rel, full] of files) {
     const src = fs
-      .readFileSync(voll, 'utf8')
+      .readFileSync(full, 'utf8')
       // Comments out: an explanatory text that NAMES `req.session.userId`
       // (this one for example) is not a use.
       .split('\n')
       .filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*'))
       .join('\n');
     for (const m of src.matchAll(/req\.session\??\.(userId|isAdmin|username)\b/g)) {
-      const zeile = src.slice(0, m.index).split('\n').length;
+      const row = src.slice(0, m.index).split('\n').length;
       // Allowed files are SEARCHED nevertheless: their hit proves that
       // the exception still describes something. Whoever skips it instead
       // never notices when it becomes moot — and then a dead
       // entry permanently exempts a whole file from the check.
-      if (rel in ALLOWED) gebraucht.add(rel);
-      else violations.push(`${rel}:${zeile}  ${m[0]}`);
+      if (rel in ALLOWED) used.add(rel);
+      else violations.push(`${rel}:${row}  ${m[0]}`);
     }
   }
 
-  const veraltet = Object.keys(ALLOWED)
-    .filter(k => !gebraucht.has(k))
+  const stale = Object.keys(ALLOWED)
+    .filter(k => !used.has(k))
     .sort();
   assert.deepEqual(
-    veraltet,
+    stale,
     [],
-    'Diese Eintraege in ALLOWED beschreiben nichts mehr:\n  ' +
-      veraltet.join('\n  ') +
-      '\nDie Datei liest die Sitzung gar nicht (mehr) direkt — raus damit.',
+    'These entries in ALLOWED no longer describe anything:\n  ' +
+      stale.join('\n  ') +
+      '\nThe file no longer reads the session directly — remove it.',
   );
 
   assert.deepEqual(
     violations,
     [],
-    'Diese Stellen lesen die Sitzung direkt statt nutzerId()/istVerwalter()/nutzerName():\n  ' +
+    'These places read the session directly instead of nutzerId()/istVerwalter()/userName():\n  ' +
       violations.join('\n  ') +
-      '\nMit einem Bearer-Token — dem einzigen Ausweis der App — ist das immer ' +
-      'undefined. Das fällt nicht als Fehler auf: Die Route antwortet mit 401, ' +
-      'oder schlimmer, sie liefert stillschweigend die Ansicht eines ' +
-      'Nicht-Verwalters.',
+      "\nWith a bearer token — the app's only credential — that is always " +
+      'undefined. It does not show up as an error: the route answers with 401, ' +
+      'or worse, it silently returns the view of a ' +
+      'non-admin.',
   );
 });
 
 test('no router brings its own guard', () => {
   // The second part of the same finding: routes/auth.ts DEFINED requireLogin
   // and requireAdmin itself — session-bound, while src/account/http/login.ts and
-  // routes/api_v1/middleware.ts had long had token-capable versions. Three
+  // routes/api/middleware.ts had long had token-capable versions. Three
   // versions of one rule, and the app could only fulfill one.
-  const dateien = routesFiles(ROUTES);
-  const eigene = [];
-  for (const [rel, voll] of dateien) {
-    const src = fs.readFileSync(voll, 'utf8');
+  const files = routesFiles(ROUTES);
+  const owned = [];
+  for (const [rel, full] of files) {
+    const src = fs.readFileSync(full, 'utf8');
     for (const m of src.matchAll(/^\s*(?:export\s+)?function\s+(require\w+)\s*\(/gm)) {
-      // api_v1/middleware.ts is the place WHERE they should stand.
-      if (rel === 'api_v1/middleware.ts') continue;
-      eigene.push(`${rel}  function ${m[1]}`);
+      // api/middleware.ts is the place WHERE they should stand.
+      if (rel === 'api/middleware.ts') continue;
+      owned.push(`${rel}  function ${m[1]}`);
     }
   }
   assert.deepEqual(
-    eigene,
+    owned,
     [],
-    'Diese Router definieren einen eigenen Anmelde-Wächter:\n  ' +
-      eigene.join('\n  ') +
-      '\nEs gibt genau zwei: requireLoginOrToken (src/account/http/login.ts) und ' +
-      'requireApiAdmin (routes/api_v1/middleware.ts). Beide nehmen Sitzung ODER ' +
-      'Token. Eine dritte Fassung sperrt zuverlässig die App aus.',
+    'These routers define their own login guard:\n  ' +
+      owned.join('\n  ') +
+      '\nThere are exactly two: requireLoginOrToken (src/account/http/login.ts) and ' +
+      'requireApiAdmin (routes/api/middleware.ts). Both accept session OR ' +
+      'token. A third version reliably locks out the app.',
   );
 });

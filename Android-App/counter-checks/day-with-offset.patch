@@ -1,0 +1,17 @@
+Gegenprobe: der Kalendertag in einer Zone östlich von UTC
+Modul: core-model
+Test: ch.brickinventoryapp.model.MoneyTest
+Rot: the calendar day is the server's, not that of the device zone
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
+@@ -82,7 +82,7 @@
+  * The calendar day in UTC as the server writes it: [fmtDatum] does not convert into the zone
+  * of the device, because hours would otherwise turn an acquisition day into the previous day.
+  */
+-fun Instant.calendarDay(): LocalDate = atOffset(ZoneOffset.UTC).toLocalDate()
++fun Instant.calendarDay(): LocalDate = atOffset(ZoneOffset.ofHours(2)).toLocalDate()
+ 
+ /** Like [fmtDatum] for an already read point in time or day. */
+ fun fmtDatum(time: Instant?, locale: Locale, year: DateYear = DateYear.FULL): String? =

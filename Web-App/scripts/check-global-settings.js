@@ -20,59 +20,59 @@ const ALLOWED = new Map([
  * The remaining stock. These numbers may only DECREASE.
  * Whoever clears a file removes its line.
  */
-const OFFEN = new Map([]);
+const OPEN = new Map([]);
 
-function dateien() {
+function files() {
   const out = [];
   /** @param {string} d */
-  const lauf = d => {
+  const run = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
       const p = path.join(d, e.name);
-      if (e.isDirectory()) lauf(p);
+      if (e.isDirectory()) run(p);
       else if (e.name.endsWith('.ts')) out.push(path.relative(ROOT, p).split(path.sep).join('/'));
     }
   };
   for (const d of ['routes', 'src', 'jobs', 'db', 'startup']) {
     const abs = path.join(ROOT, d);
-    if (fs.existsSync(abs)) lauf(abs);
+    if (fs.existsSync(abs)) run(abs);
   }
   const server = path.join(ROOT, 'server.ts');
   if (fs.existsSync(server)) out.push('server.ts');
   return out;
 }
 
-const gefunden = new Map();
-for (const rel of dateien()) {
+const found = new Map();
+for (const rel of files()) {
   if (ALLOWED.has(rel)) continue;
   const s = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   const n = (s.match(/global_settings/g) || []).length;
-  if (n) gefunden.set(rel, n);
+  if (n) found.set(rel, n);
 }
 
-const fehler = [];
-for (const [datei, n] of gefunden) {
-  const erlaubt = OFFEN.get(datei);
-  if (erlaubt === undefined) {
-    fehler.push(
-      `NEU: ${datei} (${n}x). global_settings gehört über src/settings/settings.ts — ` +
+const error = [];
+for (const [file, n] of found) {
+  const allowed = OPEN.get(file);
+  if (allowed === undefined) {
+    error.push(
+      `NEU: ${file} (${n}x). global_settings gehört über src/settings/settings.ts — ` +
         `getGlobalSetting() / setGlobalSetting(). Nur so ist updated_at einheitlich ` +
         `und ein späterer Umbau der Tabelle EINE Änderung statt zwanzig.`,
     );
-  } else if (n > erlaubt) {
-    fehler.push(`MEHR: ${datei} hat ${n} statt ${erlaubt}. Die Liste darf nur kürzer werden.`);
+  } else if (n > allowed) {
+    error.push(`MEHR: ${file} hat ${n} statt ${allowed}. Die Liste darf nur kürzer werden.`);
   }
 }
 // A line nobody needs any more is a permission nobody checks.
-for (const [datei, n] of OFFEN) {
-  const ist = gefunden.get(datei) ?? 0;
-  if (ist === 0) fehler.push(`ERLEDIGT: ${datei} — Zeile aus OFFEN streichen.`);
-  else if (ist < n) fehler.push(`GESUNKEN: ${datei} hat ${ist} statt ${n} — Zahl in OFFEN nachziehen.`);
+for (const [file, n] of OPEN) {
+  const actual = found.get(file) ?? 0;
+  if (actual === 0) error.push(`ERLEDIGT: ${file} — Zeile aus OFFEN streichen.`);
+  else if (actual < n) error.push(`GESUNKEN: ${file} hat ${actual} statt ${n} — Zahl in OFFEN nachziehen.`);
 }
 
-if (fehler.length) {
-  console.error('❌ global_settings:\n  ' + fehler.join('\n  '));
+if (error.length) {
+  console.error('❌ global_settings:\n  ' + error.join('\n  '));
   process.exit(1);
 }
-const summe = [...gefunden.values()].reduce((a, b) => a + b, 0);
-console.log(`✅ global_settings: ${gefunden.size} Dateien / ${summe} Stellen offen, keine neue.`);
+const sum = [...found.values()].reduce((a, b) => a + b, 0);
+console.log(`✅ global_settings: ${found.size} Dateien / ${sum} Stellen offen, keine neue.`);

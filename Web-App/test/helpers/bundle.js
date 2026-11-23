@@ -9,23 +9,23 @@ const path = require('node:path');
 const { OUT_REL, placeBundleSafe } = require('../../scripts/build-frontend');
 
 const ROOT = path.join(__dirname, '..', '..');
-const BUENDEL = path.join(ROOT, 'public', OUT_REL);
+const BUNDLE_FILE = path.join(ROOT, 'public', OUT_REL);
 
 /**
- * A bundle from main.js plus `zusatz` (source text with imports relative to
+ * A bundle from main.js plus `extra` (source text with imports relative to
  * public/js), for example to put the registry on window. The shipped
  * bundle stays unchanged; the file is deleted at process end.
  * Usage: `process.env.TEST_BUENDEL = buildTestbuendel(…)` before helpers/oberflaeche.
  * @param {string} name
- * @param {string} zusatz
+ * @param {string} extra
  */
-function buildTestbuendel(name, zusatz) {
+function buildTestBundle(name, extra) {
   const esbuild = require(path.join(ROOT, 'node_modules', 'esbuild'));
   const { allowedStyles } = require('../../scripts/build-frontend');
-  const ziel = path.join(os.tmpdir(), `${name}-${process.pid}.js`);
+  const target = path.join(os.tmpdir(), `${name}-${process.pid}.js`);
   esbuild.buildSync({
     stdin: {
-      contents: `import './main.js';\n${zusatz}`,
+      contents: `import './main.js';\n${extra}`,
       resolveDir: path.join(ROOT, 'public', 'js'),
       loader: 'js',
       sourcefile: `${name}-einstieg.js`,
@@ -33,12 +33,12 @@ function buildTestbuendel(name, zusatz) {
     bundle: true,
     format: 'iife',
     charset: 'utf8',
-    outfile: ziel,
+    outfile: target,
     logLevel: 'error',
-    define: { __ERLAUBTE_STILE__: JSON.stringify(allowedStyles()) },
+    define: { __ALLOWED_STYLES__: JSON.stringify(allowedStyles()) },
   });
-  process.on('exit', () => fs.rmSync(ziel, { force: true }));
-  return ziel;
+  process.on('exit', () => fs.rmSync(target, { force: true }));
+  return target;
 }
 
-module.exports = { BUENDEL, placeBundleSafe, buildTestbuendel };
+module.exports = { BUNDLE_FILE, placeBundleSafe, buildTestBundle };

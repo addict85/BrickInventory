@@ -1,0 +1,16 @@
+Gegenprobe: Wertachse auch bei grosser Schrift ausgeschrieben
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.AxesRoundTest
+Rot: large font labels the value axis briefly
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAchsen.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAchsen.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAchsen.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAchsen.kt
+@@ -48,7 +48,6 @@
+  * took up a third of the chart width at 200%; the amount sits in the header card above it.
+  */
+ fun localValues(axis: List<ChartAxis>, currencyCode: CurrencyCode, locale: Locale, compact: Boolean = false): List<ChartAxis> {
+-    if (compact) return axis.map { it.copy(label = compactAmount(it.value.asDouble(), locale)) }
+     val nf = runCatching {
+         NumberFormat.getCurrencyInstance(locale).apply {
+             currency = Currency.getInstance(currencyCode.code)

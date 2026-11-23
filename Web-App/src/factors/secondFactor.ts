@@ -1,11 +1,11 @@
 /** RFC 6238 (TOTP, SHA-1, 6 digits, 30 s): the form every authenticator app
  * understands. No third-party package, with node:crypto. */
-import { encrypt, decrypt, kontext, searchValue, searchValueAlt } from '../infra/secret';
+import { encrypt, decrypt, context, searchValue, searchValueAlt } from '../infra/secret';
 import crypto from 'node:crypto';
 import type { DbInterface } from '../../db/database';
 import * as repo from './repository/secondFactor';
 import type { FactorsContext } from './context';
-import { imSystemrahmen } from '../infra/area';
+import { inSystemFrame } from '../infra/area';
 
 const STEP_S = 30;
 /** One step forward and back: phone and server clocks never run exactly alike. */
@@ -14,38 +14,38 @@ const DIGITS = 6;
 const CODES_COUNT = 10;
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
-export const secondFactorContext = (uid: number) => kontext('zweiter_faktor.geheimnis', uid);
+export const secondFactorContext = (uid: number) => context('zweiter_faktor.geheimnis', uid);
 
 export function base32(buf: Buffer): string {
   let bits = 0,
-    wert = 0,
-    aus = '';
+    value = 0,
+    from = '';
   for (const b of buf) {
-    wert = (wert << 8) | b;
+    value = (value << 8) | b;
     bits += 8;
     while (bits >= 5) {
-      aus += BASE32[(wert >>> (bits - 5)) & 31];
+      from += BASE32[(value >>> (bits - 5)) & 31];
       bits -= 5;
     }
   }
-  if (bits > 0) aus += BASE32[(wert << (5 - bits)) & 31];
-  return aus;
+  if (bits > 0) from += BASE32[(value << (5 - bits)) & 31];
+  return from;
 }
 
 export function fromBase32(s: string): Buffer {
-  const rein = s.toUpperCase().replace(/[^A-Z2-7]/g, '');
+  const clean = s.toUpperCase().replace(/[^A-Z2-7]/g, '');
   let bits = 0,
-    wert = 0;
-  const aus: number[] = [];
-  for (const z of rein) {
-    wert = (wert << 5) | BASE32.indexOf(z);
+    value = 0;
+  const from: number[] = [];
+  for (const z of clean) {
+    value = (value << 5) | BASE32.indexOf(z);
     bits += 5;
     if (bits >= 8) {
-      aus.push((wert >>> (bits - 8)) & 255);
+      from.push((value >>> (bits - 8)) & 255);
       bits -= 8;
     }
   }
-  return Buffer.from(aus);
+  return Buffer.from(from);
 }
 
 export function hotp(key: Buffer, counter: number, digits = DIGITS): string {
@@ -53,8 +53,8 @@ export function hotp(key: Buffer, counter: number, digits = DIGITS): string {
   z.writeBigUInt64BE(BigInt(counter));
   const h = crypto.createHmac('sha1', key).update(z).digest();
   const o = (h[h.length - 1] ?? 0) & 15;
-  const zahl = (h.readUInt32BE(o) & 0x7fffffff) % 10 ** digits;
-  return String(zahl).padStart(digits, '0');
+  const number = (h.readUInt32BE(o) & 0x7fffffff) % 10 ** digits;
+  return String(number).padStart(digits, '0');
 }
 
 export function timeStep(nowMs = Date.now()): number {
@@ -66,11 +66,11 @@ export function matchingStep(secret: string, code: string, nowMs: number): numbe
   if (!/^\d{6}$/.test(code)) return null;
   const key = fromBase32(secret);
   const now = timeStep(nowMs);
-  let treffer: number | null = null;
+  let hits: number | null = null;
   for (let s = now - WINDOW; s <= now + WINDOW; s++) {
-    if (crypto.timingSafeEqual(Buffer.from(hotp(key, s)), Buffer.from(code)) && treffer === null) treffer = s;
+    if (crypto.timingSafeEqual(Buffer.from(hotp(key, s)), Buffer.from(code)) && hits === null) hits = s;
   }
-  return treffer;
+  return hits;
 }
 
 /** Some authenticator apps (FreeOTP for one) show `image` as the entry's logo; they load it
@@ -86,7 +86,7 @@ export function otpauthAddress(secret: string, account: string, base: string | n
 
 /** The link for the account, with this service set's base URL. */
 export function otpauthFor(k: FactorsContext, secret: string, account: string): string {
-  return otpauthAddress(secret, account, k.konfig.appBaseUrl);
+  return otpauthAddress(secret, account, k.config.appBaseUrl);
 }
 
 function normalizeCode(code: string): string {
@@ -124,12 +124,12 @@ export function isActive(k: FactorsContext, uid: number): Promise<boolean> {
 export async function status(
   k: FactorsContext,
   uid: number,
-): Promise<{ aktiv: boolean; codes_uebrig: number; alte_codes_bis: string | null }> {
+): Promise<{ active: boolean; codes_left: number; old_codes_until: string | null }> {
   const r = await k.secondFactor.factorStatus(uid);
   return {
-    aktiv: r.active,
-    codes_uebrig: r.remaining,
-    alte_codes_bis: r.legacyUntil ? r.legacyUntil.toISOString() : null,
+    active: r.active,
+    codes_left: r.remaining,
+    old_codes_until: r.legacyUntil ? r.legacyUntil.toISOString() : null,
   };
 }
 
@@ -140,16 +140,16 @@ export async function beginSetup(k: FactorsContext, uid: number): Promise<string
 }
 
 export async function confirmSetup(k: FactorsContext, uid: number, code: string): Promise<string[] | null> {
-  return k.transaktion(async t => {
+  return k.transact(async t => {
     const z = await repo.lockUnconfirmedSecret(t.db, uid);
     if (!z) return null;
-    const schritt = matchingStep(
+    const step = matchingStep(
       decrypt(z.secret, secondFactorContext(uid)) ?? '',
       String(code ?? '').trim(),
-      t.uhr.jetzt(),
+      t.clock.now(),
     );
-    if (schritt === null) return null;
-    await repo.activate(t.db, uid, schritt);
+    if (step === null) return null;
+    await repo.activate(t.db, uid, step);
     return regenerateCodes(t.db, uid);
   });
 }
@@ -162,34 +162,34 @@ export async function checkCode(
   code: string | number | null | undefined,
   withOneTimeCode = true,
 ): Promise<'totp' | 'wiederherstellung' | 'wiederherstellung_alt' | null> {
-  const eingabe = String(code ?? '').trim();
-  if (!eingabe) return null;
-  if (/^\d{6}$/.test(eingabe)) {
+  const input = String(code ?? '').trim();
+  if (!input) return null;
+  if (/^\d{6}$/.test(input)) {
     if (!withOneTimeCode) return null;
     const z = await k.secondFactor.activeSecret(uid);
-    const schritt = z ? matchingStep(decrypt(z.secret, secondFactorContext(uid)) ?? '', eingabe, k.uhr.jetzt()) : null;
-    if (schritt === null) return null;
-    return (await k.secondFactor.consumeStep(uid, schritt)) ? 'totp' : null;
+    const step = z ? matchingStep(decrypt(z.secret, secondFactorContext(uid)) ?? '', input, k.clock.now()) : null;
+    if (step === null) return null;
+    return (await k.secondFactor.consumeStep(uid, step)) ? 'totp' : null;
   }
   // Codes from before a key change: their plaintext isn't stored, rehashing isn't possible.
-  const beforeSwitch = searchValueAlt('zweiter-faktor-code', `${uid}:${normalizeCode(eingabe)}`);
+  const beforeSwitch = searchValueAlt('zweiter-faktor-code', `${uid}:${normalizeCode(input)}`);
   if (
-    (await k.secondFactor.consumeCode(uid, hashCode(uid, eingabe))) ||
+    (await k.secondFactor.consumeCode(uid, hashCode(uid, input))) ||
     (beforeSwitch && (await k.secondFactor.consumeCode(uid, beforeSwitch)))
   ) {
     await k.secondFactor.markCodesCurrent(uid);
     return 'wiederherstellung';
   }
-  if (normalizeCode(eingabe).length !== LEGACY_LENGTH) return null;
-  return (await k.secondFactor.consumeCode(uid, legacyHash(eingabe), true)) ? 'wiederherstellung_alt' : null;
+  if (normalizeCode(input).length !== LEGACY_LENGTH) return null;
+  return (await k.secondFactor.consumeCode(uid, legacyHash(input), true)) ? 'wiederherstellung_alt' : null;
 }
 
 export function disable(k: FactorsContext, uid: number): Promise<void> {
-  return imSystemrahmen(k.db, 'zugangsdaten', () => k.transaktion(t => t.secondFactor.remove(uid)));
+  return inSystemFrame(k.db, 'zugangsdaten', () => k.transact(t => t.secondFactor.remove(uid)));
 }
 
 export async function renewCodes(k: FactorsContext, uid: number): Promise<string[]> {
-  return k.transaktion(t => regenerateCodes(t.db, uid));
+  return k.transact(t => regenerateCodes(t.db, uid));
 }
 
 /** For the admin's account list: accounts live with the account area, their factor here. */

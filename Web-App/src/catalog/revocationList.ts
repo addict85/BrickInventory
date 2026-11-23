@@ -4,8 +4,11 @@ import type { JobRun } from '../jobQueue';
 import { REVOCATION_STATE, readRevocationList } from '../devices';
 import type { CatalogContext } from './context';
 
-export async function loadRevocationList(k: CatalogContext, lauf?: JobRun): Promise<void> {
-  const nummern = readRevocationList(await k.externalSources.quellen.revocationListFetch(lauf?.signal));
-  await k.jobQueue.setzeZustand(REVOCATION_STATE, JSON.stringify({ stand: k.uhr.datum().toISOString(), nummern }));
-  console.log(`[attestation] Widerrufsliste geladen: ${nummern.length} Seriennummern`);
+export async function loadRevocationList(k: CatalogContext, run?: JobRun): Promise<void> {
+  const numbers = readRevocationList(await k.externalSources.sources.revocationListFetch(run?.signal));
+  await k.jobQueue.setState(
+    REVOCATION_STATE,
+    JSON.stringify({ state: k.clock.date().toISOString(), nummern: numbers }),
+  );
+  console.log(`[attestation] Widerrufsliste geladen: ${numbers.length} Seriennummern`);
 }

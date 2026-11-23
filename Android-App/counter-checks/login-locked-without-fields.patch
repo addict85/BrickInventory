@@ -1,0 +1,18 @@
+Gegenprobe: Der Knopf Anmelden ist bei leeren Feldern wieder gesperrt, ohne Hinweis am Feld
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginEdgeTest
+Rot: sign-in stays tappable and names at the field what is missing for empty fields
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
+@@ -67,7 +67,8 @@
+ 
+     FullAccessSection(state.fullAccess, actions::setFullAccess)
+ 
+-    LoadButton(stringResource(R.string.login_button), running = state.login.running, active = true, onClick = logIn)
++    LoadButton(stringResource(R.string.login_button), running = state.login.running,
++        active = input.username.isNotBlank() && input.password.isNotBlank(), onClick = logIn)
+ 
+     PasskeyButton(state, actions, input)
+ 

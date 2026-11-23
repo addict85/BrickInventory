@@ -21,14 +21,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/ui');
+const { openUi, switchTab } = require('./helpers/ui');
 
 const CDN = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
 const proxy = url => `/api/v1/img-proxy?url=${encodeURIComponent(url)}`;
 
 test('part tile: preview and zoom via the proxy, without a guessed preview address', async () => {
-  const { w, d, warte } = await openUi({
-    '/v1/parts': {
+  const { w, d, waitFor } = await openUi({
+    '/v2/parts': {
       success: true,
       parts: [
         { part_number: '3001', part_name: 'Stein', color_id: 5, color_name: 'Red', total_quantity: 1, image_url: CDN },
@@ -39,8 +39,8 @@ test('part tile: preview and zoom via the proxy, without a guessed preview addre
     },
   });
   try {
-    await reiter(w, 'parts');
-    assert.ok(await warte(() => d.querySelector('#parts-main .part-card img')));
+    await switchTab(w, 'parts');
+    assert.ok(await waitFor(() => d.querySelector('#parts-main .part-card img')));
     const img = d.querySelector('#parts-main .part-card img');
     assert.equal(img.getAttribute('src'), `${proxy(CDN)}&thumb=1`);
     assert.equal(img.dataset.orig, proxy(CDN));
@@ -51,8 +51,8 @@ test('part tile: preview and zoom via the proxy, without a guessed preview addre
 });
 
 test('manually captured part: tile image via the proxy', async () => {
-  const { w, d, warte } = await openUi({
-    '/v1/parts/manual': {
+  const { w, d, waitFor } = await openUi({
+    '/v2/parts/manual': {
       success: true,
       parts: [
         { part_number: '3002', part_name: 'Stein 2 x 3', color_id: 5, color_name: 'Red', quantity: 2, image_url: CDN },
@@ -60,8 +60,8 @@ test('manually captured part: tile image via the proxy', async () => {
     },
   });
   try {
-    await reiter(w, 'parts');
-    assert.ok(await warte(() => d.querySelector('#manual-parts-list .man-tile img')));
+    await switchTab(w, 'parts');
+    assert.ok(await waitFor(() => d.querySelector('#manual-parts-list .man-tile img')));
     const img = d.querySelector('#manual-parts-list .man-tile img');
     assert.equal(img.getAttribute('src'), `${proxy(CDN)}&thumb=1`);
     assert.doesNotMatch(d.getElementById('manual-parts-list').innerHTML, /_thumb\.jpg|src="https:/);
@@ -72,37 +72,37 @@ test('manually captured part: tile image via the proxy', async () => {
 
 test('set detail and zoom: full resolution, a CDN address only via the proxy', async () => {
   const SET_CDN = 'https://cdn.rebrickable.com/media/sets/10294-1.jpg';
-  const set = (nr, felder) => ({ set_number: nr, name: `Set ${nr}`, year: 2021, quantity: 1, ...felder });
-  const { w, d, warte } = await openUi({
-    '/v1/sets': {
+  const set = (nr, fields) => ({ set_number: nr, name: `Set ${nr}`, year: 2021, quantity: 1, ...fields });
+  const { w, d, waitFor } = await openUi({
+    '/v2/sets': {
       success: true,
       total: 2,
       themes: [],
       sets: [set('10294-1', { image_url: SET_CDN }), set('10295-1', { image_local: '/images/sets/10295-1_thumb.jpg' })],
     },
-    '/v1/sets/10294-1': { success: true, set: set('10294-1', { image_url: SET_CDN }) },
-    '/v1/sets/10295-1': { success: true, set: set('10295-1', { image_local: '/images/sets/10295-1_thumb.jpg' }) },
+    '/v2/sets/10294-1': { success: true, set: set('10294-1', { image_url: SET_CDN }) },
+    '/v2/sets/10295-1': { success: true, set: set('10295-1', { image_local: '/images/sets/10295-1_thumb.jpg' }) },
   });
   try {
-    const oeffne = async nr => {
+    const openIt = async nr => {
       d.querySelector(`#gallery [data-click="openModal"][data-arg="${nr}"]`).click();
       assert.ok(
-        await warte(() => !/set-placeholder/.test(d.getElementById('m-img').getAttribute('src'))),
+        await waitFor(() => !/set-placeholder/.test(d.getElementById('m-img').getAttribute('src'))),
         `Detail ${nr}`,
       );
       return d.getElementById('m-img').getAttribute('src');
     };
-    assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
-    assert.equal(await oeffne('10294-1'), proxy(SET_CDN), 'Das Detail lädt direkt beim CDN');
+    assert.ok(await waitFor(() => d.querySelector('#gallery [data-click="openModal"]')));
+    assert.equal(await openIt('10294-1'), proxy(SET_CDN), 'The detail loads directly from the CDN');
     // The zoom opens the same full resolution, likewise via the own server.
     d.getElementById('m-img').click();
-    assert.ok(await warte(() => d.getElementById('lightbox-img').getAttribute('src')));
+    assert.ok(await waitFor(() => d.getElementById('lightbox-img').getAttribute('src')));
     assert.equal(d.getElementById('lightbox-img').getAttribute('src'), proxy(SET_CDN));
     d.getElementById('set-modal').classList.remove('open');
     assert.equal(
-      await oeffne('10295-1'),
+      await openIt('10295-1'),
       '/images/sets/10295-1.jpg',
-      'Das Detail zeigt die Vorschau statt der vollen Auflösung',
+      'The detail shows the preview instead of the full resolution',
     );
   } finally {
     w.close();
@@ -111,22 +111,22 @@ test('set detail and zoom: full resolution, a CDN address only via the proxy', a
 
 test("minifigure: the tile's data-orig goes via the proxy", async () => {
   const FIG_CDN = 'https://cdn.rebrickable.com/media/sets/fig-000123.jpg';
-  const { w, d, warte } = await openUi({
-    '/v1/minifigs': {
+  const { w, d, waitFor } = await openUi({
+    '/v2/minifigs': {
       success: true,
       total: 1,
       figs: [{ fig_number: 'fig-000123', fig_name: 'Chewbacca', source: 'set', total_quantity: 1, image_url: FIG_CDN }],
     },
   });
   try {
-    await reiter(w, 'minifigs');
-    assert.ok(await warte(() => d.querySelector('#figs-list img[data-orig]')));
+    await switchTab(w, 'minifigs');
+    assert.ok(await waitFor(() => d.querySelector('#figs-list img[data-orig]')));
     for (const img of d.querySelectorAll('#figs-list img[data-orig]')) {
       assert.equal(img.dataset.orig, proxy(FIG_CDN));
       assert.notEqual(
         img.dataset.orig,
         img.getAttribute('src'),
-        'Der Rückfall holte sonst dieselbe Adresse noch einmal',
+        'Otherwise the fallback would fetch the same address once more',
       );
     }
   } finally {

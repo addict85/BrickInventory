@@ -34,34 +34,34 @@ const { portOf } = require('./helpers/server');
 const ROOT = path.join(__dirname, '..');
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
 // REQUIRE_CADDY=1 (CI): a missing Caddy is an error, not a silent skip.
-if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
+if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, but no Caddy (CADDY_BIN)');
 
 test('Caddy passes the login paths on unthrottled, but only with a complete body', {
-  skip: !CADDY && 'kein Caddy (CADDY_BIN)',
+  skip: !CADDY && 'no Caddy (CADDY_BIN)',
   timeout: 120_000,
 }, async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-bremse-'));
-  let jetzt = 0,
-    hoechst = 0,
-    halten = 300;
+  let now = 0,
+    highest = 0,
+    hold = 300;
   const lengths = [];
   const app = http.createServer((req, res) => {
-    jetzt++;
-    hoechst = Math.max(hoechst, jetzt);
+    now++;
+    highest = Math.max(highest, now);
     lengths.push(req.headers['content-length']);
     req.resume();
     req.on('end', () =>
       setTimeout(() => {
-        jetzt--;
+        now--;
         res.end('ok');
-      }, halten),
+      }, hold),
     );
   });
   await new Promise(r => app.listen(0, '127.0.0.1', () => r(null)));
   let caddy = null;
-  const offen = [];
+  const open = [];
   t.after(() => {
-    for (const s of offen) s.destroy();
+    for (const s of open) s.destroy();
     caddy?.kill('SIGKILL');
     app.close();
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -76,10 +76,10 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
       });
     });
   let port = 0;
-  let fehler = '';
+  let error = '';
   const agent = new https.Agent({ keepAlive: false, maxSockets: Infinity });
-  const anfrage = (methode, pfad, rumpf = '{}') =>
-    new Promise(fertig => {
+  const request = (method, path, body = '{}') =>
+    new Promise(done => {
       const r = https.request(
         {
           host: '127.0.0.1',
@@ -87,31 +87,31 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
           servername: 'nas.example.lan',
           rejectUnauthorized: false,
           agent,
-          method: methode,
-          path: pfad,
+          method: method,
+          path: path,
           headers: { host: 'nas.example.lan', 'content-type': 'application/json' },
         },
         res => {
           res.resume();
-          res.on('end', () => fertig(res.statusCode));
+          res.on('end', () => done(res.statusCode));
         },
       );
-      r.on('error', () => fertig(null));
-      if (methode === 'POST') r.end(rumpf);
+      r.on('error', () => done(null));
+      if (method === 'POST') r.end(body);
       else r.end();
     });
-  let bereit = null;
-  for (let versuch = 1; bereit !== 200; versuch++) {
+  let ready = null;
+  for (let attempt = 1; ready !== 200; attempt++) {
     port = await freePort();
-    const umleitung = await freePort();
-    const datei = fs
+    const redirect = await freePort();
+    const file = fs
       .readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
       .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`)
-      .replace('http:// {', `http://:${umleitung} {`)
+      .replace('http:// {', `http://:${redirect} {`)
       .replaceAll('app:3000', `127.0.0.1:${portOf(app)}`);
-    assert.ok(datei.includes('import anmeldung'), 'der Block (anmeldung) ist nicht eingebunden');
-    fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
-    fehler = '';
+    assert.ok(file.includes('import anmeldung'), 'the block „(anmeldung)“ is not imported');
+    fs.writeFileSync(path.join(tmp, 'Caddyfile'), file);
+    error = '';
     caddy = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
       stdio: ['ignore', 'ignore', 'pipe'],
       env: {
@@ -125,69 +125,69 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
       },
     });
     caddy.stderr.on('data', d => {
-      fehler = (fehler + d).slice(-4000);
+      error = (error + d).slice(-4000);
     });
     // Under load Caddy with own CA starts slowly; if it ends before, its stderr is in the message.
-    const bis = Date.now() + 30_000;
-    while (bereit !== 200 && caddy.exitCode === null && Date.now() < bis) {
-      bereit = await anfrage('GET', '/api/v1/health');
-      if (bereit !== 200) await new Promise(r => setTimeout(r, 200));
+    const until = Date.now() + 30_000;
+    while (ready !== 200 && caddy.exitCode === null && Date.now() < until) {
+      ready = await request('GET', '/api/v2/health');
+      if (ready !== 200) await new Promise(r => setTimeout(r, 200));
     }
-    if (bereit === 200 || versuch >= 3 || !fehler.includes('address already in use')) break;
+    if (ready === 200 || attempt >= 3 || !error.includes('address already in use')) break;
     caddy.kill('SIGKILL');
   }
-  assert.equal(bereit, 200, `Caddy antwortet nicht (Exit ${caddy.exitCode}): ${fehler.slice(-600)}`);
+  assert.equal(ready, 200, `Caddy does not answer (exit ${caddy.exitCode}): ${error.slice(-600)}`);
 
   // Held long so that even a slow run has all 16 open at once.
-  jetzt = 0;
-  hoechst = 0;
-  halten = 1500;
-  const logins = await Promise.all(Array.from({ length: 16 }, () => anfrage('POST', '/api/v1/auth/login')));
-  halten = 300;
-  assert.deepEqual(logins, Array(16).fill(200), 'Anmeldungen gehen verloren');
-  assert.ok(hoechst > 8, `Caddy lässt die Anmeldungen ungebremst zur App (${hoechst} zugleich)`);
+  now = 0;
+  highest = 0;
+  hold = 1500;
+  const logins = await Promise.all(Array.from({ length: 16 }, () => request('POST', '/api/v2/auth/login')));
+  hold = 300;
+  assert.deepEqual(logins, Array(16).fill(200), 'Sign-ins get lost');
+  assert.ok(highest > 8, `Caddy lets the sign-ins through to the app unthrottled (${highest} at once)`);
 
   assert.equal(
-    await anfrage('POST', '/api/v1/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })),
+    await request('POST', '/api/v2/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })),
     413,
-    'ein Rumpf über 16 KB erreicht die Anmeldung',
+    'a body over 16 KB reaches the sign-in',
   );
 
   // Header immediately, only part of the body, then silence: four barely started
   // and four that go exactly up to the limit of max_size.
-  const langsam = (laenge, upfront) =>
-    new Promise(bereit => {
+  const slowOne = (len, upfront) =>
+    new Promise(ready => {
       const s = tls.connect(
         { host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false },
         () => {
           s.write(
-            `POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\nContent-Type: application/json\r\n` +
-              `Content-Length: ${laenge}\r\n\r\n${'x'.repeat(upfront)}`,
-            bereit,
+            `POST /api/v2/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\nContent-Type: application/json\r\n` +
+              `Content-Length: ${len}\r\n\r\n${'x'.repeat(upfront)}`,
+            ready,
           );
         },
       );
       s.on('error', () => {});
-      offen.push(s);
+      open.push(s);
     });
-  await Promise.all([...Array(4)].map(() => langsam(200, 1)).concat([...Array(4)].map(() => langsam(17_000, 16_000))));
+  await Promise.all([...Array(4)].map(() => slowOne(200, 1)).concat([...Array(4)].map(() => slowOne(17_000, 16_000))));
   await new Promise(r => setTimeout(r, 500));
-  assert.equal(await anfrage('POST', '/api/v1/auth/login'), 200, 'Vorbedingung: Caddy nimmt Anmeldungen an');
+  assert.equal(await request('POST', '/api/v2/auth/login'), 200, 'Vorbedingung: Caddy nimmt Anmeldungen an');
   const slow = lengths.filter(l => l === '200' || l === '17000');
-  assert.deepEqual(slow, [], 'kein angefangener Rumpf erreicht die App');
+  assert.deepEqual(slow, [], 'no started body reaches the app');
 
   const headerStart = Date.now();
-  const headerTo = await new Promise(fertig => {
+  const headerTo = await new Promise(done => {
     const s = tls.connect({ host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false }, () =>
-      s.write('POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\n'),
+      s.write('POST /api/v2/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\n'),
     );
     s.on('error', () => {});
-    s.once('close', () => fertig(Date.now() - headerStart));
-    offen.push(s);
-    setTimeout(() => fertig(null), 15_000);
+    s.once('close', () => done(Date.now() - headerStart));
+    open.push(s);
+    setTimeout(() => done(null), 15_000);
   });
   assert.ok(
     headerTo !== null && headerTo < 13_000,
-    `Caddy schliesst eine Verbindung, deren Kopf stockt (nach ${headerTo} ms)`,
+    `Caddy closes a connection whose header stalls (after ${headerTo} ms)`,
   );
 });

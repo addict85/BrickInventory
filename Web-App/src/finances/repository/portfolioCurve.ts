@@ -1,13 +1,13 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
-import { marktpreisSql } from '../../../db/geldSql';
+import { marketPriceSql } from '../../../db/moneySql';
 
 export function dailyValuesFromHistory(
   db: DbInterface,
   currency: string,
   condition: string,
   setNumbers: string[],
-  mengen: number[],
+  quantities: number[],
   datumsFilter: string,
   bExpr: string,
 ) {
@@ -22,14 +22,14 @@ export function dailyValuesFromHistory(
               to_char(ph.recorded_at, 'YYYY-MM')            AS monat,
               ph.recorded_at,
               (ph.condition = $2)                           AS passender_zustand,
-              ${marktpreisSql('ph')}::numeric AS preis
+              ${marketPriceSql('ph')}::numeric AS preis
          FROM price_history ph
         WHERE ph.set_number = ANY($3::text[])
           AND ph.currency_code = $1 AND ph.condition IN ('U','N')
-          AND ${marktpreisSql('ph')} IS NOT NULL
+          AND ${marketPriceSql('ph')} IS NOT NULL
           ${datumsFilter}
      ),
-     werte AS (
+     vals AS (
        SELECT set_number, bucket,
               (array_agg(preis ORDER BY recorded_at DESC, passender_zustand DESC))[1] AS preis,
               max(tag)   AS letzter_tag,
@@ -44,14 +44,14 @@ export function dailyValuesFromHistory(
      tage AS (
        SELECT bucket, max(letzter_tag) AS tag, min(erster_tag) AS erster_tag,
               max(monat) AS monat
-         FROM werte GROUP BY bucket
+         FROM vals GROUP BY bucket
      ),
      mit_vortag AS (
        SELECT w.*,
               LAG(preis) OVER (PARTITION BY set_number ORDER BY bucket) AS vortag,
               -- Anfang der GANZEN Reihe, nicht des jeweiligen Sets.
               MIN(bucket) OVER () AS erstes_bucket
-         FROM werte w
+         FROM vals w
      ),
      delta AS (
        -- Der ERSTE bekannte Preis eines Sets zählt am Anfang der Reihe, nicht
@@ -68,7 +68,7 @@ export function dailyValuesFromHistory(
             ROUND(SUM(COALESCE(d.d, 0)) OVER (ORDER BY t.bucket), 2) AS total
        FROM tage t LEFT JOIN delta d ON d.bucket = t.bucket
       ORDER BY t.bucket`.replace('@BUCKET@', bExpr),
-    [currency, condition, setNumbers, mengen],
+    [currency, condition, setNumbers, quantities],
   );
 }
 
@@ -81,16 +81,16 @@ export function cachePricesTheSets(
 ) {
   return db.all<{
     set_number: string;
-    marktpreis: number;
+    market_price: number;
     day: string;
     month: string;
   }>(
-    `SELECT set_number, ${marktpreisSql()} AS marktpreis,
+    `SELECT set_number, ${marketPriceSql()} AS market_price,
               to_char(fetched_at,'YYYY-MM-DD') AS day,
               to_char(fetched_at,'YYYY-MM')    AS month
        FROM price_cache
        WHERE currency_code=$1 AND condition IN ('U','N') AND set_number IN (${placeholders})
-         AND ${marktpreisSql()} IS NOT NULL
+         AND ${marketPriceSql()} IS NOT NULL
        ORDER BY fetched_at ASC, (condition = $2) ASC`,
     [currency, condition, ...setNumbers],
   );
@@ -101,7 +101,7 @@ export function lastValuesBeforeStart(
   currency: string,
   condition: string,
   setNumbers: string[],
-  mengen: number[],
+  quantities: number[],
   firstTag: string,
   datumsFilter: string,
 ) {
@@ -111,11 +111,11 @@ export function lastValuesBeforeStart(
        ),
        letzte AS (
          SELECT DISTINCT ON (ph.set_number) ph.set_number,
-                ${marktpreisSql('ph')}::numeric AS preis
+                ${marketPriceSql('ph')}::numeric AS preis
            FROM price_history ph
           WHERE ph.set_number = ANY($3::text[])
             AND ph.currency_code = $1 AND ph.condition IN ('U','N')
-            AND ${marktpreisSql('ph')} IS NOT NULL
+            AND ${marketPriceSql('ph')} IS NOT NULL
             -- Derselbe Zeitraumfilter wie oben: Daten VOR dem Fenster zählen
             -- auch beim Startpunkt nicht mit, sonst begänne „Jahr" höher als
             -- die Monatskurve.
@@ -133,7 +133,7 @@ export function lastValuesBeforeStart(
        )
        SELECT ROUND(SUM(m.qty * l.preis), 2) AS total
          FROM letzte l JOIN mengen m ON m.set_number = l.set_number`,
-    [currency, condition, setNumbers, mengen, firstTag],
+    [currency, condition, setNumbers, quantities, firstTag],
   );
 }
 
@@ -142,12 +142,12 @@ export function setsWithPurchaseTotal(db: DbInterface, l: FinancesReadContract, 
     `SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             SUM(COALESCE(a.total_price, 0))
               / NULLIF(SUM(a.total_qty), 0) AS purchase_price
-     FROM ${l.setBestand('= ANY($1)')} s
+     FROM ${l.setHoldings('= ANY($1)')} s
      LEFT JOIN (
        SELECT user_id, set_number,
               SUM(COALESCE(purchase_price, 0) * quantity) AS total_price,
               SUM(quantity) AS total_qty
-       FROM ${l.setErfassungen('= ANY($1)')} e GROUP BY user_id, set_number
+       FROM ${l.setAcquisitions('= ANY($1)')} e GROUP BY user_id, set_number
      ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
      WHERE s.user_id = ANY($1)
      GROUP BY s.set_number`,

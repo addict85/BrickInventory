@@ -1,0 +1,17 @@
+Gegenprobe: Sekundärtext im Design brick wieder #6B7785 (3,91:1 auf background)
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.TextContrastTest
+Rot: every text role reaches 4,5 to 1 on its surface
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -108,7 +108,7 @@
+     surface             = Color.White,
+     surfaceVariant      = Color(0xFFEEF1F5),
+     onSurface           = Color(0xFF26323F),
+-    onSurfaceVariant    = Color(0xFF56616E),
++    onSurfaceVariant    = Color(0xFF6B7785),
+     outline             = Color(0xFF768391),
+     outlineVariant      = Color(0xFFCDD7E2),
+     // The same tone as the "error" status color; #C0564E carried white text at only 4.48:1.

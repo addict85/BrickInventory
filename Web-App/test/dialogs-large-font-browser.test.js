@@ -7,7 +7,7 @@
  * Counter-checks (measured 02.11.2026, each alone):
  *   A  .umenu-pop again min-width:14rem without max-width → red: “user menu”
  *      (flap sticks out on the left, both widths)
- *   B  .knopf-reihe-mitte without flex-wrap and without flex basis of the buttons → red:
+ *   B  .button-row-center without flex-wrap and without flex basis of the buttons → red:
  *      “320 px: confirm” (390 px stays green: both buttons fit there)
  *   C  .fg input/select height:38px instead of max(38px,2.6em) → red: “add set” at 320
  *      and 390 px (field too low for its font)
@@ -24,143 +24,149 @@ const { startApp } = require('./helpers/app-browser');
 const { patternCollection } = require('./helpers/inventory');
 
 /** What a reviewer sees: over the edge, overlapping, cut off, too low. */
-const MEASURE = wurzelSel => `(() => {
-  const funde = [], breite = document.documentElement.clientWidth, hoehe = innerHeight;
-  const wurzel = document.querySelector(${JSON.stringify(wurzelSel)});
-  if (!wurzel) return ['nicht offen: ' + ${JSON.stringify(wurzelSel)}];
-  const sichtbar = (e) => { const r = e.getBoundingClientRect(); return r.width > 1 && r.height > 1 && getComputedStyle(e).visibility !== 'hidden'; };
+const MEASURE = rootSel => `(() => {
+  const findings = [], width = document.documentElement.clientWidth, height = innerHeight;
+  const root = document.querySelector(${JSON.stringify(rootSel)});
+  if (!root) return ['nicht offen: ' + ${JSON.stringify(rootSel)}];
+  const visible = (e) => { const r = e.getBoundingClientRect(); return r.width > 1 && r.height > 1 && getComputedStyle(e).visibility !== 'hidden'; };
   const name = (e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + ' „' + (e.textContent || e.value || '').trim().replace(/\\s+/g, ' ').slice(0, 20) + '“';
-  if (document.documentElement.scrollWidth > breite + 1) funde.push('Seite ' + document.documentElement.scrollWidth + ' px breit');
-  const r = wurzel.getBoundingClientRect();
-  if (r.left < -1 || r.right > breite + 1) funde.push('ragt hinaus: ' + Math.round(r.left) + '…' + Math.round(r.right));
-  if (r.bottom > hoehe + 1 && getComputedStyle(wurzel).overflowY === 'visible') funde.push('unten abgeschnitten');
-  const bedien = [...wurzel.querySelectorAll('button, input:not([type=hidden]), select, [role=menuitem]')].filter(sichtbar);
+  if (document.documentElement.scrollWidth > width + 1) findings.push('Seite ' + document.documentElement.scrollWidth + ' px breit');
+  const r = root.getBoundingClientRect();
+  if (r.left < -1 || r.right > width + 1) findings.push('ragt hinaus: ' + Math.round(r.left) + '…' + Math.round(r.right));
+  if (r.bottom > height + 1 && getComputedStyle(root).overflowY === 'visible') findings.push('unten abgeschnitten');
+  const bedien = [...root.querySelectorAll('button, input:not([type=hidden]), select, [role=menuitem]')].filter(visible);
   for (const e of bedien) {
     const b = e.getBoundingClientRect(), s = getComputedStyle(e);
-    if (b.left < -1 || b.right > breite + 1) funde.push('über den Rand: ' + name(e));
-    if (e.matches('button, [role=menuitem]') && e.scrollWidth > e.clientWidth + 1) funde.push('Text ragt aus ' + name(e));
+    if (b.left < -1 || b.right > width + 1) findings.push('über den Rand: ' + name(e));
+    if (e.matches('button, [role=menuitem]') && e.scrollWidth > e.clientWidth + 1) findings.push('Text ragt aus ' + name(e));
     if (e.matches('input:not([type=checkbox]):not([type=radio]), select')) {
-      const innen = b.height - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom) - parseFloat(s.borderTopWidth) - parseFloat(s.borderBottomWidth);
-      if (innen < parseFloat(s.fontSize) - 0.5) funde.push('Feld zu niedrig: ' + name(e) + ' ' + Math.round(innen) + ' px für ' + s.fontSize);
+      const inner = b.height - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom) - parseFloat(s.borderTopWidth) - parseFloat(s.borderBottomWidth);
+      if (inner < parseFloat(s.fontSize) - 0.5) findings.push('Feld zu niedrig: ' + name(e) + ' ' + Math.round(inner) + ' px für ' + s.fontSize);
     }
   }
   // Was ein rollender Bereich gerade unter seinen Rand geschoben hat, liegt nicht über anderem.
-  const imBild = (e) => { const b = e.getBoundingClientRect();
+  const inImage = (e) => { const b = e.getBoundingClientRect();
     for (let x = e.parentElement; x && x !== document.body; x = x.parentElement) {
       if (!/auto|scroll/.test(getComputedStyle(x).overflowY)) continue;
       const k = x.getBoundingClientRect(); if (b.top < k.top - 1 || b.bottom > k.bottom + 1) return false; }
     return true; };
-  const ganz = bedien.filter(imBild);
+  const whole = bedien.filter(inImage);
   // Kopf- und Fussleiste kleben; Inhalt, der unter ihnen durchrollt, überlappt nicht.
   const klebt = (e) => { for (let x = e; x; x = x.parentElement) if (getComputedStyle(x).position === 'sticky') return x; return null; };
-  for (let i = 0; i < ganz.length; i++) for (let j = i + 1; j < ganz.length; j++) {
-    const a = ganz[i].getBoundingClientRect(), c = ganz[j].getBoundingClientRect();
-    if (ganz[i].contains(ganz[j]) || ganz[j].contains(ganz[i]) || klebt(ganz[i]) !== klebt(ganz[j])) continue;
+  for (let i = 0; i < whole.length; i++) for (let j = i + 1; j < whole.length; j++) {
+    const a = whole[i].getBoundingClientRect(), c = whole[j].getBoundingClientRect();
+    if (whole[i].contains(whole[j]) || whole[j].contains(whole[i]) || klebt(whole[i]) !== klebt(whole[j])) continue;
     const x = Math.min(a.right, c.right) - Math.max(a.left, c.left), y = Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top);
-    if (x > 2 && y > 2) funde.push('überlappen: ' + name(ganz[i]) + ' / ' + name(ganz[j]));
+    if (x > 2 && y > 2) findings.push('überlappen: ' + name(whole[i]) + ' / ' + name(whole[j]));
   }
-  return funde;
+  return findings;
 })()`;
 
 test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t => {
-  const app = await startApp(t, { name: `dlg_${process.pid}`, bestand: patternCollection, telefon: true });
-  if (app.grund) {
-    t.skip(app.grund);
+  const app = await startApp(t, { name: `dlg_${process.pid}`, holding: patternCollection, phone: true });
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
-  const { b, bis, ruhig } = app;
+  const { b, until, settle } = app;
   // Startup loads settings and prices afterwards; only then is the state fixed.
-  await ruhig();
-  const zu = () =>
-    b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
+  await settle();
+  const closed = () =>
+    b.evaluate(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
     document.getElementById('confirm-modal').style.display = 'none';
     if (document.getElementById('btn-umenu').getAttribute('aria-expanded') === 'true') document.getElementById('btn-umenu').click(); true`);
 
-  for (const breite of [320, 390]) {
+  for (const width of [320, 390]) {
     await b.tab('Emulation.setDeviceMetricsOverride', {
-      width: breite,
+      width: width,
       height: 700,
       deviceScaleFactor: 1,
       mobile: true,
     });
     await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
-    await ruhig();
-    await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-    await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
+    await settle();
+    await b.evaluate(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
+    await until(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
 
-    await t.test(`${breite} px: user menu`, async () => {
+    await t.test(`${width} px: user menu`, async () => {
       // Without a hyphenation dictionary (as in CI Chrome) “Hintergrundarbeiten” stays
       // one piece; hyphens: manual (CSSOM, the CSP blocks <style>) creates this worst case everywhere.
-      await b.auswerten(
+      await b.evaluate(
         `document.querySelectorAll('.umenu-item').forEach(e => e.style.setProperty('hyphens', 'manual', 'important')); true`,
       );
-      await b.auswerten(`document.getElementById('btn-umenu').click(); true`);
-      await ruhig();
-      assert.deepEqual(await b.auswerten(MEASURE('#umenu-pop')), []);
-      await zu();
+      await b.evaluate(`document.getElementById('btn-umenu').click(); true`);
+      await settle();
+      assert.deepEqual(await b.evaluate(MEASURE('#umenu-pop')), []);
+      await closed();
     });
 
-    await t.test(`${breite} px: confirm`, async () => {
-      await b.auswerten(`document.querySelector('#gallery .delbtn').click(); true`);
-      await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Bestätigungsdialog');
-      await ruhig();
-      assert.deepEqual(await b.auswerten(MEASURE('#confirm-modal .modal')), []);
-      await b.auswerten(`document.getElementById('cd-cancel').click(); true`);
-      await ruhig();
-      await zu();
+    await t.test(`${width} px: confirm`, async () => {
+      // Deleting a purchase is irreversible and still asks (js/deletion.js); a set goes without a question.
+      await b.evaluate(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
+      await until(`!!document.querySelector('#set-modal.open [data-click="openAcqModal"]')`, 'Set-Detail');
+      await b.evaluate(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
+      await until(`!!document.querySelector('#acq-modal [data-click="acqDelete"]')`, 'Purchase prices');
+      await b.evaluate(`document.querySelector('#acq-modal [data-click="acqDelete"]').click(); true`);
+      await until(
+        `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`,
+        'Confirmation dialog',
+      );
+      await settle();
+      assert.deepEqual(await b.evaluate(MEASURE('#confirm-modal .modal')), []);
+      await b.evaluate(`document.getElementById('cd-cancel').click(); true`);
+      await settle();
+      await closed();
     });
 
-    await t.test(`${breite} px: capture set`, async () => {
-      await b.auswerten(`document.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
-      await ruhig();
-      assert.deepEqual(await b.auswerten(MEASURE('#add-set-modal .modal')), []);
-      await zu();
+    await t.test(`${width} px: capture set`, async () => {
+      await b.evaluate(`document.querySelector('[data-click="openCapture"][data-arg="set"]').click(); true`);
+      await settle();
+      assert.deepEqual(await b.evaluate(MEASURE('#add-set-modal .modal')), []);
+      await closed();
     });
 
-    await t.test(`${breite} px: purchase price`, async () => {
-      await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
-      await bis(
+    await t.test(`${width} px: purchase price`, async () => {
+      await b.evaluate(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
+      await until(
         `document.getElementById('set-modal').classList.contains('open') && document.querySelector('#set-modal [data-click="openAcqModal"]')`,
         'Set-Detail',
       );
-      await b.auswerten(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
-      await bis(`document.querySelector('#acq-modal .acq-preis')`, 'Kaufpreis-Dialog');
-      assert.deepEqual(await b.auswerten(MEASURE('#acq-modal .modal')), []);
-      await zu();
+      await b.evaluate(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
+      await until(`document.querySelector('#acq-modal .acq-price')`, 'Kaufpreis-Dialog');
+      assert.deepEqual(await b.evaluate(MEASURE('#acq-modal .modal')), []);
+      await closed();
     });
   }
 
   await t.test('149,95 is saved as 149.95', async () => {
-    const sn = await b.auswerten(`(document.querySelector('#gallery [data-click="openModal"]').dataset.arg)`);
-    await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
-    await bis(`document.querySelector('#set-modal [data-click="openAcqModal"]')`, 'Set-Detail');
-    await b.auswerten(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
-    await bis(`document.querySelector('#acq-modal .acq-preis')`, 'Kaufpreis-Dialog');
-    const id = await b.auswerten(
-      `(() => { const f = document.querySelector('#acq-modal .acq-preis'); f.focus(); f.select(); return f.id.replace('acq-preis-', ''); })()`,
+    const sn = await b.evaluate(`(document.querySelector('#gallery [data-click="openModal"]').dataset.arg)`);
+    await b.evaluate(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
+    await until(`document.querySelector('#set-modal [data-click="openAcqModal"]')`, 'Set-Detail');
+    await b.evaluate(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
+    await until(`document.querySelector('#acq-modal .acq-price')`, 'Kaufpreis-Dialog');
+    const id = await b.evaluate(
+      `(() => { const f = document.querySelector('#acq-modal .acq-price'); f.focus(); f.select(); return f.id.replace('acq-price-', ''); })()`,
     );
     await b.tab('Input.insertText', { text: '149,95' });
-    await b.auswerten(`document.querySelector('#acq-modal .acq-preis').blur(); true`);
-    await bis(`!document.getElementById('acq-ok-${id}')?.hidden`, 'Marke „Gespeichert“');
-    const zeile = await app.db.get('SELECT set_number, purchase_price FROM set_acquisitions WHERE id = $1', [id]);
-    assert.equal(zeile.set_number, sn);
-    assert.equal(Number(zeile.purchase_price), 149.95);
+    await b.evaluate(`document.querySelector('#acq-modal .acq-price').blur(); true`);
+    await until(`!document.getElementById('acq-ok-${id}')?.hidden`, 'Marker „Gespeichert“');
+    const row = await app.db.get('SELECT set_number, purchase_price FROM set_acquisitions WHERE id = $1', [id]);
+    assert.equal(row.set_number, sn);
+    assert.equal(Number(row.purchase_price), 149.95);
     // Displayed in the form of the language: de-DE “149,95”, de-CH “149.95”.
-    assert.match(await b.auswerten(`document.getElementById('acq-preis-${id}').value`), /^149[.,]95$/);
+    assert.match(await b.evaluate(`document.getElementById('acq-price-${id}').value`), /^149[.,]95$/);
   });
 
   // The test server has neither APP_BASE_URL nor SMTP: both paths are missing on the mask.
   await t.test('login mask without passkey and "forgot password?"', async () => {
-    await zu();
-    await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
-    await bis(
+    await closed();
+    await b.evaluate(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
+    await until(
       `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none' && document.getElementById('link-forgot').hidden`,
       'Anmeldemaske',
     );
     assert.deepEqual(
-      await b.auswerten(
-        `['btn-passkey', 'link-forgot'].map(id => document.getElementById(id).getClientRects().length)`,
-      ),
+      await b.evaluate(`['btn-passkey', 'link-forgot'].map(id => document.getElementById(id).getClientRects().length)`),
       [0, 0],
     );
   });

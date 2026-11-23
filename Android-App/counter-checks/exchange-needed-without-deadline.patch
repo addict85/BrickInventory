@@ -1,0 +1,17 @@
+Gegenprobe: noetigWartend() wartet ohne Frist auf den Tausch
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenSwapTest
+Rot: needed waits at most the deadline, the swap keeps running
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+@@ -147,7 +147,7 @@
+      */
+     suspend fun neededWaiting(oldToken: String, origin: String?, generation: Long): String? {
+         val swapping = background.async { swap(oldToken) }
+-        return when (withTimeoutOrNull(wait) { swapping.await() }) {
++        return when (swapping.await() as ExchangeOutcome?) {
+             null -> null
+             ExchangeOutcome.EXCHANGED, ExchangeOutcome.ALREADY_SWAPPED -> state()
+                 .takeIf { origin != null && it.origin == origin && it.generation == generation }

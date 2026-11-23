@@ -6,7 +6,7 @@
  *
  * Counter-checks (measured on 29.10.2026):
  *   A  in the query again `image_local LIKE '%/' || $1 || '.%'` instead of
- *      bild_stamm(image_local) = $1 → red: “every image table asks via its
+ *      image_master(image_local) = $1 → red: “every image table asks via its
  *      index” (the partial indexes are only scanned, no Index Cond)
  *   B  imageMasterFromPath leaves _thumb → red: “a missing preview
  *      finds the address of the part image”
@@ -62,15 +62,15 @@ test('image address via the file name stem', { concurrency: 1 }, async t => {
       });
       // set_minifigs_catalog has been a view on minifigs_catalog since migration 0072.
       for (const ix of [
-        'idx_part_color_catalog_bild_stamm',
-        'idx_minifigs_catalog_bild_stamm',
-        'idx_set_catalog_bild_stamm',
+        'idx_part_color_catalog_image_master',
+        'idx_minifigs_catalog_image_master',
+        'idx_set_catalog_image_master',
       ])
-        assert.ok(plan.includes(ix), `${ix} fehlt im Plan:\n${plan}`);
+        assert.ok(plan.includes(ix), `${ix} is missing in the plan:\n${plan}`);
       // Not only scanned but searched via the stem: without a search key
       // the planner would read the partial index fully with Seq Scan switched off.
-      const gesucht = plan.match(/Index Cond: \(regexp_replace\(regexp_replace\(image_local/g) || [];
-      assert.equal(gesucht.length, 3, `nicht jede Tabelle sucht über den Stamm:\n${plan}`);
+      const sought = plan.match(/Index Cond: \(regexp_replace\(regexp_replace\(image_local/g) || [];
+      assert.equal(sought.length, 3, `not every table searches via the master:\n${plan}`);
     });
   } finally {
     await db.run('DELETE FROM part_color_catalog WHERE part_number=$1', [P]);

@@ -3,12 +3,17 @@
  *
  * Counter-check (measured 01.11.2026): bestaetigePasswort() removed from DELETE /bestand
  * → red: “deleted without password” (code missing in the response).
+ * Counter-checks (22.11.2026, each alone):
+ *   A  deleteSetFor ignores the account selection (chosen = writable) → red “accounts can only narrow …”
+ *      (own deletes the sub-account's set too). Without the cut against writeScope it stays green: no
+ *      view reaches beyond the write scope today (household-db), the cut only guards that.
+ *   B  deleteAll deletes the sets in writeScope(uid) instead of [uid] → red “delete everything …”
+ *   C  btn-dall lists /v2/sets and deletes set by set again → red “the button leaves the choice …”
  *
  * Prerequisite: test DB via TEST_DATABASE_URL (content is emptied!).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
@@ -16,12 +21,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
+test.after(() => db.pool.end().catch(() => {}));
 
-async function erreichbar() {
+async function reachable() {
   try {
     await db.get('SELECT 1');
     return true;
@@ -31,8 +37,8 @@ async function erreichbar() {
 }
 
 test('delete everything does not touch the linked accounts', async t => {
-  if (!(await erreichbar())) {
-    keineDb(t);
+  if (!(await reachable())) {
+    noDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -47,97 +53,109 @@ test('delete everything does not touch the linked accounts', async t => {
       mc.release();
     }
   }
-  t.after(() => db.pool.end());
 
   const PASS = 'eigenes-Passwort-1';
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt', $1), ('kind','x')`, [
     require(path.join(ROOT, 'node_modules', 'bcryptjs')).hashSync(PASS, 4),
   ]);
-  const haupt = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
+  const main = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   const kind = (await db.get(`SELECT id FROM users WHERE username='kind'`)).id;
-  await db.run(`INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
+  await db.run(`INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)`, [main, kind]);
 
   // BOTH own 75192-1 — that is the case that a check for
   // “foreign set numbers stay" alone does not catch.
-  await holdsSet(db, haupt, '75192-1', 1);
+  await holdsSet(db, main, '75192-1', 1);
   await holdsSet(db, kind, '75192-1', 1);
   await holdsSet(db, kind, '21318-1', 1);
-  await holdsPart(db, kind, '3001', { setNumber: '21318-1', menge: 10, colorId: 4 });
-  await holdsMinifig(db, kind, 'fig1', { setNumber: '21318-1', menge: 1 });
+  await holdsPart(db, kind, '3001', { setNumber: '21318-1', quantity: 10, colorId: 4 });
+  await holdsMinifig(db, kind, 'fig1', { setNumber: '21318-1', quantity: 1 });
   // Manual elements on both sides: the child's must stay.
-  await holdsPart(db, kind, '3003', { colorId: 1, menge: 2 });
-  await holdsMinifig(db, kind, 'fig2', { menge: 1 });
-  await holdsPart(db, haupt, '3004', { colorId: 1, menge: 2 });
+  await holdsPart(db, kind, '3003', { colorId: 1, quantity: 2 });
+  await holdsMinifig(db, kind, 'fig2', { quantity: 1 });
+  await holdsPart(db, main, '3004', { colorId: 1, quantity: 2 });
 
-  const { base } = testServer(_req, { sitzung: { userId: haupt, username: 'haupt' }, t });
-  const hole = async (pfad, methode = 'GET', body) =>
+  const { base } = testServer(_req, { session: { userId: main, username: 'haupt' }, t });
+  const hole = async (path, method = 'GET', body) =>
     (
-      await fetch(base + pfad, {
-        method: methode,
+      await fetch(base + path, {
+        method: method,
         ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
       })
     ).json();
 
   // Without a password everything stays: a captured app token alone should not delete everything.
-  const ohne = await hole('/api/v1/bestand', 'DELETE');
-  assert.equal(ohne.code, 'aktuelles_passwort_falsch', JSON.stringify(ohne));
-  assert.equal((await db.all('SELECT 1 FROM sets WHERE user_id = $1', [haupt])).length, 1, 'ohne Passwort gelöscht');
+  const without = await hole('/api/v2/inventory', 'DELETE');
+  assert.equal(without.code, 'current_password_wrong', JSON.stringify(without));
+  assert.equal((await db.all('SELECT 1 FROM sets WHERE user_id = $1', [main])).length, 1, 'deleted without a password');
 
   // Exactly the call from public/js/settings.js (btn-dall).
-  const r = await hole('/api/v1/bestand', 'DELETE', { password: PASS });
+  const r = await hole('/api/v2/inventory', 'DELETE', { password: PASS });
   assert.equal(r.success, true, JSON.stringify(r));
-  assert.deepEqual([r.sets, r.teile, r.figuren], [1, 1, 0], 'Gezählt wird nur das eigene Konto');
+  assert.deepEqual([r.sets, r.parts, r.minifigs], [1, 1, 0], 'Only the own account is counted');
 
-  const meine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1`, [haupt]);
-  assert.deepEqual(meine, [], 'Die eigenen Sets müssen weg sein');
+  const mine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1`, [main]);
+  assert.deepEqual(mine, [], 'The own sets must be gone');
 
   const seine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1 ORDER BY set_number`, [kind]);
   assert.deepEqual(
     seine.map(r => r.set_number),
     ['21318-1', '75192-1'],
-    'Das verknüpfte Konto behält ALLE seine Sets — auch die gemeinsame Nummer',
+    'The linked account keeps ALL its sets — including the shared number',
   );
-  const teile = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [kind]);
-  const figuren = await db.get(`SELECT COUNT(*)::int c FROM minifigs WHERE user_id=$1`, [kind]);
-  assert.equal(teile.c, 2, 'Teile des verknüpften Kontos bleiben (aus dem Set und manuell)');
-  assert.equal(figuren.c, 2, 'Minifiguren des verknüpften Kontos bleiben (aus dem Set und manuell)');
-  const myParts = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [haupt]);
-  assert.equal(myParts.c, 0, 'Das eigene manuelle Teil muss weg sein');
+  const parts = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [kind]);
+  const minifigs = await db.get(`SELECT COUNT(*)::int c FROM minifigs WHERE user_id=$1`, [kind]);
+  assert.equal(parts.c, 2, 'Parts of the linked account stay (from the set and manual)');
+  assert.equal(minifigs.c, 2, 'Minifigs of the linked account stay (from the set and manual)');
+  const myParts = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [main]);
+  assert.equal(myParts.c, 0, 'The own manual part must be gone');
 });
 
-test('accounts can only narrow the delete scope, never widen it', () => {
-  // A view parameter that can OPEN something would be an access path instead of
-  // a safeguard. The service therefore intersects with schreibbereich(); the
-  // route only passes the view on (behavior: scope-services-db.test.js).
-  const src = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
-  const i = src.indexOf("router.endpunkt('DELETE /api/v1/sets/:setNumber'");
-  assert.ok(i > 0, 'Löschroute nicht gefunden');
-  assert.match(src.slice(i, i + 900), /deleteSetFor\(viewOf\(req\)/, 'Die Route löscht nicht über den Dienst');
-  const dienst = require('./helpers/sources').functionBody(
-    fs.readFileSync(path.join(ROOT, 'src/sets/delete.ts'), 'utf8'),
-    'deleteSetFor',
-  );
-  assert.match(
-    dienst,
-    /(?:schreibbar|writable)\.includes\(/,
-    'Die gewählte Menge muss gegen schreibbereich() geschnitten werden',
-  );
+test('accounts can only narrow the delete scope, never widen it', async t => {
+  // Runs after the test above on the same schema: haupt → kind is linked.
+  if (!(await reachable())) {
+    noDb(t);
+    return;
+  }
+  const id = async n => (await db.get('SELECT id FROM users WHERE username = $1', [n])).id;
+  const [main, kind] = [await id('haupt'), await id('kind')];
+  for (const u of [main, kind]) await holdsSet(db, u, '10001-1', 1);
+  const owners = async () =>
+    (await db.all(`SELECT user_id FROM sets WHERE set_number = '10001-1' ORDER BY user_id`)).map(r => r.user_id);
+  const del = async (who, q) => {
+    const { base, srv } = testServer(_req, { session: { userId: who, username: String(who) } });
+    try {
+      return await fetch(`${base}/api/v2/sets/10001-1${q}`, { method: 'DELETE' }).then(r => r.json());
+    } finally {
+      srv.close();
+    }
+  };
+  // The sub-account sees the main account's set, but may not write there.
+  await del(kind, '?accounts=all');
+  assert.deepEqual(await owners(), [main], 'the view widened the delete into the main account');
+  await holdsSet(db, kind, '10001-1', 1);
+  await del(main, '?accounts=own');
+  assert.deepEqual(await owners(), [kind], 'own narrows to the own account');
 });
 
-test('the button leaves the choice to the server', () => {
-  // Previously the button listed itself and deleted number by number — with the
-  // trap that a missing accounts=own deleted the household along. Now
-  // the server decides, and only about the own account.
-  const src = fs.readFileSync(path.join(ROOT, 'public', 'js', 'settings.js'), 'utf8');
-  const i = src.indexOf("G('btn-dall')");
-  assert.ok(i > 0, 'Knopf btn-dall nicht gefunden');
-  const block = src.slice(i, src.indexOf('\n};', i));
-  assert.match(
-    block,
-    /api\(\s*'DELETE',\s*'\/v1\/bestand',\s*\{\s*password\b/,
-    'Der Knopf ruft DELETE /v1/bestand mit Passwort',
-  );
-  assert.doesNotMatch(block, /\/v1\/sets/, 'Der Knopf listet und löscht wieder selbst');
-  const loeschen = fs.readFileSync(path.join(ROOT, 'src/collection/deletion.ts'), 'utf8');
-  assert.match(loeschen, /deleteSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');
+test('the button leaves the choice to the server', async () => {
+  // Real bundle in jsdom: the button only asks for the password and leaves listing and deleting to
+  // DELETE /v2/inventory (what the server does with it: the test above).
+  const { openUi, waitFor } = require('./helpers/ui');
+  const { w, d, calls } = await openUi({
+    '/v2/inventory': { success: true, sets: 1, parts: 0, minifigs: 0, trash: [] },
+  });
+  try {
+    d.getElementById('btn-dall').click();
+    assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'));
+    d.getElementById('cd-pw').value = 'mein-Passwort';
+    d.getElementById('cd-confirm').click();
+    assert.ok(await waitFor(() => calls.some(a => a.method === 'DELETE')));
+    const deletes = calls.filter(a => a.method === 'DELETE');
+    assert.deepEqual(
+      deletes.map(a => [a.url.replace(/^https?:\/\/[^/]+/, ''), JSON.parse(a.body).password]),
+      [['/api/v2/inventory', 'mein-Passwort']],
+    );
+  } finally {
+    w.close();
+  }
 });

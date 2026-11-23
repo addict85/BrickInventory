@@ -1,4 +1,4 @@
-import type { DbInterface, Treffer } from '../../../db/database';
+import type { DbInterface, Hit } from '../../../db/database';
 
 /** Challenges are kept only as a hash. */
 
@@ -88,11 +88,11 @@ export function byCredentialId(db: DbInterface, credentialId: string, uid: numbe
 }
 
 /** Only if the counter is still the one read: two simultaneous logins do not both succeed. */
-export async function advanceCounter(db: DbInterface, id: number, neu: number, old: string): Promise<boolean> {
+export async function advanceCounter(db: DbInterface, id: number, fresh: number, old: string): Promise<boolean> {
   return !!(
     await db.run('UPDATE passkeys SET sign_count = $2, last_used = NOW() WHERE id = $1 AND sign_count = $3', [
       id,
-      neu,
+      fresh,
       old,
     ])
   ).changes;
@@ -109,7 +109,7 @@ export function passkeysForAccount(db: DbInterface, uid: number) {
 }
 
 export async function hasAny(db: DbInterface, uid: number): Promise<boolean> {
-  return !!(await db.get<Treffer>('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]));
+  return !!(await db.get<Hit>('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]));
 }
 
 export async function deleteAllForAccount(db: DbInterface, uid: number): Promise<number> {

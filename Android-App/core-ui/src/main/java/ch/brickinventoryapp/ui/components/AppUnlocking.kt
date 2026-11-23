@@ -4,9 +4,9 @@ import java.security.PublicKey
 import java.security.Signature
 
 /** What the app lock needs from the Keystore; the test provides a software key for it. */
-internal interface Entsperrschluessel {
-    fun signatur(): Signature
-    fun oeffentlich(): PublicKey
+internal interface UnlockKey {
+    fun signature(): Signature
+    fun public(): PublicKey
     fun discard()
 }
 
@@ -17,22 +17,22 @@ internal interface Entsperrschluessel {
  * sign (key invalid in the meantime), a new one is created and exactly one more follow-up question.
  */
 internal class AppUnlocking(
-    private val schluessel: Entsperrschluessel,
-    private val frage: (Signature, (Signature?) -> Unit) -> Unit,
+    private val key: UnlockKey,
+    private val question: (Signature, (Signature?) -> Unit) -> Unit,
 ) {
-    private val freigabe = Schrittfreigabe(schluessel::oeffentlich)
+    private val approval = StepApproval(key::public)
 
-    fun unlock(weiter: () -> Unit) = versuche(weiter, again = true)
+    fun unlock(next: () -> Unit) = attempts(next, again = true)
 
-    private fun versuche(weiter: () -> Unit, again: Boolean) {
+    private fun attempts(next: () -> Unit, again: Boolean) {
         // Without a key, the app stays locked; the button on the lock screen asks again.
-        val signatur = runCatching { schluessel.signatur() }.getOrNull() ?: return
-        frage(signatur) { released ->
+        val signature = runCatching { key.signature() }.getOrNull() ?: return
+        question(signature) { released ->
             when {
-                freigabe.gilt(released) -> weiter()
+                approval.applies(released) -> next()
                 released != null && again -> {
-                    runCatching { schluessel.discard() }
-                    versuche(weiter, again = false)
+                    runCatching { key.discard() }
+                    attempts(next, again = false)
                 }
             }
         }

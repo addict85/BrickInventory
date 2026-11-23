@@ -1,4 +1,4 @@
-import { systemClock, type Uhr } from '../infra/clock';
+import { systemClock, type Clock } from '../infra/clock';
 
 /** Rebrickable allows one call per second on average; a 429 names the
  * waiting time, and exactly that long is held back. */
@@ -8,19 +8,19 @@ export class RateLimiter {
   lastCall: number;
   queue: Array<() => void>;
   _scheduled: boolean;
-  takt: Takt | null;
-  uhr: Uhr;
+  tick: Tick | null;
+  clock: Clock;
 
-  /** @param takt Cross-process tick (table api_takt); without it
+  /** @param tick Cross-process tick (table api_takt); without it
    *             the instance only throttles itself. */
-  constructor(maxRequests: number, windowMs: number, takt: Takt | null = null, uhr: Uhr = systemClock) {
+  constructor(maxRequests: number, windowMs: number, tick: Tick | null = null, clock: Clock = systemClock) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
     this.lastCall = 0; // timestamp of last allowed call
     this.queue = []; // pending {resolve} entries
     this._scheduled = false;
-    this.takt = takt;
-    this.uhr = uhr;
+    this.tick = tick;
+    this.clock = clock;
   }
 
   async waitForSlot() {
@@ -28,19 +28,19 @@ export class RateLimiter {
       this.queue.push(resolve);
       this._schedule();
     });
-    if (this.takt) await waitOnTick(this.takt);
+    if (this.tick) await waitOnTick(this.tick);
   }
 
   _schedule() {
     if (this._scheduled || !this.queue.length) return;
     this._scheduled = true;
-    const now = this.uhr.jetzt();
+    const now = this.clock.now();
     const next = this.lastCall + this.windowMs;
     const wait = Math.max(0, next - now);
     setTimeout(() => {
       this._scheduled = false;
       if (!this.queue.length) return;
-      this.lastCall = this.uhr.jetzt();
+      this.lastCall = this.clock.now();
       const resolve = this.queue.shift();
       // this.queue.length is checked two lines before; shift() does not know that.
       if (resolve) resolve();
@@ -49,8 +49,8 @@ export class RateLimiter {
   }
 
   throttle(waitMs: number) {
-    this.lastCall = this.uhr.jetzt() + waitMs - this.windowMs;
-    if (this.takt) taktAussetzen(this.takt, waitMs);
+    this.lastCall = this.clock.now() + waitMs - this.windowMs;
+    if (this.tick) suspendTick(this.tick, waitMs);
     if (!this._scheduled && this.queue.length) this._schedule();
   }
 
@@ -60,55 +60,55 @@ export class RateLimiter {
 }
 
 import { reportError } from '../infra/error';
-import { kontingentPruefenUndZaehlen, REBRICKABLE_DEFAULT_DAILY } from './apiQuota';
-import { versuche } from '../infra/result';
+import { checkAndCountQuota, REBRICKABLE_DEFAULT_DAILY } from './apiQuota';
+import { attempts } from '../infra/result';
 import type { ForeignSourcesContext } from './context';
 
 /** A single UPDATE moves the point in time forward — two processes never get
  * the same slot, without one holding a lock while it waits. */
-export async function waitOnTick(takt: Takt): Promise<void> {
-  const { api, gapMs, apiTakt, uhr = systemClock } = takt;
-  if (uhr.jetzt() < takt.disruptedUntil) return;
+export async function waitOnTick(tick: Tick): Promise<void> {
+  const { api, gapMs, apiTick, clock = systemClock } = tick;
+  if (clock.now() < tick.disruptedUntil) return;
   try {
-    const r = await apiTakt.receiptsTick(api, gapMs);
-    const warte = Math.ceil(Number(r?.warte_ms) || 0);
-    if (warte > 0) await new Promise(res => setTimeout(res, warte));
+    const r = await apiTick.receiptsTick(api, gapMs);
+    const wait = Math.ceil(Number(r?.wait_ms) || 0);
+    if (wait > 0) await new Promise(res => setTimeout(res, wait));
   } catch (e) {
-    takt.disruptedUntil = uhr.jetzt() + 60_000;
+    tick.disruptedUntil = clock.now() + 60_000;
     reportError('drossel:gemeinsamer-takt', e);
   }
 }
 
 /** A 429 applies to all processes. */
-function taktAussetzen({ api, apiTakt, disruptedUntil, uhr = systemClock }: Takt, waitMs: number) {
-  if (uhr.jetzt() < disruptedUntil) return;
-  apiTakt.pushTick(api, waitMs).catch(e => reportError('drossel:takt-aussetzen', e));
+function suspendTick({ api, apiTick, disruptedUntil, clock = systemClock }: Tick, waitMs: number) {
+  if (clock.now() < disruptedUntil) return;
+  apiTick.pushTick(api, waitMs).catch(e => reportError('drossel:takt-aussetzen', e));
 }
 
 /** One call per second for all processes together: the throttles only order within the process, the spacing
  * is kept by the shared tick (table api_takt). */
-export interface Takt {
+export interface Tick {
   api: string;
   gapMs: number;
-  apiTakt: ForeignSourcesContext['apiTakt'];
+  apiTick: ForeignSourcesContext['apiTick'];
   /** After a database error one minute without a shared tick: otherwise every call would
    * first run into the connection timeout. The own throttle stays. */
   disruptedUntil: number;
-  uhr?: Uhr;
+  clock?: Clock;
 }
 
 /** Once per set of services (createForeignSources): foreground and background share the tick. */
-export function throttleRebrickable(apiTakt: Takt['apiTakt'], uhr: Uhr) {
-  const takt: Takt = { api: 'rebrickable', gapMs: 1000, apiTakt, disruptedUntil: 0, uhr };
-  return { foreground: new RateLimiter(1, 1500, takt, uhr), hintergrund: new RateLimiter(1, 1500, takt, uhr) };
+export function throttleRebrickable(apiTick: Tick['apiTick'], clock: Clock) {
+  const tick: Tick = { api: 'rebrickable', gapMs: 1000, apiTick, disruptedUntil: 0, clock };
+  return { foreground: new RateLimiter(1, 1500, tick, clock), background: new RateLimiter(1, 1500, tick, clock) };
 }
 
 // Counted in the database: counted per process, the limit would multiply.
 export async function consumeRebrickableDaily(k: ForeignSourcesContext): Promise<boolean> {
-  const rl = await versuche('takt:kontingentPruefenUndZaehlen', kontingentPruefenUndZaehlen(k, 'rebrickable'));
+  const rl = await attempts('takt:kontingentPruefenUndZaehlen', checkAndCountQuota(k, 'rebrickable'));
   // When in doubt let it through: an exceeded daily quota merely costs
   // calls — the opposite of the login counter, where the fallback locks.
-  return rl.ok ? rl.wert.allowed : true;
+  return rl.ok ? rl.value.allowed : true;
 }
 
 /** Two concurrent downloads, but at most one new one per second: the CDN
@@ -120,16 +120,16 @@ export class ConcurrentRateLimiter {
   queue: Array<() => void>;
   lastStart: number;
   _timer: NodeJS.Timeout | null;
-  uhr: Uhr;
+  clock: Clock;
 
-  constructor(maxConcurrent: number, intervalMs: number, uhr: Uhr = systemClock) {
+  constructor(maxConcurrent: number, intervalMs: number, clock: Clock = systemClock) {
     this.maxConcurrent = maxConcurrent; // max parallel requests in flight
     this.intervalMs = intervalMs; // min ms between starting new requests
     this.active = 0; // currently in-flight
     this.queue = []; // waiting resolvers
     this.lastStart = 0; // timestamp last request was started
     this._timer = null;
-    this.uhr = uhr;
+    this.clock = clock;
   }
 
   acquire() {
@@ -146,7 +146,7 @@ export class ConcurrentRateLimiter {
 
   _drain() {
     if (this._timer || !this.queue.length) return;
-    const now = this.uhr.jetzt();
+    const now = this.clock.now();
     const wait = Math.max(0, this.lastStart + this.intervalMs - now);
     const canStart = this.active < this.maxConcurrent;
     if (canStart && wait === 0) {
@@ -162,7 +162,7 @@ export class ConcurrentRateLimiter {
   _start() {
     if (!this.queue.length || this.active >= this.maxConcurrent) return;
     this.active++;
-    this.lastStart = this.uhr.jetzt();
+    this.lastStart = this.clock.now();
     const resolve = this.queue.shift();
     // The length is checked in the guard at the start of the method.
     if (resolve) resolve();

@@ -1,0 +1,17 @@
+Gegenprobe: der Canvas des Preisdiagramms trägt keine Beschreibung
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.PriceChartDescriptionTest
+Rot: the price chart describes its line in words
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+@@ -216,7 +216,7 @@
+     val edgeTop = with(LocalDensity.current) {
+         (MaterialTheme.typography.labelSmall.lineHeight.toPx() / 2)
+     }
+-    Canvas(modifier = Modifier.weight(1f).fillMaxHeight().semantics { contentDescription = description }) {
++    Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
+         val w = size.width
+         val h = size.height
+         // Indented as far as half the row of the axis label: the lines

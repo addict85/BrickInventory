@@ -1,0 +1,16 @@
+Gegenprobe: Hinzufügen nimmt eine unsinnige Nummer ("--") ohne Hinweis an
+Modul: app
+Test: ch.brickinventoryapp.app.FlowTest
+Rot: a set with a nonsensical number says what is expected when adding
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt
+@@ -66,7 +66,6 @@
+ private fun numberError(number: String, checked: Boolean): Int? = when {
+     !checked -> null
+     number.isBlank() -> R.string.record_number_missing
+-    !NumericInput.isSetNumber(number) -> R.string.record_number_invalid
+     else -> null
+ }
+ 

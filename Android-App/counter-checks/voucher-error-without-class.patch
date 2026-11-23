@@ -1,0 +1,17 @@
+Gegenprobe: Ladefehler der Gutscheine wieder ohne Fehlerklasse
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherEmptyAndErrorTest
+Rot: a server error names the advice of its class and reloads on request
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
+@@ -227,7 +227,7 @@
+ private fun EmptyOrError(condition: VoucherUiState, onAgain: () -> Unit) {
+     if (condition.vouchers.isNotEmpty() || condition.fetch.loading) return
+     val error = condition.fetch as? Load.Failure
+-    if (error != null) ErrorHint(error.message.sentence(), onAgain, error.kind)
++    if (error != null) ErrorHint(error.message.sentence(), onAgain, null)
+     else Column(Modifier.fillMaxWidth().padding(vertical = Spacing.medium),
+         horizontalAlignment = Alignment.CenterHorizontally,
+         verticalArrangement = Arrangement.spacedBy(Spacing.small)) {

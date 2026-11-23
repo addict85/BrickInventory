@@ -8,9 +8,9 @@
  * Counter-checks (measured on 03.11.2026; C on 16.11.2026):
  *   A  in themes/noppe.css --b600 of the light variant not overridden →
  *      red: “noppe light: set number in the table 4.44:1” (likewise hochglanz)
- *   B  --gewinn not overridden there → red: “noppe light: gain in the
+ *   B  --profit not overridden there → red: “noppe light: gain in the
  *      table 4.43:1” (likewise hochglanz)
- *   C  .chip-weg with color:var(--mut) instead of inherit → red: “classic light: X on the
+ *   C  .chip-remove with color:var(--mut) instead of inherit → red: “classic light: X on the
  *      role chip 4.03:1”
  */
 const test = require('node:test');
@@ -36,17 +36,17 @@ const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochgl
 const { chrome } = require('./helpers/app-browser');
 
 /** The building blocks as they appear in collection and finances; `n` is the prefix of the name. */
-function abschnitt(n) {
+function section(n) {
   return `
   <div class="tw"><table class="dt dt-fin"><thead><tr><th data-k="${n}: Tabellenkopf">Einstand</th></tr></thead><tbody><tr>
-    <td><span class="nummer-klein" data-k="${n}: Setnummer in der Tabelle">10294-1</span></td>
-    <td class="fin-name">Titanic <span class="fin-jahr" data-k="${n}: Jahr in der Tabelle">2021</span></td>
-    <td class="fin-datum" data-k="${n}: Datum in der Tabelle">01.06.2026</td>
+    <td><span class="number-small" data-k="${n}: Setnummer in der Tabelle">10294-1</span></td>
+    <td class="fin-name">Titanic <span class="fin-year" data-k="${n}: Jahr in der Tabelle">2021</span></td>
+    <td class="fin-date" data-k="${n}: Datum in der Tabelle">01.06.2026</td>
     <td class="fin-guv"><span class="pnl-pos" data-k="${n}: Gewinn in der Tabelle">+4,8 %</span></td>
     <td class="fin-guv"><span class="pnl-neg" data-k="${n}: Verlust in der Tabelle">−6,9 %</span></td>
-    <td class="fin-wert price-total" data-k="${n}: Marktwert in der Tabelle">712,40 €</td>
-    <td><span class="pnl-geschenk" data-k="${n}: Geschenk">Geschenk</span></td>
-  </tr></tbody></table><p class="fin-fussnote" data-k="${n}: Fussnote">Der Marktwert enthält …</p></div>
+    <td class="fin-value price-total" data-k="${n}: Marktwert in der Tabelle">712,40 €</td>
+    <td><span class="pnl-gift" data-k="${n}: Geschenk">Geschenk</span></td>
+  </tr></tbody></table><p class="fin-footnote" data-k="${n}: Fussnote">Der Marktwert enthält …</p></div>
   <div class="fgrid">
     <div class="fstat"><div class="flbl" data-k="${n}: Kartenkopf">Einstand</div><div class="fval" data-k="${n}: Kennzahl">1.529,98 €</div><div class="fsub" data-k="${n}: Kartenunterzeile">Summe der Kaufpreise</div></div>
     <div class="fstat hi"><div class="flbl" data-k="${n}: Kopf der Hervorhebung">Marktwert</div><div class="fval" data-k="${n}: Kennzahl der Hervorhebung">1.863,90 €</div><div class="fsub" data-k="${n}: Unterzeile der Hervorhebung">Zum mittleren BrickLink-Preis</div></div>
@@ -55,41 +55,41 @@ function abschnitt(n) {
   <div id="gallery"><div class="sgrid"><div class="sc"><div class="scb">
     <div class="snum" data-k="${n}: Setnummer der Kachel">10294-1</div>
     <div class="smeta"><span class="smeta-text" data-k="${n}: Jahr und Thema">2021 · Icons</span>
-      <div class="splaketten"><span class="teile-zahl" data-k="${n}: Teilezahl">9.092 Teile</span><span class="ibadge besitz-badge" data-k="${n}: In Sammlung">In Sammlung</span></div></div>
-    <div class="price-badge"><span class="preis-art" data-k="${n}: Preisart">Marktpreis</span><span class="preis" data-k="${n}: Preis der Kachel">712,40 €</span><span class="preis-pnl"><span class="pnl-pos" data-k="${n}: Gewinn der Kachel">+4,8 %</span></span></div>
-    <div class="kachel-datum" data-k="${n}: Kaufdatum der Kachel">Gekauft 01.06.2026</div>
+      <div class="sbadges"><span class="parts-number" data-k="${n}: Teilezahl">9.092 Teile</span><span class="ibadge owned-badge" data-k="${n}: In Sammlung">In Sammlung</span></div></div>
+    <div class="price-badge"><span class="price-kind" data-k="${n}: Preisart">Marktpreis</span><span class="price" data-k="${n}: Preis der Kachel">712,40 €</span><span class="price-pnl"><span class="pnl-pos" data-k="${n}: Gewinn der Kachel">+4,8 %</span></span></div>
+    <div class="tile-date" data-k="${n}: Kaufdatum der Kachel">Gekauft 01.06.2026</div>
   </div></div></div></div>
   <div class="parts-group"><div class="group-hd"><span class="group-title" data-k="${n}: Gruppentitel">Manuell erfasste Teile</span><span class="group-sub" data-k="${n}: Gruppenzahl">1 Sorte</span></div></div>
   <div class="brick-stats"><div class="bstat bstat-slate"><div class="bstat-l" data-k="${n}: Statistik-Etikett">Sets</div><div class="bstat-v" data-k="${n}: Statistik-Wert">4</div></div></div>
   <button class="period-btn" data-k="${n}: Zeitraum-Knopf">Woche</button>
-  <div class="rollen-zelle"><span class="rb rv rolle-chip" data-k="${n}: Rollen-Chip Administrator">Administrator<button type="button" class="chip-weg" data-k="${n}: X am Rollen-Chip">×</button></span><span class="rb ru" data-k="${n}: Rollen-Chip Standard">Standard</span></div>`;
+  <div class="roles-cell"><span class="rb rv role-chip" data-k="${n}: Rollen-Chip Administrator">Administrator<button type="button" class="chip-remove" data-k="${n}: X am Rollen-Chip">×</button></span><span class="rb ru" data-k="${n}: Rollen-Chip Standard">Standard</span></div>`;
 }
 
 function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
-  const teile = [];
+  const parts = [];
   for (const d of DESIGNS)
-    for (const dunkel of d === 'werkbank' ? [true] : [false, true])
-      teile.push(
-        `<section data-theme="${d}"${dunkel ? ' data-dunkel' : ''} style="background:var(--bg);padding:8px"><div id="app" style="display:block">${abschnitt(`${d} ${dunkel ? 'dunkel' : 'hell'}`)}</div></section>`,
+    for (const dark of d === 'werkbank' ? [true] : [false, true])
+      parts.push(
+        `<section data-theme="${d}"${dark ? ' data-dark' : ''} style="background:var(--bg);padding:8px"><div id="app" style="display:block">${section(`${d} ${dark ? 'dark' : 'hell'}`)}</div></section>`,
       );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
-<style>*{transition:none!important;animation:none!important}</style></head><body>${teile.join('\n')}
+<style>*{transition:none!important;animation:none!important}</style></head><body>${parts.join('\n')}
 <pre id="ergebnis"></pre>
 <script>
 function rgba(s){ const v=(s.match(/[\\d.]+/g)||[]).map(Number); return v.length<4?[...v,1]:v; }
 function lum([r,g,b]){ const f=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4)}; return .2126*f(r)+.7152*f(g)+.0722*f(b); }
 /** Grund: deckende Flächen von innen nach aussen, halbdurchsichtige darüber gemischt. */
-function grund(el){ const schichten=[]; for(let e=el;e;e=e.parentElement){ const b=rgba(getComputedStyle(e).backgroundColor); if(b[3]>0){ schichten.push(b); if(b[3]>=1) break; } }
+function reason(el){ const schichten=[]; for(let e=el;e;e=e.parentElement){ const b=rgba(getComputedStyle(e).backgroundColor); if(b[3]>0){ schichten.push(b); if(b[3]>=1) break; } }
   let farbe=[255,255,255]; for(const s of schichten.reverse()) farbe=farbe.map((c,i)=>c*(1-s[3])+s[i]*s[3]); return farbe; }
 window.addEventListener('load', () => document.fonts.ready.then(() => {
-  const werte = [...document.querySelectorAll('[data-k]')].map(el => {
-    const f = rgba(getComputedStyle(el).color), g = grund(el);
-    const vorn = f.slice(0,3).map((c,i)=>c*f[3]+g[i]*(1-f[3]));
-    const a = lum(vorn), b = lum(g);
+  const values = [...document.querySelectorAll('[data-k]')].map(el => {
+    const f = rgba(getComputedStyle(el).color), g = reason(el);
+    const front = f.slice(0,3).map((c,i)=>c*f[3]+g[i]*(1-f[3]));
+    const a = lum(front), b = lum(g);
     return { name: el.dataset.k, wert: Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100 };
   });
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(werte) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(values) + 'ENDE';
 }));
 </script></body></html>`;
 }
@@ -100,10 +100,10 @@ test('contrast in all themes, light and dark', t => {
     t.skip('no Chrome found');
     return;
   }
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kontrast-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testPage());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kontrast-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'seite.html');
+  fs.writeFileSync(file, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -114,16 +114,16 @@ test('contrast in all themes, light and dark', t => {
       '--window-size=1200,800',
       '--virtual-time-budget=3000',
       '--dump-dom',
-      `file://${datei}`,
+      `file://${file}`,
     ],
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
-  const werte = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
-  assert.equal(werte.length, 11 * 33, `${werte.length} Messungen — fehlt ein Design oder ein Baustein?`);
+  assert.ok(m, 'The test page wrote no result');
+  const values = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
+  assert.equal(values.length, 11 * 33, `${values.length} measurements — is a design or a building block missing?`);
   assert.deepEqual(
-    werte.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
+    values.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
     [],
   );
 });

@@ -20,12 +20,12 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 
 /** Columns and operator classes as normal arrays (int2vector starts at 0). */
-const INDIZES = `
+const INDEXES = `
   SELECT i.indexrelid, i.indrelid, c.relname AS name, t.relname AS tabelle,
          i.indisunique AS eindeutig, i.indpred IS NOT NULL AS teil, i.indexprs IS NOT NULL AS ausdruck,
          pg_get_expr(i.indpred, i.indrelid) AS bedingung,
          (ARRAY(SELECT unnest(i.indkey::int2[])))[1:i.indnkeyatts] AS spalten,
-         ARRAY(SELECT unnest(i.indclass::oid[])) AS klassen, am.amname AS art
+         ARRAY(SELECT unnest(i.indclass::oid[])) AS klassen, am.amname AS kind
     FROM pg_index i
     JOIN pg_class c ON c.oid = i.indexrelid
     JOIN pg_class t ON t.oid = i.indrelid
@@ -38,14 +38,14 @@ test('indexes', { concurrency: 1 }, async t => {
 
   try {
     await t.test('no index is the start of another', async () => {
-      const alle = await db.all(`WITH ix AS (${INDIZES}) SELECT COUNT(*)::int AS n FROM ix`);
-      assert.ok(alle[0].n > 100, `nur ${alle[0].n} Indizes gefunden — greift die Abfrage?`);
+      const all = await db.all(`WITH ix AS (${INDEXES}) SELECT COUNT(*)::int AS n FROM ix`);
+      assert.ok(all[0].n > 100, `only ${all[0].n} indexes found — does the query still work?`);
       const double = await db.all(`
-        WITH ix AS (${INDIZES})
+        WITH ix AS (${INDEXES})
         SELECT a.tabelle || ': ' || a.name || ' (Anfang von ' || b.name || ')' AS d
           FROM ix a JOIN ix b ON a.indrelid = b.indrelid AND a.indexrelid <> b.indexrelid
          WHERE NOT a.eindeutig AND NOT a.teil AND NOT a.ausdruck AND NOT b.teil
-           AND a.art = 'btree' AND b.art = 'btree'
+           AND a.kind = 'btree' AND b.kind = 'btree'
            AND array_length(a.spalten, 1) <= array_length(b.spalten, 1)
            AND a.spalten = b.spalten[1:array_length(a.spalten, 1)]
            AND a.klassen[1:array_length(a.spalten, 1)] = b.klassen[1:array_length(a.spalten, 1)]
@@ -57,8 +57,8 @@ test('indexes', { concurrency: 1 }, async t => {
     });
 
     await t.test('every foreign key has an index', async () => {
-      const ohne = await db.all(`
-        WITH ix AS (${INDIZES})
+      const without = await db.all(`
+        WITH ix AS (${INDEXES})
         SELECT c.conname || ' (' || c.conrelid::regclass || ')' AS d
           FROM pg_constraint c
          WHERE c.contype = 'f' AND c.connamespace = 'public'::regnamespace
@@ -69,7 +69,7 @@ test('indexes', { concurrency: 1 }, async t => {
                                     WHERE attrelid = c.conrelid AND attnum = c.conkey[array_upper(c.conkey, 1)]) || ' IS NOT NULL)'))
          ORDER BY 1`);
       assert.deepEqual(
-        ohne.map(z => z.d),
+        without.map(z => z.d),
         [],
       );
     });

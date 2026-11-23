@@ -16,7 +16,7 @@
  *   D  showConfirmationTarget() without preview (text from the profile as before)
  *      → red: both subcases (“timeout: own account named” and
  *      “… link's account named”)
- *   E  the branch `verify.fremdes_konto` deleted → red: “a foreign link …”
+ *   E  the branch `verify.fremdes_account` deleted → red: “a foreign link …”
  *   F  the preview route redeems the link (verifyEmailToken) → red: “opening
  *      the link confirms nothing”
  *
@@ -33,28 +33,28 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { startApp } = require('./helpers/app-browser');
 
-const sichtbar = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
+const visible = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
 const text = id => `(document.getElementById('${id}')?.textContent || '')`;
 /** The button is enabled as soon as the page names the link's account. */
 const accountNamed =
-  name => `!document.getElementById('btn-verify').disabled && ${text('verify-ziel')}.includes('„${name}“')
+  name => `!document.getElementById('btn-verify').disabled && ${text('verify-target')}.includes('„${name}“')
   && ${text('btn-verify')}.includes('„${name}“')`;
 
 test('email confirmation via button', { timeout: 180_000 }, async t => {
   const app = await startApp(t, { name: `bestaetigen_${process.pid}` });
-  if (app.grund) {
-    t.skip(app.grund);
+  if (app.reason) {
+    t.skip(app.reason);
     return;
   }
   const newLink = async uid => {
-    const roh = crypto.randomBytes(32).toString('hex');
+    const raw = crypto.randomBytes(32).toString('hex');
     await app.db.run(
       `UPDATE users SET new_email = $3, new_email_token = $2, new_email_until = NOW() + INTERVAL '1 day' WHERE id = $1`,
-      [uid, crypto.createHash('sha256').update(roh).digest('hex'), `neu${uid}_${process.pid}@example.org`],
+      [uid, crypto.createHash('sha256').update(raw).digest('hex'), `neu${uid}_${process.pid}@example.org`],
     );
-    return `http://127.0.0.1:${app.port}/verify#token=${roh}`;
+    return `http://127.0.0.1:${app.port}/verify#token=${raw}`;
   };
-  const bestaetigt = async uid =>
+  const confirmed = async uid =>
     (
       await app.db.get(
         'SELECT new_email IS NULL AND email IS NOT NULL AND email_verified AS ok FROM users WHERE id = $1',
@@ -64,50 +64,53 @@ test('email confirmation via button', { timeout: 180_000 }, async t => {
 
   await t.test('logged in (new address in the profile): first the button, then the application', async () => {
     await app.b.tab('Page.navigate', { url: await newLink(app.uid) });
-    await app.bis(`${sichtbar('login-screen')} && ${sichtbar('panel-verify')}`, 'Bestätigungsseite');
-    await app.bis(accountNamed(`bestaetigen_${process.pid}`), 'eigenes Konto genannt');
-    assert.equal(await bestaetigt(app.uid), false, 'das Öffnen des Links bestätigt nichts');
+    await app.until(`${visible('login-screen')} && ${visible('panel-verify')}`, 'Confirmation page');
+    await app.until(accountNamed(`bestaetigen_${process.pid}`), 'own account named');
+    assert.equal(await confirmed(app.uid), false, 'opening the link confirms nothing');
     assert.equal(
-      await app.b.auswerten(`location.search + location.hash`),
+      await app.b.evaluate(`location.search + location.hash`),
       '',
-      'das Token bleibt nicht in der Adresszeile',
+      'the token does not stay in the address bar',
     );
-    await app.b.auswerten(`document.getElementById('btn-verify').click(); true`);
-    await app.bis(`location.pathname === '/' && ${sichtbar('app')} && !${sichtbar('login-screen')}`, 'Anwendung', 300);
-    assert.equal(await bestaetigt(app.uid), true);
+    await app.b.evaluate(`document.getElementById('btn-verify').click(); true`);
+    await app.until(`location.pathname === '/' && ${visible('app')} && !${visible('login-screen')}`, 'Anwendung', 300);
+    assert.equal(await confirmed(app.uid), true);
   });
 
   await t.test('logged out: the success message stands above the login', async st => {
-    const zweiter = (
+    const secondOne = (
       await app.db.get(
         `INSERT INTO users (username, password_hash, is_active, registration_pending)
       VALUES ($1, 'x', true, true) RETURNING id`,
         [`bestaetigen2_${process.pid}`],
       )
     ).id;
-    st.after(() => app.db.run('DELETE FROM users WHERE id = $1', [zweiter]));
-    const link = await newLink(zweiter);
+    st.after(() => app.db.run('DELETE FROM users WHERE id = $1', [secondOne]));
+    const link = await newLink(secondOne);
     await app.b.tab('Page.navigate', { url: link });
-    await app.bis(accountNamed(`bestaetigen2_${process.pid}`), 'Konto des Links genannt');
+    await app.until(accountNamed(`bestaetigen2_${process.pid}`), 'account of the link named');
     assert.match(
-      await app.b.auswerten(text('verify-ziel')),
+      await app.b.evaluate(text('verify-target')),
       new RegExp(`als „bestaetigen_${process.pid}“`),
-      'ein fremder Link nennt beide Konten',
+      'a foreign link names both accounts',
     );
-    await app.b.auswerten(`fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => true)`);
+    await app.b.evaluate(`fetch('/api/v2/auth/logout', { method: 'POST' }).then(() => true)`);
     await app.b.tab('Page.navigate', { url: link.replace(/token=[0-9a-f]+/, 'token=falsch') });
-    await app.bis(sichtbar('panel-verify'), 'Bestätigungsseite');
-    await app.bis(`/ungültig/.test(document.getElementById('verify-err').textContent)`, 'Fehlertext bei falschem Link');
+    await app.until(visible('panel-verify'), 'Confirmation page');
+    await app.until(
+      `/ungültig/.test(document.getElementById('verify-err').textContent)`,
+      'Error text for a wrong link',
+    );
     assert.equal(
-      await app.b.auswerten(`document.getElementById('btn-verify').disabled`),
+      await app.b.evaluate(`document.getElementById('btn-verify').disabled`),
       true,
-      'ein falscher Link lässt sich nicht bestätigen',
+      'a wrong link cannot be confirmed',
     );
     await app.b.tab('Page.navigate', { url: link });
-    await app.bis(accountNamed(`bestaetigen2_${process.pid}`), 'Konto des Links genannt');
-    assert.equal(await bestaetigt(zweiter), false);
-    await app.b.auswerten(`document.getElementById('btn-verify').click(); true`);
-    await app.bis(`${sichtbar('panel-login')} && ${sichtbar('verified-msg')}`, 'Erfolgsmeldung über der Anmeldung');
-    assert.equal(await bestaetigt(zweiter), true);
+    await app.until(accountNamed(`bestaetigen2_${process.pid}`), 'account of the link named');
+    assert.equal(await confirmed(secondOne), false);
+    await app.b.evaluate(`document.getElementById('btn-verify').click(); true`);
+    await app.until(`${visible('panel-login')} && ${visible('verified-msg')}`, 'Success message above the sign-in');
+    assert.equal(await confirmed(secondOne), true);
   });
 });

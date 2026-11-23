@@ -11,26 +11,25 @@ import org.junit.Test
  * settings and the certificate dialog). Turning off needs none.
  *
  * Counter-checks:
- *   A  anfragen() turns it on directly (`setze(true)`) → red „anfragen schaltet
- *      nichts ein“ and „cancelling leaves everything off“
- *   B  in bestaetigen() the check `if (!_question.value) return` removed → red
+ *   A  request() turns it on directly (`set(true)`) → red „anfragen schaltet nichts ein“ and „cancelling leaves everything off“
+ *   B  in confirm() the check `if (!_question.value) return` removed → red
  *      „without an open question nothing confirms“
- *   C  abbrechen() calls `setze(true)` → red „cancelling leaves everything off“
- *   D  setze() without afterChange() → red „bestaetigen schaltet ein …“ and
+ *   C  cancel() calls `set(true)` → red „cancelling leaves everything off“
+ *   D  set() without afterChange() → red „bestaetigen schaltet ein …“ and
  *      „turning off works without a question“
  */
 class UserCaConfirmationTest {
 
-    private var gespeichert = false
-    private val geschrieben = mutableListOf<Boolean>()
-    private var verworfen = 0
+    private var saved = false
+    private val written = mutableListOf<Boolean>()
+    private var discarded = 0
 
     private fun toggle(start: Boolean = false): UserCaToggle {
-        gespeichert = start
+        saved = start
         return UserCaToggle(
-            lies = { gespeichert },
-            schreibe = { gespeichert = it; geschrieben += it },
-            afterChange = { verworfen++ },
+            read = { saved },
+            write = { saved = it; written += it },
+            afterChange = { discarded++ },
         )
     }
 
@@ -43,39 +42,39 @@ class UserCaConfirmationTest {
     fun `requesting turns nothing on`() {
         val s = toggle()
         s.requests()
-        assertTrue("Der Dialog wartet", s.frage.value)
+        assertTrue("the dialog waits", s.question.value)
         assertFalse(s.an.value)
-        assertEquals(emptyList<Boolean>(), geschrieben)
+        assertEquals(emptyList<Boolean>(), written)
     }
 
     @Test
     fun `confirming turns on and discards open connections`() {
         val s = toggle()
         s.requests()
-        s.bestaetigen()
+        s.confirm()
         assertTrue(s.an.value)
-        assertFalse(s.frage.value)
-        assertEquals(listOf(true), geschrieben)
-        assertEquals(1, verworfen)
+        assertFalse(s.question.value)
+        assertEquals(listOf(true), written)
+        assertEquals(1, discarded)
     }
 
     @Test
     fun `cancelling leaves everything off`() {
         val s = toggle()
         s.requests()
-        s.abbrechen()
+        s.cancel()
         assertFalse(s.an.value)
-        assertFalse(s.frage.value)
-        assertFalse(gespeichert)
-        assertEquals(emptyList<Boolean>(), geschrieben)
+        assertFalse(s.question.value)
+        assertFalse(saved)
+        assertEquals(emptyList<Boolean>(), written)
     }
 
     @Test
     fun `without an open question nothing confirms`() {
         val s = toggle()
-        s.bestaetigen()
+        s.confirm()
         assertFalse(s.an.value)
-        assertEquals(emptyList<Boolean>(), geschrieben)
+        assertEquals(emptyList<Boolean>(), written)
     }
 
     @Test
@@ -83,10 +82,10 @@ class UserCaConfirmationTest {
         val s = toggle(start = true)
         assertTrue(s.an.value)
         s.requests()
-        assertFalse("Schon an: keine Frage", s.frage.value)
+        assertFalse("already on: no question", s.question.value)
         s.turnOff()
         assertFalse(s.an.value)
-        assertEquals(listOf(false), geschrieben)
-        assertEquals(1, verworfen)
+        assertEquals(listOf(false), written)
+        assertEquals(1, discarded)
     }
 }

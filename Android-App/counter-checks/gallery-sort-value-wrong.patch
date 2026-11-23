@@ -1,0 +1,17 @@
+Gegenprobe: die Galerie meldet einen Sortierwert, den der Server nicht kennt
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryReportsAfterTopTest
+Rot: the sorting reports the server's keys
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sort.kt
+@@ -10,7 +10,7 @@
+ enum class SetSort(val identifier: String) {
+     NEWEST("added_desc"),
+     OLDEST("added_asc"),
+-    NAME("name_asc"),
++    NAME("name"),
+     NUMBER("num_asc"),
+     YEAR("year_desc"),
+     PRICE_DESCENDING("price_desc"),

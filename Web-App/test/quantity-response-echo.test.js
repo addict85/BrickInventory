@@ -3,7 +3,7 @@
  *
  * Counter-check (carried out): in sammlung.js `const echt = qty` set →
  * the web app substep turns red. Counter-check of 30.10.2026: in
- * routes/api_v1/sets.ts `...(r || {})` removed from the PUT response → red:
+ * routes/api/sets.ts `...(r || {})` removed from the PUT response → red:
  * “the route delivers the quantity” (undefined instead of 3). Counter-check of 08.11.2026:
  * in autosaveSet `const echt = qty` → red: “the web app takes
  * the quantity from the response” (field stays at 1). Counter-check of 12.11.2026 (the
@@ -14,7 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { openUi, warte } = require('./helpers/ui');
+const { openUi, waitFor } = require('./helpers/ui');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
@@ -36,41 +36,41 @@ test('the route delivers the quantity at all', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   await holdsSet(db, uid, SN, 2);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const setze = async quantity =>
+  const { base } = testServer(_req, { session: { userId: uid }, t });
+  const put = async quantity =>
     (
-      await fetch(`${base}/api/v1/sets/${SN}`, {
+      await fetch(`${base}/api/v2/sets/${SN}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quantity }),
       })
     ).json();
-  assert.equal((await setze(3)).quantity, 3, 'die Route liefert die Menge');
-  assert.equal((await setze(1)).quantity, 1, 'auch nach dem Verringern');
+  assert.equal((await put(3)).quantity, 3, 'the route returns the quantity');
+  assert.equal((await put(1)).quantity, 1, 'also after decreasing');
 });
 
 test('the web app takes the quantity from the response', async () => {
   // The server caps the reduction (acquisitions of other accounts in the household): it writes 2, not 1.
   // Afterwards the detail rereads the set; the server names the same quantity there.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 3 };
-  const { w, d, aufrufe } = await openUi({
-    '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
-    '/v1/sets/10294-1': (_url, o) => {
+  const { w, d, calls } = await openUi({
+    '/v2/sets': { success: true, total: 1, themes: [], sets: [SET] },
+    '/v2/sets/10294-1': (_url, o) => {
       if (o?.method === 'PUT') SET.quantity = 2;
       return o?.method === 'PUT' ? { success: true, quantity: 2 } : { success: true, set: { ...SET } };
     },
-    '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
+    '/v2/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
   });
   try {
-    assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
+    assert.ok(await waitFor(() => d.querySelector('#gallery [data-click="openModal"]')));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    assert.ok(await warte(() => d.getElementById('m-qty')?.value === '3'), 'Das Detail zeigt die Menge nicht');
+    assert.ok(await waitFor(() => d.getElementById('m-qty')?.value === '3'), 'The detail does not show the quantity');
     d.getElementById('m-qty').value = '1';
     d.getElementById('m-qty').dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT')), 'Die Menge wird nicht gespeichert');
+    assert.ok(await waitFor(() => calls.some(a => a.method === 'PUT')), 'The quantity is not saved');
     assert.ok(
-      await warte(() => d.getElementById('m-qty').value === '2'),
-      `Das Feld behält die eigene Annahme: ${d.getElementById('m-qty').value}`,
+      await waitFor(() => d.getElementById('m-qty').value === '2'),
+      `The field keeps its own assumption: ${d.getElementById('m-qty').value}`,
     );
   } finally {
     w.close();

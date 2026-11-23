@@ -1,0 +1,17 @@
+Gegenprobe: Ein umbenannter Lagerort steht an Sets und Teilen weiter unter altem Namen
+Modul: core-data
+Test: ch.brickinventoryapp.data.FollowUpTest
+Rot: a renamed location has the new name everywhere
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/PartsRepositoryImpl.kt
+@@ -153,7 +153,7 @@
+         }.promised({ it.success }) { }
+ 
+     override suspend fun renameLocation(id: Int, old: String, name: String): Outcome<Unit> =
+-        store.caughtUp({ r -> r.location?.takeIf { r.success }?.let { FollowUp.LocationRenamed(old, it.asView()) } }) {
++        store.caughtUp({ r -> r.location?.takeIf { r.success }?.let { null } }) {
+             safeCall { api.renameLocation(id, StorageNameRequest(name = name)) }
+         }.promised({ it.success }) { }
+ 

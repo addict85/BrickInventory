@@ -1,0 +1,17 @@
+Gegenprobe: Nach einem passenden Code bleiben die Verbindungen mit dem alten Vertrauen offen
+Modul: core-state
+Test: ch.brickinventoryapp.state.RenderingAndTrustTest
+Rot: only a scanned code of the whole fingerprint trusts
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt
+@@ -43,7 +43,7 @@
+ 
+     /** Yes by the scanned certificate code; anything but a full match trusts nothing. */
+     fun trustByCode(payload: String?): CodeCheck =
+-        certificateQuestion.confirmByCode(prefs, payload).also { if (it == CodeCheck.MATCHES) drop.discard() }
++        certificateQuestion.confirmByCode(prefs, payload)
+ 
+     fun discardCertificate() = certificateQuestion.discard()
+ }

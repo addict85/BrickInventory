@@ -7,12 +7,12 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import ch.brickinventoryapp.data.DevicesStore
 import ch.brickinventoryapp.update.util.UpdateStatus
 import ch.brickinventoryapp.update.util.UpdateStatusStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
-import ch.brickinventoryapp.data.DevicesStore
 
 /** The self-update's benchmark (util/UpdateFresh.kt), per device in the DataStore. */
 internal class UpdateStore @Inject constructor(
@@ -37,20 +37,20 @@ internal class UpdateStore @Inject constructor(
         return UpdateStatus(code, p[UPDATE_ISSUED] ?: 0L)
     }
 
-    override suspend fun rememberUpdateStatus(stand: UpdateStatus) {
+    override suspend fun rememberUpdateStatus(state: UpdateStatus) {
         dataStore.edit {
-            it[UPDATE_HIGHEST_CODE] = stand.highestCode
-            it[UPDATE_ISSUED] = stand.ausgestellt
+            it[UPDATE_HIGHEST_CODE] = state.highestCode
+            it[UPDATE_ISSUED] = state.issued
         }
     }
 
     /** Synchronously readable like the design: mirroring DevicesStore. */
-    private val spiegel by lazy {
+    private val mirror by lazy {
         context.getSharedPreferences(DevicesStore.DESIGN_MIRROR_FILE, Context.MODE_PRIVATE)
     }
 
-    override fun startpruefungAn(): Boolean = spiegel.getBoolean(UPDATE_ON_START, true)
-    override fun setStartpruefung(an: Boolean) {
-        spiegel.edit { putBoolean(UPDATE_ON_START, an) }
+    override fun startCheckEnabled(): Boolean = mirror.getBoolean(UPDATE_ON_START, true)
+    override fun setStartCheck(an: Boolean) {
+        mirror.edit { putBoolean(UPDATE_ON_START, an) }
     }
 }

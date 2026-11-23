@@ -1,0 +1,17 @@
+Gegenprobe: Die App vergleicht die Beschreibung nicht mit dem schon gesehenen Stand (Stand vor sec10 N1)
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateFreshTest
+Rot: an older genuinely signed description reports a withholding
+
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
+@@ -46,8 +46,6 @@
+  */
+ internal fun valueFresh(b: UpdateDescription, seen: UpdateStatus?, running: Int, nowSec: Long): UpdateFresh = when {
+     b.versionCode < running -> UpdateFresh.RESET
+-    seen != null && (b.versionCode < seen.highestCode || b.issued < seen.issued) ->
+-        UpdateFresh.RESET
+     b.issued <= 0 || b.validUntil <= b.issued || b.validUntil <= nowSec -> UpdateFresh.EXPIRED
+     else -> UpdateFresh.CURRENT
+ }

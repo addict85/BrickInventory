@@ -7,9 +7,9 @@
 const path = require('node:path');
 const { Client } = require(path.join(__dirname, '..', '..', 'node_modules', 'pg'));
 
-const { rollen } = require('./roles');
+const { roles } = require('./roles');
 
-const [, , was, name, vorlage] = process.argv;
+const [, , was, name, template] = process.argv;
 const id = s => `"${String(s).replace(/"/g, '""')}"`;
 
 (async () => {
@@ -17,14 +17,14 @@ const id = s => `"${String(s).replace(/"/g, '""')}"`;
   await c.connect();
   try {
     if (was === 'anlegen') {
-      // TEMPLATE does not copy privileges on the database itself; they stand as in postgres/app-rolle.sh.
-      const r = rollen(vorlage);
-      await c.query(`CREATE DATABASE ${id(name)} TEMPLATE ${id(vorlage)} OWNER ${id(r.eigen.name)}`);
+      // TEMPLATE does not copy privileges on the database itself; they stand as in postgres/app-role.sh.
+      const r = roles(template);
+      await c.query(`CREATE DATABASE ${id(name)} TEMPLATE ${id(template)} OWNER ${id(r.own.name)}`);
       await c.query(`REVOKE TEMPORARY ON DATABASE ${id(name)} FROM PUBLIC`);
       await c.query(`GRANT CONNECT, TEMPORARY ON DATABASE ${id(name)} TO ${id(r.app.name)}, ${id(r.system.name)}`);
       await c.query(`GRANT CONNECT ON DATABASE ${id(name)} TO ${id(r.systemweb.name)}`);
     } else if (was === 'loeschen') await c.query(`DROP DATABASE IF EXISTS ${id(name)} WITH (FORCE)`);
-    else throw new Error(`unbekannt: ${was}`);
+    else throw new Error(`unknown: ${was}`);
   } finally {
     await c.end();
   }

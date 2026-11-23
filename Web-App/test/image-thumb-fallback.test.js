@@ -10,7 +10,7 @@
  *   A  `if (await originalInsteadOfPreview(res, segmente)) return;` removed →
  *      red: “if the preview is missing …” (302 to the CDN instead of the original)
  *   B  the call placed behind the CDN healing → red: same place
- *   C  in originalInsteadOfPreview the setImmediate(vorschauErzeugenAus …) removed →
+ *   C  in originalInsteadOfPreview the setImmediate(previewFrom …) removed →
  *      red: same place (no preview is created)
  */
 const test = require('node:test');
@@ -20,18 +20,18 @@ const os = require('node:os');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bildroute-'));
-process.env.APP_ROOT = wurzel;
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bildroute-'));
+process.env.APP_ROOT = root;
 const express = require('express');
 const sharp = require('sharp');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const deliverImage = (...a) =>
   _req('src/images/http/imageDelivery.js').deliverImage(require('./helpers/sources').testServices(), ...a);
 
-const ordner = path.join(wurzel, 'data', 'images', 'parts');
+const dir = path.join(root, 'data', 'images', 'parts');
 const NR = `zz-vorschau-${process.pid}`;
 const CDN = `https://cdn.rebrickable.com/media/parts/elements/${NR}.jpg`;
 
@@ -42,11 +42,11 @@ test.after(async () => {
   await testData()
     .pool?.end?.()
     .catch(() => {});
-  fs.rmSync(wurzel, { recursive: true, force: true });
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 test('if the preview is missing, the original comes before the CDN', async t => {
-  const db = await dataOrSkip(t, _req, { migrieren: false });
+  const db = await dataOrSkip(t, _req, { runMigrate: false });
   if (!db) return;
   // The CDN address is known: without the fallback the request would go to the image proxy.
   await db.run(
@@ -54,9 +54,9 @@ test('if the preview is missing, the original comes before the CDN', async t => 
     ON CONFLICT DO NOTHING`,
     [NR, CDN, `/images/parts/${NR}.jpg`],
   );
-  fs.mkdirSync(ordner, { recursive: true });
-  const original = path.join(ordner, `${NR}.jpg`),
-    vorschau = path.join(ordner, `${NR}_thumb.jpg`);
+  fs.mkdirSync(dir, { recursive: true });
+  const original = path.join(dir, `${NR}.jpg`),
+    preview = path.join(dir, `${NR}_thumb.jpg`);
   await sharp({ create: { width: 600, height: 400, channels: 3, background: '#c33' } })
     .jpeg()
     .toFile(original);
@@ -74,22 +74,22 @@ test('if the preview is missing, the original comes before the CDN', async t => 
       `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}${p}`,
       { redirect: 'manual' },
     );
-    return { status: r.status, n: (await r.arrayBuffer()).byteLength, ort: r.headers.get('location') };
+    return { status: r.status, n: (await r.arrayBuffer()).byteLength, location: r.headers.get('location') };
   };
 
   const a = await hole(`/images/parts/${NR}_thumb.jpg`);
-  assert.deepEqual([a.status, a.n], [200, fs.statSync(original).size], `geliefert: ${JSON.stringify(a)}`);
-  assert.ok(await bis(() => fs.existsSync(vorschau)), 'die fehlende Vorschau entsteht nicht');
+  assert.deepEqual([a.status, a.n], [200, fs.statSync(original).size], `delivered: ${JSON.stringify(a)}`);
+  assert.ok(await until(() => fs.existsSync(preview)), 'the missing preview is not created');
 
   const b = await hole(`/images/parts/${NR}_thumb.jpg`);
-  assert.deepEqual([b.status, b.n], [200, fs.statSync(vorschau).size], 'jetzt gilt die Vorschau');
+  assert.deepEqual([b.status, b.n], [200, fs.statSync(preview).size], 'now the preview applies');
 
   fs.rmSync(original);
-  fs.rmSync(vorschau);
+  fs.rmSync(preview);
   const c = await hole(`/images/parts/${NR}_thumb.jpg`);
-  assert.equal(c.status, 302, 'ohne Original führt der Weg zum Bild-Proxy');
-  assert.match(c.ort ?? '', /\/img-proxy\?url=.*zz-vorschau/);
+  assert.equal(c.status, 302, 'without an original the path leads to the image proxy');
+  assert.match(c.location ?? '', /\/img-proxy\?url=.*zz-vorschau/);
 
   const d = await hole(`/images/parts/gibtsnicht-${process.pid}_thumb.jpg`);
-  assert.equal(d.status, 404, 'ohne Original und CDN-Adresse bleibt es bei 404');
+  assert.equal(d.status, 404, 'without an original and CDN address it stays 404');
 });

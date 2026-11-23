@@ -422,7 +422,7 @@ haben ihn nicht weitergereicht:**
 | `POST /api/sets/add-stream` | las ihn als `setCondition`, benutzte ihn aber nie |
 
 Ohne den Parameter greift in `addSet()` der Standardzustand des Nutzers, also in
-aller Regel „Neu". Die Android-API (`routes/api_v1/sets.ts`) übergab ihn korrekt
+aller Regel „Neu". Die Android-API (`routes/api/sets.ts`) übergab ihn korrekt
 — nur die Webapp nicht.
 
 Beide Aufrufe reichen ihn jetzt durch.

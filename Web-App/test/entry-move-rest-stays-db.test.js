@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
 
@@ -31,7 +31,7 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -81,23 +81,23 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     );
     return (
       await db.all(`SELECT id, quantity FROM part_acquisitions WHERE user_id=$1 ORDER BY created_at`, [MAIN])
-    ).map(r => ({ id: r.id, menge: Number(r.quantity) }));
+    ).map(r => ({ id: r.id, quantity: Number(r.quantity) }));
   };
 
-  const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const { base } = testServer(_req, { session: { userId: MAIN }, t });
   const move = async (entryId, afterAccount) => {
-    const r = await fetch(`${base}/api/v1/parts/3001/4/acquisitions/${entryId}`, {
+    const r = await fetch(`${base}/api/v2/parts/3001/4/acquisitions/${entryId}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ owner_user_id: afterAccount }),
     });
     return { status: r.status, body: await r.json() };
   };
-  const zaehle = async uid => ({
-    erfassungen: (await db.all(`SELECT quantity FROM part_acquisitions WHERE user_id=$1 ORDER BY quantity`, [uid])).map(
-      r => Number(r.quantity),
-    ),
-    zeilen: (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='3001'`, [uid])).c,
+  const count = async uid => ({
+    acquisitions: (
+      await db.all(`SELECT quantity FROM part_acquisitions WHERE user_id=$1 ORDER BY quantity`, [uid])
+    ).map(r => Number(r.quantity)),
+    lines: (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='3001'`, [uid])).c,
   });
 
   await t.test('the second acquisition moves, the first stays', async () => {
@@ -105,24 +105,24 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     const a = await move(erf[0].id, KIND); // the one with quantity 2
     assert.equal(a.status, 200, JSON.stringify(a.body));
 
-    const sender = await zaehle(MAIN);
+    const sender = await count(MAIN);
     assert.deepEqual(
-      sender.erfassungen,
+      sender.acquisitions,
       [3],
-      `Der Absender hat ${sender.erfassungen.length} Erfassungen uebrig (${sender.erfassungen}), ` +
-        'erwartet 1 mit Menge 3. Sind es 0, hat das Verschieben ALLE geloescht — ' +
-        'genau der Fehler, um den es hier geht.',
+      `The sender has ${sender.acquisitions.length} acquisitions left (${sender.acquisitions}), ` +
+        'expected 1 with quantity 3. If it is 0, the move deleted ALL of them — ' +
+        'exactly the bug this is about.',
     );
-    assert.equal(sender.zeilen, 1, 'Die Bestandszeile des Absenders ist weg, obwohl er noch 3 Stueck hat');
+    assert.equal(sender.lines, 1, 'The holding row of the sender is gone although it still has 3 pieces');
     assert.equal(
       a.body.source_emptied,
       false,
-      'Die Antwort sagt source_emptied=true, obwohl beim Absender etwas bleibt',
+      'The response says source_emptied=true although something stays at the sender',
     );
 
-    const ziel = await zaehle(KIND);
-    assert.deepEqual(ziel.erfassungen, [2], `Das Ziel hat ${ziel.erfassungen} statt [2]`);
-    assert.equal(ziel.zeilen, 1, 'Das Ziel hat keine Bestandszeile bekommen');
+    const target = await count(KIND);
+    assert.deepEqual(target.acquisitions, [2], `The target has ${target.acquisitions} instead of [2]`);
+    assert.equal(target.lines, 1, 'The target got no holding row');
   });
 
   await t.test('if the LAST acquisition moves, the row disappears after all', async () => {
@@ -131,30 +131,30 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
     // ballast, not stock.
     const erf = await setup();
     assert.equal((await move(erf[0].id, KIND)).status, 200);
-    const zweite = (await db.all(`SELECT id FROM part_acquisitions WHERE user_id=$1`, [MAIN])).map(r => r.id);
-    assert.equal(zweite.length, 1, 'Vorbedingung: beim Absender muss genau eine uebrig sein');
-    const b = await move(zweite[0], KIND);
+    const second = (await db.all(`SELECT id FROM part_acquisitions WHERE user_id=$1`, [MAIN])).map(r => r.id);
+    assert.equal(second.length, 1, 'Precondition: exactly one must be left at the sender');
+    const b = await move(second[0], KIND);
     assert.equal(b.status, 200, JSON.stringify(b.body));
     assert.equal(
       b.body.source_emptied,
       true,
-      'Die Antwort muss source_emptied=true melden, wenn beim Absender nichts bleibt',
+      'The response must report source_emptied=true when nothing stays at the sender',
     );
 
-    const sender = await zaehle(MAIN);
-    assert.deepEqual(sender.erfassungen, [], 'Beim Absender darf keine Erfassung bleiben');
+    const sender = await count(MAIN);
+    assert.deepEqual(sender.acquisitions, [], 'No acquisition may stay at the sender');
     assert.equal(
-      sender.zeilen,
+      sender.lines,
       0,
-      'Die leere Bestandszeile des Absenders muss weg sein — eine manuelle Zeile ' +
-        'ohne Erfassung ist Ballast, kein Bestand',
+      'The empty holding row of the sender must be gone — a manual row ' +
+        'without an acquisition is ballast, not stock',
     );
 
-    const ziel = await zaehle(KIND);
+    const target = await count(KIND);
     assert.deepEqual(
-      ziel.erfassungen,
+      target.acquisitions,
       [2, 3],
-      `Das Ziel muss beide Mengen halten, hat ${JSON.stringify(ziel.erfassungen)}`,
+      `The target must hold both quantities, has ${JSON.stringify(target.acquisitions)}`,
     );
   });
 });

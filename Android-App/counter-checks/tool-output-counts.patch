@@ -1,0 +1,17 @@
+Gegenprobe: Die Ausgabe eines gestarteten Werkzeugs zählt wieder als Quelltext
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: the output of a tool is not source
+
+diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt
+--- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt
++++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/SourceRatchetTest.kt
+@@ -84,7 +84,7 @@
+      * file text. The output of a started tool (`bufferedReader().readText()`) is
+      * a result, not source.
+      */
+-    private val readsSource = Regex("""Sources\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|(?<!bufferedReader\(\)\.)readText\(\)|readLines\(\)""")
++    private val readsSource = Regex("""Sources\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|readText\(\)|readLines\(\)""")
+ 
+     /**
+      * (test functions, names of those reading) of a file. A function reads source if its body

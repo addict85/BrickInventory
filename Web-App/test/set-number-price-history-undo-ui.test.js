@@ -7,16 +7,16 @@
  *      “unknown set number” (creates immediately)
  *   B  filter on purchase days removed in priceChartSVG → red: “price history”
  *      (curve with 3 instead of 2 points)
- *   C  data-change="speichereWaehrung" removed on the currency field → red:
+ *   C  data-change="saveCurrency" removed on the currency field → red:
  *      “account: currency applies immediately”
- *   D  undo removed in the toast of merkpostenLoeschen → red: “delete pending item”
+ *   D  undo removed in the toast of deleteWantedItem → red: “delete pending item”
  *   (all eight measured: each exactly the named test red, the others green)
- *   E  LAND_CURRENCY['de-CH'] set to EUR → red: “vouchers: currency of the issuing country”
- *   F  legeAlarmAn without the -1 addition → red: “create price alert in its view”
+ *   E  COUNTRY_CURRENCY['de-CH'] set to EUR → red: “vouchers: currency of the issuing country”
+ *   F  createAlert without the -1 addition → red: “create price alert in its view”
  *   G  hint column of the job row without the error box → red: “background jobs”
- *   H  fmtDatum in English again 2-digit numeric → red: “date in English”
+ *   H  fmtDate in English again 2-digit numeric → red: “date in English”
  *   I  (05.11.2026, UI check 17 M5) prompt before the currency change removed from
- *      speichereWaehrung → red: “account: currency applies immediately” (no
+ *      saveCurrency → red: “account: currency applies immediately” (no
  *      dialog with „Marktpreise“)
  *   J  (12.11.2026, UX check 19 M3: schedule fields now in the
  *      settings) the check for HH:MM removed in saveJobTime → red:
@@ -24,7 +24,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
+const { openUi, switchTab, view, waitFor, tick } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const SET = {
@@ -35,37 +35,37 @@ const SET = {
   quantity: 1,
   conditions: ['N'],
   avg_purchase_price: 199.99,
-  letzter_kauf: '2026-06-01T10:00:00Z',
+  last_purchase: '2026-06-01T10:00:00Z',
   added_at: '2026-11-01T10:00:00Z',
   instructions: [],
 };
 
 test('unknown set number: ask first, then create', async () => {
-  const { w, d, aufrufe } = await openUi({
-    '/v1/catalog/sets/99999-1': {
+  const { w, d, calls } = await openUi({
+    '/v2/catalog/sets/99999-1': {
       $status: 404,
       success: false,
-      code: 'set_nicht_im_katalog',
+      code: 'set_not_in_catalog',
       error: 'Set nicht im Katalog',
     },
   });
   try {
-    d.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click();
+    d.querySelector('button[data-click="openCapture"][data-arg="set"]').click();
     d.getElementById('add-num').value = '99999';
     d.getElementById('btn-add').click();
-    await warte(() => !d.getElementById('add-unbekannt').hidden);
-    assert.match(text(d.getElementById('add-unbekannt')), /99999-1 ist im Katalog \(noch\) unbekannt/);
+    await waitFor(() => !d.getElementById('add-unknown').hidden);
+    assert.match(text(d.getElementById('add-unknown')), /99999-1 ist im Katalog \(noch\) unbekannt/);
     assert.equal(text(d.getElementById('btn-add')), 'Trotzdem anlegen');
     assert.equal(
-      aufrufe.some(a => a.url.includes('add-stream')),
+      calls.some(a => a.url.includes('add-stream')),
       false,
-      'ohne Rückfrage angelegt',
+      'created without a confirmation prompt',
     );
     d.getElementById('btn-add').click();
-    await warte(() => aufrufe.some(a => a.url.includes('add-stream')));
+    await waitFor(() => calls.some(a => a.url.includes('add-stream')));
     assert.ok(
-      aufrufe.some(a => a.url.includes('add-stream')),
-      'nach der Bestätigung nicht angelegt',
+      calls.some(a => a.url.includes('add-stream')),
+      'not created after the confirmation',
     );
   } finally {
     w.close();
@@ -73,69 +73,71 @@ test('unknown set number: ask first, then create', async () => {
 });
 
 test('price history: purchase price as a point, not as the start of the curve', async () => {
-  const historie = [
+  const pastEntries = [
     { recorded_at: '2026-06-01', avg_price: 199.99, is_purchase_price: true },
     { recorded_at: '2026-09-01', avg_price: 186 },
     { recorded_at: '2026-10-01', avg_price: 190 },
   ];
   const { w, d } = await openUi({
-    '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
-    '/v1/sets/21318-1': { success: true, set: SET },
-    '/v1/sets/21318-1/price-history': {
+    '/v2/sets': { success: true, sets: [SET], total: 1, themes: [] },
+    '/v2/sets/21318-1': { success: true, set: SET },
+    '/v2/sets/21318-1/price-history': {
       success: true,
       currency: 'EUR',
-      history_new: historie,
+      history_new: pastEntries,
       history_used: [],
       by_condition: { N: { purchase_price: 199.99, market_price: 190 } },
       chart: {
-        x: historie.map(h => h.recorded_at),
-        values: [{ name: 'N', firstRealIndex: 0, values: historie.map(h => ({ x: h.recorded_at, y: h.avg_price })) }],
+        x: pastEntries.map(h => h.recorded_at),
+        values: [
+          { name: 'N', firstRealIndex: 0, values: pastEntries.map(h => ({ x: h.recorded_at, y: h.avg_price })) },
+        ],
       },
     },
   });
   try {
-    await warte(() => d.querySelector('#gallery [data-click="openModal"]'));
+    await waitFor(() => d.querySelector('#gallery [data-click="openModal"]'));
     d.querySelector('#gallery [data-click="openModal"]').click();
-    await warte(() => d.querySelector('#set-modal svg.diagramm-preis'), 4000);
-    const linie = d.querySelector('#set-modal svg.diagramm-preis polyline');
-    assert.equal(linie.getAttribute('points').trim().split(/\s+/).length, 2, 'Kaufpreis in der Marktkurve');
-    assert.equal(d.querySelectorAll('#set-modal .kaufpunkt').length, 1);
+    await waitFor(() => d.querySelector('#set-modal svg.chart-price'), 4000);
+    const line = d.querySelector('#set-modal svg.chart-price polyline');
+    assert.equal(line.getAttribute('points').trim().split(/\s+/).length, 2, 'purchase price in the market curve');
+    assert.equal(d.querySelectorAll('#set-modal .purchase-dot').length, 1);
   } finally {
     w.close();
   }
 });
 
 test('account: currency applies immediately, password has its own button', async () => {
-  const { w, d, aufrufe } = await openUi({
-    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
+  const { w, d, calls } = await openUi({
+    '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
-    await sicht(w, 'profil');
-    const feld = d.getElementById('s-cur');
-    feld.value = 'CHF';
-    feld.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await view(w, 'profile');
+    const field = d.getElementById('s-cur');
+    field.value = 'CHF';
+    field.dispatchEvent(new w.Event('change', { bubbles: true }));
     // Before the change a prompt says that the market prices are reloaded.
     assert.ok(
-      await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
-      'Rückfrage vor dem Währungswechsel',
+      await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'),
+      'confirmation prompt before the currency change',
     );
     assert.match(d.getElementById('cd-msg').textContent, /Marktpreise/);
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && /CHF/.test(a.body)));
-    await warte(() => d.getElementById('confirm-modal').style.display !== 'flex');
+    await waitFor(() => calls.some(a => a.method === 'POST' && a.url.endsWith('/v2/settings') && /CHF/.test(a.body)));
+    await waitFor(() => d.getElementById('confirm-modal').style.display !== 'flex');
     assert.ok(
-      aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && JSON.parse(a.body).currency === 'CHF'),
+      calls.some(a => a.method === 'POST' && a.url.endsWith('/v2/settings') && JSON.parse(a.body).currency === 'CHF'),
     );
     d.getElementById('pw-n').value = d.getElementById('pw-r').value = 'neu-Passwort-1';
     d.getElementById('btn-sav-pw').click();
-    await warte(() => d.getElementById('confirm-modal').style.display === 'flex');
+    await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex');
     d.getElementById('cd-pw').value = 'alt-Passwort-1';
     d.getElementById('cd-confirm').click();
-    await warte(() => aufrufe.some(a => a.url.endsWith('/v1/auth/change-password')));
+    await waitFor(() => calls.some(a => a.url.endsWith('/v2/auth/change-password')));
     assert.equal(
-      aufrufe.some(a => a.url.endsWith('/v1/auth/profile') && a.method === 'PUT'),
+      calls.some(a => a.url.endsWith('/v2/auth/profile') && a.method === 'PUT'),
       false,
-      'Passwort speichert das Profil mit',
+      'password saves the profile along with it',
     );
   } finally {
     w.close();
@@ -143,21 +145,21 @@ test('account: currency applies immediately, password has its own button', async
 });
 
 test('delete pending item: undo creates it again', async () => {
-  const { w, d, aufrufe } = await openUi({
-    '/v1/wanted': (_u, o) =>
+  const { w, d, calls } = await openUi({
+    '/v2/wanted': (_u, o) =>
       o.method === 'POST'
-        ? { success: true, merkposten: { set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' } }
-        : { success: true, merkposten: [{ set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' }] },
+        ? { success: true, item: { set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' } }
+        : { success: true, item: [{ set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' }] },
   });
   try {
-    await reiter(w, 'wanted');
-    await warte(() => d.querySelector('.mk-zeile .delbtn'));
-    d.querySelector('.mk-zeile .delbtn').click();
-    await warte(() => [...d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)));
+    await switchTab(w, 'wanted');
+    await waitFor(() => d.querySelector('.mk-row .delbtn'));
+    d.querySelector('.mk-row .delbtn').click();
+    await waitFor(() => [...d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)));
     [...d.querySelectorAll('#toasts button')].find(b => /Rückgängig/.test(b.textContent)).click();
-    await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/wanted')));
-    const neu = aufrufe.find(a => a.method === 'POST' && a.url.endsWith('/v1/wanted'));
-    assert.deepEqual(JSON.parse(neu.body), { set_number: '10276-1', condition: 'N', owner_user_id: 1 });
+    await waitFor(() => calls.some(a => a.method === 'POST' && a.url.endsWith('/v2/wanted')));
+    const fresh = calls.find(a => a.method === 'POST' && a.url.endsWith('/v2/wanted'));
+    assert.deepEqual(JSON.parse(fresh.body), { set_number: '10276-1', condition: 'N', owner_user_id: 1 });
   } finally {
     w.close();
   }
@@ -165,62 +167,62 @@ test('delete pending item: undo creates it again', async () => {
 
 test('vouchers: currency of the issuing country, deviation named', async () => {
   const { w, d } = await openUi({
-    '/v1/settings/raw': {
+    '/v2/settings/raw': {
       success: true,
-      settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe', gutschein_land: 'de-CH' },
+      settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe', voucher_country: 'de-CH' },
     },
-    '/v1/vouchers': {
+    '/v2/vouchers': {
       success: true,
-      vouchers: [{ id: 3, number: '6123456789012', pin: '', amount: 50, currency: 'EUR', hat_pdf: false }],
+      vouchers: [{ id: 3, number: '6123456789012', pin: '', amount: 50, currency: 'EUR', has_pdf: false }],
     },
   });
   try {
-    await sicht(w, 'gutscheine');
-    await warte(() => d.querySelector('.voucher-row'));
+    await view(w, 'vouchers');
+    await waitFor(() => d.querySelector('.voucher-row'));
     assert.equal(d.getElementById('v-currency').value, 'CHF');
-    assert.match(text(d.querySelector('.voucher-abweichung')), /nicht CHF wie das Ausgabeland/);
-    assert.match(text(d.getElementById('gutschein-land-waehrung')), /CHF/);
+    assert.match(text(d.querySelector('.voucher-deviation')), /nicht CHF wie das Ausgabeland/);
+    assert.match(text(d.getElementById('voucher-country-currency')), /CHF/);
   } finally {
     w.close();
   }
 });
 
 test('create price alert in its view', async () => {
-  const { w, d, aufrufe } = await openUi({ '/v1/alerts': { success: true, alerts: [] } });
+  const { w, d, calls } = await openUi({ '/v2/alerts': { success: true, alerts: [] } });
   try {
-    await sicht(w, 'alarme');
-    d.getElementById('alarm-neu-set').value = '10294';
-    d.getElementById('alarm-neu-preis').value = '599,90';
-    d.getElementById('alarm-neu-knopf').click();
-    await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/alert')));
-    const ruf = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/alert'));
-    assert.match(ruf.url, /\/v1\/sets\/10294-1\/alert$/);
-    assert.deepEqual(JSON.parse(ruf.body), { direction: 'unter', threshold: 599.9, condition: 'N' });
+    await view(w, 'alerts');
+    d.getElementById('alert-new-set').value = '10294';
+    d.getElementById('alert-new-price').value = '599,90';
+    d.getElementById('alert-new-button').click();
+    await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/alert')));
+    const callFn = calls.find(a => a.method === 'PUT' && a.url.includes('/alert'));
+    assert.match(callFn.url, /\/v2\/sets\/10294-1\/alert$/);
+    assert.deepEqual(JSON.parse(callFn.body), { direction: 'below', threshold: 599.9, condition: 'N' });
   } finally {
     w.close();
   }
 });
 
 test('background jobs: labeled columns, error in the row, time in 24 h', async () => {
-  const { w, d, aufrufe } = await openUi({
-    '/v1/admin/job-status': { success: true, job: { running: false } },
-    '/v1/admin/jobs': {
+  const { w, d, calls } = await openUi({
+    '/v2/admin/job-status': { success: true, job: { running: false } },
+    '/v2/admin/jobs': {
       success: true,
       jobs: { csvImport: { status: 'done', label: 'CSV' } },
       schedules: { csvImport: { type: 'daily', time: '03:00' } },
       db: { csvCache: { parts: 5 }, blMapping: {} },
     },
-    '/v1/admin/auftraege': {
+    '/v2/admin/job-queue': {
       success: true,
-      zusammenfassung: [{ type: 'wechselkurse', status: 'fehler', anzahl: 1 }],
-      job_prozess: { laeuft: true },
-      pausen: [],
-      bildbedarf: 0,
-      auftraege: [
+      summary: [{ type: 'exchange_rates', status: 'error', count: 1 }],
+      job_process: { running: true },
+      pauses: [],
+      image_demand: 0,
+      jobs: [
         {
           id: '9',
-          type: 'wechselkurse',
-          status: 'fehler',
+          type: 'exchange_rates',
+          status: 'error',
           error_message: 'ENOTFOUND ecb',
           attempts: 6,
           max_attempts: 6,
@@ -229,25 +231,25 @@ test('background jobs: labeled columns, error in the row, time in 24 h', async (
     },
   });
   try {
-    await reiter(w, 'monitor');
-    await warte(() => d.querySelector('#auftraege-karte table') && d.querySelector('#monitor-content table'));
-    const headers = [...d.querySelectorAll('#auftraege-karte .mon-arten th')].map(text);
+    await switchTab(w, 'monitor');
+    await waitFor(() => d.querySelector('#jobs-card table') && d.querySelector('#monitor-content table'));
+    const headers = [...d.querySelectorAll('#jobs-card .mon-kinds th')].map(text);
     assert.deepEqual(headers, ['Art', 'Offen', 'Läuft', 'Aufgegeben', 'Nächster Lauf', 'Aktionen']);
-    assert.ok(d.querySelector('#auftraege-karte tbody tr .fehler-kasten'), 'Fehler nicht in der Zeile seines Auftrags');
+    assert.ok(d.querySelector('#jobs-card tbody tr .error-box'), 'error not in the row of its job');
     assert.equal(d.querySelectorAll('#tab-monitor h1, #tab-monitor h2').length, 5);
     assert.match(text(d.querySelector('#monitor-content .mon-plan')), /03:00/);
-    await reiter(w, 'settings');
-    await warte(() => d.querySelector('#einst-zeitplaene input.mon-zeit'));
-    const zeit = d.querySelector('#einst-zeitplaene input.mon-zeit');
-    assert.equal(zeit.type, 'text');
-    zeit.value = '3:5';
-    zeit.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await takt(30);
-    assert.equal(zeit.getAttribute('aria-invalid'), 'true');
-    zeit.value = '4:30';
-    zeit.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await warte(() => aufrufe.some(a => a.url.endsWith('/v1/admin/job-schedule')));
-    assert.equal(JSON.parse(aufrufe.find(a => a.url.endsWith('/v1/admin/job-schedule')).body).time, '04:30');
+    await switchTab(w, 'settings');
+    await waitFor(() => d.querySelector('#settings-schedules input.mon-time'));
+    const time = d.querySelector('#settings-schedules input.mon-time');
+    assert.equal(time.type, 'text');
+    time.value = '3:5';
+    time.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await tick(30);
+    assert.equal(time.getAttribute('aria-invalid'), 'true');
+    time.value = '4:30';
+    time.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await waitFor(() => calls.some(a => a.url.endsWith('/v2/admin/job-schedule')));
+    assert.equal(JSON.parse(calls.find(a => a.url.endsWith('/v2/admin/job-schedule')).body).time, '04:30');
   } finally {
     w.close();
   }
@@ -255,12 +257,12 @@ test('background jobs: labeled columns, error in the row, time in 24 h', async (
 
 test('date in English with month names', async () => {
   const { w, d } = await openUi(
-    { '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] } },
-    { sprache: 'en' },
+    { '/v2/sets': { success: true, sets: [SET], total: 1, themes: [] } },
+    { language: 'en' },
   );
   try {
-    await warte(() => d.querySelector('#gallery .kachel-datum'));
-    assert.match(text(d.querySelector('#gallery .kachel-datum')), /\b(1 Jun 2026|Jun 1, 2026)\b/);
+    await waitFor(() => d.querySelector('#gallery .tile-date'));
+    assert.match(text(d.querySelector('#gallery .tile-date')), /\b(1 Jun 2026|Jun 1, 2026)\b/);
   } finally {
     w.close();
   }

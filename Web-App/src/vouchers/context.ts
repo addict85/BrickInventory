@@ -1,44 +1,52 @@
 /** What the services get; kept apart from area.ts so no import cycle forms. */
 import type { ThrottleServices } from '../throttle';
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/area';
+import { bound, type Context } from '../infra/area';
 import * as balanceThrottle from './repository/balanceThrottle';
 import * as vouchers from './repository/vouchers';
+import * as pdfTickets from './repository/pdfTickets';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../account';
 import type { ForeignSourcesServices } from '../externalSources';
-import type { Faecher } from '../infra/cache';
-import type { Uhr } from '../infra/clock';
+import type { Compartments } from '../infra/cache';
+import type { Clock } from '../infra/clock';
 
 export interface VoucherDependencies {
-  uhr: Uhr;
+  clock: Clock;
   db: Db;
-  einstellungen: SettingsServices;
+  settings: SettingsServices;
   account: AccountServices;
   throttle: ThrottleServices;
   externalSources: ForeignSourcesServices;
-  /** Sessions of balance lookups and PDF tickets of this set of services. */
-  faecher: Faecher;
+  /** Sessions of balance lookups of this set of services. */
+  compartments: Compartments;
 }
 
-export const zugang = (db: Db) => ({
+export const access = (db: Db) => ({
   balanceThrottle: {
-    openThrottle: mit(db)(balanceThrottle.openThrottle),
-    lockThrottle: mit(db)(balanceThrottle.lockThrottle),
+    openThrottle: bound(db)(balanceThrottle.openThrottle),
+    lockThrottle: bound(db)(balanceThrottle.lockThrottle),
   },
   vouchers: {
-    rememberBalance: mit(db)(vouchers.rememberBalance),
-    voucher: mit(db)(vouchers.voucher),
-    changeVoucher: mit(db)(vouchers.updateVoucher),
-    createVoucher: mit(db)(vouchers.insertVoucher),
-    replaceVoucher: mit(db)(vouchers.replaceVoucher),
-    lockedVoucher: mit(db)(vouchers.lockedVoucher),
-    deleteVoucher: mit(db)(vouchers.removeVoucher),
-    rememberVoucherPdf: mit(db)(vouchers.rememberVoucherPdf),
-    vouchersOfAccount: mit(db)(vouchers.vouchersOfAccount),
-    reencryptAllVouchers: mit(db)(vouchers.reencryptAllVouchers),
-    reencryptCopies: mit(db)(vouchers.reencryptCopies),
-    reencryptNumbers: mit(db)(vouchers.reencryptNumbers),
+    rememberBalance: bound(db)(vouchers.rememberBalance),
+    voucher: bound(db)(vouchers.voucher),
+    changeVoucher: bound(db)(vouchers.updateVoucher),
+    createVoucher: bound(db)(vouchers.insertVoucher),
+    replaceVoucher: bound(db)(vouchers.replaceVoucher),
+    lockedVoucher: bound(db)(vouchers.lockedVoucher),
+    markDeleted: bound(db)(vouchers.markVoucherDeleted),
+    restore: bound(db)(vouchers.restoreVoucherRow),
+    purgeDeleted: bound(db)(vouchers.purgeDeletedVoucherRows),
+    rememberVoucherPdf: bound(db)(vouchers.rememberVoucherPdf),
+    vouchersOfAccount: bound(db)(vouchers.vouchersOfAccount),
+    reencryptAllVouchers: bound(db)(vouchers.reencryptAllVouchers),
+    reencryptCopies: bound(db)(vouchers.reencryptCopies),
+    reencryptNumbers: bound(db)(vouchers.reencryptNumbers),
+  },
+  pdfTickets: {
+    insert: bound(db)(pdfTickets.insertTicket),
+    take: bound(db)(pdfTickets.takeTicket),
+    deleteExpired: bound(db)(pdfTickets.deleteExpiredTickets),
   },
 });
-export type VoucherContext = Kontext<VoucherDependencies, ReturnType<typeof zugang>>;
+export type VoucherContext = Context<VoucherDependencies, ReturnType<typeof access>>;

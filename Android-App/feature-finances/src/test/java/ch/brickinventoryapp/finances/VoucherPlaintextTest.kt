@@ -1,21 +1,24 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.model.ui.Vorgang
-import ch.brickinventoryapp.model.ui.laeuft
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testVouchersRepository
+import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.finances.ui.CopyJob
 import ch.brickinventoryapp.finances.ui.VoucherPdfTarget
 import ch.brickinventoryapp.finances.ui.VoucherStep
-import ch.brickinventoryapp.finances.ui.CopyJob
-import ch.brickinventoryapp.testing.testVouchersRepository
+import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
+import ch.brickinventoryapp.finances.ui.viewmodel.inputViaMask
+import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
+import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.finances.ui.viewmodel.GutscheinViewModel
-import ch.brickinventoryapp.finances.ui.viewmodel.inputViaMask
-import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
-import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
+import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.testing.NumbersTexts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -31,27 +34,24 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.NumbersTexts
-import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.text
 
 /**
  * Vouchers with a masked list: number and PIN, PDF and delete only after a
  * password (and code), the plain text only in the ViewModel. Against a test server.
  *
  * Counter-checks:
- *  A  In bestaetige() `codeNoetig = … || fehler.code in FACTOR_CODES` reset
- *     to `it.confirmation.codeNoetig` → red “revealing a PIN …”
+ *  A  In confirm() `codeNeeded = … || error.code in FACTOR_CODES` reset
+ *     to `it.confirmation.codeNeeded` → red “revealing a PIN …”
  *     (code field does not appear).
  *  B  In verlange() the plain-text shortcut removed (always a new prompt) → red
  *     “revealing a PIN …” (copying asks again instead of copying).
- *  C  forgetPlaintext() does not clear `klartext` → red “revealing a PIN …”.
- *  D  In bestaetige() the offline message on deleting removed (always
- *     texte.meldung) → red “offline it is not deleted …”.
+ *  C  forgetPlaintext() does not clear `plaintext` → red “revealing a PIN …”.
+ *  D  In confirm() the offline message on deleting removed (always
+ *     texts.message) → red “offline it is not deleted …”.
  *  E  withTicket() does not attach the ticket → red “PDF and export …”.
  *  F  editVoucher() no longer takes `g.pin`, but "" instead → red
  *     “editing sends the mask …” (the PIN would be cleared or missing).
- *  G  inputViaMask() always returns `neu` → red “the mask is a whole”.
+ *  G  inputViaMask() always returns `newValue` → red “the mask is a whole”.
  *  H  pdfWithOnceTicket() always false → red “PDF and export …” (the viewer
  *     retried a used-up ticket).
  */
@@ -60,38 +60,38 @@ class VoucherPlaintextTest {
 
     private lateinit var server: MockWebServer
     private lateinit var cacheDir: File
-    private lateinit var kanal: MeldungsKanal
-    private lateinit var vm: GutscheinViewModel
+    private lateinit var channel: MessageChannel
+    private lateinit var vm: VoucherViewModel
 
-    private fun antwort(rumpf: String, code: Int = 200) = TestApi.antwort(rumpf, code)
-    private fun warteBis(was: String, bedingung: () -> Boolean) = TestApi.warteBis(was, bedingung)
+    private fun response(body: String, code: Int = 200) = TestApi.response(body, code)
+    private fun pollUntil(was: String, condition: () -> Boolean) = TestApi.pollUntil(was, condition)
 
     /** This is how the server answers: only the mask. */
-    private val maskiert = """{"success":true,"vouchers":[
-        {"id":1,"number":"…3333","pin":"•••","amount":50,"currency":"CHF","hat_pdf":true}]}"""
-    private val klartext = """{"success":true,"id":1,"number":"6000111122223333","pin":"1234"}"""
+    private val masked = """{"success":true,"vouchers":[
+        {"id":1,"number":"…3333","pin":"•••","amount":50,"currency":"CHF","has_pdf":true}]}"""
+    private val plaintext = """{"success":true,"id":1,"number":"6000111122223333","pin":"1234"}"""
 
     @Before
-    fun auf() {
+    fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         server = MockWebServer()
         server.start()
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-klar-${System.nanoTime()}").apply { mkdirs() }
-        kanal = MeldungsKanal()
-        vm = GutscheinViewModel(
-            repo = testVouchersRepository(TestApi.fuer(server)),
+        channel = MessageChannel()
+        vm = VoucherViewModel(
+            repo = testVouchersRepository(TestApi.forTarget(server)),
             texts = NumbersTexts,
-            reader = object : FileReader { override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null },
-            meldungen = kanal,
+            reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
+            messages = channel,
         )
-        server.enqueue(antwort(maskiert))
+        server.enqueue(response(masked))
         vm.loadVouchers()
-        warteBis("Liste") { vm.state.value.gutscheine.size == 1 && !vm.state.value.abruf.laedt }
+        pollUntil("Liste") { vm.state.value.vouchers.size == 1 && !vm.state.value.fetch.loading }
         server.takeRequest()
     }
 
     @After
-    fun zu() {
+    fun tearDown() {
         runCatching { server.shutdown() }
         cacheDir.deleteRecursively()
         Dispatchers.resetMain()
@@ -100,22 +100,22 @@ class VoucherPlaintextTest {
     @Test
     fun `revealing the PIN asks for password, then code, and the plaintext lives only on the page`() {
         vm.switchVoucherPin(1)
-        assertEquals(VoucherStep.PIN_ZEIGEN, vm.state.value.confirmation?.schritt)
-        assertEquals("Vor dem Passwort keine Anfrage", 1, server.requestCount)
+        assertEquals(VoucherStep.PIN_SHOW, vm.state.value.confirmation?.step)
+        assertEquals("no request before the password", 1, server.requestCount)
 
-        server.enqueue(antwort("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
+        server.enqueue(response("""{"success":false,"error":"Bitte den Code eingeben.","code":"second_factor_required"}""", 400))
         vm.confirm("geheim", null)
-        warteBis("Codefeld") { vm.state.value.confirmation?.let { it.codeNoetig && !it.operation.laeuft } == true }
-        assertTrue(vm.state.value.pinSichtbar.isEmpty())
-        val erste = server.takeRequest()
-        assertEquals("POST /api/v1/vouchers/1/klartext", "${erste.method} ${erste.path}")
-        assertEquals("geheim", JSONObject(erste.body.readUtf8()).getString("password"))
+        pollUntil("Codefeld") { vm.state.value.confirmation?.let { it.codeNeeded && !it.operation.running } == true }
+        assertTrue(vm.state.value.pinVisible.isEmpty())
+        val first = server.takeRequest()
+        assertEquals("POST /api/v2/vouchers/1/plaintext", "${first.method} ${first.path}")
+        assertEquals("geheim", JSONObject(first.body.readUtf8()).getString("password"))
 
-        server.enqueue(antwort(klartext))
+        server.enqueue(response(plaintext))
         vm.confirm("geheim", " 123456 ")
-        warteBis("aufgedeckt") { 1 in vm.state.value.pinSichtbar }
+        pollUntil("aufgedeckt") { 1 in vm.state.value.pinVisible }
         assertNull(vm.state.value.confirmation)
-        assertEquals("1234", vm.state.value.klartext[1]?.pin)
+        assertEquals("1234", vm.state.value.plaintext[1]?.pin)
         assertEquals("123456", JSONObject(server.takeRequest().body.readUtf8()).getString("code"))
 
         // Already there: copying does not ask again and copies the plain text.
@@ -125,29 +125,29 @@ class VoucherPlaintextTest {
         assertEquals(3, server.requestCount)
 
         vm.leaveVouchers()
-        assertTrue(vm.state.value.klartext.isEmpty())
-        assertTrue(vm.state.value.pinSichtbar.isEmpty())
+        assertTrue(vm.state.value.plaintext.isEmpty())
+        assertTrue(vm.state.value.pinVisible.isEmpty())
         assertNull(vm.state.value.copyTo)
         // With a password again after leaving.
         vm.copyVoucher(1, isNumber = false)
-        assertEquals(VoucherStep.PIN_COPY, vm.state.value.confirmation?.schritt)
+        assertEquals(VoucherStep.PIN_COPY, vm.state.value.confirmation?.step)
     }
 
     @Test
     fun `deleting sends password and code in the body`() {
         vm.deleteVoucher(1)
-        assertEquals(VoucherStep.DELETE, vm.state.value.confirmation?.schritt)
-        server.enqueue(antwort("""{"success":true}"""))
-        server.enqueue(antwort("""{"success":true,"vouchers":[]}"""))
+        assertEquals(VoucherStep.DELETE, vm.state.value.confirmation?.step)
+        server.enqueue(response("""{"success":true}"""))
+        server.enqueue(response("""{"success":true,"vouchers":[]}"""))
         vm.confirm("geheim", "654321")
-        warteBis("gelöscht") { vm.state.value.gutscheine.isEmpty() }
+        pollUntil("gelöscht") { vm.state.value.vouchers.isEmpty() }
         val r = server.takeRequest()
-        assertEquals("DELETE /api/v1/vouchers/1", "${r.method} ${r.path}")
-        val rumpf = JSONObject(r.body.readUtf8())
-        assertEquals("geheim", rumpf.getString("password"))
-        assertEquals("654321", rumpf.getString("code"))
+        assertEquals("DELETE /api/v2/vouchers/1", "${r.method} ${r.path}")
+        val body = JSONObject(r.body.readUtf8())
+        assertEquals("geheim", body.getString("password"))
+        assertEquals("654321", body.getString("code"))
         assertNull(vm.state.value.confirmation)
-        assertEquals("t${R.string.vouchers_deleted}", kanal.text)
+        assertEquals("the undo snackbar names the card", 1, vm.state.value.deleted)
     }
 
     @Test
@@ -155,61 +155,61 @@ class VoucherPlaintextTest {
         vm.deleteVoucher(1)
         server.shutdown()
         vm.confirm("geheim", null)
-        warteBis("Absage") { vm.state.value.confirmation?.let { it.operation is Vorgang.Fehlgeschlagen } == true }
+        pollUntil("Absage") { vm.state.value.confirmation?.let { it.operation is Operation.Failed } == true }
         assertEquals("t${R.string.vouchers_delete_offline}", vm.state.value.confirmation?.operation?.errorMessage.text)
-        assertEquals("Der Gutschein steht noch da", 1, vm.state.value.gutscheine.size)
+        assertEquals("the voucher is still shown", 1, vm.state.value.vouchers.size)
     }
 
     @Test
     fun `PDF and export only with a ticket`() {
         vm.openVoucherPdf(1)
-        assertNull("Ohne Passwort kein Ziel", vm.state.value.pdfTarget)
-        server.enqueue(antwort("""{"success":true,"ticket":"t/1+","gueltig_sek":60}"""))
+        assertNull("without a password no destination", vm.state.value.pdfTarget)
+        server.enqueue(response("""{"success":true,"ticket":"t/1+","valid_seconds":60}"""))
         vm.confirm("geheim", null)
-        warteBis("Ticket") { vm.state.value.pdfTarget != null }
+        pollUntil("Ticket") { vm.state.value.pdfTarget != null }
         assertEquals(VoucherPdfTarget(1, "t/1+"), vm.state.value.pdfTarget)
-        assertEquals("POST /api/v1/vouchers/1/pdf-freigabe", server.takeRequest().let { "${it.method} ${it.path}" })
-        assertEquals("https://brick.example/api/v1/vouchers/1/pdf?ticket=t%2F1%2B",
+        assertEquals("POST /api/v2/vouchers/1/pdf-grant", server.takeRequest().let { "${it.method} ${it.path}" })
+        assertEquals("https://brick.example/api/v2/vouchers/1/pdf?ticket=t%2F1%2B",
             voucherPdfAddress("https://brick.example/", vm.state.value.pdfTarget!!))
         assertTrue(pdfWithOnceTicket(voucherPdfAddress("https://brick.example/", vm.state.value.pdfTarget!!)))
-        assertFalse(pdfWithOnceTicket("https://brick.example/api/v1/instructions/4/file"))
+        assertFalse(pdfWithOnceTicket("https://brick.example/api/v2/instructions/4/file"))
         vm.voucherPdfAcknowledge()
 
         vm.openVoucherExport()
-        server.enqueue(antwort("""{"success":true,"ticket":"x","gueltig_sek":60}"""))
+        server.enqueue(response("""{"success":true,"ticket":"x","valid_seconds":60}"""))
         vm.confirm("geheim", null)
-        warteBis("Ticket") { vm.state.value.pdfTarget != null }
-        assertEquals("POST /api/v1/vouchers/export/pdf-freigabe", server.takeRequest().let { "${it.method} ${it.path}" })
-        assertEquals("https://brick.example/api/v1/vouchers/export/pdf?ticket=x",
+        pollUntil("Ticket") { vm.state.value.pdfTarget != null }
+        assertEquals("POST /api/v2/vouchers/export/pdf-grant", server.takeRequest().let { "${it.method} ${it.path}" })
+        assertEquals("https://brick.example/api/v2/vouchers/export/pdf?ticket=x",
             voucherPdfAddress("https://brick.example", vm.state.value.pdfTarget!!))
     }
 
     @Test
     fun `editing sends the mask back as unchanged`() {
         vm.editVoucher(1)
-        assertEquals("…3333", vm.state.value.nummer)
+        assertEquals("…3333", vm.state.value.number)
         assertEquals("•••", vm.state.value.pin)
-        vm.setVoucherField(betrag = "60")
-        server.enqueue(antwort("""{"success":true,"voucher":{"id":1,"number":"…3333","pin":"•••","amount":60,"currency":"CHF","hat_pdf":true}}"""))
-        server.enqueue(antwort(maskiert))
-        vm.speichere(null)
-        warteBis("gespeichert") { server.requestCount >= 3 && !vm.state.value.speichern.laeuft }
+        vm.setVoucherField(amount = "60")
+        server.enqueue(response("""{"success":true,"voucher":{"id":1,"number":"…3333","pin":"•••","amount":60,"currency":"CHF","has_pdf":true}}"""))
+        server.enqueue(response(masked))
+        vm.persist(null)
+        pollUntil("gespeichert") { server.requestCount >= 3 && !vm.state.value.save.running }
         val r = server.takeRequest()
-        assertEquals("PUT /api/v1/vouchers/1", "${r.method} ${r.path}")
-        val rumpf = JSONObject(r.body.readUtf8())
-        assertEquals("…3333", rumpf.getString("number"))
-        assertEquals("•••", rumpf.getString("pin"))
-        assertEquals(60.0, rumpf.getDouble("amount"), 0.0)
+        assertEquals("PUT /api/v2/vouchers/1", "${r.method} ${r.path}")
+        val body = JSONObject(r.body.readUtf8())
+        assertEquals("…3333", body.getString("number"))
+        assertEquals("•••", body.getString("pin"))
+        assertEquals(60.0, body.getDouble("amount"), 0.0)
     }
 
     @Test
     fun `the mask is a whole`() {
         assertEquals("5", inputViaMask("…3333", "…33335", true))
         assertEquals("5", inputViaMask("…3333", "5…3333", true))
-        assertEquals("Eine Ziffer weg heisst: alles weg", "", inputViaMask("…3333", "…333", true))
+        assertEquals("one digit gone means: everything gone", "", inputViaMask("…3333", "…333", true))
         assertEquals("", inputViaMask("•••", "••", true))
-        assertEquals("Eingefügt ersetzt", "6000111122223333", inputViaMask("…3333", "6000111122223333", true))
-        assertEquals("Ohne Maske unverändert", "123", inputViaMask("12", "123", false))
+        assertEquals("pasted replaces", "6000111122223333", inputViaMask("…3333", "6000111122223333", true))
+        assertEquals("unchanged without a mask", "123", inputViaMask("12", "123", false))
         assertFalse(inputViaMask("•••", "•••7", true).contains('•'))
     }
 }

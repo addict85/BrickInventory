@@ -1,0 +1,16 @@
+Gegenprobe: Ein Token unter dem alten Schlüssel bleibt dort, der Start schlüsselt nicht um
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenVaultTest
+Rot: a token under the old key goes under the strict one at start
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -488,7 +488,6 @@
+         dataStore.edit { prefs ->
+             removed = !prefs[AUTH_TOKEN].isNullOrEmpty()
+             prefs.remove(AUTH_TOKEN)
+-            rekeyed = rekey(prefs)
+         }
+         if (rekeyed) catchUnlessCancelled { vault.forgetLegacyStock() }
+         return removed

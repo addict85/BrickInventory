@@ -3,7 +3,7 @@
  * the response. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { Fachfehler, asDuplicate, fachfehler, type ErrorCode } from '../infra/errorTexts';
+import { DomainError, asDuplicate, failDomain, type ErrorCode } from '../infra/errorTexts';
 import { withoutMissingFile } from '../infra/error';
 import type { VoucherRow } from './repository/vouchers';
 import { VOUCHER_DIR, voucherFile, readVoucherPdf, readVoucherPdfOrNothing, writeVoucherPdf } from './voucherFiles';
@@ -14,7 +14,7 @@ import { combineVouchers } from './pdfExport';
 import { issueTicket } from './pdfTicket';
 import { MAX_PAGES, readInBackground } from './pdfReader';
 import type { VoucherContext } from './context';
-import { PIN_MASK, gutscheinNummer, voucherPin, voucherCurrency, numberMask } from '../infra/voucherValues';
+import { PIN_MASK, voucherNumber, voucherPin, voucherCurrency, numberMask } from '../infra/voucherValues';
 
 export type { VoucherRow } from './repository/vouchers';
 
@@ -40,7 +40,7 @@ export interface NewVoucher {
 function amountRule(raw: number | null | undefined, zeroAllowed = false): number {
   const amount = raw ?? Number.NaN;
   if (!Number.isFinite(amount) || amount > 1_000_000 || (zeroAllowed ? amount < 0 : amount <= 0))
-    fachfehler('ungueltig', 'betrag_ungueltig');
+    failDomain('invalid', 'amount_invalid');
   return amount;
 }
 
@@ -54,18 +54,18 @@ const checked = (w: NewVoucher, zeroAllowed = false): Checked => ({
 type Raw = { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown };
 
 /** Only for values the server reads from a PDF itself: input is checked by the contract. */
-export function checkValues(roh: Raw): ({ ok: true } & Checked) | { ok: false; code: ErrorCode } {
+export function checkValues(raw: Raw): ({ ok: true } & Checked) | { ok: false; code: ErrorCode } {
   try {
     return {
       ok: true,
-      number: gutscheinNummer(roh.number == null ? '' : String(roh.number)),
-      pin: voucherPin(roh.pin == null ? null : String(roh.pin)),
+      number: voucherNumber(raw.number == null ? '' : String(raw.number)),
+      pin: voucherPin(raw.pin == null ? null : String(raw.pin)),
       // Number('') is 0 and fails the amount check.
-      amount: amountRule(Number(roh.amount)),
-      currency: voucherCurrency(roh.currency == null ? null : String(roh.currency)),
+      amount: amountRule(Number(raw.amount)),
+      currency: voucherCurrency(raw.currency == null ? null : String(raw.currency)),
     };
   } catch (e) {
-    if (e instanceof Fachfehler) return { ok: false, code: e.code };
+    if (e instanceof DomainError) return { ok: false, code: e.code };
     throw e;
   }
 }
@@ -77,12 +77,12 @@ export function voucherList(k: VoucherContext, uid: number, order?: 'neueste' | 
 }
 
 async function existing(k: VoucherContext, uid: number, id: number): Promise<VoucherRow> {
-  return (await repo(k).voucher(uid, id)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
+  return (await repo(k).voucher(uid, id)) ?? failDomain('not_found', 'not_found');
 }
 
 /** No row means "already there" — as a success, the user would see nothing happen. */
 export async function createVoucher(k: VoucherContext, uid: number, e: NewVoucher): Promise<VoucherRow> {
-  return (await repo(k).createVoucher(uid, checked(e))) ?? fachfehler('konflikt', 'gutschein_existiert');
+  return (await repo(k).createVoucher(uid, checked(e))) ?? failDomain('conflict', 'voucher_exists');
 }
 
 /** The batch case of a bundle PDF: what already exists gets replaced. */
@@ -117,8 +117,8 @@ export async function createVoucherWithPdf(
 ): Promise<VoucherRow> {
   const written: string[] = [];
   try {
-    return await k.transaktion(async t => {
-      const z = (await repo(t).createVoucher(uid, w)) ?? fachfehler('konflikt', 'gutschein_existiert');
+    return await k.transact(async t => {
+      const z = (await repo(t).createVoucher(uid, w)) ?? failDomain('conflict', 'voucher_exists');
       // File name from the ID, not from the upload: a name from the client would have
       // to be checked against path components.
       const relPath = `${uid}/${z.id}.pdf`;
@@ -134,8 +134,8 @@ export async function createVoucherWithPdf(
 }
 
 export type FromPdf =
-  | { art: 'stapel'; bericht: Awaited<ReturnType<typeof batchCreate>> }
-  | { art: 'angelegt'; zeile: VoucherRow; gelesen: ParsedVoucher };
+  | { kind: 'stapel'; report: Awaited<ReturnType<typeof batchCreate>> }
+  | { kind: 'angelegt'; row: VoucherRow; parsed: ParsedVoucher };
 
 /** The form fields: how the frontend prefills them after a rejection. */
 export const readAs = (g: ParsedVoucher) => ({
@@ -156,16 +156,16 @@ export async function voucherFromPdf(
   typed: VoucherChange,
 ): Promise<FromPdf> {
   const reading = await readInBackground(pdf);
-  if (reading.art === 'zu_viele_seiten')
-    fachfehler('nicht_verarbeitbar', 'pdf_zu_viele_seiten', { seiten: reading.seiten, max: MAX_PAGES });
-  if (reading.art === 'unlesbar') fachfehler('nicht_verarbeitbar', 'pdf_unlesbar');
-  if (reading.stapel.length >= 2) return { art: 'stapel', bericht: await batchCreate(k, uid, reading.stapel) };
+  if (reading.kind === 'zu_viele_seiten')
+    failDomain('unprocessable', 'pdf_too_many_pages', { pages: reading.pages, max: MAX_PAGES });
+  if (reading.kind === 'unlesbar') failDomain('unprocessable', 'pdf_unreadable');
+  if (reading.batch.length >= 2) return { kind: 'stapel', report: await batchCreate(k, uid, reading.batch) };
   // The media type is a claim by the client: what is checked is the signature, since
   // the file goes out later as application/pdf. A decompression bomb would otherwise
   // reach pdf-lib, which unpacks without a limit.
-  if (pdf.subarray(0, 5).toString('latin1') !== '%PDF-' || reading.einzeln === 'zu_gross')
-    fachfehler('nicht_verarbeitbar', 'pdf_unlesbar');
-  const read = typeof reading.einzeln === 'object' ? reading.einzeln : NOTHING_READ;
+  if (pdf.subarray(0, 5).toString('latin1') !== '%PDF-' || reading.single === 'too_large')
+    failDomain('unprocessable', 'pdf_unreadable');
+  const read = typeof reading.single === 'object' ? reading.single : NOTHING_READ;
   const raw = {
     number: typed.number ?? read.number,
     pin: typed.pin ?? read.pin,
@@ -173,14 +173,14 @@ export async function voucherFromPdf(
     currency: typed.currency ?? read.currency,
   };
   const w = checkValues(raw);
-  if (w.ok) return { art: 'angelegt', zeile: await createVoucherWithPdf(k, uid, w, pdf), gelesen: read };
+  if (w.ok) return { kind: 'angelegt', row: await createVoucherWithPdf(k, uid, w, pdf), parsed: read };
   // Three rejections, because the user has to do something different for each.
   const nothingTyped = !typed.number && !typed.pin && !typed.amount;
   const nothingRead = read.number == null && read.amount == null;
   const code: ErrorCode =
-    reading.einzeln === 'fehler' ? 'pdf_unlesbar' : nothingRead && nothingTyped ? 'kein_gutschein_im_pdf' : w.code;
+    reading.single === 'fehler' ? 'pdf_unreadable' : nothingRead && nothingTyped ? 'no_voucher_in_pdf' : w.code;
   // 422: the request was fine, only the PDF did not give up everything; `gelesen` prefills the fields.
-  throw new Fachfehler('nicht_verarbeitbar', code, undefined, { gelesen: readAs(read) });
+  throw new DomainError('unprocessable', code, undefined, { parsed: readAs(read) });
 }
 
 export interface VoucherChange {
@@ -195,8 +195,8 @@ export interface VoucherChange {
  * masked, stays as it was: the form only knows the mask. */
 export function changeVoucher(k: VoucherContext, uid: number, id: number, e: VoucherChange): Promise<VoucherRow> {
   return k
-    .transaktion(async t => {
-      const old = (await repo(t).lockedVoucher(uid, id)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
+    .transact(async t => {
+      const old = (await repo(t).lockedVoucher(uid, id)) ?? failDomain('not_found', 'not_found');
       const mask = masked(old);
       const w = checked(
         {
@@ -207,51 +207,70 @@ export function changeVoucher(k: VoucherContext, uid: number, id: number, e: Vou
         },
         e.amount === undefined,
       );
-      return (await repo(t).changeVoucher(uid, id, w)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
+      return (await repo(t).changeVoucher(uid, id, w)) ?? failDomain('not_found', 'not_found');
     })
-    .catch(asDuplicate('gutschein_existiert'));
+    .catch(asDuplicate('voucher_exists'));
+}
+
+/** How long a deleted voucher can be restored; the hourly cleanup removes it afterwards. */
+export const RESTORE_DAYS = 7;
+const restoreWindowStart = (k: VoucherContext) => k.clock.now() - RESTORE_DAYS * 86_400_000;
+
+/** Marks only: row and PDF stay for the undo (restoreVoucher) until the cleanup. */
+export async function deleteVoucher(k: VoucherContext, uid: number, id: number): Promise<void> {
+  if (!(await repo(k).markDeleted(uid, id, k.clock.now()))) failDomain('not_found', 'not_found');
+}
+
+/** The same number entered again in the meantime wins: restoring would make it twice. */
+export async function restoreVoucher(k: VoucherContext, uid: number, id: number): Promise<VoucherRow> {
+  return (
+    (await repo(k).restore(uid, id, restoreWindowStart(k)).catch(asDuplicate('voucher_exists'))) ??
+    failDomain('not_found', 'not_found')
+  );
 }
 
 /** Row first, then the file: better an orphaned file than a row pointing nowhere. */
-export async function deleteVoucher(k: VoucherContext, uid: number, id: number): Promise<void> {
-  const pdfPath = await repo(k).deleteVoucher(uid, id);
-  if (pdfPath === undefined) fachfehler('nicht_gefunden', 'nicht_gefunden');
-  const file = pdfPath ? voucherFile(uid, pdfPath) : null;
-  if (file) await fs.promises.unlink(file).catch(withoutMissingFile('gutschein:pdf löschen'));
+export async function purgeDeletedVouchers(k: VoucherContext): Promise<number> {
+  const rows = await repo(k).purgeDeleted(restoreWindowStart(k));
+  for (const z of rows) {
+    const file = z.pdf_path ? voucherFile(z.user_id, z.pdf_path) : null;
+    if (file) await fs.promises.unlink(file).catch(withoutMissingFile('gutschein:pdf löschen'));
+  }
+  return rows.length;
 }
 
 export async function voucherPlaintext(k: VoucherContext, uid: number, id: number): Promise<VoucherRow> {
   const z = await existing(k, uid, id);
-  await k.account.verwalter.rememberAdminAction(uid, uid, 'gutschein_klartext', masked(z).number);
+  await k.account.admin.rememberAdminAction(uid, uid, 'voucher_plaintext', masked(z).number);
   return z;
 }
 
-/** The PDFs carry number and PIN: log first, then a ticket for exactly one fetch. */
-export async function releasePdf(k: VoucherContext, uid: number, id: number): Promise<string> {
+/** The PDFs carry number and PIN: log first, then a ticket for exactly one fetch. Without
+ * `id` the ticket is for the export of all cards (as pdfRelease in the app). */
+export async function releasePdf(k: VoucherContext, uid: number, id: number | null): Promise<string> {
+  if (id === null) {
+    const n = (await voucherList(k, uid)).length;
+    if (!n) failDomain('not_found', 'no_vouchers');
+    await k.account.admin.rememberAdminAction(uid, uid, 'voucher_export', `${n}`);
+    return issueTicket(k, uid, 'export');
+  }
   const z = await existing(k, uid, id);
-  if (!z.pdf_path) fachfehler('nicht_gefunden', 'nicht_gefunden');
-  await k.account.verwalter.rememberAdminAction(uid, uid, 'gutschein_pdf', masked(z).number);
+  if (!z.pdf_path) failDomain('not_found', 'not_found');
+  await k.account.admin.rememberAdminAction(uid, uid, 'voucher_pdf', masked(z).number);
   return issueTicket(k, uid, String(id));
-}
-
-export async function releaseExport(k: VoucherContext, uid: number): Promise<string> {
-  const n = (await voucherList(k, uid)).length;
-  if (!n) fachfehler('nicht_gefunden', 'keine_gutscheine');
-  await k.account.verwalter.rememberAdminAction(uid, uid, 'gutschein_export', `${n}`);
-  return issueTicket(k, uid, 'export');
 }
 
 export async function voucherPdf(k: VoucherContext, uid: number, id: number): Promise<Buffer> {
   const z = await existing(k, uid, id);
   const file = z.pdf_path ? voucherFile(uid, z.pdf_path) : null;
   const pdf = file ? await readVoucherPdf(file).catch(withoutMissingFile('gutschein:pdf lesen', null)) : null;
-  return pdf ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
+  return pdf ?? failDomain('not_found', 'not_found');
 }
 
 /** A missing file does not abort the export, otherwise it would take every other voucher with it. */
 export async function exportVouchers(k: VoucherContext, uid: number) {
   const rows = await voucherList(k, uid, 'aelteste');
-  if (!rows.length) fachfehler('nicht_gefunden', 'keine_gutscheine');
+  if (!rows.length) failDomain('not_found', 'no_vouchers');
   const vouchers = [];
   for (const z of rows)
     vouchers.push({
@@ -266,8 +285,8 @@ export async function exportVouchers(k: VoucherContext, uid: number) {
 }
 
 export type BalanceResult =
-  | ({ art: 'gesperrt' } & Locked)
-  | { art: 'guthaben'; zeile: VoucherRow; angezeigt: string | null; currencyChanged: boolean };
+  | ({ kind: 'gesperrt' } & Locked)
+  | { kind: 'guthaben'; row: VoucherRow; displayed: string | null; currencyChanged: boolean };
 
 /** It checks the PIN and the country BEFORE the throttle: a call that cannot
  * succeed should not use up the one slot per 30 seconds for everyone. The
@@ -275,18 +294,17 @@ export type BalanceResult =
  * the shop of its issuing country. */
 export async function checkBalance(k: VoucherContext, uid: number, id: number): Promise<BalanceResult> {
   const old = await existing(k, uid, id);
-  if (!old.pin) fachfehler('ungueltig', 'guthaben_pin_fehlt');
+  if (!old.pin) failDomain('invalid', 'balance_pin_missing');
   const country = String(
-    (await k.einstellungen.globalValue('gutschein_land', '')) ||
-      countryForCurrency(await k.einstellungen.userValue(uid, 'currency', 'EUR')),
+    (await k.settings.globalValue('voucher_country', '')) ||
+      countryForCurrency(await k.settings.userValue(uid, 'currency', 'EUR')),
   );
-  if (!countryAllowed(country)) fachfehler('ungueltig', 'guthaben_land_ungueltig');
+  if (!countryAllowed(country)) failDomain('invalid', 'balance_country_invalid');
   const result = await checkBalanceThrottled(k, uid, old.number, old.pin, { locale: country });
-  if (result.art === 'gesperrt') return result;
-  const g = result.guthaben;
+  if (result.kind === 'gesperrt') return result;
+  const g = result.balance;
   // The other side's currency wins; a useless value would otherwise ruin the list's total.
   const currency = /^[A-Z]{3}$/.test(g.currency) ? g.currency : old.currency;
-  const zeile =
-    (await repo(k).rememberBalance(uid, id, g.amount, currency)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
-  return { art: 'guthaben', zeile, angezeigt: g.formatted, currencyChanged: currency !== old.currency };
+  const row = (await repo(k).rememberBalance(uid, id, g.amount, currency)) ?? failDomain('not_found', 'not_found');
+  return { kind: 'guthaben', row, displayed: g.formatted, currencyChanged: currency !== old.currency };
 }

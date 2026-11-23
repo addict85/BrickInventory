@@ -1,49 +1,50 @@
 /** Every step reports its error and lets the others run; if one
  * fails, the worker repeats the whole run — all steps tolerate that. */
 import { checkAbort, type JobRun } from '../jobQueue';
-import { fehlertext } from '../infra/error';
+import { errorMessage } from '../infra/error';
 import { cleanOldBackupsOn } from '../../db/migrate';
 import type { ManagementContext } from './context';
 
-type Step = [name: string, lauf: () => Promise<unknown>];
+type Step = [name: string, run: () => Promise<unknown>];
 
-async function runSteps(schritte: Step[], auftrag?: JobRun): Promise<void> {
-  const fehler: string[] = [];
-  for (const [name, lauf] of schritte) {
-    checkAbort(auftrag);
+async function runSteps(steps: Step[], job?: JobRun): Promise<void> {
+  const error: string[] = [];
+  for (const [name, run] of steps) {
+    checkAbort(job);
     try {
-      const n = await lauf();
+      const n = await run();
       if (typeof n === 'number' && n > 0) console.log(`[cleanup] ${name}: ${n} entfernt`);
     } catch (e) {
-      fehler.push(`${name}: ${fehlertext(e)}`);
+      error.push(`${name}: ${errorMessage(e)}`);
     }
   }
-  if (fehler.length) throw new Error(fehler.join('; '));
+  if (error.length) throw new Error(error.join('; '));
 }
 
-function cleanup(k: ManagementContext, lauf?: JobRun): Promise<void> {
+function cleanup(k: ManagementContext, run?: JobRun): Promise<void> {
   return runSteps(
     [
-      ...k.account.onRaeumSteps('stuendlich'),
+      ...k.account.onCleanupSteps('stuendlich'),
       ['Papierkorb', k.inventory.cleanTrashOn],
-      ['PDF-Aufträge', k.catalog.pdf.raeumeAuf],
+      ['PDF-Aufträge', k.catalog.pdf.cleanUp],
       ['alte Aufträge', k.jobQueue.cleanCompletedOn],
       ['verfallene Bildwünsche', k.images.deleteExpired],
       ['Idempotenzschlüssel', k.idempotency.cleanupIdempotency],
+      ['PDF-Tickets und gelöschte Gutscheine', k.vouchers.cleanup],
     ],
-    lauf,
+    run,
   );
 }
 
-function cleanupDaily(k: ManagementContext, lauf?: JobRun): Promise<void> {
+function cleanupDaily(k: ManagementContext, run?: JobRun): Promise<void> {
   return runSteps(
     [
       ['Preisverlauf', k.finances.deleteOldPrices],
-      ...k.account.onRaeumSteps('taeglich'),
-      ['Bild-Cache', () => k.images.cleanImageCacheOn(k.images.imageLimits().cacheMaxBytes, k.uhr.jetzt())],
+      ...k.account.onCleanupSteps('taeglich'),
+      ['Bild-Cache', () => k.images.cleanImageCacheOn(k.images.imageLimits().cacheMaxBytes, k.clock.now())],
       ['Kopien vor Migrationen', () => cleanOldBackupsOn(k.db)],
     ],
-    lauf,
+    run,
   );
 }
 

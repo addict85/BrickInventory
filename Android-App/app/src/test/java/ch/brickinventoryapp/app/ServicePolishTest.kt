@@ -1,30 +1,30 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.Sources
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Safeguarding of the cleanup round: localized service notifications,
  * status icon and the parts list without FileProvider. That the PDF download goes via the
- * api client is checked by AnleitungsDownloadTest, executed.
+ * api client is checked by InstructionDownloadTest, executed.
  *
  * All checks only read source and resource files.
  *
  * Counter-check: in the manifest the FileProvider put next to the
- * TeilelistenProvider → red “the parts list goes out only via the own
- * provider” (gegenproben/fileprovider-extern.patch).
+ * PartListsProvider → red “the parts list goes out only via the own
+ * provider” (counter-checks/fileprovider-external.patch).
  */
 class ServicePolishTest {
 
     private fun read(rel: String): String {
         // Sources and resources across all modules; the manifest lies in app/.
         val f = when {
-            rel.startsWith("java/ch/brickinventoryapp/") -> File(Quellen.root, rel.removePrefix("java/ch/brickinventoryapp/"))
-            rel.startsWith("res/") -> File(Quellen.res, rel.removePrefix("res/"))
-            else -> File(Quellen.project, "app/src/main/$rel")
+            rel.startsWith("java/ch/brickinventoryapp/") -> File(Sources.root, rel.removePrefix("java/ch/brickinventoryapp/"))
+            rel.startsWith("res/") -> File(Sources.res, rel.removePrefix("res/"))
+            else -> File(Sources.project, "app/src/main/$rel")
         }
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
+        assert(f.exists()) { "File not found: $rel" }
         return f.readText()
     }
 
@@ -51,9 +51,9 @@ class ServicePolishTest {
                     """Bilder werden geladen|Lade PDF herunter|PDF wird|Keine Exportdaten|Unbekannter Fehler)"""
             ).find(src)
             assert(hard == null) {
-                "$rel enthält wieder einen hartkodierten deutschen Text (${hard?.value}…) — " +
-                    "englischsprachige Nutzer bekommen dann deutsche Benachrichtigungen. " +
-                    "Texte gehören in strings.xml/strings-de.xml."
+                "$rel contains a hard-coded German text again (${hard?.value}…) — " +
+                    "English-speaking users then get German notifications. " +
+                    "Texts belong in strings.xml/strings-de.xml."
             }
         }
     }
@@ -69,12 +69,12 @@ class ServicePolishTest {
             "java/ch/brickinventoryapp/services/service/PdfExportService.kt",
         )) {
             assert(code(read(rel)).contains("LanguageManager.localizedContext(this)")) {
-                "$rel ruft getString() ohne LanguageManager.localizedContext() auf"
+                "$rel calls getString() without LanguageManager.localizedContext()"
             }
         }
         assert(code(read("java/ch/brickinventoryapp/data/util/LanguageManager.kt"))
             .contains("createConfigurationContext")) {
-            "LanguageManager.localizedContext() fehlt oder wrappt den Context nicht mehr"
+            "LanguageManager.localizedContext() is missing or no longer wraps the Context"
         }
     }
 
@@ -87,8 +87,8 @@ class ServicePolishTest {
             "notif_pdf_title", "notif_pdf_running", "notif_pdf_done_tap", "notif_pdf_failed",
             "pdfexp_starting", "pdfexp_unknown_error", "pdfexp_creating_eta",
         )) {
-            assert(en.contains("name=\"$key\"")) { "$key fehlt in values/strings.xml" }
-            assert(de.contains("name=\"$key\"")) { "$key fehlt in values-de/strings.xml" }
+            assert(en.contains("name=\"$key\"")) { "$key is missing in values/strings.xml" }
+            assert(de.contains("name=\"$key\"")) { "$key is missing in values-de/strings.xml" }
         }
     }
 
@@ -96,8 +96,8 @@ class ServicePolishTest {
 
     @Test
     fun `notifications use the monochrome status icon`() {
-        assert(File(Quellen.res, "drawable/ic_stat_brick.xml").exists()) {
-            "drawable/ic_stat_brick.xml fehlt"
+        assert(File(Sources.res, "drawable/ic_stat_brick.xml").exists()) {
+            "drawable/ic_stat_brick.xml is missing"
         }
         for (rel in listOf(
             "java/ch/brickinventoryapp/services/service/CsvImportService.kt",
@@ -105,12 +105,12 @@ class ServicePolishTest {
         )) {
             val src = code(read(rel))
             assert(!src.contains("setSmallIcon(R.mipmap")) {
-                "$rel benutzt wieder das adaptive Launcher-Icon als setSmallIcon — Android " +
-                    "rendert Status-Icons nur über den Alpha-Kanal, das Launcher-Icon " +
-                    "erscheint auf vielen Geräten als graues Quadrat."
+                "$rel uses the adaptive launcher icon as setSmallIcon again — Android " +
+                    "renders status icons only via the alpha channel, the launcher icon " +
+                    "appears as a grey square on many devices."
             }
             assert(src.contains("setSmallIcon(R.drawable.ic_stat_brick)")) {
-                "$rel benutzt ic_stat_brick nicht"
+                "$rel does not use ic_stat_brick"
             }
         }
     }
@@ -121,16 +121,16 @@ class ServicePolishTest {
     fun `the parts list goes out only via the own provider, no FileProvider`() {
         val manifest = code(read("AndroidManifest.xml"))
         assert(!manifest.contains("FileProvider")) {
-            "Das Manifest trägt wieder einen FileProvider — er gibt nur Klartext-Dateien weiter, " +
-                "die Teileliste läge dann wieder offen in filesDir"
+            "The manifest carries a FileProvider again — it only passes on plain-text files, " +
+                "the parts list would then lie open in filesDir again"
         }
-        val entry = Regex("""<provider[^>]*TeilelistenProvider[^>]*>""").find(manifest)?.value
-            ?: error("Der TeilelistenProvider fehlt im Manifest")
-        assert(entry.contains("android:exported=\"false\"")) { "Der TeilelistenProvider ist exportiert" }
+        val entry = Regex("""<provider[^>]*PartListsProvider[^>]*>""").find(manifest)?.value
+            ?: error("the PartListsProvider is missing in the manifest")
+        assert(entry.contains("android:exported=\"false\"")) { "the PartListsProvider is exported" }
         assert(entry.contains("android:grantUriPermissions=\"true\"")) {
-            "Ohne grantUriPermissions öffnet die gewählte App die Teileliste nicht"
+            "without grantUriPermissions the chosen app does not open the parts list"
         }
-        assert(!File(Quellen.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }
+        assert(!File(Sources.res, "xml/file_paths.xml").exists()) { "file_paths.xml is back" }
     }
 
     // ── ProGuard ─────────────────────────────────────────────────────────────
@@ -139,11 +139,11 @@ class ServicePolishTest {
     fun `no dead Gson rule in ProGuard`() {
         // proguard-rules.pro lies in the module root directory, not under src/
         val f = File("proguard-rules.pro")
-        assert(f.exists()) { "proguard-rules.pro nicht gefunden" }
+        assert(f.exists()) { "proguard-rules.pro not found" }
         assert(!f.readText().contains("SerializedName")) {
-            "Die Gson-Keep-Regel ist zurück — das Projekt serialisiert mit " +
-                "kotlinx.serialization, Gson ist keine Abhängigkeit. Die Regel tut " +
-                "nichts und führt beim Lesen in die Irre."
+            "The Gson keep rule is back — the project serializes with " +
+                "kotlinx.serialization, Gson is not a dependency. The rule does " +
+                "nothing and misleads when reading."
         }
     }
 }

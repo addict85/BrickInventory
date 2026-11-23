@@ -35,11 +35,11 @@ const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
 
-const gesendet = [];
+const sent = [];
 require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _name, type, o) => {
-    gesendet.push({ an, type, ...o });
+    sent.push({ an, type, ...o });
     return { success: true };
   },
 });
@@ -51,8 +51,8 @@ const PASS = 'Hinweis-Passwort-1';
 test('mails on new accesses', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
-    NAMEN = [`zh_chef_${P}`, `zh_zwei_${P}`, `zh_nutzer_${P}`, `zh_neu_${P}`];
-  const konto = async (name, admin) =>
+    NAMES = [`zh_chef_${P}`, `zh_zwei_${P}`, `zh_nutzer_${P}`, `zh_neu_${P}`];
+  const account = async (name, admin) =>
     (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
@@ -60,146 +60,146 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
         [name, `${name}@example.org`, await bcrypt.hash(PASS, 4), admin],
       )
     ).id;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
-  const chef = await konto(NAMEN[0], true),
-    zwei = await konto(NAMEN[1], true),
-    nutzer = await konto(NAMEN[2], false);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMES]);
+  const chef = await account(NAMES[0], true),
+    two = await account(NAMES[1], true),
+    user = await account(NAMES[2], false);
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]).catch(() => {});
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMES]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const base = routerServer(_req, {
-    sitzung: { userId: chef, username: NAMEN[0], isAdmin: true },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
+    session: { userId: chef, username: NAMES[0], isAdmin: true },
+    routes: { '/api/v2/auth': 'routes/auth.js' },
     t,
   }).base;
-  const ruf = async (methode, weg, body) => {
-    const r = await fetch(`${base}/api/v1/auth${weg}`, {
-      method: methode,
+  const callFn = async (method, route, body) => {
+    const r = await fetch(`${base}/api/v2/auth${route}`, {
+      method: method,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
     const text = await r.text();
-    assert.equal(r.status, 200, `${weg}: ${text}`);
+    assert.equal(r.status, 200, `${route}: ${text}`);
     return JSON.parse(text);
   };
   /** The mails go out on the side; wait briefly until they arrive. */
-  const mails = async (type, anzahl) => {
-    for (let i = 0; i < 60 && gesendet.filter(m => m.type === type).length < anzahl; i++)
+  const mails = async (type, count) => {
+    for (let i = 0; i < 60 && sent.filter(m => m.type === type).length < count; i++)
       await new Promise(r => setTimeout(r, 25));
-    return gesendet
-      .filter(m => m.type === type && NAMEN.some(n => m.an === `${n}@example.org`))
-      .map(m => ({ an: m.an.split('@')[0], konto: m.konto, durch: m.durch, name: m.passkey }))
+    return sent
+      .filter(m => m.type === type && NAMES.some(n => m.an === `${n}@example.org`))
+      .map(m => ({ an: m.an.split('@')[0], konto: m.account, via: m.actor, name: m.passkey }))
       .sort((a, b) => a.an.localeCompare(b.an));
   };
 
   await t.test('new token', async () => {
-    await ruf('POST', '/token-create', { password: PASS, label: 'Tablet' });
-    assert.deepEqual(await mails('token_neu', 1), [
-      { an: NAMEN[0], konto: undefined, durch: undefined, name: 'Tablet' },
+    await callFn('POST', '/token-create', { password: PASS, label: 'Tablet' });
+    assert.deepEqual(await mails('token_added', 1), [
+      { an: NAMES[0], konto: undefined, via: undefined, name: 'Tablet' },
     ]);
   });
 
   await t.test('new QR access', async () => {
-    await ruf('POST', '/qr-token', { password: PASS });
+    await callFn('POST', '/qr-token', { password: PASS });
     assert.deepEqual(
-      (await mails('qr_zugang_neu', 1)).map(m => m.an),
-      [NAMEN[0]],
+      (await mails('qr_access_added', 1)).map(m => m.an),
+      [NAMES[0]],
     );
   });
 
   await t.test('new admin account', async () => {
-    await ruf('POST', '/users', {
-      username: NAMEN[3],
+    await callFn('POST', '/users', {
+      username: NAMES[3],
       password: 'Lang-genug-Passwort-1',
       is_admin: true,
       admin_password: PASS,
     });
-    assert.deepEqual(await mails('verwalter_ernannt', 2), [
-      { an: NAMEN[0], konto: NAMEN[3], durch: NAMEN[0], name: undefined },
-      { an: NAMEN[1], konto: NAMEN[3], durch: NAMEN[0], name: undefined },
+    assert.deepEqual(await mails('admin_appointed', 2), [
+      { an: NAMES[0], konto: NAMES[3], via: NAMES[0], name: undefined },
+      { an: NAMES[1], konto: NAMES[3], via: NAMES[0], name: undefined },
     ]);
   });
 
   await t.test('appointed admin', async () => {
-    gesendet.length = 0;
-    await ruf('PUT', `/users/${nutzer}/admin`, { is_admin: true, admin_password: PASS });
+    sent.length = 0;
+    await callFn('PUT', `/users/${user}/admin`, { is_admin: true, admin_password: PASS });
     assert.deepEqual(
-      (await mails('verwalter_ernannt', 3)).map(m => [m.an, m.konto]),
+      (await mails('admin_appointed', 3)).map(m => [m.an, m.konto]),
       [
-        [NAMEN[0], NAMEN[2]],
-        [NAMEN[2], NAMEN[2]],
-        [NAMEN[1], NAMEN[2]],
+        [NAMES[0], NAMES[2]],
+        [NAMES[2], NAMES[2]],
+        [NAMES[1], NAMES[2]],
       ],
     );
   });
 
   // `zwei` is an administrator: the change is announced and only applies in the cleanup run after the period.
-  const faellig = async () => {
-    await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [zwei]);
+  const due = async () => {
+    await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [two]);
     assert.equal(await _req('src/account/adminActions.js').runDueTakeoversFrom(), 1);
   };
 
   await t.test('removed second factor', async () => {
-    await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [zwei]);
-    await ruf('DELETE', `/users/${zwei}/zweiter-faktor`, { admin_password: PASS });
+    await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [two]);
+    await callFn('DELETE', `/users/${two}/second-factor`, { admin_password: PASS });
     assert.deepEqual(
-      (await mails('uebernahme_angekuendigt', 1)).map(m => [m.an, m.durch]),
-      [[NAMEN[1], NAMEN[0]]],
+      (await mails('takeover_announced', 1)).map(m => [m.an, m.via]),
+      [[NAMES[1], NAMES[0]]],
     );
-    await faellig();
+    await due();
     assert.deepEqual(
-      (await mails('zweiter_faktor_entfernt', 1)).map(m => [m.an, m.durch]),
-      [[NAMEN[1], NAMEN[0]]],
+      (await mails('second_factor_removed', 1)).map(m => [m.an, m.via]),
+      [[NAMES[1], NAMES[0]]],
     );
     assert.deepEqual(
-      (await mails('verwaltung_faktor_entfernt', 3)).map(m => [m.an, m.konto]),
+      (await mails('admin_factor_removed', 3)).map(m => [m.an, m.konto]),
       [
-        [NAMEN[0], NAMEN[1]],
-        [NAMEN[2], NAMEN[1]],
-        [NAMEN[1], NAMEN[1]],
+        [NAMES[0], NAMES[1]],
+        [NAMES[2], NAMES[1]],
+        [NAMES[1], NAMES[1]],
       ],
     );
   });
 
   await t.test('password set by an admin', async () => {
-    await ruf('PUT', `/users/${zwei}/password`, { password: 'Neues-Langes-Passwort-9', admin_password: PASS });
-    await faellig();
+    await callFn('PUT', `/users/${two}/password`, { password: 'Neues-Langes-Passwort-9', admin_password: PASS });
+    await due();
     assert.deepEqual(
-      (await mails('passwort_durch_verwalter', 1)).map(m => [m.an, m.durch]),
-      [[NAMEN[1], NAMEN[0]]],
+      (await mails('password_by_admin', 1)).map(m => [m.an, m.via]),
+      [[NAMES[1], NAMES[0]]],
     );
     assert.deepEqual(
-      (await mails('verwaltung_passwort_gesetzt', 3)).map(m => [m.an, m.konto]),
+      (await mails('admin_password_set', 3)).map(m => [m.an, m.konto]),
       [
-        [NAMEN[0], NAMEN[1]],
-        [NAMEN[2], NAMEN[1]],
-        [NAMEN[1], NAMEN[1]],
+        [NAMES[0], NAMES[1]],
+        [NAMES[2], NAMES[1]],
+        [NAMES[1], NAMES[1]],
       ],
     );
   });
 
   await t.test('token from login (new device)', async () => {
-    gesendet.length = 0;
-    await ruf('POST', '/login', { username: NAMEN[2], password: PASS, label: 'Handy' });
-    assert.deepEqual(await mails('token_neu', 1), [
-      { an: NAMEN[2], konto: undefined, durch: undefined, name: 'Handy' },
+    sent.length = 0;
+    await callFn('POST', '/login', { username: NAMES[2], password: PASS, label: 'Handy' });
+    assert.deepEqual(await mails('token_added', 1), [
+      { an: NAMES[2], konto: undefined, via: undefined, name: 'Handy' },
     ]);
   });
 
   await t.test('own second factor set up and switched off', async () => {
     const zf = _req('src/factors/secondFactor.js');
-    const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
-    const code = versatz => zf.hotp(zf.fromBase32(geheimnis), zf.timeStep() + versatz);
-    await ruf('POST', '/zweiter-faktor/bestaetigen', { code: code(0) });
+    const { secret } = await callFn('POST', '/second-factor/setup', { password: PASS });
+    const code = offset => zf.hotp(zf.fromBase32(secret), zf.timeStep() + offset);
+    await callFn('POST', '/second-factor/confirm', { code: code(0) });
     assert.deepEqual(
-      (await mails('zweiter_faktor_eingerichtet', 1)).map(m => m.an),
-      [NAMEN[0]],
+      (await mails('second_factor_enabled', 1)).map(m => m.an),
+      [NAMES[0]],
     );
-    await ruf('POST', '/zweiter-faktor/abschalten', { password: PASS, code: code(1) });
+    await callFn('POST', '/second-factor/disable', { password: PASS, code: code(1) });
     assert.deepEqual(
-      (await mails('zweiter_faktor_abgeschaltet', 1)).map(m => m.an),
-      [NAMEN[0]],
+      (await mails('second_factor_disabled', 1)).map(m => m.an),
+      [NAMES[0]],
     );
   });
 });

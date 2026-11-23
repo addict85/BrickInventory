@@ -1,25 +1,25 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/area';
+import { bound, type Context } from '../infra/area';
 import * as repository from './repository';
-import type { Uhr } from '../infra/clock';
+import type { Clock } from '../infra/clock';
 
 export interface IdempotencyDependencies {
-  uhr: Uhr;
+  clock: Clock;
   db: Db;
 }
 
 export const access = (db: Db) => ({
   repository: {
-    receipts: mit(db)(repository.receipts),
-    eintrag: mit(db)(repository.eintrag),
-    withEffectNote: mit(db)(repository.withEffectNote),
-    closeAb: mit(db)(repository.closeAb),
-    deleteRunning: mit(db)(repository.deleteRunning),
-    deleteOtherPrints: mit(db)(repository.deleteOtherPrints),
-    deleteOlderAs: mit(db)(repository.deleteOlderAs),
-    oldResponses: mit(db)(repository.oldResponses),
-    replaceResponse: mit(db)(repository.replaceResponse),
+    receipts: bound(db)(repository.receipts),
+    entry: bound(db)(repository.entry),
+    withEffectNote: bound(db)(repository.withEffectNote),
+    finish: bound(db)(repository.finish),
+    deleteRunning: bound(db)(repository.deleteRunning),
+    deleteOtherPrints: bound(db)(repository.deleteOtherPrints),
+    deleteOlderAs: bound(db)(repository.deleteOlderAs),
+    oldResponses: bound(db)(repository.oldResponses),
+    replaceResponse: bound(db)(repository.replaceResponse),
   },
 });
-export type IdempotencyContext = Kontext<IdempotencyDependencies, ReturnType<typeof access>>;
+export type IdempotencyContext = Context<IdempotencyDependencies, ReturnType<typeof access>>;

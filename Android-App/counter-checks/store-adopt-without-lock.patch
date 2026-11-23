@@ -1,0 +1,26 @@
+Gegenprobe: Serverantwort und Puffern ohne Sperre: Ein Schritt zwischen Lesen und Schreiben geht verloren
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.OfflineStoreLockTest
+Rot: a puffere during a server response is not lost
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/OfflineStore.kt
+@@ -289,7 +289,7 @@
+         stock.cleanOther(b)
+         // Under the lock: a puffere() between reading the outbox and
+         // writing would otherwise get lost with the server list.
+-        lock(b, domain.kind).withLock {
++        run {
+             val waiting = outbox.all(b).map { it.editing }.filter { it.kind == domain.kind }
+             var together = list
+             for (w in waiting) together = domain.apply(together, w)
+@@ -319,7 +319,7 @@
+     suspend fun buffer(editing: Editing, key: String = newKey()): Boolean {
+         val b = area() ?: return false
+         // Enqueue and apply in one go: uebernimm() sees both or neither.
+-        lock(b, editing.kind).withLock {
++        run {
+             outbox.enqueue(b, editing, clock(), key)
+             applyAnLocked(editing.kind, editing, b)
+         }

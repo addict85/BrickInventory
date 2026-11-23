@@ -1,28 +1,28 @@
 // Questions before sensitive steps: confirm, own password, second factor. One level above the core,
 // so that every view can use them without importing another view.
 import { api } from './api.js';
-import { G, ico, setzeHtml } from './dom.js';
+import { G, ico, setHtml } from './dom.js';
 import { html } from './escaping.js';
 import { tRaw } from '../i18n.js';
 
 /**
- * Without `knopf` the main button is red "delete"; whoever confirms something else names their verb.
+ * Without `button` the main button is red "delete"; whoever confirms something else names their verb.
  * @param {string} title
  * @param {string} msg
  * @param {string} [icon]
- * @param {Knopf | null} [knopf]
+ * @param {Button | null} [button]
  */
-export function confirmDelete(title, msg, icon, knopf = null) {
-  return openDialog(title, msg, icon, false, false, false, knopf).then(r => r !== null);
+export function confirmDelete(title, msg, icon, button = null) {
+  return openDialog(title, msg, icon, false, false, false, button).then(r => r !== null);
 }
 
 /**
  * Delete with a choice, e.g. which accounts of a household; the first option is preselected.
- * @param {string} title @param {string} msg @param {{ wert: string, text: string }[]} wahl
+ * @param {string} title @param {string} msg @param {{ value: string, text: string }[]} choice
  * @returns {Promise<string | null>} the chosen value, null on cancel
  */
-export function deleteWithChoice(title, msg, wahl) {
-  return /** @type {Promise<string | null>} */ (openDialog(title, msg, 'loeschen', false, false, false, { wahl }));
+export function deleteWithChoice(title, msg, choice) {
+  return /** @type {Promise<string | null>} */ (openDialog(title, msg, 'delete', false, false, false, { choice }));
 }
 
 /**
@@ -31,90 +31,90 @@ export function deleteWithChoice(title, msg, wahl) {
  * @param {string} title
  * @param {string} msg
  * @param {string} icon
- * @param {Knopf} knopf
+ * @param {Button} button
  */
-export function bestaetigeMitPasswort(title, msg, icon, knopf) {
-  if (!knopf?.knopf || !['bp', 'bd'].includes(knopf.art ?? ''))
-    throw new Error('bestaetigeMitPasswort: Knopftext und Art fehlen');
-  return openDialog(title, msg, icon, true, false, false, { feld: 'confirm.admin_password', ...knopf });
+export function confirmDeleteWithPassword(title, msg, icon, button) {
+  if (!button?.button || !['bp', 'bd'].includes(button.kind ?? ''))
+    throw new Error('confirmDeleteWithPassword: button text and kind are missing');
+  return openDialog(title, msg, icon, true, false, false, { field: 'confirm.admin_password', ...button });
 }
 
 /** With an active second factor the server requires the code for sensitive changes
- * (zweiter_faktor_noetig); then ask once and repeat with `code`.
+ * (second_factor_required); then ask once and repeat with `code`.
  * @template T
- * @param {(zusatz: { code?: string, passkey?: object }) => Promise<T>} ruf
+ * @param {(extra: { code?: string, passkey?: object }) => Promise<T>} call
  * @returns {Promise<T | null>} the response, or null if the dialog was cancelled */
-export async function withSecondFactor(ruf) {
-  const d = await ruf({});
+export async function withSecondFactor(call) {
+  const d = await call({});
   const a = /** @type {{ code?: unknown, passkey?: unknown } | null | undefined} */ (d);
-  if (a?.code !== 'zweiter_faktor_noetig') return d;
+  if (a?.code !== 'second_factor_required') return d;
   const withPasskey = !!(a.passkey && fetchPasskey);
   const code = await openDialog(
-    tRaw('zf.title'),
-    tRaw(withPasskey ? 'zf.code_oder_passkey' : 'zf.code_noetig'),
-    'schloss',
+    tRaw('sf.title'),
+    tRaw(withPasskey ? 'sf.code_or_passkey' : 'sf.code_required'),
+    'lock',
     false,
     true,
     withPasskey,
     CONFIRM,
   );
   if (code === null) return null;
-  if (code !== WITH_PASSKEY) return ruf({ code: code.trim() });
+  if (code !== WITH_PASSKEY) return call({ code: code.trim() });
   const passkey = await /** @type {() => Promise<object | null>} */ (fetchPasskey)();
-  return passkey ? ruf({ passkey }) : null;
+  return passkey ? call({ passkey }) : null;
 }
 /**
  * Only ask for a code, without password (new recovery codes).
- * @param {string} titel @param {string} text @returns {Promise<string | null>} the code, or null on cancel
+ * @param {string} title @param {string} text @returns {Promise<string | null>} the code, or null on cancel
  */
-export async function questionCode(titel, text) {
-  const code = await openDialog(titel, text, 'schloss', false, true, false, CONFIRM);
+export async function questionCode(title, text) {
+  const code = await openDialog(title, text, 'lock', false, true, false, CONFIRM);
   return typeof code === 'string' ? code.trim() : null;
 }
 /**
  * Main button of the question dialog: text, kind (bp blue, bd red), field label.
  * withCode: password and code in one dialog instead of two one after another.
- * @typedef {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean, wahl?: { wert: string, text: string }[], withCode?: boolean }} Knopf
+ * @typedef {{ button?: string, kind?: string, field?: string, values?: Record<string, unknown>, error?: boolean, choice?: { value: string, text: string }[], withCode?: boolean }} Button
  */
-/** A confirmation is not a deletion: button in the main color instead of red. @type {Knopf} */
-const CONFIRM = { knopf: 'common.confirm', art: 'bp', feld: 'settings.password.current' };
+/** A confirmation is not a deletion: button in the main color instead of red. @type {Button} */
+const CONFIRM = { button: 'common.confirm', kind: 'bp', field: 'settings.password.current' };
 
 /**
  * Confirm an account change with the own password — once when saving in the dialog instead of a field
  * "current password" per section, which looked like an error. With a wrong password the dialog asks again.
- * @param {string} titel
+ * @param {string} title
  * @template T
- * @param {(passwort: string, zusatz: { code?: string, passkey?: object }) => Promise<T>} ruf
- * @param {string} [erklaerung] says what is being confirmed (instead of just "password please")
- * @param {Knopf} [knopf] main button; with `withCode` the same dialog asks for the code too
+ * @param {(password: string, extra: { code?: string, passkey?: object }) => Promise<T>} call
+ * @param {string} [explanation] says what is being confirmed (instead of just "password please")
+ * @param {Button} [button] main button; with `withCode` the same dialog asks for the code too
  */
-export async function confirmWithPassword(titel, ruf, erklaerung = tRaw('konto.passwort_bestaetigen'), knopf = {}) {
-  let text = erklaerung,
-    buttonKind = { ...CONFIRM, ...knopf };
-  for (let versuch = 0; versuch < 5; versuch++) {
-    const ablage = { code: '' };
-    const pw = await openDialog(titel, text, 'schloss', true, !!knopf.withCode, false, buttonKind, ablage);
+export async function confirmWithPassword(title, call, explanation = tRaw('account.password_confirm'), button = {}) {
+  let text = explanation,
+    buttonKind = { ...CONFIRM, ...button };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const storage = { code: '' };
+    const pw = await openDialog(title, text, 'lock', true, !!button.withCode, false, buttonKind, storage);
     if (pw === null) return null;
-    const code = ablage.code.trim();
-    const d = await withSecondFactor(z => ruf(pw, code && !z.code && !z.passkey ? { code } : z));
+    const code = storage.code.trim();
+    const d = await withSecondFactor(z => call(pw, code && !z.code && !z.passkey ? { code } : z));
     const a = /** @type {{ code?: unknown, error?: string } | null} */ (d);
-    if (a?.code !== 'aktuelles_passwort_falsch' && a?.code !== 'aktuelles_passwort_erforderlich') return d;
-    text = a.error || erklaerung;
-    buttonKind = { ...buttonKind, fehler: true };
+    if (a?.code !== 'current_password_wrong' && a?.code !== 'current_password_required') return d;
+    text = a.error || explanation;
+    buttonKind = { ...buttonKind, error: true };
   }
   return null;
 }
 
 /** First without password; only if the server requires it for this change is it asked for.
  * @returns the response, or null on cancel
- * @param {string} titel
- * @param {Record<string, unknown>} werte
+ * @param {string} title
+ * @param {Record<string, unknown>} values
  */
-export async function saveSettings(titel, werte) {
-  const d = await api('POST', '/v1/settings', werte);
-  if (d?.code !== 'aktuelles_passwort_erforderlich') return d;
-  return confirmWithPassword(titel, (admin_password, z) =>
-    api('POST', '/v1/settings', { ...werte, admin_password, ...z }),
+export async function saveSettings(title, values) {
+  const d = await api('POST', '/v2/settings', values);
+  if (d?.code !== 'current_password_required') return d;
+  return confirmWithPassword(title, (admin_password, z) =>
+    api('POST', '/v2/settings', { ...values, admin_password, ...z }),
   );
 }
 
@@ -130,13 +130,36 @@ export function fetchSetPasskey(fn) {
 
 const WITH_PASSKEY = Symbol('passkey');
 
+/** Title, text, button and choice of the dialog; @returns the choice field.
+ * @param {string} title @param {string} msg @param {string | undefined} icon @param {Button | null | undefined} button */
+function confirmTexts(title, msg, icon, button) {
+  G('cd-title').textContent = title || tRaw('common.delete_title');
+  G('cd-msg').textContent = msg || tRaw('common.delete_text');
+  setHtml(G('cd-icon'), ico(icon || 'delete'));
+  const btnYes = G('cd-confirm');
+  const danger = (button?.kind || 'bd') === 'bd';
+  btnYes.textContent = tRaw(button?.button || 'confirm.delete_btn', button?.values);
+  btnYes.classList.toggle('bd', danger);
+  btnYes.classList.toggle('bp', !danger);
+  G('cd-icon').classList.toggle('neutral', !danger);
+  G('cd-msg').classList.toggle('text-danger', !!button?.error);
+  G('cd-pw-label').textContent = tRaw(button?.field || 'confirm.admin_password');
+  const choiceField = G('cd-choice');
+  choiceField.hidden = !button?.choice;
+  setHtml(
+    choiceField,
+    html`${(button?.choice || []).map((w, i) => html`<label class="cd-choice-row"><input type="radio" name="cd-choice" value="${w.value}"${i ? '' : ' checked'}> ${w.text}</label>`)}`,
+  );
+  return choiceField;
+}
+
 /**
- * @param {Knopf | null} [knopf]
+ * @param {Button | null} [button]
  * @param {string} title
  * @param {string} msg
  * @param {string | undefined} icon
  * @param {boolean} withPassword
- * @param {{ code: string } | null} [ablage] receives the code if password and code are asked together
+ * @param {{ code: string } | null} [storage] receives the code if password and code are asked together
  */
 function openDialog(
   title,
@@ -145,8 +168,8 @@ function openDialog(
   withPassword,
   withCode = false,
   withPasskey = false,
-  knopf = null,
-  ablage = null,
+  button = null,
+  storage = null,
 ) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
@@ -160,30 +183,15 @@ function openDialog(
     if (pkButton) pkButton.hidden = !withPasskey;
     if (pw) pw.value = '';
     if (codeField) codeField.value = '';
-    G('cd-title').textContent = title || tRaw('common.delete_title');
-    G('cd-msg').textContent = msg || tRaw('common.delete_text');
-    setzeHtml(G('cd-icon'), ico(icon || 'loeschen'));
+    const choiceField = confirmTexts(title, msg, icon, button);
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');
     const btnNo = G('cd-cancel');
-    const gefahr = (knopf?.art || 'bd') === 'bd';
-    btnYes.textContent = tRaw(knopf?.knopf || 'confirm.delete_btn', knopf?.werte);
-    btnYes.classList.toggle('bd', gefahr);
-    btnYes.classList.toggle('bp', !gefahr);
-    G('cd-icon').classList.toggle('neutral', !gefahr);
-    G('cd-msg').classList.toggle('text-gefahr', !!knopf?.fehler);
-    G('cd-pw-label').textContent = tRaw(knopf?.feld || 'confirm.admin_password');
-    const choiceField = G('cd-wahl');
-    choiceField.hidden = !knopf?.wahl;
-    setzeHtml(
-      choiceField,
-      html`${(knopf?.wahl || []).map((w, i) => html`<label class="cd-wahl-zeile"><input type="radio" name="cd-wahl" value="${w.wert}"${i ? '' : ' checked'}> ${w.text}</label>`)}`,
-    );
     if (withPassword) setTimeout(() => pw?.focus(), 0);
     else if (withCode) setTimeout(() => codeField?.focus(), 0);
     /** @param {string | symbol | null} result */
     function cleanup(result) {
-      if (ablage && result !== null) ablage.code = codeField?.value || '';
+      if (storage && result !== null) storage.code = codeField?.value || '';
       if (pw) pw.value = '';
       if (codeField) codeField.value = '';
       modal.style.display = 'none';
@@ -193,12 +201,12 @@ function openDialog(
       if (pkButton) pkButton.onclick = null;
       resolve(result);
     }
-    const gewaehlt = () =>
+    const selected = () =>
       /** @type {HTMLInputElement | null} */ (choiceField.querySelector('input:checked'))?.value || '';
-    const wert = () =>
-      withPassword ? pw?.value || '' : withCode ? codeField?.value || '' : knopf?.wahl ? gewaehlt() : '';
+    const value = () =>
+      withPassword ? pw?.value || '' : withCode ? codeField?.value || '' : button?.choice ? selected() : '';
     btnYes.onclick = () => {
-      const w = wert();
+      const w = value();
       cleanup(w);
     };
     if (pkButton && withPasskey) pkButton.onclick = () => cleanup(WITH_PASSKEY);

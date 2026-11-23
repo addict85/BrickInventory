@@ -19,7 +19,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// Since the QR code carries the address of the server (src/infra/basisUrl.ts),
+// Since the QR code carries the address of the server (src/infra/baseUrl.ts),
 // APP_BASE_URL is a PRECONDITION of the route: without it it refuses with 503,
 // so that no code goes out with the browser address. This file checks something
 // else — here the precondition is only fulfilled, not checked. That is done by
@@ -28,9 +28,9 @@ process.env.APP_BASE_URL = 'https://lego.example.org';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 // Read the address from server.ts — see einhaengung() in helpers/sources.js.
-const AUTH = require('./helpers/sources').einhaengung('auth');
+const AUTH = require('./helpers/sources').mounting('auth');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -47,7 +47,7 @@ let _srv, _base, _uid;
 test('QR nonce only via POST', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -78,11 +78,11 @@ test('QR nonce only via POST', async t => {
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 
-  const ruf = async methode => {
+  const callFn = async method => {
     const r = await fetch(`${_base}${AUTH}/qr-token`, {
-      method: methode,
+      method: method,
       redirect: 'manual',
-      ...(methode === 'POST'
+      ...(method === 'POST'
         ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'qr-passwort-1' }) }
         : {}),
     });
@@ -92,27 +92,27 @@ test('QR nonce only via POST', async t => {
     Number((await db.get('SELECT COUNT(*)::int AS n FROM qr_login_tokens').catch(() => ({ n: 0 }))).n);
 
   await t.test('via POST a nonce is created', async () => {
-    const vorher = await nonces();
-    const r = await ruf('POST');
-    assert.equal(r.status, 200, `Erwartet 200, bekam ${r.status}`);
+    const prior = await nonces();
+    const r = await callFn('POST');
+    assert.equal(r.status, 200, `expected 200, got ${r.status}`);
     assert.equal(r.body?.success, true);
-    assert.match(String(r.body?.token), /^bim:/, 'Der Token trägt das erwartete Präfix nicht');
-    assert.equal(await nonces(), vorher + 1, 'Es wurde keine Nonce angelegt');
+    assert.match(String(r.body?.token), /^bim:/, 'The token does not carry the expected prefix');
+    assert.equal(await nonces(), prior + 1, 'No nonce was created');
   });
 
   await t.test('via GET the route no longer exists', async () => {
-    const vorher = await nonces();
-    const r = await ruf('GET');
+    const prior = await nonces();
+    const r = await callFn('GET');
     assert.notEqual(
       r.status,
       200,
       'GET ' +
         AUTH +
-        '/qr-token antwortet wieder mit 200 — damit ist die ' +
-        'SameSite=lax-Lücke aus einer früheren Runde zurück: eine Navigation von einer ' +
-        'fremden Seite legt dann wieder eine Anmelde-Nonce an.',
+        '/qr-token answers with 200 again — that brings back the ' +
+        'SameSite=lax gap from an earlier round: a navigation from a ' +
+        'foreign page then creates a login nonce again.',
     );
-    assert.equal(await nonces(), vorher, 'Ein GET hat trotzdem etwas angelegt');
+    assert.equal(await nonces(), prior, 'A GET created something anyway');
   });
 
   _srv?.close();

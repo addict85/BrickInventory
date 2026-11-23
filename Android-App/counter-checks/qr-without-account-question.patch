@@ -1,0 +1,17 @@
+Gegenprobe: Die QR-Anmeldung übernimmt den Zugang, ohne Konto und Server zu zeigen
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginViewModelTest
+Rot: a QR sign-in shows account and server and takes over the token only after the yes
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+@@ -281,7 +281,7 @@
+             qrFailed(Message.Resource(R.string.err_qr_login_failed))
+             return
+         }
+-        if (!questionAfterAccount(QrAccount(user, target.address))) {
++        if (user.isEmpty() && !questionAfterAccount(QrAccount(user, target.address))) {
+             account.discardQr(pickup)
+             _loginState.update { it.copy(login = Operation.Done) }
+             return

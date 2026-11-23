@@ -4,7 +4,7 @@
  * Checked on the real server (dist/server.js), started without NODE_ENV.
  *
  * Counter-check (measured 05.11.2026, three places back to
- * `production` at once): starte() in server.ts → red “MAIL_KONSOLE_MIT_TOKEN=1 …”;
+ * `production` at once): starte() in server.ts → red “MAIL_CONSOLE_WITH_TOKEN=1 …”;
  * warnAtSuperuser() → red “as superuser …”; handleRouteError → red
  * “a 5xx …”. One red part for each place.
  *
@@ -23,11 +23,11 @@ process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { startBans, ladeKonfig, cookieSafe } = _req('src/infra/config.js');
+const { startBans, loadConfig, cookieSafe } = _req('src/infra/config.js');
 
 /** Start without NODE_ENV; `PATH` alone, so that nothing from the test environment falls in. */
-function starte(env, ms = 25_000) {
-  return new Promise(fertig => {
+function start(env, ms = 25_000) {
+  return new Promise(done => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -46,29 +46,29 @@ function starte(env, ms = 25_000) {
     srv.stderr.on('data', d => {
       log += d;
     });
-    const uhr = setTimeout(() => {
+    const clock = setTimeout(() => {
       srv.kill('SIGKILL');
     }, ms);
     srv.on('exit', code => {
-      clearTimeout(uhr);
-      fertig({ code, log });
+      clearTimeout(clock);
+      done({ code, log });
     });
   });
 }
 
 test('startBans without NODE_ENV', () => {
-  assert.ok(startBans({ MAIL_KONSOLE_MIT_TOKEN: '1', APP_BASE_URL: 'https://x.example' }).length >= 1);
-  assert.deepEqual(startBans({ NODE_ENV: 'test', MAIL_KONSOLE_MIT_TOKEN: '1' }), []);
-  const k = ladeKonfig({});
+  assert.ok(startBans({ MAIL_CONSOLE_WITH_TOKEN: '1', APP_BASE_URL: 'https://x.example' }).length >= 1);
+  assert.deepEqual(startBans({ NODE_ENV: 'test', MAIL_CONSOLE_WITH_TOKEN: '1' }), []);
+  const k = loadConfig({});
   assert.equal(k.operation, true);
-  assert.equal(cookieSafe(k), true, 'ohne NODE_ENV ein sicheres Cookie wie im Betrieb');
+  assert.equal(cookieSafe(k), true, 'without NODE_ENV a secure cookie as in production');
 });
 
-test('MAIL_KONSOLE_MIT_TOKEN=1 without NODE_ENV: startup refused', { timeout: 40_000 }, async () => {
-  const r = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', MAIL_KONSOLE_MIT_TOKEN: '1' });
+test('MAIL_CONSOLE_WITH_TOKEN=1 without NODE_ENV: startup refused', { timeout: 40_000 }, async () => {
+  const r = await start({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', MAIL_CONSOLE_WITH_TOKEN: '1' });
   assert.notEqual(r.code, 0, r.log.slice(-400));
-  assert.match(r.log, /❌ \[mail\] MAIL_KONSOLE_MIT_TOKEN=1 .*Start verweigert/);
-  assert.doesNotMatch(r.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
+  assert.match(r.log, /❌ \[mail\] MAIL_CONSOLE_WITH_TOKEN=1 .*Start verweigert/);
+  assert.doesNotMatch(r.log, /Database initialisation failed/, 'the ban comes before the database');
 });
 
 test('as superuser without NODE_ENV: startup refused', { timeout: 60_000 }, async t => {
@@ -76,8 +76,8 @@ test('as superuser without NODE_ENV: startup refused', { timeout: 60_000 }, asyn
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const isSuper = (await db.get('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rolsuper;
-  assert.equal(isSuper, true, 'Vorbedingung: die Test-DB verbindet als Superuser');
-  const r = await starte({ DATABASE_URL: URL_DB });
+  assert.equal(isSuper, true, 'precondition: the test DB connects as superuser');
+  const r = await start({ DATABASE_URL: URL_DB });
   assert.equal(r.code, 1, r.log.slice(-600));
   assert.match(r.log, /als Superuser — Start verweigert/);
 });
@@ -87,12 +87,12 @@ test('a 5xx names no internals without NODE_ENV', () => {
   environment({ NODE_ENV: undefined });
   try {
     const { handleRouteError } = _req('src/http/httpResponse.js');
-    let antwort;
+    let response;
     const res = {
       headersSent: false,
       status: () => ({
         json: b => {
-          antwort = b;
+          response = b;
         },
       }),
     };
@@ -103,8 +103,8 @@ test('a 5xx names no internals without NODE_ENV', () => {
     } finally {
       console.error = warn;
     }
-    assert.equal(antwort.code, 'interner_fehler');
-    assert.doesNotMatch(antwort.error, /geheim_intern/);
+    assert.equal(response.code, 'internal_error');
+    assert.doesNotMatch(response.error, /geheim_intern/);
   } finally {
     environment({ NODE_ENV: alt });
   }

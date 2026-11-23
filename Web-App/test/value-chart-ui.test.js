@@ -11,30 +11,30 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
-const punkte = werte => werte.map((value, i) => ({ x_label: `0${i + 1}.10`, value, y_frac: 0.5 }));
+const points = values => values.map((value, i) => ({ x_label: `0${i + 1}.10`, value, y_frac: 0.5 }));
 const PNL = {
-  '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: '500', pnl_pct: '22.7' } },
+  '/v2/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: '500', pnl_pct: '22.7' } },
 };
 
 test('one data point: empty state instead of a line', async () => {
   const { w, d } = await openUi({
     ...PNL,
-    '/v1/finance/portfolio-history': {
+    '/v2/finance/portfolio-history': {
       success: true,
       currency: 'EUR',
-      points: punkte([500, 500]),
+      points: points([500, 500]),
       y_axis: [],
       period_change_pct: 0,
-      messpunkte: 1,
+      data_points: 1,
     },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .diagramm-leer, #portfolio-chart svg'));
-    assert.equal(d.querySelector('#portfolio-chart svg'), null, 'Es steht eine Linie da');
-    assert.match(d.querySelector('#portfolio-chart .diagramm-leer').textContent, /Noch zu wenig Verlauf/);
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#portfolio-chart .chart-empty, #portfolio-chart svg'));
+    assert.equal(d.querySelector('#portfolio-chart svg'), null, 'A line is drawn');
+    assert.match(d.querySelector('#portfolio-chart .chart-empty').textContent, /Noch zu wenig Verlauf/);
     assert.equal(d.getElementById('portfolio-pnl').textContent.trim(), '');
   } finally {
     w.close();
@@ -42,22 +42,22 @@ test('one data point: empty state instead of a line', async () => {
 });
 
 test('preselection max, change with period', async () => {
-  const { w, d, aufrufe } = await openUi({
+  const { w, d, calls } = await openUi({
     ...PNL,
-    '/v1/finance/portfolio-history': {
+    '/v2/finance/portfolio-history': {
       success: true,
       currency: 'EUR',
-      points: punkte([400, 450, 500]),
+      points: points([400, 450, 500]),
       y_axis: [],
       period_change_pct: 25,
-      messpunkte: 3,
+      data_points: 3,
     },
   });
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart svg'));
-    const erste = aufrufe.find(a => a.url.includes('/v1/finance/portfolio-history'));
-    assert.match(erste.url, /period=max/, 'Vorwahl Max');
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#portfolio-chart svg'));
+    const first = calls.find(a => a.url.includes('/v2/finance/portfolio-history'));
+    assert.match(first.url, /period=max/, 'Vorwahl Max');
     assert.ok(d.querySelector('.period-btn[data-period="max"]').classList.contains('active'));
     const text = d.getElementById('portfolio-pnl').textContent;
     assert.ok(text.includes('seit Beginn der Aufzeichnung'), `„${text}“`);
@@ -70,21 +70,21 @@ test('en: empty state translated', async () => {
   const { w, d } = await openUi(
     {
       ...PNL,
-      '/v1/finance/portfolio-history': {
+      '/v2/finance/portfolio-history': {
         success: true,
         currency: 'EUR',
         points: [],
         y_axis: [],
         period_change_pct: null,
-        messpunkte: 0,
+        data_points: 0,
       },
     },
-    { sprache: 'en' },
+    { language: 'en' },
   );
   try {
-    await reiter(w, 'finance');
-    await warte(() => d.querySelector('#portfolio-chart .diagramm-leer'));
-    assert.match(d.querySelector('#portfolio-chart .diagramm-leer').textContent, /^Not enough history yet/);
+    await switchTab(w, 'finance');
+    await waitFor(() => d.querySelector('#portfolio-chart .chart-empty'));
+    assert.match(d.querySelector('#portfolio-chart .chart-empty').textContent, /^Not enough history yet/);
   } finally {
     w.close();
   }

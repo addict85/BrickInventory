@@ -25,7 +25,7 @@ function metric(id, key, n) {
 export async function loadStats() {
   // Metrics with the same account filter as the list: otherwise the whole household's total kept
   // showing under "mine only".
-  const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);
+  const d = await api('GET', `/v2/stats${scopeQuery('gallery')}`);
   if (d.success && d.stats) {
     // The metrics show as tiles above the collection in every theme. Pieces, like parts and minifigs,
     // sit beside them; the number of distinct sets sits below.
@@ -34,15 +34,15 @@ export async function loadStats() {
     const distinct = G('bstat-sets').parentElement?.querySelector('.bstat-s');
     if (distinct)
       distinct.textContent =
-        qty !== d.stats.total_sets ? tRaw('gallery.stat.verschieden', { n: fmtBig(d.stats.total_sets) }) : '';
-    metric('bstat-parts', 'gallery.stat.teile', d.stats.total_parts || 0);
+        qty !== d.stats.total_sets ? tRaw('gallery.stat.distinct', { n: fmtBig(d.stats.total_sets) }) : '';
+    metric('bstat-parts', 'gallery.stat.parts', d.stats.total_parts || 0);
     // 0 parts despite having sets means: the part lists are still missing. Without this sentence it
-    // would look like a bug. On a phone it sits in #bstat-hinweis below the whole row, not inside it.
+    // would look like a bug. On a phone it sits in #bstat-hint below the whole row, not inside it.
     const noLists = !d.stats.total_parts && d.stats.total_sets > 0;
-    const explanation = noLists ? tRaw('parts.stat.ohne_listen', { n: d.stats.total_sets }) : '';
+    const explanation = noLists ? tRaw('parts.stat.without_listen', { n: d.stats.total_sets }) : '';
     G('bstat-parts-sub').textContent = explanation || partsBreakdown(d.stats.set_parts ?? 0, d.stats.manual_parts ?? 0);
-    G('bstat-hinweis').textContent = explanation;
-    metric('bstat-minifigs', 'gallery.stat.figuren', d.stats.total_minifigs || 0);
-    metric('bstat-instr', 'gallery.stat.anleitungen', d.stats.total_instructions || 0);
+    G('bstat-hint').textContent = explanation;
+    metric('bstat-minifigs', 'gallery.stat.minifigs', d.stats.total_minifigs || 0);
+    metric('bstat-instr', 'gallery.stat.instructions', d.stats.total_instructions || 0);
   }
 }

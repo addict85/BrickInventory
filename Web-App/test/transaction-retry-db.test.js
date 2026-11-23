@@ -14,11 +14,11 @@
  *      retries on conflict”; from setEstimatedPrice() → red:
  *      “setEstimatedPrice retries on conflict”
  *      (the move path in changeAcquisition() needs a household account and
- *      is not covered here; it shares k.transaktion with locks with verschiebeSet.)
+ *      is not covered here; it shares k.transact with locks with verschiebeSet.)
  *   D  mitInventarSperre() does not pass the option to transaction() → red:
  *      “mitInventarSperre passes the option on”, „moveSet …“
- *      (14.11.2026, now k.transaktion with `sperren`: in buildContext() the options
- *      not passed to transaction() → red: “k.transaktion with locks …”,
+ *      (14.11.2026, now k.transact with `locks`: in buildContext() the options
+ *      not passed to transaction() → red: “k.transact with locks …”,
  *      „moveSet …“, „setEstimatedPrice …“)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
@@ -34,65 +34,65 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-const TABELLE = `tx_wiederholung_${process.pid}`;
-const MIT = { repeatAtConflict: true };
+const TABLE_NAME = `tx_wiederholung_${process.pid}`;
+const WITH = { repeatAtConflict: true };
 
 /** An error as reported by PostgreSQL: only the code counts. */
 const pgError = code => Object.assign(new Error(`simuliert ${code}`), { code });
 
 test('transaction: retry on deadlock and serialization failure', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  await db.run(`CREATE TABLE ${TABELLE} (id int PRIMARY KEY, n int NOT NULL DEFAULT 0)`);
-  await db.run(`INSERT INTO ${TABELLE} (id) VALUES (1), (2)`);
+  await db.run(`CREATE TABLE ${TABLE_NAME} (id int PRIMARY KEY, n int NOT NULL DEFAULT 0)`);
+  await db.run(`INSERT INTO ${TABLE_NAME} (id) VALUES (1), (2)`);
   t.after(async () => {
-    await db.run(`DROP TABLE IF EXISTS ${TABELLE}`).catch(() => {});
+    await db.run(`DROP TABLE IF EXISTS ${TABLE_NAME}`).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
   /** Both transactions first lock "their" row, then that of the other; only when both hold the first does it continue. */
   const cross = o => {
-    let angekommen = 0;
-    let versuche = 0;
+    let arrived = 0;
+    let attempts = 0;
     /** @type {() => void} */
-    let weiter = () => {};
-    const beide = new Promise(frei => {
-      weiter = () => frei(undefined);
+    let next = () => {};
+    const bothOnes = new Promise(free => {
+      next = () => free(undefined);
     });
-    const lauf = async (erste, zweite) => {
+    const run = async (first, second) => {
       await db.transaction(async tx => {
-        const versuch = ++versuche;
-        await tx.run(`UPDATE ${TABELLE} SET n = n + 1 WHERE id = $1`, [erste]);
+        const attempt = ++attempts;
+        await tx.run(`UPDATE ${TABLE_NAME} SET n = n + 1 WHERE id = $1`, [first]);
         // Only the first two attempts wait for each other; the retry runs freely.
-        if (versuch <= 2) {
-          if (++angekommen === 2) weiter();
-          await beide;
+        if (attempt <= 2) {
+          if (++arrived === 2) next();
+          await bothOnes;
         }
-        await tx.run(`UPDATE ${TABELLE} SET n = n + 1 WHERE id = $1`, [zweite]);
+        await tx.run(`UPDATE ${TABLE_NAME} SET n = n + 1 WHERE id = $1`, [second]);
       }, o);
     };
-    return { lauf, versuche: () => versuche };
+    return { lauf: run, attempts: () => attempts };
   };
 
   await t.test('a real deadlock is retried with the option', async () => {
-    await db.run(`UPDATE ${TABELLE} SET n = 0`);
-    const k = cross(MIT);
+    await db.run(`UPDATE ${TABLE_NAME} SET n = 0`);
+    const k = cross(WITH);
     await Promise.all([k.lauf(1, 2), k.lauf(2, 1)]);
-    assert.equal(k.versuche(), 3, 'genau ein Gegenspieler wurde abgebrochen und lief neu');
+    assert.equal(k.attempts(), 3, 'exactly one opponent was aborted and ran again');
     // Every transaction has increased both rows once; the aborted attempt does not count.
     assert.deepEqual(
-      (await db.all(`SELECT n FROM ${TABELLE} ORDER BY id`)).map(z => z.n),
+      (await db.all(`SELECT n FROM ${TABLE_NAME} ORDER BY id`)).map(z => z.n),
       [2, 2],
     );
   });
 
   await t.test('without the option the deadlock stays an error', async () => {
-    await db.run(`UPDATE ${TABELLE} SET n = 0`);
+    await db.run(`UPDATE ${TABLE_NAME} SET n = 0`);
     const k = cross({});
     const r = await Promise.allSettled([k.lauf(1, 2), k.lauf(2, 1)]);
-    const abgelehnt = r.filter(e => e.status === 'rejected');
-    assert.equal(abgelehnt.length, 1);
-    assert.equal(abgelehnt[0].reason.code, '40P01');
-    assert.equal(k.versuche(), 2);
+    const rejected = r.filter(e => e.status === 'rejected');
+    assert.equal(rejected.length, 1);
+    assert.equal(rejected[0].reason.code, '40P01');
+    assert.equal(k.attempts(), 2);
   });
 
   await t.test('serialization failure is retried, exactly twice', async () => {
@@ -100,7 +100,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     const r = await db.transaction(async () => {
       if (++n < 3) throw pgError('40001');
       return 'fertig';
-    }, MIT);
+    }, WITH);
     assert.deepEqual([r, n], ['fertig', 3]);
 
     let m = 0;
@@ -108,10 +108,10 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
       db.transaction(async () => {
         m++;
         throw pgError('40001');
-      }, MIT),
+      }, WITH),
       { code: '40001' },
     );
-    assert.equal(m, 3, 'ein Versuch und zwei Wiederholungen');
+    assert.equal(m, 3, 'one attempt and two retries');
   });
 
   await t.test('other errors and missing option are not retried', async () => {
@@ -120,7 +120,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
       db.transaction(async () => {
         n++;
         throw pgError('23505');
-      }, MIT),
+      }, WITH),
       { code: '23505' },
     );
     assert.equal(n, 1);
@@ -136,19 +136,19 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
   });
 
   await t.test('the aborted attempt leaves nothing behind', async () => {
-    await db.run(`UPDATE ${TABELLE} SET n = 0`);
+    await db.run(`UPDATE ${TABLE_NAME} SET n = 0`);
     let n = 0;
     await db.transaction(async tx => {
-      await tx.run(`UPDATE ${TABELLE} SET n = n + 1 WHERE id = 1`);
+      await tx.run(`UPDATE ${TABLE_NAME} SET n = n + 1 WHERE id = 1`);
       if (++n === 1) throw pgError('40001');
-    }, MIT);
-    assert.equal((await db.get(`SELECT n FROM ${TABELLE} WHERE id = 1`)).n, 1);
+    }, WITH);
+    assert.equal((await db.get(`SELECT n FROM ${TABLE_NAME} WHERE id = 1`)).n, 1);
   });
 
   // The callers: a trigger throws a deadlock (40P01) on the first call, which the
   // sequence does not forget even after rolling back; the second attempt goes through.
-  const onceError = async (tabelle, ereignis, bedingung) => {
-    const name = `tx_einmal_${tabelle}_${process.pid}`;
+  const onceError = async (table, event, condition) => {
+    const name = `tx_einmal_${table}_${process.pid}`;
     await db.run(`DROP SEQUENCE IF EXISTS ${name}`);
     await db.run(`CREATE SEQUENCE ${name}`);
     await db.run(`CREATE OR REPLACE FUNCTION ${name}() RETURNS trigger LANGUAGE plpgsql AS $f$
@@ -156,21 +156,21 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
         IF nextval('${name}') = 1 THEN RAISE EXCEPTION 'simulierter Deadlock' USING ERRCODE = '40P01'; END IF;
         RETURN NEW;
       END $f$`);
-    await db.run(`DROP TRIGGER IF EXISTS ${name} ON ${tabelle}`);
+    await db.run(`DROP TRIGGER IF EXISTS ${name} ON ${table}`);
     await db.run(
-      `CREATE TRIGGER ${name} BEFORE ${ereignis} ON ${tabelle} FOR EACH ROW WHEN (${bedingung}) EXECUTE FUNCTION ${name}()`,
+      `CREATE TRIGGER ${name} BEFORE ${event} ON ${table} FOR EACH ROW WHEN (${condition}) EXECUTE FUNCTION ${name}()`,
     );
     return {
-      aufrufe: async () => Number((await db.get(`SELECT last_value, is_called FROM ${name}`)).last_value),
-      weg: async () => {
-        await db.run(`DROP TRIGGER IF EXISTS ${name} ON ${tabelle}`);
+      calls: async () => Number((await db.get(`SELECT last_value, is_called FROM ${name}`)).last_value),
+      route: async () => {
+        await db.run(`DROP TRIGGER IF EXISTS ${name} ON ${table}`);
         await db.run(`DROP FUNCTION IF EXISTS ${name}()`);
         await db.run(`DROP SEQUENCE IF EXISTS ${name}`);
       },
     };
   };
-  const konten = [];
-  const konto = async name => {
+  const accounts = [];
+  const account = async name => {
     const id = (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_active, email_verified)
@@ -178,33 +178,33 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
         [`${name}_${process.pid}`, `${name}_${process.pid}@example.org`],
       )
     ).id;
-    konten.push(id);
+    accounts.push(id);
     return id;
   };
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [konten]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [accounts]).catch(() => {});
   });
 
-  await t.test('k.transaktion with locks passes the option on', async () => {
+  await t.test('k.transact with locks passes the option on', async () => {
     const k = testContext('inventory');
-    const sperren = [{ konto: 1, schluessel: 'x' }];
+    const block = [{ account: 1, key: 'x' }];
     let n = 0;
-    const r = await k.transaktion(
+    const r = await k.transact(
       async () => {
         if (++n < 2) throw pgError('40P01');
         return 'fertig';
       },
-      { ...MIT, sperren },
+      { ...WITH, locks: block },
     );
     assert.deepEqual([r, n], ['fertig', 2]);
     let m = 0;
     await assert.rejects(
-      k.transaktion(
+      k.transact(
         async () => {
           m++;
           throw pgError('40P01');
         },
-        { sperren },
+        { locks: block },
       ),
       { code: '40P01' },
     );
@@ -214,40 +214,40 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
   await t.test('moveSet retries on conflict', async () => {
     const { moveSet } = require('./helpers/sources').areaPage('sets');
     const { holdsSet, quantityOf } = require('./helpers/inventory');
-    const von = await konto('wv_von');
-    const nach = await konto('wv_nach');
-    await holdsSet(db, von, '10179-1', 2);
+    const from = await account('wv_von');
+    const nach = await account('wv_nach');
+    await holdsSet(db, from, '10179-1', 2);
     // Moving only happens in the household: nach is a sub-account of von.
-    await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [von, nach]);
+    await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [from, nach]);
     const probe = await onceError('sets', 'INSERT', `NEW.user_id = ${nach}`);
     try {
-      const ids = (await db.all('SELECT id FROM set_acquisitions WHERE user_id = $1', [von])).map(z => z.id);
-      const r = await moveSet(von, '10179-1', von, nach, ids);
+      const ids = (await db.all('SELECT id FROM set_acquisitions WHERE user_id = $1', [from])).map(z => z.id);
+      const r = await moveSet(from, '10179-1', from, nach, ids);
       assert.equal(r.quantity, 2);
-      assert.equal(await probe.aufrufe(), 2, 'erster Anlauf scheiterte, zweiter ging durch');
+      assert.equal(await probe.calls(), 2, 'first attempt failed, second went through');
       assert.equal(await quantityOf(db, nach, '10179-1'), 2);
-      assert.equal(await quantityOf(db, von, '10179-1'), 0);
+      assert.equal(await quantityOf(db, from, '10179-1'), 0);
     } finally {
-      await probe.weg();
+      await probe.route();
     }
   });
 
   await t.test('setEstimatedPrice retries on conflict', async () => {
     const { setEstimatedPrice } = _req('src/inventory/acquisitions.js');
     const { holdsSet } = require('./helpers/inventory');
-    const u = await konto('wv_preis');
+    const u = await account('wv_preis');
     await holdsSet(db, u, '10179-1', 1);
     const id = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1', [u])).id;
     const probe = await onceError('set_acquisitions', 'UPDATE', `NEW.user_id = ${u}`);
     try {
       assert.equal(await setEstimatedPrice('set', id, 42), true);
-      assert.equal(await probe.aufrufe(), 2, 'erster Anlauf scheiterte, zweiter ging durch');
+      assert.equal(await probe.calls(), 2, 'first attempt failed, second went through');
       const z = await db.get('SELECT purchase_price::float AS p, price_estimated FROM set_acquisitions WHERE id = $1', [
         id,
       ]);
       assert.deepEqual([z.p, z.price_estimated], [42, true]);
     } finally {
-      await probe.weg();
+      await probe.route();
     }
   });
 });

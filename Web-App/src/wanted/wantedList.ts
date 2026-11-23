@@ -1,15 +1,15 @@
 /** Import a BrickLink wanted list: read (wantedParser), resolve
  * (wantedAufloesung), write (wantedSchreiber). The file carries BL numbers,
  * the inventory lists RB numbers. */
-import { readWantedList, type WantedArt, type WantedItem } from './wantedParser';
+import { readWantedList, type WantedKind, type WantedItem } from './wantedParser';
 import {
   resolveLocalOn,
   resolveViaRebrickableOn,
-  applyCorrectionsAn,
+  applyCorrections,
   backfillColors,
   describeItem,
-  type Aufloesung,
-  type Korrektur,
+  type Resolution,
+  type Correction,
   type WantedProgress,
 } from './wantedResolution';
 import type { RebrickableAbort } from './wantedResolution';
@@ -17,154 +17,168 @@ import { reportRow, writeItem, type ItemResult, type WriteOptions } from './want
 import type { WantedContext } from './context';
 
 export interface WantedReport {
-  gelesen: number;
-  fremdeArten: Record<string, number>;
-  ohneNummer: number;
-  stufen: Record<string, number>;
-  farbeOffen: number;
+  parsed: number;
+  foreignTypes: Record<string, number>;
+  withoutNumber: number;
+  levels: Record<string, number>;
+  colorPending: number;
   /** With BL numbers, so that they can be looked up. */
-  offen: { blId: string; art: WantedArt; blFarbe: number | null }[];
-  rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean; abgebrochen?: RebrickableAbort };
+  open: { blId: string; kind: WantedKind; blColor: number | null }[];
+  rebrickable?: { asked: number; found: number; filterIneffective: boolean; aborted?: RebrickableAbort };
   /** `abgewiesen`: corrections whose item did not match — then a different
    * file was chosen. They are NAMED, not skipped. */
-  korrekturen?: { angewandt: number; abgewiesen: Korrektur[] };
-  angelegt: number;
-  aufgestockt: number;
-  fehler: number;
+  corrections?: { applied: number; rejected: Correction[] };
+  created: number;
+  topped_up: number;
+  failed: number;
   /** true = NOTHING was written. */
-  vorschau: boolean;
+  preview: boolean;
   /** The numbers above apply to what happened until the abort. */
-  abgebrochen?: boolean;
+  aborted?: boolean;
   /** So that the preview shows what WOULD be created, even if the file names no
    * condition. */
-  standardZustand: 'N' | 'U';
-  posten: ItemResult[];
+  defaultCondition: 'N' | 'U';
+  items: ItemResult[];
 }
 
-function countLevels(auf: Aufloesung[]): Record<string, number> {
+function countLevels(up: Resolution[]): Record<string, number> {
   const z: Record<string, number> = {};
-  for (const a of auf) if (a.sicherheit) z[a.sicherheit] = (z[a.sicherheit] ?? 0) + 1;
+  for (const a of up) if (a.confidence) z[a.confidence] = (z[a.confidence] ?? 0) + 1;
   return z;
 }
 
 /** The corrections after resolving, because they override it; before counting,
  * because the report would otherwise name numbers from before the correction. */
-async function resolveCompleteOn(kx: WantedContext, posten: WantedItem[], uid: number, opt: WantedOptions) {
-  let auf = await resolveLocalOn(kx, posten, uid);
+async function resolveCompleteOn(kx: WantedContext, item: WantedItem[], uid: number, opt: WantedOptions) {
+  let up = await resolveLocalOn(kx, item, uid);
   let rebrickable: WantedReport['rebrickable'];
   if (opt.viaRebrickable) {
-    const r = await resolveViaRebrickableOn(kx, auf, 250, opt.fortschritt);
-    auf = r.auf;
+    const r = await resolveViaRebrickableOn(kx, up, 250, opt.progress);
+    up = r.up;
     rebrickable = {
-      gefragt: r.gefragt,
-      gefunden: r.gefunden,
-      filterWirkungslos: r.filterWirkungslos,
-      ...(r.abgebrochen ? { abgebrochen: r.abgebrochen } : {}),
+      asked: r.asked,
+      found: r.found,
+      filterIneffective: r.filterIneffective,
+      ...(r.aborted ? { aborted: r.aborted } : {}),
     };
   }
-  let korrekturen: WantedReport['korrekturen'];
-  if (opt.korrekturen?.length) {
-    const k = applyCorrectionsAn(auf, opt.korrekturen);
-    auf = await backfillColors(kx, k.auf);
-    korrekturen = { angewandt: k.angewandt, abgewiesen: k.abgewiesen };
+  let corrections: WantedReport['corrections'];
+  if (opt.corrections?.length) {
+    const k = applyCorrections(up, opt.corrections);
+    up = await backfillColors(kx, k.up);
+    corrections = { applied: k.applied, rejected: k.rejected };
   }
-  return { auf, rebrickable, korrekturen };
+  return { up, rebrickable, corrections };
 }
 
 export interface WantedOptions extends WriteOptions {
-  vorschau?: boolean;
+  preview?: boolean;
   viaRebrickable?: boolean;
-  korrekturen?: Korrektur[];
+  corrections?: Correction[];
   /** Is called SYNCHRONOUSLY and must not throw. */
-  fortschritt?: (stand: WantedProgress) => void;
+  progress?: (state: WantedProgress) => void;
   /** The bar in the UI carries a cross; without this question it would have a
    * cancel button that lies. */
-  abbruch?: () => Promise<boolean>;
+  cancellation?: () => Promise<boolean>;
 }
 
 /** Preview and the real thing take the same path, so that the preview promises
  * nothing the import does not do. */
-export async function importiereWantedListe(
+/** Asked every tenth item, not in the preview. */
+async function cancelledAt(opt: WantedOptions, seq: number): Promise<boolean> {
+  return !!opt.cancellation && !opt.preview && seq >= 0 && (seq + 1) % 10 === 0 && (await opt.cancellation());
+}
+
+async function writeRow(
+  uid: number,
+  a: Parameters<typeof writeItem>[1],
+  rbId: string,
+  opt: WantedOptions,
+  row: ReturnType<typeof reportRow>,
+  report: WantedReport,
+): Promise<void> {
+  try {
+    const how = await writeItem(uid, a, rbId, opt);
+    if (how === 'created') report.created++;
+    else report.topped_up++;
+    row.outcome = how;
+  } catch (e: unknown) {
+    report.failed++;
+    row.outcome = 'error';
+    row.reason = e instanceof Error ? e.message : String(e);
+  }
+}
+
+export async function importWantedList(
   k: WantedContext,
   uid: number,
   xml: string,
   opt: WantedOptions = {},
 ): Promise<WantedReport> {
-  const gelesen = readWantedList(xml);
-  const { auf, rebrickable, korrekturen } = await resolveCompleteOn(k, gelesen.posten, uid, opt);
+  const read = readWantedList(xml);
+  const { up, rebrickable, corrections } = await resolveCompleteOn(k, read.items, uid, opt);
 
-  const bericht: WantedReport = {
-    gelesen: gelesen.posten.length,
-    fremdeArten: gelesen.fremdeArten,
-    ohneNummer: gelesen.ohneNummer,
-    stufen: countLevels(auf),
-    farbeOffen: auf.filter(a => a.farbeOffen).length,
-    offen: auf
+  const report: WantedReport = {
+    parsed: read.items.length,
+    foreignTypes: read.foreignTypes,
+    withoutNumber: read.withoutNumber,
+    levels: countLevels(up),
+    colorPending: up.filter(a => a.colorPending).length,
+    open: up
       .filter(a => a.rbId === null)
-      .map(a => ({ blId: a.posten.blId, art: a.posten.art, blFarbe: a.posten.blFarbe })),
+      .map(a => ({ blId: a.items.blId, kind: a.items.kind, blColor: a.items.blColor })),
     ...(rebrickable ? { rebrickable } : {}),
-    ...(korrekturen ? { korrekturen } : {}),
-    angelegt: 0,
-    aufgestockt: 0,
-    fehler: 0,
-    vorschau: !!opt.vorschau,
-    standardZustand: await k.einstellungen.userDefaultCondition(uid),
-    posten: [],
+    ...(corrections ? { corrections } : {}),
+    created: 0,
+    topped_up: 0,
+    failed: 0,
+    preview: !!opt.preview,
+    defaultCondition: await k.settings.userDefaultCondition(uid),
+    items: [],
   };
 
   let seq = -1;
-  const melde = () => opt.fortschritt?.({ phase: 'schreiben', fertig: seq + 1, gesamt: auf.length });
+  const reportProgress = () => opt.progress?.({ phase: 'write', done: seq + 1, total: up.length });
 
-  for (const a of auf) {
+  for (const a of up) {
     // The tick counts over ALL items, otherwise it would depend on how many were resolvable.
-    if (opt.abbruch && !opt.vorschau && seq >= 0 && (seq + 1) % 10 === 0) {
-      if (await opt.abbruch()) {
-        bericht.abgebrochen = true;
-        break;
-      }
+    if (await cancelledAt(opt, seq)) {
+      report.aborted = true;
+      break;
     }
     // An own binding: TypeScript does not narrow `a.rbId` via a helper variable.
     const rbId = a.rbId;
-    const offen = rbId === null || a.farbeOffen;
+    const open = rbId === null || a.colorPending;
     seq++;
-    const zeile = reportRow(a);
-    if (rbId === null || a.farbeOffen || opt.vorschau) {
+    const row = reportRow(a);
+    if (rbId === null || a.colorPending || opt.preview) {
       // In the preview "created" means "would be created".
-      if (offen) zeile.ausgang = 'offen';
-      bericht.posten.push(zeile);
+      if (open) row.outcome = 'open';
+      report.items.push(row);
       // A skipped item is done too, otherwise the bar would stand still.
-      melde();
+      reportProgress();
       continue;
     }
 
-    try {
-      const wie = await writeItem(uid, a, rbId, opt);
-      if (wie === 'angelegt') bericht.angelegt++;
-      else bericht.aufgestockt++;
-      zeile.ausgang = wie;
-    } catch (e: unknown) {
-      bericht.fehler++;
-      zeile.ausgang = 'fehler';
-      zeile.grund = e instanceof Error ? e.message : String(e);
-    }
-    bericht.posten.push(zeile);
+    await writeRow(uid, a, rbId, opt, row, report);
+    report.items.push(row);
     // After success AND failure, otherwise the bar would stand still on errors.
-    melde();
+    reportProgress();
   }
 
-  await describeRows(k, bericht.posten, auf);
-  return bericht;
+  await describeRows(k, report.items, up);
+  return report;
 }
 
 /** After writing too: the dialog redraws the same table with the
  * response and would otherwise show empty cells. */
-async function describeRows(k: WantedContext, zeilen: ItemResult[], auf: Aufloesung[]): Promise<void> {
-  const beschreibung = await describeItem(k, auf);
-  zeilen.forEach((zeile, i) => {
-    const b = beschreibung.get(i);
+async function describeRows(k: WantedContext, rows: ItemResult[], up: Resolution[]): Promise<void> {
+  const description = await describeItem(k, up);
+  rows.forEach((row, i) => {
+    const b = description.get(i);
     if (!b) return;
-    zeile.name = b.name;
-    zeile.bild = b.bild;
-    zeile.nameGeraten = b.geraten;
+    row.name = b.name;
+    row.image = b.image;
+    row.nameGuessed = b.guessed;
   });
 }

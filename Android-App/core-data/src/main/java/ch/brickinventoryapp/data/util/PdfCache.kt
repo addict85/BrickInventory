@@ -9,7 +9,7 @@ import java.io.File
  */
 internal sealed class PdfStep {
     /** The file is completely there. Fetch nothing. */
-    object Fertig : PdfStep()
+    object Done : PdfStep()
 
     /**
      * Fetch from this byte. `ab == 0` means „from the start, without a Range header" —
@@ -17,7 +17,7 @@ internal sealed class PdfStep {
      * partial piece and would get 206 instead of 200. For the first attempt the
      * plain request is the right one.
      */
-    data class Holen(val ab: Long) : PdfStep()
+    data class Fetch(val ab: Long) : PdfStep()
 }
 
 /**
@@ -27,9 +27,9 @@ internal sealed class PdfStep {
 internal fun pdfStep(finishedSize: Long, partSize: Long): PdfStep = when {
     // The finished file beats everything. If a partial file still lies next to it,
     // it is a leftover and gets disposed of at the next cleanup.
-    finishedSize > 0L -> PdfStep.Fertig
-    partSize > 0L    -> PdfStep.Holen(partSize)
-    else                -> PdfStep.Holen(0L)
+    finishedSize > 0L -> PdfStep.Done
+    partSize > 0L    -> PdfStep.Fetch(partSize)
+    else                -> PdfStep.Fetch(0L)
 }
 
 /** Folder in which older versions stored voucher PDFs; only kept for cleaning up. */
@@ -38,17 +38,17 @@ const val PDF_CONFIDENTIAL_FOLDER = "pdf_vertraulich"
 /**
  * Where the viewer stores a PDF: instructions encrypted in the cache
  * ([InstructionStore]). A confidential PDF gets no file (null) and stays in
- * memory ([ladePdfInDenSpeicher]). The name is SHA-256 of the address: with 32 bits
+ * memory ([loadPdfIntoMemory]). The name is SHA-256 of the address: with 32 bits
  * (hashCode) two addresses would easily share a file.
  */
-fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File? {
-    if (vertraulich) return null
+fun pdfStore(cacheDir: File, pdfUrl: String, confidential: Boolean): File? {
+    if (confidential) return null
     val hash = java.security.MessageDigest.getInstance("SHA-256").digest(pdfUrl.toByteArray())
     return File(cacheDir, INSTRUCTION_PREFIX + hash.joinToString("") { "%02x".format(it) } + INSTRUCTION_EXTENSION)
 }
 
 /** Delete voucher PDFs of older versions: at start and at sign-out. */
-fun raeumeVertraulichePdfsAuf(cacheDir: File) {
+fun cleanUpConfidentialPdfs(cacheDir: File) {
     File(cacheDir, PDF_CONFIDENTIAL_FOLDER).deleteRecursively()
 }
 
@@ -72,10 +72,10 @@ internal fun partListsStore(intern: File, extern: File?): File {
 const val PART_LIST_DEADLINE_MS: Long = 30L * 60 * 1000
 
 /** Deletes the parts list if it is older than [deadline]; at start and in the job after the export. */
-fun cleanOldPartListOn(intern: File, jetzt: Long, deadline: Long = PART_LIST_DEADLINE_MS): Boolean {
+fun cleanOldPartListOn(intern: File, now: Long, deadline: Long = PART_LIST_DEADLINE_MS): Boolean {
     File(File(intern, "pdf"), "teileliste.pdf").delete()
-    val datei = File(File(intern, "pdf"), PART_LIST_FILE)
-    return datei.isFile && jetzt - datei.lastModified() >= deadline && datei.delete()
+    val file = File(File(intern, "pdf"), PART_LIST_FILE)
+    return file.isFile && now - file.lastModified() >= deadline && file.delete()
 }
 
 /**
@@ -89,7 +89,7 @@ const val UPDATE_FOLDER = "update"
  * loaded update. The cache alone was not enough — filesDir survives sign-out,
  * and the next user on the device would otherwise open the previous one's inventory.
  */
-fun raeumeKontoDateienAuf(intern: File, extern: File?) {
+fun cleanUpAccountFiles(intern: File, extern: File?) {
     File(intern, "pdf").deleteRecursively()
     File(intern, UPDATE_FOLDER).deleteRecursively()
     extern?.let { File(it, "pdf").deleteRecursively() }

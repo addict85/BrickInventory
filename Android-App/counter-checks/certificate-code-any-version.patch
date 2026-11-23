@@ -1,0 +1,16 @@
+Gegenprobe: Der Zertifikats-Code wird ohne Prüfung von Version und Hash gelesen
+Modul: core-security
+Test: ch.brickinventoryapp.security.CertificateCodeTest
+Rot: a different version is refused as unknown
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/CertificateCode.kt
+@@ -37,7 +37,6 @@
+      */
+     private fun hexOf(payload: String?): String? {
+         val parts = versionAndHash(payload) ?: return null
+-        if (!parts[0].equals(VERSION, ignoreCase = true) || !parts[1].equals(HASH, ignoreCase = true)) return null
+         val hex = parts[2].filterNot { it == ':' || it.isWhitespace() }.lowercase()
+         return hex.takeIf { it.length == HASH_BYTES * 2 && it.all { c -> c in "0123456789abcdef" } }
+     }

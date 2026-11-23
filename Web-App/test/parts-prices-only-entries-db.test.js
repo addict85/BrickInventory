@@ -1,7 +1,9 @@
 /**
- * Since db/basis.sql the state BEFORE this migration no longer exists: the
+ * Since db/base.sql the state BEFORE this migration no longer exists: the
  * cases on bolt, addendum and intermediate state are dropped. What is checked is
  * the final state and the read paths.
+ *
+ * Counter-check: conditionFromAcquisitions() (src/inventory/shared.ts) always returns 'N' → red “the lists deliver price and condition from the newest acquisition”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -11,7 +13,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
@@ -34,8 +36,8 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const columnsOf = async tabelle =>
-  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
+const columnsOf = async table =>
+  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [table]))
     .map(r => r.column_name)
     .sort();
 
@@ -44,7 +46,7 @@ const dbDa = async t => {
     await db.run('SELECT 1');
     return true;
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return false;
   }
 };
@@ -57,7 +59,7 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
   await db.initSchema();
 
   // The state before the migrations no longer exists: an empty
-  // database gets db/basis.sql. What is checked is the final state.
+  // database gets db/base.sql. What is checked is the final state.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -65,12 +67,12 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
     client.release();
   }
 
-  const nachher = await columnsOf('parts');
+  const later = await columnsOf('parts');
   for (const sp of ['unit_price', 'purchase_price', 'condition']) {
     assert.ok(
-      !nachher.includes(sp),
-      `parts.${sp} ist nach allen Migrationen noch da — Migration 0035 hat nicht ` +
-        'geloescht, oder etwas legt die Spalte danach wieder an.',
+      !later.includes(sp),
+      `parts.${sp} is still there after all migrations — migration 0035 did not ` +
+        'delete it, or something creates the column again afterwards.',
     );
   }
   // And the stock is still there: Marco's list, plus what does NOT concern the purchase.
@@ -78,22 +80,22 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
   // the BrickLink number stands in bl_mapping (once per part instead of per
   // account). See test/bricklink-mapping-db.test.js. …
   for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id', 'source', 'storage_id', 'added_at']) {
-    assert.ok(nachher.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
+    assert.ok(later.includes(sp), `parts.${sp} is missing — the column belongs to the stock`);
   }
 
   const figsAfter = await columnsOf('minifigs');
   for (const sp of ['unit_price', 'purchase_price', 'condition']) {
-    assert.ok(!figsAfter.includes(sp), `minifigs.${sp} ist nach allen Migrationen noch da`);
+    assert.ok(!figsAfter.includes(sp), `minifigs.${sp} is still there after all migrations`);
   }
 
   // Not disappeared but moved.
-  for (const [tab, spalten] of [
+  for (const [tab, columns] of [
     ['part_acquisitions', ['user_id', 'part_number', 'color_id', 'quantity', 'unit_price', 'condition', 'created_at']],
     ['minifig_acquisitions', ['user_id', 'fig_number', 'quantity', 'unit_price', 'condition', 'created_at']],
   ]) {
-    const vorhanden = await columnsOf(tab);
-    for (const sp of spalten) {
-      assert.ok(vorhanden.includes(sp), `${tab}.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
+    const existing = await columnsOf(tab);
+    for (const sp of columns) {
+      assert.ok(existing.includes(sp), `${tab}.${sp} is missing — then the purchase price exists nowhere any more`);
     }
   }
 });
@@ -123,8 +125,8 @@ test('the lists deliver price and condition from the newest acquisition', { conc
   // Only the stock rows, without quantity: the two acquisitions further down
   // carry it (migration 0038). holdsPart() with menge 0 therefore creates no
   // acquisition of its own — the daily rule would not allow a second one next to it.
-  await holdsPart(db, uid, '3002', { menge: 0, colorId: 1 });
-  await holdsMinifig(db, uid, 'fig-5', { menge: 0 });
+  await holdsPart(db, uid, '3002', { quantity: 0, colorId: 1 });
+  await holdsMinifig(db, uid, 'fig-5', { quantity: 0 });
 
   // TWO acquisitions, different days and conditions. The newer one is the one that
   // must be shown as „the price of this part" — the older one must not
@@ -145,18 +147,18 @@ test('the lists deliver price and condition from the newest acquisition', { conc
   const H = _req('src/parts/queries.js');
   const M = _req('src/minifigs/queries.js');
 
-  const teile = await H.manualPartsList([uid], uid);
-  const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3002');
-  assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(teile).slice(0, 300)}`);
-  assert.equal(Number(teil.unit_price), 2.0, 'unit_price muss der Preis der NEUESTEN Erfassung sein');
-  assert.equal(Number(teil.purchase_price), 2.0, 'purchase_price ist der Anzeigewert und darf nicht leer sein');
-  assert.equal(teil.condition, 'U', 'Eine gebrauchte Erfassung macht das Teil gebraucht (conditionFromAcquisitions)');
+  const parts = await H.manualPartsList([uid], uid);
+  const part = (Array.isArray(parts) ? parts : parts.parts || []).find(p => p.part_number === '3002');
+  assert.ok(part, `The part is missing in the response: ${JSON.stringify(parts).slice(0, 300)}`);
+  assert.equal(Number(part.unit_price), 2.0, 'unit_price must be the price of the NEWEST acquisition');
+  assert.equal(Number(part.purchase_price), 2.0, 'purchase_price is the display value and must not be empty');
+  assert.equal(part.condition, 'U', 'A used acquisition makes the part used (conditionFromAcquisitions)');
 
   const figs = await M.readManualMinifigs([uid], uid);
   const fig = (Array.isArray(figs) ? figs : figs.minifigs || []).find(f => f.fig_number === 'fig-5');
-  assert.ok(fig, `Die Figur fehlt in der Antwort: ${JSON.stringify(figs).slice(0, 300)}`);
-  assert.equal(Number(fig.unit_price), 7.5, 'unit_price muss der Preis der NEUESTEN Erfassung sein');
-  assert.equal(fig.condition, 'U', 'Eine gebrauchte Erfassung macht die Figur gebraucht');
+  assert.ok(fig, `The figure is missing in the response: ${JSON.stringify(figs).slice(0, 300)}`);
+  assert.equal(Number(fig.unit_price), 7.5, 'unit_price must be the price of the NEWEST acquisition');
+  assert.equal(fig.condition, 'U', 'A used acquisition makes the figure used');
 
   // ── And without a price the display value stays 0, not empty ──────────────────
   //
@@ -168,23 +170,23 @@ test('the lists deliver price and condition from the newest acquisition', { conc
                 ON CONFLICT (part_number) DO NOTHING`);
   // quantity 0 for the stock row, the acquisition comes below with an
   // EXPLICITLY empty price — that is the statement of this case.
-  await holdsPart(db, uid, '3003', { menge: 0, colorId: 0 });
+  await holdsPart(db, uid, '3003', { quantity: 0, colorId: 0 });
   await db.run(
     `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
                 VALUES ($1,'3003',0,1,NULL,'N')`,
     [uid],
   );
-  const teile2 = await H.manualPartsList([uid], uid);
-  const withoutPrice = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3003');
-  assert.ok(withoutPrice, 'Das Teil ohne Preis fehlt in der Antwort');
+  const parts2 = await H.manualPartsList([uid], uid);
+  const withoutPrice = (Array.isArray(parts2) ? parts2 : parts2.parts || []).find(p => p.part_number === '3003');
+  assert.ok(withoutPrice, 'The part without a price is missing in the response');
   assert.equal(
     withoutPrice.unit_price,
     null,
-    'Ohne Preis muss unit_price leer sein — das ist die Aussage „nichts eingegeben"',
+    'Without a price unit_price must be empty — that is the statement „nothing entered"',
   );
   assert.equal(
     Number(withoutPrice.purchase_price),
     0,
-    'Der Anzeigewert muss 0 sein, nicht leer — siehe src/finances/priceRule.ts',
+    'The display value must be 0, not empty — see src/finances/priceRule.ts',
   );
 });

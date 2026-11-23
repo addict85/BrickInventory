@@ -34,10 +34,10 @@ const DURATION_S = arg('dauer', 10); // measurement duration per pass
 const N_SETS = arg('sets', 800); // collection size (as in pass 119)
 
 const dbModule = require(path.join(ROOT, 'dist/db/database.js'));
-const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const db = dbModule.createDb(dbModule.dbConfigFromEnvironment());
 // The routes call the areas via their wiring, as in the server.
-const verdrahtung = require(path.join(ROOT, 'dist/startup/wiring.js'));
-const dienste = verdrahtung.buildServices(db);
+const wiring = require(path.join(ROOT, 'dist/startup/wiring.js'));
+const services = wiring.buildServices(db);
 
 /**
  * Readable text of a caught error.
@@ -49,7 +49,7 @@ const dienste = verdrahtung.buildServices(db);
  * @param {unknown} e
  * @returns {string}
  */
-function fehlertext(e) {
+function errorText(e) {
   if (e instanceof Error && e.message) return e.message;
   if (typeof e === 'string' && e) return e;
   // The detour via the intermediate variable is necessary because `typeof e === 'object'`
@@ -189,11 +189,11 @@ async function seed() {
 // The app from startup/app.ts (baueApp); only the session store is provided,
 // so that the run gets by without login.
 function buildApp() {
-  return require(path.join(ROOT, 'dist/startup/app.js')).baueApp({
+  return require(path.join(ROOT, 'dist/startup/app.js')).buildApp({
     pool: db.pool,
-    konfig: require(path.join(ROOT, 'dist/src/infra/config.js')).konfig(),
-    sitzungsGeheimnis: 'lasttest-sitzungsgeheimnis-lang-genug',
-    dienste,
+    config: require(path.join(ROOT, 'dist/src/infra/config.js')).config(),
+    sessionSecret: 'lasttest-sitzungsgeheimnis-lang-genug',
+    services,
     sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {
       req.session = { userId: USER.id, username: USER.username, isAdmin: false };
       next();
@@ -236,11 +236,11 @@ const percentile = (arr, p) => {
 /**
  * Measure a route once.
  * @param {string} base
- * @param {string} pfad
+ * @param {string} path
  */
-async function miss(base, pfad) {
+async function miss(base, path) {
   const t0 = process.hrtime.bigint();
-  const r = await fetch(base + pfad);
+  const r = await fetch(base + path);
   await r.arrayBuffer(); // read the response completely
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
   return { ms, ok: r.status === 200, status: r.status };
@@ -253,7 +253,7 @@ async function main() {
   const base = `http://localhost:${srv.address().port}`;
 
   // Warm-up: the first hit builds caches and query plans.
-  for (const [, pfad] of PATHS) await miss(base, pfad).catch(() => {});
+  for (const [, path] of PATHS) await miss(base, path).catch(() => {});
 
   // ── Pass 1: alone (reference) ───────────────────────────────────────────────
   console.log('Referenz ohne Nebenlast (je 5 Aufrufe, Median):');
@@ -261,16 +261,16 @@ async function main() {
   // `allein[name] = …` would otherwise be a write to a field that
   // does not exist according to the type.
   /** @type {Record<string, number>} */
-  const allein = {};
-  for (const [name, pfad] of PATHS) {
+  const alone = {};
+  for (const [name, path] of PATHS) {
     // The median is computed ONCE and kept in a variable instead of
     // reading it from the map again after writing. That is not only
     // type-safe (a read access on a map can be empty), but also says
     // better what happens here.
     const w = [];
-    for (let i = 0; i < 5; i++) w.push((await miss(base, pfad)).ms);
+    for (let i = 0; i < 5; i++) w.push((await miss(base, path)).ms);
     const median = percentile(w, 0.5);
-    allein[name] = median;
+    alone[name] = median;
     console.log(`  ${name.padEnd(24)} ${median.toFixed(0).padStart(6)} ms`);
   }
 
@@ -279,55 +279,55 @@ async function main() {
   /** @type {Record<string, number[]>} */
   const measurement = Object.fromEntries(PATHS.map(([n]) => [n, []]));
   /** @type {Record<string, number>} */
-  const fehler = {};
-  const ende = Date.now() + DURATION_S * 1000;
-  let gesamt = 0;
+  const error = {};
+  const end = Date.now() + DURATION_S * 1000;
+  let total = 0;
 
   /** @param {number} id */
-  const nutzer = async id => {
+  const userRow = async id => {
     // Staggered start, so that not all run in lockstep.
     await new Promise(r => setTimeout(r, (id * 37) % 250));
-    while (Date.now() < ende) {
+    while (Date.now() < end) {
       // The fallback to the first entry makes visible that the list
       // is never empty — an index into an array may still be off even with tuple elements
       // as far as the type is concerned.
-      const eintrag = PATHS[Math.floor(Math.random() * PATHS.length)];
-      if (!eintrag) continue; // PATHS is never empty; this tells the checker
-      const [name, p] = eintrag;
+      const entry = PATHS[Math.floor(Math.random() * PATHS.length)];
+      if (!entry) continue; // PATHS is never empty; this tells the checker
+      const [name, p] = entry;
       try {
         const { ms, ok, status } = await miss(base, p);
         measurement[name] ??= [];
         measurement[name].push(ms);
-        gesamt++;
-        if (!ok) fehler[`${name} → HTTP ${status}`] = (fehler[`${name} → HTTP ${status}`] || 0) + 1;
+        total++;
+        if (!ok) error[`${name} → HTTP ${status}`] = (error[`${name} → HTTP ${status}`] || 0) + 1;
       } catch (e) {
-        fehler[`${name} → ${fehlertext(e)}`] = (fehler[`${name} → ${fehlertext(e)}`] || 0) + 1;
+        error[`${name} → ${errorText(e)}`] = (error[`${name} → ${errorText(e)}`] || 0) + 1;
       }
     }
   };
   const t0 = Date.now();
-  await Promise.all(Array.from({ length: USERS }, (_, i) => nutzer(i)));
-  const sek = (Date.now() - t0) / 1000;
+  await Promise.all(Array.from({ length: USERS }, (_, i) => userRow(i)));
+  const sec = (Date.now() - t0) / 1000;
 
   // ── Output ──────────────────────────────────────────────────────────────────
-  console.log(`\n${gesamt} Anfragen in ${sek.toFixed(1)} s = ${(gesamt / sek).toFixed(0)}/s\n`);
+  console.log(`\n${total} Anfragen in ${sec.toFixed(1)} s = ${(total / sec).toFixed(0)}/s\n`);
   console.log('Endpunkt                   allein     p50     p95     max   Faktor   n');
   console.log('─'.repeat(76));
   for (const [name] of PATHS) {
     // An endpoint no user hit during the runtime has no
     // measurements — `?? []` is not a sedative here, but the case.
     const w = measurement[name] ?? [];
-    const reference = allein[name] ?? 0;
+    const reference = alone[name] ?? 0;
     const p50 = percentile(w, 0.5),
       p95 = percentile(w, 0.95),
       max = Math.max(0, ...w);
-    const faktor = reference > 0 ? p50 / reference : 0;
+    const factor = reference > 0 ? p50 / reference : 0;
     console.log(
       `${name.padEnd(24)} ${reference.toFixed(0).padStart(6)}  ${p50.toFixed(0).padStart(6)}  ` +
-        `${p95.toFixed(0).padStart(6)}  ${max.toFixed(0).padStart(6)}  ${faktor.toFixed(1).padStart(6)}x  ${String(w.length).padStart(4)}`,
+        `${p95.toFixed(0).padStart(6)}  ${max.toFixed(0).padStart(6)}  ${factor.toFixed(1).padStart(6)}x  ${String(w.length).padStart(4)}`,
     );
   }
-  const errorList = Object.entries(fehler);
+  const errorList = Object.entries(error);
   if (errorList.length) {
     // A run with errors does not measure what it claims to: red, also for the test that starts the script.
     process.exitCode = 1;

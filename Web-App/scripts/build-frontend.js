@@ -43,7 +43,7 @@ const STANDALONE = new Set([
  * lives; the layer is therefore listed here, and test/frontend-architektur.test.js
  * checks that core and building blocks import no view. Everything else is a view.
  */
-const KERN = [
+const CORE = [
   'styles.js',
   'escaping.js',
   'events.js',
@@ -53,7 +53,7 @@ const KERN = [
   'registry.js',
   'theme-boot.js',
 ];
-const BAUSTEINE = [
+const BUILDING_BLOCKS = [
   'dom.js',
   'format.js',
   'messages.js',
@@ -64,10 +64,12 @@ const BAUSTEINE = [
   'account.js',
   'dialogs.js',
   'progress.js',
+  'job-names.js',
   'monitor.js',
   'components.js',
   'confirm-prompt.js',
   'crosshair.js',
+  'time-axis.js',
   'charts.js',
   // Shared by several views without being a view itself (no tab, no screen of its own).
   'account-filter.js',
@@ -78,6 +80,7 @@ const BAUSTEINE = [
   'detail-fields.js',
   'account-locations.js',
   'trash.js',
+  'deletion.js',
   'metrics.js',
   // The panel for links from mails before login; the login mask (session.js) shows it.
   'mail-link.js',
@@ -100,9 +103,9 @@ function appModule() {
  * A newly created .js that nobody imports would otherwise silently be missing.
  */
 function checkComplete() {
-  const fehlend = [...KERN, ...BAUSTEINE].filter(f => !fs.existsSync(path.join(PUBLIC, 'js', f)));
-  if (fehlend.length) {
-    console.error(`[build-frontend] KERN/BAUSTEINE nennen fehlende Dateien: ${fehlend.join(', ')}`);
+  const missing = [...CORE, ...BUILDING_BLOCKS].filter(f => !fs.existsSync(path.join(PUBLIC, 'js', f)));
+  if (missing.length) {
+    console.error(`[build-frontend] CORE/BUILDING_BLOCKS nennen fehlende Dateien: ${missing.join(', ')}`);
     process.exit(1);
   }
   const entry = fs.readFileSync(path.join(PUBLIC, ENTRY), 'utf8');
@@ -117,38 +120,38 @@ function checkComplete() {
 }
 
 /**
- * All style values that stand like this in the source: data-stil="…" in the markup and the
- * stil parameters of the building blocks (components.js). js/styles.js only applies
- * these — an injected data-stil with a different value stays ineffective.
+ * All style values that stand like this in the source: data-style="…" in the markup and the
+ * style parameters of the building blocks (components.js). js/styles.js only applies
+ * these — an injected data-style with a different value stays ineffective.
  * Values with `${…}` do not count; the caller sets those itself at runtime.
  */
 function allowedStyles() {
-  const dateien = [
+  const files = [
     'index.html',
     ...fs
       .readdirSync(path.join(PUBLIC, 'js'))
       .filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL))
       .map(f => 'js/' + f),
   ];
-  const werte = new Set();
+  const values = new Set();
   /** @type {Record<string, string>} */
   const entity = { '&amp;': '&', '&quot;': '"', '&#39;': "'", '&lt;': '<', '&gt;': '>' };
-  for (const d of dateien) {
+  for (const d of files) {
     const s = fs.readFileSync(path.join(PUBLIC, d), 'utf8');
-    for (const m of s.matchAll(/data-stil=(\\?["'])([\s\S]*?)\1/g)) {
-      const roh = m[2] ?? '';
-      if (!roh.includes('${'))
-        werte.add(roh.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
+    for (const m of s.matchAll(/data-style=(\\?["'])([\s\S]*?)\1/g)) {
+      const raw = m[2] ?? '';
+      if (!raw.includes('${'))
+        values.add(raw.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
     }
-    for (const m of s.matchAll(/\b(?:stil|rowsStyle|valueStyle):\s*'([^'$]*)'/g)) werte.add(m[1] ?? '');
+    for (const m of s.matchAll(/\b(?:style|rowsStyle|valueStyle):\s*'([^'$]*)'/g)) values.add(m[1] ?? '');
   }
-  return [...werte].sort();
+  return [...values].sort();
 }
 
 /** Bundles to `outAbs` (delivery, test-run.js). */
 /**
  * @param {string} outAbs
- * @param {{ quellkarte?: boolean }} [opt]  quellkarte: source map embedded, only for the
+ * @param {{ sourceMap?: boolean }} [opt]  sourceMap: source map embedded, only for the
  *   coverage measurement (test-run.js --abdeckung); the delivered bundle stays without.
  */
 function buildBundle(outAbs, opt = {}) {
@@ -162,19 +165,19 @@ function buildBundle(outAbs, opt = {}) {
       path.join(PUBLIC, ENTRY),
       '--bundle',
       '--format=iife',
-      ...(opt.quellkarte ? [] : ['--minify']),
+      ...(opt.sourceMap ? [] : ['--minify']),
       '--charset=utf8',
-      `--define:__ERLAUBTE_STILE__=${JSON.stringify(allowedStyles())}`,
+      `--define:__ALLOWED_STYLES__=${JSON.stringify(allowedStyles())}`,
       `--outfile=${outAbs}`,
-      ...(opt.quellkarte ? ['--sourcemap=inline', '--sources-content=true'] : []),
+      ...(opt.sourceMap ? ['--sourcemap=inline', '--sources-content=true'] : []),
     ],
     { stdio: ['ignore', 'ignore', 'inherit'] },
   );
 }
 
-/** Most recent change to everything the bundle is built from (also index.html: data-stil values). */
+/** Most recent change to everything the bundle is built from (also index.html: data-style values). */
 function newestSource() {
-  const dateien = [
+  const files = [
     ...fs
       .readdirSync(path.join(PUBLIC, 'js'))
       .filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL))
@@ -184,7 +187,7 @@ function newestSource() {
     path.join(PUBLIC, 'index.html'),
     __filename,
   ];
-  return Math.max(...dateien.map(f => fs.statSync(f).mtimeMs));
+  return Math.max(...files.map(f => fs.statSync(f).mtimeMs));
 }
 
 /**
@@ -194,12 +197,12 @@ function newestSource() {
  */
 function placeBundleSafe(outAbs = path.join(PUBLIC, OUT_REL)) {
   if (fs.existsSync(outAbs) && fs.statSync(outAbs).mtimeMs >= newestSource()) return false;
-  const zwischen = `${outAbs}.${process.pid}.tmp`;
+  const temp = `${outAbs}.${process.pid}.tmp`;
   try {
-    buildBundle(zwischen);
-    fs.renameSync(zwischen, outAbs);
+    buildBundle(temp);
+    fs.renameSync(temp, outAbs);
   } finally {
-    fs.rmSync(zwischen, { force: true });
+    fs.rmSync(temp, { force: true });
   }
   return true;
 }
@@ -212,9 +215,9 @@ function main() {
   }
 
   // --outfile=…: only bundle, to a different place (test/bundle-built.test.js).
-  const ziel = process.argv.find(a => a.startsWith('--outfile='))?.slice('--outfile='.length);
-  if (ziel) {
-    buildBundle(path.resolve(ziel));
+  const target = process.argv.find(a => a.startsWith('--outfile='))?.slice('--outfile='.length);
+  if (target) {
+    buildBundle(path.resolve(target));
     return;
   }
   const outAbs = path.join(PUBLIC, OUT_REL);
@@ -235,8 +238,8 @@ module.exports = {
   ENTRY,
   OUT_REL,
   STANDALONE,
-  KERN,
-  BAUSTEINE,
+  CORE,
+  BUILDING_BLOCKS,
   isAppModule,
   appModule,
   allowedStyles,

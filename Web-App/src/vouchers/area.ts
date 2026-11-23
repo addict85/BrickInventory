@@ -1,38 +1,50 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { mit, buildArea, type Inspect } from '../infra/area';
-import { Faecher } from '../infra/cache';
+import { bound, buildArea, type Inspect } from '../infra/area';
+import { Compartments } from '../infra/cache';
 import * as service from './service';
 import * as pdfTicket from './pdfTicket';
 import { encryptLegacyVoucherFiles } from './voucherFiles';
-import { zugang, type VoucherDependencies, type VoucherContext } from './context';
+import { access, type VoucherDependencies, type VoucherContext } from './context';
 
 export type { VoucherDependencies, VoucherContext } from './context';
 
-export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, inspect?: Inspect<VoucherContext>) {
+export function createVouchers(a: Omit<VoucherDependencies, 'compartments'>, inspect?: Inspect<VoucherContext>) {
   return buildArea(
-    { ...a, faecher: new Faecher() },
-    zugang,
+    { ...a, compartments: new Compartments() },
+    access,
     (k: VoucherContext) => ({
-      changeVoucher: mit(k)(service.changeVoucher),
-      voucherPlaintext: mit(k)(service.voucherPlaintext),
-      releasePdf: mit(k)(service.releasePdf),
-      releaseExport: mit(k)(service.releaseExport),
-      checkBalance: mit(k)(service.checkBalance),
-      voucherList: mit(k)(service.voucherList),
-      createVoucher: mit(k)(service.createVoucher),
-      deleteVoucher: mit(k)(service.deleteVoucher),
-      voucherFromPdf: mit(k)(service.voucherFromPdf),
-      exportVouchers: mit(k)(service.exportVouchers),
-      voucherPdf: mit(k)(service.voucherPdf),
-      redeemTicket: mit(k)(pdfTicket.redeemTicket),
+      changeVoucher: bound(k)(service.changeVoucher),
+      voucherPlaintext: bound(k)(service.voucherPlaintext),
+      releasePdf: bound(k)(service.releasePdf),
+      checkBalance: bound(k)(service.checkBalance),
+      voucherList: bound(k)(service.voucherList),
+      createVoucher: bound(k)(service.createVoucher),
+      deleteVoucher: bound(k)(service.deleteVoucher),
+      restoreVoucher: bound(k)(service.restoreVoucher),
+      voucherFromPdf: bound(k)(service.voucherFromPdf),
+      exportVouchers: bound(k)(service.exportVouchers),
+      voucherPdf: bound(k)(service.voucherPdf),
+      redeemTicket: bound(k)(pdfTicket.redeemTicket),
+      cleanup: bound(k)(cleanupVouchers),
       encryptLegacyFiles: encryptLegacyVoucherFiles,
       // Re-encrypting at startup (startup/database.ts): across all accounts, without a request.
-      reencryptNumbers: k.vouchers.reencryptNumbers,
-      reencryptCopies: k.vouchers.reencryptCopies,
-      reencryptAllVouchers: k.vouchers.reencryptAllVouchers,
+      reencrypt: bound(k)(reencrypt),
     }),
     inspect,
   );
+}
+
+/** Legacy upgrade (default): numbers and copies still in v1. Key switch (`all`): every row the
+ * previous key opens. @returns how many values were rewritten */
+async function reencrypt(k: VoucherContext, o: { all?: boolean } = {}): Promise<number> {
+  return o.all
+    ? (await k.vouchers.reencryptAllVouchers()) + (await k.vouchers.reencryptCopies(true))
+    : (await k.vouchers.reencryptNumbers()) + (await k.vouchers.reencryptCopies());
+}
+
+/** The hourly cleanup: expired PDF tickets and cards deleted longer than RESTORE_DAYS ago. */
+async function cleanupVouchers(k: VoucherContext): Promise<number> {
+  return (await pdfTicket.cleanupTickets(k)) + (await service.purgeDeletedVouchers(k));
 }
 
 export type VoucherServices = ReturnType<typeof createVouchers>;

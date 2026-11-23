@@ -1,5 +1,5 @@
 /** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
-import { mit, buildArea, type Inspect } from '../infra/area';
+import { bound, buildArea, type Inspect } from '../infra/area';
 import * as acquisitions from './acquisitions';
 import * as deletion from './deletion';
 import * as importJobs from './importJobs';
@@ -13,14 +13,14 @@ export function createCollection(a: CollectionDependencies, inspect?: Inspect<Co
     a,
     access,
     (k: CollectionContext) => ({
-      changeAcquisition: mit(k)(acquisitions.changeAcquisition),
-      deleteAcquisition: mit(k)(acquisitions.deleteAcquisition),
-      setAcquisitionsForSet: mit(k)(acquisitions.setAcquisitionsForSet),
-      deletePart: mit(k)(deletion.deletePart),
-      deleteMinifig: mit(k)(deletion.deleteMinifig),
-      deleteEverythingOwn: mit(k)(deletion.deleteEverythingOwn),
+      changeAcquisition: bound(k)(acquisitions.changeAcquisition),
+      deleteAcquisition: bound(k)(acquisitions.deleteAcquisition),
+      setAcquisitionsForSet: bound(k)(acquisitions.setAcquisitionsForSet),
+      deletePart: bound(k)(deletion.deletePart),
+      deleteMinifig: bound(k)(deletion.deleteMinifig),
+      deleteEverythingOwn: bound(k)(deletion.deleteEverythingOwn),
       jobKinds: () => collectionJobKinds(k),
-      runImport: mit(k)(importJobs.runImport),
+      runImport: bound(k)(importJobs.runImport),
     }),
     inspect,
   );

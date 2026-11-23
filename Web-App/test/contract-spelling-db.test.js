@@ -5,7 +5,7 @@
  * a different route (404) and leaves nothing in `idempotency`.
  *
  * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
- *   A  server.ts without `case sensitive routing` and vertragsRouter() without
+ *   A  server.ts without `case sensitive routing` and contractRouter() without
  *      caseSensitive → red: “upper case is a different route” (routes
  *      answer, entries in idempotency) and “… not stored” (an
  *      UPPER-case token-rotieren has already replaced the token)
@@ -33,8 +33,8 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { CONTRACT, routeForRequest } = _req('src/contract/index.js');
-const { responseIsSecret: antwortIstGeheim } = _req('src/idempotency/http/middleware.js');
-const { warte } = require('./helpers/time');
+const { responseIsSecret: answerIsSecret } = _req('src/idempotency/http/middleware.js');
+const { sleep } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
   new Promise(r => {
@@ -88,14 +88,14 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
   });
   t.after(async () => {
     srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
+    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
-  for (let i = 0; i < 240 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++)
-    await warte(250);
+  for (let i = 0; i < 240 && (await fetch(`http://127.0.0.1:${port}/api/v2/health`).catch(() => null)) === null; i++)
+    await sleep(250);
 
   let n = 0;
-  const rufe = async (m, url, key = `schreibung-${++n}`) => {
+  const callIt = async (m, url, key = `schreibung-${++n}`) => {
     const r = await fetch(`http://127.0.0.1:${port}${url}`, {
       method: m,
       redirect: 'manual',
@@ -105,29 +105,29 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
     const text = await r.text();
     return { status: r.status, replay: r.headers.get('idempotent-replay'), text, key };
   };
-  const gespeichert = async key =>
+  const saved = async key =>
     db.all(
       'SELECT key, status, response IS NOT NULL AS mit_antwort FROM idempotency WHERE user_id = $1 AND key = ANY($2)',
       [uid, key],
     );
 
-  assert.ok(ROUTES.length > 150, `nur ${ROUTES.length} Vertragsrouten — greift die Suche noch?`);
-  assert.ok((await rufe('GET', '/api/v1/settings')).status === 200, `der Token gilt nicht: ${log.slice(-400)}`);
+  assert.ok(ROUTES.length > 150, `only ${ROUTES.length} contract routes — does the search still match?`);
+  assert.ok((await callIt('GET', '/api/v2/settings')).status === 200, `the token is not valid: ${log.slice(-400)}`);
 
   await t.test('upper case is a different route', async () => {
-    const falsch = [],
+    const wrong = [],
       key = [];
     for (const { m, url } of ROUTES) {
-      const rest = url.slice('/api/v1/'.length);
-      for (const anders of [url.toUpperCase(), rest && `/api/v1/${rest[0].toUpperCase()}${rest.slice(1)}`]) {
+      const rest = url.slice('/api/v2/'.length);
+      for (const anders of [url.toUpperCase(), rest && `/api/v2/${rest[0].toUpperCase()}${rest.slice(1)}`]) {
         if (!anders || anders === url) continue;
-        const r = await rufe(m, anders);
+        const r = await callIt(m, anders);
         key.push(r.key);
-        if (r.status !== 404 || r.replay) falsch.push(`${m} ${anders} → ${r.status}`);
+        if (r.status !== 404 || r.replay) wrong.push(`${m} ${anders} → ${r.status}`);
       }
     }
-    assert.deepEqual(falsch, []);
-    assert.deepEqual(await gespeichert(key), [], 'eine anders geschriebene Route hat in idempotency geschrieben');
+    assert.deepEqual(wrong, []);
+    assert.deepEqual(await saved(key), [], 'a differently spelled route wrote to idempotency');
   });
 
   await t.test('routeForRequest assigns a trailing slash to the same route', () => {
@@ -135,7 +135,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
     const anders = ROUTES.filter(
       ({ m, url }) =>
         routeForRequest(m, url + '/') !== routeForRequest(m, url) ||
-        antwortIstGeheim(m, url + '/') !== antwortIstGeheim(m, url),
+        answerIsSecret(m, url + '/') !== answerIsSecret(m, url),
     );
     assert.deepEqual(
       anders.map(r => `${r.m} ${r.p}`),
@@ -144,25 +144,25 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
   });
 
   await t.test('a trailing slash is a different route', async () => {
-    const falsch = [],
+    const wrong = [],
       key = [];
-    // `/api/v1/` stands like this in the contract; `//` at the end is the same path there.
+    // `/api/v2/` stands like this in the contract; `//` at the end is the same path there.
     for (const { m, url } of ROUTES.filter(r => !r.url.endsWith('/')))
       for (const anders of [url + '/', url + '//']) {
-        const r = await rufe(m, anders);
+        const r = await callIt(m, anders);
         key.push(r.key);
-        if (r.status !== 404 || r.replay) falsch.push(`${m} ${anders} → ${r.status}`);
+        if (r.status !== 404 || r.replay) wrong.push(`${m} ${anders} → ${r.status}`);
       }
-    assert.deepEqual(falsch, []);
-    assert.deepEqual(await gespeichert(key), []);
+    assert.deepEqual(wrong, []);
+    assert.deepEqual(await saved(key), []);
   });
 
   await t.test('… and a %2F at the end gets no secret or confirmed response', async () => {
-    const geheim = ROUTES.filter(({ m, url }) => WRITING.has(m) && antwortIstGeheim(m, url));
-    assert.ok(geheim.length > 20, `nur ${geheim.length} geheime oder bestätigte Routen`);
+    const secret = ROUTES.filter(({ m, url }) => WRITING.has(m) && answerIsSecret(m, url));
+    assert.ok(secret.length > 20, `only ${secret.length} secret or confirmed routes`);
     const succeeded = [];
-    for (const { m, url } of geheim) {
-      const r = await rufe(m, url + '%2F');
+    for (const { m, url } of secret) {
+      const r = await callIt(m, url + '%2F');
       if (r.status < 400) succeeded.push(`${m} ${url}%2F → ${r.status}`);
     }
     assert.deepEqual(succeeded, []);

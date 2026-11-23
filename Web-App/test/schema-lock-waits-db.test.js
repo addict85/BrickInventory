@@ -21,7 +21,7 @@ process.env.PG_STMT_MS = '1000';
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/time');
+const { until } = require('./helpers/time');
 const db = testData();
 const { LOCKS } = _req('src/infra/lockNamespaces.js');
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
@@ -39,17 +39,17 @@ test('schema lock: waiting takes longer than statement_timeout', async t => {
   await t.test('waits longer than statement_timeout', async () => {
     await fremder.query('SELECT pg_advisory_lock($1)', [LOCKS.SCHEMA_INIT]);
     /** @type {any} */
-    let ergebnis = 'offen';
+    let outcome = 'offen';
     const start = db.initSchemaOnce().then(
       () => {
-        ergebnis = 'fertig';
+        outcome = 'fertig';
       },
       e => {
-        ergebnis = e;
+        outcome = e;
       },
     );
     // The waiting one has been standing at the lock for more than twice the statement_timeout.
-    const wartet = await bis(
+    const waiting = await until(
       async () =>
         (
           await fremder.query(
@@ -59,10 +59,10 @@ test('schema lock: waiting takes longer than statement_timeout', async t => {
         ).rowCount > 0,
       8000,
     );
-    assert.ok(wartet, `abgebrochen: ${ergebnis?.code ?? ergebnis} ${ergebnis?.message ?? ''}`);
+    assert.ok(waiting, `aborted: ${outcome?.code ?? outcome} ${outcome?.message ?? ''}`);
     await fremder.query('SELECT pg_advisory_unlock($1)', [LOCKS.SCHEMA_INIT]);
     await start;
-    assert.equal(ergebnis, 'fertig', String(ergebnis?.message ?? ergebnis));
+    assert.equal(outcome, 'fertig', String(outcome?.message ?? outcome));
   });
 
   await t.test('afterwards the statement_timeout of the pool connection applies again', async () => {

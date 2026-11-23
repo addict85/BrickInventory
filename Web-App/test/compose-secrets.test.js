@@ -17,7 +17,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-function konfig() {
+function config() {
   const r = spawnSync(
     'docker',
     ['compose', '-f', path.join(ROOT, 'compose.yaml'), '--profile', 'tools', 'config', '--format', 'json'],
@@ -33,19 +33,19 @@ function konfig() {
       },
     },
   );
-  if (r.error || r.status !== 0) return { fehler: r.error?.message || r.stderr };
+  if (r.error || r.status !== 0) return { error: r.error?.message || r.stderr };
   return { j: JSON.parse(r.stdout) };
 }
 
 test('secrets only as files under /run/secrets', t => {
-  const { j, fehler } = konfig();
+  const { j, error } = config();
   if (!j) {
-    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${fehler}`);
-    t.skip(`no docker compose: ${fehler}`);
+    if (process.env.CI) assert.fail(`docker compose config in the CI run: ${error}`);
+    t.skip(`no docker compose: ${error}`);
     return;
   }
-  const dienste = Object.keys(j.services).sort();
-  assert.deepEqual(dienste, [
+  const services = Object.keys(j.services).sort();
+  assert.deepEqual(services, [
     'app',
     'caddy',
     'caddy-rechte',
@@ -56,19 +56,19 @@ test('secrets only as files under /run/secrets', t => {
     'postgres',
     'schluessel',
   ]);
-  let dateien = 0;
+  let files = 0;
   for (const [name, d] of Object.entries(j.services)) {
     const env = d.environment || {};
     const suspicious = Object.keys(env).filter(k => /(PASSWORD|SECRET|_PASS|DATABASE_URL|DATA_KEY)$/.test(k));
-    assert.deepEqual(suspicious, [], `${name}: Geheimnis als Umgebungsvariable (${suspicious})`);
+    assert.deepEqual(suspicious, [], `${name}: secret as an environment variable (${suspicious})`);
     const mounted = (d.secrets || []).map(s => s.target || `/run/secrets/${s.source}`);
     for (const [k, v] of Object.entries(env).filter(
       ([k]) => k.endsWith('_FILE') && !['DATA_KEY_FILE', 'DATA_KEY_ALT_FILE'].includes(k),
     )) {
-      dateien++;
-      assert.ok(mounted.includes(v), `${name}: ${k} zeigt auf ein nicht eingehängtes Secret (${v})`);
+      files++;
+      assert.ok(mounted.includes(v), `${name}: ${k} points to a secret that is not mounted (${v})`);
     }
   }
-  assert.ok(dateien >= 8, `nur ${dateien} *_FILE-Angaben — liest der Test noch die richtige Datei?`);
+  assert.ok(files >= 8, `only ${files} *_FILE entries — does the test still read the right file?`);
   for (const s of Object.values(j.secrets)) assert.match(s.file, /[\\/]geheimnisse[\\/][a-z_]+$/);
 });

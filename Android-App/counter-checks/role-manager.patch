@@ -1,0 +1,17 @@
+Gegenprobe: Hinweis zum zweiten Faktor wieder mit der alten Rolle „Verwalterrechte“
+Modul: app
+Test: ch.brickinventoryapp.app.StringResourceParityTest
+Rot: one term per thing in both languages
+
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
+@@ -1175,7 +1175,7 @@
+         <item quantity="other">Schritt %1$d von %2$d: %3$s</item>
+     </plurals>
+     <string name="alerts_intro_more">Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
+-    <string name="zf_required_short">Administratorrechte brauchen einen zweiten Faktor.</string>
++    <string name="zf_required_short">Verwalterrechte brauchen einen zweiten Faktor.</string>
+     <string name="zf_share">Teilen</string>
+     <string name="zf_codes_save">Als Datei speichern</string>
+     <string name="zf_share_title">Wiederherstellungscodes</string>

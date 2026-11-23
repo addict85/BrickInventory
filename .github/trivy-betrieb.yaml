@@ -275,3 +275,8 @@ vulnerabilities:
       - "pkg:apk/alpine/libxslt"
     expired_at: 2026-11-25
     statement: "libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Auch der Digest vom 12.11.2026 enthält noch 1.1.43-r3; behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-86144
+    purls:
+      - "pkg:apk/alpine/libxml2"
+    expired_at: 2026-12-07
+    statement: "PostgreSQL nutzt libxml2 nur für die XML-Funktionen (xmlparse, xpath), die die App nicht aufruft. Auch der Digest vom 23.11.2026 enthält noch 2.13.9-r2; behoben mit dem nächsten Bau des Images."

@@ -40,22 +40,22 @@ const { spawn, spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
-if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
+if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, but no Caddy (CADDY_BIN)');
 
 const COMPOSE = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 /** Caddy's startup script from compose.yaml ($$ → $); instead of `exec caddy` it outputs the value Caddy would get. */
-function startScript(wert, bestaetigt = false) {
+function startScript(value, confirmed = false) {
   const z = COMPOSE.split('\n');
   const start = z.findIndex(l => /^ {2}caddy:\s*$/.test(l));
   const i = z.findIndex((l, j) => j > start && /^\s+- \|\s*$/.test(l));
-  const rumpf = [];
+  const body = [];
   for (const l of z.slice(i + 1)) {
     if (!/^ {8}/.test(l)) break;
-    rumpf.push(l.slice(8));
+    body.push(l.slice(8));
   }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-start-'));
   try {
-    const script = rumpf
+    const script = body
       .join('\n')
       .replace(/\$\$/g, '$')
       .replaceAll('/ca-wurzel', tmp)
@@ -64,8 +64,8 @@ function startScript(wert, bestaetigt = false) {
     const env = {
       PATH: process.env.PATH,
       BRICK_TLS: 'acme',
-      ...(wert === undefined ? {} : { VORGELAGERTER_PROXY: wert }),
-      ...(bestaetigt ? { PROXY_NETZ_BESTAETIGT: '1' } : {}),
+      ...(value === undefined ? {} : { VORGELAGERTER_PROXY: value }),
+      ...(confirmed ? { PROXY_NETWORK_CONFIRMED: '1' } : {}),
     };
     return spawnSync('sh', ['-c', script], { env, encoding: 'utf8', timeout: 10_000 });
   } finally {
@@ -78,27 +78,27 @@ test('VORGELAGERTER_PROXY is required: keiner or addresses', async t => {
     assert.match(COMPOSE, /VORGELAGERTER_PROXY: \$\{VORGELAGERTER_PROXY:\?[^}]*keiner/);
   });
   await t.test('without a value Caddy does not start', () => {
-    for (const wert of [undefined, '', 'private_ranges', '10.0.0.1 }', '10.0.0.1\nhttp:// {']) {
-      const r = startScript(wert);
-      assert.notEqual(r.status, 0, `${JSON.stringify(wert)}: Caddy startet`);
-      assert.equal(r.stdout, '', JSON.stringify(wert));
+    for (const value of [undefined, '', 'private_ranges', '10.0.0.1 }', '10.0.0.1\nhttp:// {']) {
+      const r = startScript(value);
+      assert.notEqual(r.status, 0, `${JSON.stringify(value)}: Caddy startet`);
+      assert.equal(r.stdout, '', JSON.stringify(value));
       assert.match(r.stderr, /VORGELAGERTER_PROXY in \.env setzen: keiner/);
     }
   });
   await t.test('a network that is too wide does not start (like TRUST_PROXY: IPv4 from /16, IPv6 from /64)', () => {
-    for (const wert of ['0.0.0.0/0', '::/0', '172.28.73.20 10.0.0.0/8', '192.168.0.0/15', 'fd00::/48', '10.0.0.1/']) {
-      const r = startScript(wert, true);
-      assert.notEqual(r.status, 0, `${wert}: Caddy startet`);
-      assert.equal(r.stdout, '', wert);
-      assert.match(r.stderr, /ist zu weit/, wert);
+    for (const value of ['0.0.0.0/0', '::/0', '172.28.73.20 10.0.0.0/8', '192.168.0.0/15', 'fd00::/48', '10.0.0.1/']) {
+      const r = startScript(value, true);
+      assert.notEqual(r.status, 0, `${value}: Caddy startet`);
+      assert.equal(r.stdout, '', value);
+      assert.match(r.stderr, /ist zu weit/, value);
     }
   });
-  await t.test('a network spanning more than eight addresses only with PROXY_NETZ_BESTAETIGT=1', () => {
-    for (const wert of ['172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
-      const r = startScript(wert);
-      assert.notEqual(r.status, 0, `${wert}: Caddy startet ohne Bestätigung`);
-      assert.match(r.stderr, /PROXY_NETZ_BESTAETIGT=1/, wert);
-      assert.deepEqual([startScript(wert, true).status, startScript(wert, true).stdout], [0, wert]);
+  await t.test('a network spanning more than eight addresses only with PROXY_NETWORK_CONFIRMED=1', () => {
+    for (const value of ['172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
+      const r = startScript(value);
+      assert.notEqual(r.status, 0, `${value}: Caddy starts without confirmation`);
+      assert.match(r.stderr, /PROXY_NETWORK_CONFIRMED=1/, value);
+      assert.deepEqual([startScript(value, true).status, startScript(value, true).stdout], [0, value]);
     }
   });
   await t.test('keiner yields the empty list, addresses stay', () => {
@@ -126,8 +126,8 @@ async function startCaddy(t, appPort, upstream) {
   });
   let port = 0;
   const agent = new https.Agent({ keepAlive: false });
-  const anfrage = (methode, pfad, xff) =>
-    new Promise(fertig => {
+  const request = (method, path, xff) =>
+    new Promise(done => {
       const r = https.request(
         {
           host: '127.0.0.1',
@@ -135,33 +135,33 @@ async function startCaddy(t, appPort, upstream) {
           servername: 'nas.example.lan',
           rejectUnauthorized: false,
           agent,
-          method: methode,
-          path: pfad,
+          method: method,
+          path: path,
           headers: { host: 'nas.example.lan', ...(xff ? { 'x-forwarded-for': xff } : {}) },
         },
         res => {
-          let rumpf = '';
+          let body = '';
           res.on('data', d => {
-            rumpf += d;
+            body += d;
           });
-          res.on('end', () => fertig({ status: res.statusCode, rumpf }));
+          res.on('end', () => done({ status: res.statusCode, body }));
         },
       );
-      r.on('error', () => fertig({ status: null, rumpf: '' }));
-      r.end(methode === 'POST' ? '{}' : undefined);
+      r.on('error', () => done({ status: null, body: '' }));
+      r.end(method === 'POST' ? '{}' : undefined);
     });
-  let fehler = '';
-  let bereit = null;
-  for (let versuch = 1; bereit !== 200; versuch++) {
+  let error = '';
+  let ready = null;
+  for (let attempt = 1; ready !== 200; attempt++) {
     port = await freePort();
-    const umleitung = await freePort();
-    const datei = fs
+    const redirect = await freePort();
+    const file = fs
       .readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
       .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`)
-      .replace('http:// {', `http://:${umleitung} {`)
+      .replace('http:// {', `http://:${redirect} {`)
       .replaceAll('app:3000', `127.0.0.1:${appPort}`);
-    fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
-    fehler = '';
+    fs.writeFileSync(path.join(tmp, 'Caddyfile'), file);
+    error = '';
     caddy = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
       stdio: ['ignore', 'ignore', 'pipe'],
       env: {
@@ -176,22 +176,22 @@ async function startCaddy(t, appPort, upstream) {
       },
     });
     caddy.stderr.on('data', d => {
-      fehler = (fehler + d).slice(-4000);
+      error = (error + d).slice(-4000);
     });
-    const bis = Date.now() + 30_000;
-    while (bereit !== 200 && caddy.exitCode === null && Date.now() < bis) {
-      bereit = (await anfrage('GET', '/api/v1/health')).status;
-      if (bereit !== 200) await new Promise(r => setTimeout(r, 200));
+    const until = Date.now() + 30_000;
+    while (ready !== 200 && caddy.exitCode === null && Date.now() < until) {
+      ready = (await request('GET', '/api/v2/health')).status;
+      if (ready !== 200) await new Promise(r => setTimeout(r, 200));
     }
-    if (bereit === 200 || versuch >= 3 || !fehler.includes('address already in use')) break;
+    if (ready === 200 || attempt >= 3 || !error.includes('address already in use')) break;
     caddy.kill('SIGKILL');
   }
-  assert.equal(bereit, 200, `Caddy antwortet nicht (Exit ${caddy?.exitCode}): ${fehler.slice(-600)}`);
-  return anfrage;
+  assert.equal(ready, 200, `Caddy does not answer (exit ${caddy?.exitCode}): ${error.slice(-600)}`);
+  return request;
 }
 
 test('Caddy gives the app the client address behind an upstream proxy', {
-  skip: !CADDY && 'kein Caddy (CADDY_BIN)',
+  skip: !CADDY && 'no Caddy (CADDY_BIN)',
   timeout: 120_000,
 }, async t => {
   // The app returns which X-Forwarded-For arrives at it.
@@ -204,27 +204,27 @@ test('Caddy gives the app the client address behind an upstream proxy', {
   const appPort = /** @type {import('node:net').AddressInfo} */ (app.address()).port;
 
   await t.test('keiner: the address that reaches Caddy', async t2 => {
-    const anfrage = await startCaddy(t2, appPort, startScript('keiner').stdout);
-    assert.equal((await anfrage('GET', '/api/v1/sets', '198.51.100.7')).rumpf, '127.0.0.1');
-    assert.equal((await anfrage('POST', '/api/v1/auth/login', '198.51.100.7')).rumpf, '127.0.0.1');
+    const request = await startCaddy(t2, appPort, startScript('keiner').stdout);
+    assert.equal((await request('GET', '/api/v2/sets', '198.51.100.7')).body, '127.0.0.1');
+    assert.equal((await request('POST', '/api/v2/auth/login', '198.51.100.7')).body, '127.0.0.1');
   });
 
   await t.test('with VORGELAGERTER_PROXY: the client, read from the right', async t2 => {
-    const anfrage = await startCaddy(t2, appPort, startScript('10.9.9.9 127.0.0.1').stdout);
+    const request = await startCaddy(t2, appPort, startScript('10.9.9.9 127.0.0.1').stdout);
     assert.equal(
-      (await anfrage('GET', '/api/v1/sets', '6.6.6.6, 198.51.100.7')).rumpf,
+      (await request('GET', '/api/v2/sets', '6.6.6.6, 198.51.100.7')).body,
       '198.51.100.7',
-      'mit VORGELAGERTER_PROXY sieht die App den Client',
+      'with VORGELAGERTER_PROXY the app sees the client',
     );
     assert.equal(
-      (await anfrage('POST', '/api/v1/auth/login', '6.6.6.6, 198.51.100.7')).rumpf,
+      (await request('POST', '/api/v2/auth/login', '6.6.6.6, 198.51.100.7')).body,
       '198.51.100.7',
-      'mit VORGELAGERTER_PROXY sieht die App den Client auch auf den Anmeldewegen',
+      'with VORGELAGERTER_PROXY the app sees the client on the sign-in paths too',
     );
   });
 
   await t.test('another upstream proxy: again the address that reaches Caddy', async t2 => {
-    const anfrage = await startCaddy(t2, appPort, startScript('10.9.9.9').stdout);
-    assert.equal((await anfrage('GET', '/api/v1/sets', '198.51.100.7')).rumpf, '127.0.0.1');
+    const request = await startCaddy(t2, appPort, startScript('10.9.9.9').stdout);
+    assert.equal((await request('GET', '/api/v2/sets', '198.51.100.7')).body, '127.0.0.1');
   });
 });

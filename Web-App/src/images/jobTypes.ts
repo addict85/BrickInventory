@@ -1,24 +1,24 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../jobQueue';
+import { jobKind, type Login } from '../jobQueue';
 import { processImageDemand } from './imageDemandRun';
 import type { ImagesContext } from './context';
 
-const LEER = z.object({});
+const EMPTY = z.object({});
 
 declare module '../jobQueue/jobs' {
   interface JobPayloads {
-    bildbedarf: typeof LEER;
+    image_demand: typeof EMPTY;
   }
 }
 
-export function imagesJobTypes(k: ImagesContext): Anmeldung[] {
+export function imagesJobTypes(k: ImagesContext): Login[] {
   return [
-    auftragsart({
-      art: 'bildbedarf',
-      nutzlast: LEER,
-      ausfuehren: (_n, l) => processImageDemand(k, l),
-      exklusiv: true,
-      kontouebergreifend: 'Bildbedarf aller Bestände',
+    jobKind({
+      kind: 'image_demand',
+      payload: EMPTY,
+      run: (_n, l) => processImageDemand(k, l),
+      exclusive: true,
+      crossAccount: 'Bildbedarf aller Bestände',
     }),
   ];
 }

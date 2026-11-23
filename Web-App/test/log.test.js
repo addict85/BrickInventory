@@ -12,6 +12,8 @@
  *      JSON with time, level, message, request and context”
  *   D  in anfrageKennung() the filter removed (every string taken over)
  *      → red: “X-Request-Id: only harmless identifiers …”
+ *   E  (22.11.2026) oneLine() returns its text unchanged → red: “a line break stays in one
+ *      entry …”; format() left out → red: the same check (placeholders stay)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,14 +23,14 @@ const P = _req('src/infra/log.js');
 
 /** An output to read along, with an adjustable clock. */
 function transcript() {
-  const m = { out: [], err: [], uhr: Date.parse('2026-10-30T12:00:00Z') };
-  return { m, output: { out: z => m.out.push(z), err: z => m.err.push(z), jetzt: () => m.uhr } };
+  const m = { out: [], err: [], clock: Date.parse('2026-10-30T12:00:00Z') };
+  return { m, output: { out: z => m.out.push(z), err: z => m.err.push(z), now: () => m.clock } };
 }
 
 test('a line is JSON with time, level, message, request and context', t => {
   const { m, output } = transcript();
   t.after(P.installLog(output));
-  P.requestContext.run({ rid: 'ab12' }, () => console.warn('Preis fehlt für', '10294-1', { zustand: 'N' }));
+  P.requestContext.run({ rid: 'ab12' }, () => console.warn('Preis fehlt für', '10294-1', { condition: 'N' }));
   console.log('ohne Anfrage');
   console.error('kaputt', new Error('Verbindung weg'));
   assert.equal(m.err.length, 2);
@@ -38,76 +40,92 @@ test('a line is JSON with time, level, message, request and context', t => {
     {
       zeit: '2026-10-30T12:00:00.000Z',
       stufe: 'warn',
-      nachricht: 'Preis fehlt für 10294-1',
+      message: 'Preis fehlt für 10294-1',
       pid: 0,
       rid: 'ab12',
-      kontext: { zustand: 'N' },
+      kontext: { condition: 'N' },
     },
   );
   assert.equal(warn.pid, process.pid);
   const info = JSON.parse(m.out[0]);
   assert.equal(info.stufe, 'info');
   assert.equal(info.rid, undefined);
-  const fehler = JSON.parse(m.err[1]);
-  assert.equal(fehler.nachricht, 'kaputt Verbindung weg');
-  assert.equal(fehler.kontext.fehler.message, 'Verbindung weg');
-  assert.match(fehler.kontext.fehler.stack, /log\.test\.js/);
+  const error = JSON.parse(m.err[1]);
+  assert.equal(error.message, 'kaputt Verbindung weg');
+  assert.equal(error.kontext.error.message, 'Verbindung weg');
+  assert.match(error.kontext.error.stack, /log\.test\.js/);
+});
+
+test('a line break stays in one entry; placeholders take the values', async t => {
+  const { m, output } = transcript();
+  t.after(P.installLog(output));
+  const written = [];
+  P.logToDatabase({
+    query: async (sql, values) => {
+      if (sql.startsWith('INSERT')) written.push(values);
+    },
+  });
+  // As a request could send it: a forged second entry in the path.
+  console.warn('[route] %s %d:', 'GET /x\n[route] gefälscht\r\n', 404, { ok: 1 });
+  console.log('ohne Platzhalter', 'a\rb');
+  await P.emptyLog();
+  const json = JSON.parse(m.err[0]);
+  assert.equal(json.message, '[route] GET /x ⏎ [route] gefälscht ⏎  404:');
+  assert.deepEqual(json.kontext, { ok: 1 });
+  assert.equal(JSON.parse(m.out[0]).message, 'ohne Platzhalter ab');
+  for (const [, text] of written) assert.doesNotMatch(text, /[\r\n]/, text);
 });
 
 test('app_logs gets the lines in the previous text format', async t => {
   const { output } = transcript();
   t.after(P.installLog(output));
-  const geschrieben = [];
-  P.logInDieDatabase({
-    query: async (sql, werte) => {
-      if (sql.startsWith('INSERT')) geschrieben.push(werte);
+  const written = [];
+  P.logToDatabase({
+    query: async (sql, values) => {
+      if (sql.startsWith('INSERT')) written.push(values);
     },
   });
   P.requestContext.run({ rid: 'cd34' }, () => console.info('Set angelegt', { set: '42115-1' }));
   await P.emptyLog();
-  assert.equal(geschrieben.length, 1);
-  assert.equal(geschrieben[0][0], 'info');
-  assert.match(geschrieben[0][1], /^\[\d{1,4}\/cd34\] Set angelegt \{"set":"42115-1"\}$/);
+  assert.equal(written.length, 1);
+  assert.equal(written[0][0], 'info');
+  assert.match(written[0][1], /^\[\d{1,4}\/cd34\] Set angelegt \{"set":"42115-1"\}$/);
 });
 
 test('write errors: immediately, then collected per minute', async t => {
   const { m, output } = transcript();
   t.after(P.installLog(output));
-  P.logInDieDatabase({
+  P.logToDatabase({
     query: async () => {
       throw new Error('Datenbank weg');
     },
   });
-  const zeile = async n => {
+  const row = async n => {
     for (let i = 0; i < n; i++) console.log('Zeile', i);
     await P.emptyLog();
   };
-  await zeile(3);
-  m.uhr += 10_000;
-  await zeile(2);
-  m.uhr += 10_000;
-  await zeile(4);
-  const meldungen = () => m.err.map(z => JSON.parse(z)).filter(z => z.nachricht.startsWith('app_logs:'));
-  assert.equal(meldungen().length, 1, 'innerhalb der Minute nur die erste Meldung');
-  assert.equal(meldungen()[0].nachricht, 'app_logs: 3 Zeile(n) nicht geschrieben');
-  assert.equal(meldungen()[0].kontext.last_error, 'Datenbank weg');
-  m.uhr += 60_000;
+  await row(3);
+  m.clock += 10_000;
+  await row(2);
+  m.clock += 10_000;
+  await row(4);
+  const messages = () => m.err.map(z => JSON.parse(z)).filter(z => z.message.startsWith('app_logs:'));
+  assert.equal(messages().length, 1, 'within the minute only the first message');
+  assert.equal(messages()[0].message, 'app_logs: 3 Zeile(n) nicht geschrieben');
+  assert.equal(messages()[0].kontext.last_error, 'Datenbank weg');
+  m.clock += 60_000;
   P.reportWriteError();
-  assert.equal(meldungen().length, 2);
-  assert.equal(
-    meldungen()[1].nachricht,
-    'app_logs: 6 Zeile(n) nicht geschrieben',
-    'der Rest der Minute in einer Zeile',
-  );
+  assert.equal(messages().length, 2);
+  assert.equal(messages()[1].message, 'app_logs: 6 Zeile(n) nicht geschrieben', 'the rest of the minute in one line');
 });
 
 test('X-Request-Id: only harmless identifiers, otherwise an own one', () => {
-  for (const gut of ['ab12', '3f6c1a2e-6e1b-4c55-9a5d-1b2c3d4e5f60', 'proxy.1:2_x'])
-    assert.equal(P.anfrageKennung(gut), gut);
-  for (const boese of ['a\nwarn gefälscht', 'x'.repeat(65), '', 'a b', '"};', ['liste'], undefined]) {
-    const k = P.anfrageKennung(boese);
-    assert.notEqual(k, boese);
-    assert.match(k, /^[0-9a-z]{4,}$/, `eigene Kennung statt ${JSON.stringify(boese)}`);
+  for (const good of ['ab12', '3f6c1a2e-6e1b-4c55-9a5d-1b2c3d4e5f60', 'proxy.1:2_x'])
+    assert.equal(P.requestId(good), good);
+  for (const evil of ['a\nwarn gefälscht', 'x'.repeat(65), '', 'a b', '"};', ['liste'], undefined]) {
+    const k = P.requestId(evil);
+    assert.notEqual(k, evil);
+    assert.match(k, /^[0-9a-z]{4,}$/, `own ID instead of ${JSON.stringify(evil)}`);
   }
-  assert.notEqual(P.anfrageKennung(''), P.anfrageKennung(''), 'eigene Kennungen zählen weiter');
+  assert.notEqual(P.requestId(''), P.requestId(''), 'own IDs keep counting');
 });

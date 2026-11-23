@@ -20,50 +20,45 @@ const db = testData();
 const { newestInventory } = _req('src/catalog/rbInventory.js');
 
 test('an inventory is found under both spellings', { concurrency: 1 }, async t => {
-  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { runMigrate: false }))) return;
 
   // rb_inventories.id is not a SERIAL — the numbers come from the CSV.
   const idBlank = 900000 + (process.pid % 10000) * 2;
   const idWithV = idBlank + 1;
   const NR = `${9000000 + (process.pid % 100000)}`;
-  const aufraeumen = () =>
-    db.run('DELETE FROM rb_inventories WHERE id = ANY($1)', [[idBlank, idWithV]]).catch(() => {});
-  await aufraeumen();
+  const cleanUp = () => db.run('DELETE FROM rb_inventories WHERE id = ANY($1)', [[idBlank, idWithV]]).catch(() => {});
+  await cleanUp();
 
   try {
     // 1. Written BLANK: the database stores the number with a suffix.
-    //    Counter-check (30.10.2026): trigger rb_inventories_setnummer removed
+    //    Counter-check (30.10.2026): trigger rb_inventories_set_number removed
     //    → red (“is stored with a version suffix”: 9xxxxxx instead of 9xxxxxx-1).
     await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,1)', [idBlank, NR]);
     assert.equal(
       (await db.get('SELECT set_num FROM rb_inventories WHERE id = $1', [idBlank])).set_num,
       `${NR}-1`,
-      'Eine blank geschriebene Nummer wird mit Versionsanhang abgelegt',
+      'A number written bare is stored with a version suffix',
     );
-    assert.equal(
-      await newestInventory(NR),
-      idBlank,
-      'Eine unter der blanken Nummer abgelegte Zeile wird nicht gefunden',
-    );
+    assert.equal(await newestInventory(NR), idBlank, 'A row stored under the bare number is not found');
     assert.equal(
       await newestInventory(`${NR}-1`),
       idBlank,
-      'Auch mit Versionsanhang in der Eingabe muss die blanke Zeile gefunden werden',
+      'Even with a version suffix in the input the bare row must be found',
     );
 
     // 2. If both are present, the highest version wins — not the blank one.
     await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,2)', [idWithV, `${NR}-1`]);
     assert.equal(await newestInventory(NR), idWithV);
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.pool.end();
   }
 });
 
 test('the inventory lookup lives in only one place', () => {
   // Found, not enumerated.
-  const dateien = [];
-  const gehen = d => {
+  const files = [];
+  const go = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (
         e.name === 'node_modules' ||
@@ -74,16 +69,16 @@ test('the inventory lookup lives in only one place', () => {
       )
         continue;
       const abs = path.join(d, e.name);
-      if (e.isDirectory()) gehen(abs);
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+      if (e.isDirectory()) go(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) files.push(abs);
     }
   };
-  gehen(ROOT);
+  go(ROOT);
   // Self-proof: if the search found nothing, the rule would be vacuously true.
-  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(files.length >= 40, `Only ${files.length} source files found — the search no longer matches`);
 
-  const stellen = [];
-  for (const f of dateien) {
+  const placeList = [];
+  for (const f of files) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -92,14 +87,14 @@ test('the inventory lookup lives in only one place', () => {
     // partsCatalogEnrich (WHERE set_num = ANY(...), without LIMIT) answers
     // a different question and stays where it is.
     for (const m of code.matchAll(/FROM rb_inventories[\s\S]{0,200}?LIMIT 1/g))
-      stellen.push(path.relative(ROOT, f) + (m ? '' : ''));
+      placeList.push(path.relative(ROOT, f) + (m ? '' : ''));
   }
-  // Counter-check: the old SELECT in routes/api_v1/catalog.ts reinserted
+  // Counter-check: the old SELECT in routes/api/catalog.ts reinserted
   // → red.
   assert.deepEqual(
-    stellen,
+    placeList,
     ['src/catalog/repository/catalogMaster.ts'],
-    'Der Inventar-Nachschlag steht an mehr als einer Stelle — genau daran sind ' +
-      'vier verschiedene Kandidatenregeln entstanden',
+    'The inventory lookup is in more than one place — that is exactly how ' +
+      'four different candidate rules came about',
   );
 });

@@ -39,39 +39,42 @@ test('session periods in the real app', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { baueApp } = _req('startup/app.js');
-  const app = baueApp({
+  const { buildApp } = _req('startup/app.js');
+  const app = buildApp({
     pool: db.systemPool,
-    konfig: _req('src/infra/config.js').konfig(),
-    sitzungsGeheimnis: 'p'.repeat(48),
-    dienste: require('./helpers/sources').testServices(),
+    config: _req('src/infra/config.js').config(),
+    sessionSecret: 'p'.repeat(48),
+    services: require('./helpers/sources').testServices(),
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${srv.address().port}`;
-  const SESSION_IDLE_SEC = _req('src/account/sessionDeadline.js').sessionIdleSec(_req('src/infra/config.js').konfig());
+  const SESSION_IDLE_SEC = _req('src/account/sessionDeadline.js').sessionIdleSec(_req('src/infra/config.js').config());
 
-  const r = await fetch(`${basis}/api/v1/auth/login`, {
+  const r = await fetch(`${basis}/api/v2/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: basis },
-    body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+    body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
   });
   assert.equal(r.status, 200, await r.clone().text());
   const setCookie = r.headers.get('set-cookie') ?? '';
   const keks = setCookie.split(';')[0];
-  const wer = async () =>
-    (await (await fetch(`${basis}/api/v1/auth/me`, { headers: { cookie: keks } })).json()).loggedIn;
-  const zeile = () =>
+  const who = async () =>
+    (await (await fetch(`${basis}/api/v2/auth/me`, { headers: { cookie: keks } })).json()).loggedIn;
+  const row = () =>
     db.get(
       `SELECT sid, EXTRACT(EPOCH FROM (expire - NOW()))::int AS rest FROM user_sessions WHERE sess::jsonb->>'userId' = $1`,
       [String(uid)],
     );
 
   await t.test('the store gets the idle period', async () => {
-    assert.equal(await wer(), true, 'Vorbedingung: angemeldet');
-    const z = await zeile();
-    assert.ok(z, 'keine Sitzung in user_sessions');
-    assert.ok(Math.abs(z.rest - SESSION_IDLE_SEC) < 120, `Restlaufzeit ${z.rest} s statt ${SESSION_IDLE_SEC} s`);
+    assert.equal(await who(), true, 'precondition: logged in');
+    const z = await row();
+    assert.ok(z, 'no session in user_sessions');
+    assert.ok(
+      Math.abs(z.rest - SESSION_IDLE_SEC) < 120,
+      `remaining lifetime ${z.rest} s instead of ${SESSION_IDLE_SEC} s`,
+    );
   });
 
   await t.test('the cookie does not survive the browser', () => {
@@ -79,10 +82,10 @@ test('session periods in the real app', { concurrency: 1 }, async t => {
   });
 
   await t.test('after the maximum duration nobody is logged in anymore', async () => {
-    const { sid } = await zeile();
+    const { sid } = await row();
     await db.run(`UPDATE user_sessions SET sess = jsonb_set(sess::jsonb, '{angemeldetAm}', '1')::json WHERE sid = $1`, [
       sid,
     ]);
-    assert.equal(await wer(), false);
+    assert.equal(await who(), false);
   });
 });

@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import type { Spalten } from '../../../db/rows';
+import type { Columns } from '../../../db/rows';
 import type { CatalogReadContract } from '../readContract';
 
 export async function setsWithMissingCatalogImages(db: DbInterface): Promise<string[]> {
@@ -21,7 +21,7 @@ export async function manualPartsWithoutImage(
   return db.all<{ part_number: string; color_id: number; image_url: string }>(
     `SELECT DISTINCT pcc.part_number, pcc.color_id, pcc.image_url
        FROM part_color_catalog pcc
-       JOIN ${l.teilBestand()} p ON p.part_number = pcc.part_number
+       JOIN ${l.partHoldings()} p ON p.part_number = pcc.part_number
                    AND p.color_id    = pcc.color_id
                    AND p.source      = 'manual'
       WHERE pcc.image_url IS NOT NULL AND pcc.image_local IS NULL`,
@@ -35,7 +35,7 @@ export async function minifigsWithoutImage(
   return db.all<{ fig_number: string; image_url: string }>(
     `SELECT mc.fig_number, mc.image_url FROM minifigs_catalog mc
       WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
-        AND EXISTS (SELECT 1 FROM ${l.figurBestand()} m WHERE m.fig_number = mc.fig_number)
+        AND EXISTS (SELECT 1 FROM ${l.figHoldings()} m WHERE m.fig_number = mc.fig_number)
       ORDER BY mc.fig_number`,
   );
 }
@@ -46,16 +46,16 @@ export async function minifigsWithoutImage(
 export async function setImagesWithoutFile(
   db: DbInterface,
   l: CatalogReadContract,
-  grenze = 500,
+  limit = 500,
 ): Promise<{ set_number: string; image_url: string }[]> {
   return db.all<{ set_number: string; image_url: string }>(
     `SELECT c.set_number, c.image_url FROM set_catalog c
       WHERE c.image_local IS NULL AND c.image_url IS NOT NULL
-        AND ${l.setZaehlt('c.set_number')}
+        AND ${l.setCounts('c.set_number')}
         AND NOT EXISTS (SELECT 1 FROM image_misses m WHERE m.cache_key = 'set:' || c.set_number
                           AND m.checked_at > NOW() - INTERVAL '7 days')
       ORDER BY c.set_number LIMIT $1`,
-    [grenze],
+    [limit],
   );
 }
 
@@ -64,8 +64,8 @@ export async function setImagesWithoutFile(
 export async function rememberSetImageLocal(
   db: DbInterface,
   setNumber: string,
-  lokal: string,
-  quelle: string | null = null,
+  local: string,
+  source: string | null = null,
 ): Promise<void> {
   await db.run(
     `INSERT INTO set_catalog (set_number, image_local, image_url)
@@ -75,7 +75,7 @@ export async function rememberSetImageLocal(
        image_url = COALESCE(set_catalog.image_url, EXCLUDED.image_url), updated_at = NOW()
      WHERE set_catalog.image_local IS NULL
         OR (set_catalog.image_url IS NULL AND EXCLUDED.image_url IS NOT NULL)`,
-    [lokal, setNumber, quelle],
+    [local, setNumber, source],
   );
 }
 
@@ -95,23 +95,23 @@ export interface ImageStatus {
 
 export async function partImages(
   db: DbInterface,
-  teile: string[],
+  parts: string[],
 ): Promise<(ImageStatus & { part_number: string; color_id: number })[]> {
-  return db.all<Spalten<'part_color_catalog', 'part_number' | 'color_id' | 'image_local' | 'image_url'>>(
+  return db.all<Columns<'part_color_catalog', 'part_number' | 'color_id' | 'image_local' | 'image_url'>>(
     `SELECT part_number, color_id, image_local, image_url
        FROM part_color_catalog WHERE part_number = ANY($1)`,
-    [teile],
+    [parts],
   );
 }
 
 export async function minifigImages(
   db: DbInterface,
-  figuren: string[],
+  minifigs: string[],
 ): Promise<(ImageStatus & { fig_number: string })[]> {
-  return db.all<Spalten<'minifigs_catalog', 'fig_number' | 'image_local' | 'image_url'>>(
+  return db.all<Columns<'minifigs_catalog', 'fig_number' | 'image_local' | 'image_url'>>(
     `SELECT fig_number, image_local, image_url
        FROM minifigs_catalog WHERE fig_number = ANY($1)`,
-    [figuren],
+    [minifigs],
   );
 }
 
@@ -143,10 +143,10 @@ export async function fillSetGaps(
 
 export async function setsWithoutInstructionFetch(db: DbInterface, l: CatalogReadContract): Promise<string[]> {
   const rows = await db.all<{ set_number: string }>(
-    `SELECT DISTINCT s.set_number FROM ${l.setBestand()} s
+    `SELECT DISTINCT s.set_number FROM ${l.setHoldings()} s
      WHERE NOT EXISTS (SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number)
-       AND NOT EXISTS (SELECT 1 FROM jobs a WHERE a.dedupe_key = 'anleitung:' || s.set_number
-                         AND a.status IN ('offen', 'laeuft', 'erledigt'))`,
+       AND NOT EXISTS (SELECT 1 FROM jobs a WHERE a.dedupe_key = 'instructions:' || s.set_number
+                         AND a.status IN ('pending', 'running', 'done'))`,
   );
   return rows.map(r => r.set_number);
 }
@@ -163,8 +163,8 @@ export function missingCatalogImages(db: DbInterface, setNumbers: string[]) {
 }
 
 /** The names of the sets from the Rebrickable catalog. */
-export function setNames(db: DbInterface, nummern: string[]) {
+export function setNames(db: DbInterface, numbers: string[]) {
   return db.all<{ set_num: string; name: string | null }>('SELECT set_num, name FROM rb_sets WHERE set_num = ANY($1)', [
-    nummern,
+    numbers,
   ]);
 }

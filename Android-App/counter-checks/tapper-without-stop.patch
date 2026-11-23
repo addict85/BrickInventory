@@ -1,0 +1,16 @@
+Gegenprobe: der gemeinsame Tipper (tapToFocus) lässt die Kamera nach Sekunden zurückfallen
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.CameraSetupTest
+Rot: a tap focuses once at the spot and keeps it
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CameraSetup.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CameraSetup.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CameraSetup.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CameraSetup.kt
+@@ -139,7 +139,6 @@
+             val point = previewView.meteringPointFactory.createPoint(ev.x, ev.y)
+             val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
+                 .addPoint(point, FocusMeteringAction.FLAG_AE)
+-                .disableAutoCancel()
+                 .build()
+             // Camera not ready yet or already gone: the tap has no effect.
+             runCatching { control()?.startFocusAndMetering(action) }

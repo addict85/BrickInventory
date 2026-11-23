@@ -34,9 +34,9 @@ const db = testData();
 const { touchThrottle, touchMs } = _req('src/account/sessionTouch.js');
 const { sessionIdleMs, sessionIdleSec, IDLE_DEFAULT_MIN } = _req('src/account/sessionDeadline.js');
 // The default as handed-in configuration, as buildServices hands it in.
-const VORGABE = { sitzungLeerlaufMin: IDLE_DEFAULT_MIN };
-const SESSION_IDLE_MS = sessionIdleMs(VORGABE);
-const SESSION_IDLE_SEC = sessionIdleSec(VORGABE);
+const DEFAULT = { sessionIdleMin: IDLE_DEFAULT_MIN };
+const SESSION_IDLE_MS = sessionIdleMs(DEFAULT);
+const SESSION_IDLE_SEC = sessionIdleSec(DEFAULT);
 const TOUCH_MS = touchMs(SESSION_IDLE_MS);
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -52,17 +52,17 @@ const UID = 990717;
  * @param throttleMs period of the throttling; `null` = do not throttle at all.
  */
 async function startServer(ttlSec, throttleMs) {
-  const speicher = new pgSession({
+  const storage = new pgSession({
     pool: db.pool,
     tableName: 'user_sessions',
     createTableIfMissing: false,
     ...(ttlSec === null ? {} : { ttl: ttlSec }),
   });
-  if (throttleMs !== null) touchThrottle(speicher, throttleMs);
+  if (throttleMs !== null) touchThrottle(storage, throttleMs);
   const app = express();
   app.use(
     session({
-      store: speicher,
+      store: storage,
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
@@ -80,13 +80,13 @@ async function startServer(ttlSec, throttleMs) {
   return { srv, base: `http://localhost:${srv.address().port}` };
 }
 
-const anmelden = async base => {
+const signIn = async base => {
   const r = await fetch(base + '/anmelden');
   await r.text(); // the session only stands in the store after the last byte
   return (r.headers.get('set-cookie') || '').split(';')[0];
 };
-const wer = async (base, keks) => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).uid;
-const { warte: sleep } = require('./helpers/time');
+const who = async (base, keks) => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).uid;
+const { sleep } = require('./helpers/time');
 
 /**
  * Cleanup — and that in `after`, not at the end of a case.
@@ -107,19 +107,19 @@ test('without activity the session expires', async t => {
   // and the first read, and the precondition toppled.
   const { srv, base } = await startServer(5, null);
   try {
-    const keks = await anmelden(base);
+    const keks = await signIn(base);
     assert.equal(
-      await wer(base, keks),
+      await who(base, keks),
       UID,
-      'direkt nach dem Anmelden muss die Sitzung gelten — sonst misst der Rest nichts',
+      'right after logging in the session must be valid — otherwise the rest measures nothing',
     );
 
     await sleep(7000); // 5 s period, 2 s reserve — see header
     assert.equal(
-      await wer(base, keks),
+      await who(base, keks),
       null,
-      'nach der Leerlauf-Frist darf die Sitzung nicht mehr gelten — ' +
-        'fehlt dem Sitzungsspeicher das `ttl`, gilt wieder der Tag von connect-pg-simple',
+      'after the idle period the session must no longer be valid — ' +
+        'if the session store lacks the `ttl`, the day of connect-pg-simple applies again',
     );
   } finally {
     await new Promise(r => srv.close(r));
@@ -138,16 +138,16 @@ test('with activity the session stays', async t => {
   // this case turns red — measured, see header.
   const { srv, base } = await startServer(5, 1000);
   try {
-    const keks = await anmelden(base);
+    const keks = await signIn(base);
     // Work BEYOND the period: 20 requests at 400 ms = 8 s with a 5 s
     // period. Without carrying it along the session would be dead after about request 13.
     for (let i = 0; i < 20; i++) {
       await sleep(400);
       assert.equal(
-        await wer(base, keks),
+        await who(base, keks),
         UID,
-        `die tätige Sitzung ist bei Anfrage ${i + 1} von 20 gestorben — ` +
-          'der Ablauf wird nicht nachgeführt (drosselt die Berührung länger als die Frist?)',
+        `the active session died at request ${i + 1} of 20 — ` +
+          'the expiry is not extended (does the touch throttle longer than the period?)',
       );
     }
   } finally {
@@ -160,9 +160,9 @@ test('the throttling is shorter than the period', () => {
   // user would be thrown out instead of the idle one.
   assert.ok(
     TOUCH_MS * 2 <= SESSION_IDLE_MS,
-    `Die Drosselung (${TOUCH_MS} ms) ist nicht deutlich kürzer als die ` +
-      `Leerlauf-Frist (${SESSION_IDLE_MS} ms) — dann wird der Ablauf nicht ` +
-      'rechtzeitig nachgeführt und eine tätige Sitzung stirbt mitten im Betrieb.',
+    `The throttle (${TOUCH_MS} ms) is not clearly shorter than the ` +
+      `idle period (${SESSION_IDLE_MS} ms) — then the expiry is not ` +
+      'extended in time and an active session dies in the middle of use.',
   );
 
   // And the default is the one that stands in the README.
@@ -173,7 +173,7 @@ test('the throttling is shorter than the period', () => {
   assert.equal(
     TOUCH_MS,
     5 * 60 * 1000,
-    'Bei der Vorgabe von vier Stunden sollen es weiter fünf Minuten sein — ' +
-      'sonst schreibt die Webapp wieder mehr als nötig',
+    'With the default of four hours it should stay five minutes — ' +
+      'otherwise the web app writes more than necessary again',
   );
 });

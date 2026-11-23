@@ -1,5 +1,7 @@
 /**
  * The STOCK of storage locations — against a real database.
+ *
+ * Counter-check: renameStorage() (src/inventory/storageLocation.ts) no longer writes the name → red “renaming takes the assignments along”.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -9,7 +11,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
@@ -25,7 +27,7 @@ async function seed() {
   } finally {
     client.release();
   }
-  for (const name of ['grandparent', 'enkel']) {
+  for (const name of ['grandparent', 'grandchild']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
@@ -43,7 +45,7 @@ async function dbReachable() {
 test('storage location stock against a real database', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    keineDb(t);
+    noDb(t);
     return;
   }
   await seed();
@@ -53,57 +55,57 @@ test('storage location stock against a real database', { concurrency: 1 }, async
   };
 
   await t.test('create, and creating the same twice is no second entry', async () => {
-    const a = await L.putLocationAn(U.grandparent, 'Regal A');
-    assert.equal(a.war_neu, true);
-    assert.equal(a.ort.name, 'Regal A');
+    const a = await L.createStorage(U.grandparent, 'Regal A');
+    assert.equal(a.was_new, true);
+    assert.equal(a.location.name, 'Regal A');
 
     // Upper/lower case does NOT decide: „Regal A" and „regal a" are
     // the same shelf. Two entries for it would be a trap in the
     // selection list, not a choice.
-    const b = await L.putLocationAn(U.grandparent, 'regal a');
-    assert.equal(b.war_neu, false, '„regal a" wurde als zweiter Ort angelegt');
-    assert.equal(b.ort.id, a.ort.id);
+    const b = await L.createStorage(U.grandparent, 'regal a');
+    assert.equal(b.was_new, false, '„regal a“ was created as a second location');
+    assert.equal(b.location.id, a.location.id);
     // And the original name stays — the first spelling wins.
-    assert.equal(b.ort.name, 'Regal A');
+    assert.equal(b.location.name, 'Regal A');
   });
 
   await t.test('empty and too long are rejected, not bent into shape', async () => {
-    for (const roh of ['', '   ', null, undefined]) {
+    for (const raw of ['', '   ', null, undefined]) {
       await assert.rejects(
-        () => L.putLocationAn(U.grandparent, roh),
-        (/** @type {any} */ e) => String(e.code) === 'lagerort_leer',
-        `${JSON.stringify(roh)} wurde angenommen`,
+        () => L.createStorage(U.grandparent, raw),
+        (/** @type {any} */ e) => String(e.code) === 'storage_empty',
+        `${JSON.stringify(raw)} was accepted`,
       );
     }
     await assert.rejects(
-      () => L.putLocationAn(U.grandparent, 'x'.repeat(61)),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_zu_lang',
+      () => L.createStorage(U.grandparent, 'x'.repeat(61)),
+      (/** @type {any} */ e) => String(e.code) === 'storage_too_long',
     );
     // Exactly on the limit is allowed — otherwise the number in the
     // error message („höchstens 60") would be a lie.
-    const rand = await L.putLocationAn(U.grandparent, 'y'.repeat(60));
-    assert.equal(rand.war_neu, true);
-    await db.run('DELETE FROM storage_locations WHERE id = $1', [rand.ort.id]);
+    const rand = await L.createStorage(U.grandparent, 'y'.repeat(60));
+    assert.equal(rand.was_new, true);
+    await db.run('DELETE FROM storage_locations WHERE id = $1', [rand.location.id]);
   });
 
   await t.test('every account has its own stock', async () => {
     // A storage location is a shelf in a flat. The grandfather has other
     // shelves than the grandchild, even if he may see the grandchild's sets.
-    await L.putLocationAn(U.enkel, 'Kinderzimmer');
+    await L.createStorage(U.grandchild, 'Kinderzimmer');
     assert.deepEqual(
       (await L.locationsOf([U.grandparent])).map(o => o.name),
       ['Regal A'],
     );
     assert.deepEqual(
-      (await L.locationsOf([U.enkel])).map(o => o.name),
+      (await L.locationsOf([U.grandchild])).map(o => o.name),
       ['Kinderzimmer'],
     );
     // And the grandfather can query both lists together — exactly that is what
     // the selection field does for a set that belongs to both.
     assert.deepEqual(
-      (await L.locationsOf([U.grandparent, U.enkel])).map(o => o.name),
+      (await L.locationsOf([U.grandparent, U.grandchild])).map(o => o.name),
       ['Kinderzimmer', 'Regal A'],
-      'sortiert ohne Rücksicht auf Gross-/Kleinschreibung',
+      'sorted without regard to upper/lower case',
     );
   });
 
@@ -111,29 +113,25 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     // Marco's „man kann auch gleich neue Auswahlwerte erfassen". Without that
     // the place would stand on the set but be missing in the list it is supposed
     // to be chosen from next time.
-    await holdsSet(db, U.enkel, '10179-1', 1);
-    assert.equal(await L.setLocation('set', [U.enkel], ['10179-1'], 'Unterm Bett'), 1);
+    await holdsSet(db, U.grandchild, '10179-1', 1);
+    assert.equal(await L.setLocation('set', [U.grandchild], ['10179-1'], 'Unterm Bett'), 1);
     assert.ok(
-      (await L.locationsOf([U.enkel])).some(o => o.name === 'Unterm Bett'),
-      'Der frisch getippte Ort fehlt im Vorrat',
+      (await L.locationsOf([U.grandchild])).some(o => o.name === 'Unterm Bett'),
+      'The freshly typed location is missing in the stock',
     );
   });
 
   await t.test('a place that hits no row leaves no entry', async () => {
     // No write permission, wrong set number: then nothing should remain in the
     // stock either. Otherwise the list would collect names from failed attempts.
-    const vorher = (await L.locationsOf([U.grandparent])).length;
+    const prior = (await L.locationsOf([U.grandparent])).length;
     assert.equal(await L.setLocation('set', [U.grandparent], ['99999-1'], 'Geisterkiste'), 0);
-    assert.equal(
-      (await L.locationsOf([U.grandparent])).length,
-      vorher,
-      'Ein Fehlversuch hat einen Ort im Vorrat hinterlassen',
-    );
+    assert.equal((await L.locationsOf([U.grandparent])).length, prior, 'A failed attempt left a location in the stock');
   });
 
   await t.test('renaming takes the assignments along', async () => {
-    const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'Unterm Bett');
-    await L.benenneOrtUm(U.enkel, ort.id, 'Kiste 3');
+    const location = (await L.locationsOf([U.grandchild])).find(o => o.name === 'Unterm Bett');
+    await L.renameStorage(U.grandchild, location.id, 'Kiste 3');
     // The statement is the same as before, the path there a different one: until
     // migration 0031 benenneOrtUm() wrote the new name into three tables,
     // and exactly that could miss a spelling. Now the row carries
@@ -145,60 +143,60 @@ test('storage location stock against a real database', { concurrency: 1 }, async
         WHERE t.set_number = $1`,
       ['10179-1'],
     );
-    assert.equal(amSet.storage, 'Kiste 3', 'Das Set steht noch im alten Ort — das Umbenennen war ein Verlieren');
-    assert.ok((await L.locationsOf([U.enkel])).some(o => o.name === 'Kiste 3'));
+    assert.equal(amSet.storage, 'Kiste 3', 'The set is still in the old location — the rename was a loss');
+    assert.ok((await L.locationsOf([U.grandchild])).some(o => o.name === 'Kiste 3'));
   });
 
   await t.test('renaming to a taken name is rejected', async () => {
-    const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'Kiste 3');
+    const location = (await L.locationsOf([U.grandchild])).find(o => o.name === 'Kiste 3');
     await assert.rejects(
-      () => L.benenneOrtUm(U.enkel, ort.id, 'kinderzimmer'),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_doppelt',
-      'Zwei Orte mit demselben Namen wären eine Falle in der Auswahlliste',
+      () => L.renameStorage(U.grandchild, location.id, 'kinderzimmer'),
+      (/** @type {any} */ e) => String(e.code) === 'storage_duplicate',
+      'Two locations with the same name would be a trap in the selection list',
     );
     // Its own name onto itself is fine, on the other hand — otherwise
     // „Kiste 3" could not be corrected to „KISTE 3".
-    await L.benenneOrtUm(U.enkel, ort.id, 'KISTE 3');
-    assert.ok((await L.locationsOf([U.enkel])).some(o => o.name === 'KISTE 3'));
+    await L.renameStorage(U.grandchild, location.id, 'KISTE 3');
+    assert.ok((await L.locationsOf([U.grandchild])).some(o => o.name === 'KISTE 3'));
   });
 
   await t.test('a foreign account cannot rename anything', async () => {
-    const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'KISTE 3');
+    const location = (await L.locationsOf([U.grandchild])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
-      () => L.benenneOrtUm(U.grandparent, ort.id, 'Opas Keller'),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
+      () => L.renameStorage(U.grandparent, location.id, 'Opas Keller'),
+      (/** @type {any} */ e) => String(e.code) === 'storage_unknown',
     );
     await assert.rejects(
-      () => L.loescheOrt(U.grandparent, ort.id),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
+      () => L.deleteStorage(U.grandparent, location.id),
+      (/** @type {any} */ e) => String(e.code) === 'storage_unknown',
     );
   });
 
   await t.test('deleting only works for an empty place', async () => {
-    const belegt = (await L.locationsOf([U.enkel])).find(o => o.name === 'KISTE 3');
+    const occupied = (await L.locationsOf([U.grandchild])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
-      () => L.loescheOrt(U.enkel, belegt.id),
-      (/** @type {any} */ e) => String(e.code) === 'lagerort_in_benutzung',
-      'Ein belegter Ort liess sich löschen — die Zuordnung wäre ohne Weg zurück weg',
+      () => L.deleteStorage(U.grandchild, occupied.id),
+      (/** @type {any} */ e) => String(e.code) === 'storage_in_use',
+      'An occupied location could be deleted — the assignment would be gone with no way back',
     );
 
-    const leer = (await L.locationsOf([U.enkel])).find(o => o.name === 'Kinderzimmer');
-    await L.loescheOrt(U.enkel, leer.id);
-    assert.ok(!(await L.locationsOf([U.enkel])).some(o => o.name === 'Kinderzimmer'));
+    const empty = (await L.locationsOf([U.grandchild])).find(o => o.name === 'Kinderzimmer');
+    await L.deleteStorage(U.grandchild, empty.id);
+    assert.ok(!(await L.locationsOf([U.grandchild])).some(o => o.name === 'Kinderzimmer'));
 
     // And after clearing it out the occupied one goes too.
     await db.run('UPDATE sets SET storage_id = NULL WHERE set_number = $1', ['10179-1']);
-    await L.loescheOrt(U.enkel, belegt.id);
-    assert.deepEqual(await L.locationsOf([U.enkel]), []);
+    await L.deleteStorage(U.grandchild, occupied.id);
+    assert.deepEqual(await L.locationsOf([U.grandchild]), []);
   });
 
   await t.test('an assignment without a place in the stock is no longer possible', async () => {
     // What stood here before, and why it is gone
-    const frei = (await db.get('SELECT COALESCE(MAX(id),0) + 1000 AS frei FROM storage_locations')).frei;
+    const free = (await db.get('SELECT COALESCE(MAX(id),0) + 1000 AS free FROM storage_locations')).free;
     await assert.rejects(
-      () => db.run('UPDATE sets SET storage_id = $1 WHERE set_number = $2', [frei, '10179-1']),
+      () => db.run('UPDATE sets SET storage_id = $1 WHERE set_number = $2', [free, '10179-1']),
       (/** @type {any} */ e) => /foreign key|verletzt|violates/i.test(String(e?.message || e)),
-      'Ein Set liess sich auf einen Ort setzen, den es im Vorrat nicht gibt',
+      'A set could be put in a location that does not exist in the stock',
     );
   });
 

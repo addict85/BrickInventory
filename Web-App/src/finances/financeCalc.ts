@@ -11,11 +11,11 @@ export {
   resolveBlPartNumber,
   fetchPartPrice,
   fetchMinifigPrice,
-  ladeTeilepreiseVor,
-  ladeFigurenpreiseVor,
-  farbkarte,
+  preloadPartPrices,
+  preloadMinifigPrices,
+  colorChart,
   loadBlNumbersBefore,
-  setState,
+  conditionOfSet as setState,
 } from './calculation/prices';
 
 export {

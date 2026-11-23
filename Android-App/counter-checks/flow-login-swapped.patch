@@ -1,0 +1,17 @@
+Gegenprobe: Der Anmeldeknopf reicht Passwort und Name vertauscht weiter
+Modul: app
+Test: ch.brickinventoryapp.app.FlowTest
+Rot: sign-in passes on name and password
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginFields.kt
+@@ -58,7 +58,7 @@
+     val logIn = {
+         tried = true
+         if (input.username.isNotBlank() && input.password.isNotBlank() && (!codeNeeded || input.code.isNotBlank()))
+-            actions.login(input.username, input.password, input.code.takeIf { codeNeeded })
++            actions.login(input.password, input.username, input.code.takeIf { codeNeeded })
+     }
+ 
+     CredentialFields(input, onInput, codeNeeded, tried, focusMgr, logIn)

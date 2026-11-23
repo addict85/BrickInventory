@@ -1,6 +1,6 @@
 /** Only this repository encrypts and decrypts number and PIN: even the number unlocks it. */
 import type { DbInterface } from '../../../db/database';
-import { encrypt, decrypt, searchValue, kontext, umschluesseln, readOldValue } from '../../infra/secret';
+import { encrypt, decrypt, searchValue, context, rekey, readOldValue } from '../../infra/secret';
 
 export interface VoucherRow {
   id: number;
@@ -11,9 +11,9 @@ export interface VoucherRow {
   pdf_path: string | null;
   created_at: string | Date;
   updated_at: string | Date;
-  guthaben_geprueft_am: string | Date | null;
+  balance_checked_at: string | Date | null;
 }
-/** currency null: the database sets the account's currency (trigger vouchers_waehrung). */
+/** currency null: the database sets the account's currency (trigger vouchers_currency). */
 export interface VoucherFields {
   number: string;
   pin: string | null;
@@ -22,13 +22,13 @@ export interface VoucherFields {
 }
 
 const COLUMNS =
-  'id, number, pin, amount, currency, pdf_path, created_at, updated_at, balance_checked_at AS guthaben_geprueft_am';
+  'id, number, pin, amount, currency, pdf_path, created_at, updated_at, balance_checked_at AS balance_checked_at';
 
 /** Account and row as context: a number or PIN copied into another voucher stays unreadable.
  * NOTE: these tags are part of the encryption AAD / HMAC input for data already stored —
  * they must not change, even though the code around them does. */
-export const numberContext = (uid: number, id: number) => kontext('vouchers.number', uid, id);
-export const pinContext = (uid: number, id: number) => kontext('vouchers.pin', uid, id);
+export const numberContext = (uid: number, id: number) => context('vouchers.number', uid, id);
+export const pinContext = (uid: number, id: number) => context('vouchers.pin', uid, id);
 export const numberSearch = (uid: number, number: string) => searchValue('gutschein-nummer', `${uid}:${number}`);
 
 /** Account in the HMAC: the same card in two accounts should not be recognizable as the same. */
@@ -59,23 +59,29 @@ export async function vouchersOfAccount(
   order: 'neueste' | 'aelteste' = 'neueste',
 ): Promise<VoucherRow[]> {
   const row = order === 'neueste' ? 'created_at DESC, id DESC' : 'created_at, id';
-  return (await db.all<VoucherRow>(`SELECT ${COLUMNS} FROM vouchers WHERE user_id = $1 ORDER BY ${row}`, [uid])).map(
-    z => readable(uid, z),
-  );
+  return (
+    await db.all<VoucherRow>(
+      `SELECT ${COLUMNS} FROM vouchers WHERE user_id = $1 AND deleted_at IS NULL ORDER BY ${row}`,
+      [uid],
+    )
+  ).map(z => readable(uid, z));
 }
 
 export async function voucher(db: DbInterface, uid: number, id: number): Promise<VoucherRow | undefined> {
-  const z = await db.get<VoucherRow>(`SELECT ${COLUMNS} FROM vouchers WHERE id = $1 AND user_id = $2`, [id, uid]);
+  const z = await db.get<VoucherRow>(
+    `SELECT ${COLUMNS} FROM vouchers WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
+    [id, uid],
+  );
   return z && readable(uid, z);
 }
 
 /** Locks the row until the end of the transaction: whoever reads, merges and writes
  * should not overwrite a concurrent change. */
 export async function lockedVoucher(db: DbInterface, uid: number, id: number): Promise<VoucherRow | undefined> {
-  const z = await db.get<VoucherRow>(`SELECT ${COLUMNS} FROM vouchers WHERE id = $1 AND user_id = $2 FOR UPDATE`, [
-    id,
-    uid,
-  ]);
+  const z = await db.get<VoucherRow>(
+    `SELECT ${COLUMNS} FROM vouchers WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL FOR UPDATE`,
+    [id, uid],
+  );
   return z && readable(uid, z);
 }
 
@@ -85,7 +91,7 @@ export async function insertVoucher(db: DbInterface, uid: number, w: VoucherFiel
   const n = numberColumns(uid, id, w.number);
   const z = await db.get<VoucherRow>(
     `INSERT INTO vouchers (id, user_id, number, number_search, pin, amount, currency) VALUES ($7,$1,$2,$3,$4,$5,$6)
-     ON CONFLICT (user_id, number_search) DO NOTHING RETURNING ${COLUMNS}`,
+     ON CONFLICT (user_id, number_search) WHERE deleted_at IS NULL DO NOTHING RETURNING ${COLUMNS}`,
     [uid, n.number, n.number_search, encrypt(w.pin, pinContext(uid, id)), w.amount, w.currency, id],
   );
   return z && readable(uid, z);
@@ -95,17 +101,17 @@ export async function insertVoucher(db: DbInterface, uid: number, w: VoucherFiel
  * @returns whether the voucher was newly created */
 export async function replaceVoucher(db: DbInterface, uid: number, w: VoucherFields): Promise<boolean> {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const da = await db.get<{ id: number }>('SELECT id FROM vouchers WHERE user_id = $1 AND number_search = $2', [
-      uid,
-      numberSearch(uid, w.number),
-    ]);
+    const da = await db.get<{ id: number }>(
+      'SELECT id FROM vouchers WHERE user_id = $1 AND number_search = $2 AND deleted_at IS NULL',
+      [uid, numberSearch(uid, w.number)],
+    );
     if (!da) {
       if (await insertVoucher(db, uid, w)) return true;
       continue;
     }
     const r = await db.run(
       `UPDATE vouchers SET pin = COALESCE($1, pin), amount = $2, currency = $3, updated_at = NOW()
-      WHERE id = $4 AND user_id = $5`,
+      WHERE id = $4 AND user_id = $5 AND deleted_at IS NULL`,
       [encrypt(w.pin, pinContext(uid, da.id)), w.amount, w.currency, da.id, uid],
     );
     if (r.changes) return false;
@@ -122,7 +128,7 @@ export async function updateVoucher(
   const n = numberColumns(uid, id, w.number);
   const z = await db.get<VoucherRow>(
     `UPDATE vouchers SET number=$1, number_search=$2, pin=$3, amount=$4, currency=$5, updated_at=NOW()
-      WHERE id=$6 AND user_id=$7 RETURNING ${COLUMNS}`,
+      WHERE id=$6 AND user_id=$7 AND deleted_at IS NULL RETURNING ${COLUMNS}`,
     [n.number, n.number_search, encrypt(w.pin, pinContext(uid, id)), w.amount, w.currency, id, uid],
   );
   return z && readable(uid, z);
@@ -136,13 +142,38 @@ export async function rememberVoucherPdf(db: DbInterface, uid: number, id: numbe
   ]);
 }
 
-/** undefined if the row did not exist. */
-export async function removeVoucher(db: DbInterface, uid: number, id: number): Promise<string | null | undefined> {
-  const z = await db.get<{ pdf_path: string | null }>(
-    'DELETE FROM vouchers WHERE id = $1 AND user_id = $2 RETURNING pdf_path',
-    [id, uid],
+/** Only marks the row: number, PIN and PDF stay until the cleanup, so that undo restores them.
+ * @returns whether a live row was there */
+export async function markVoucherDeleted(db: DbInterface, uid: number, id: number, nowMs: number): Promise<boolean> {
+  const r = await db.run(
+    'UPDATE vouchers SET deleted_at = to_timestamp($3 / 1000.0) WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL',
+    [id, uid, nowMs],
   );
-  return z ? z.pdf_path : undefined;
+  return r.changes > 0;
+}
+
+/** Only a row deleted since `sinceMs`: past the window the cleanup may already be removing it. */
+export async function restoreVoucherRow(
+  db: DbInterface,
+  uid: number,
+  id: number,
+  sinceMs: number,
+): Promise<VoucherRow | undefined> {
+  const z = await db.get<VoucherRow>(
+    `UPDATE vouchers SET deleted_at = NULL
+      WHERE id = $1 AND user_id = $2 AND deleted_at >= to_timestamp($3 / 1000.0) RETURNING ${COLUMNS}`,
+    [id, uid, sinceMs],
+  );
+  return z && readable(uid, z);
+}
+
+/** Under row security only the account's own rows; in the system frame (cleanup) all of them.
+ * @returns the removed rows, so that the caller deletes their PDFs */
+export function purgeDeletedVoucherRows(db: DbInterface, beforeMs: number) {
+  return db.all<{ user_id: number; pdf_path: string | null }>(
+    'DELETE FROM vouchers WHERE deleted_at < to_timestamp($1 / 1000.0) RETURNING user_id, pdf_path',
+    [beforeMs],
+  );
 }
 
 export async function rememberBalance(
@@ -154,7 +185,7 @@ export async function rememberBalance(
 ): Promise<VoucherRow | undefined> {
   const z = await db.get<VoucherRow>(
     `UPDATE vouchers SET amount = $1, currency = $2, balance_checked_at = NOW(), updated_at = NOW()
-      WHERE id = $3 AND user_id = $4 RETURNING ${COLUMNS}`,
+      WHERE id = $3 AND user_id = $4 AND deleted_at IS NULL RETURNING ${COLUMNS}`,
     [amount, currency, id, uid],
   );
   return z && readable(uid, z);
@@ -175,14 +206,14 @@ export async function reencryptNumbers(db: DbInterface): Promise<number> {
   )) {
     const number = readOldValue(z.number, numberContext(z.user_id, z.id));
     if (number === null) continue;
-    const neu = z.number.startsWith('v2:') ? z.number : numberColumns(z.user_id, z.id, number).number;
-    const pin = umschluesseln(z.pin, pinContext(z.user_id, z.id)) ?? z.pin;
+    const fresh = z.number.startsWith('v2:') ? z.number : numberColumns(z.user_id, z.id, number).number;
+    const pin = rekey(z.pin, pinContext(z.user_id, z.id)) ?? z.pin;
     n +=
       (
         await db.run(
           `UPDATE vouchers SET number = $1, number_search = $2, pin = $3
       WHERE id = $4 AND number = $5 AND pin IS NOT DISTINCT FROM $6`,
-          [neu, numberSearch(z.user_id, number), pin, z.id, z.number, z.pin],
+          [fresh, numberSearch(z.user_id, number), pin, z.id, z.number, z.pin],
         )
       ).changes || 0;
   }
@@ -190,7 +221,8 @@ export async function reencryptNumbers(db: DbInterface): Promise<number> {
 }
 
 /** After a key rotation, including the search value (it hangs off the key). Same
- * condition as above leaves a meanwhile-changed row alone. */
+ * condition as above leaves a meanwhile-changed row alone. Deleted rows too, here and above:
+ * an undo after the rotation must still open them. */
 export async function reencryptAllVouchers(db: DbInterface): Promise<number> {
   let n = 0;
   for (const z of await db.all<{
@@ -202,16 +234,16 @@ export async function reencryptAllVouchers(db: DbInterface): Promise<number> {
   }>("SELECT id, user_id, number, pin, number_search FROM vouchers WHERE number LIKE 'v2:%'")) {
     const number = decrypt(z.number, numberContext(z.user_id, z.id));
     if (number === null) continue;
-    const neu = umschluesseln(z.number, numberContext(z.user_id, z.id)) ?? z.number;
-    const pin = umschluesseln(z.pin, pinContext(z.user_id, z.id)) ?? z.pin;
+    const fresh = rekey(z.number, numberContext(z.user_id, z.id)) ?? z.number;
+    const pin = rekey(z.pin, pinContext(z.user_id, z.id)) ?? z.pin;
     const search = numberSearch(z.user_id, number);
-    if (neu === z.number && pin === z.pin && search === z.number_search) continue;
+    if (fresh === z.number && pin === z.pin && search === z.number_search) continue;
     n +=
       (
         await db.run(
           `UPDATE vouchers SET number = $1, number_search = $2, pin = $3
       WHERE id = $4 AND number = $5 AND pin IS NOT DISTINCT FROM $6`,
-          [neu, search, pin, z.id, z.number, z.pin],
+          [fresh, search, pin, z.id, z.number, z.pin],
         )
       ).changes || 0;
   }
@@ -219,17 +251,17 @@ export async function reencryptAllVouchers(db: DbInterface): Promise<number> {
 }
 
 /** Copies before a migration (schema name checked by the pattern); `all` after a key rotation. */
-export async function reencryptCopies(db: DbInterface, alle = false): Promise<number> {
+export async function reencryptCopies(db: DbInterface, all = false): Promise<number> {
   let n = 0;
   for (const { schema } of await db.all<{ schema: string }>(
     `SELECT table_schema AS schema FROM information_schema.tables
       WHERE table_name = 'vouchers' AND table_schema ~ '^vor_migration_[0-9]+$'`,
   )) {
     for (const z of await db.all<{ id: number; user_id: number; number: string; pin: string | null }>(
-      `SELECT id, user_id, number, pin FROM ${schema}.vouchers${alle ? '' : " WHERE number NOT LIKE 'v2:%' OR pin NOT LIKE 'v2:%'"}`,
+      `SELECT id, user_id, number, pin FROM ${schema}.vouchers${all ? '' : " WHERE number NOT LIKE 'v2:%' OR pin NOT LIKE 'v2:%'"}`,
     )) {
-      const number = umschluesseln(z.number, numberContext(z.user_id, z.id));
-      const pin = umschluesseln(z.pin, pinContext(z.user_id, z.id));
+      const number = rekey(z.number, numberContext(z.user_id, z.id));
+      const pin = rekey(z.pin, pinContext(z.user_id, z.id));
       if (number === undefined && pin === undefined) continue;
       n +=
         (

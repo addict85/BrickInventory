@@ -1,14 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
-import {
-  encryptBuffer,
-  decryptBuffer,
-  isEncryptedBuffer,
-  readOldBuffer,
-  kontext,
-  pufferUmschluesseln,
-} from '../infra/secret';
+import { encryptBuffer, decryptBuffer, isEncryptedBuffer, readOldBuffer, context, rekeyBuffer } from '../infra/secret';
 import { withoutMissingFile } from '../infra/error';
 
 /** The PDFs carry the card number and PIN in plain text; encrypted, a copy of
@@ -28,7 +21,7 @@ export function voucherFile(userId: number, pdfPath: string): string | null {
  * NOTE: the literal tag ('gutschein-pdf') is part of the encryption AAD for
  * files already on disk — it must not change, even though the code around it does. */
 function fileContext(file: string) {
-  return kontext('gutschein-pdf', path.relative(VOUCHER_DIR, file).split(path.sep).join('/'));
+  return context('gutschein-pdf', path.relative(VOUCHER_DIR, file).split(path.sep).join('/'));
 }
 
 /** Only the finished file gets its name. */
@@ -56,7 +49,7 @@ export async function readVoucherPdfOrNothing(file: string | null): Promise<Buff
 
 /** Unencrypted and BIENC1 files to BIENC2, on every start; BIENC2 stays, unless
  * `all` (key rotation): then anything only the previous key opens is renewed. */
-export async function encryptLegacyVoucherFiles(o: { alle?: boolean } = {}): Promise<number> {
+export async function encryptLegacyVoucherFiles(o: { all?: boolean } = {}): Promise<number> {
   if (!fs.existsSync(VOUCHER_DIR)) return 0;
   let n = 0;
   for (const account of fs.readdirSync(VOUCHER_DIR).filter(k => /^\d+$/.test(k))) {
@@ -66,9 +59,9 @@ export async function encryptLegacyVoucherFiles(o: { alle?: boolean } = {}): Pro
       const file = path.join(dir, name);
       const raw = await fs.promises.readFile(file);
       if (isEncryptedBuffer(raw)) {
-        const neu = o.alle ? pufferUmschluesseln(raw, fileContext(file)) : undefined;
-        if (neu) {
-          await replaceFile(file, neu);
+        const fresh = o.all ? rekeyBuffer(raw, fileContext(file)) : undefined;
+        if (fresh) {
+          await replaceFile(file, fresh);
           n++;
         }
         continue;

@@ -3,7 +3,7 @@
   "info": {
     "title": "BrickInventory API",
     "version": "2",
-    "description": "Generated from src/contract/ (npm run vertrag:openapi). Do not edit by hand."
+    "description": "Generated from src/contract/ (npm run contract:openapi). Do not edit by hand."
   },
   "paths": {
     "/api/v1/": {
@@ -5452,7 +5452,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Gesundheit"
+                  "$ref": "#/components/schemas/Health"
                 }
               }
             }
@@ -10824,7 +10824,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PdfStand"
+                  "$ref": "#/components/schemas/PdfState"
                 }
               }
             }
@@ -10864,7 +10864,7 @@
             "content": {
               "text/event-stream": {
                 "schema": {
-                  "$ref": "#/components/schemas/PdfStand"
+                  "$ref": "#/components/schemas/PdfState"
                 }
               }
             }
@@ -12155,7 +12155,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TlsStand"
+                  "$ref": "#/components/schemas/TlsState"
                 }
               }
             }
@@ -13508,6 +13508,57 @@
           "code": "code"
         },
         "x-geheim": true
+      }
+    },
+    "/api/v1/vouchers/{id}/restore": {
+      "post": {
+        "tags": [
+          "gutscheine"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GutscheinAntwort"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/vouchers/export/pdf": {
@@ -17625,37 +17676,6 @@
         ],
         "additionalProperties": {}
       },
-      "Gesundheit": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "ok",
-              "starting"
-            ]
-          },
-          "startup": {
-            "$ref": "#/components/schemas/StartupStatus"
-          },
-          "db_pool": {
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {}
-          },
-          "uptime_seconds": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "status"
-        ],
-        "additionalProperties": {}
-      },
       "GET_api_v1_minifigs": {
         "type": "object",
         "properties": {
@@ -18468,6 +18488,37 @@
         "required": [
           "success",
           "removed"
+        ],
+        "additionalProperties": {}
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "starting"
+            ]
+          },
+          "startup": {
+            "$ref": "#/components/schemas/StartupStatus"
+          },
+          "db_pool": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "uptime_seconds": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "status"
         ],
         "additionalProperties": {}
       },
@@ -21644,7 +21695,7 @@
         ],
         "additionalProperties": {}
       },
-      "PdfStand": {
+      "PdfState": {
         "type": "object",
         "properties": {
           "success": {
@@ -24163,7 +24214,7 @@
         ],
         "additionalProperties": {}
       },
-      "TlsStand": {
+      "TlsState": {
         "type": "object",
         "properties": {
           "success": {

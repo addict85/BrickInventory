@@ -1,0 +1,17 @@
+Gegenprobe: ein gemessenes WLAN gilt als WLAN
+Modul: core-data
+Test: ch.brickinventoryapp.data.PreviewDeviceTest
+Rot: a metered Wi-Fi counts as mobile
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/NetworkState.kt
+@@ -87,7 +87,7 @@
+                 // tablet in the docking station exactly what „at home" means.
+                 capable.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                     capable.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ->
+-                    if (measured) Kind.MOBILE else Kind.WIFI
++                    if (measured && false) Kind.MOBILE else Kind.WIFI
+                 // Something else (Bluetooth tethering, VPN without a recognizable
+                 // underlying network): treat cautiously as mobile. For a
+                 // setting that costs data volume, the default „rather

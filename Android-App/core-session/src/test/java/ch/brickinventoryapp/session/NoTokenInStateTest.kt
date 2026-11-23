@@ -14,7 +14,7 @@ class NoTokenInStateTest {
 
     @Test
     fun `no field of AppUiState carries a token`() {
-        val felder = AppUiState::class.java.declaredFields.map { it.name }
-        assertEquals(emptyList<String>(), felder.filter { it.contains("token", ignoreCase = true) })
+        val fields = AppUiState::class.java.declaredFields.map { it.name }
+        assertEquals(emptyList<String>(), fields.filter { it.contains("token", ignoreCase = true) })
     }
 }

@@ -1,10 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.domain.Geld
-import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.domain.Zustand
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -25,22 +20,43 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.testing.testCatalogRepository
-import ch.brickinventoryapp.testing.testSetsRepository
-import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.login.ui.AnmeldeFormular
+import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.app.testing.Examples
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
-import ch.brickinventoryapp.login.ui.screens.LoginScreen
-import ch.brickinventoryapp.account.ui.screens.PreisalarmeRoute
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.data.SetCreateStep
+import ch.brickinventoryapp.data.SetCreator
+import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.data.testing.testCatalogRepository
+import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.login.ui.screens.LoginActions
+import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.login.ui.screens.LoginScreenState
+import ch.brickinventoryapp.management.ui.ManagementUiState
+import ch.brickinventoryapp.management.ui.screens.CacheEvents
+import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
+import ch.brickinventoryapp.management.ui.screens.MonitoringState
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.domain.BrickLinkView
+import ch.brickinventoryapp.model.domain.CatalogDetailView
+import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -51,19 +67,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
-import ch.brickinventoryapp.model.domain.BrickLinkView
-import ch.brickinventoryapp.model.domain.CatalogDetailView
-import ch.brickinventoryapp.model.file.FileReader
-import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.testing.testAccountRepository
-import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.management.ui.ManagementUiState
-import ch.brickinventoryapp.management.ui.screens.CacheEvents
-import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
-import ch.brickinventoryapp.management.ui.screens.MonitoringState
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
-import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
-import kotlinx.coroutines.runBlocking
 
 /**
  * No text breaks character by character or within a word, none protrudes beyond its space,
@@ -74,17 +77,17 @@ import kotlinx.coroutines.runBlocking
  * Measured on the text layout of every text node: narrower than about three characters, more lines
  * than words, a line end between two letters, a line wider than the text.
  *
- * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
- *   preisalarm-zeile-gequetscht      badge and „zuletzt …“ again in one Row, the badge
+ * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
+ *   price-alarm-row-squeezed      badge and „zuletzt …“ again in one Row, the badge
  *                                    again with the long text → red “price alerts at 100 percent”
  *                                    („zuletzt CHF 449.95“ in 17 lines for 3 words)
- *   katalog-knoepfe-nebeneinander    add and remember again side by side, each one line with
+ *   catalog-buttons-side-by-side    add and remember again side by side, each one line with
  *                                    ellipsis → red “catalog detail at 100 percent”
  *                                    („Zur Sammlung hinzufügen“ truncated)
- *   standard-zustand-in-der-zeile    „Standard-Zustand“ again next to the choice → red
+ *   default-state-in-the-row    „Standard-Zustand“ again next to the choice → red
  *                                    “background work at 100 percent” (on 360 dp „Gebraucht“
  *                                    broken within the word)
- *   gewinn-in-einer-zeile            profit/loss again always single-line → red “narrow set detail
+ *   profit-in-one-row            profit/loss again always single-line → red “narrow set detail
  *                                    at 200 percent” („+CHF 20’200.90 · +19.2%“ protrudes beyond the tile,
  *                                    measured at the natural width)
  */
@@ -95,36 +98,36 @@ class WrapGuardTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val world = Examples.Welt(ContextTexts())
-    private val bilder = SampleImages.loader(ApplicationProvider.getApplicationContext())
-    private val vorher = Locale.getDefault()
+    private val world = Examples.World(ContextTexts())
+    private val images = SampleImages.loader(ApplicationProvider.getApplicationContext())
+    private val before = Locale.getDefault()
 
     @After
-    fun zu() {
-        Locale.setDefault(vorher)
+    fun tearDown() {
+        Locale.setDefault(before)
         world.close()
     }
 
     /** Like ScreenPhotoTest: drive the main looper until the data is there and the world rests. */
-    private fun drive(name: String, bereit: () -> Boolean) =
-        driveUntil(name, requests = { world.paths.requests.size }, bereit = bereit)
+    private fun drive(name: String, ready: () -> Boolean) =
+        driveUntil(name, requests = { world.paths.requests.size }, ready = ready)
 
-    private fun pruefe(name: String, schrift: Float, bereit: () -> Boolean = { true },
-                       geraet: String = "w411dp-h891dp-port-xxhdpi", wholeRow: Boolean = false,
-                       inhalt: @Composable () -> Unit) {
-        RuntimeEnvironment.setQualifiers("de-rCH-$geraet")
-        if (schrift != 1f) RuntimeEnvironment.setFontScale(schrift)
+    private fun check(name: String, font: Float, ready: () -> Boolean = { true },
+                       device: String = "w411dp-h891dp-port-xxhdpi", wholeRow: Boolean = false,
+                       content: @Composable () -> Unit) {
+        RuntimeEnvironment.setQualifiers("de-rCH-$device")
+        if (font != 1f) RuntimeEnvironment.setFontScale(font)
         Locale.setDefault(Locale.forLanguageTag("de-CH"))
-        drive(name, bereit)
+        drive(name, ready)
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
-                CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
-                    Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
+                CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
+                    Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
         }
-        drive("$name (angezeigt)", bereit)
+        drive("$name (shown)", ready)
         compose.waitForIdle()
         // Stop the clock and advance: fade-ins have then run to completion.
         compose.mainClock.autoAdvance = false
@@ -134,16 +137,16 @@ class WrapGuardTest {
         }
         val (texts, findings) = collect(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(), wholeRow)
         // Empty screens check nothing.
-        assertTrue("$name: nur $texts Textknoten — sind die Daten da?", texts >= 5)
+        assertTrue("$name: only $texts text nodes — is the data there?", texts >= 5)
         assertTrue("$name: ${findings.joinToString("; ")}", findings.isEmpty())
     }
 
     /** The text layout of a node, except for input fields (whose content scrolls). */
     private fun layout(n: SemanticsNode): TextLayoutResult? {
         if (n.config.getOrNull(SemanticsActions.SetText) != null) return null
-        val liste = mutableListOf<TextLayoutResult>()
-        n.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(liste)
-        return liste.firstOrNull()
+        val list = mutableListOf<TextLayoutResult>()
+        n.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(list)
+        return list.firstOrNull()
     }
 
     private fun textNode(n: SemanticsNode): Int = (if (layout(n) != null) 1 else 0) + n.children.sumOf { textNode(it) }
@@ -156,38 +159,38 @@ class WrapGuardTest {
     private fun collect(root: SemanticsNode, wholeRow: Boolean): Pair<Int, List<String>> {
         val findings = mutableListOf<String>()
         var texts = 0
-        fun lauf(n: SemanticsNode, inButton: Boolean, inHeading: Boolean) {
+        fun jobRun(n: SemanticsNode, inButton: Boolean, inHeading: Boolean) {
             val button = inButton || (n.config.getOrNull(SemanticsProperties.Role) == Role.Button && textNode(n) in 1..2)
-            val kopf = inHeading || n.config.getOrNull(SemanticsProperties.Heading) != null
+            val header = inHeading || n.config.getOrNull(SemanticsProperties.Heading) != null
             val l = layout(n)
             if (l != null && n.layoutInfo.isPlaced) {
                 texts++
-                findings += anomalies(l, button, kopf, wholeRow)
+                findings += anomalies(l, button, header, wholeRow)
             }
-            n.children.forEach { lauf(it, button, kopf) }
+            n.children.forEach { jobRun(it, button, header) }
         }
-        lauf(root, inButton = false, inHeading = false)
+        jobRun(root, inButton = false, inHeading = false)
         return texts to findings
     }
 
     /** What stands out about a set text: too narrow, a letter per line, truncated in a button or heading. */
-    private fun anomalies(l: TextLayoutResult, button: Boolean, kopf: Boolean, wholeRow: Boolean): List<String> {
+    private fun anomalies(l: TextLayoutResult, button: Boolean, header: Boolean, wholeRow: Boolean): List<String> {
         val findings = mutableListOf<String>()
         val text = l.layoutInput.text.text
-        val wo = "„${text.take(40)}“"
-        val groesse = l.layoutInput.style.fontSize
-        val em = if (groesse.isSp) with(l.layoutInput.density) { groesse.toPx() } else 0f
+        val where = "„${text.take(40)}“"
+        val size = l.layoutInput.style.fontSize
+        val em = if (size.isSp) with(l.layoutInput.density) { size.toPx() } else 0f
         val words = text.split(Regex("""\s+""")).count { it.isNotBlank() }
-        val zeichen = text.count { !it.isWhitespace() }
-        if (zeichen >= 3 && em > 0f && l.size.width < em * MIN_WIDTH_EM)
-            findings += "$wo nur ${l.size.width} px breit (Schrift ${em.toInt()} px)"
+        val chars = text.count { !it.isWhitespace() }
+        if (chars >= 3 && em > 0f && l.size.width < em * MIN_WIDTH_EM)
+            findings += "$where nur ${l.size.width} px breit (Schrift ${em.toInt()} px)"
         if (l.lineCount >= 3 && l.lineCount > 2 * words)
-            findings += "$wo in ${l.lineCount} Zeilen bei $words Wörtern"
-        findings += inWordOrViaTheEdge(l, wo, em, wholeRow)
+            findings += "$where in ${l.lineCount} Zeilen bei $words Wörtern"
+        findings += inWordOrViaTheEdge(l, where, em, wholeRow)
         // Only the ellipsis counts: width, height and maxLines also report an overflow under
         // Robolectric for untruncated texts (font metrics).
-        val gekuerzt = (0 until l.lineCount).any { l.isLineEllipsized(it) }
-        if ((button || kopf) && gekuerzt) findings += "$wo gekürzt (${if (button) "Knopf" else "Überschrift"}; " +
+        val truncated = (0 until l.lineCount).any { l.isLineEllipsized(it) }
+        if ((button || header) && truncated) findings += "$where gekürzt (${if (button) "Knopf" else "Überschrift"}; " +
             "Zeilen ${l.lineCount}, Breite ${l.size.width}/${l.multiParagraph.width.toInt()}, " +
             "Überlauf B ${l.didOverflowWidth} H ${l.didOverflowHeight}, maxLines ${l.multiParagraph.didExceedMaxLines})"
         return findings
@@ -203,105 +206,104 @@ class WrapGuardTest {
      * the space width and wraps it there; cut off it can only be seen at its
      * natural width. Only where required: the other screens are not measured that way.
      */
-    private fun inWordOrViaTheEdge(l: TextLayoutResult, wo: String, em: Float, wholeRow: Boolean): List<String> {
+    private fun inWordOrViaTheEdge(l: TextLayoutResult, where: String, em: Float, wholeRow: Boolean): List<String> {
         val text = l.layoutInput.text.text
         val findings = mutableListOf<String>()
         val inWord = (0 until l.lineCount - 1).map { l.getLineEnd(it) }
             .firstOrNull { e -> e in 1 until text.length && text[e - 1].isLetterOrDigit() && text[e].isLetterOrDigit() }
-        if (inWord != null) findings += "$wo im Wort gebrochen nach „${text.take(inWord).takeLast(12)}“"
-        val zeilen = (0 until l.lineCount).maxOf { l.getLineRight(it) - l.getLineLeft(it) }
+        if (inWord != null) findings += "$where im Wort gebrochen nach „${text.take(inWord).takeLast(12)}“"
+        val rows = (0 until l.lineCount).maxOf { l.getLineRight(it) - l.getLineLeft(it) }
         val natural = if (wholeRow && !l.layoutInput.softWrap && l.layoutInput.overflow != TextOverflow.Ellipsis)
             l.multiParagraph.intrinsics.maxIntrinsicWidth else 0f
-        val overhang = maxOf(zeilen, natural) - l.size.width
-        if (em > 0f && overhang > em * OVERHANG_EM) findings += "$wo ragt ${overhang.toInt()} px über den Rand"
+        val overhang = maxOf(rows, natural) - l.size.width
+        if (em > 0f && overhang > em * OVERHANG_EM) findings += "$where ragt ${overhang.toInt()} px über den Rand"
         return findings
     }
 
     // ── Die Bildschirme ──
 
-    private fun erfassung() = world.t.merke(EntryViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, testSetsRepository(world.t.api), world.t.setCatalog(), world.t.merkliste(),
+    private fun entryVm() = world.t.track(EntryViewModel(world.t.session, world.t.filter(), world.t.hints, testSetsRepository(world.t.api), world.t.setCatalog(), world.t.wantedList(),
         testCatalogRepository(world.t.api),
         object : SetCreator {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
+            override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
         }))
 
-    private fun einstellungen() = world.t.merke(SettingsViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, world.t.sync,
+    private fun settings() = world.t.track(SettingsViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.sync,
         testAccountRepository(world.t.api, world.t.io), testManagementRepository(world.t.api),
         world.t.alerts(), testPartsRepository(world.t.api),
         object : FileReader {
-            override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null
+            override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
         }))
 
     /** One alert armed, one triggered with last price — the row that wrapped character by character. */
-    private fun preisalarme(schrift: Float) {
-        world.paths.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"},
-            {"set_number":"10294-1","condition":"N","direction":"ueber","threshold":440.0,"currency_code":"CHF",
+    private fun priceAlarms(font: Float) {
+        world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[
+            {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF"},
+            {"set_number":"10294-1","condition":"N","direction":"above","threshold":440.0,"currency_code":"CHF",
              "triggered":true,"last_triggered_at":"2026-10-30T09:00:00Z","last_price":449.95}]}"""
-        val vm = einstellungen().also { it.loadAlarmOverview() }
-        pruefe("Preisalarme $schrift", schrift, { vm.alarmOverview.value.geladen }) {
-            PreisalarmeRoute(vm = vm, imageLoader = bilder, serverUrl = "",
-                snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, reportToggle = {})
+        val vm = settings().also { it.loadAlarmOverview() }
+        check("price alerts $font", font, { vm.alarmOverview.value.loaded }) {
+            PriceAlarmsRoute(vm = vm, imageLoader = images, serverUrl = "",
+                snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onBack = {}, reportToggle = {})
         }
     }
 
-    private fun galerie(schrift: Float) {
-        val vm = world.galerie().also { it.loadSets(); it.loadStats() }
-        pruefe("Sammlung $schrift", schrift,
-            { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.abruf.laedt } }) {
-            GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
+    private fun gallery(font: Float) {
+        val vm = world.gallery().also { it.loadSets(); it.loadStats() }
+        check("collection $font", font,
+            { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.fetch.loading } }) {
+            GalleryRoute(vm = vm, entryVm = entryVm(), imageLoader = images, onScanBarcode = {}, onSetClick = {})
         }
     }
 
-    private fun setDetail(schrift: Float) {
+    private fun setDetail(font: Float) {
         val vm = world.setDetail()
-        pruefe("Set-Detail $schrift", schrift, { vm.setDetailState.value.let { s ->
+        check("set detail $font", font, { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
-                !s.detailFetch.laedt && !s.priceFetch.laedt && !s.historyFetch.laedt && !s.purchasesFetch.laedt } }) {
-            SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
+                !s.detailFetch.loading && !s.priceFetch.loading && !s.historyFetch.loading && !s.purchasesFetch.loading } }) {
+            SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
         }
     }
 
-    private fun catalogDetail(schrift: Float) {
+    private fun catalogDetail(font: Float) {
         val detail = CatalogDetailView(
             setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, themeId = 721, themeName = "Icons",
             numParts = 4514, imageLocal = "/beispiel/set1.png", minifigs = 22,
             bricklink = BrickLinkView(number = "10305-1",
                 url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
-        pruefe("Katalog-Detail $schrift", schrift) {
-            CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(detail), imageLoader = bilder,
-                serverUrl = "", onLoad = {}, onAddToGallery = {}, onWish = {},
-                onOpenInGallery = {}, onBack = {})
+        check("catalog detail $font", font) {
+            CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(detail), imageLoader = images, serverUrl = "",
+                actions = object : CatalogDetailActions {})
         }
     }
 
     /**
      * Five-digit amounts on 360 dp: „+CHF 20’200.90 · +19.2%“ is wider than the tile at 200 %
      * (a three-digit profit just about fits). The amount stands without wrapping,
-     * which is why [pruefe] measures the natural width here.
+     * which is why [check] measures the natural width here.
      */
-    private fun setDetailNarrow(schrift: Float) {
-        world.paths.antworten["/api/v1/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
+    private fun setDetailNarrow(font: Float) {
+        world.paths.responses["/api/v2/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
             "image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,
             "num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":1049.0}}"""
-        world.paths.antworten["/api/v1/sets/75192-1/price"] =
+        world.paths.responses["/api/v2/sets/75192-1/price"] =
             """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":21249.9,"min_price":20180.0,"max_price":21320.0,"qty_avg_price":21249.9}"""
-        world.paths.antworten["/api/v1/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
+        world.paths.responses["/api/v2/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
             {"id":1,"quantity":1,"purchase_price":1049.0,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"}]}"""
-        world.paths.antworten["/api/v1/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
-            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":"19.2","pnl_prozent":19.2}},
+        world.paths.responses["/api/v2/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
+            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":"19.2","pnl_percent":19.2}},
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":1210.0},{"x":"2026-10-01","y":1249.9}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-10-01"]},
-            "pnl_prozent":19.2,"purchase_price":1049.0}"""
+            "pnl_percent":19.2,"purchase_price":1049.0}"""
         val vm = world.setDetail()
-        pruefe("Set-Detail schmal $schrift", schrift, { vm.setDetailState.value.let { s ->
+        check("set detail narrow $font", font, { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
-                !s.detailFetch.laedt && !s.priceFetch.laedt && !s.historyFetch.laedt && !s.purchasesFetch.laedt } },
-            geraet = "w360dp-h740dp-port-xxhdpi", wholeRow = true) {
-            SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
+                !s.detailFetch.loading && !s.priceFetch.loading && !s.historyFetch.loading && !s.purchasesFetch.loading } },
+            device = "w360dp-h740dp-port-xxhdpi", wholeRow = true) {
+            SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
         }
-        inImage("Set-Detail schmal $schrift", "200.90")
+        inImage("Set-Detail schmal $font", "200.90")
     }
 
     /**
@@ -309,52 +311,51 @@ class WrapGuardTest {
      * On 360 dp: the segment measures its label without the check mark, which is why on 411 dp
      * „Gebraucht“ also fits next to „Standard-Zustand“.
      */
-    private fun hintergrundarbeiten(schrift: Float) {
-        world.paths.antworten["/api/v1/admin/auftraege"] = """{"success":true,
-            "auftraege":[
-              {"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
+    private fun backgroundWork(font: Float) {
+        world.paths.responses["/api/v2/admin/job-queue"] = """{"success":true,
+            "jobs":[
+              {"id":"17","type":"images","status":"running","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
                "deadline_at":null,"started_at":"2026-10-30T10:00:05Z","created_at":"2026-10-30T09:59:00Z","updated_at":null,
-               "progress":{"erledigt":3,"gesamt":12,"text":"Bilder"},"error_message":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
-            "zusammenfassung":[],"pausen":[],"bildbedarf":7,
-            "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
-        val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.meldungen)
+               "progress":{"done":3,"total":12,"text":"Bilder"},"error_message":null,"user_id":4,"scheduled":false,"set_number":"75192-1"}],
+            "summary":[],"pauses":[],"image_demand":7,
+            "job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
+        val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages)
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
-        pruefe("Hintergrundarbeiten $schrift", schrift, geraet = "w360dp-h891dp-port-xxhdpi") {
-            MonitoringScreen(MonitoringState(MonitoringUiState(defaultState = Zustand.GEBRAUCHT), vm.hintergrund.value, ManagementUiState(),
+        val background = vm.background.value
+        check("background work $font", font, device = "w360dp-h891dp-port-xxhdpi") {
+            MonitoringScreen(MonitoringState(MonitoringUiState(defaultState = Condition.USED), background, ManagementUiState(),
                 emptyMap(), Design.CLASSIC, 0L), vm, events)
         }
-        inImage("Hintergrundarbeiten $schrift", "Gebraucht")
+        inImage("Hintergrundarbeiten $font", "Gebraucht")
     }
 
     /** The place a counter-check breaks must have been checked: a missing node reports nothing. */
-    private fun inImage(name: String, text: String) = assertTrue("$name: kein Text mit „$text“ — die Stelle lag nicht im Bild",
+    private fun inImage(name: String, text: String) = assertTrue("$name: no text with “$text” — the spot was not in the picture",
         compose.onAllNodes(hasText(text, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
 
-    private fun anmeldung(schrift: Float) {
-        pruefe("Anmeldung $schrift", schrift) {
+    private fun login(font: Float) {
+        check("sign-in $font", font) {
             LoginScreen(
-                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
-                formular = AnmeldeFormular.ANMELDEN, registrierungOffen = true, kontoLaeuft = false,
-                kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> }, onFormular = {},
-                onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+                LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = true),
+                object : LoginActions {},
             )
         }
     }
 
-    @Test fun `price alerts at 100 percent without character wrapping and truncation`() = preisalarme(1f)
-    @Test fun `price alerts at 200 percent without character wrapping and truncation`() = preisalarme(2f)
-    @Test fun `collection at 100 percent without character wrapping and truncation`() = galerie(1f)
-    @Test fun `collection at 200 percent without character wrapping and truncation`() = galerie(2f)
+    @Test fun `price alerts at 100 percent without character wrapping and truncation`() = priceAlarms(1f)
+    @Test fun `price alerts at 200 percent without character wrapping and truncation`() = priceAlarms(2f)
+    @Test fun `collection at 100 percent without character wrapping and truncation`() = gallery(1f)
+    @Test fun `collection at 200 percent without character wrapping and truncation`() = gallery(2f)
     @Test fun `set detail at 100 percent without character wrapping and truncation`() = setDetail(1f)
     @Test fun `set detail at 200 percent without character wrapping and truncation`() = setDetail(2f)
     @Test fun `catalog detail at 100 percent without character wrapping and truncation`() = catalogDetail(1f)
     @Test fun `catalog detail at 200 percent without character wrapping and truncation`() = catalogDetail(2f)
-    @Test fun `sign-in at 100 percent without character wrapping and truncation`() = anmeldung(1f)
-    @Test fun `sign-in at 200 percent without character wrapping and truncation`() = anmeldung(2f)
+    @Test fun `sign-in at 100 percent without character wrapping and truncation`() = login(1f)
+    @Test fun `sign-in at 200 percent without character wrapping and truncation`() = login(2f)
     @Test fun `narrow set detail at 100 percent without character wrapping and truncation`() = setDetailNarrow(1f)
     @Test fun `narrow set detail at 200 percent without character wrapping and truncation`() = setDetailNarrow(2f)
-    @Test fun `background work at 100 percent without character wrapping and truncation`() = hintergrundarbeiten(1f)
+    @Test fun `background work at 100 percent without character wrapping and truncation`() = backgroundWork(1f)
 
     private companion object {
         /** About three narrow characters: one character per line is narrower, „Neu“ wider. */

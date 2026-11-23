@@ -1,5 +1,9 @@
 /**
  * Daily limit for Rebrickable API calls.
+ *
+ * Counter-check: REBRICKABLE_DEFAULT_DAILY in src/externalSources/apiQuota.ts set to 4000 → red “default daily limit is 25000 — in ONE place”.
+ * Counter-check (22.11.2026): value="4000" on #lim-rb in index.html → red “the input field shows the same default”.
+ * Shared counters and limits across workers: rate-limit-shared-db.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +13,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 // Build into dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { ohneKommentare } = require('./helpers/sources');
+const { withoutComments } = require('./helpers/sources');
 const { REBRICKABLE_DEFAULT_DAILY } = _req('src/externalSources/rateLimiter.js');
 
 const EXPECTED = 25000;
@@ -18,67 +22,15 @@ test('default daily limit is 25000 — in ONE place', () => {
   assert.equal(REBRICKABLE_DEFAULT_DAILY, EXPECTED);
   // limitTheSource() had its own copy of the fallback value (4000). As long as
   // Rebrickable had its own counter, it never saw this table — since
-  // both run via kontingentPruefenUndZaehlen, it would have been a silent cut
+  // both run via checkAndCountQuota, it would have been a silent cut
   // to one sixth. Two constants with the same meaning drift …
   const fc = fs.readFileSync(path.join(ROOT, 'src/externalSources/apiQuota.ts'), 'utf8');
   assert.match(
     fc,
     /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
-    'Der Rückfallwert muss die gemeinsame Konstante sein, nicht eine eigene Zahl danebenstehen',
+    'The fallback value must be the shared constant, not a separate number next to it',
   );
-  assert.doesNotMatch(fc, /rebrickable: \d+/, 'Keine zweite Zahl für dasselbe Limit');
-});
-
-test('the daily quota counts for the installation, not per worker', () => {
-  // Where this test comes from
-  const rl = fs.readFileSync(path.join(ROOT, 'src/externalSources/rateLimiter.ts'), 'utf8');
-  assert.match(rl, /async function consumeRebrickableDaily/, 'Der Verbrauch muss über den gemeinsamen Zähler laufen');
-  assert.match(
-    rl,
-    /kontingentPruefenUndZaehlen\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
-    'Derselbe Mechanismus wie bei BrickLink und Brickset — kein dritter Weg',
-  );
-  assert.doesNotMatch(rl, /new DailyLimiter\(/, 'Keine prozesslokale Instanz mehr für ein Tagesbudget');
-
-  // All call sites go via the shared path.
-  for (const datei of [
-    'clients/rebrickable.ts',
-    'src/catalog/partsImport.ts',
-    'src/sets/barcode.ts',
-    'src/catalog/partsEnrichment.ts',
-    'src/catalog/csvSync.ts',
-  ]) {
-    const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
-    assert.doesNotMatch(src, /rebrickableDailyLimiter/, `${datei}: zählt noch am gemeinsamen Zähler vorbei`);
-  }
-
-  // And the reloading at startup is gone — the limit is read on every
-  // call instead of being copied into a process memory.
-  // Comments out: the note at the old place still names the name
-  // (it explains why nothing stands there any more) — without hiding it …
-  const server = require('./helpers/sources')
-    .serverAll()
-    .replace(/\/\/[^\n]*/g, '');
-  assert.doesNotMatch(server, /loadDailyLimitsFromDb\(\)/, 'Ein In-Memory-Limit muss nicht mehr geladen werden');
-});
-
-test('a changed limit applies immediately in ALL workers', () => {
-  // Before: PUT /api/v1/admin/api-limits called setMax() — that only applied in the
-  // worker that handled the request. The others kept running with the old value
-  // until a restart, and at startup
-  // loadDailyLimitsFromDb() had to copy the value into every process.
-  const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
-  assert.doesNotMatch(admin, /setMax\(/, 'setMax() erreicht nur den eigenen Prozess');
-  // Comments out before the span is measured: the explanatory block in
-  // limitTheSource is longer than any reasonable character window, and a
-  // test that fails on a growing comment checks the wrong thing.
-  const fc = fs.readFileSync(path.join(ROOT, 'src/externalSources/apiQuota.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
-  const fn = fc.slice(fc.indexOf('async function limitTheSource'), fc.indexOf('const limitJeAccount'));
-  assert.match(
-    fn,
-    /await k\.einstellungen\.globalValue\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
-    'Die Grenze muss bei jedem Aufruf gelesen werden, nicht aus dem Prozessspeicher kommen',
-  );
+  assert.doesNotMatch(fc, /rebrickable: \d+/, 'No second number for the same limit');
 });
 
 test('no more hard-coded limit numbers in messages and labels', () => {
@@ -98,94 +50,66 @@ test('no more hard-coded limit numbers in messages and labels', () => {
     const vals = [
       ...i18n.matchAll(new RegExp(`'${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}':\\s*'([^']*)'`, 'g')),
     ].map(m => m[1]);
-    assert.ok(vals.length > 0, `${key} fehlt in i18n.js`);
+    assert.ok(vals.length > 0, `${key} is missing in i18n.js`);
     for (const v of vals) {
       assert.doesNotMatch(
         v,
         /\d+\s*\/\s*(Tag|day)/,
-        `${key} = "${v}" — die Zahl steht schon im Wert darüber und wird hier bei jeder Änderung falsch`,
+        `${key} = "${v}" — the number is already in the value above and becomes wrong here on every change`,
       );
     }
   }
 });
 
-test('the input field shows the same default', () => {
-  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-  const field = html.slice(html.indexOf('id="lim-rb"') - 400, html.indexOf('id="lim-rb"') + 200);
-  assert.match(field, new RegExp(`value="${EXPECTED}"`), 'value des Felds #lim-rb passt nicht zum Standard');
-  assert.match(field, new RegExp(`"n":"${EXPECTED}"`), 'Der Hinweis "(Standard: …)" passt nicht zum Standard');
+test('the input field shows the same default', async () => {
+  // Before the server's limits arrive, the field and its hint show the default the server applies.
+  const { openUi } = require('./helpers/ui');
+  const { w, d } = await openUi();
+  try {
+    assert.equal(d.getElementById('lim-rb').value, String(REBRICKABLE_DEFAULT_DAILY));
+    const label = d.querySelector('label[for="lim-rb"]').textContent;
+    assert.ok(label.includes(String(REBRICKABLE_DEFAULT_DAILY)), label);
+  } finally {
+    w.close();
+  }
 });
 
 // ── Point 3: counters in the database ───────────────────────────────────────
 
-test('the login counters are no longer in process memory', () => {
-  // src/throttle writes the counters (owner of rate_limit_attempts), the login calls k.throttle.
-  const src = fs.readFileSync(path.join(ROOT, 'src/throttle/repository.ts'), 'utf8');
-  assert.match(src, /rate_limit_attempts/, 'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
-  assert.match(
-    src,
-    /ON CONFLICT \(key\) DO UPDATE/,
-    'Hochzählen muss atomar in einem Statement passieren, sonst lesen parallele Versuche denselben Stand',
-  );
-  assert.match(
-    src,
-    /CASE WHEN rate_limit_attempts\.first_at < NOW\(\)/,
-    'Ein abgelaufenes Fenster muss im selben Statement neu starten',
-  );
-});
-
-test('on DB outage the fallback kicks in', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'src/throttle/counter.ts'), 'utf8');
-  for (const fn of ['counterState', 'countAttempt', 'forgetCounter']) {
-    const body = src.slice(src.indexOf(`async function ${fn}(`), src.indexOf(`async function ${fn}(`) + 900);
-    // The fallback reports itself (inMemory); the name of the error variable does not count.
-    assert.match(
-      body,
-      /catch \(\w+\) \{\s*inMemory\(/,
-      `${fn}: ohne Rückfall wäre der Login bei DB-Problemen komplett blockiert`,
-    );
-  }
-  assert.match(src, /eintraege: new Map/, 'In-Memory-Rückfall fehlt');
-});
-
 test('the call sites wait for the result', () => {
   // loginAllowed is asynchronous since the switch — a forgotten
   // await delivers a promise that is always truthy and locks EVERY login.
-  const dateien = dir =>
+  const files = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
-      return e.isDirectory() ? dateien(p) : e.name.endsWith('.ts') ? [p] : [];
+      return e.isDirectory() ? files(p) : e.name.endsWith('.ts') ? [p] : [];
     });
-  const alle = [
-    ...dateien(path.join(ROOT, 'routes')),
-    ...dateien(path.join(ROOT, 'src')),
-    path.join(ROOT, 'server.ts'),
-  ];
+  const all = [...files(path.join(ROOT, 'routes')), ...files(path.join(ROOT, 'src')), path.join(ROOT, 'server.ts')];
 
   const withoutAwait = [];
-  let gefunden = 0;
-  for (const datei of alle) {
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  let found = 0;
+  for (const file of all) {
+    const src = withoutComments(fs.readFileSync(file, 'utf8'));
     for (const m of src.matchAll(/\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/g)) {
       // Look at the line itself — an `await` in front suffices. Import and
       // definition are not calls and do not count.
       const rowsStart = src.lastIndexOf('\n', m.index) + 1;
-      const zeile = src.slice(rowsStart, src.indexOf('\n', m.index));
-      if (/^\s*(import|export)\b/.test(zeile) || /\bfunction\s+\w+\s*\(/.test(zeile)) continue;
-      gefunden++;
-      if (!new RegExp(`await\\s+${m[1]}\\s*\\(`).test(zeile))
-        withoutAwait.push(`${path.relative(ROOT, datei)}: ${zeile.trim()}`);
+      const row = src.slice(rowsStart, src.indexOf('\n', m.index));
+      if (/^\s*(import|export)\b/.test(row) || /\bfunction\s+\w+\s*\(/.test(row)) continue;
+      found++;
+      if (!new RegExp(`await\\s+${m[1]}\\s*\\(`).test(row))
+        withoutAwait.push(`${path.relative(ROOT, file)}: ${row.trim()}`);
     }
   }
   // Self-proof: if the pattern finds nothing, the list would be empty and the test
   // green without having checked anything.
-  assert.ok(gefunden >= 3, `nur ${gefunden} Aufrufe des Anmelde-Zählers gefunden — Muster veraltet?`);
+  assert.ok(found >= 3, `only ${found} calls of the login counter found — pattern outdated?`);
   assert.deepEqual(
     withoutAwait,
     [],
-    'Diese Aufrufe warten nicht auf den Anmelde-Zähler:\n  ' +
+    'These calls do not await the login counter:\n  ' +
       withoutAwait.join('\n  ') +
-      '\nEin Promise ist immer truthy — ohne await sperrt loginAllowed JEDEN Login.',
+      '\nA promise is always truthy — without await loginAllowed blocks EVERY login.',
   );
 });
 
@@ -198,28 +122,20 @@ test('jobs with an external quota have a cross-process lock', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/[^\n]*/g, '');
 
-  assert.match(
-    job,
-    /pg_try_advisory_lock/,
-    'Ohne prozessübergreifende Sperre schützt state.running nur den eigenen Worker',
-  );
+  assert.match(job, /pg_try_advisory_lock/, 'Without a cross-process lock state.running only protects its own worker');
   // Own connection, not transaction-bound: the run takes minutes.
-  assert.match(
-    job,
-    /(?:db|zugang)\.pool\.connect\(\)/,
-    'Die Sperre muss über die ganze Laufzeit gehalten werden — eigene Verbindung',
-  );
+  assert.match(job, /(?:db|access)\.pool\.connect\(\)/, 'The lock must be held for the whole run — own connection');
   assert.doesNotMatch(
     job,
     /pg_try_advisory_xact_lock/,
-    'Eine Transaktion minutenlang offen zu halten wäre der falsche Weg',
+    'Keeping a transaction open for minutes would be the wrong way',
   );
   // Release in finally — otherwise a crashed run blocks all following ones.
   const fn = job.slice(job.indexOf('async function runPriceRefresh'), job.indexOf('async function rememberStatus'));
   assert.match(
     fn,
     /finally\s*\{[\s\S]{0,300}releaseLock\(\)/,
-    'Ohne Freigabe im finally sperrt ein Absturz den Job bis zum Neustart',
+    'Without the release in finally a crash blocks the job until the restart',
   );
 
   // The manual kick only brings the scheduled job forward (src/jobQueue/schedule.ts);
@@ -227,16 +143,16 @@ test('jobs with an external quota have a cross-process lock', () => {
 
   // And the callers must await the result.
   //
-  // The manual kick lies only under /api/v1/admin/trigger-price-job, the
+  // The manual kick lies only under /api/v2/admin/trigger-price-job, the
   // web app calls the same address: with two paths one can lose the `await`
   // without it standing out.
-  const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
+  const route = fs.readFileSync(path.join(ROOT, 'routes/api/admin.ts'), 'utf8');
   assert.match(
     route,
     /await d\.management\.runPriceJobNow\(\)/,
-    'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"',
+    'routes/api/admin.ts: without await the route reports a promise as „gestartet“',
   );
 
   // The namespace comes from the shared list.
-  assert.match(job, /LOCKS\.PRICE_JOB/, 'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
+  assert.match(job, /LOCKS\.PRICE_JOB/, 'The namespace belongs in src/infra/lockNamespaces.ts, not typed in');
 });

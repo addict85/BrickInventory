@@ -33,10 +33,10 @@ function testPage() {
 <pre id="ergebnis"></pre>
 <script>
 window.addEventListener('load', () => document.fonts.ready.then(() => {
-  const breite = Math.round(document.getElementById('telefon').getBoundingClientRect().right);
-  const ueber = [...document.querySelectorAll('.fstat')].map(k => ({
-    name: k.querySelector('.fval').dataset.name, rechts: Math.round(k.getBoundingClientRect().right) }));
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ breite, ueber }) + 'ENDE';
+  const width = Math.round(document.getElementById('telefon').getBoundingClientRect().right);
+  const over = [...document.querySelectorAll('.fstat')].map(k => ({
+    name: k.querySelector('.fval').dataset.name, right: Math.round(k.getBoundingClientRect().right) }));
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ width, over }) + 'ENDE';
 }));
 </script></body></html>`;
 }
@@ -47,10 +47,10 @@ test('finance tiles on the phone', t => {
     t.skip('no Chrome found');
     return;
   }
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'telefon-'));
-  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testPage());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'telefon-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'seite.html');
+  fs.writeFileSync(file, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -61,13 +61,13 @@ test('finance tiles on the phone', t => {
       '--window-size=500,800',
       '--virtual-time-budget=3000',
       '--dump-dom',
-      `file://${datei}`,
+      `file://${file}`,
     ],
     { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
   );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
-  assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+  assert.ok(m, 'The test page wrote no result');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
-  assert.equal(e.ueber.length, 3);
-  for (const k of e.ueber) assert.ok(k.rechts <= e.breite, `${k.name} ragt ${k.rechts - e.breite} px über den Rand`);
+  assert.equal(e.over.length, 3);
+  for (const k of e.over) assert.ok(k.right <= e.width, `${k.name} sticks out ${k.right - e.width} px over the edge`);
 });

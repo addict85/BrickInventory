@@ -12,11 +12,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { ohneKommentare } = require('./helpers/sources');
-const { openUi, reiter, warte } = require('./helpers/ui');
+const { withoutComments } = require('./helpers/sources');
+const { openUi, switchTab, waitFor } = require('./helpers/ui');
 
 /** Field names whose sum would be a business rule. */
-const GELDFELDER =
+const MONEY_FIELDS =
   'display_value|total_value|purchase_price|unit_price|current_price|avg_price|qty_avg_price|market_price|price';
 
 /**
@@ -31,23 +31,20 @@ const ALLOWED = [
 
 test('the web app sums no money amounts itself', () => {
   const dir = path.join(ROOT, 'public', 'js');
-  const treffer = [];
+  const hits = [];
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.js') && x !== 'app.bundle.js')) {
-    const src = ohneKommentare(fs.readFileSync(path.join(dir, f), 'utf8'));
-    const re = new RegExp(String.raw`reduce\((?:\([^)]*\)|\w+)\s*=>[^;]{0,120}?\.(${GELDFELDER})\b`, 'g');
+    const src = withoutComments(fs.readFileSync(path.join(dir, f), 'utf8'));
+    const re = new RegExp(String.raw`reduce\((?:\([^)]*\)|\w+)\s*=>[^;]{0,120}?\.(${MONEY_FIELDS})\b`, 'g');
     for (const m of src.matchAll(re)) {
-      const zeile = src.slice(0, m.index).split('\n').length;
-      const eintrag = `${f}:${zeile} summiert .${m[1]}`;
-      if (!ALLOWED.includes(eintrag)) treffer.push(eintrag);
+      const row = src.slice(0, m.index).split('\n').length;
+      const entryRow = `${f}:${row} summiert .${m[1]}`;
+      if (!ALLOWED.includes(entryRow)) hits.push(entryRow);
     }
   }
   assert.deepEqual(
-    treffer,
+    hits,
     [],
-    'Die Oberfläche bildet eine Geldsumme selbst:\n  ' +
-      treffer.join('\n  ') +
-      '\nDer Server liefert solche Summen fertig (total_value, totals.grand_total). ' +
-      'Zwei Rechenwege bedeuten zwei Ergebnisse, sobald sich die Regel ändert.',
+    `The UI computes a money total itself:\n  ${hits.join('\n  ')}\nThe server delivers such totals ready-made (total_value, totals.grand_total). Two ways of computing mean two results as soon as the rule changes.`,
   );
 });
 
@@ -55,7 +52,7 @@ test("the web app shows the server's total value", async () => {
   // Without a market price on the items the header number carries the total value; the server says 777,
   // the tables' own sum would be 0.
   const { w, d } = await openUi({
-    '/v1/finance/pnl': {
+    '/v2/finance/pnl': {
       success: true,
       currency: 'EUR',
       sets: [],
@@ -63,9 +60,9 @@ test("the web app shows the server's total value", async () => {
     },
   });
   try {
-    await reiter(w, 'finance');
+    await switchTab(w, 'finance');
     assert.ok(
-      await warte(() => /777/.test(d.getElementById('portfolio-current')?.textContent || '')),
+      await waitFor(() => /777/.test(d.getElementById('portfolio-current')?.textContent || '')),
       `Kopfzahl: ${d.getElementById('portfolio-current')?.textContent}`,
     );
   } finally {

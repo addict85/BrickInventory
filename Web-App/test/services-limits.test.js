@@ -5,8 +5,8 @@
  *
  * Counter-checks (measured 14.11.2026, each on its own):
  *   A  in createInventory (src/inventory/area.ts) again `...k,` before the services →
- *      red: four unused @ts-expect-error (d.inventory.db, .transaktion,
- *      .papierkorb, .manuelleMengen)
+ *      red: four unused @ts-expect-error (d.inventory.db, .transact,
+ *      .papierkorb, .manualQuantities)
  *   B  `protokoll: k.protokoll,` added in createAccount → red: d.account.protokoll
  *   C  `locationService` removed from createInventory → red: tsc reports the users and the probe
  */
@@ -27,7 +27,7 @@ test('the services of a scope show no internals', () => {
     ],
     { cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
   );
-  const meldungen = `${r.stdout}${r.stderr}`.split('\n').filter(z => /error TS\d+/.test(z));
-  assert.deepEqual(meldungen, [], 'Ein Bereich gibt Innenleben heraus, oder ein Dienst fehlt');
+  const messages = `${r.stdout}${r.stderr}`.split('\n').filter(z => /error TS\d+/.test(z));
+  assert.deepEqual(messages, [], 'An area exposes its internals, or a service is missing');
   assert.equal(r.status, 0);
 });

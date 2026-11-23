@@ -1,19 +1,19 @@
 import { reportError } from '../infra/error';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/partColor';
-import { fachfehler } from '../infra/errorTexts';
-import { versuche } from '../infra/result';
+import { failDomain } from '../infra/errorTexts';
+import { attempts } from '../infra/result';
 import type { PartsContext } from './context';
 
 // Fix a wrong color without re-entering the row.
 export type ColorChange = {
   /** The row moved (false) or was merged with an existing one (true). */
-  zusammengelegt: boolean;
-  verschoben: number;
+  combined: boolean;
+  moved: number;
   /** Added into an acquisition from the same day. */
-  vereint: number;
+  united: number;
   /** `null` is information, not an error; the UI names it. */
-  bild: ImageSource;
+  image: ImageSource;
 };
 
 /** `vorhanden`: already there (even from a set list); `rebrickable`: fetched;
@@ -22,15 +22,15 @@ export type ImageSource = 'vorhanden' | 'rebrickable' | null;
 
 /** After the transaction, never inside it: the fetch may take time and fail without
  * taking the change down with it. */
-async function fetchImageLater(k: PartsContext, partNumber: string, farbe: number): Promise<ImageSource> {
-  const lokal = await k.catalog.catalogPart(partNumber, farbe);
-  if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
+async function fetchImageLater(k: PartsContext, partNumber: string, color: number): Promise<ImageSource> {
+  const local = await k.catalog.catalogPart(partNumber, color);
+  if (local?.imageSource === 'farbe') return 'vorhanden';
 
   // The change already stands; a failed fetch only drops the image.
-  const info = await versuche('partColor:lookupPart', () => k.externalSources.quellen.lookupPart(partNumber, farbe));
-  if (!info.ok || !info.wert?.image_url) return null;
+  const info = await attempts('partColor:lookupPart', () => k.externalSources.sources.lookupPart(partNumber, color));
+  if (!info.ok || !info.value?.image_url) return null;
   try {
-    await k.catalog.rememberPartColor(partNumber, farbe, null, null, info.wert.image_url, null);
+    await k.catalog.rememberPartColor(partNumber, color, null, null, info.value.image_url, null);
     return 'rebrickable';
   } catch (e) {
     reportError('colorChange:image from Rebrickable', e);
@@ -40,49 +40,49 @@ async function fetchImageLater(k: PartsContext, partNumber: string, farbe: numbe
 
 /** @param uid        Owner of the row — NOT the viewer; the write permission
  *                   check is the route's job, via writeTargetOrNull().
- * @param neueFarbe  KEINE_FARBE (9999) means "unspecified". */
+ * @param newColor  KEINE_FARBE (9999) means "unspecified". */
 export async function changePartColor(
   k: PartsContext,
   uid: number,
   partNumber: string,
   oldColor: number,
-  neueFarbe: number,
-  angaben: { color_name?: string | null; color_hex?: string | null } = {},
+  newColor: number,
+  details: { color_name?: string | null; color_hex?: string | null } = {},
 ): Promise<ColorChange> {
   const alt = colorId(oldColor);
-  const neu = colorId(neueFarbe);
+  const fresh = colorId(newColor);
 
   // rb_colors first, because the catalog applies to all accounts; the caller's
   // own values only fill in what's missing there.
-  const catalogColor = await k.partColor.rbColor(neu);
+  const catalogColor = await k.partColor.rbColor(fresh);
 
-  const wechsel = await k.transaktion(async (t): Promise<Omit<ColorChange, 'bild'>> => {
-    const quelle = await repo.lockManualPartRow(t.db, uid, partNumber, alt);
-    if (!quelle) {
-      fachfehler('nicht_gefunden', 'teil_nicht_manuell');
+  const change = await k.transact(async (t): Promise<Omit<ColorChange, 'image'>> => {
+    const source = await repo.lockManualPartRow(t.db, uid, partNumber, alt);
+    if (!source) {
+      failDomain('not_found', 'part_not_manual');
     }
     // Same color is REPORTED rather than treated as success: otherwise a misclick
     // would look like a real change.
-    if (alt === neu) return { zusammengelegt: false, verschoben: 0, vereint: 0 };
+    if (alt === fresh) return { combined: false, moved: 0, united: 0 };
 
     // The TARGET color's catalog entry must exist before the move: the parts list
     // reads name and color code from there, otherwise a color dot with no label.
-    await t.catalog.rememberPartColor(partNumber, neu, catalogColor?.name, catalogColor?.rgb, null, null, t.db);
-    await t.catalog.rememberPartColor(partNumber, neu, angaben.color_name, angaben.color_hex, null, null, t.db, uid);
+    await t.catalog.rememberPartColor(partNumber, fresh, catalogColor?.name, catalogColor?.rgb, null, null, t.db);
+    await t.catalog.rememberPartColor(partNumber, fresh, details.color_name, details.color_hex, null, null, t.db, uid);
 
-    const ziel = await repo.lockManualPartRow(t.db, uid, partNumber, neu);
+    const target = await repo.lockManualPartRow(t.db, uid, partNumber, fresh);
 
-    const { vereint, verschoben } = await t.inventory.manuell.recolorPartRow(
+    const { united, moved } = await t.inventory.manual.recolorPartRow(
       uid,
       partNumber,
-      { ...quelle, farbe: alt },
-      ziel ?? null,
-      neu,
+      { ...source, color: alt },
+      target ?? null,
+      fresh,
     );
-    return { zusammengelegt: !!ziel, verschoben, vereint };
+    return { combined: !!target, moved, united };
   });
 
   // Even when alt === neu: an exception here would be a second path that only
   // adds the image some of the time.
-  return { ...wechsel, bild: await fetchImageLater(k, partNumber, neu) };
+  return { ...change, image: await fetchImageLater(k, partNumber, fresh) };
 }

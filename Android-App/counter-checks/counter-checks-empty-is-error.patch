@@ -1,0 +1,17 @@
+Gegenprobe: Keine betroffene Gegenprobe zählt wieder als Fehler
+Modul: app
+Test: ch.brickinventoryapp.app.CounterChecksToolTest
+Rot: without an affected patch the run is green, without a base it measures all
+
+diff --git a/Android-App/tools/counter-checks.py b/Android-App/tools/counter-checks.py
+--- a/Android-App/tools/counter-checks.py
++++ b/Android-App/tools/counter-checks.py
+@@ -206,7 +206,7 @@
+             print(f'Basis {basis} unbekannt — alle {len(patches)} Gegenproben.')
+         elif not selection:
+             print(f'Keine der {len(patches)} Gegenproben berührt eine seit {basis[:12]} geänderte Datei.')
+-            return 0
++            return 1
+         else:
+             print(f'{len(selection)} von {len(patches)} Gegenproben betroffen.')
+             patches = selection

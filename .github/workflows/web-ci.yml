@@ -2,7 +2,7 @@
 # gegen ein leeres PostgreSQL. REQUIRE_DB und REQUIRE_BROWSER machen aus einer
 # fehlenden Datenbank oder einem fehlenden Chrome einen Fehler statt eines
 # stillen Überspringens. Der paths-Filter schliesst ein, was die Suite liest: shared/
-# (darunter app-schnittstelle.json, was die App vom Server braucht), die aus dem Vertrag
+# (darunter app-interface.json, was die App vom Server braucht), die aus dem Vertrag
 # erzeugten Kotlin-Typen, workflow-location.test.js die Workflows und die Wurzeldateien.
 # Android-Quelltext liest die Suite nicht (test/ratschen.test.js).
 name: CI
@@ -13,7 +13,7 @@ on:
     paths:
       - 'Web-App/**'
       - 'shared/**'
-      - 'Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/erzeugt/**'
+      - 'Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt'
       - '.github/**'
       - 'docs/**'
       - 'README.md'
@@ -22,7 +22,7 @@ on:
     paths:
       - 'Web-App/**'
       - 'shared/**'
-      - 'Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/erzeugt/**'
+      - 'Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt'
       - '.github/**'
       - 'docs/**'
       - 'README.md'
@@ -53,7 +53,7 @@ jobs:
       postgres:
         # Dieselbe Hauptversion wie im Betrieb (compose.yaml); Sperren und
         # Planer unterscheiden sich zwischen Hauptversionen.
-        image: postgres:18-alpine@sha256:9ba53c7d41ea093baf5c1ba635ba5434c4f979880527d49bb7d9237d3193085b
+        image: postgres:18-alpine@sha256:0115267ab5a509022df9319c77be365cef335adb71556c75f60f5360ee247e71
         env:
           POSTGRES_USER: tester
           POSTGRES_PASSWORD: tester
@@ -180,17 +180,17 @@ jobs:
       - name: Typprüfung Oberfläche
         run: npm run typecheck:frontend
 
-      # Tests mit checkJs, ohne strict; Ratsche in scripts/lint-schranken.json.
+      # Tests mit checkJs, ohne strict; Ratsche in scripts/lint-limits.json.
       - name: Typprüfung Tests
         run: npm run typecheck:tests
 
       # Biome als Ratsche: rot erst, wenn Funde oder unformatierte Dateien
-      # über die Schranke in scripts/lint-schranken.json steigen.
+      # über die Schranke in scripts/lint-limits.json steigen.
       - name: Lint
         run: npm run lint
 
       - name: Formatierung
-        run: npm run format:pruefen
+        run: npm run format:check
 
       # Eigener Schritt, damit ein Baufehler nicht als roter Test erscheint.
       - name: Bauen
@@ -209,11 +209,11 @@ jobs:
       - name: Tests
         run: |
           set -o pipefail
-          npm test -- --abdeckung 2>&1 | tee "$RUNNER_TEMP/test.log"
+          npm test -- --coverage 2>&1 | tee "$RUNNER_TEMP/test.log"
 
-      # Zeilenabdeckung je Bereich gegen scripts/abdeckung-schranken.json.
+      # Zeilenabdeckung je Bereich gegen scripts/coverage-limits.json.
       - name: Abdeckung
-        run: node scripts/coverage.js pruefen
+        run: node scripts/coverage.js check
 
       - name: Abdeckungsbericht
         if: always()
@@ -223,7 +223,7 @@ jobs:
           path: |
             Web-App/coverage/lcov.info
             Web-App/coverage/coverage-summary.json
-            Web-App/coverage/bereiche.json
+            Web-App/coverage/areas.json
           if-no-files-found: ignore
 
       - name: Rote Tests auflisten

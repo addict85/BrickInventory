@@ -3,21 +3,22 @@
  * on shutdown, otherwise httpServer.close() waits for it. */
 import type { Request, Response } from 'express';
 import { registerSse } from '../../http/sseRegistry';
-import { SSE_ACCESS_ENDED, watchViaAccess } from './accessWatch';
+import { sseAccessEnded, watchViaAccess } from './accessWatch';
 import type { AccountServices } from '../area';
+import { lineToV1 } from '../../http/apiV1Alias';
 
-export interface Strom {
-  sende(daten: object): void;
-  ende(): void;
+export interface Stream {
+  send(data: object): void;
+  end(): void;
   /** Runs along at the end, even if the client or the watch triggers it. */
   atEnd(f: () => void): void;
-  readonly zu: boolean;
-  /** Like sende(), but StromGeschlossen when the stream is closed: the work behind it aborts. */
-  sendOrAbortAb(daten: object): void;
+  readonly closed: boolean;
+  /** Like send(), but StromGeschlossen when the stream is closed: the work behind it aborts. */
+  sendOrAbort(data: object): void;
 }
 
 /** The client is gone. An abort, not an error: whoever catches it reports nothing. */
-export class StromGeschlossen extends Error {
+export class StreamClosed extends Error {
   constructor() {
     super('Strom geschlossen');
     this.name = 'StromGeschlossen';
@@ -32,55 +33,55 @@ export interface StreamOptions {
   heartbeat?: boolean;
 }
 
-export function openStream(konto: AccountServices, req: Request, res: Response, o: StreamOptions = {}): Strom {
+export function openStream(account: AccountServices, req: Request, res: Response, o: StreamOptions = {}): Stream {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-store, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
-  const abmelden = [registerSse(res)];
-  let zu = false,
-    zuletzt = '';
-  const ende = () => {
-    if (zu) return;
-    zu = true;
-    for (const f of abmelden) f();
+  const deregister = [registerSse(res)];
+  let closed = false,
+    lastUsed = '';
+  const end = () => {
+    if (closed) return;
+    closed = true;
+    for (const f of deregister) f();
     if (!res.writableEnded) res.end();
   };
-  abmelden.push(
-    watchViaAccess(konto, req, () => {
-      res.write(SSE_ACCESS_ENDED);
-      ende();
+  deregister.push(
+    watchViaAccess(account, req, () => {
+      res.write(sseAccessEnded(!!res.locals.apiV1));
+      end();
     }),
   );
   if (o.heartbeat !== false) {
-    const uhr = setInterval(() => res.write(': keep-alive\n\n'), 20_000);
-    abmelden.push(() => clearInterval(uhr));
+    const clock = setInterval(() => res.write(': keep-alive\n\n'), 20_000);
+    deregister.push(() => clearInterval(clock));
   }
-  req.on('close', ende);
-  const sende = (daten: object) => {
-    if (zu || res.destroyed) return;
-    const json = JSON.stringify(daten);
-    if (o.onlyChanges && json === zuletzt) return;
-    zuletzt = json;
+  req.on('close', end);
+  const send = (data: object) => {
+    if (closed || res.destroyed) return;
+    const json = JSON.stringify(lineToV1(res, data));
+    if (o.onlyChanges && json === lastUsed) return;
+    lastUsed = json;
     if (!res.write(`data: ${json}\n\n`) && o.backpressure) {
       console.warn(`[strom] Gegendruck (${o.backpressure}) — Verbindung wird geschlossen`);
-      ende();
+      end();
     }
   };
   return {
-    sende,
-    ende,
+    send,
+    end,
     atEnd: f => {
-      if (zu) f();
-      else abmelden.push(f);
+      if (closed) f();
+      else deregister.push(f);
     },
-    get zu() {
-      return zu;
+    get closed() {
+      return closed;
     },
-    sendOrAbortAb: daten => {
-      if (zu) throw new StromGeschlossen();
-      sende(daten);
+    sendOrAbort: data => {
+      if (closed) throw new StreamClosed();
+      send(data);
     },
   };
 }

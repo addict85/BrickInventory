@@ -1,0 +1,18 @@
+Gegenprobe: Die Auswahl auf einem Push misst wieder alle Patches
+Modul: app
+Test: ch.brickinventoryapp.app.CounterChecksToolTest
+Rot: on a push it measures only the patches whose target changed
+
+diff --git a/Android-App/tools/counter-checks.py b/Android-App/tools/counter-checks.py
+--- a/Android-App/tools/counter-checks.py
++++ b/Android-App/tools/counter-checks.py
+@@ -160,8 +160,7 @@
+         if cls and k.get('Modul'):
+             pattern = os.path.join(project, k['Modul'], 'src', 'test', '**', cls + '.kt')
+             targets |= {os.path.relpath(t, root).replace(os.sep, '/') for t in glob.glob(pattern, recursive=True)}
+-        if targets & changed:
+-            selection.append(patch)
++        selection.append(patch)
+     return selection
+ 
+ 

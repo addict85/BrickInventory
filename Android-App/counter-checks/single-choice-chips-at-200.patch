@@ -1,0 +1,17 @@
+Gegenprobe: Einfachwahl bei 200 Prozent wieder als Chips nebeneinander
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: single choice stands as segments below each other in full width at 200 percent
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ChoiceChips.kt
+@@ -76,7 +76,7 @@
+     enabled: Boolean = true,
+ ) {
+     if (LocalDensity.current.fontScale >= LARGE_FONT_SCALE_MIN) {
+-        SegmentColumn(options, chosen, onChoice, modifier, enabled)
++        Row(modifier.selectableGroup()) { options.forEach { (w, t) -> ChoiceChip(t, w == chosen, { onChoice(w) }) } }
+         return
+     }
+     // Equally tall: if a label wraps to two lines, only its segment used to grow.

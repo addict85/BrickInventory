@@ -25,7 +25,7 @@
  *      soft hyphens”
  *   C  in showUsernames the name check removed → red: “admin without
  *      (Administrator)”; only `name === 'admin' ||` removed (16.11.2026) → red: same place (en)
- *   D  in the log again toLocaleString → red: “log with fmtDatum”
+ *   D  in the log again toLocaleString → red: “log with fmtDate”
  *   E  speichereZugang always reports okText → red: “empty credentials”
  *   F  in setUnbekannt the second button back → red: “one button open
  *      set”
@@ -40,11 +40,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, warte, takt, reiter } = require('./helpers/ui');
+const { openUi, waitFor, tick, switchTab } = require('./helpers/ui');
 
 test('metrics with separators, complete in English too', async () => {
   const stats = {
-    '/v1/stats': {
+    '/v2/stats': {
       success: true,
       stats: { total_sets: 1565, total_quantity: 3095, total_parts: 10828, total_minifigs: 19, total_instructions: 0 },
     },
@@ -52,15 +52,15 @@ test('metrics with separators, complete in English too', async () => {
   const de = await openUi(stats, { browserLanguage: 'de-DE' });
   try {
     assert.ok(
-      await warte(() => /1\.565 verschiedene/.test(de.d.getElementById('tab-gallery').textContent)),
+      await waitFor(() => /1\.565 verschiedene/.test(de.d.getElementById('tab-gallery').textContent)),
       de.d.querySelector('#bstat-sets')?.parentElement?.textContent,
     );
   } finally {
     de.w.close();
   }
-  const en = await openUi(stats, { sprache: 'en', browserLanguage: 'en-US' });
+  const en = await openUi(stats, { language: 'en', browserLanguage: 'en-US' });
   try {
-    assert.ok(await warte(() => en.d.getElementById('bstat-parts').textContent !== '—'));
+    assert.ok(await waitFor(() => en.d.getElementById('bstat-parts').textContent !== '—'));
     assert.equal(en.d.getElementById('bstat-parts').textContent, '10,828');
   } finally {
     en.w.close();
@@ -75,22 +75,22 @@ test('metrics with separators, complete in English too', async () => {
 test('title without soft hyphens', async () => {
   const o = await openUi(
     {
-      '/v1/admin/job-status': { success: true, job: { running: false } },
-      '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
-      '/v1/admin/auftraege': {
+      '/v2/admin/job-status': { success: true, job: { running: false } },
+      '/v2/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
+      '/v2/admin/job-queue': {
         success: true,
-        auftraege: [],
-        zusammenfassung: [],
-        job_prozess: { laeuft: true },
-        bildbedarf: 0,
-        pausen: [],
+        jobs: [],
+        summary: [],
+        job_process: { running: true },
+        image_demand: 0,
+        pauses: [],
       },
     },
     { browserLanguage: 'de-DE' },
   );
   try {
-    await reiter(o.w, 'monitor');
-    assert.ok(await warte(() => /Hintergrund/.test(o.d.title), 2000), o.d.title);
+    await switchTab(o.w, 'monitor');
+    assert.ok(await waitFor(() => /Hintergrund/.test(o.d.title), 2000), o.d.title);
     assert.doesNotMatch(o.d.title, /­/);
   } finally {
     o.w.close();
@@ -98,34 +98,34 @@ test('title without soft hyphens', async () => {
 });
 
 test('admin without (Administrator)', async () => {
-  for (const [username, sprache] of [
+  for (const [username, language] of [
     ['admin', 'en'],
     ['admin', 'de'],
     ['Administrator', 'de'],
   ]) {
     const o = await openUi(
-      { '/v1/auth/me': { loggedIn: true, user: { id: 1, username, is_admin: true } } },
-      sprache === 'en' ? { sprache: 'en', browserLanguage: 'en-US' } : {},
+      { '/v2/auth/me': { loggedIn: true, user: { id: 1, username, is_admin: true } } },
+      language === 'en' ? { language: 'en', browserLanguage: 'en-US' } : {},
     );
     try {
-      assert.ok(await warte(() => o.d.getElementById('ubadge').textContent.trim()));
-      assert.equal(o.d.getElementById('ubadge').textContent, username, sprache);
+      assert.ok(await waitFor(() => o.d.getElementById('ubadge').textContent.trim()));
+      assert.equal(o.d.getElementById('ubadge').textContent, username, language);
     } finally {
       o.w.close();
     }
   }
 });
 
-test('log with fmtDatum', async () => {
+test('log with fmtDate', async () => {
   const o = await openUi(
     {
-      '/v1/admin/protokoll': {
+      '/v2/admin/audit-log': {
         success: true,
-        eintraege: [
+        entries: [
           {
             occurred_at: '2026-11-05T17:29:38Z',
-            verwalter_name: 'anna',
-            action: 'konto_angelegt',
+            admin_name: 'anna',
+            action: 'account_created',
             target_name: 'bert',
           },
         ],
@@ -134,9 +134,9 @@ test('log with fmtDatum', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    await reiter(o.w, 'settings');
-    assert.ok(await warte(() => o.d.querySelector('#vw-protokoll tbody td')));
-    assert.match(o.d.querySelector('#vw-protokoll tbody td').textContent, /^\d{2}\.\d{2}\.\d{4}/);
+    await switchTab(o.w, 'settings');
+    assert.ok(await waitFor(() => o.d.querySelector('#vw-log tbody td')));
+    assert.match(o.d.querySelector('#vw-log tbody td').textContent, /^\d{2}\.\d{2}\.\d{4}/);
   } finally {
     o.w.close();
   }
@@ -147,10 +147,10 @@ test('empty credentials report "access removed"', async () => {
   try {
     o.d.getElementById('rb-key').value = '';
     o.d.getElementById('btn-sav-rb').click();
-    // Confirmation happens at the button (meldeAmFeld), not in the toast.
-    const stand = () => o.d.querySelector('#einst-rb .feld-status')?.textContent || '';
-    assert.ok(await warte(() => /Zugang entfernt/.test(stand()), 2000), stand());
-    assert.doesNotMatch(stand() + o.d.getElementById('toasts').textContent, /gespeichert/i);
+    // Confirmation happens at the button (reportAtField), not in the toast.
+    const state = () => o.d.querySelector('#settings-rb .field-status')?.textContent || '';
+    assert.ok(await waitFor(() => /Zugang entfernt/.test(state()), 2000), state());
+    assert.doesNotMatch(state() + o.d.getElementById('toasts').textContent, /gespeichert/i);
   } finally {
     o.w.close();
   }
@@ -158,29 +158,29 @@ test('empty credentials report "access removed"', async () => {
 
 test('recovery codes: saved and as a file', async () => {
   const o = await openUi(
-    { '/v1/auth/zweiter-faktor/bestaetigen': { success: true, codes: ['aaaa-bbbb', 'cccc-dddd'] } },
+    { '/v2/auth/second-factor/confirm': { success: true, codes: ['aaaa-bbbb', 'cccc-dddd'] } },
     { browserLanguage: 'de-DE' },
   );
   try {
     o.w.URL.createObjectURL = () => 'blob:probe';
     o.w.URL.revokeObjectURL = () => {};
-    const feld = o.d.createElement('input');
-    feld.id = 'zf-code';
-    feld.value = '123456';
-    const knopf = o.d.createElement('button');
-    knopf.dataset.click = 'zfBestaetigen';
-    o.d.getElementById('zf-bereich')?.append(feld, knopf) ?? o.d.body.append(feld, knopf);
-    knopf.click();
-    assert.ok(await warte(() => o.d.getElementById('zf-gespeichert')));
-    assert.match(o.d.getElementById('zf-gespeichert').textContent, /gesichert/);
-    const datei = o.d.querySelector('[data-click="zfCodesSpeichern"]');
-    assert.ok(datei, 'kein Knopf „Als Datei speichern“');
-    let geladen = '';
+    const field = o.d.createElement('input');
+    field.id = 'sf-code';
+    field.value = '123456';
+    const button = o.d.createElement('button');
+    button.dataset.click = 'confirmSecondFactor';
+    o.d.getElementById('zf-bereich')?.append(field, button) ?? o.d.body.append(field, button);
+    button.click();
+    assert.ok(await waitFor(() => o.d.getElementById('sf-saved')));
+    assert.match(o.d.getElementById('sf-saved').textContent, /gesichert/);
+    const file = o.d.querySelector('[data-click="saveRecoveryCodes"]');
+    assert.ok(file, 'no button „Als Datei speichern“');
+    let loaded = '';
     o.w.HTMLAnchorElement.prototype.click = function () {
-      geladen = this.download;
+      loaded = this.download;
     };
-    datei.click();
-    assert.match(geladen, /\.txt$/);
+    file.click();
+    assert.match(loaded, /\.txt$/);
   } finally {
     o.w.close();
   }
@@ -189,7 +189,7 @@ test('recovery codes: saved and as a file', async () => {
 test('minifigures: bought on and total first', async () => {
   const o = await openUi(
     {
-      '/v1/minifigs': {
+      '/v2/minifigs': {
         success: true,
         total: 1,
         figs: [
@@ -206,10 +206,12 @@ test('minifigures: bought on and total first', async () => {
     { browserLanguage: 'de-DE' },
   );
   try {
-    await reiter(o.w, 'minifigs');
-    const erste = o.d.querySelector('#tab-minifigs .brick-stats .bstat .bstat-l');
-    assert.equal(erste.textContent.trim(), 'Figuren gesamt');
-    assert.ok(await warte(() => /Gekauft am 04\.03\.2026/.test(o.d.getElementById('tab-minifigs').textContent), 2000));
+    await switchTab(o.w, 'minifigs');
+    const first = o.d.querySelector('#tab-minifigs .brick-stats .bstat .bstat-l');
+    assert.equal(first.textContent.trim(), 'Figuren gesamt');
+    assert.ok(
+      await waitFor(() => /Gekauft am 04\.03\.2026/.test(o.d.getElementById('tab-minifigs').textContent), 2000),
+    );
   } finally {
     o.w.close();
   }
@@ -217,17 +219,17 @@ test('minifigures: bought on and total first', async () => {
 
 test('a button "open set" for an existing set', async () => {
   const o = await openUi(
-    { '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 2 } } },
+    { '/v2/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 2 } } },
     { browserLanguage: 'de-DE' },
   );
   try {
-    o.d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
-    await takt(10);
+    o.d.querySelector('[data-click="openCapture"][data-arg="set"]').click();
+    await tick(10);
     o.d.getElementById('add-num').value = '10305-1';
     o.d.getElementById('btn-add').click();
-    assert.ok(await warte(() => !o.d.getElementById('add-unbekannt').hidden));
-    const knoepfe = [...o.d.querySelectorAll('#add-set-modal button')].filter(b => /Set öffnen/.test(b.textContent));
-    assert.equal(knoepfe.length, 1);
+    assert.ok(await waitFor(() => !o.d.getElementById('add-unknown').hidden));
+    const buttonList = [...o.d.querySelectorAll('#add-set-modal button')].filter(b => /Set öffnen/.test(b.textContent));
+    assert.equal(buttonList.length, 1);
   } finally {
     o.w.close();
   }
@@ -236,20 +238,20 @@ test('a button "open set" for an existing set', async () => {
 test('remember names the collection', async () => {
   const o = await openUi(
     {
-      '/v1/wanted': (_u, opt) =>
-        opt?.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] },
-      '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 3 } },
+      '/v2/wanted': (_u, opt) =>
+        opt?.method === 'POST' ? { success: true, was_new: true } : { success: true, items: [] },
+      '/v2/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 3 } },
     },
     { browserLanguage: 'de-DE' },
   );
   try {
     o.d.getElementById('mk-num').value = '10305-1';
-    const knopf = o.d.createElement('button');
-    knopf.dataset.click = 'merkpostenHinzufuegen';
-    o.d.body.append(knopf);
-    knopf.click();
+    const button = o.d.createElement('button');
+    button.dataset.click = 'addWantedItem';
+    o.d.body.append(button);
+    button.click();
     assert.ok(
-      await warte(() => /Sammlung \(×3\)/.test(o.d.getElementById('toasts').textContent), 2000),
+      await waitFor(() => /Sammlung \(×3\)/.test(o.d.getElementById('toasts').textContent), 2000),
       o.d.getElementById('toasts').textContent,
     );
   } finally {
@@ -260,28 +262,28 @@ test('remember names the collection', async () => {
 test('household in the subtitle', async () => {
   const o = await openUi(
     {
-      '/v1/sets/household-members': {
+      '/v2/sets/household-members': {
         success: true,
         members: [
-          { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-          { id: 2, username: 'ben', is_self: false, tiefe: 1 },
+          { id: 1, username: 'anna', is_self: true, depth: 0 },
+          { id: 2, username: 'ben', is_self: false, depth: 1 },
         ],
       },
     },
     { browserLanguage: 'de-DE' },
   );
   try {
-    assert.ok(await warte(() => o.d.getElementById('scope-gallery').style.display !== 'none'));
+    assert.ok(await waitFor(() => o.d.getElementById('scope-gallery').style.display !== 'none'));
     o.w.eval('document.querySelector(\'.ntab[data-tab="gallery"]\').click()');
     assert.ok(
-      await warte(() => /im Haushalt/.test(o.d.getElementById('gallery-unter').textContent), 2000),
-      o.d.getElementById('gallery-unter').textContent,
+      await waitFor(() => /im Haushalt/.test(o.d.getElementById('gallery-sub').textContent), 2000),
+      o.d.getElementById('gallery-sub').textContent,
     );
-    const wahl = o.d.getElementById('scope-gallery');
-    wahl.value = 'own';
-    wahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    const choice = o.d.getElementById('scope-gallery');
+    choice.value = 'own';
+    choice.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     assert.ok(
-      await warte(() => /^Alle Sets deiner Sammlung/.test(o.d.getElementById('gallery-unter').textContent), 2000),
+      await waitFor(() => /^Alle Sets deiner Sammlung/.test(o.d.getElementById('gallery-sub').textContent), 2000),
     );
   } finally {
     o.w.close();
@@ -291,8 +293,8 @@ test('household in the subtitle', async () => {
 test('version in the login mask', () => {
   const { insertVersion } = require('./helpers/sources').buildAndRequire()('src/profile/indexHtml.js');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  assert.doesNotMatch(html, /Build 20\d\d\./, 'festes Datum in index.html');
-  assert.match(insertVersion(html, 'ab341de'), /<div class="start-fuss" data-version>Version ab341de<\/div>/);
-  assert.match(insertVersion(html, 'unbekannt'), /<div class="start-fuss" data-version><\/div>/);
+  assert.doesNotMatch(html, /Build 20\d\d\./, 'fixed date in index.html');
+  assert.match(insertVersion(html, 'ab341de'), /<div class="start-footer" data-version>Version ab341de<\/div>/);
+  assert.match(insertVersion(html, 'unbekannt'), /<div class="start-footer" data-version><\/div>/);
   assert.doesNotMatch(insertVersion(html, '<b>x'), /<b>/);
 });

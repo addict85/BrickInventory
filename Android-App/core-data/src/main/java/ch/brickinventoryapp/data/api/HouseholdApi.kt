@@ -21,32 +21,32 @@ import retrofit2.http.Path
 interface HouseholdApi {
 
     // Kaufpreis-Historie
-    @GET("api/v1/sets/{setNumber}/acquisitions")
+    @GET("api/v2/sets/{setNumber}/acquisitions")
     suspend fun getAcquisitions(
         @Path("setNumber") setNumber: String
     ): Response<AcquisitionsResponse>
 
-    @PUT("api/v1/sets/{setNumber}/acquisitions/{acqId}")
+    @PUT("api/v2/sets/{setNumber}/acquisitions/{acqId}")
     suspend fun updateAcquisition(
         @Path("setNumber") setNumber: String,
         @Path("acqId") acqId: Int,
         @Body body: UpdateAcquisitionRequest
     ): Response<GenericResponse>
 
-    @DELETE("api/v1/sets/{setNumber}/acquisitions/{acqId}")
+    @DELETE("api/v2/sets/{setNumber}/acquisitions/{acqId}")
     suspend fun deleteAcquisition(
         @Path("setNumber") setNumber: String,
         @Path("acqId") acqId: Int
     ): Response<GenericResponse>
 
     // Parts acquisitions
-    @GET("api/v1/parts/{partNumber}/{colorId}/acquisitions")
+    @GET("api/v2/parts/{partNumber}/{colorId}/acquisitions")
     suspend fun getPartAcquisitions(
         @Path("partNumber") partNumber: String,
         @Path("colorId") colorId: Int
     ): Response<AcquisitionsResponse>
 
-    @PUT("api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}")
+    @PUT("api/v2/parts/{partNumber}/{colorId}/acquisitions/{id}")
     suspend fun updatePartAcquisition(
         @Path("partNumber") partNumber: String,
         @Path("colorId") colorId: Int,
@@ -54,7 +54,7 @@ interface HouseholdApi {
         @Body body: UpdateAcquisitionRequest
     ): Response<GenericResponse>
 
-    @DELETE("api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}")
+    @DELETE("api/v2/parts/{partNumber}/{colorId}/acquisitions/{id}")
     suspend fun deletePartAcquisition(
         @Path("partNumber") partNumber: String,
         @Path("colorId") colorId: Int,
@@ -62,19 +62,19 @@ interface HouseholdApi {
     ): Response<DeleteWithQuantityResponse>
 
     // Minifig acquisitions
-    @GET("api/v1/minifigs/{figNumber}/acquisitions")
+    @GET("api/v2/minifigs/{figNumber}/acquisitions")
     suspend fun getFigAcquisitions(
         @Path("figNumber") figNumber: String
     ): Response<AcquisitionsResponse>
 
-    @PUT("api/v1/minifigs/{figNumber}/acquisitions/{id}")
+    @PUT("api/v2/minifigs/{figNumber}/acquisitions/{id}")
     suspend fun updateFigAcquisition(
         @Path("figNumber") figNumber: String,
         @Path("id") id: Int,
         @Body body: UpdateAcquisitionRequest
     ): Response<GenericResponse>
 
-    @DELETE("api/v1/minifigs/{figNumber}/acquisitions/{id}")
+    @DELETE("api/v2/minifigs/{figNumber}/acquisitions/{id}")
     suspend fun deleteFigAcquisition(
         @Path("figNumber") figNumber: String,
         @Path("id") id: Int
@@ -84,28 +84,28 @@ interface HouseholdApi {
     //
     // BOTH sides must agree: the main account creates an
     // invitation code, the other account redeems it in ITS settings.
-    @GET("api/v1/settings/household")
+    @GET("api/v2/settings/household")
     suspend fun getHousehold(): Response<HouseholdStatusResponse>
 
-    @POST("api/v1/settings/household/invite")
+    @POST("api/v2/settings/household/invite")
     suspend fun createHouseholdInvite(): Response<HouseholdInviteResponse>
 
-    @POST("api/v1/settings/household/redeem")
+    @POST("api/v2/settings/household/redeem")
     suspend fun redeemHouseholdInvite(
         @Body body: Map<String, String>
     ): Response<GenericResponse>
 
-    @POST("api/v1/settings/household/unlink")
+    @POST("api/v2/settings/household/unlink")
     suspend fun unlinkHousehold(
         @Body body: Map<String, Int>
     ): Response<GenericResponse>
 
-    @POST("api/v1/settings/household/former/dismiss")
+    @POST("api/v2/settings/household/former/dismiss")
     suspend fun discardSeparateAccount(
         @Body body: Map<String, Int>
     ): Response<GenericResponse>
 
     /** Accounts of the household — for account filter, account selection and moving. */
-    @GET("api/v1/sets/household-members")
+    @GET("api/v2/sets/household-members")
     suspend fun getHouseholdMembers(): Response<HouseholdMembersResponse>
 }

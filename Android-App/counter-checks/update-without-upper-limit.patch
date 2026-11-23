@@ -1,0 +1,17 @@
+Gegenprobe: der Download schreibt mehr als angekündigt
+Modul: feature-account
+Test: ch.brickinventoryapp.account.UpdateViewModelTest
+Rot: more than announced is not written
+
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
+@@ -73,7 +73,7 @@
+                             if (n < 0) break
+                             loaded += n
+                             // Abort BEFORE writing: otherwise the excess is already on disk.
+-                            if (loaded > upperLimit) throw IOException("Update groesser als erlaubt ($loaded > $upperLimit)")
++                            if (loaded > upperLimit * 1000) throw IOException("Update groesser als erlaubt ($loaded > $upperLimit)")
+                             from.write(buffer, 0, n)
+                             val p = if (total > 0) ((loaded * 100) / total).toInt().coerceIn(0, 100) else last
+                             if (p != last) {

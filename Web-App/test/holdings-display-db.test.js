@@ -26,7 +26,7 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     SUB = `bs-${process.pid}`;
   const SN = `83${(process.pid % 900) + 100}-1`;
 
-  const aufraeumen = async () => {
+  const cleanUp = async () => {
     for (const tab of ['sets', 'set_acquisitions', 'price_history', 'price_cache'])
       await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [SN]).catch(() => {});
   };
@@ -39,24 +39,24 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     mainId,
     subId,
   ]);
-  await aufraeumen();
+  await cleanUp();
 
   // The price job writes BOTH conditions regardless of what anyone
   // owns — exactly that is where the surplus series came from.
-  for (const [cond, preis] of [
+  for (const [cond, price] of [
     ['N', 7.99],
     ['U', 3.94],
   ]) {
     await db.run(
       `INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                   VALUES ($1,$2,'CHF',$3,$3,5)`,
-      [SN, cond, preis],
+      [SN, cond, price],
     );
     for (let d = 1; d >= 0; d--)
       await db.run(
         `INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                     VALUES ($1,$2,'CHF',$3,$3, CURRENT_DATE - $4::int + interval '9 hours')`,
-        [SN, cond, preis, d],
+        [SN, cond, price, d],
       );
   }
 
@@ -71,17 +71,17 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
   );
 
   const { priceHistorySet } = _req('src/finances/priceHistory.js');
-  const { setsLesen } = require('./helpers/sources').handlerModule(_req);
+  const { readSets } = require('./helpers/sources').handlerModule(_req);
 
   try {
     await t.test('the chart only shows the conditions in the inventory', async () => {
       const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
-      assert.deepEqual(Object.keys(ph.by_condition), ['U'], 'Vorbedingung: nur „gebraucht" ist erfasst');
+      assert.deepEqual(Object.keys(ph.by_condition), ['U'], 'Precondition: only „gebraucht“ is recorded');
       assert.deepEqual(
         ph.chart.values.map(v => v.name),
         ['U'],
-        'Das Diagramm führt eine Reihe für einen Zustand, der nicht im Bestand liegt — ' +
-          'die Legende zeigt dann „Neu" für ein Set, das es nur gebraucht gibt',
+        'The chart carries a series for a condition that is not in the stock — ' +
+          'the legend then shows „Neu“ for a set that only exists used',
       );
     });
 
@@ -91,10 +91,10 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       // while the row above showed CHF 3.94 — two answers to
       // the same question, one below the other.
       const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
-      const werte = ph.chart.values.flatMap(v => v.values.map(p => p.y)).filter(y => y > 0);
-      assert.ok(werte.length, 'keine Diagrammwerte');
-      assert.equal(Math.max(...werte), 3.94, `Der Höchstwert stammt aus dem falschen Zustand: ${Math.max(...werte)}`);
-      assert.equal(Math.min(...werte), 3.94);
+      const values = ph.chart.values.flatMap(v => v.values.map(p => p.y)).filter(y => y > 0);
+      assert.ok(values.length, 'no chart values');
+      assert.equal(Math.max(...values), 3.94, `The maximum comes from the wrong condition: ${Math.max(...values)}`);
+      assert.equal(Math.min(...values), 3.94);
     });
 
     await t.test('without any acquisition the history stays visible anyway', async () => {
@@ -107,7 +107,7 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       assert.equal(
         ph.chart.values.length,
         1,
-        'Ohne Erfassung muss der Zustand des Bestandes übrig bleiben, nicht nichts',
+        'Without an acquisition the condition of the holding must remain, not nothing',
       );
       await db.run(
         `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
@@ -117,16 +117,16 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     });
 
     await t.test('an account with quantity 0 no longer stands as an owner', async () => {
-      const r = await setsLesen([mainId, subId], {});
-      const zeile = r.sets.find(s => s.set_number === SN);
-      assert.ok(zeile, 'das Set fehlt in der Galerie');
-      assert.equal(zeile.quantity, 1, 'die Menge des Haushalts ist die Summe');
-      const namen = (zeile.owners || []).map(o => o.username);
+      const r = await readSets([mainId, subId], {});
+      const row = r.sets.find(s => s.set_number === SN);
+      assert.ok(row, 'the set is missing in the gallery');
+      assert.equal(row.quantity, 1, 'the household quantity is the sum');
+      const names = (row.owners || []).map(o => o.username);
       assert.deepEqual(
-        namen,
+        names,
         [SUB],
-        `Besitzer-Label falsch: ${namen.join(',')} — ein Konto, dessen Kaufpreis gelöscht ` +
-          'wurde, hält kein Exemplar mehr',
+        `Owner label wrong: ${names.join(',')} — an account whose purchase price was deleted ` +
+          'no longer holds a copy',
       );
     });
 
@@ -135,12 +135,12 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       // disappeared entirely.
       // “Hold a copy again" means: create an entry.
       await record(db, mainId, SN, 2);
-      const r = await setsLesen([mainId, subId], {});
-      const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();
-      assert.deepEqual(namen, [MAIN, SUB].sort(), 'beide Konten halten jetzt Exemplare');
+      const r = await readSets([mainId, subId], {});
+      const names = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();
+      assert.deepEqual(names, [MAIN, SUB].sort(), 'both accounts now hold copies');
     });
   } finally {
-    await aufraeumen();
+    await cleanUp();
     await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await db.pool.end().catch(() => {});

@@ -4,7 +4,7 @@ package ch.brickinventoryapp.model.data
  * Account filter of the household, per view as in the web app: in the gallery the
  * household, in the finances the own numbers. On the device, because it is a
  * view setting. Values: "all" (default), "own", "subs" or the ID of an
- * account; translated only on the server (scopeIds in src/household/household.ts). A
+ * account; translated only on the server (scopeIds in `src/household/household.ts`). A
  * foreign ID it rejects — the filter is a viewing aid, not an access path.
  */
 
@@ -12,11 +12,11 @@ object ScopeFilter {
 
     /**
      * The views with their own filter. The keys are named as in the web app
-     * (js/account-filter.js), so that both store the same choice under the same name.
+     * (`js/account-filter.js`), so that both store the same choice under the same name.
      */
     enum class View(val key: String) {
         GALLERY("gallery"), PARTS("parts"), MINIFIGS("minifigs"), FINANCE("finance"),
-        MERKLISTE("merkliste")
+        WANTED_LIST("merkliste")
     }
 
     const val ALL = "all"

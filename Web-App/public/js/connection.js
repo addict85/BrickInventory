@@ -1,6 +1,6 @@
 import { tRaw } from '../i18n.js';
 import { toast } from './messages.js';
-import { fmtDatum } from './format.js';
+import { fmtDate } from './format.js';
 
 // Connection banner and locking of writing buttons without network. The API wrapper reports every response and
 // every network error here; the views know nothing about it.
@@ -13,17 +13,17 @@ let _lastResponse = null;
 
 let _offline = false;
 
-/** @param {boolean} erreichbar */
-export function showConnection(erreichbar) {
-  if (erreichbar && typeof navigator !== 'undefined' && navigator.onLine === false) erreichbar = false;
+/** @param {boolean} reachable */
+export function showConnection(reachable) {
+  if (reachable && typeof navigator !== 'undefined' && navigator.onLine === false) reachable = false;
   const band = typeof document !== 'undefined' ? document.getElementById('offline-band') : null;
   if (!band) return;
-  if (erreichbar) {
+  if (reachable) {
     if (_offline) toast(tRaw('net.back'), 'success');
-    if (_offline) schreibenSperren(false);
+    if (_offline) lockWrites(false);
     // Whatever could not load without network now loads by itself.
     if (_offline)
-      document.querySelectorAll('.tab.active .fehler-zustand [data-lesend]').forEach(k => {
+      document.querySelectorAll('.tab.active .error-state [data-reading]').forEach(k => {
         /** @type {HTMLElement} */ (k).click();
       });
     _offline = false;
@@ -31,23 +31,24 @@ export function showConnection(erreichbar) {
     return;
   }
   _offline = true;
-  const heute = _lastResponse && new Date(_lastResponse).toDateString() === new Date().toDateString();
-  const seit = heute
-    ? tRaw('net.heute', { zeit: fmtDatum(_lastResponse, 'zeit') })
-    : fmtDatum(_lastResponse, 'tagzeit');
+  const today = _lastResponse && new Date(_lastResponse).toDateString() === new Date().toDateString();
+  const since = today
+    ? tRaw('net.today', { time: fmtDate(_lastResponse, 'time') })
+    : fmtDate(_lastResponse, 'datetime');
   band.textContent =
-    (_lastResponse ? tRaw('net.offline_since', { zeit: seit }) : tRaw('net.offline')) +
+    (_lastResponse ? tRaw('net.offline_since', { time: since }) : tRaw('net.offline')) +
     ' ' +
-    tRaw('net.offline_gesperrt');
+    tRaw('net.offline_locked');
   band.hidden = false;
-  schreibenSperren(true);
+  lockWrites(true);
 }
 
 // Without a connection every change fails. Instead of showing a message only after the click, the
 // writing controls are locked and name the banner as the reason via aria-describedby. Whether a button
 // writes is decided by its action, not by its name: a word in the name missed handlers like revokeToken.
 // Every registered action is in exactly one of the two lists (test/offline-rating-ui.test.js).
-const SERVED = 'button, input[type=file], .import-menue > summary, [data-click]';
+// Fields that save on change (autosave) count as well: offline their input would be lost without a word.
+const SERVED = 'button, input[type=file], .import-menu > summary, [data-click], [data-change], [data-input]';
 
 /**
  * Handlers that change server state via POST/PUT/PATCH/DELETE (also via another handler), plus the
@@ -57,15 +58,15 @@ const SERVED = 'button, input[type=file], .import-menue > summary, [data-click]'
 export const WRITING_ACTIONS = new Set([
   'acqDelete',
   'acqSave',
-  'aendereAlarmSchwelle',
-  'alarmGetippt',
-  'auftragAbbrechen',
-  'auftragsArtJetzt',
-  'auftragsArtLeeren',
+  'changeAlertThreshold',
+  'alertTyped',
+  'cancelJob',
+  'runJobKindNow',
+  'emptyJobKind',
   'autosaveSet',
-  'benenneLagerortUm',
-  'bestaetigeUebernahme',
-  'bestaetigungErneut',
+  'renameLocation',
+  'confirmTakeover',
+  'resendConfirmation',
   'clickJobTrigger',
   'createHouseholdInvite',
   'deleteBricksetQueueEntry',
@@ -77,53 +78,53 @@ export const WRITING_ACTIONS = new Set([
   'delSetStop',
   'delUser',
   'dismissFormerLink',
-  'einrichtungPasswort',
-  'einrichtungQuelle',
-  'guthabenAbfragen',
-  'guthabenAlleAbfragen',
-  'gutscheinBearbeiten',
-  'gutscheinLandSpeichern',
-  'gutscheinLoeschen',
-  'gutscheinSpeichern',
-  'importAlarmeCsv',
+  'setupPassword',
+  'setupSource',
+  'queryBalance',
+  'queryAllBalances',
+  'editVoucher',
+  'saveVoucherCountry',
+  'deleteVoucher',
+  'saveVoucher',
+  'importAlertsCsv',
   'importConfig',
   'importFigsCsv',
-  'importMerklisteCsv',
+  'importWantedCsv',
   'importPartsCsv',
-  'katalogAufMerkliste',
-  'kontoFreischalten',
-  'lagerortGewaehlt',
-  'lagerortTaste',
-  'legeAlarmAn',
-  'legeLagerortAn',
-  'loescheAlarm',
-  'loescheLagerort',
+  'catalogToWanted',
+  'unlockAccount',
+  'locationSelected',
+  'locationKeydown',
+  'createAlert',
+  'createLocation',
+  'deleteAlert',
+  'deleteLocation',
   'manAcqDelete',
   'manAcqSave',
   'manQtyChange',
   'manQtySave',
-  'mengeJeKonto',
-  'merkpostenDetailLoeschen',
-  'merkpostenDetailUebernehmen',
-  'merkpostenHinzufuegen',
-  'merkpostenInhaberGewaehlt',
-  'merkpostenLoeschen',
-  'merkpostenLoeschenStop',
-  'merkpostenUebernehmen',
+  'quantityPerAccount',
+  'deleteWantedDetail',
+  'takeOverWantedDetail',
+  'addWantedItem',
+  'wantedOwnerSelected',
+  'deleteWantedItem',
+  'stopDeleteWantedItem',
+  'takeOverWantedItem',
   'mQtyDec',
   'mQtyInc',
-  'oeffneErfassen',
+  'openCapture',
   'openRpw',
-  'papierkorbEndgueltig',
-  'papierkorbLeeren',
-  'papierkorbWiederherstellen',
-  'passkeyAnmelden',
-  'passkeyHinzufuegen',
-  'passkeyLoeschen',
-  'passkeyZweiterFaktor',
-  'plFuelleBestand',
-  'qrKopplungAblehnen',
-  'qrKopplungBestaetigen',
+  'deleteFromTrashPermanently',
+  'emptyTrash',
+  'restoreFromTrash',
+  'passkeyLogin',
+  'addPasskey',
+  'deletePasskey',
+  'passkeySecondFactor',
+  'plFillStock',
+  'rejectQrPairing',
+  'confirmQrPairing',
   'queueCatalogImages',
   'redeemHouseholdInvite',
   'redownloadInstr',
@@ -137,39 +138,39 @@ export const WRITING_ACTIONS = new Set([
   'saveJobTime',
   'saveManualFigBl',
   'saveRegEnabled',
-  'schalteLagerortVorgabe',
+  'toggleLocationDefault',
   'setLangFromEl',
-  'setzeEigenesDesign',
-  'speichereAlarm',
-  'speichereAppDesign',
-  'speichereCacheTtl',
-  'speichereSetLagerort',
-  'speichereStandardZustand',
-  'speichereTeilFarbe',
-  'speichereTeilLagerort',
-  'speichereWaehrung',
-  'speichereZustand',
+  'setOwnDesign',
+  'saveAlert',
+  'saveAppDesign',
+  'saveCacheTtl',
+  'saveSetLocation',
+  'saveStandardState',
+  'savePartColor',
+  'savePartLocation',
+  'saveCurrency',
+  'saveState',
   'startSetCsvImport',
-  'teileNeuImportieren',
+  'reimportOpenSetParts',
   'toggleAdmin',
-  'toggleAktiv',
+  'toggleActive',
   'triggerCsvSync',
   'unlinkFromParent',
   'unlinkHousehold',
   'uploadInstr',
-  'wantedXmlSchreiben',
-  'zfAbschalten',
-  'zfBestaetigen',
-  'zfEinrichten',
-  'zfNeueCodes',
-  'zfZuruecksetzen',
+  'writeWantedXml',
+  'disableSecondFactor',
+  'confirmSecondFactor',
+  'setupSecondFactor',
+  'newRecoveryCodes',
+  'resetSecondFactor',
 ]);
 
 // Reading, checking without saving (test source, preview, plaintext) and everything purely local stays free offline.
-// einrichtungWeiter only reports "done" in the last step; before that it only pages.
+// setupNext only reports "done" in the last step; before that it only pages.
 export const READING_ACTIONS = new Set([
-  'ansichtWaehlen',
-  'benutzerMenue',
+  'chooseView',
+  'userMenu',
   'blurOnEnter',
   'closeAcqModal',
   'closeCatModal',
@@ -181,38 +182,38 @@ export const READING_ACTIONS = new Set([
   'closePwModal',
   'closeSetItemDetail',
   'copyHouseholdInvite',
-  'einrichtungPruefen',
-  'einrichtungSpaeter',
-  'einrichtungStandNeu',
-  'einrichtungStandSchliessen',
-  'einrichtungWeiter',
-  'einrichtungZiel',
-  'einrichtungZurueck',
-  'einstAbschnitt',
-  'einstellungenQuellePruefen',
-  'erfassenZumSet',
-  'feldFokussieren',
+  'checkSetup',
+  'setupLater',
+  'setupStatusNew',
+  'closeSetupStatus',
+  'setupNext',
+  'setupTarget',
+  'setupBack',
+  'settingsSection',
+  'checkSettingsSource',
+  'captureForSet',
+  'focusField',
   'filterFigs',
-  'filterUmschalten',
-  'filterZuruecksetzen',
+  'toggleFilter',
+  'resetFilter',
   'finFilter',
-  'finSortiere',
-  'finSuchen',
-  'geheimUmschalten',
+  'finSort',
+  'finSearch',
+  'toggleSecret',
   'gibToggle',
-  'gutscheinAbbrechen',
-  'gutscheinDateiGewaehlt',
-  'gutscheineExportieren',
-  'gutscheinKopieren',
-  'gutscheinPdfOeffnen',
-  'gutscheinPinUmschalten',
+  'cancelVoucher',
+  'voucherFileSelected',
+  'exportVouchers',
+  'copyVoucher',
+  'openVoucherPdf',
+  'toggleVoucherPin',
   'hideProgress',
-  'kontoSprung',
-  'ladeGutscheine',
-  'ladeMerkliste',
-  'ladePasskeys',
-  'ladeZweitenFaktor',
-  'lagerortGetippt',
+  'jumpToAccount',
+  'loadVouchers',
+  'loadWanted',
+  'loadPasskeys',
+  'loadSecondFactor',
+  'locationTyped',
   'lightboxBackdrop',
   'loadCatalogSets',
   'loadFinance',
@@ -221,9 +222,9 @@ export const READING_ACTIONS = new Set([
   'loadParts',
   'loadPortfolioChart',
   'loadTokens',
-  'oeffneMerkpostenDetail',
-  'oeffneReiter',
-  'oeffneSicht',
+  'openWantedDetail',
+  'openTab',
+  'openView',
   'onScopeChange',
   'onStorageChange',
   'openAcqModal',
@@ -234,12 +235,12 @@ export const READING_ACTIONS = new Set([
   'openManDetail',
   'openModal',
   'openPdfViewerLink',
-  'openSetAusItem',
+  'openSetFromItem',
   'openSetItemDetail',
   'pdfZoomIn',
   'pdfZoomOut',
   'pdfZoomReset',
-  'pflichtAbmelden',
+  'requiredLogout',
   'plAddSet',
   'plExportBricklink',
   'plExportPdf',
@@ -247,75 +248,80 @@ export const READING_ACTIONS = new Set([
   'plRemoveSet',
   'plReset',
   'printPdfViewer',
-  'rbHinweisOeffnen',
-  'rbHinweisWeg',
+  'openRbHint',
+  'dismissRbHint',
   'renderFigsAll',
   'renderGallery',
-  'schliesseErfassen',
-  'schliesseMerkpostenDetail',
-  'schliesseUebernahme',
+  'closeCapture',
+  'closeWantedDetail',
+  'closeTakeover',
   'setCatFilter',
   'setChartPeriod',
   'setColorFilter',
-  'setsSortieren',
-  'setzeDunkel',
+  'sortSets',
+  'setDark',
   'showPanel',
-  'sichtAusDialog',
+  'viewFromDialog',
   'stopEvent',
   'toggleBricksetQueue',
   'updateColorDot',
-  'waehrungPruefen',
-  'wantedKorrekturFarbe',
-  'wantedKorrekturNummer',
-  'wantedKorrekturWert',
-  'wantedXmlGewaehlt',
-  'wantedXmlNeuLesen',
-  'wantedXmlSchliessen',
-  'wechsleAlarmZustand',
-  'zeigeLetztenImport',
-  'zfCodesKopieren',
-  'zfCodesSpeichern',
-  'zfPflichtFertig',
-  'zfSchluesselKopieren',
+  'checkCurrency',
+  'wantedCorrectionColor',
+  'wantedCorrectionNumber',
+  'wantedCorrectionValue',
+  'wantedXmlSelected',
+  'rereadWantedXml',
+  'closeWantedXml',
+  'toggleAlertState',
+  'showLastImport',
+  'copyRecoveryCodes',
+  'saveRecoveryCodes',
+  'secondFactorRequiredDone',
+  'copySecondFactorKey',
 ]);
 
 // File choice and import menu always lead to an upload; buttons without data-click (wired by id)
-// carry data-schreibend in the markup. Login needs no lock offline, it shows its own error.
-const ALWAYS_WRITING = 'input[type=file], .import-menue > summary, [data-schreibend]';
+// carry data-writing in the markup. Login needs no lock offline, it shows its own error.
+const ALWAYS_WRITING = 'input[type=file], .import-menu > summary, [data-writing]';
 
 const NOT_LOCK = '#login-screen, .toast';
 
 /** @param {Element} k */
-function schreibt(k) {
+function writes(k) {
   if (k.closest(NOT_LOCK)) return false;
   if (k.matches(ALWAYS_WRITING)) return true;
-  return WRITING_ACTIONS.has(k.getAttribute('data-click') || '');
+  return ['data-click', 'data-change', 'data-input'].some(a => WRITING_ACTIONS.has(k.getAttribute(a) || ''));
 }
 
 /** @type {MutationObserver|null} */
 let _lockObserver = null;
 
-/** @param {Element|Document} wurzel */
-function sperreIn(wurzel) {
-  const selbst = wurzel instanceof Element && wurzel.matches(SERVED) ? [wurzel] : [];
-  /** @type {HTMLElement[]} */ ([...selbst, ...wurzel.querySelectorAll(SERVED)]).forEach(k => {
-    if ((knowsDisabled(k) && k.disabled) || k.dataset.offlineGesperrt || !schreibt(k)) return;
+/** @param {Element|Document} root */
+function lockWithin(root) {
+  const self = root instanceof Element && root.matches(SERVED) ? [root] : [];
+  /** @type {HTMLElement[]} */ ([...self, ...root.querySelectorAll(SERVED)]).forEach(k => {
+    if ((knowsDisabled(k) && k.disabled) || k.dataset.offlineLocked || !writes(k)) return;
     if (knowsDisabled(k)) k.disabled = true;
     else {
       k.setAttribute('aria-disabled', 'true');
       if (k.tagName === 'SUMMARY') k.parentElement?.removeAttribute('open');
     }
-    k.dataset.offlineGesperrt = '1';
+    k.dataset.offlineLocked = '1';
     k.setAttribute('aria-describedby', ((k.getAttribute('aria-describedby') || '') + ' offline-band').trim());
   });
 }
 
 /**
  * @param {Element} k
- * @returns {k is HTMLButtonElement | HTMLInputElement}
+ * @returns {k is HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement}
  */
 function knowsDisabled(k) {
-  return k instanceof HTMLButtonElement || k instanceof HTMLInputElement;
+  return (
+    k instanceof HTMLButtonElement ||
+    k instanceof HTMLInputElement ||
+    k instanceof HTMLSelectElement ||
+    k instanceof HTMLTextAreaElement
+  );
 }
 
 // <summary> and the tiles' delete cross (<span>) know no disabled: click and keyboard would otherwise still
@@ -325,7 +331,7 @@ if (typeof document !== 'undefined')
     'click',
     e => {
       const t = /** @type {Element} */ (e.target);
-      if (t?.closest?.('[data-offline-gesperrt][aria-disabled]')) {
+      if (t?.closest?.('[data-offline-locked][aria-disabled]')) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -333,15 +339,15 @@ if (typeof document !== 'undefined')
     true,
   );
 
-/** @param {boolean} an */
-function schreibenSperren(an) {
+/** @param {boolean} on */
+function lockWrites(on) {
   if (typeof document === 'undefined') return;
-  document.documentElement.toggleAttribute('data-offline', an);
-  if (an) {
-    sperreIn(document);
+  document.documentElement.toggleAttribute('data-offline', on);
+  if (on) {
+    lockWithin(document);
     if (!_lockObserver && typeof MutationObserver !== 'undefined') {
       _lockObserver = new MutationObserver(m => {
-        for (const x of m) for (const n of x.addedNodes) if (n.nodeType === 1) sperreIn(/** @type {Element} */ (n));
+        for (const x of m) for (const n of x.addedNodes) if (n.nodeType === 1) lockWithin(/** @type {Element} */ (n));
       });
       _lockObserver.observe(document.body, { childList: true, subtree: true });
     }
@@ -349,10 +355,10 @@ function schreibenSperren(an) {
   }
   _lockObserver?.disconnect();
   _lockObserver = null;
-  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-offline-gesperrt]')).forEach(k => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-offline-locked]')).forEach(k => {
     if (knowsDisabled(k)) k.disabled = false;
     else k.removeAttribute('aria-disabled');
-    delete k.dataset.offlineGesperrt;
+    delete k.dataset.offlineLocked;
     const rest = (k.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== 'offline-band');
     if (rest.length) k.setAttribute('aria-describedby', rest.join(' '));
     else k.removeAttribute('aria-describedby');

@@ -27,31 +27,31 @@ function languageTexts() {
 }
 
 test('every fallback text shows what the language text says', () => {
-  const texte = languageTexts();
-  const stellen = [...HTML.matchAll(/(<[a-z]+\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]+)</g)];
+  const texts = languageTexts();
+  const placeList = [...HTML.matchAll(/(<[a-z]+\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]+)</g)];
   // Self-proof: MEASURED there are over 200. If the derivation finds nothing,
   // the loop would be silently green.
-  assert.ok(stellen.length > 150, `Nur ${stellen.length} Stellen abgeleitet — greift die Suche noch?`);
+  assert.ok(placeList.length > 150, `Only ${placeList.length} places derived — does the search still work?`);
 
-  const abweichend = [];
-  let geprueft = 0;
-  for (const [, tag, schluessel, text] of stellen) {
+  const deviating = [];
+  let checked = 0;
+  for (const [, tag, key, text] of placeList) {
     if (tag.includes('data-i18n-attr')) continue; // exception 1
-    const soll = texte.get(schluessel);
-    if (soll === undefined) continue; // i18n.test.js covers missing keys
-    if (soll.includes('{')) continue; // exception 2
-    geprueft++;
-    if (escHtml(soll) !== text.trim()) abweichend.push(`${schluessel}: Markup "${text.trim()}" ≠ "${soll}"`);
+    const want = texts.get(key);
+    if (want === undefined) continue; // i18n.test.js covers missing keys
+    if (want.includes('{')) continue; // exception 2
+    checked++;
+    if (escHtml(want) !== text.trim()) deviating.push(`${key}: Markup "${text.trim()}" ≠ "${want}"`);
   }
-  assert.ok(geprueft > 100, `Nur ${geprueft} Stellen wirklich geprüft — greifen die Ausnahmen zu breit?`);
+  assert.ok(checked > 100, `Only ${checked} places actually checked — are the exceptions too broad?`);
   assert.deepEqual(
-    abweichend,
+    deviating,
     [],
-    `${abweichend.length} Rückfalltexte weichen vom Sprachtext ab:\n  ` +
-      abweichend.join('\n  ') +
-      '\n\nSichtbar ist der SPRACHTEXT. Der Text im Markup ist nur der Rückfall ' +
-      'für den Augenblick vor dem Übersetzen — laufen sie auseinander, sieht man ' +
-      'beim Entwickeln das eine und im Betrieb das andere.',
+    `${deviating.length} fallback texts differ from the language text:\n  ` +
+      deviating.join('\n  ') +
+      '\n\nWhat is visible is the LANGUAGE TEXT. The text in the markup is only the fallback ' +
+      'for the moment before translating — if they drift apart, you see ' +
+      'one thing while developing and another in production.',
   );
 });
 
@@ -62,31 +62,31 @@ test('no element with data-i18n has child elements', () => {
     const tag = m[1];
     const rest = HTML.slice(m.index + m[0].length);
     // Up to the matching closing tag, nested ones of the same name counted.
-    let tiefe = 1,
+    let depth = 1,
       i = 0,
-      ende = -1;
-    while (i < rest.length && tiefe > 0) {
-      const auf = rest.indexOf('<' + tag, i);
-      const zu = rest.indexOf('</' + tag, i);
-      if (zu === -1) break;
-      if (auf !== -1 && auf < zu) {
-        tiefe++;
-        i = auf + 1;
+      end = -1;
+    while (i < rest.length && depth > 0) {
+      const opened = rest.indexOf('<' + tag, i);
+      const closed = rest.indexOf('</' + tag, i);
+      if (closed === -1) break;
+      if (opened !== -1 && opened < closed) {
+        depth++;
+        i = opened + 1;
       } else {
-        tiefe--;
-        i = zu + 1;
-        ende = zu;
+        depth--;
+        i = closed + 1;
+        end = closed;
       }
     }
-    const inhalt = ende === -1 ? '' : rest.slice(0, ende);
-    if (/<[a-z]/i.test(inhalt)) bad.push(`${m[3]}: <${tag}> enthält ${inhalt.match(/<[a-z][^\s>]*/i)[0]}…`);
+    const content = end === -1 ? '' : rest.slice(0, end);
+    if (/<[a-z]/i.test(content)) bad.push(`${m[3]}: <${tag}> enthält ${content.match(/<[a-z][^\s>]*/i)[0]}…`);
   }
   assert.deepEqual(
     bad,
     [],
-    'Diese Elemente tragen `data-i18n` UND Kind-Elemente:\n  ' +
+    'These elements carry `data-i18n` AND child elements:\n  ' +
       bad.join('\n  ') +
-      '\n\n`textContent` ersetzt den GANZEN Inhalt — die Kinder sind beim ersten ' +
-      'Übersetzen weg. Den Schlüssel an ein inneres Feld hängen.',
+      '\n\n`textContent` replaces the WHOLE content — the children are gone after the first ' +
+      'translation. Attach the key to an inner field.',
   );
 });

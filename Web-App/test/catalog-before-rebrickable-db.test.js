@@ -43,14 +43,14 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { keineDb } = require('./helpers/db');
+const { noDb } = require('./helpers/db');
 const db = testData();
 
 // Rebrickable provided at the wiring (testSources); `fetches` counts what was asked.
 let fetches = [];
 testSources(null, {
-  lookupPart: async (nr, farbe) => {
-    fetches.push(`lookupPart ${nr}/${farbe}`);
+  lookupPart: async (nr, color) => {
+    fetches.push(`lookupPart ${nr}/${color}`);
     return { part_name: 'VON REBRICKABLE', category_name: '42', image_url: 'https://cdn.example/rb.jpg' };
   },
   getMinifigInfo: async nr => {
@@ -67,7 +67,7 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
   try {
     await db.get('SELECT 1');
   } catch (e) {
-    keineDb(t, e);
+    noDb(t, e);
     return;
   }
 
@@ -113,9 +113,9 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
   /** Create a part and count what went outside in doing so. */
-  const putPart = async (nr, farbe) => {
+  const putPart = async (nr, color) => {
     fetches = [];
-    await addManualPart(UID, { part_number: nr, color_id: farbe, quantity: 1 });
+    await addManualPart(UID, { part_number: nr, color_id: color, quantity: 1 });
     return fetches.filter(a => a.startsWith('lookupPart'));
   };
 
@@ -123,7 +123,7 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
     assert.deepEqual(
       await putPart('3001', 4),
       [],
-      'Beides steht lokal da. Jeder Abruf hier ist der, den Marco gemessen hat',
+      'Both are available locally. Every fetch here is the one Marco measured',
     );
   });
 
@@ -131,8 +131,8 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
     assert.deepEqual(
       await putPart('3002', 4),
       [],
-      'image_local ist ein Pfad und darf nicht durch V.optionalImageUrl — ' +
-        'er beweist aber, dass der Abruf nichts mehr zu holen hat',
+      'image_local is a path and must not go through V.optionalImageUrl — ' +
+        'but it proves that the fetch has nothing left to get',
     );
   });
 
@@ -140,14 +140,14 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
     assert.deepEqual(
       await putPart('3003', 4),
       ['lookupPart 3003/4'],
-      'Gespart werden soll der ueberfluessige Abruf, nicht der noetige. ' +
-        'rb_parts.part_img_url liegt vor und darf den Farb-Abruf NICHT ersetzen',
+      'The superfluous fetch is to be saved, not the necessary one. ' +
+        'rb_parts.part_img_url exists and must NOT replace the color fetch',
     );
     const z = await db.get(`SELECT image_url FROM part_color_catalog WHERE part_number='3003' AND color_id=4`);
     assert.equal(
       z?.image_url,
       'https://cdn.example/rb.jpg',
-      'Geschrieben wird, was lookupPart fuer DIESE Farbe geliefert hat — ' + 'nicht das allgemeine Bild aus rb_parts',
+      'What lookupPart delivered for THIS color is written — ' + 'not the general image from rb_parts',
     );
   });
 
@@ -157,14 +157,14 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
     // general image there. Then the fetch really is superfluous.
     fetches = [];
     await addManualPart(UID, { part_number: '3003', quantity: 1 });
-    assert.deepEqual(fetches, [], 'rb_parts fuehrt Name und allgemeines Bild — mehr holt der Abruf hier nicht');
+    assert.deepEqual(fetches, [], 'rb_parts carries the name and the general image — the fetch gets nothing more here');
   });
 
   await t.test('not in the catalog at all — it is asked', async () => {
     assert.deepEqual(
       await putPart('99999zzz', 4),
       ['lookupPart 99999zzz/4'],
-      'Ohne lokalen Eintrag ist Rebrickable die einzige Quelle',
+      'Without a local entry Rebrickable is the only source',
     );
   });
 
@@ -178,7 +178,7 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
     assert.equal(
       r.part_name,
       'Brick 2 x 4',
-      'Der Katalogname, nicht der des Doppels — sonst waere nichts gespart, sondern verloren',
+      'The catalog name, not that of the duplicate — otherwise nothing would be saved but lost',
     );
     assert.deepEqual(fetches, []);
   });
@@ -186,13 +186,17 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
   await t.test('figure with name and image — no fetch', async () => {
     fetches = [];
     const r = await addManualMinifig(UID, { fig_number: 'fig-000123', quantity: 1 });
-    assert.deepEqual(fetches, [], 'minifigs_catalog fuehrt Name und Bild');
+    assert.deepEqual(fetches, [], 'minifigs_catalog carries name and image');
     assert.equal(r.fig_name, 'Chewbacca');
   });
 
   await t.test('figure without image — it is asked', async () => {
     fetches = [];
     await addManualMinifig(UID, { fig_number: 'fig-000456', quantity: 1 });
-    assert.deepEqual(fetches, ['getMinifigInfo fig-000456'], 'Der Name allein genuegt nicht: das Bild fehlt wirklich');
+    assert.deepEqual(
+      fetches,
+      ['getMinifigInfo fig-000456'],
+      'The name alone is not enough: the image really is missing',
+    );
   });
 });

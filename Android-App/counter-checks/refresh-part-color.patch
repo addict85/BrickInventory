@@ -1,0 +1,17 @@
+Gegenprobe: Eine geänderte Teilefarbe erreicht die Ablage nicht
+Modul: core-data
+Test: ch.brickinventoryapp.data.FollowUpTest
+Rot: storage location and color of a part and the location of a figure are in the store after the response
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+@@ -102,7 +102,7 @@
+         is FollowUp.PartLocation -> list.map {
+             if (it.partNumber == b.partNumber && it.colorId == b.colorId) it.copy(storage = b.location?.ifBlank { null }) else it
+         }
+-        is FollowUp.PartColor -> recolored(list, b)
++        is FollowUp.PartColor -> list
+         is FollowUp.LocationRenamed -> list.map { if (b.old.isNotBlank() && it.storage == b.old) it.copy(storage = b.newValue.name) else it }
+         is Editing.SetQuantity, is Editing.RecordSet, is Editing.CreateWantedItem,
+         is Editing.DeleteWantedItem, is Editing.RecordFigure, is Editing.EditFigure,

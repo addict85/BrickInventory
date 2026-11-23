@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app.csv
 
-import ch.brickinventoryapp.model.domain.Laufstatus
+import ch.brickinventoryapp.model.domain.RunStatus
 import org.junit.Test
 
 /**
@@ -9,10 +9,10 @@ import org.junit.Test
  * ── Why this test looks different now ───────────────────────────────────────
  * Until here the check stood as a text search in the source of
  * `MainViewModel.kt`: searched was the string
- * `if (!running && warBeforeActive`. That records the wording, not the
+ * `if (!running && wasBeforeActive`. That records the wording, not the
  * behavior. An equivalent rewrite would have broken the test, and —
  * worse — a condition that happens to look the same but is fed a
- * wrong `warBeforeActive` would have stayed green.
+ * wrong `wasBeforeActive` would have stayed green.
  *
  * Since the decision stands as [csvSequence] in its own file, it needs
  * no `Context` — the test executes it and goes through the whole
@@ -22,7 +22,7 @@ import org.junit.Test
  *
  * ── Counter-check ───────────────────────────────
  * In the counter-check commit `csvSequence()` always returned NACHLADEN in the case
- * „finished", i.e. without `warBeforeActive`.
+ * „finished“, i.e. without `wasBeforeActive`.
  * Result: `351 tests completed, 1 failed`, namely
  * `an import finished hours ago does not reload` (line 74).
  *
@@ -39,21 +39,21 @@ class CsvStatusReloadTest {
 
     @Test
     fun `only the transition reloads`() {
-        assert(csvSequence(warBeforeActive = true, status = Laufstatus.FERTIG) == CsvSequence.NACHLADEN) {
-            "Ein Import, der gerade fertig geworden ist, muss die Daten neu laden — " +
-                "sonst bleibt nach dem Import die alte Liste stehen."
+        assert(csvSequence(wasBeforeActive = true, status = RunStatus.DONE) == CsvSequence.RELOAD) {
+            "An import that has just finished must reload the data — " +
+                "otherwise the old list stays after the import."
         }
     }
 
     @Test
     fun `an import finished hours ago does not reload`() {
-        // The jump back: the stream keeps reporting „done" without anything
+        // The jump back: the stream keeps reporting „done“ without anything
         // having run before.
         for (status in listOf("done", "cancelled", "finished")) {
-            assert(csvSequence(warBeforeActive = false, status = Laufstatus.aus(status)) == CsvSequence.NICHTS) {
-                "Statusmeldung \"$status\" ohne vorherigen Lauf löst ein Nachladen aus. " +
-                    "Der SSE-Strom schickt sie alle paar Sekunden — die Galerie fällt " +
-                    "damit dauernd auf Seite 1 zurück."
+            assert(csvSequence(wasBeforeActive = false, status = RunStatus.from(status)) == CsvSequence.NOTHING) {
+                "Status message \"$status\" without a previous run triggers a reload. " +
+                    "The SSE stream sends them every few seconds — the gallery then " +
+                    "keeps falling back to page 1."
             }
         }
     }
@@ -61,12 +61,12 @@ class CsvStatusReloadTest {
     @Test
     fun `a running import starts the service exactly once`() {
         for (status in listOf("running", "pending")) {
-            assert(csvSequence(warBeforeActive = false, status = Laufstatus.aus(status)) == CsvSequence.DIENST_STARTEN) {
-                "Beim Anlaufen (\"$status\") muss der Vordergrunddienst starten"
+            assert(csvSequence(wasBeforeActive = false, status = RunStatus.from(status)) == CsvSequence.SERVICE_START) {
+                "On starting up (\"$status\") the foreground service must start"
             }
-            assert(csvSequence(warBeforeActive = true, status = Laufstatus.aus(status)) == CsvSequence.NICHTS) {
-                "Jede Fortschrittszeile startet den Dienst erneut — dasselbe Muster " +
-                    "wie der Rücksprung, nur an anderer Stelle."
+            assert(csvSequence(wasBeforeActive = true, status = RunStatus.from(status)) == CsvSequence.NOTHING) {
+                "Every progress row starts the service again — the same pattern " +
+                    "as the jump back, only at another place."
             }
         }
     }
@@ -75,24 +75,24 @@ class CsvStatusReloadTest {
     fun `pending counts as running`() {
         // Otherwise the app seems frozen between job acceptance and the first line:
         // no banner, no service.
-        assert(importRunning(Laufstatus.WARTET)) { "pending gilt nicht mehr als laufend" }
-        assert(importRunning(Laufstatus.LAEUFT)) { "running gilt nicht mehr als laufend" }
-        assert(!importRunning(Laufstatus.FERTIG)) { "done gilt als laufend" }
-        assert(!importRunning(null)) { "eine Meldung ohne Zustand gilt als laufend" }
+        assert(importRunning(RunStatus.WAITING)) { "pending no longer counts as running" }
+        assert(importRunning(RunStatus.RUNNING)) { "running no longer counts as running" }
+        assert(!importRunning(RunStatus.DONE)) { "done counts as running" }
+        assert(!importRunning(null)) { "a message without a state counts as running" }
     }
 
     @Test
     fun `an error does not reload`() {
         // A failed import has delivered nothing worth reloading
         // — and would reset the list anyway.
-        assert(csvSequence(warBeforeActive = true, status = Laufstatus.FEHLER) == CsvSequence.FEHLER_AUFRAEUMEN)
-        assert(csvSequence(warBeforeActive = false, status = Laufstatus.FEHLER) == CsvSequence.FEHLER_AUFRAEUMEN)
+        assert(csvSequence(wasBeforeActive = true, status = RunStatus.ERROR) == CsvSequence.ERROR_CLEAN_UP)
+        assert(csvSequence(wasBeforeActive = false, status = RunStatus.ERROR) == CsvSequence.ERROR_CLEAN_UP)
     }
 
     @Test
     fun `a message without state triggers nothing`() {
-        // status == null does not mean „finished" but „incomplete message".
-        assert(csvSequence(warBeforeActive = true, status = null) == CsvSequence.NICHTS)
-        assert(csvSequence(warBeforeActive = false, status = null) == CsvSequence.NICHTS)
+        // status == null does not mean „finished“ but „incomplete message“.
+        assert(csvSequence(wasBeforeActive = true, status = null) == CsvSequence.NOTHING)
+        assert(csvSequence(wasBeforeActive = false, status = null) == CsvSequence.NOTHING)
     }
 }

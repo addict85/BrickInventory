@@ -14,7 +14,7 @@
  *      is in set_catalog afterwards”
  *   D  rememberSet() again writes only catalog_cache (rememberSetCatalog call
  *      removed) → red: “a fetch lands in rb_sets”
- *   E  setStamm() reads COALESCE(c.image_url, rs.set_img_url) again → red:
+ *   E  setMaster() reads COALESCE(c.image_url, rs.set_img_url) again → red:
  *      “set master: the image only from set_catalog”
  */
 const test = require('node:test');
@@ -72,13 +72,24 @@ test('catalog_cache only the fetch state now', { concurrency: 1 }, async t => {
 
     await tt.test('what only a fetch knew is in rb_sets afterwards', async () => {
       assert.deepEqual(
-        (await c.query('SELECT set_num, name, year, theme_id, num_parts, herkunft FROM rb_sets ORDER BY 1')).rows,
+        (
+          await c.query(
+            'SELECT set_num, name, year, theme_id, num_parts, herkunft AS provenance FROM rb_sets ORDER BY 1',
+          )
+        ).rows,
         [
-          { set_num: '5555-1', name: 'CSV ohne Jahr', year: null, theme_id: 1, num_parts: 20, herkunft: 'csv' },
-          { set_num: '6000-1', name: 'Promo', year: 2020, theme_id: 1, num_parts: 10, herkunft: 'api' },
-          { set_num: '6100-1', name: 'Eigener Name', year: 2018, theme_id: null, num_parts: null, herkunft: 'api' },
-          { set_num: '7000-1', name: 'Nur Abruf', year: 2019, theme_id: null, num_parts: 5, herkunft: 'api' },
-          { set_num: '75192-1', name: 'Millennium Falcon', year: 2017, theme_id: 1, num_parts: 7541, herkunft: 'csv' },
+          { set_num: '5555-1', name: 'CSV ohne Jahr', year: null, theme_id: 1, num_parts: 20, provenance: 'csv' },
+          { set_num: '6000-1', name: 'Promo', year: 2020, theme_id: 1, num_parts: 10, provenance: 'api' },
+          { set_num: '6100-1', name: 'Eigener Name', year: 2018, theme_id: null, num_parts: null, provenance: 'api' },
+          { set_num: '7000-1', name: 'Nur Abruf', year: 2019, theme_id: null, num_parts: 5, provenance: 'api' },
+          {
+            set_num: '75192-1',
+            name: 'Millennium Falcon',
+            year: 2017,
+            theme_id: 1,
+            num_parts: 7541,
+            provenance: 'csv',
+          },
         ],
       );
     });
@@ -94,14 +105,14 @@ test('catalog_cache only the fetch state now', { concurrency: 1 }, async t => {
     });
 
     await tt.test('catalog_cache only keeps the fetch state', async () => {
-      const spalten = (
+      const columns = (
         await c.query(
           `SELECT column_name FROM information_schema.columns
         WHERE table_schema = $1 AND table_name = 'catalog_cache' ORDER BY ordinal_position`,
           [SCHEMA],
         )
       ).rows.map(r => r.column_name);
-      assert.deepEqual(spalten, ['set_number', 'is_gear', 'bl_type', 'fetched_at']);
+      assert.deepEqual(columns, ['set_number', 'is_gear', 'bl_type', 'fetched_at']);
       assert.equal((await c.query('SELECT count(*)::int AS n FROM catalog_cache')).rows[0].n, 6);
     });
     await c.query('SET search_path TO public');
@@ -137,10 +148,10 @@ test('catalog_cache only the fetch state now', { concurrency: 1 }, async t => {
       `INSERT INTO rb_sets (set_num, name, year, set_img_url) VALUES ('4343-1', 'Nur CSV-Bild', 2020, 'https://csv/4343.jpg')`,
     );
     await db.run(`INSERT INTO set_catalog (set_number) VALUES ('4343-1')`);
-    const s = await detail.setStamm(db, '4343-1');
+    const s = await detail.setMaster(db, '4343-1');
     assert.equal(s.name, 'Nur CSV-Bild');
     assert.equal(s.image_url, null);
     await db.run(`UPDATE set_catalog SET image_url = 'https://katalog/4343.jpg' WHERE set_number = '4343-1'`);
-    assert.equal((await detail.setStamm(db, '4343-1')).image_url, 'https://katalog/4343.jpg');
+    assert.equal((await detail.setMaster(db, '4343-1')).image_url, 'https://katalog/4343.jpg');
   });
 });

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.app.nav
 
-import ch.brickinventoryapp.state.ui.AppViewModel
-import ch.brickinventoryapp.app.csv.CsvImportViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
-import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.app.csv.CsvImportViewModel
+import ch.brickinventoryapp.state.ui.AppViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
 
 /**
  * The ViewModels that live as long as the activity — only what lies above every
@@ -15,6 +15,6 @@ class ActivityState(
     val app: AppViewModel,
     val update: UpdateViewModel,
     val csvImport: CsvImportViewModel,
-    val darstellung: DarstellungViewModel,
-    val vertrauen: VertrauenViewModel,
+    val appearance: AppearanceViewModel,
+    val trust: TrustViewModel,
 )
