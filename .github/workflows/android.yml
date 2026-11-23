@@ -158,6 +158,17 @@ jobs:
         with:
           cache-disabled: ${{ startsWith(github.ref, 'refs/tags/android-v') }}
 
+      # Robolectric lädt seine Android-Bibliothek (~200 MB) zur Testzeit selbst von Maven
+      # Central, am Gradle-Cache vorbei; ohne eigenen Cache antwortete Central mit 429.
+      # Nur dieser Job schreibt ihn, ein Etikett nutzt ihn nicht.
+      - name: Robolectric-Bibliothek zwischenspeichern
+        if: ${{ !startsWith(github.ref, 'refs/tags/android-v') }}
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('Android-App/gradle/libs.versions.toml') }}
+          restore-keys: robolectric-
+
       # Auf Windows committete Dateien tragen das Ausführbar-Bit oft nicht.
       - name: gradlew ausführbar machen
         run: chmod +x gradlew
@@ -573,6 +584,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           cache-read-only: true
+      # Nur lesen, wie beim Gradle-Cache: Robolectric holt sonst je Teil ~200 MB von Central (429).
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('Android-App/gradle/libs.versions.toml') }}
+          restore-keys: robolectric-
       - name: Gegenproben messen
         env:
           COUNTER_CHECK_BASIS: ${{ github.event_name == 'push' && github.event.before || github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}

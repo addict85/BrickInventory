@@ -638,7 +638,6 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  importWorker(t, _req);
   {
     const c = await db.pool.connect();
     try {
@@ -647,6 +646,8 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
       c.release();
     }
   }
+  // Only after the migrations: a worker polling meanwhile locked the tables 0127 renames (deadlock).
+  importWorker(t, _req);
   t.after(() => db.pool.end().catch(() => {}));
 
   await t.test('every table without user_id is in the list', async () => {

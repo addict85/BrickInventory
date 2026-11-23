@@ -60,7 +60,6 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  importWorker(t, _req);
   {
     const c = await db.pool.connect();
     try {
@@ -69,6 +68,8 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
       c.release();
     }
   }
+  // Only after the migrations: a worker polling meanwhile locked the tables 0127 renames (deadlock).
+  importWorker(t, _req);
 
   const fresh = async name =>
     (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
