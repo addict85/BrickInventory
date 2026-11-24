@@ -181,7 +181,7 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
       let z;
       for (let i = 0; i < 80; i++) {
         z = await job(firstOne);
-        if (z.status !== 'offen' && z.status !== 'laeuft') break;
+        if (z.status !== 'pending' && z.status !== 'running') break;
         await sleep(250);
       }
       assert.equal(z.status, 'done', jobs.log.slice(-1500));
