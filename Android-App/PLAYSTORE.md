@@ -1,24 +1,15 @@
 # Veröffentlichung im Google Play Store
 
-> **Stand: der Workflow dazu ist entfernt.**
->
-> `.github/workflows/android-playstore.yml` gibt es nicht mehr. Die App wird als
-> **APK über die GitHub-Releases** ausgeliefert und aktualisiert sich daraus
-> selbst (`update/util/AppUpdate.kt`); der Play-Weg war gebaut, aber nie benutzt.
->
-> Diese Anleitung bleibt als Bauplan stehen, falls der Weg je wieder gewollt
-> ist — **Teil 2 beschreibt aber einen Ablauf, der derzeit nicht existiert.**
->
-> Weiter gültig und woanders dokumentiert: Die vier Schlüsselspeicher-Secrets
-> (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORT`, `KEY_ALIAS`, `KEY_PASSWORT`) braucht
-> `android.yml` nach wie vor, um die APK zu signieren — siehe *Release
-> signieren* in `README.md`. Nicht mehr gebraucht wird allein
-> `PLAY_SERVICE_ACCOUNT_JSON`.
-
-Diese Datei beschreibt, was einmalig einzurichten ist und was danach
-automatisch läuft. Sie ist bewusst offen darüber, **was die Action nicht kann**
-— das meiste an einer Play-Veröffentlichung ist Verwaltungsarbeit in der Play
-Console, die keine Programmierschnittstelle abnimmt.
+> **Stand: aktiv.** Die Einlieferung läuft über den Job `play` in
+> `.github/workflows/android-release.yml` (nicht über eine eigene,
+> gleichnamige Aktion) — ausführlich dokumentiert in
+> [`docs/ANDROID-RELEASE.md`](../docs/ANDROID-RELEASE.md), Abschnitte 8
+> (Upload-Schlüssel) und 9 (`PLAY_SERVICE_ACCOUNT_JSON`). Diese Datei
+> beschreibt nur noch, was zusätzlich in der **Play Console selbst** einmalig
+> einzurichten ist — reine Verwaltungsarbeit, die keine Schnittstelle abnimmt.
+> Für alles rund um Secrets, Schlüssel und den Workflow-Ablauf gilt
+> ausschliesslich `docs/ANDROID-RELEASE.md`; bei Widerspruch hat jene Datei
+> Vorrang.
 
 ---
 
@@ -28,15 +19,15 @@ Console, die keine Programmierschnittstelle abnimmt.
 | --- | --- |
 | Was hochgeht | Android App Bundle (`.aab`), nicht APK |
 | Paketname | `ch.brickinventoryapp` — **nach der ersten Veröffentlichung unveränderlich** |
-| Auslöser | nur von Hand: Actions → *Android-App zu Play veroeffentlichen* → **Run workflow** |
-| Vorgabe | Spur `internal`, Status `draft` — es wird nichts ohne weiteres Zutun ausgeliefert |
-| Versionsnummer | erzeugt sich selbst aus der Uhrzeit, steigt monoton — nichts von Hand zu pflegen |
+| Auslöser | automatisch nach einem grünen Baulauf zu einem Etikett `android-v…`, oder von Hand (Actions → *Android-Release* → Run workflow, Eingabe das Etikett) |
+| Spur/Status | über die Repository-Variablen `PLAY_TRACK` (Vorgabe `internal`) und `PLAY_STATUS` (Vorgabe `draft`) — nichts wird ohne weiteres Zutun an Nutzer ausgeliefert |
+| App-Signatur | von Google verwaltet; du lieferst nur mit deinem eigenen **Upload-Schlüssel** (`docs/ANDROID-RELEASE.md`, Abschnitt 8) |
 
 ---
 
-## Teil 1 — was du einmalig tun musst (nicht automatisierbar)
+## Was du einmalig in der Play Console tun musst (nicht automatisierbar)
 
-### 1.1 Entwicklerkonto
+### 1. Entwicklerkonto
 
 Ein Google-Play-Entwicklerkonto kostet **einmalig 25 USD**. Bei einem
 *persönlichen* Konto (kein Firmenkonto) verlangt Google seit 2023 zusätzlich:
@@ -44,78 +35,33 @@ Vor der ersten Produktionsveröffentlichung müssen **mindestens 12 Testende
 14 Tage lang** in einem geschlossenen Test gewesen sein. Das ist keine
 Formalität, die sich überspringen lässt — plane die Zeit ein.
 
-### 1.2 Die App in der Play Console anlegen — und die erste Fassung von Hand hochladen
+### 2. Die App anlegen — und die erste Fassung von Hand hochladen
 
 **Das ist der Punkt, an dem die meisten hängenbleiben.** Die
-Veröffentlichungs-Schnittstelle kann eine App **nicht anlegen**. Solange der
-Paketname `ch.brickinventoryapp` in deinem Konto nicht existiert, antwortet
-jeder Automatiklauf mit `Package not found`.
+Android-Publisher-API kann eine App **nicht anlegen**. Solange der Paketname
+`ch.brickinventoryapp` in deinem Konto nicht existiert, antwortet jeder
+Automatiklauf mit `Package not found`.
 
 Also:
 
 1. Play Console → **App erstellen**, Name *BrickInventory Manager*, Sprache,
    App/Spiel, kostenlos/kostenpflichtig.
-2. Ein Bundle **von Hand** hochladen. Woher nehmen: Der normale
-   Android-Workflow legt bei jedem Lauf `BrickInventory-bundle` als Artefakt ab
-   (Actions → Lauf öffnen → unten *Artifacts*). Darin liegt `app-release.aab`.
-3. Damit einen Release im internen Test anlegen und speichern.
+2. Beim App-Signatur-Einrichten **„Google-generierten Schlüssel verwenden"**
+   wählen (empfohlener Standardweg).
+3. Ein mit deinem Upload-Schlüssel signiertes Bundle **von Hand** hochladen
+   (Erzeugen des Bundles und Signieren: `docs/ANDROID-RELEASE.md`,
+   Abschnitte 7–8).
+4. Damit einen Release im internen Test anlegen und speichern.
 
-Ab diesem Moment — und erst ab dann — funktioniert der Automatiklauf.
+Ab diesem Moment — und erst ab dann — funktioniert der Automatiklauf
+(`play`-Job).
 
-### 1.3 Play App Signing und der Hochladeschlüssel
+### 3. Dienstkonto für die Schnittstelle
 
-Google unterscheidet zwei Schlüssel:
+Siehe `docs/ANDROID-RELEASE.md`, Abschnitt 9 — dort steht das vollständig,
+inklusive des Secrets `PLAY_SERVICE_ACCOUNT_JSON`.
 
-* **App-Signaturschlüssel** — damit signiert Google das, was auf den Geräten
-  landet. Google verwahrt ihn. Ein verlorener Schlüssel ist damit kein
-  Weltuntergang mehr.
-* **Hochladeschlüssel** — damit signierst *du*, und daran erkennt Play, dass
-  ein Upload wirklich von dir kommt.
-
-Der Schlüsselspeicher, den du in Android Studio erzeugt hast und der schon als
-`KEYSTORE_BASE64` hinterlegt ist, wird beim ersten Upload zum
-**Hochladeschlüssel**. Es ist nichts weiter zu tun — aber:
-
-> **Diese Datei gehört nie ins Repository.** Sie liegt als Secret bei GitHub
-> und sonst nirgends. Wenn du sie verlierst, lässt sich der Hochladeschlüssel
-> über den Support zurücksetzen; ein *ins Repository geratener* Schlüssel
-> dagegen ist dauerhaft kompromittiert und steht in der Historie.
-
-### 1.4 Dienstkonto für die Schnittstelle
-
-1. **Google Cloud Console** → Projekt wählen oder anlegen →
-   *Google Play Android Developer API* aktivieren.
-2. *IAM & Verwaltung* → **Dienstkonten** → Dienstkonto erstellen.
-3. Beim Dienstkonto → *Schlüssel* → **Neuen Schlüssel erstellen** → **JSON**.
-   Die Datei wird genau einmal heruntergeladen.
-4. **Play Console** → *Nutzer und Berechtigungen* → **Nutzer einladen** →
-   die E-Mail-Adresse des Dienstkontos eintragen.
-   Rechte: App-Zugriff auf *BrickInventory Manager*, darin
-   **Releases in Testspuren verwalten** und **Produktionsreleases verwalten**.
-5. Den **gesamten Inhalt** der JSON-Datei als Secret
-   `PLAY_SERVICE_ACCOUNT_JSON` hinterlegen.
-
-> Die Berechtigung in der Play Console braucht nach dem Einladen manchmal bis
-> zu 24 Stunden, bis sie in der Schnittstelle greift. Ein `The caller does not
-> have permission` direkt nach dem Einrichten ist meist nur das.
-
-### 1.5 Die fünf Secrets
-
-Unter *Settings → Secrets and variables → Actions → New repository secret*:
-
-| Secret | Inhalt | schon gesetzt? |
-| --- | --- | --- |
-| `KEYSTORE_BASE64` | Schlüsselspeicher, base64-kodiert | ja (für den APK-Bau) |
-| `KEYSTORE_PASSWORT` | Passwort des Schlüsselspeichers | ja |
-| `KEY_ALIAS` | Alias des Schlüssels | ja |
-| `KEY_PASSWORT` | Passwort des Schlüssels | ja |
-| `PLAY_SERVICE_ACCOUNT_JSON` | vollständiger JSON-Inhalt aus 1.4 | **neu** |
-
-Der Workflow prüft alle fünf im ersten Schritt und bricht mit Klartext ab,
-wenn eines fehlt — statt nach fünf Minuten Übersetzungszeit mit einer Meldung,
-die nicht sagt, welches.
-
-### 1.6 Pflichtangaben in der Play Console
+### 4. Pflichtangaben in der Play Console
 
 Ohne diese lässt sich nichts veröffentlichen, und keine davon lässt sich
 automatisieren:
@@ -128,7 +74,7 @@ automatisieren:
   Datenschutz):
   - die von dir betriebene Web-App — alle Daten des Kontos;
   - **GitHub** (`github.com`, `*.githubusercontent.com`) für die Update-Prüfung:
-    beim Start, solange „Beim Start nach Updates suchen“ an ist, sonst nur auf
+    beim Start, solange „Beim Start nach Updates suchen" an ist, sonst nur auf
     Knopfdruck. GitHub sieht IP-Adresse und Zeitpunkt;
   - **Google Play-Dienste** für den Barcode-Scan (ML Kit, nachgeladen) und Passkeys
     (Credential Manager); die Texterkennung (ML Kit) läuft auf dem Gerät, ihren
@@ -146,48 +92,32 @@ automatisieren:
 
 ---
 
-## Teil 2 — was danach automatisch läuft
+## Was der `play`-Job automatisch tut
 
-Actions → **Android-App zu Play veroeffentlichen** → *Run workflow*. Drei
-Angaben:
+Nach einem grünen Baulauf zu einem Etikett `android-v…` (oder von Hand
+angestossen, siehe oben):
 
-| Eingabe | Bedeutung |
-| --- | --- |
-| **Spur** | `internal` (nur eingetragene Testende, sofort da) · `alpha` (geschlossen) · `beta` (offen) · `production` (alle) |
-| **Status** | `draft` — landet als Entwurf, wird **nicht** ausgeliefert, bis du in der Console freigibst · `completed` — geht sofort raus |
-| **Hinweise** | Text für „Was ist neu". Leer lassen ⇒ neutraler Text mit Commit-Kürzel |
-
-Der Lauf tut dann:
-
-1. prüft die fünf Secrets,
-2. lässt die Unit-Tests laufen — ein Build, der in den Store geht, soll nicht
-   weniger geprüft sein als einer, der es nicht tut,
-3. baut `bundleRelease` mit deinem Schlüssel,
-4. prüft nach, dass das Bundle **wirklich signiert** ist (ein unsigniertes
-   weist Play mit einer Meldung zurück, die nach einem Fehler bei Google
-   aussieht),
-5. lädt Bundle **und** `mapping.txt` hoch — ohne die Zuordnungsdatei sind die
-   Absturzberichte in der Console unlesbar verschleiert,
-6. legt Bundle und Zuordnungsdatei zusätzlich als Artefakt ab.
+1. prüft `PLAY_SERVICE_ACCOUNT_JSON`; fehlt es, nur ein Hinweis, nichts
+   wird eingeliefert;
+2. liefert dasselbe Bundle ein, das für das GitHub-Release signiert wurde
+   (Prüfsumme des Signierjobs, `docs/ANDROID-RELEASE.md` Abschnitt 7–8),
+   über die Android Publisher API — ohne Checkout, ohne Drittaktion;
+3. legt es in der Spur `PLAY_TRACK` (Vorgabe `internal`) mit Status
+   `PLAY_STATUS` (Vorgabe `draft`) ab.
 
 ### Versionsnummern
 
 Nichts zu tun. `app/build.gradle.kts` erzeugt bei jedem Bau:
 
 ```
-versionName = 2026.08.29.1612          (Zeitstempel)
-versionCode = 100000000 + Minuten seit 2020-01-01
+versionCode = 200_000_000 + Anzahl Commits auf dem gebauten Stand
+versionName = aus `git describe --tags`
 ```
 
-Der `versionCode` steigt damit von allein und ist nie kleiner als ein früherer
-— genau das verlangt Play. Der Sockel von 100 Mio. liegt über den alten
-`YYYYMMDD`-Nummern; ohne ihn hielte Play das Update für einen Rückschritt.
-
-Wer eine bestimmte Nummer braucht, überschreibt sie beim Aufruf:
-
-```bash
-./gradlew bundleRelease -PbuildVersionCode=123456789 -PbuildVersionName=1.2.3
-```
+Der `versionCode` steigt damit von allein und ist nie kleiner als ein
+früherer — genau das verlangt Play. Google warnt bei der **ersten**
+Veröffentlichung, der Versionscode sei „deutlich höher als der vorherige"
+(es gibt ja noch keinen) — das ist erwartet, keine Fehlkonfiguration.
 
 ---
 
@@ -195,17 +125,15 @@ Wer eine bestimmte Nummer braucht, überschreibt sie beim Aufruf:
 
 | Meldung | Ursache |
 | --- | --- |
-| `Package not found` | Schritt 1.2 fehlt — die erste Fassung muss von Hand in die Console. |
-| `The caller does not have permission` | Dienstkonto nicht (oder noch nicht wirksam) in der Play Console berechtigt, siehe 1.4. |
-| `Precondition check failed` bei `production` | Vor der Produktionsspur muss mindestens ein Release durch `internal`, `alpha` oder `beta` gelaufen sein. |
-| `Changes cannot be sent for review automatically` | Es liegen Angaben in der Console, die noch nicht zur Prüfung eingereicht sind. Entweder dort abschliessen — oder im Workflow bei der Upload-Action `changesNotSentForReview: true` ergänzen und danach in der Console von Hand einreichen. |
-| `Version code N has already been used` | Sollte durch die Zeitstempel-Nummer nicht vorkommen. Falls doch: einmal mit `-PbuildVersionCode=` eine höhere Nummer setzen. |
-| Bundle ist unsigniert | Eines der vier Keystore-Secrets stimmt nicht. Der Workflow bricht dafür mit eigener Meldung ab, bevor Play es tut. |
+| `Package not found` | Schritt 2 fehlt — die erste Fassung muss von Hand in die Console. |
+| `The caller does not have permission` | Dienstkonto nicht (oder noch nicht wirksam) in der Play Console berechtigt, siehe `docs/ANDROID-RELEASE.md` Abschnitt 9. |
+| „Versionscode deutlich höher als der vorherige" | Erwartet bei der ersten Veröffentlichung (siehe oben), keine Aktion nötig. |
+| Bundle trägt den App- statt den Upload-Schlüssel | `ANDROID_UPLOAD_ZERT_SHA256` prüfen (`docs/ANDROID-RELEASE.md` Abschnitt 8) — der Lauf bricht dafür mit eigener Meldung ab, bevor Play es tut. |
 
 ## Was dieser Aufbau bewusst *nicht* tut
 
-- **Kein `on: push`.** Eine Veröffentlichung ist nach aussen gerichtet und
-  kaum zurückzunehmen; sie darf kein Nebeneffekt eines Commits sein.
+- **Kein automatisches Anlegen der App** in der Play Console (siehe oben).
 - **Kein automatisches Hochstufen** von `internal` nach `production`.
-- **Vorgabe `draft`, nicht `completed`.** Der erste Lauf soll nichts
-  ausliefern, sondern etwas zum Ansehen in der Console hinterlegen.
+- **Vorgabe `draft`, nicht `completed`.** Ein Lauf soll nichts an Nutzer
+  ausliefern, sondern etwas zum Ansehen in der Console hinterlegen, bis du es
+  selbst freigibst.
