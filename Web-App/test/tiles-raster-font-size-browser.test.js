@@ -17,7 +17,8 @@
  *      320 px below the field)
  *   I  build list not in the :has() list of the banner → red: „Bauliste mit
  *      Schlüsselband“
- *   K  .m-links as display:contents → red: „Set-Detail nutzt die linke Spalte“
+ *   K  #m-price-chart back inside .m-links → red: „Set-Detail: Preisverlauf
+ *      über die volle Breite“ (chart narrower than the fields column again)
  *   L  `.filter-button[aria-expanded="true"]` never applying → red: „Telefon“
  *   M  summary::before with content:none → red: „Telefon“ (no disclosure marker)
  *   N  `.bstat::after { line-height: 1 }` removed → red: „Telefon“ (214/214/212)
@@ -224,10 +225,11 @@ async function setDetail(_t, a) {
     const l = await b.evaluate(`(() => { const r = s => document.querySelector(s).getBoundingClientRect().toJSON();
       const lines = [...document.querySelectorAll('#m-det .dr')].map(z => z.getBoundingClientRect().toJSON());
       return { image: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det .dr'), last: lines.at(-1) }; })()`);
-    if (!phone) {
-      assert.ok(l.chart.right <= l.det.left, `price history not in the left column: ${JSON.stringify(l)}`);
-      assert.ok(l.chart.top >= l.image.bottom, 'price history not below the image');
-    } else assert.ok(l.chart.top >= l.last.bottom, 'phone: price history not at the end');
+    assert.ok(l.chart.top >= l.image.bottom && l.chart.top >= l.last.bottom,
+      `price history not below image and fields: ${JSON.stringify(l)}`);
+    if (!phone)
+      assert.ok(l.chart.left <= l.image.left + 1 && l.chart.right >= l.det.right - 1,
+        `price history not full width: ${JSON.stringify(l)}`);
     await b.evaluate(CLOSE);
   }
   await size(b, 1280, 900, false);
@@ -306,7 +308,7 @@ test('tile names, grid, 200 % font, phone', { concurrency: 1, timeout: 400_000 }
     ['Menüseiten', menueseiten],
     ['Bauliste mit Schlüsselband', buildList],
     ['200 % Schrift', largeFont],
-    ['Set-Detail nutzt die linke Spalte', setDetail],
+    ['Set-Detail: Preisverlauf über die volle Breite', setDetail],
     ['Telefon', phone],
   ];
   for (const [title, fn] of pruefungen) await t.test(title, () => fn(t, a, name));

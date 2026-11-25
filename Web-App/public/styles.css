@@ -586,11 +586,11 @@
       #set-modal .m-header .mimg{margin-bottom:0}
       #set-modal #m-det-links > .m-value-header{margin:0}
     }
-    /* Narrower: one column in the old order, the price history at the end again. */
+    /* Narrower: one column in the old order; the price history sits outside .m-header
+       now and is full-width at every breakpoint already. */
     @media (max-width:899px){
       #set-modal .m-header{display:flex;flex-direction:column}
       #set-modal :is(.m-links,#m-det-links,#m-det){display:contents}
-      #set-modal #m-price-chart{order:1;margin-top:.75rem}
     }
     .mimg{width:100%;aspect-ratio:4/3;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem}
     /* Without an image a flat placeholder is enough; at 4:3 it took half the dialog. */
