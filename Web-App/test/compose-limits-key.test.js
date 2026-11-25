@@ -11,6 +11,8 @@
  *      old key in data/ stays the only one"
  *   D  in the script `umask 077` and `chmod 400` deleted → red: “only the
  *      owner reads it"
+ *   E  `|| true` after chown/chmod removed → red: “a chown that CIFS refuses
+ *      does not stop the key from being created" (exit 1 instead of 0)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -112,4 +114,23 @@ test('an old key in data/ stays the only one', t => {
   const r = run();
   assert.equal(r.status, 0, r.stderr);
   assert.equal(fs.existsSync(file), false, 'a second key next to the old one');
+});
+
+test('a chown that CIFS refuses does not stop the key from being created', t => {
+  const { location, file } = sandbox();
+  t.after(() => fs.rmSync(location, { recursive: true, force: true }));
+  // A nonexistent owner makes chown fail the same way CIFS/SMB with a fixed
+  // uid does (ERROR exit from the script's own `set -eu`), without needing
+  // an actual network mount to reproduce it.
+  const r = spawnSync('sh', [path.join(ROOT, 'create-keys.sh')], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      SCHLUESSEL_ORDNER: path.join(location, 'schluessel'),
+      ALTER_SCHLUESSEL: path.join(location, 'data', '.datenschluessel'),
+      SCHLUESSEL_EIGNER: 'kein-solcher-benutzer-vorhanden',
+    },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(fs.existsSync(file), 'the key itself is still created');
 });
