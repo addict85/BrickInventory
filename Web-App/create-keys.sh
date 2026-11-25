@@ -22,6 +22,8 @@ else
   echo "[schluessel] Neuer Datenschlüssel angelegt: ./schluessel/datenschluessel — getrennt von data/ sichern."
 fi
 
-chown "$EIGNER" "$ORDNER" "$DATEI"
-chmod 700 "$ORDNER"
-chmod 400 "$DATEI"
+# SMB/CIFS mit festem uid (BRICKINV_CHOWN-Fall von daten-rechte.sh) verweigert
+# chown/chmod ganz; der Besitz kommt dann allein aus den Mount-Optionen.
+chown "$EIGNER" "$ORDNER" "$DATEI" 2>/dev/null || true
+chmod 700 "$ORDNER" 2>/dev/null || true
+chmod 400 "$DATEI" 2>/dev/null || true
