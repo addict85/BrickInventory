@@ -3,6 +3,11 @@
  * JavaScript version of the same rule?
  *
  * Counter-check: deleteOldPrices() (src/finances/priceHistory.ts) also deletes with 0 days → red “PRICE_HISTORY_KEEP_DAYS=0 switches cleanup off”.
+ *
+ * Counter-check “the curve ends at the live total, scaled throughout”: with the
+ * rescaleToHeader() call removed from portfolioHistory.ts, this test goes red
+ * because the last point stays at the raw history value instead of the live
+ * market value, and earlier points are no longer scaled by the same factor.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -189,6 +194,39 @@ test('the portfolio curve computes the same as the reference version', { concurr
       }
     });
   }
+
+  await t.test('the curve ends at the live total, scaled throughout', async () => {
+    // A fresh market price, well above the history, so the live total (what
+    // gainAndLoss would show on the cards) differs clearly from the curve's
+    // own last historical point. gainAndLoss reads the currency from the real
+    // settings table (not the `getSetting` stand-in above), so it needs its own row.
+    await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','CHF')`, [u1]);
+    await db.run(
+      `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
+       SELECT (10000+g)||'-1', 'N', 'CHF', 100, NOW() FROM generate_series(1,30) g`,
+    );
+    const totalQty = setNumbers.reduce((s, sn) => s + (setQty[sn] || 1), 0);
+    const liveTotal = 100 * totalQty; // every set now valued at 100, cost basis is the acquisitions' 40
+
+    const unscaled = await comparisonVersion(setNumbers, setQty, 'CHF', 'N', filter.max);
+    const fresh = await portfolioHistory(u1, [u1, u2], 'max', db, getSetting);
+    const lastRaw = unscaled.at(-1).total;
+    const scale = liveTotal / lastRaw;
+
+    assert.ok(
+      Math.abs(fresh.points.at(-1).value - liveTotal) <= 0.01,
+      `last point ${fresh.points.at(-1).value} instead of the live total ${liveTotal}`,
+    );
+    for (let i = 0; i < unscaled.length - 1; i++) {
+      const expected = parseFloat((unscaled[i].total * scale).toFixed(2));
+      assert.ok(
+        Math.abs(fresh.points[i].value - expected) <= 0.01,
+        `point ${i}: ${fresh.points[i].value} instead of ${expected} (unscaled ${unscaled[i].total})`,
+      );
+    }
+    await db.run('DELETE FROM price_cache');
+    await db.run(`DELETE FROM user_settings WHERE user_id=$1 AND key='currency'`, [u1]);
+  });
 
   await t.test('without price history the curve stays empty instead of crashing', async () => {
     await db.run('DELETE FROM price_history');

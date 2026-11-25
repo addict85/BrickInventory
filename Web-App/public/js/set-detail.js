@@ -148,7 +148,10 @@ function setDetailHtml(sn, acqs) {
   );
 
   const left = html`${priceRow}${pnlRow}`;
-  setHtml(G('m-sparkline-content'), html`<span data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span>`);
+  setHtml(
+    G('m-sparkline-content'),
+    html`<span data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span>`,
+  );
   // The minifig count comes from the catalog, same as in the table: the own minifig list only counts
   // what a parts import has taken over, and showed a different number for the same set.
   const right = html`<dl>

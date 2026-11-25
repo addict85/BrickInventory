@@ -225,11 +225,15 @@ async function setDetail(_t, a) {
     const l = await b.evaluate(`(() => { const r = s => document.querySelector(s).getBoundingClientRect().toJSON();
       const lines = [...document.querySelectorAll('#m-det .dr')].map(z => z.getBoundingClientRect().toJSON());
       return { image: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det .dr'), last: lines.at(-1) }; })()`);
-    assert.ok(l.chart.top >= l.image.bottom && l.chart.top >= l.last.bottom,
-      `price history not below image and fields: ${JSON.stringify(l)}`);
+    assert.ok(
+      l.chart.top >= l.image.bottom && l.chart.top >= l.last.bottom,
+      `price history not below image and fields: ${JSON.stringify(l)}`,
+    );
     if (!phone)
-      assert.ok(l.chart.left <= l.image.left + 1 && l.chart.right >= l.det.right - 1,
-        `price history not full width: ${JSON.stringify(l)}`);
+      assert.ok(
+        l.chart.left <= l.image.left + 1 && l.chart.right >= l.det.right - 1,
+        `price history not full width: ${JSON.stringify(l)}`,
+      );
     await b.evaluate(CLOSE);
   }
   await size(b, 1280, 900, false);
