@@ -16,4 +16,6 @@ interface UpdateDevice {
     fun installMay(): Boolean
     /** Blocking; call in the background. */
     fun install(apk: File)
+    /** Play Store already updates the app itself; the self-update offer stays off there. */
+    fun installedFromPlayStore(): Boolean
 }

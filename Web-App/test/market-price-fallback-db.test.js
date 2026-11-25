@@ -6,8 +6,11 @@
  * Counter-checks (measured 13.11.2026, each reverted):
  *   A  marketPriceFrom() (src/catalog/bricklinkPrices.ts) only avg_price → red:
  *      “valuation” (unit price 0 instead of 37.5), “G&V”, “price history”; Wertkurve green
- *   B  marketPriceSql() (db/moneySql.ts) only avg_price → red: „Wertkurve“
- *      (60, the purchase price as starting point, instead of 75) and “price history”
+ *   B  marketPriceSql() (db/moneySql.ts) only avg_price → red: „price history“ only
+ *      (measured again 25.11.2026: the server now rescales the curve's last point
+ *      to the live total of “G&V”, so Wertkurve stays green even with this bug —
+ *      it only checks that the server-side scaling itself works, see
+ *      portfolio-history-db.test.js “the curve ends at the live total…”)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
@@ -95,7 +98,9 @@ test('avg_price 0 next to a quantity average: the same value everywhere', { conc
     const { portfolioHistory } = _req('src/finances/portfolioHistory.js');
     const curve = await portfolioHistory(uid, [uid], 'month');
     assert.ok(curve.points.length > 0, 'no points');
-    assert.equal(curve.points.at(-1).value, 75);
+    // The curve only tracks sets (75), but the server scales its last point to the
+    // same live total the finance cards show — sets + parts + figures (84, see “G&V” above).
+    assert.equal(curve.points.at(-1).value, 84);
   });
 
   await t.test('price history', async () => {

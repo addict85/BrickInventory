@@ -1,8 +1,29 @@
 import type { Viewer } from '../household';
 import { buildChartData } from './portfolio/chartData';
 import { reconstructCurve, type CurvesPoint } from './portfolio/curve';
-import { DEFAULT_PRICE_CONDITION } from './financeCalc';
+import { DEFAULT_PRICE_CONDITION, gainAndLoss } from './financeCalc';
 import type { FinancesContext } from './context';
+
+/** The same live total the finance cards show, so the curve's last point and the
+ * header never disagree — the clients used to rescale this themselves, each to its
+ * own fetch of the cards, which is why Web and Android could draw different curves. */
+async function liveTotal(k: FinancesContext, viewerId: number, idsChoice: Viewer | number[]) {
+  const { totals } = await gainAndLoss(k, viewerId, idsChoice);
+  const value = (totals.positions_valued ?? 0) > 0 ? totals.baseline_market_value : totals.grand_total;
+  return parseFloat(value || '0') || 0;
+}
+
+/** Scales every point so the curve ends exactly at `headValue`. */
+function rescaleToHeader(rawPoints: CurvesPoint[], headValue: number): CurvesPoint[] {
+  if (!(headValue > 0) || !rawPoints.length) return rawPoints;
+  const lastVal = rawPoints.at(-1)?.total || 1;
+  const scale = lastVal > 0 ? headValue / lastVal : 1;
+  return rawPoints.map((p, i) => ({
+    ...p,
+    total: i === rawPoints.length - 1 ? headValue : parseFloat((p.total * scale).toFixed(2)),
+  }));
+}
+
 /** The last point per month; the first stays exact so that all periods begin at the same start. */
 function onMonths(rawPoints: CurvesPoint[]): CurvesPoint[] {
   const byMonth = new Map<string, CurvesPoint>();
@@ -97,6 +118,7 @@ export async function portfolioHistory(
     return { currency, period, points: [], y_axis: [], period_change_pct: null, data_points: 0 };
   }
 
+  rawPoints = rescaleToHeader(rawPoints, await liveTotal(k, viewerId, idsChoice));
   const { points, y_axis, period_change_pct, chart } = buildChartData(rawPoints, currency, downsampled, now);
 
   return {

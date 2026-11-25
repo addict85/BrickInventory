@@ -514,7 +514,8 @@ class SourceRatchetTest {
         // interface for all areas. Counted at the top level, across core-data and
         // everything split off from it; otherwise the number would sink spuriously when moving.
         // Among them UPDATE_FOLDER: public because core-data and core-update share it.
-        val LIMIT_AREAS = 209
+        // 210 since installedFromPlayStore(): UpdateDevice's implementations differ per platform.
+        val LIMIT_AREAS = 210
         val other = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
         val module = Sources.module.filter { it.name.startsWith("core-") && it.name !in other }

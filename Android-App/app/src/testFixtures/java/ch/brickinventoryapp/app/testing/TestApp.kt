@@ -155,6 +155,7 @@ class TestUpdates(var offered: Int? = null) : UpdateRepository, UpdateDevice, Up
     override fun apkVersion(apk: File): Long? = null
     override fun installMay() = false
     override fun install(apk: File) = error("the test installs nothing")
+    override fun installedFromPlayStore() = false
 
     override suspend fun updateStatus() = status
     override suspend fun rememberUpdateStatus(state: UpdateStatus) { status = state }

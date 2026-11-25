@@ -115,8 +115,9 @@ function subtitle(set) {
 
 const PAIR = { pair: true };
 
-/** Content of the set dialog from openSet and the acquisitions: value and history to the left under
- * the image, the fields on the right. @param {string} sn @param {import('../../frontend-types/contract').Acquisition[]} acqs */
+/** Content of the set dialog from openSet and the acquisitions: value under the image on the left,
+ * the fields on the right; the price history itself is static markup below both, full width.
+ * @param {string} sn @param {import('../../frontend-types/contract').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
   const set = openSet;
   if (!set) return null;
@@ -146,11 +147,11 @@ function setDetailHtml(sn, acqs) {
     },
   );
 
-  const left = html`${priceRow}${pnlRow}
-    <div id="m-price-chart">
-      <h3 class="area-title" data-style="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
-      <div class="sparkline-wrap" id="m-sparkline-content"><span data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
-    </div>`;
+  const left = html`${priceRow}${pnlRow}`;
+  setHtml(
+    G('m-sparkline-content'),
+    html`<span data-style="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span>`,
+  );
   // The minifig count comes from the catalog, same as in the table: the own minifig list only counts
   // what a parts import has taken over, and showed a different number for the same set.
   const right = html`<dl>

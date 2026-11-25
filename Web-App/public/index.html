@@ -1681,12 +1681,15 @@
   <div class="modal">
     <div class="mhd"><div><h2 class="mtit" id="m-tit">Set</h2><div class="msubtitle" id="m-subtitle"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-close aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <div class="m-header">
-      <!-- Value and price history left below the image: on the desktop the column was ~800 px empty otherwise. -->
       <div class="m-links">
         <button type="button" class="zoom-button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-zoom-click="openImageLightboxFromEl" aria-hidden="true" disabled><img id="m-img" alt="" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" /></button>
         <div id="m-det-links"></div>
       </div>
       <div id="m-det"></div>
+    </div>
+    <div class="space-top-075" id="m-price-chart">
+      <h3 class="area-title space-bottom-4" data-i18n="detail.price_history">Preisverlauf</h3>
+      <div class="sparkline-wrap" id="m-sparkline-content"></div>
     </div>
     <div id="m-instr" class="il"></div>
     <!-- No purchase links here … -->

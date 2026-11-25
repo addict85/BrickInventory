@@ -6,7 +6,7 @@ import { api } from './api.js';
 import { ico, G, setHtml } from './dom.js';
 import { fmtDate } from './format.js';
 import { scopeMode } from './account-filter.js';
-import { accountCurrency, financeHeaderValue } from './state.js';
+import { accountCurrency } from './state.js';
 import { chartWidth, portfolioChartSVG, moment, chartEmpty } from './charts.js';
 
 // Value trend of the holdings: period, curve and its reference line (cost basis) from the metrics.
@@ -90,19 +90,17 @@ function setPeriodButtons(disabled) {
 }
 
 /** Points with real timestamps where d.chart has them (same order as points): then they sit on a time axis
- * instead of by index. The last point is the header value, the others scaled to it.
+ * instead of by index. The server already scaled the curve to the header value.
  * @param {import('../../frontend-types/api').ApiSuccess<'GET', '/v2/finance/portfolio-history'>} d the portfolio history
- * @param {{ chart?: { values?: { values?: { x: string }[] }[] } }} untyped its chart @param {number} grandTotal */
-function curvePoints(d, untyped, grandTotal) {
-  const lastVal = d.points[d.points.length - 1].value || 1;
-  const scale = lastVal > 0 ? grandTotal / lastVal : 1;
+ * @param {{ chart?: { values?: { values?: { x: string }[] }[] } }} untyped its chart */
+function curvePoints(d, untyped) {
   /** @type {number[]} */
   const times = untyped.chart?.values?.[0]?.values?.map((/** @type {{ x: string }} */ v) => moment(v.x)) || [];
   const withTime = times.length === d.points.length && times.every(Number.isFinite);
   return d.points.map((/** @type {{ x_label?: string, value: number }} */ p, /** @type {number} */ i) => ({
     day: p.x_label || '',
     time: withTime ? times[i] : undefined,
-    total: i === d.points.length - 1 ? grandTotal : parseFloat((p.value * scale).toFixed(2)),
+    total: p.value,
   }));
 }
 
@@ -124,7 +122,7 @@ function showPeriodChange(pnlEl, d, points, grandTotal) {
       ? tRaw('finance.change.since', { date: fmtDate(new Date(start)) })
       : '';
   const period = periodText ? html`<span class="pnl-period">${since ? since : tRaw(periodText)}</span>` : '';
-  if (!(financeHeaderValue > 0)) {
+  if (!(grandTotal > 0)) {
     pnlEl.replaceChildren();
     return;
   }
@@ -173,8 +171,8 @@ export async function loadPortfolioChart() {
   }
 
   const cur = d.currency || accountCurrency;
-  const grandTotal = financeHeaderValue || d.points[d.points.length - 1].value;
-  const finalChartData = curvePoints(d, untyped, grandTotal);
+  const grandTotal = d.points[d.points.length - 1].value;
+  const finalChartData = curvePoints(d, untyped);
   _lastCurve = finalChartData;
   _curveWidth = chartWidth(el);
   setHtml(
