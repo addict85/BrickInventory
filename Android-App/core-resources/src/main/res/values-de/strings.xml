@@ -75,7 +75,7 @@
     <!-- ══════════════ Comparison screen ══════════════ -->
     <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
     <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">z. B. 75192-1 oder Barcode</string>
-    <string name="comparison_search">Suchen</string>
+    <string name="comparison_search">Auf Top Preise vergleichen</string>
     <string name="comparison_barcode_label">Barcode: %1$s</string>
     <string name="comparison_title">Preisvergleich</string>
     <string name="comparison_hint">Setnummer oder Barcode eingeben, oder Barcode scannen.\nDie Suche öffnet toppreise.ch im Browser.</string>
