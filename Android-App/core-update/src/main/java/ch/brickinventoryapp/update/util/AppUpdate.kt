@@ -275,4 +275,13 @@ internal class AndroidUpdateDevice @Inject constructor(@param:ApplicationContext
     override fun apkVersion(apk: File): Long? = apkVersion(ctx, apk)
     override fun installMay(): Boolean = installMay(ctx)
     override fun install(apk: File) = install(ctx, apk)
+    override fun installedFromPlayStore(): Boolean = installedFromPlayStore(ctx)
 }
+
+/**
+ * Whoever got the app from Google Play gets updates from there — the GitHub
+ * self-update stays off, so neither the silent check nor the installer
+ * permission are ever used on that path (minSdk 30: getInstallSourceInfo exists on every device).
+ */
+fun installedFromPlayStore(ctx: Context): Boolean =
+    ctx.packageManager.getInstallSourceInfo(ctx.packageName).installingPackageName == "com.android.vending"

@@ -163,14 +163,16 @@ fun SettingsScreen(
             onUserCa = exits::setUserCa,
         )
 
-        UpdateCard(
-            updateUiState = updateUiState,
-            onCheck = { update.checkOnUpdate() },
-            onLoad = { update.loadUpdate() },
-            onInstall = { update.startInstallation() },
-        )
+        if (updateUiState.selfUpdateSupported) {
+            UpdateCard(
+                updateUiState = updateUiState,
+                onCheck = { update.checkOnUpdate() },
+                onLoad = { update.loadUpdate() },
+                onInstall = { update.startInstallation() },
+            )
 
-        PrivacyCard(updateUiState.startCheck) { update.setStartCheck(it) }
+            PrivacyCard(updateUiState.startCheck) { update.setStartCheck(it) }
+        }
 
         Spacer(Modifier.height(Spacing.small))
 

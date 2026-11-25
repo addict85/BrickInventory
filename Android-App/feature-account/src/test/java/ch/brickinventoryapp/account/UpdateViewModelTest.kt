@@ -65,6 +65,8 @@ import java.util.Base64
  *   update-logout-keeps      no reset on sign-out → red "beim Abmelden verfaellt …"
  *   update-without-login-sequence     the check on sign-in removed from init →
  *                                red "die Anmeldung prueft still"
+ *   update-playstore-check-unguarded  the playStore guard removed from checkOnStart() →
+ *                                red "Play Store installed, nobody asks GitHub on start"
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdateViewModelTest {
@@ -91,6 +93,7 @@ class UpdateViewModelTest {
         var signatureGood = true
         var versionInApk: Long? = 20
         var allowed = true
+        var fromPlayStore = false
         val installed = mutableListOf<File>()
         val file = File(folder, "BrickInventory.apk")
         override fun descriptionKey() = listOf(own.public.encoded)
@@ -99,6 +102,7 @@ class UpdateViewModelTest {
         override fun apkVersion(apk: File) = versionInApk
         override fun installMay() = allowed
         override fun install(apk: File) { installed += apk }
+        override fun installedFromPlayStore() = fromPlayStore
     }
 
     private val store = object : UpdateStatusStore {
@@ -318,5 +322,22 @@ class UpdateViewModelTest {
         vm.checkOnStart()
         advanceUntilIdle()
         assertEquals(listOf(UPDATE_VERSION_URL), requested)
+    }
+
+    @Test
+    fun `Play Store installed, nobody asks GitHub on start`() = runTest(tick) {
+        val playDevice = Device().apply { fromPlayStore = true }
+        val own = UpdateViewModel(UpdateLoader(client, AppVersion("2.10", 10), tick),
+            object : LoginState { override val authTokenState = token }, store, playDevice, tick)
+        try {
+            advanceUntilIdle()
+            assertFalse("the settings cards for it stay hidden", own.updateState.value.selfUpdateSupported)
+            requested.clear()
+            own.checkOnStart()
+            advanceUntilIdle()
+            assertEquals("Play Store updates the app itself", emptyList<String>(), requested)
+        } finally {
+            own.viewModelScope.cancel()
+        }
     }
 }

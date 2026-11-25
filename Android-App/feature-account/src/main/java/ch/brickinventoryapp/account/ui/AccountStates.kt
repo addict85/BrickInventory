@@ -140,6 +140,8 @@ data class UpdateUiState(
     val freshness: UpdateFresh? = null,
     /** Switch "Check for updates on start" (per device). */
     val startCheck: Boolean = true,
+    /** False when Google Play installed the app — it updates itself there, the card stays hidden. */
+    val selfUpdateSupported: Boolean = true,
 )
 
 /**

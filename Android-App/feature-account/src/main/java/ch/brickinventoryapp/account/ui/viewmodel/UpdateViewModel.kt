@@ -52,7 +52,9 @@ class UpdateViewModel @Inject constructor(
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel(), UpdateActions.WithState {
 
-    private val _state = MutableStateFlow(UpdateUiState(startCheck = updateStatus.startCheckEnabled()))
+    private val playStore = device.installedFromPlayStore()
+    private val _state = MutableStateFlow(
+        UpdateUiState(startCheck = updateStatus.startCheckEnabled(), selfUpdateSupported = !playStore))
     val updateState = _state.asStateFlow()
     override val uiState: StateFlow<UpdateUiState> get() = updateState
 
@@ -65,7 +67,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             loginState.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
                 .filter { loggedOut -> loggedOut }
-                .collect { _state.value = UpdateUiState(startCheck = updateStatus.startCheckEnabled()) }
+                .collect { _state.value = UpdateUiState(startCheck = updateStatus.startCheckEnabled(), selfUpdateSupported = !playStore) }
         }
         // Check silently for a new version on every sign-in (if the switch is on):
         // no loading bar, no message without network. Here because the question applies to the whole app.
@@ -90,7 +92,7 @@ class UpdateViewModel @Inject constructor(
      *        button press, `false` — then the user sees both.
      */
     override fun checkOnStart() {
-        if (updateStatus.startCheckEnabled()) checkOnUpdate(still = true)
+        if (!playStore && updateStatus.startCheckEnabled()) checkOnUpdate(still = true)
     }
 
     override fun setStartCheck(an: Boolean) {
