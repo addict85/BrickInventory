@@ -282,6 +282,10 @@ internal class AndroidUpdateDevice @Inject constructor(@param:ApplicationContext
  * Whoever got the app from Google Play gets updates from there — the GitHub
  * self-update stays off, so neither the silent check nor the installer
  * permission are ever used on that path (minSdk 30: getInstallSourceInfo exists on every device).
+ * A debug build under Robolectric is not "installed" at all; that counts as not from the Store.
  */
-fun installedFromPlayStore(ctx: Context): Boolean =
+fun installedFromPlayStore(ctx: Context): Boolean = try {
     ctx.packageManager.getInstallSourceInfo(ctx.packageName).installingPackageName == "com.android.vending"
+} catch (_: PackageManager.NameNotFoundException) {
+    false
+}
