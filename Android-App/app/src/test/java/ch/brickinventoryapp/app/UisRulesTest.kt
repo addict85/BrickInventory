@@ -455,11 +455,11 @@ class UisRulesTest {
     }
 
     /**
-     * Comparison and build list are reached via “More”: there “More” stays selected, and the
+     * Wishlist and build list are reached via “More”: there “More” stays selected, and the
      * arrow at the top leads back there as on the other More subpages.
      */
     @Test
-    fun `comparison and build list mark More and lead back there with Back`() {
+    fun `wishlist and build list mark More and lead back there with Back`() {
         val more = ctx.getString(R.string.nav_more)
         show {
             val nav = rememberNavController()
@@ -476,7 +476,7 @@ class UisRulesTest {
                 NavHost(nav, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { }
                     composable<AppTarget.More> { MoreScreen(nav::openOfMore, isAdmin = false, updateAvailable = false, onLogout = {}) }
-                    composable<CollectionTarget.Comparison> { Text("Vergleichsseite") }
+                    composable<CollectionTarget.Wanted> { Text("Merklisteseite") }
                     composable<PartsTarget.PartsList> { Text("Baulistenseite") }
                 }
             }
@@ -484,7 +484,7 @@ class UisRulesTest {
         val back = ctx.getString(R.string.common_back)
         // On a tab itself no back: it is a root.
         compose.onAllNodesWithContentDescription(back).assertCountEquals(0)
-        for ((entry, content) in listOf(R.string.nav_comparison to "Vergleichsseite", R.string.nav_partslist to "Baulistenseite")) {
+        for ((entry, content) in listOf(R.string.nav_wanted to "Merklisteseite", R.string.nav_partslist to "Baulistenseite")) {
             compose.onNode(hasText(more) and hasClickAction()).performClick()
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(entry)).performClick()
@@ -522,13 +522,13 @@ class UisRulesTest {
                 NavHost(n, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { Text("Galerieseite") }
                     composable<AppTarget.More> { MoreScreen(n::openOfMore, isAdmin = false, updateAvailable = false, onLogout = {}) }
-                    composable<CollectionTarget.Comparison> { Text("Vergleichsseite") }
+                    composable<CollectionTarget.Wanted> { Text("Merklisteseite") }
                 }
             }
         }
-        // As from within a set: the comparison directly above the gallery, without “More”.
-        compose.runOnIdle { nav!!.navigate(CollectionTarget.Comparison) }
-        compose.onNodeWithText("Vergleichsseite").fetchSemanticsNode()
+        // As from within a set: the wishlist directly above the gallery, without “More”.
+        compose.runOnIdle { nav!!.navigate(CollectionTarget.Wanted) }
+        compose.onNodeWithText("Merklisteseite").fetchSemanticsNode()
         compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Galerieseite").fetchSemanticsNode("Der Pfeil führte nicht dorthin, wohin Zurück führt")

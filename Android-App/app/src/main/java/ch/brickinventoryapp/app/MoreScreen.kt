@@ -11,11 +11,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.CompareArrows
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.NotificationsActive
@@ -128,7 +128,7 @@ private fun MoreGroupContent(number: Int, separator: Boolean, updateAvailable: B
         }
         1 -> {
             MoreGroup(R.string.nav_group_tools, separator)
-            MoreItem(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { onTarget(CollectionTarget.Comparison) }
+            MoreItem(R.string.nav_wanted, Icons.Outlined.BookmarkBorder) { onTarget(CollectionTarget.Wanted) }
             MoreItem(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { onTarget(PartsTarget.PartsList) }
         }
         2 -> {
