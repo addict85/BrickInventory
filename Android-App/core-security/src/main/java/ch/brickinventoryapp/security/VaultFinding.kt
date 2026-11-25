@@ -101,8 +101,10 @@ internal fun openWithRetry(attempt: () -> String?): VaultFinding {
     return VaultFinding.LockedState
 }
 
-/** Pauses at startup: together under the watchdog's wait time (TokenStore.waitOnStart). */
-internal val VAULT_ATTEMPT_MS = listOf(250L, 750L, 2_000L)
+/** Pauses at startup: together under the watchdog's wait time (TokenStore.waitOnStart).
+ * A real unlock (PIN, fingerprint) often takes longer than the 3 s this totaled before,
+ * which showed the sign-in screen for a moment even though the token was still there. */
+internal val VAULT_ATTEMPT_MS = listOf(250L, 750L, 1_500L, 2_000L)
 
 /** After that it keeps going in the background, at most ten minutes; the next start tries again. */
 internal const val VAULT_FOLLOW_UP_MS = 30_000L
