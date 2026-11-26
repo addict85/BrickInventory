@@ -415,7 +415,17 @@ class TokenStore @Inject constructor(
         if (_authTokenState.value != TOKEN_WIPED || !restoring.compareAndSet(false, true)) return
         prefsScope.launch {
             try {
-                val token = authToken.first()
+                // readToken reports "" after a few seconds of a still-locked keystore: "not yet",
+                // not "signed out". Taken as the token, the mirror would stay empty for the rest of
+                // the process (every request 401, the session-expired hint), because the unlock only
+                // restores a placeholder. So keep it; the unlock or the next request reads again.
+                val token = authToken.first().ifEmpty {
+                    when (val f = dataStore.data.first()[AUTH_TOKEN_ENC]?.let(vault::open)) {
+                        is VaultFinding.Readable -> f.plaintext
+                        VaultFinding.LockedState -> return@launch
+                        VaultFinding.Gone, null -> ""
+                    }
+                }
                 tokenLimit.write<Unit>(newSession = { false }) {
                     if (_authTokenState.value == TOKEN_WIPED) _authTokenState.value = token
                 }

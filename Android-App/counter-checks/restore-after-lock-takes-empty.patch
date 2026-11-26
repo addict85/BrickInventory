@@ -1,0 +1,23 @@
+Gegenprobe: Nach der Sperre übernimmt restoreAfterLock() das leere Zwischenergebnis eines noch gesperrten Keystores als Token
+Modul: core-data
+Test: ch.brickinventoryapp.data.RestoreAfterLockTest
+Rot: a restore while the keystore is locked does not sign out
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -419,13 +419,7 @@
+                 // not "signed out". Taken as the token, the mirror would stay empty for the rest of
+                 // the process (every request 401, the session-expired hint), because the unlock only
+                 // restores a placeholder. So keep it; the unlock or the next request reads again.
+-                val token = authToken.first().ifEmpty {
+-                    when (val f = dataStore.data.first()[AUTH_TOKEN_ENC]?.let(vault::open)) {
+-                        is VaultFinding.Readable -> f.plaintext
+-                        VaultFinding.LockedState -> return@launch
+-                        VaultFinding.Gone, null -> ""
+-                    }
+-                }
++                val token = authToken.first()
+                 tokenLimit.write<Unit>(newSession = { false }) {
+                     if (_authTokenState.value == TOKEN_WIPED) _authTokenState.value = token
+                 }
