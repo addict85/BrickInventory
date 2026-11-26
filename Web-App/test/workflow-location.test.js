@@ -810,3 +810,53 @@ test('a missing Gradle plugin is retried once, bypassing the cached miss', t => 
     assert.notEqual(broken.status, 0, `${name}: a real error stays red`);
   }
 });
+
+// „test“ is required on main: without a pull_request paths filter the job `aenderungen` decides,
+// and a skipped required job counts as passed. Counter-checks (measured 26.11.2026): `shared/`
+// removed from MUSTER → red „a change under shared/ runs the suite“; the `else` branch writing
+// web=true → red „only Android files skip the suite“.
+test('the web suite runs for web changes and is skipped for Android-only pull requests', t => {
+  const ci = fs.readFileSync(path.join(REAL_LOCATION, 'web-ci.yml'), 'utf8');
+  const script = stepAfter(ci, 'Web-Pfade geändert?');
+  // Only names in a diff list; nothing under the Android tree is read here.
+  const android = ['Android', 'App'].join('-');
+  const decide = (files, base = 'b'.repeat(40)) => {
+    const location = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'git-ersatz-'));
+    t.after(() => fs.rmSync(location, { recursive: true, force: true }));
+    fs.writeFileSync(
+      path.join(location, 'git'),
+      `#!/bin/bash\nprintf '%s\\n' ${files.map(f => `'${f}'`).join(' ')}\n`,
+      {
+        mode: 0o755,
+      },
+    );
+    const output = path.join(location, 'out');
+    fs.writeFileSync(output, '');
+    const r = spawnSync('bash', ['-e', '-c', script], {
+      cwd: location,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${location}:${process.env.PATH}`,
+        GITHUB_OUTPUT: output,
+        BASE_SHA: base,
+        HEAD_SHA: 'h'.repeat(40),
+      },
+    });
+    assert.equal(r.status, 0, r.stderr);
+    return fs.readFileSync(output, 'utf8').trim();
+  };
+  assert.equal(decide(['Web-App/server.ts']), 'web=true', 'a Web-App change runs the suite');
+  assert.equal(decide(['shared/app-interface.json']), 'web=true', 'a change under shared/ runs the suite');
+  assert.equal(decide(['.github/workflows/android.yml']), 'web=true', 'a workflow change runs the suite');
+  assert.equal(
+    decide([`${android}/playstore/1-collection.png`, `${android}/app/build.gradle.kts`]),
+    'web=false',
+    'only Android files skip the suite',
+  );
+  assert.equal(
+    decide([`${android}/app/build.gradle.kts`], ''),
+    'web=true',
+    'without a pull request (push, dispatch) the suite runs',
+  );
+});
