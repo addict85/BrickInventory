@@ -780,18 +780,8 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
   und zweiten Faktor des Verwalters selbst, eine Hinweis-Mail an den Inhaber
   und alle Verwalter und das Verwaltungsprotokoll; verhindern lässt es sich
   nicht, nur erkennen.
-- **Update der Android-App per Sideload**: Die App darf Pakete installieren
-  (`REQUEST_INSTALL_PACKAGES`). Abgesichert ist das durch die Signatur des
-  APK, seine SHA-256-Prüfsumme, die signierte Fassungsbeschreibung und ein
-  Frischefenster gegen alte Fassungen. Restrisiko: Signier- und
-  Beschreibungsschlüssel liegen als Secret in GitHub-Environments, und eine
-  Person gibt frei; wer das Konto erbeutet, kann Updates veröffentlichen. Wie
-  sich das stärken lässt: „Release-Freigabe stärken“ oben.
-- **Beschreibungsschlüssel**: Die App nimmt eine Fassungsbeschreibung nur mit der
-  Signatur des eigenen Beschreibungsschlüssels an; der frühere Übergangsweg über
-  das Zertifikat der installierten App ist entfernt (12.11.2026). Die Beschreibung
-  gilt sieben Tage; danach meldet die App sie als veraltet, bis ein neues Etikett
-  sie auffrischt. Eine abgelaufene, aber neuere Fassung bietet sie trotzdem an,
-  mit dem Hinweis, dass es Neueres geben könnte; eine ältere als die installierte
-  oder als die schon gesehene nie (Rückroll-Schutz über versionCode und
-  Ausstellungszeit).
+- **Updates der Android-App über Google Play**: Die App installiert keine Pakete
+  selbst und verlangt `REQUEST_INSTALL_PACKAGES` nicht; die Prüfung des fertigen
+  APK (`tools/manifest-permissions.txt`) ist rot, sobald die Berechtigung wieder
+  auftaucht. Restrisiko: Wer das Play-Konto oder den Upload-Schlüssel erbeutet,
+  kann Updates veröffentlichen.
