@@ -19,7 +19,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.account.ui.accountGraph
-import ch.brickinventoryapp.account.ui.dialogs.UpdateRoute
 import ch.brickinventoryapp.app.nav.ActivityState
 import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.nav.Tab
@@ -59,7 +58,6 @@ fun BrickInventoryRoute(
     // collectAsStateWithLifecycle: collection stops when the app is in the
     // background — no unnecessary recomposition/state processing any more.
     val state by vm.state.collectAsStateWithLifecycle()
-    val selfUpdate = activity.update
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     // Only the ScrollMemory holds scroll positions: every destination creates its list state
@@ -76,9 +74,8 @@ fun BrickInventoryRoute(
         }
     }
 
-    // CSV stream, update check and reloading in the foreground are triggered by ViewModels and
-    // activity (CsvImportViewModel, UpdateViewModel, MainActivity.onResume), not
-    // by the composition.
+    // CSV stream and reloading in the foreground are triggered by ViewModels and
+    // activity (CsvImportViewModel, MainActivity.onResume), not by the composition.
 
     val startDest = startRoute(startTarget(state.serverUrl, state.isLoggedIn, NetworkPolicy.development))
     val root: Any = if (startDest == CollectionTarget.Gallery) CollectionTarget.Gallery else LoginTarget.Area
@@ -86,13 +83,6 @@ fun BrickInventoryRoute(
     // and end its ViewModel in the middle of the QR sign-in.
     val loginStart = remember(root) { startDest as? LoginTarget ?: LoginTarget.Setup }
     val bottomNavItems = tabTheBar()
-
-    // ── “There is a new version” — also above everything ──
-    //
-    // A hint at start with yes/no, because a dot in the settings is easily
-    // overlooked. Here, because the question concerns the whole app; the triggering check
-    // is a few lines further up.
-    UpdateRoute(selfUpdate)
 
     // A tapped price alert notification opens its set — here, because the
     // NavController only exists in this composition. Only signed in; otherwise

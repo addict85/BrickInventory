@@ -20,7 +20,6 @@ internal val structureFiles: Map<String, String> = mapOf(
     "LanguageTheMessagesTest.kt" to "texts only via the localized context",
     "NoDirectCdnAccessTest.kt" to "ban on direct CDN addresses",
     "ClientRendersOnlyTest.kt" to "ban on money sums in the UI",
-    "UpdateSignatureTest.kt" to "the stored key file and the release workflow",
     "SpacingScaleTest.kt" to "one spacing and one type scale",
     "NumericInputTest.kt" to "every number field uses NumericInput",
     "NumberFormatTest.kt" to "ban on hand-made amount formatting",
@@ -83,10 +82,6 @@ internal val structureChecks: Map<String, String> = mapOf(
     "ScreenStateTest.kt: state entered by a human survives a rotation" to "rule over every screen",
     "ScreenStateTest.kt: running operation and scroll memory are NOT restored" to "rule over every screen",
     "ScreenStateTest.kt: passwords and codes are not saved in the bundle" to "rule over every screen",
-    "SelfUpdateTest.kt: the update trusts only system certificates" to "network_security_config.xml",
-    "SelfUpdateTest.kt: the manifest allows installing, no provider exposes the update directory" to "manifest",
-    "SelfUpdateTest.kt: the workflow puts the description next to the APK" to "workflow",
-    "SelfUpdateTest.kt: no field promises a check that does not exist" to "the field name the signing workflow writes",
     "ListFilterInStateTest.kt: no loader takes a list filter as a parameter" to "ban",
     "ListFilterInStateTest.kt: no search in the screen over a loaded list" to "ban",
     "OcrSetNumberTest.kt: text recognition runs ONLY when adding, not in the price comparison" to

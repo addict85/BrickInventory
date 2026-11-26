@@ -4,9 +4,10 @@ Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: gallery's floating button opens a choice between manual entry and scan
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
+index 44c70449..b0bf8b92 100644
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
-@@ -223,6 +223,10 @@ internal fun GalleryScreen(
+@@ -227,6 +227,10 @@ internal fun GalleryScreen(
          // Add only once the collection is there: in the error state, attention belongs to the
          // reason and "Try again", not a button that would go nowhere.
          // Not empty either: the empty message itself offers Add and Scan.
@@ -17,13 +18,3 @@ diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/c
          if (!large && display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) Box(
              Modifier.align(Alignment.BottomEnd).padding(Spacing.large),
          ) {
-@@ -274,9 +278,6 @@ private fun GallerySearch(
-         activeFilter = FilterCount.gallery(condition.glance.householdMembers, condition.accountChoice(), condition.storage.locations,
-             condition.storageChoice(), gallery.galleryTheme),
-         onFilter = onFilter,
--        // At normal size the FAB itself offers scanning (next to manual entry); with large
--        // text there's no FAB (record sits here instead), so scanning stays next to it.
--        scanOn = onScanBarcode.takeIf { largeFont() },
-         record = record,
-         active = listOfNotNull(
-             accountFilter(condition.glance.householdMembers, condition.accountChoice()) { events.account(ScopeFilter.ALL) },

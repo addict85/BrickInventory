@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit
  *                               red “removed library components …”
  * the loop over uses-permission deleted →
  *                               red “a permission outside the list …”
+ *   (run here) REQUEST_INSTALL_PACKAGES back in manifest-permissions.txt →
+ *                               red “installing packages is not allowed …”
  *   manifest-telemetry-unchecked  the check of the datatransport backends deleted →
  *                               red “a telemetry backend of ML Kit …”
  */
@@ -114,6 +116,15 @@ class ManifestCheckTest {
         assertTrue(text, "READ_PHONE_STATE" in text)
         val testOnly = "      A: http://schemas.android.com/apk/res/android:testOnly(0x01010272)=true\n"
         assertEquals(1, check(manifest(*good, application = testOnly)).first)
+    }
+
+    /** The app comes from Google Play and installs nothing itself. */
+    @Test
+    fun `installing packages is not allowed, the release check rejects it`() {
+        val (code, text) = check(manifest(*good, rights = listOf("android.permission.INTERNET",
+            "android.permission.REQUEST_INSTALL_PACKAGES")))
+        assertEquals(text, 1, code)
+        assertTrue(text, "REQUEST_INSTALL_PACKAGES" in text)
     }
 
     /** ML Kit reports usage data via Google's datatransport; the app removes its backend. */

@@ -80,7 +80,7 @@ internal fun EntryFrame(
 @Composable
 fun setEntry(entry: NavBackStackEntry, images: ImageLoader, onPresent: (String) -> Unit): (EntryRequest) -> Unit {
     val entryVm: EntryViewModel = hiltViewModel(entry)
-    EntryFrame(entry, entryVm, images, onPresent)
+    EntryFrame(entry, entryVm, images, onPresent = onPresent)
     return entryVm::addSet
 }
 
@@ -97,7 +97,7 @@ fun <T> partListsEntry(
     asScan: (setNumber: String?, manual: Boolean, adopted: () -> Unit, acknowledged: () -> Unit) -> T,
 ): T {
     val entryVm: EntryViewModel = hiltViewModel(entry)
-    EntryFrame(entry, entryVm, images, onPresent)
+    EntryFrame(entry, entryVm, images, onPresent = onPresent)
     val scan by entryVm.barcodeState.collectAsStateWithLifecycle()
     return asScan(scan.forPartList, scan.requestManualEntry,
         entryVm::clearBarcodeForPartsList, entryVm::acknowledgeManualEntry)

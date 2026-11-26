@@ -81,7 +81,7 @@ class NetworkSecurityTest {
         val areas = (cfg.children("domain-config") + cfg.children("base-config"))
             .filter { it.getAttribute("cleartextTrafficPermitted") != "true" }
         val without = areas.filter { b -> b.children("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
-        assertTrue("Without Certificate Transparency: " + without.map { it.tagName }, areas.size == 2 && without.isEmpty())
+        assertTrue("Without Certificate Transparency: " + without.map { it.tagName }, areas.size == 1 && without.isEmpty())
     }
 
     @Test

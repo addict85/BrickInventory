@@ -96,6 +96,7 @@ private fun NavGraphBuilder.galleryTarget(navigation: CollectionNavigation) {
         GalleryUndoRoute(galleryVm, navigation.snackbar)
         val target = this
         val scan = { navController.navigate(CollectionTarget.BarcodeScanner(ScannerOrigin.GALLERY_SEARCH)) }
+        val searchScan = { navController.navigate(CollectionTarget.BarcodeScanner(ScannerOrigin.GALLERY_FILTER)) }
         val open: (String) -> Unit = { navController.navigate(CollectionTarget.SetDetail(it)) }
         navigation.Tab(stringResource(R.string.nav_collection)) {
             WithTarget(target) {
@@ -103,10 +104,10 @@ private fun NavGraphBuilder.galleryTarget(navigation: CollectionNavigation) {
             BoxWithConstraints {
                 if (listAndDetail(maxWidth.value)) {
                     GalleryAndDetail(galleryVm, entryVm, navigation.images, open = null, onSetClick = open,
-                        onScanBarcode = scan, gridState = galleryGridState) {}
+                        onScanBarcode = scan, gridState = galleryGridState, onSearchBarcode = searchScan) {}
                 } else {
                     GalleryRoute(vm = galleryVm, entryVm = entryVm, imageLoader = navigation.images,
-                        onScanBarcode = scan, onSetClick = open, gridState = galleryGridState)
+                        onScanBarcode = scan, onSetClick = open, gridState = galleryGridState, onSearchBarcode = searchScan)
                 }
             }
             }
@@ -191,6 +192,7 @@ private fun GalleryBesideDetailRoute(
             imageLoader = navigation.images,
             open = setNumber,
             onScanBarcode = { navController.navigate(CollectionTarget.BarcodeScanner(ScannerOrigin.GALLERY_SEARCH)) },
+            onSearchBarcode = { navController.navigate(CollectionTarget.BarcodeScanner(ScannerOrigin.GALLERY_FILTER)) },
             onSetClick = { sn ->
                 if (sn != setNumber) navController.navigate(CollectionTarget.SetDetail(sn)) {
                     popUpTo<CollectionTarget.SetDetail> { inclusive = true }

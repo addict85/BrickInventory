@@ -150,7 +150,7 @@ class SubpagesTest {
     @Test
     fun `sign-out asks first`() {
         var loggedOut = 0
-        show { MoreScreen({}, isAdmin = false, updateAvailable = false, onLogout = { loggedOut++ }) }
+        show { MoreScreen({}, isAdmin = false, onLogout = { loggedOut++ }) }
         val logout = ctx.getString(R.string.main_menu_logout)
         compose.onNodeWithText(logout).performClick()
         compose.waitForIdle()
@@ -164,19 +164,12 @@ class SubpagesTest {
     /** Between „Einstellungen“ and the server group sign-out lay where one keeps tapping. */
     @Test
     fun `sign-out stands apart as the last entry, after the server group`() {
-        show { MoreScreen({}, isAdmin = true, updateAvailable = false, onLogout = {}) }
+        show { MoreScreen({}, isAdmin = true, onLogout = {}) }
         fun situation(id: Int) = compose.onNodeWithText(ctx.getString(id)).fetchSemanticsNode().boundsInRoot
         val logout = situation(R.string.main_menu_logout)
         for (id in listOf(R.string.nav_settings, R.string.main_menu_monitoring, R.string.account_title, R.string.vouchers_title)) {
             assertTrue("“${ctx.getString(id)}” stands below sign out", situation(id).bottom <= logout.top)
         }
-    }
-
-    /** The dot on the settings says in words what it stands for. */
-    @Test
-    fun `update dot is labelled`() {
-        show { MoreScreen({}, isAdmin = false, updateAvailable = true, onLogout = {}) }
-        compose.onNodeWithText(ctx.getString(R.string.update_badge)).fetchSemanticsNode()
     }
 
     @Test

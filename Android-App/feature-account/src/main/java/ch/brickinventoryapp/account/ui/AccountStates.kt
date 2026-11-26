@@ -10,8 +10,6 @@ import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.Operation
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.update.util.UpdateDescription
-import ch.brickinventoryapp.update.util.UpdateFresh
 
 /**
  * One's own account in the settings — its own state, because only one screen
@@ -104,44 +102,6 @@ data class CsvUploadUiState(
     /** Which kind is currently uploading — for showing it on the right button. */
     val kind: CsvImportKind? = null,
     val outcome: CsvResultView? = null,
-)
-
-/**
- * Self-update from the GitHub release (util/AppUpdate.kt). "Found" and
- * "loaded" are two fields, because on start it only checks and never loads
- * on its own. `checked` distinguishes "not checked yet" from "nothing
- * new", so the button gives feedback.
- */
-data class UpdateUiState(
-    val check: Operation = Operation.Done,
-    /** Has this session already checked? */
-    val checked: Boolean = false,
-    /** The newer version, or null: there is none. */
-    val newerVersion: UpdateDescription? = null,
-    /** 0..100 while loading, null = nothing is loading. */
-    val progress: Int? = null,
-    /** The loaded APK is waiting for the user's consent. */
-    val readyToInstallation: Boolean = false,
-    /** Is the system permission "install apps from unknown sources" missing? */
-    val permissionAbsent: Boolean = false,
-    /**
-     * Has the user dismissed the notice on start? Applies for this app run:
-     * don't ask again on every tab switch, but ask again on the next start. The
-     * dot on the account icon stays.
-     */
-    val dialogRejected: Boolean = false,
-    /** A sentence in building blocks; the UI assembles it in its own language. */
-    val error: Message? = null,
-    /**
-     * How fresh the last-checked description was; null before the first check.
-     * Also set after the silent check: a withholding should be visible in the
-     * settings without first pressing the button.
-     */
-    val freshness: UpdateFresh? = null,
-    /** Switch "Check for updates on start" (per device). */
-    val startCheck: Boolean = true,
-    /** False when Google Play installed the app — it updates itself there, the card stays hidden. */
-    val selfUpdateSupported: Boolean = true,
 )
 
 /**

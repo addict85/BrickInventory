@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -26,6 +27,8 @@ import org.robolectric.annotation.Config
  *                               red “the profile installer …”
  *   pdf-renderer-in-app-process isolatedProcess removed from PdfRenderService → red
  *                               “the PDF renderer runs isolated …”
+ *   (run here) `<uses-permission REQUEST_INSTALL_PACKAGES>` back in app/src/main/AndroidManifest.xml
+ *                               → red “the app does not ask to install packages …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -56,6 +59,15 @@ class LibraryComponentsTest {
         val info = ctx.packageManager.getReceiverInfo(
             ComponentName(ctx.packageName, "ch.brickinventoryapp.app.widget.CollectionWidgetReceiver"), 0)
         assertTrue(info.exported)
+    }
+
+    /** Google Play updates the app; it installs nothing itself. CAMERA proves the list is read at all. */
+    @Test
+    fun `the app does not ask to install packages, its own permissions are there`() {
+        val requested = ctx.packageManager.getPackageInfo(ctx.packageName, PackageManager.GET_PERMISSIONS)
+            .requestedPermissions.orEmpty().toList()
+        assertTrue(requested.toString(), "android.permission.CAMERA" in requested)
+        assertEquals(emptyList<String>(), requested.filter { it == "android.permission.REQUEST_INSTALL_PACKAGES" })
     }
 
     @Test

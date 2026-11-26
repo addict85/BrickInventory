@@ -126,6 +126,8 @@ fun GalleryRoute(
     onSetClick: (String) -> Unit,
     /** Scroll state from outside, so it survives the trip to the detail view. */
     gridState: LazyGridState = rememberLazyGridState(),
+    /** The scanner for the search field (the scan next to the filter), not for adding. */
+    onSearchBarcode: () -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val glance by vm.viewport.collectAsStateWithLifecycle()
@@ -153,6 +155,7 @@ fun GalleryRoute(
         events = events,
         imageLoader = imageLoader,
         onScanBarcode = onScanBarcode,
+        onSearchBarcode = onSearchBarcode,
         onSetClick = onSetClick,
         gridState = gridState,
     )
@@ -167,6 +170,7 @@ internal fun GalleryScreen(
     onScanBarcode: () -> Unit,
     onSetClick: (String) -> Unit,
     gridState: LazyGridState = rememberLazyGridState(),
+    onSearchBarcode: () -> Unit = {},
 ) {
     val gallery = condition.gallery
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
@@ -205,7 +209,7 @@ internal fun GalleryScreen(
             // manual or scan, so only ONE button floats at the bottom. Not in the error state:
             // without a collection there's nothing to search.
             if (display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) GallerySearch(
-                condition, events, searchInput, { searchInput = it }, onScanBarcode,
+                condition, events, searchInput, { searchInput = it }, onSearchBarcode,
                 onFilter = { showFilter = true }, record = addText to { showAddDialog = true },
             )
 
@@ -262,7 +266,7 @@ private fun GallerySearch(
     events: GalleryEvents,
     searchText: String,
     onSearchText: (String) -> Unit,
-    onScanBarcode: () -> Unit,
+    onSearchBarcode: () -> Unit,
     onFilter: () -> Unit,
     record: Pair<String, () -> Unit>,
 ) {
@@ -274,8 +278,8 @@ private fun GallerySearch(
         activeFilter = FilterCount.gallery(condition.glance.householdMembers, condition.accountChoice(), condition.storage.locations,
             condition.storageChoice(), gallery.galleryTheme),
         onFilter = onFilter,
-        // Scanning here searches the collection; the FAB's scan adds a set instead.
-        scanOn = onScanBarcode,
+        // Scanning here searches the collection; the FAB's scan adds (or opens) a set instead.
+        scanOn = onSearchBarcode,
         record = record,
         active = listOfNotNull(
             accountFilter(condition.glance.householdMembers, condition.accountChoice()) { events.account(ScopeFilter.ALL) },

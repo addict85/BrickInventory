@@ -6,7 +6,6 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import ch.brickinventoryapp.account.ui.AccountNavigation
 import ch.brickinventoryapp.account.ui.AccountTarget
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.TabScaffold
 import ch.brickinventoryapp.catalog.ui.CatalogNavigation
 import ch.brickinventoryapp.collection.ui.CollectionNavigation
@@ -53,7 +52,6 @@ class TargetEnvironment(
     override val scrollMemory get() = activity.app.scrollMemory
     override fun loadSettings() = activity.app.loadSettings()
     override fun logout() { activity.app.logout() }
-    override val update: UpdateViewModel get() = activity.update
     override val appearance: AppearanceViewModel get() = activity.appearance
     override val trust: TrustViewModel get() = activity.trust
 

@@ -1,4 +1,4 @@
-Gegenprobe: core-services bindet core-update ein; die abgespaltenen Module kennen einander nicht
+Gegenprobe: core-services bindet core-session ein; die Dienste kennen nur core-data und die Ressourcen
 Modul: app
 Test: ch.brickinventoryapp.app.ModuleBoundariesTest
 Rot: layering of the core modules
@@ -10,7 +10,7 @@ diff --git a/Android-App/core-services/build.gradle.kts b/Android-App/core-servi
  
  dependencies {
      implementation(project(":core-data"))
-+    implementation(project(":core-update"))
++    implementation(project(":core-session"))
      // Texts and icon of the notifications: the R classes are not transitive.
      implementation(project(":core-resources"))
      implementation(libs.androidx.core.ktx)

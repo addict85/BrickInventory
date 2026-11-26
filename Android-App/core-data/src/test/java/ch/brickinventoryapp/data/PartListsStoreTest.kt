@@ -24,8 +24,8 @@ import java.io.File
  *
  * Counter-check: in partListsStore()
  * again `extern ?: intern` as root → red “the parts list lies internally …”.
- * Counter-check: in cleanUpAccountFiles() the line for
- * UPDATE_FOLDER removed → red “sign-out clears …” („Das geladene Update bleibt liegen“).
+ * Counter-check: in cleanUpAccountFiles() the line for the internal
+ * `pdf` folder removed → red “sign-out clears …” („The parts list survives signing out“).
  * Counter-check: in
  * cleanOldPartListOn() the age check reversed (`<` instead of `>=`) → red “after
  * the deadline the parts list disappears …”; counter-checks/part-list-stays-behind.patch
@@ -54,14 +54,12 @@ class PartListsStoreTest {
     }
 
     @Test
-    fun `sign-out clears parts list, shared PDFs and update, other things stay`() {
+    fun `sign-out clears parts list and shared PDFs, other things stay`() {
         val list = partListsStore(intern, extern).apply { writeText("Inventar") }
-        val apk = File(intern, "update/BrickInventory.apk").apply { parentFile!!.mkdirs(); writeText("apk") }
         val shared = File(extern, "pdf/anleitung.pdf").apply { parentFile!!.mkdirs(); writeText("pdf") }
         val stays = File(intern, "datastore/einstellungen.pb").apply { parentFile!!.mkdirs(); writeText("x") }
         cleanUpAccountFiles(intern, extern)
         assertFalse("The parts list survives signing out", list.exists())
-        assertFalse("The downloaded update stays behind", apk.exists())
         assertFalse("Shared PDFs in the external area stay", shared.exists())
         assertTrue("Other things in filesDir do not belong to it", stays.exists())
         cleanUpAccountFiles(intern, null)

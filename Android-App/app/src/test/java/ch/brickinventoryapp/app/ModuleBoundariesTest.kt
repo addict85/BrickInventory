@@ -45,9 +45,8 @@ import java.time.LocalDate
  *      only CI measures it, locally there is no Gradle
  *   M  counter-checks/merge-leftover-in-tree.patch: a file `Rest.kt.orig` in the tree →
  *      red “no merge remnant lies in the tree” (every module folder is included …)
- *   N  counter-checks/services-depends-on-update.patch: core-services includes core-update →
- *      red „layering of the core modules: core-services depends on [core-update]“ (core-data →
- *      core-update is already caught by Gradle as a cycle)
+ *   N  counter-checks/services-depends-on-session.patch: core-services includes core-session →
+ *      red „layering of the core modules: core-services depends on [core-session]“
  *   P  counter-checks/state-depends-on-ui.patch: core-state includes core-ui →
  *      red „layering of the core modules: core-state depends on [core-ui]“
  *   Q  counter-checks/common-depends-on-data.patch: core-ui-inventory includes core-data →
@@ -119,7 +118,7 @@ class ModuleBoundariesTest {
         val master = mapOf(
             "app" to "app", "core-model" to "model", "core-contract" to "contract", "core-network" to "network", "core-data" to "data",
             "core-security" to "security", "core-offline" to "offline",
-            "core-update" to "update", "core-services" to "services", "core-ui" to "ui", "core-state" to "state",
+            "core-services" to "services", "core-ui" to "ui", "core-state" to "state",
             "core-navigation" to "navigation",
             "core-session" to "session",
             "core-testing" to "testing", "feature-login" to "login", "feature-catalog" to "catalog",

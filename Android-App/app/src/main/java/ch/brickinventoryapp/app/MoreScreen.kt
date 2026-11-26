@@ -22,7 +22,6 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Redeem
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.UploadFile
-import androidx.compose.material3.Badge
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -66,7 +65,6 @@ import ch.brickinventoryapp.ui.theme.centeredUntil
 fun MoreScreen(
     onTarget: (Any) -> Unit,
     isAdmin: Boolean,
-    updateAvailable: Boolean,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -82,7 +80,7 @@ fun MoreScreen(
         symbol = Icons.AutoMirrored.Outlined.Logout,
     )
     @Composable
-    fun Group(number: Int, separator: Boolean) = MoreGroupContent(number, separator, updateAvailable, onTarget)
+    fun Group(number: Int, separator: Boolean) = MoreGroupContent(number, separator, onTarget)
     // The server group only for admins.
     val groups = if (isAdmin) 5 else 4
     // On the tablet two columns of about equal height: prices, tools and server on the left,
@@ -118,7 +116,7 @@ private fun LogoutEntry(onClick: () -> Unit) {
  * subpages. Mixed, “Comparison” next to “Vouchers” looked different than expected.
  */
 @Composable
-private fun MoreGroupContent(number: Int, separator: Boolean, updateAvailable: Boolean, onTarget: (Any) -> Unit) {
+private fun MoreGroupContent(number: Int, separator: Boolean, onTarget: (Any) -> Unit) {
     when (number) {
         0 -> {
             MoreGroup(R.string.nav_group_prices, separator)
@@ -141,7 +139,7 @@ private fun MoreGroupContent(number: Int, separator: Boolean, updateAvailable: B
             MoreGroup(R.string.nav_group_account, separator)
             MoreItem(R.string.account_title, Icons.Outlined.AccountCircle) { onTarget(AccountTarget.Account) }
             // The dot alone did not say what it stands for: below it says so in words.
-            MoreItem(R.string.nav_settings, Icons.Outlined.Settings, point = updateAvailable) { onTarget(AccountTarget.Settings) }
+            MoreItem(R.string.nav_settings, Icons.Outlined.Settings) { onTarget(AccountTarget.Settings) }
         }
         else -> {
             MoreGroup(R.string.nav_group_server, separator)
@@ -179,14 +177,11 @@ private fun MoreGroup(title: Int, separator: Boolean) =
 @Suppress("DEPRECATION")
 @Composable
 private fun MoreItem(
-    title: Int, symbol: ImageVector, point: Boolean = false, color: Color = Color.Unspecified, onClick: () -> Unit,
+    title: Int, symbol: ImageVector, color: Color = Color.Unspecified, onClick: () -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(stringResource(title), color = color) },
-        supportingContent = if (point) ({ Text(stringResource(R.string.update_badge)) }) else null,
         leadingContent = { Icon(symbol, null, tint = color.takeOrElse { MaterialTheme.colorScheme.onSurfaceVariant }) },
-        // The text below already says it; the dot stays without a second announcement.
-        trailingContent = if (point) ({ Badge() }) else null,
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clickable(role = Role.Button, onClick = onClick),
     )

@@ -97,11 +97,12 @@ class EntryViewModel @Inject constructor(
                             _barcodeState.update { it.copy(requestManualEntry = true) }
                             return@launch
                         }
-                        if (_barcodeState.value.source == ScannerOrigin.GALLERY_SEARCH) {
+                        if (_barcodeState.value.source == ScannerOrigin.GALLERY_FILTER) {
                             messages.acknowledge()
                             _barcodeState.update { it.copy(searchFor = setNum) }
                             return@launch
                         }
+                        if (_barcodeState.value.source == ScannerOrigin.GALLERY_SEARCH && showExisting(setNum)) return@launch
                         messages.acknowledge()
                         _barcodeState.update { it.copy(
                             result = setNum, setName = r.data.name ?: setNum,
@@ -225,7 +226,7 @@ class EntryViewModel @Inject constructor(
                 _barcodeState.update { withoutResult(it).copy(forPartList = setNum) }
                 return
             }
-            ScannerOrigin.GALLERY, ScannerOrigin.GALLERY_SEARCH -> Unit
+            ScannerOrigin.GALLERY, ScannerOrigin.GALLERY_SEARCH, ScannerOrigin.GALLERY_FILTER -> Unit
         }
         _barcodeState.update { withoutResult(it).copy(add = Operation.Running) }
         viewModelScope.launch {

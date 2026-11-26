@@ -93,10 +93,9 @@ class LogoutCleansEverythingTest {
 
     private fun file(basis: File, path: String) = File(basis, path).apply { parentFile?.mkdirs(); writeText("inhalt") }
 
-    /** Parts list, update APK, instruction and a price alert notification. */
-    private fun createFilesAndMessage(): Triple<File, File, File> {
-        val files = Triple(file(ctx.filesDir, "pdf/teileliste.bin"), file(ctx.filesDir, "update/BrickInventory.apk"),
-            file(ctx.cacheDir, "anleitung_x.bin"))
+    /** Parts list, instruction and a price alert notification. */
+    private fun createFilesAndMessage(): Pair<File, File> {
+        val files = Pair(file(ctx.filesDir, "pdf/teileliste.bin"), file(ctx.cacheDir, "anleitung_x.bin"))
         shadowOf(ctx).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel("preisalarm", "Preisalarm", NotificationManager.IMPORTANCE_DEFAULT))
@@ -130,7 +129,7 @@ class LogoutCleansEverythingTest {
             .diskCache { DiskCache.Builder().directory(File(ctx.cacheDir, "coil").toOkioPath()).build() }.build()
         val coil = checkNotNull(loader.diskCache)
         coil.openEditor("bild")!!.apply { coil.fileSystem.write(data) { writeUtf8("bild") }; coil.fileSystem.write(metadata) { writeUtf8("m") } }.commit()
-        val (partList, update, instruction) = createFilesAndMessage()
+        val (partList, instruction) = createFilesAndMessage()
         val voucher = file(ctx.cacheDir, "$PDF_CONFIDENTIAL_FOLDER/pdfview_alt.pdf")
         val messages = shadowOf(ctx.getSystemService(NotificationManager::class.java))
         assertEquals("Precondition: a notification is there", 1, messages.allNotifications.size)
@@ -155,7 +154,6 @@ class LogoutCleansEverythingTest {
         assertFalse("HTTP-Bildcache", imageClient.cache!!.urls().hasNext())
         assertNull("Coil-Bildcache", coil.openSnapshot("bild"))
         assertFalse("PartList", partList.exists())
-        assertFalse("Update-APK", update.exists())
         assertFalse("Instruction", instruction.exists())
         assertFalse("Voucher PDF", voucher.exists())
         assertEquals("Price alert notification", 0, messages.allNotifications.size)

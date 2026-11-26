@@ -6,13 +6,13 @@ Rot: the collection switcher reports the tab before it navigates
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -128,8 +128,8 @@
+@@ -121,8 +121,8 @@ fun MainScaffold(
          navController.toTab(screen)
      }
      val toggle: (Any) -> Unit = { target ->
-+        navController.toTab(target)
-         onTabTapped(target)
--        navController.toTab(target)
+-        onTabTapped(target)
+         navController.toTab(target)
++        onTabTapped(target)
      }
  
-     // The icon of a destination, on “More” with the dot for a new version.
+     // The window width decides, not the device: a tablet in split

@@ -79,18 +79,10 @@ fun cleanOldPartListOn(intern: File, now: Long, deadline: Long = PART_LIST_DEADL
 }
 
 /**
- * Where the loaded APK goes; installation happens via a PackageInstaller session, without FileProvider.
- * Here and public because core-update loads there and sign-out (below) clears it.
- */
-const val UPDATE_FOLDER = "update"
-
-/**
- * At sign-out: parts list (inventory) and shared PDFs in both roots, plus a
- * loaded update. The cache alone was not enough — filesDir survives sign-out,
- * and the next user on the device would otherwise open the previous one's inventory.
+ * At sign-out: parts list (inventory) and shared PDFs in both roots. The cache
+ * alone was not enough — filesDir survives sign-out, and the next user on the device would otherwise open the previous one's inventory.
  */
 fun cleanUpAccountFiles(intern: File, extern: File?) {
     File(intern, "pdf").deleteRecursively()
-    File(intern, UPDATE_FOLDER).deleteRecursively()
     extern?.let { File(it, "pdf").deleteRecursively() }
 }

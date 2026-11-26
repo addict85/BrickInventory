@@ -10,7 +10,6 @@ import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.TokenSwap
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.cache.WarmUp
-import ch.brickinventoryapp.data.util.UpdateRedirects
 import ch.brickinventoryapp.network.util.ImageHostGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.network.util.isOwnImageServer
@@ -59,27 +58,6 @@ internal object NetworkModule {
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
             messages = messages, question = question, rotation = swapping, rights = rights, required = required,
             factorRequired = factorRequired)
-
-    /**
-     * The client for the self-update — deliberately bare: server, bearer token
-     * and display language are none of GitHub's business, and „never saw it“ is stronger
-     * than „holds it back“ on a path over which foreign code gets onto the device.
-     * No cache (an APK would displace the thumbnails) and a read timeout
-     * for a download, not for a query.
-     */
-    @Provides
-    @Singleton
-    @UpdateClient
-    fun provideUpdateOkHttpClient(): OkHttpClient =
-        OkHttpClient.Builder()
-            // Redirects (github.com → *.githubusercontent.com) are followed by the guard itself,
-            // only to GitHub via https; OkHttp would otherwise follow them to any host.
-            .followRedirects(false)
-            .followSslRedirects(false)
-            .addInterceptor(UpdateRedirects())
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(120, TimeUnit.SECONDS)
-            .build()
 
     @Provides
     @Singleton

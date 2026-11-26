@@ -92,7 +92,7 @@ class ReachableRoutesTest {
         lateinit var bar: List<Tab>
         compose.setContent {
             bar = tabTheBar()
-            MoreScreen(onTarget = { ofMore += it }, isAdmin = true, updateAvailable = false, onLogout = {})
+            MoreScreen(onTarget = { ofMore += it }, isAdmin = true, onLogout = {})
         }
         val items = compose.onAllNodes(hasClickAction() and !hasText(ctx.getString(R.string.main_menu_logout)))
         val count = items.fetchSemanticsNodes().size

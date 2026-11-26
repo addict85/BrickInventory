@@ -33,12 +33,6 @@
       ruhigstellt, sondern die Wahrheit ueber die App: Bestand, Preise, Listen
       und Anleitungen brauchen keine Kamera. Das Scannen ist eine Funktion unter
       vielen.
-
-      Was sich dadurch NICHT aendert: Die APK wird hier von Hand installiert
-      (util/AppUpdate.kt holt sie aus dem GitHub-Release). Die Filterung nach
-      `uses-feature` macht Play, nicht das Geraet — ein Geraet ohne Kamera
-      konnte die App also auch vorher schon installieren. Diese Zeile berichtigt
-      die ANGABE, sie oeffnet keinen neuen Weg.
     -->
     <uses-feature
         android:name="android.hardware.camera"
@@ -48,26 +42,12 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!--
-      Die App aktualisiert sich selbst aus dem GitHub-Release (util/AppUpdate.kt).
-      Ab Android 8 — und minSdk ist 30, also auf JEDEM Geraet — genuegt diese
-      Berechtigung allein nicht: Der Nutzer muss der App zusaetzlich einmal
-      erlauben, Apps aus unbekannten Quellen zu installieren. Genau dorthin
-      fuehrt der Knopf in den Einstellungen, wenn die Erlaubnis fehlt.
-    -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-
     <!-- Nur um zu sehen, ob es eine Authenticator-App gibt (zweiter Faktor,
          SettingsAccount.kt); sonst bleibt der Schlüssel zum Kopieren. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="otpauth" />
-        </intent>
-        <!-- Den System-Installer sehen, um seinen Bestätigungsdialog zu prüfen
-             (installerZiel, util/AppUpdate.kt). -->
-        <intent>
-            <action android:name="android.content.pm.action.CONFIRM_INSTALL" />
         </intent>
     </queries>
 
@@ -285,12 +265,6 @@
             android:name="ch.brickinventoryapp.finances.ui.pdf.PdfRenderService"
             android:isolatedProcess="true"
             android:process=":pdf"
-            android:exported="false" />
-
-        <!-- Antwort der Installer-Sitzung des Selbst-Updates (util/AppUpdate.kt):
-             nur über unsere PendingIntent erreichbar, darum nicht exportiert. -->
-        <receiver
-            android:name="ch.brickinventoryapp.update.util.InstallReceiver"
             android:exported="false" />
 
         <!-- Die Teileliste liegt verschlüsselt; der Provider gibt sie nur aus dem Speicher

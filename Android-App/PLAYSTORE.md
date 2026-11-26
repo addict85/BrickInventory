@@ -73,9 +73,6 @@ automatisieren:
   Gegenstellen der App (dieselbe Liste steht in der App unter Einstellungen →
   Datenschutz):
   - die von dir betriebene Web-App — alle Daten des Kontos;
-  - **GitHub** (`github.com`, `*.githubusercontent.com`) für die Update-Prüfung:
-    beim Start, solange „Beim Start nach Updates suchen" an ist, sonst nur auf
-    Knopfdruck. GitHub sieht IP-Adresse und Zeitpunkt;
   - **Google Play-Dienste** für den Barcode-Scan (ML Kit, nachgeladen) und Passkeys
     (Credential Manager); die Texterkennung (ML Kit) läuft auf dem Gerät, ihren
     Kanal für Nutzungsstatistiken an Google nimmt die App heraus;

@@ -1,0 +1,17 @@
+Gegenprobe: Der Scan neben der Suche fügt wieder hinzu statt zu suchen
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: gallery's floating button opens a choice between manual entry and scan
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryScreen.kt
+@@ -209,7 +209,7 @@ internal fun GalleryScreen(
+             // manual or scan, so only ONE button floats at the bottom. Not in the error state:
+             // without a collection there's nothing to search.
+             if (display != GalleryDisplay.ERROR && display != GalleryDisplay.EMPTY) GallerySearch(
+-                condition, events, searchInput, { searchInput = it }, onSearchBarcode,
++                condition, events, searchInput, { searchInput = it }, onScanBarcode,
+                 onFilter = { showFilter = true }, record = addText to { showAddDialog = true },
+             )
+ 
