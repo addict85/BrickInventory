@@ -191,13 +191,11 @@ jobs:
       # Zuerst die Tests (JVM, Robolectric, Bildschirmfotos): Sie fangen das meiste ab,
       # bevor der lange Release-Bau beginnt. Ihre Übersetzerwarnungen zählt test.log.
       - name: Unit-Tests
-        # Mitschnitt, weil Gradle den roten Test einmal mitten ins Protokoll
-        # schreibt; pipefail, sonst bestimmt tee den Rückgabewert. core-model
-        # und core-contract sind reines Kotlin und haben `test` statt testDebugUnitTest.
-        # Der Gradle-Plugin-Registry fällt sporadisch kurz aus („could not resolve
-        # plugin artifact“) — dann genau einmal neu versuchen, sonst sofort rot.
-        # Gradle merkt sich ein fehlendes Artefakt 24 h im geteilten Cache; nur
-        # --refresh-dependencies fragt dann wirklich neu nach.
+        # Mitschnitt, weil Gradle den roten Test mitten ins Protokoll schreibt; pipefail,
+        # sonst bestimmt tee den Rückgabewert. core-model/core-contract haben nur `test`.
+        # Fehlt ein Plugin-Artefakt („could not resolve plugin artifact“), genau ein
+        # Neuversuch, mit --refresh-dependencies: Gradle merkt sich den Fehlschlag sonst
+        # 24 h im geteilten Cache.
         run: |
           set -o pipefail
           lauf() { ./gradlew --no-daemon testDebugUnitTest :core-model:test :core-contract:test ${{ steps.fotos.outputs.aufgabe }} "$@" 2>&1 | tee "$RUNNER_TEMP/test.log"; }
