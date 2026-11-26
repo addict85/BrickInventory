@@ -118,7 +118,7 @@ fun VouchersCard(
         EmptyOrError(condition, actions::reload)
 
         val card: @Composable (VoucherView, Modifier) -> Unit = { g, m ->
-            GuardedVoucherCard(g, m, condition, actions, guarded)
+            GuardedVoucherCard(g, condition, actions, guarded, m)
         }
         VoucherRaster(condition.vouchers, wide, card)
         if (condition.vouchers.isNotEmpty()) SecretCopyWarning()
@@ -163,10 +163,10 @@ fun VouchersCard(
 @Composable
 private fun GuardedVoucherCard(
     g: VoucherView,
-    m: Modifier,
     condition: VoucherUiState,
     actions: VoucherCardActions,
     guarded: (() -> Unit) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     VoucherCard(
         g = g,
@@ -184,7 +184,7 @@ private fun GuardedVoucherCard(
         ),
         plaintext = condition.plaintext[g.id],
         balanceRunning = condition.balanceRunning == g.id,
-        modifier = m,
+        modifier = modifier,
     )
 }
 

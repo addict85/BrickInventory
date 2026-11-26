@@ -179,20 +179,20 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   });
 
   await t.test('price missing: grey if it is missing almost everywhere', async () => {
-    const chars = async () => {
+    const count = `({ rot: document.querySelectorAll('#fin-tbl tbody .pst-err').length, grau: document.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody .pst-empty').length })`;
+    // The table of the previous visit is still there for a moment; wait until it marks all held sets.
+    const chars = async sets => {
       await geh('sammlung');
       await geh('finanzen');
-      await until(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finances', 300);
-      return b.evaluate(
-        `({ rot: document.querySelectorAll('#fin-tbl tbody .pst-err').length, grau: document.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody .pst-empty').length })`,
-      );
+      await until(`(c => c.rot + c.grau === ${sets})(${count})`, `Finances with ${sets} sets marked`, 300);
+      return b.evaluate(count);
     };
     // Without a price in the cache and without BrickLink access the fetch fails.
     await holdsSet(db, app.uid, '60001-1', 1, { price: 20, am: '2026-06-03T10:00:00Z' });
-    assert.deepEqual(await chars(), { rot: 1, grau: 0 }, 'a single failure stays red');
+    assert.deepEqual(await chars(1), { rot: 1, grau: 0 }, 'a single failure stays red');
     for (const nr of ['60002-1', '60003-1', '60004-1', '60005-1', '60006-1'])
       await holdsSet(db, app.uid, nr, 1, { price: 20, am: '2026-06-03T10:00:00Z' });
-    assert.deepEqual(await chars(), { rot: 0, grau: 6 }, 'if it is missing almost everywhere, it is no alarm');
+    assert.deepEqual(await chars(6), { rot: 0, grau: 6 }, 'if it is missing almost everywhere, it is no alarm');
     await db.run(`DELETE FROM set_acquisitions WHERE user_id = $1 AND set_number LIKE '6000_-1'`, [app.uid]);
     await db.run(`DELETE FROM sets WHERE user_id = $1 AND set_number LIKE '6000_-1'`, [app.uid]);
   });

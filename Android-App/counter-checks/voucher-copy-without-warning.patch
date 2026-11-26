@@ -7,7 +7,7 @@ diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/fin
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
 +++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
 @@ -121,7 +121,6 @@
-             GuardedVoucherCard(g, m, condition, actions, guarded)
+             GuardedVoucherCard(g, condition, actions, guarded, m)
          }
          VoucherRaster(condition.vouchers, wide, card)
 -        if (condition.vouchers.isNotEmpty()) SecretCopyWarning()
