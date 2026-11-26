@@ -772,3 +772,41 @@ test('only what the signing job output is published and attested (sec17 B-N1, B-
   fs.writeFileSync(path.join(location, 'signiert', 'version-signiert.json'), '{ }');
   assert.notEqual(run().status, 0, 'a changed byte is attested');
 });
+
+// Gradle keeps a missing plugin artifact for 24 h in the shared cache: a plain retry hit the
+// same cached miss three times on 26.11.2026. The retry must ask again (--refresh-dependencies).
+// Counter-checks (measured 26.11.2026, each individually): `lauf --refresh-dependencies` back to
+// `lauf` in „Unit-Tests“ → red „Unit-Tests: the retry asks the repositories again“; the retry
+// in „Gerätetests“ removed → red „Gerätetests: a missing plugin is retried once“.
+test('a missing Gradle plugin is retried once, bypassing the cached miss', t => {
+  const android = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
+  for (const name of ['Unit-Tests', 'Gerätetests']) {
+    const script = stepAfter(android, name).replace(/\$\{\{[^}]*\}\}/g, 'aufgabe');
+    const run = cause => {
+      const location = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'gradle-ersatz-'));
+      t.after(() => fs.rmSync(location, { recursive: true, force: true }));
+      // Fails like the cached miss unless Gradle is told to ask the repositories again.
+      fs.writeFileSync(
+        path.join(location, 'gradlew'),
+        `#!/bin/bash\necho "$*" >> calls\ncase "$*" in *--refresh-dependencies*) exit 0 ;; esac\necho "${cause}"; exit 1\n`,
+        { mode: 0o755 },
+      );
+      const r = spawnSync('bash', ['-e', '-c', script], {
+        cwd: location,
+        encoding: 'utf8',
+        env: { ...process.env, RUNNER_TEMP: location },
+      });
+      const calls = fs.existsSync(path.join(location, 'calls'))
+        ? fs.readFileSync(path.join(location, 'calls'), 'utf8').trim().split('\n')
+        : [];
+      return { status: r.status, calls };
+    };
+    const missing = run("could not resolve plugin artifact 'org.jetbrains.kotlin.jvm'");
+    assert.equal(missing.calls.length, 2, `${name}: a missing plugin is retried once`);
+    assert.match(missing.calls[1], /--refresh-dependencies/, `${name}: the retry asks the repositories again`);
+    assert.equal(missing.status, 0, `${name}: the retry decides`);
+    const broken = run('e: Unresolved reference');
+    assert.equal(broken.calls.length, 1, `${name}: a real error is not retried`);
+    assert.notEqual(broken.status, 0, `${name}: a real error stays red`);
+  }
+});

@@ -115,14 +115,17 @@ def measure(project, root, patch, gradle):
         # not be resolved“) or Hilt finds stale outputs („Attempt to recreate a file“) —
         # never in a fresh build. The Gradle plugin registry itself also drops out
         # sporadically. Retry once with empty KSP state; a real compile error stays.
+        # Gradle remembers a missing plugin for 24 h, so that retry has to ask again.
         output = run.stdout + run.stderr
+        plugin_missing = 'could not resolve plugin artifact' in output
         if not os.path.exists(report) and ('could not be resolved' in output
                                            or 'Attempt to recreate a file' in output
-                                           or 'could not resolve plugin artifact' in output):
+                                           or plugin_missing):
             for stale in glob.glob(os.path.join(project, '*', 'build', 'kspCaches')) + \
                     glob.glob(os.path.join(project, '*', 'build', 'generated', 'ksp')):
                 shutil.rmtree(stale, ignore_errors=True)
-            run = subprocess.run(command, cwd=project, capture_output=True, text=True)
+            retry = command + ['--refresh-dependencies'] if plugin_missing else command
+            run = subprocess.run(retry, cwd=project, capture_output=True, text=True)
     finally:
         back = git(root, 'apply', '-R', os.path.abspath(patch))
     if back.returncode != 0:
