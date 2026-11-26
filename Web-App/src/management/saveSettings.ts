@@ -16,16 +16,14 @@ export interface SaveSettingsOptions {
   name: string;
   /** Admin, and an app token already has the approval (route). */
   admin: boolean;
-  /** Password and factor; on `false` sends the refusal itself. */
-  confirm: (password: string | null | undefined) => Promise<boolean>;
 }
 
 /** Whether an admin part is present: only then does an app token need the approval. */
 export const hasGlobalValues = (e: SettingsInput) => GLOBAL_SETTINGS.some(k => e[k] !== undefined);
 
-/** Mail server, registration and API keys only with password: a stolen
- * admin session would otherwise read reset mails or silently open registration.
- * A first API key redirects nothing; only the setup wizard does not ask for it. */
+/** The changed sensitive keys (mail server, registration, API keys): they redirect
+ * reset mails or open registration, so the administrators get a hint below. A first
+ * API key redirects nothing; neither does the setup wizard's first entry. */
 async function sensitiveKeys(k: ManagementContext, e: SettingsInput): Promise<string[]> {
   const sensitive: string[] = [];
   const setup = !(await k.settings.globalValue('einrichtung_erledigt'));
@@ -56,8 +54,8 @@ async function writeGlobal(kx: ManagementContext, uid: number, e: SettingsInput)
 }
 
 /** All writes including the log in one transaction: if one value fails,
- * none of the others is left half saved. @returns false after a refusal */
-export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: SaveSettingsOptions): Promise<boolean> {
+ * none of the others is left half saved. */
+export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: SaveSettingsOptions): Promise<void> {
   const global = o.admin && hasGlobalValues(e);
   if (global) {
     if (GLOBAL_SETTINGS.some(k => e[k] !== undefined && !isValidGlobalValue(k, e[k])))
@@ -70,8 +68,6 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
       failDomain('invalid', 'registration_needs_mail');
   }
   const sensitive = global ? await sensitiveKeys(kx, e) : [];
-  if (sensitive.length && !e.admin_password) failDomain('invalid', 'current_password_required');
-  if (sensitive.length && !(await o.confirm(e.admin_password))) return false;
 
   // The currency applies to the whole household and therefore needs the system frame, which
   // cannot be entered within a transaction: beforehand and on its own. If it fails,
@@ -91,11 +87,10 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
       return alt;
     }),
   );
-  if (!global) return true;
+  if (!global) return;
   // Only after the COMMIT: a cache would otherwise still read the old value.
   await kx.settings.notifyGlobalChange();
   if (sensitive.some(k => !k.startsWith('smtp_')))
     kx.account.adminHintInBackground('settings_changed', { account: sensitive.join(', '), actor: o.name });
   if (bricksetAlt !== null) await bricksetLimitSet(kx, bricksetAlt, parseInt(String(e.api_limit_brickset), 10));
-  return true;
 }

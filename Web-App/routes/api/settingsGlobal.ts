@@ -3,7 +3,7 @@ import multer from 'multer';
 import { FORM_LIMITS } from '../../src/http/fileUpload';
 import { accountGate, guardFor } from './middleware';
 import { hasGlobalValues } from '../../src/management';
-import { isAdmin, userName, confirmWithFactor } from '../../src/account/http/login';
+import { isAdmin, userName } from '../../src/account/http/login';
 import { released, asAdmin } from '../../src/account/http/stepGuard';
 import { failDomain, DomainError } from '../../src/infra/errorTexts';
 import { emailValid } from '../../src/infra/validate';
@@ -21,13 +21,8 @@ export function buildSettingsGlobalRouter(
     // An administrator's global values go through the step guard like every administrator route.
     const admin = isAdmin(req) && hasGlobalValues(req.input);
     if (admin && !(await released(d.account, req, res, 'admin'))) return;
-    const finished = await d.management.saveSettings(req.input, {
-      uid,
-      admin,
-      name: userName(req) ?? '',
-      confirm: password => confirmWithFactor(d.account, req, res, uid, password),
-    });
-    if (finished) return {};
+    await d.management.saveSettings(req.input, { uid, admin, name: userName(req) ?? '' });
+    return {};
   });
 
   // Via readSettings(), so the masking does not get bypassed by the packaging.
@@ -88,13 +83,6 @@ export function buildSettingsGlobalRouter(
     if (!emailValid(to)) {
       failDomain('invalid', 'no_target_email');
     }
-    // Like changing the mail settings: to a foreign address only with password.
-    if (
-      to.toLowerCase() !== own.toLowerCase() &&
-      !(await confirmWithFactor(d.account, req, res, uid, req.input.password))
-    )
-      return;
-
     res.json(await d.mail.sendSmtpTest(to));
   });
 

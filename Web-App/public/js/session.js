@@ -23,7 +23,6 @@ import { setupCheckButtonRefresh } from './setup-status.js';
 import { initScrollbar } from './scrollbar.js';
 import { bindTabs, refreshPageName } from './navigation.js';
 import { loadHouseholdMembers } from './account-locations.js';
-import { withSecondFactor } from './confirm-prompt.js';
 import { showOpenAlerts } from './detail-fields.js';
 
 /** Starts the application. Called exclusively from js/main.js, after all modules have been evaluated. */
@@ -106,13 +105,8 @@ function showRequiredSwitch() {
   removeStartupScaffold();
   G('app').style.display = 'none';
   showPanel('required-change');
-  // The start password was just typed and travels along from the login field, instead of being asked a second
-  // time. After a reload it is missing; then the field stands there.
-  const just = G('lp').value;
-  G('required-alt').value = just;
   G('lp').value = '';
-  G('required-alt-row').hidden = !!just;
-  G(just ? 'required-new' : 'required-alt').focus();
+  G('required-new').focus();
 }
 // Admin without a second factor: the server only allows its setup (403 second_factor_mandatory);
 // js/second-factor.js draws it into the field.
@@ -132,8 +126,7 @@ function openApp() {
   else showApp();
 }
 G('btn-required')?.addEventListener('click', async () => {
-  const alt = G('required-alt').value,
-    newValue = G('required-new').value,
+  const newValue = G('required-new').value,
     err = G('required-err');
   formError(err, '');
   const rule = passwordRuleText(newValue);
@@ -145,15 +138,9 @@ G('btn-required')?.addEventListener('click', async () => {
     formError(err, tRaw('settings.password.mismatch'), ['required-repeat']);
     return;
   }
-  const d = await withSecondFactor(z =>
-    api('POST', '/v2/auth/change-password', { current: alt, newPassword: newValue, ...z }),
-  );
-  if (!d) return;
+  const d = await api('POST', '/v2/auth/change-password', { newPassword: newValue });
   if (!d.success) {
-    // If the password taken along is wrong, the field must come back.
-    const altWrong = d.code === 'current_password_wrong';
-    if (altWrong) G('required-alt-row').hidden = false;
-    formError(err, d.error || tRaw('settings.error'), [altWrong ? 'required-alt' : 'required-new']);
+    formError(err, d.error || tRaw('settings.error'), ['required-new']);
     return;
   }
   location.reload();

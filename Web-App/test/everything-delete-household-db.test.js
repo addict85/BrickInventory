@@ -1,8 +1,8 @@
 /**
  * “Delete all my sets" deletes MY sets — not those of the household.
  *
- * Counter-check (measured 01.11.2026): bestaetigePasswort() removed from DELETE /bestand
- * → red: “deleted without password” (code missing in the response).
+ * The login is enough, no password (docs/SICHERHEIT.md). Counter-check (measured 26.11.2026):
+ * a password check back into DELETE /inventory → red: “delete everything …” (success false).
  * Counter-checks (22.11.2026, each alone):
  *   A  deleteSetFor ignores the account selection (chosen = writable) → red “accounts can only narrow …”
  *      (own deletes the sub-account's set too). Without the cut against writeScope it stays green: no
@@ -83,13 +83,8 @@ test('delete everything does not touch the linked accounts', async t => {
       })
     ).json();
 
-  // Without a password everything stays: a captured app token alone should not delete everything.
-  const without = await hole('/api/v2/inventory', 'DELETE');
-  assert.equal(without.code, 'current_password_wrong', JSON.stringify(without));
-  assert.equal((await db.all('SELECT 1 FROM sets WHERE user_id = $1', [main])).length, 1, 'deleted without a password');
-
-  // Exactly the call from public/js/settings.js (btn-dall).
-  const r = await hole('/api/v2/inventory', 'DELETE', { password: PASS });
+  // Exactly the call from public/js/settings.js (btn-dall): without a body.
+  const r = await hole('/api/v2/inventory', 'DELETE');
   assert.equal(r.success, true, JSON.stringify(r));
   assert.deepEqual([r.sets, r.parts, r.minifigs], [1, 1, 0], 'Only the own account is counted');
 
@@ -138,7 +133,7 @@ test('accounts can only narrow the delete scope, never widen it', async t => {
 });
 
 test('the button leaves the choice to the server', async () => {
-  // Real bundle in jsdom: the button only asks for the password and leaves listing and deleting to
+  // Real bundle in jsdom: the button only asks yes or no and leaves listing and deleting to
   // DELETE /v2/inventory (what the server does with it: the test above).
   const { openUi, waitFor } = require('./helpers/ui');
   const { w, d, calls } = await openUi({
@@ -147,13 +142,12 @@ test('the button leaves the choice to the server', async () => {
   try {
     d.getElementById('btn-dall').click();
     assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'));
-    d.getElementById('cd-pw').value = 'mein-Passwort';
     d.getElementById('cd-confirm').click();
     assert.ok(await waitFor(() => calls.some(a => a.method === 'DELETE')));
     const deletes = calls.filter(a => a.method === 'DELETE');
     assert.deepEqual(
-      deletes.map(a => [a.url.replace(/^https?:\/\/[^/]+/, ''), JSON.parse(a.body).password]),
-      [['/api/v2/inventory', 'mein-Passwort']],
+      deletes.map(a => [a.url.replace(/^https?:\/\/[^/]+/, ''), a.body ?? null]),
+      [['/api/v2/inventory', null]],
     );
   } finally {
     w.close();

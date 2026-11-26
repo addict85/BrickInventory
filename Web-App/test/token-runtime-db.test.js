@@ -1,9 +1,9 @@
 /**
  * The selectable lifetime of a QR access — and who may select it.
  *
- * Counter-check (measured on 28.10.): the check of session and
- * password removed in /qr-token → red in the step „0. Ein Code nur mit Sitzung UND
- * Passwort"
+ * Counter-check (26.11.2026): the session check removed in /qr-token → red in step
+ * “0. A code only from the session” (a token alone got 200); the password is no
+ * longer asked (docs/SICHERHEIT.md)
  * Counter-check (measured on 03.11.): in /qr-token `?? APP_MAX_DURATION_DAYS`
  * removed → red „Ohne Wahl gilt die Höchstdauer von 180 Tagen"
  * Counter-check (22.11.2026): tokenDays() without Math.min (a choice above TOKEN_MAX_DAYS
@@ -96,27 +96,13 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     assert.equal(an.status, 200, `login failed: ${JSON.stringify(an.body)}`);
     const keks = an.cookie.split(';')[0];
 
-    // ── 0. A code only with session AND password ──────────────────────────
-    // Otherwise a captured token (or an open session) would create a new permanent access via the
-    // QR path — without the password that /token-create
-    // demands for exactly the same purpose.
-    const withoutPw = await callFn('/qr-token', {
-      method: 'POST',
-      headers: { cookie: keks },
-      body: { validity: '6m' },
-    });
-    assert.equal(withoutPw.status, 400, `without a password: ${withoutPw.status} ${JSON.stringify(withoutPw.body)}`);
-    const wrong = await callFn('/qr-token', {
-      method: 'POST',
-      headers: { cookie: keks },
-      body: { validity: '6m', password: 'falsch-falsch' },
-    });
-    assert.equal(wrong.status, 400);
+    // ── 0. A code only from the session ──────────────────────────────────
+    // Like /token-create: a token alone must not mint a new long-lived access.
     const device = await auth.createToken(uid, 'Probe', true);
     const perToken = await callFn('/qr-token', {
       method: 'POST',
       headers: { authorization: `Bearer ${device}` },
-      body: { validity: 'unbegrenzt', password: PASS },
+      body: { validity: 'unbegrenzt' },
     });
     assert.equal(perToken.status, 403, 'A token alone must not create new access');
 
@@ -124,7 +110,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     const sechs = await callFn('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
-      body: { validity: '6m', password: PASS },
+      body: { validity: '6m' },
     });
     assert.equal(sechs.status, 200, JSON.stringify(sechs.body));
     assert.equal(sechs.body.token_days, 180, 'Six months are 180 days');
@@ -149,7 +135,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     // The same request as above, only without a choice when creating and with a
     // wish in the body of the REDEMPTION. If this assertion falls, the
     // whole innovation is a vulnerability instead of a hardening.
-    const without = await callFn('/qr-token', { method: 'POST', headers: { cookie: keks }, body: { password: PASS } });
+    const without = await callFn('/qr-token', { method: 'POST', headers: { cookie: keks }, body: {} });
     assert.equal(without.body.token_days, 180, 'Without a choice the maximum duration of 180 days applies');
     const attempt = await callFn('/qr-login', {
       method: 'POST',
@@ -174,7 +160,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       const r = await callFn('/qr-token', {
         method: 'POST',
         headers: { cookie: keks },
-        body: { validity: choice, password: PASS },
+        body: { validity: choice },
       });
       assert.equal(r.body.token_days, days, `„${choice}" yields the maximum duration from TOKEN_MAX_DAYS`);
       const ze = await row((await link(r.body, keks)).body.token);
@@ -205,7 +191,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       const r = await callFn('/qr-token', {
         method: 'POST',
         headers: { cookie: keks },
-        body: { validity: nonsense, password: PASS },
+        body: { validity: nonsense },
       });
       assert.equal(r.status, 200, `„${nonsense}" should not fail but choose nothing`);
       assert.equal(r.body.token_days, 180, `„${nonsense}" may only yield the default of 180 days`);
@@ -218,7 +204,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     const expired = await callFn('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
-      body: { validity: '1m', password: PASS },
+      body: { validity: '1m' },
     });
     const access = await link(expired.body, keks);
     const raw = access.body.token;
@@ -243,7 +229,7 @@ test('QR access: the UI chooses when CREATING, not when redeeming', () => {
   const settings = withoutComments(require('./helpers/sources').viewSource('settings'));
 
   assert.ok(
-    /api\('POST', '\/v2\/auth\/qr-token', \{ validity, password\b/.test(settings),
+    /api\('POST', '\/v2\/auth\/qr-token', \{ validity \}/.test(settings),
     'The web app should send the chosen lifetime along when creating the code',
   );
   assert.ok(

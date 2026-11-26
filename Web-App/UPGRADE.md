@@ -624,6 +624,9 @@ Was sich für Nutzer und Clients ändert:
 
 ## 31. Runde 7 – Sicherheit
 
+> **Überholt durch Abschnitt 76:** Im angemeldeten Bereich fragt der Server
+> weder Passwort noch Code ein zweites Mal; `x-bestaetigung` gibt es nicht mehr.
+
 Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
 
 **Vor dem Update**
@@ -2604,3 +2607,23 @@ Daten, keine Bezeichner, und bleiben unverändert.
 - **Dieselbe Nummer erneut erfassen** geht auch während der Frist; das Wiederherstellen der
   alten Karte antwortet dann mit `voucher_exists` (409).
 - Nichts von Hand zu tun; `docker compose up -d` spielt die Migration ein.
+
+## 76. Keine erneute Passwortabfrage im angemeldeten Bereich
+
+- **Wer angemeldet ist, darf alles** (Entscheid des Inhabers): Passwort und E-Mail
+  ändern, zweiten Faktor ein- und ausschalten, neue Wiederherstellungscodes, Passkeys,
+  App-Tokens und QR-Codes anlegen oder widerrufen, „andere beenden“, Konto löschen,
+  alle Verwalterrouten unter `/auth/users`, globale Einstellungen samt SMTP-Test,
+  Papierkorb, `DELETE /inventory`, Haushalt beitreten und Gutscheine (Klartext, PDF,
+  Export, Löschen) laufen ohne Passwort und ohne Code. Antworten mit
+  `current_password_required`, `current_password_wrong`, `second_factor_required`
+  oder `second_factor_wrong` kommen nur noch von der Anmeldung.
+- **Ältere Apps** dürfen `password`, `admin_password`, `password_current`, `current`,
+  `code`, `factor_code` und `passkey` weiter mitsenden; der Server übergeht sie.
+  `change-password` braucht `current` nicht mehr.
+- **Unverändert:** Anmeldung mit Passwort, TOTP oder Passkey, die Bremsen dafür,
+  „Passwort vergessen“, die QR-Kopplung mit Gerätecode und der Schrittschutz der App
+  (`step_approval_required`).
+- Im Vertrag (`docs/openapi*.json`) fällt `x-confirmation`/`x-bestaetigung` weg;
+  diese Routen sind für `Idempotency-Key` jetzt wiederholbar, ausser sie sind geheim.
+- Nichts von Hand zu tun.

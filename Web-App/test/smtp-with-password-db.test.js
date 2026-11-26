@@ -1,32 +1,15 @@
 /**
- * An admin only changes the mail server with his password. The reset links
- * go via it; with a captured session alone it could otherwise be
- * bent. Saving without a change does not ask.
+ * Mail server, registration and API keys change with the administrator login alone,
+ * no password (docs/SICHERHEIT.md); the administrators learn of a changed
+ * registration or key by mail. The import still never switches the mail server.
  *
- * Counter-check (measured on 28.10.2026): the password check in POST
- * /api/v2/settings removed → red: “without a password the mail server stays”.
- * Counter-check (measured on 29.10.2026): smtp_* again in the key list
- * of POST /import → red: “the import does not switch the mail server”
- * (smtp_host was mail.angreifer.example afterwards).
- *
- * Registration and API keys likewise (since 04.11.2026), the admins
- * learn of it by mail. Counter-checks (measured 04.11.2026, each on its own):
- *   A  isSensitive() again only smtp_* → red: “without a password registration
- *      and API key stay” (200 instead of 400)
- *   B  adminHintInBackground() removed in POST /settings → red: “changed with
- *      password, the administrators learn of it”
- *   C  the refusal without admin_password before the check removed → red: “without
- *      a password the mail server stays”, “without a password registration …”
- *      (current_password_wrong, counts toward the brake)
- *
- * A first API key (empty before) needs no password as long as the
- * setup is open: otherwise the wizard asks in the middle of the step.
- * Afterwards the password requirement applies to it too (round 12, H1).
- * Counter-checks (measured 04.11.2026):
- *   D  the exception for empty values removed → red: “a first API key
- *      needs no password during setup” (400 instead of 200)
- *   E  the exception again without `einrichtung &&` → red: “after setup
- *      even a first key only with password” (200 instead of 400)
+ * Counter-checks:
+ *   A  (26.11.2026) a password check back into POST /settings → red: “the mail server
+ *      changes without a password”, “registration and API key …” (400 instead of 200)
+ *   B  (04.11.2026) adminHintInBackground() removed in POST /settings → red: “…
+ *      the administrators learn of it”
+ *   C  (29.10.2026) smtp_* again in the key list of POST /import → red: “the import
+ *      does not switch the mail server” (smtp_host was mail.angreifer.example afterwards)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
@@ -56,7 +39,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const NAME = `smtp_chef_${process.pid}`,
   PASS = 'chef-Passwort-1';
 
-test('SMTP only with password', { concurrency: 1 }, async t => {
+test('sensitive settings with the login', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -80,7 +63,6 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     if (landBefore !== undefined)
       await db.run("INSERT INTO global_settings (key, value) VALUES ('voucher_country', $1)", [landBefore]);
-    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${uid}|%`]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
@@ -97,20 +79,8 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
     }).then(async r => ({ status: r.status, body: await r.json() }));
   const host = async () => (await db.get("SELECT value FROM global_settings WHERE key = 'smtp_host'"))?.value;
 
-  await t.test('without a password the mail server stays', async () => {
-    const r = await store({ smtp_host: 'mail.angreifer.example' });
-    assert.equal(r.status, 400);
-    assert.equal(r.body.code, 'current_password_required');
-    assert.equal(await host(), 'mail.alt.example');
-  });
-
-  await t.test('saving unchanged does not ask', async () => {
-    const r = await store({ smtp_host: 'mail.alt.example', language: 'de' });
-    assert.equal(r.status, 200, JSON.stringify(r.body));
-  });
-
-  await t.test('with a password it is changed', async () => {
-    const r = await store({ smtp_host: 'mail.neu.example', admin_password: PASS });
+  await t.test('the mail server changes without a password', async () => {
+    const r = await store({ smtp_host: 'mail.neu.example' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await host(), 'mail.neu.example');
   });
@@ -158,29 +128,19 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
     assert.equal(await _req('src/settings/settings.js').getGlobalSetting('rebrickable_api_key'), 'erster-schluessel');
   });
 
-  await t.test('after setup even a first key only with password', async () => {
-    await db.run("DELETE FROM global_settings WHERE key = 'brickset_api_key'");
+  await t.test('registration and API key change without a password, the administrators learn of it', async () => {
     await db.run("INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')");
-    const r = await store({ brickset_api_key: 'erster-fremder' });
-    assert.deepEqual([r.status, r.body.code], [400, 'current_password_required']);
-    assert.equal(await value('brickset_api_key'), undefined);
-  });
-
-  await t.test('without a password registration and API key stay', async () => {
     await db.run(
       "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '0') ON CONFLICT (key) DO UPDATE SET value = '0'",
     );
-    for (const body of [{ registration_enabled: '1' }, { rebrickable_api_key: 'fremder-schluessel' }]) {
-      const r = await store(body);
-      assert.deepEqual([r.status, r.body.code], [400, 'current_password_required'], JSON.stringify(body));
-    }
-    assert.equal(await value('registration_enabled'), '0');
-    assert.notEqual(await value('rebrickable_api_key'), 'fremder-schluessel');
-  });
-
-  await t.test('changed with password, the administrators learn of it', async () => {
+    const key = await store({ rebrickable_api_key: 'neuer-schluessel' });
+    assert.equal(key.status, 200, JSON.stringify(key.body));
+    assert.equal(await _req('src/settings/settings.js').getGlobalSetting('rebrickable_api_key'), 'neuer-schluessel');
+    const own = kind => mails.some(m => m.an === `${NAME}@example.org` && m.konto === kind);
+    for (let i = 0; i < 60 && !own('rebrickable_api_key'); i++) await new Promise(x => setTimeout(x, 25));
+    assert.ok(own('rebrickable_api_key'), 'a changed key reaches the administrators');
     mails.length = 0;
-    const r = await store({ registration_enabled: '1', admin_password: PASS });
+    const r = await store({ registration_enabled: '1' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await value('registration_enabled'), '1');
     for (let i = 0; i < 60 && !mails.some(m => m.an === `${NAME}@example.org`); i++)

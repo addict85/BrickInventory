@@ -16,6 +16,9 @@
  *      password” and “unconfirmed responds like a wrong password” (403)
  *   E  (02.11.2026) in renewEmailTokenIfFree() the pause removed → red:
  *      “a second link immediately afterwards”
+ *   F  (26.11.2026) a password check back into PUT /users/:id/active (the
+ *      requests carry no password, the session is enough) → red: “token and
+ *      session stop applying immediately” (400 instead of 200)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
@@ -100,11 +103,8 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
       body: await r.json(),
     }));
   const signIn = (name, body = {}) => callIt('POST', '/login', { body: { username: name, password: PASS, ...body } });
-  const toggle = (id, active, pw = PASS) =>
-    callIt('PUT', `/users/${id}/active`, {
-      cookie: chefKeks,
-      body: { is_active: active, admin_password: pw, code: codes.shift() },
-    });
+  const toggle = (id, active) =>
+    callIt('PUT', `/users/${id}/active`, { cookie: chefKeks, body: { is_active: active } });
   const log = async () =>
     (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [user])).map(z => z.action);
 
@@ -133,12 +133,6 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
     assert.equal(list.find(u => u.id === user).is_active, false);
     assert.equal(list.find(u => u.id === chef).is_active, true);
     assert.deepEqual(await log(), ['account_deactivated']);
-  });
-
-  await t.test('without the admin password nothing changes', async () => {
-    const r = await toggle(user, true, 'falsch');
-    assert.equal(r.status, 400);
-    assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [user])).is_active, false);
   });
 
   await t.test('not the own account', async () => {

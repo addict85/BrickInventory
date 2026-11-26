@@ -1,17 +1,18 @@
 /**
- * Enter confirms, and an administrator's first start asks for the password only
- * once: the confirmation dialog and the code field during setup submit with
- * the Enter key; the initial password travels from the login into the
- * mandatory change, “set up” does not ask again afterwards, the QR image has
- * a name and a wrong code stands at the field instead of as a toast.
+ * An administrator's first start asks for the password only once, at the login
+ * (docs/SICHERHEIT.md): the profile saves without a dialog, the mandatory change
+ * asks only for the new password, “set up” does not ask again, the code field
+ * submits with the Enter key, the QR image has a name and a wrong code stands at
+ * the field instead of as a toast.
  *
  * Counter-checks (measured 04.11.2026, each alone, bundle rebuilt):
- *   A  in aktionen.js the Enter listener for forms with `data-submit`
- *      removed → red: “Enter in the password field confirms”
- *   B  in showRequiredSwitch the takeover from #lp removed → red:
- *      “the initial password travels along”
- *   C  in setupSecondFactor again confirmWithPassword immediately → red: “set up
- *      without a third password prompt”
+ *   A  (26.11.2026) in actions.js the Enter listener for forms with `data-submit`
+ *      removed → red: “the mandatory change asks only for …” (Enter in the
+ *      repeat field submits nothing) and the parts after it
+ *   B  (26.11.2026) the field `required-alt` back into index.html → red: “the
+ *      mandatory change asks only for the new password”
+ *   C  in setupSecondFactor a password dialog first again → red: “set up
+ *      without a further password prompt”
  *   D  setting alt on the QR image removed → red: “QR image with name”
  *   E  confirmSecondFactor reports the error as a toast again → red: “wrong
  *      code at the field”
@@ -28,7 +29,7 @@ const { startApp, sleep } = require('./helpers/app-browser');
 const ROOT = path.join(__dirname, '..');
 const ENTER = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
 
-test('Enter confirms, first start with one password prompt', { timeout: 240_000 }, async t => {
+test('first start with one password prompt', { timeout: 240_000 }, async t => {
   const app = await startApp(t, { name: `erst_v_${process.pid}` });
   if (app.reason) {
     t.skip(app.reason);
@@ -43,20 +44,12 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
   const open = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
   const errorToasts = `[...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent)`;
 
-  await t.test('Enter in the password field confirms', async () => {
+  await t.test('the profile saves without a dialog', async () => {
     await b.evaluate(`location.hash = '#/konto'; true`);
     await until(`document.getElementById('prof-user')?.value !== ''`, 'Profile loaded');
     await b.evaluate(
       `document.getElementById('prof-first').value = 'Erika'; document.getElementById('btn-sav-prof').click(); true`,
     );
-    await until(`${open('confirm-modal')} && document.activeElement?.id === 'cd-pw'`, 'Password dialog with focus');
-    await tap('app-Passwort-1');
-    await enter();
-    // With a second factor the code follows in the same dialog; it also goes with Enter.
-    await until(`document.activeElement?.id === 'cd-code'`, 'Enter in the password field confirms', 50);
-    await tap(app.furtherCodes[0]);
-    await enter();
-    await until(`!(${open('confirm-modal')})`, 'Enter in the code field of the dialog confirms', 50);
     for (
       let i = 0;
       i < 50 && (await db.get('SELECT first_name FROM users WHERE id = $1', [app.uid])).first_name !== 'Erika';
@@ -64,6 +57,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     )
       await sleep(100);
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [app.uid])).first_name, 'Erika');
+    assert.equal(await b.evaluate(open('confirm-modal')), false, 'a dialog opened');
   });
 
   // A fresh initial account as after the first server start: administrator, initial password, no second factor.
@@ -81,7 +75,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [sid]).catch(() => {}));
 
-  await t.test('the start password travels along', async () => {
+  await t.test('the mandatory change asks only for the new password', async () => {
     // Logging out reloads the page; the mask then speaks the browser's language.
     await b.tab('Network.setUserAgentOverride', {
       userAgent: await b.evaluate('navigator.userAgent'),
@@ -94,10 +88,10 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
       document.getElementById('btn-login').click(); true`);
     await until(open('panel-required-change'), 'Pflichtwechsel', 300);
     const z =
-      await b.evaluate(`({ altHidden: getComputedStyle(document.getElementById('required-alt-row')).display === 'none',
+      await b.evaluate(`({ oldField: !!document.querySelector('#panel-required-change [autocomplete="current-password"]'),
       focused: document.activeElement?.id, rule: document.getElementById('required-rule').textContent,
       described: document.getElementById('required-new').getAttribute('aria-describedby') })`);
-    assert.equal(z.altHidden, true, 'the initial password travels along (field „Aktuelles Passwort“ hidden)');
+    assert.equal(z.oldField, false, 'the mandatory change asks only for the new password');
     assert.equal(z.focused, 'required-new', 'Focus in the first field');
     assert.match(z.rule, /12 Zeichen/, 'Rule as help text');
     assert.equal(z.described, 'required-rule');
@@ -111,10 +105,10 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
   });
 
   let secret = '';
-  await t.test('setup without a third password prompt', async () => {
+  await t.test('setup without a further password prompt', async () => {
     await b.evaluate(`document.getElementById('sf-start').click(); true`);
     await until(`!!document.querySelector('#sf-qr img') || ${open('confirm-modal')}`, 'QR code or dialog');
-    assert.equal(await b.evaluate(open('confirm-modal')), false, 'Setup without a third password prompt');
+    assert.equal(await b.evaluate(open('confirm-modal')), false, 'setup without a further password prompt');
     secret = await b.evaluate(`document.querySelector('#sf-required-surface code').textContent.replace(/\\s+/g, '')`);
   });
 

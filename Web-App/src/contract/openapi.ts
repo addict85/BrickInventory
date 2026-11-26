@@ -7,7 +7,7 @@ import { AREAS } from './index';
 import { API_VERSION, SUNSET_DAY } from './version';
 import { v1SchemaName, V1_AREAS } from './v1Names';
 import { v1Key } from './v1Routes';
-import { toV1Schema, v1Field } from './v1';
+import { toV1Schema } from './v1';
 
 export type ApiPath = 1 | 2;
 
@@ -42,30 +42,27 @@ interface Version {
   name: (schemaName: string) => string;
   key: (contractKey: string) => string;
   area: (area: string) => string;
-  field: (name: string) => string;
   eventSuffix: string;
   errorSchema: string;
-  x: { confirmation: string; password: string; secret: string; small: string };
+  x: { secret: string; small: string };
 }
 const V2: Version = {
   schema: s => s,
   name: n => n,
   key: k => k,
   area: a => a,
-  field: f => f,
   eventSuffix: '_event',
   errorSchema: 'ErrorBody',
-  x: { confirmation: 'x-confirmation', password: 'password', secret: 'x-secret', small: 'x-small' },
+  x: { secret: 'x-secret', small: 'x-small' },
 };
 const V1: Version = {
   schema: toV1Schema,
   name: v1SchemaName,
   key: v1Key,
   area: a => V1_AREAS[a] ?? a,
-  field: f => v1Field(undefined, f),
   eventSuffix: '_ereignis',
   errorSchema: 'Fehler',
-  x: { confirmation: 'x-bestaetigung', password: 'passwort', secret: 'x-geheim', small: 'x-klein' },
+  x: { secret: 'x-geheim', small: 'x-klein' },
 };
 
 function components(v: Version) {
@@ -157,8 +154,6 @@ function operation(
   };
   const body = requestBody(r, v);
   if (body) op.requestBody = body;
-  if (r.confirmation)
-    op[v.x.confirmation] = { [v.x.password]: v.field(r.confirmation.password), code: v.field(r.confirmation.code) };
   if (r.secret) op[v.x.secret] = true;
   if (r.small) op[v.x.small] = true;
   return op;

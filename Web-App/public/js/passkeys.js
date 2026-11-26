@@ -6,7 +6,7 @@ import { fmtDate } from './format.js';
 import { toast } from './messages.js';
 import { loggedInAccount } from './state.js';
 import { html } from './escaping.js';
-import { confirmDeleteWithPassword, withSecondFactor, fetchSetPasskey } from './confirm-prompt.js';
+import { confirmDelete } from './confirm-prompt.js';
 
 // ═══ Passkeys (server: src/factors/repository/passkeys.ts, routes/auth.ts) ═══════════════
 // No third-party script: the server sends the options as JSON (Base64URL), the browser needs an
@@ -159,7 +159,7 @@ const area = () => G('pk-surface');
 export async function loadPasskeys() {
   const f = area();
   if (!f) return;
-  const [d, sf] = await Promise.all([api('GET', '/v2/auth/passkeys'), api('GET', '/v2/auth/second-factor')]);
+  const d = await api('GET', '/v2/auth/passkeys');
   if (!d?.success || !Array.isArray(d.passkeys)) {
     setHtml(f, html`<div class="voucher-empty">${tRaw('settings.error')}</div>`);
     return;
@@ -179,20 +179,13 @@ export async function loadPasskeys() {
       ? html`<p class="text-small hint-warning">${tRaw('pk.browser')}</p>`
       : html`<form class="sform space-top-075" data-submit="pk-new" data-style="max-width:420px">
         <div class="fg"><label for="pk-name">${tRaw('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
-        <div class="fg"><label for="pk-pw">${tRaw('settings.password.current')}</label><input type="password" id="pk-pw" autocomplete="current-password" /></div>
-        ${sf?.active ? html`<div class="fg"><label for="pk-code">${tRaw('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
         <div><button type="button" class="btn bp btn-sm" id="pk-new" data-click="addPasskey"${genuine()}>${tRaw('pk.add')}</button></div>
       </form>`;
   setHtml(f, html`${list}${addForm}`);
 }
 
 export async function addPasskey() {
-  // With a second factor active, the server also demands the code.
-  const o = await api('POST', '/v2/auth/passkey/register/options', {
-    password: G('pk-pw')?.value || '',
-    ...(G('pk-code') ? { code: G('pk-code').value.trim() } : {}),
-  });
-  for (const id of ['pk-pw', 'pk-code']) if (G(id)) G(id).value = '';
+  const o = await api('POST', '/v2/auth/passkey/register/options', {});
   if (!o?.success) {
     toast(o?.error || tRaw('settings.error'), 'error');
     return;
@@ -217,17 +210,12 @@ export async function addPasskey() {
 
 /** @param {string} id @param {string} name */
 export async function deletePasskey(id, name) {
-  const password = await confirmDeleteWithPassword(
-    tRaw('pk.delete_title'),
-    tRaw('pk.delete_text', { name: name || '—' }),
-    'key',
-    { button: 'confirm.btn.remove', kind: 'bd' },
-  );
-  if (password === null) return;
-  const d = await withSecondFactor(z =>
-    api('DELETE', `/v2/auth/passkeys/${encodeURIComponent(id)}`, { password, ...z }),
-  );
-  if (!d) return;
+  const yes = await confirmDelete(tRaw('pk.delete_title'), tRaw('pk.delete_text', { name: name || '—' }), 'key', {
+    button: 'confirm.btn.remove',
+    kind: 'bd',
+  });
+  if (!yes) return;
+  const d = await api('DELETE', `/v2/auth/passkeys/${encodeURIComponent(id)}`);
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -240,7 +228,6 @@ export async function deletePasskey(id, name) {
 {
   const k = G('btn-passkey');
   if (k) k.hidden = !passkeysPossible();
-  if (passkeysPossible()) fetchSetPasskey(() => getAssertion('second_factor'));
 }
 
 // Names below are registry-exposed (index.html/connection.js) — kept unchanged.

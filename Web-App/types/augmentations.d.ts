@@ -17,8 +17,6 @@ declare module 'express-session' {
     lastlyAt?: number;
     /** Start password not yet replaced; undefined for sessions from before the field. */
     mustChangePassword?: boolean;
-    /** When the password was last entered in this session (ms); basis of the grace period. */
-    passwordConfirmedAt?: number;
     /** users.session_version at login; if it differs, the session has ended. */
     sitzungsVersion?: number;
   }

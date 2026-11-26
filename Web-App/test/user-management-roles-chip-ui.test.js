@@ -15,6 +15,8 @@
  *      + administrator appoints” and “a single administrator: no X”
  *   E  the list no longer output in angekuendigt() → red: “X on the
  *      administrator chip …” (Angekündigt missing after the response)
+ *   F  (26.11.2026) toggleAdmin sends `admin_password` again → red: “X on the
+ *      administrator chip …” (the body; a login is enough, docs/SICHERHEIT.md)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,9 +32,8 @@ const row = (d, name) =>
 
 async function confirm(d) {
   assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
-  assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'The password prompt is missing');
+  assert.equal(d.querySelector('#confirm-modal input[type="password"]'), null, 'a password prompt');
   const title = d.getElementById('cd-title').textContent;
-  d.getElementById('cd-pw').value = 'mein-passwort';
   d.getElementById('cd-confirm').click();
   return title;
 }
@@ -68,7 +69,7 @@ test('X on the administrator chip revokes after confirmation', async () => {
     assert.equal(await confirm(d), '„carla“ die Administratorrolle entziehen?');
     assert.ok(await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'))));
     const put = calls.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'));
-    assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
+    assert.deepEqual(JSON.parse(put.body), { is_admin: false });
     // Against an administrator it only takes effect after 24 h; the list shows it.
     assert.ok(
       await waitFor(() => /Angekündigt: Administratorrechte entziehen ab/.test(row(d, 'carla')?.textContent || '')),
@@ -101,7 +102,7 @@ test('default chip without X, + administrator appoints', async () => {
     assert.equal(await confirm(d), '„ben“ zum Administrator machen?');
     assert.ok(await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/2/admin'))));
     const put = calls.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/2/admin'));
-    assert.deepEqual(JSON.parse(put.body), { is_admin: true, admin_password: 'mein-passwort' });
+    assert.deepEqual(JSON.parse(put.body), { is_admin: true });
     assert.ok(await waitFor(() => /Rolle geändert/.test(d.getElementById('toasts').textContent)));
   } finally {
     w.close();

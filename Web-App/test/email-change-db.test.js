@@ -1,27 +1,20 @@
 /**
- * A new e-mail address requires the current password, and the old address
- * learns of it. Via the new address the password could otherwise be
- * reset: a briefly open foreign session would suffice for a takeover.
+ * A new e-mail address needs only the login (docs/SICHERHEIT.md), and the old
+ * address learns of it; the new one applies only after its link.
  *
  * Counter-checks (measured on 27.10.):
- *   A  the password check removed in the e-mail branch of PUT /profile → red:
- *      “without password", “wrong password", “with password" (the address was
- *      already changed in the first subtest)
- *   B  the hint to the old address removed → red: “with password"
- *      (no mail to the old address)
+ *   B  the hint to the old address removed → red: “a new address needs only
+ *      the login …” (no mail to the old address)
  *   C  `password` accepted again in PUT /profile → red: “password only via
  *      change-password"
  *   D  getBaseUrl() falls back to the Host header in production again → red:
  *      “in production without APP_BASE_URL no link from the Host header"
+ *   A  (26.11.2026) a password check back into PUT /profile → red: “a new
+ *      address needs only the login …” and “other fields too” (400 instead of 200)
  *
  * Counter-checks for account enumeration (measured 03.11.2026):
- *   E  emailVergeben() again before the password check → red: “a taken
- *      address only reveals itself with password”
  *   F  accountThrottled() removed in PUT /profile → red: “assignment checks
  *      are throttled”
- *   G  password required again only for a new address → red: “even without a new
- *      address only with password” and “a taken username only reveals itself
- *      with password”
  * Counter-check round 17 (measured 05.11.2026):
  *   H  the pre-check `emailVergeben → 400 email_taken` rebuilt →
  *      red: “a taken address answers like a free one”
@@ -99,22 +92,8 @@ test('change email', { concurrency: 1 }, async t => {
   };
   const address = async () => (await db.get('SELECT email FROM users WHERE id = $1', [uid])).email;
 
-  await t.test('without password', async () => {
+  await t.test('a new address needs only the login, the old one learns of it', async () => {
     const r = await profileData({ email: `${NAME}@neu.example` });
-    assert.equal(r.status, 400);
-    assert.equal(r.body.code, 'current_password_required');
-    assert.equal(await address(), `${NAME}@alt.example`);
-  });
-
-  await t.test('wrong password', async () => {
-    const r = await profileData({ email: `${NAME}@neu.example`, password_current: 'falsch-falsch' });
-    assert.equal(r.status, 400);
-    assert.equal(r.body.code, 'current_password_wrong');
-    assert.equal(await address(), `${NAME}@alt.example`);
-  });
-
-  await t.test('with password', async () => {
-    const r = await profileData({ email: `${NAME}@neu.example`, password_current: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.emailChanged, true);
     assert.equal(await address(), `${NAME}@alt.example`, 'the new one only applies after the link (email-neu-db)');
@@ -125,24 +104,10 @@ test('change email', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('even without a new address only with password', async () => {
-    const without = await profileData({ email: `${NAME}@neu.example`, first_name: 'Neu' });
-    assert.deepEqual([without.status, without.body.code], [400, 'current_password_required']);
-    assert.equal(
-      (await profileData({ first_name: 'Neu', password_current: 'falsch-falsch' })).body.code,
-      'current_password_wrong',
-    );
-    const withIt = await profileData({ email: `${NAME}@neu.example`, first_name: 'Neu', password_current: PASS });
-    assert.equal(withIt.status, 200, JSON.stringify(withIt.body));
+  await t.test('other fields too', async () => {
+    const r = await profileData({ email: `${NAME}@neu.example`, first_name: 'Neu' });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Neu');
-  });
-
-  await t.test('a taken username only reveals itself with password', async () => {
-    assert.equal((await profileData({ username: `${NAME}_b` })).body.code, 'current_password_required');
-    assert.equal(
-      (await profileData({ username: `${NAME}_b`, password_current: 'falsch-falsch' })).body.code,
-      'current_password_wrong',
-    );
   });
 
   await t.test('in production without APP_BASE_URL no link from the Host header', async () => {
@@ -151,12 +116,12 @@ test('change email', { concurrency: 1 }, async t => {
     environment({ APP_BASE_URL: undefined });
     try {
       confirmed.length = 0;
-      const r = await profileData({ email: `${NAME}@drei.example`, password_current: PASS });
+      const r = await profileData({ email: `${NAME}@drei.example` });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.emailSent, false);
       assert.deepEqual(confirmed, [], 'without a fixed address no link may be sent');
       environment({ APP_BASE_URL: 'https://lego.example.org/' });
-      await profileData({ email: `${NAME}@vier.example`, password_current: PASS });
+      await profileData({ email: `${NAME}@vier.example` });
       assert.deepEqual(confirmed, ['https://lego.example.org']);
     } finally {
       environment({ NODE_ENV: prior.env });
@@ -167,16 +132,11 @@ test('change email', { concurrency: 1 }, async t => {
 
   await t.test('a taken address answers like a free one', async () => {
     const occupied = `${NAME}@belegt.example`;
-    assert.equal((await profileData({ email: occupied })).body.code, 'current_password_required');
-    assert.equal(
-      (await profileData({ email: occupied, password_current: 'falsch-falsch' })).body.code,
-      'current_password_wrong',
-    );
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     try {
       attempts.length = 0;
-      const free = await profileData({ email: `${NAME}@frei.example`, password_current: PASS });
-      const taken = await profileData({ email: occupied.toUpperCase(), password_current: PASS });
+      const free = await profileData({ email: `${NAME}@frei.example` });
+      const taken = await profileData({ email: occupied.toUpperCase() });
       assert.deepEqual(taken, free, 'Status and fields equal');
       assert.deepEqual(free, { status: 200, body: { success: true, emailChanged: true, emailSent: true } });
       // The owner of the taken address gets a hint instead of a link.
@@ -192,8 +152,7 @@ test('change email', { concurrency: 1 }, async t => {
 
   await t.test('availability checks are throttled', async () => {
     const codes = [];
-    for (let i = 0; i < 12; i++)
-      codes.push((await profileData({ username: `${NAME}_b`, password_current: PASS })).body.code);
+    for (let i = 0; i < 12; i++) codes.push((await profileData({ username: `${NAME}_b` })).body.code);
     assert.equal(codes[0], 'username_taken');
     const ab = codes.indexOf('too_many_requests');
     assert.ok(ab > 0, codes.join(', '));
@@ -205,7 +164,7 @@ test('change email', { concurrency: 1 }, async t => {
 
   await t.test('password only via change-password', async () => {
     const prior = (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
-    const r = await profileData({ password: 'GanzNeuesPasswort1', password_current: PASS });
+    const r = await profileData({ password: 'GanzNeuesPasswort1' });
     assert.equal(r.status, 400);
     assert.equal(r.body.code, 'password_via_change_password');
     assert.equal((await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash, prior);

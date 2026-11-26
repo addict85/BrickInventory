@@ -1,6 +1,6 @@
 /** Logging in by QR code; the app picks up its token once the web session confirms (src/account/qrPairing.ts). */
 import { guardFor } from '../api/middleware';
-import { signedInUserId, ipThrottle, confirmWithFactor, perSession } from '../../src/account/http/login';
+import { signedInUserId, ipThrottle, perSession } from '../../src/account/http/login';
 import { contractRouter } from '../../src/http/contractRouter';
 import { assertLoginAllowed, devicesNameContentValid, reportLogin, QR_TTL_MS } from '../../src/account';
 import type { Services } from '../../src/services';
@@ -39,11 +39,10 @@ export function buildQrRouter(d: Pick<Services, 'account'>) {
   // The QR code only carries a one-time nonce (SHA-256 in qr_login_tokens),
   // no secret of the account; the flow is described in src/account/qrPairing.ts.
   // POST, because the route creates a nonce; a GET could be triggered from foreign pages.
-  router.endpoint('POST /api/v2/auth/qr-token', requireLogin, async (req, res) => {
-    // Like /token-create: a QR code opens a new, long-lived device
-    // access; only from the session, with password and second factor.
+  router.endpoint('POST /api/v2/auth/qr-token', requireLogin, async req => {
+    // Like /token-create: a QR code opens a new, long-lived device access, so only
+    // from the browser session; the login is enough, the new device still confirms its code.
     if (!perSession(req)) failDomain('forbidden', 'session_only');
-    if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.input.password))) return;
     // The lifetime is chosen by the signed-in session, not by the anonymous /qr-login.
     return { ...(await d.account.createQrAccess(signedInUserId(req), req.input.validity)) };
   });
@@ -76,7 +75,7 @@ export function buildQrRouter(d: Pick<Services, 'account'>) {
       if (!user) failDomain('not_signed_in', 'token_invalid');
       if (a.state === 'bereit') return { waiting: false, preview: true, username: user.username } as const;
       reportLogin({ ip: req.ip, account: user.id, method: 'qr' });
-      // A login like with password or passkey: the QR code was only available with password and factor.
+      // A login like with password or passkey: the QR code was only available to a signed-in session.
       await d.account.admin.cancelTakeovers(user.id);
       res.json(await qrPickedUp(d, user, a.token, a.keyNonce));
     },

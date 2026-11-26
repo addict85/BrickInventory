@@ -5,7 +5,7 @@ import { ico, G, setHtml } from './dom.js';
 import { fmtDate } from './format.js';
 import { toast } from './messages.js';
 import { html, joinHtml } from './escaping.js';
-import { confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
+import { confirmDelete } from './confirm-prompt.js';
 import { emit } from './events.js';
 
 // ═══ Trash (settings → data) ═══════════════════════════════════════════════
@@ -101,16 +101,15 @@ export async function restoreFromTrash(id) {
   await loadTrash(String(id));
 }
 
-// Permanently means irreversibly: the server requires the password for it (and the second factor).
+// Permanently means irreversibly: hence the question before.
 /** @param {string} id */
 export async function deleteFromTrashPermanently(id) {
-  const password = await confirmDeleteWithPassword(tRaw('trash.delete_final'), tRaw('common.delete_text'), 'delete', {
+  const yes = await confirmDelete(tRaw('trash.delete_final'), tRaw('common.delete_text'), 'delete', {
     button: 'confirm.btn.permanently_delete',
     kind: 'bd',
   });
-  if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', `/v2/trash/${id}`, { password, ...z }));
-  if (d === null) return;
+  if (!yes) return;
+  const d = await api('DELETE', `/v2/trash/${id}`);
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -119,13 +118,12 @@ export async function deleteFromTrashPermanently(id) {
 }
 
 export async function emptyTrash() {
-  const password = await confirmDeleteWithPassword(tRaw('trash.clear'), tRaw('trash.clear_confirm'), 'delete', {
+  const yes = await confirmDelete(tRaw('trash.clear'), tRaw('trash.clear_confirm'), 'delete', {
     button: 'confirm.btn.trash_empty',
     kind: 'bd',
   });
-  if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', '/v2/trash', { password, ...z }));
-  if (d === null) return;
+  if (!yes) return;
+  const d = await api('DELETE', '/v2/trash');
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -134,9 +132,8 @@ export async function emptyTrash() {
 }
 
 /**
- * The focus goes to the restored entry as soon as the reloaded list shows it, instead of to the
- * heading. The list redraws once more afterwards (prices, second load): until the deadline it takes the
- * focus back as long as it only fell onto the page or heading, not if someone has moved on.
+ * The focus goes to the restored entry once the reloaded list shows it. The list redraws once more
+ * (prices, second load): until the deadline it takes the focus back unless someone has moved on.
  * @param {string} sel
  */
 function focusIfDa(sel) {

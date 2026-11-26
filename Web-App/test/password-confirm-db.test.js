@@ -1,16 +1,12 @@
 /**
- * The current password in a running session: throttled per account and access,
- * a token cannot multiply itself.
+ * No password confirmation in a running session (docs/SICHERHEIT.md): the session
+ * mints a device token without one, but a token cannot multiply itself.
  *
- * Whoever had captured a token could guess the password without limit via
- * /change-password, PUT /profile and the second factor, and mint any number
- * of permanent tokens via /token-create.
- *
- * Counter-checks (measured on 27.10.):
- *   A  the lock query removed in bestaetigePasswort() → red: “after five
- *      failed attempts it stops”
- *   B  the session condition removed in token-create → red: “a token mints
+ * Counter-checks:
+ *   B  (27.10.) the session condition removed in token-create → red: “a token mints
  *      no further one”
+ *   C  (26.11.2026) a password check back into token-create → red: “from the
+ *      session without a password” (400 instead of 200)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
@@ -32,7 +28,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `pwbest_${process.pid}`,
   PASS = 'Passwort12345';
 
-test('confirm password', { concurrency: 1 }, async t => {
+test('device tokens from the session', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -43,9 +39,7 @@ test('confirm password', { concurrency: 1 }, async t => {
       [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)],
     )
   ).id;
-  await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`passwort-bestaetigen|${uid}|%`]);
   t.after(async () => {
-    await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`%-bestaetigen|${uid}|%`]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -63,37 +57,14 @@ test('confirm password', { concurrency: 1 }, async t => {
 
   await t.test('a token mints no further one', async () => {
     const token = await _req('src/account/deviceToken.js').createToken(uid, 'Probe');
-    const r = await post(withoutSession, '/token-create', { password: PASS }, { Authorization: `Bearer ${token}` });
+    const r = await post(withoutSession, '/token-create', {}, { Authorization: `Bearer ${token}` });
     assert.equal(r.status, 403, JSON.stringify(r.body));
     assert.equal(r.body.code, 'session_only');
   });
 
-  await t.test('from the session only with the password', async () => {
-    assert.equal((await post(withSession, '/token-create', {})).status, 400);
-    const r = await post(withSession, '/token-create', { password: PASS });
+  await t.test('from the session without a password', async () => {
+    const r = await post(withSession, '/token-create', {});
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(r.body.token);
-  });
-
-  await t.test('after five failed attempts it stops — even with the correct password', async () => {
-    for (let i = 0; i < 5; i++) {
-      const r = await post(withSession, '/change-password', { current: 'falsch' + i, newPassword: 'NeuesPasswort123' });
-      assert.equal(r.status, 400, `attempt ${i + 1}`);
-    }
-    const r = await post(withSession, '/change-password', { current: PASS, newPassword: 'NeuesPasswort123' });
-    assert.equal(r.status, 429, JSON.stringify(r.body));
-    // The same brake applies to the second factor.
-    assert.equal((await post(withSession, '/second-factor/setup', { password: PASS })).status, 429);
-  });
-
-  await t.test('a success resets the counter', async () => {
-    await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`passwort-bestaetigen|${uid}|%`]);
-    for (let i = 0; i < 4; i++) await post(withSession, '/second-factor/setup', { password: 'falsch' });
-    assert.equal((await post(withSession, '/second-factor/setup', { password: PASS })).status, 200);
-    assert.equal(
-      (await post(withSession, '/second-factor/setup', { password: 'falsch' })).status,
-      400,
-      'after success it counts from the start again',
-    );
   });
 });

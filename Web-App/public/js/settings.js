@@ -21,13 +21,7 @@ import {
   setSettingsSnapshot,
 } from './state.js';
 import { html } from './escaping.js';
-import {
-  confirmDelete,
-  confirmDeleteWithPassword,
-  withSecondFactor,
-  confirmWithPassword,
-  saveSettings,
-} from './confirm-prompt.js';
+import { confirmDelete } from './confirm-prompt.js';
 import { COUNTRY_TO_CURRENCY } from './vouchers.js';
 // Settings: profile, theme, source credentials, mail, cache, QR login and config
 // import/export. Household, user management, alerts and storage locations have their own files.
@@ -79,25 +73,13 @@ function smtpFormValues() {
     smtp_tls_ca: G('smtp-tls-ca')?.value.trim() || '',
   };
 }
-/** Save SMTP; null if the password prompt was cancelled. */
-/** @returns {Promise<{ success: boolean, error?: string | null } | null>} */
+/** @returns {Promise<{ success: boolean, error?: string | null }>} */
 async function saveSmtp() {
   const values = smtpFormValues();
   // Save unchanged too when the old-exception hint is still showing: only a save clears it.
   const legacy = G('smtp-tls-legacy');
   if (JSON.stringify(values) === loadedSmtp && (!legacy || legacy.style.display === 'none')) return { success: true };
-  const admin_password = await confirmDeleteWithPassword(
-    tRaw('smtp.confirm_title'),
-    tRaw('smtp.confirm_text'),
-    'lock',
-    {
-      button: 'confirm.btn.save',
-      kind: 'bp',
-    },
-  );
-  if (admin_password === null) return null;
-  const d = await withSecondFactor(z => api('POST', '/v2/settings', { ...values, admin_password, ...z }));
-  if (d === null) return null;
+  const d = await api('POST', '/v2/settings', values);
   if (d.success) {
     loadedSmtp = JSON.stringify(values);
     if (legacy) legacy.style.display = 'none';
@@ -114,20 +96,11 @@ G('btn-test-smtp')?.addEventListener('click', async () => {
   const saved = await saveSmtp();
   if (!saved?.success) {
     release();
-    if (saved) toast(saved.error || t('settings.error'), 'error');
+    toast(saved?.error || t('settings.error'), 'error');
     return;
   }
-  const own = String(loggedInAccount?.email || '');
-  const to = G('smtp-test-email')?.value?.trim() || own;
-  // A foreign address needs the admin's password confirmation; their own does not.
-  const foreign = to.toLowerCase() !== own.toLowerCase();
-  const d = foreign
-    ? await confirmWithPassword(
-        tRaw('smtp.test_confirm_title'),
-        (password, z) => api('POST', '/v2/settings/smtp-test', { to, password, ...z }),
-        tRaw('smtp.test_confirm_text'),
-      )
-    : await withSecondFactor(z => api('POST', '/v2/settings/smtp-test', { to, ...z }));
+  const to = G('smtp-test-email')?.value?.trim() || String(loggedInAccount?.email || '');
+  const d = await api('POST', '/v2/settings/smtp-test', { to });
   release();
   if (!d) return;
   res.style.display = 'block';
@@ -150,18 +123,16 @@ G('btn-test-smtp')?.addEventListener('click', async () => {
 
 G('btn-sav-smtp')?.addEventListener('click', async () => {
   const d = await saveSmtp();
-  if (!d) return;
   if (d.success) reportAtField(G('btn-sav-smtp'));
   else toast(d.error || t('settings.error'), 'error');
 });
 
 async function saveRegEnabled() {
-  // The checkbox follows the server: during the password prompt it still shows the old state.
+  // The checkbox follows the server: until it answers it still shows the old state.
   const box = G('reg-enabled'),
     want = box.checked;
   box.checked = !want;
-  const d = await saveSettings(tRaw('settings.reg_title'), { registration_enabled: want ? '1' : '0' });
-  if (!d) return;
+  const d = await api('POST', '/v2/settings', { registration_enabled: want ? '1' : '0' });
   if (d.success) box.checked = want;
   toast(d.success ? t('settings.reg_saved') : d.error || t('settings.error'), d.success ? 'success' : 'error');
   registrationMailHint();
@@ -374,16 +345,7 @@ G('btn-sav-prof').onclick = async () => {
   const btn = G('btn-sav-prof');
   btn.disabled = true;
   try {
-    // The server confirms every profile change with the password; otherwise it would reveal whether a
-    // name is taken. A new address is named in the dialog so one sees what one is confirming.
-    const newAddress = email && email !== (G('prof-email').dataset.soFar || '');
-    const d = await confirmWithPassword(
-      tRaw(newAddress ? 'profile.email_change_title' : 'profile.save_title'),
-      (pwC, z) =>
-        api('PUT', '/v2/auth/profile', { username, email, first_name, last_name, password_current: pwC, ...z }),
-      newAddress ? tRaw('profile.email_change_text', { email }) : undefined,
-    );
-    if (!d) return;
+    const d = await api('PUT', '/v2/auth/profile', { username, email, first_name, last_name });
     if (!d.success) {
       toast(d.error || t('profile.save_error'), 'error');
       return;
@@ -417,15 +379,10 @@ G('btn-sav-pw').onclick = async () => {
   const btn = G('btn-sav-pw');
   btn.disabled = true;
   try {
-    const dPw = await confirmWithPassword(tRaw('settings.password.change'), (pwC, z) =>
-      api('POST', '/v2/auth/change-password', {
-        current: pwC,
-        newPassword: pwN,
-        passkeys_revoked: !!G('pw-pk')?.checked,
-        ...z,
-      }),
-    );
-    if (!dPw) return;
+    const dPw = await api('POST', '/v2/auth/change-password', {
+      newPassword: pwN,
+      passkeys_revoked: !!G('pw-pk')?.checked,
+    });
     if (!dPw.success) {
       responseError(
         dPw,
@@ -502,8 +459,7 @@ export async function loadSettings() {
  * @param {Record<string, string>} values @param {'bricklink'|'rebrickable'|'brickset'} service @param {string} limitId @param {string} button
  */
 async function saveApiCredential(values, service, limitId, button) {
-  const d = await saveSettings(tRaw('settings.api_key_title'), values);
-  if (!d) return;
+  const d = await api('POST', '/v2/settings', values);
   if (!d.success) {
     toast(tRaw('settings.error'), 'error');
     return;
@@ -580,15 +536,12 @@ G('btn-clr-all-cache').onclick = () => clearCache(true);
 G('btn-dall').onclick = async () => {
   // Everything into the trash: restorable for 30 days, hence a confirmation dialog rather than the
   // previous typed "DELETE". Only the OWN account (server-side).
-  const password = await confirmDeleteWithPassword(
-    tRaw('settings.delete_all.title'),
-    tRaw('settings.delete_all.text'),
-    'delete',
-    { button: 'confirm.btn.all_delete', kind: 'bd' },
-  );
-  if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', '/v2/inventory', { password, ...z }));
-  if (d === null) return;
+  const yes = await confirmDelete(tRaw('settings.delete_all.title'), tRaw('settings.delete_all.text'), 'delete', {
+    button: 'confirm.btn.all_delete',
+    kind: 'bd',
+  });
+  if (!yes) return;
+  const d = await api('DELETE', '/v2/inventory');
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -600,16 +553,15 @@ G('btn-dall').onclick = async () => {
   emit('metricsLoad');
 };
 G('btn-account-delete').onclick = async () => {
-  // Final and without a trash: password and, if set up, the second factor.
-  const password = await confirmDeleteWithPassword(
+  // Final and without a trash, hence the question; the login is enough for the server.
+  const yes = await confirmDelete(
     tRaw('settings.delete_account.title'),
     tRaw('settings.delete_account.text'),
     'delete',
     { button: 'confirm.btn.account_delete', kind: 'bd' },
   );
-  if (password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', '/v2/auth/account', { password, ...z }));
-  if (d === null) return;
+  if (!yes) return;
+  const d = await api('DELETE', '/v2/auth/account');
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -646,7 +598,7 @@ async function importConfig() {
       });
       st.style.color = 'var(--g500)';
       toast(tRaw('admin.config_imported'), 'success');
-      // The import never takes over SMTP values (password confirmation); which ones, is shown here.
+      // The import never takes over sensitive values (the export leaves them out too); which ones, is shown here.
       if (d.smtp_skipped?.length) toast(tRaw('settings.smtp_skipped', { keys: d.smtp_skipped.join(', ') }), 'info');
       loadSettings();
       setSettingsSnapshot(null); // invalidate cache so next loadSettings fetches fresh

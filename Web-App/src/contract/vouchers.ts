@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { v1Keys } from './v1';
-import { type Route, time, confirmed, WITHOUT_BODY, query, Q, PAGE, PAGES_DETAIL } from './base';
+import { type Route, time, legacyConfirmation, WITHOUT_BODY, query, Q, PAGE, PAGES_DETAIL } from './base';
 import { GenericResponse } from './shared';
 import { input } from '../infra/validate';
 import {
@@ -118,7 +118,7 @@ export const routes = {
     }),
     response: VoucherReply,
   },
-  'DELETE /api/v2/vouchers/:id': { response: GenericResponse, ...confirmed(), step: 'voucher' },
+  'DELETE /api/v2/vouchers/:id': { response: GenericResponse, ...legacyConfirmation(), step: 'voucher' },
   // Undo of the delete within RESTORE_DAYS; no confirmation: it gives back what was there, it reveals nothing.
   'POST /api/v2/vouchers/:id/restore': { input: WITHOUT_BODY, response: VoucherReply },
   'POST /api/v2/vouchers/pdf': {
@@ -134,19 +134,19 @@ export const routes = {
   'POST /api/v2/vouchers/:id/balance': { input: WITHOUT_BODY, response: BalanceReply },
   'POST /api/v2/vouchers/:id/plaintext': {
     response: VoucherPlaintext,
-    ...confirmed(),
+    ...legacyConfirmation(),
     secret: true,
     step: 'voucher',
   },
   'POST /api/v2/vouchers/:id/pdf-grant': {
     response: PdfGrant,
-    ...confirmed(),
+    ...legacyConfirmation(),
     secret: true,
     step: 'voucher',
   },
   'POST /api/v2/vouchers/export/pdf-grant': {
     response: PdfGrant,
-    ...confirmed(),
+    ...legacyConfirmation(),
     secret: true,
     step: 'voucher',
   },

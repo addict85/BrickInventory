@@ -2,7 +2,7 @@
  * is decided here in one place; settingsGlobal.ts hangs behind it. */
 import { bearerToken, guardFor } from './middleware';
 import { buildSettingsGlobalRouter } from './settingsGlobal';
-import { userIdTheRequest, confirmWithFactor, perSession } from '../../src/account/http/login';
+import { userIdTheRequest, perSession } from '../../src/account/http/login';
 import { tlsInfo } from '../../src/infra/tlsRoot';
 import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
@@ -51,21 +51,16 @@ export function buildSettingsRouter(
   });
 
   /** The row is gone immediately, but the token cache still applies briefly.
-   * A FOREIGN access is only revoked by whoever knows password and factor: a
-   * captured token should not lock the owner out of their devices. */
-  router.endpoint('DELETE /api/v2/settings/tokens/:tokenId', requireToken, async (req, res) => {
+   * `ownDevice` tells the service whether the caller ends its own access. */
+  router.endpoint('DELETE /api/v2/settings/tokens/:tokenId', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    const own = bearerToken(req);
-    const ownDevice = ownAccess(own, req.pathArgs.tokenId);
-    if (!ownDevice && !(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
+    const ownDevice = ownAccess(bearerToken(req), req.pathArgs.tokenId);
     return { deleted: await d.account.sessions.endAccess(uid, req.pathArgs.tokenId, ownDevice) };
   });
 
-  // With password: a captured session must not be able to lock out the owner.
-  // `zugaenge` includes the app accesses, so one code is enough for everything.
-  router.endpoint('POST /api/v2/settings/sessions/end-others', requireToken, async (req, res) => {
+  // `accesses` includes the app accesses, so one request ends everything else.
+  router.endpoint('POST /api/v2/settings/sessions/end-others', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
     const { sessions, accesses, version } = await d.account.sessions.endOther(uid, {
       session: req.sessionID,
       token: bearerToken(req),
@@ -161,12 +156,10 @@ export function buildSettingsRouter(
     return { ...(await d.household.checkInvitation(req.apiUser.user_id, req.input.code)) };
   });
 
-  // With password: the main account then writes this account's inventory; a
-  // captured token alone must not be able to set that up.
-  router.endpoint('POST /api/v2/settings/household/redeem', requireToken, async (req, res) => {
+  // The main account then writes this account's inventory; the invitation code is the
+  // consent of the other side, the login that of this one.
+  router.endpoint('POST /api/v2/settings/household/redeem', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    // The link is an access to the collection like a passkey: with an active second factor only with a code.
-    if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password, 'factor_code'))) return;
     return { ...(await d.account.joinHousehold(uid, req.input.code)) };
   });
 

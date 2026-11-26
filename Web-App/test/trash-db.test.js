@@ -8,9 +8,9 @@
  *   A  putInTrash() removed in deleteSet()         → red: „Set fehlt im Papierkorb"
  *   B  column matching removed in restore()  → red: „unbekannte Spalte"
  *   C  `user_id = ANY($2)` gone in restore() → red: „fremdes Konto"
- *   D  (03.11.2026) confirmWithFactor() removed in DELETE /papierkorb/:id or
- *      DELETE /papierkorb → red: „endgültig löschen ohne Passwort"
- *      or „Leeren mit falschem Passwort" (200 instead of 400)
+ *   D  (26.11.2026) a password check back into DELETE /trash/:id or DELETE /trash
+ *      (the requests carry no password, the login is enough) → red: “deleting
+ *      permanently without a password” or “emptying removes the rest” (400 instead of 200)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
@@ -122,14 +122,8 @@ test('trash', { concurrency: 1 }, async t => {
       assert.equal(r.status, 409);
       assert.deepEqual(await rows(sub), fresh, 'The new stock stays as it is');
       assert.equal((await entries(H)).length, 1, 'The entry stays');
-      const without = await api(H, 'DELETE', `/trash/${e.id}`);
-      assert.deepEqual(
-        [without.status, without.body.code],
-        [400, 'current_password_wrong'],
-        'deleting permanently without a password',
-      );
-      assert.equal((await entries(H)).length, 1, 'without a password the entry is gone');
-      assert.equal((await api(H, 'DELETE', `/trash/${e.id}`, { password: PASS })).status, 200);
+      const final = await api(H, 'DELETE', `/trash/${e.id}`);
+      assert.equal(final.status, 200, `deleting permanently without a password: ${JSON.stringify(final.body)}`);
       assert.equal((await entries(H)).length, 0);
       await db.run('DELETE FROM set_acquisitions WHERE set_number=$1', [SN]);
       await db.run('DELETE FROM sets WHERE set_number=$1', [SN]);
@@ -225,14 +219,7 @@ test('trash', { concurrency: 1 }, async t => {
         (await entries(H)).map(x => x.id),
         [b.id],
       );
-      const without = await api(H, 'DELETE', '/trash', { password: 'falsch-Passwort-1' });
-      assert.deepEqual(
-        [without.status, without.body.code],
-        [400, 'current_password_wrong'],
-        'emptying with a wrong password',
-      );
-      assert.equal((await entries(H)).length, 1, 'emptying with a wrong password removed something');
-      assert.equal((await api(H, 'DELETE', '/trash', { password: PASS })).body.removed, 1, 'emptying removes the rest');
+      assert.equal((await api(H, 'DELETE', '/trash')).body.removed, 1, 'emptying removes the rest');
     });
   } finally {
     await db.run('DELETE FROM trash WHERE user_id = ANY($1)', [ids]).catch(() => {});

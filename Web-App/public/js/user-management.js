@@ -7,7 +7,7 @@ import { fieldError, passwordRuleText } from './form.js';
 import { toast } from './messages.js';
 import { loggedInAccount } from './state.js';
 import { html, rawHtml } from './escaping.js';
-import { confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
+import { confirmDelete } from './confirm-prompt.js';
 // Settings, Administration section: create, lock, unlock accounts, manage rights. Only
 // administrators see it — the server checks every action itself.
 /** @typedef {import('../../frontend-types/contract').AccountInList} Account */
@@ -32,10 +32,9 @@ export async function loadUsers() {
   loadLog();
 }
 /**
- * The role as a chip: revoked via the X, granted with the button next to it — right where
- * the role is read. There's no button against your own account. That also covers the last
- * active administrator: only administrators see this list, so the last one is always the
- * viewer themself. The server checks both.
+ * The role as a chip: revoked via the X, granted with the button next to it. No button against
+ * your own account, which also covers the last administrator: only administrators see this
+ * list, so the last one is always the viewer. The server checks both.
  * @param {Account} u
  */
 function role(u) {
@@ -182,25 +181,14 @@ G('btn-cu').onclick = async () => {
   const n = G('nu-n').value.trim(),
     p = G('nu-p').value,
     a = G('nu-a').checked;
-  // The rules before the confirmation prompt, all at once and each on its own field; the
-  // name gets focus last, since it's reported last.
+  // The rules before the request, all at once and each on its own field; the name, reported last, gets focus.
   const nameError =
     n && /^[A-Za-z0-9_.-]{3,32}$/.test(n) ? '' : tRaw(n ? 'users.name_rule_error' : 'users.name_missing');
   const pwError = p ? passwordRuleText(p) : tRaw('users.pw_missing');
   ruleError('nu-p', pwError);
   ruleError('nu-n', nameError);
   if (nameError || pwError) return;
-  const admin_password = await confirmDeleteWithPassword(
-    tRaw('users.create_title'),
-    tRaw('users.admin_confirm_text'),
-    'lock',
-    { button: 'confirm.btn.account_create', kind: 'bp' },
-  );
-  if (admin_password === null) return;
-  const d = await withSecondFactor(z =>
-    api('POST', '/v2/auth/users', { username: n, password: p, is_admin: a, admin_password, ...z }),
-  );
-  if (d === null) return;
+  const d = await api('POST', '/v2/auth/users', { username: n, password: p, is_admin: a });
   if (d.success) {
     toast(tRaw('users.created', { name: n }), 'success');
     G('nu-n').value = G('nu-p').value = '';
@@ -226,18 +214,7 @@ G('btn-rpw').onclick = async () => {
     toast(rule, 'error');
     return;
   }
-  const name = G('rpw-uid').dataset.name;
-  const admin_password = await confirmDeleteWithPassword(
-    name ? tRaw('users.reset_pw_title_name', { name }) : tRaw('users.reset_pw_title'),
-    tRaw('users.admin_confirm_text'),
-    'lock',
-    { button: 'confirm.btn.password_set', kind: 'bp' },
-  );
-  if (admin_password === null) return;
-  const d = await withSecondFactor(z =>
-    api('PUT', `/v2/auth/users/${G('rpw-uid').value}/password`, { password: newPw, admin_password, ...z }),
-  );
-  if (d === null) return;
+  const d = await api('PUT', `/v2/auth/users/${G('rpw-uid').value}/password`, { password: newPw });
   if (d.success) {
     toast(
       d.effective_at
@@ -254,20 +231,16 @@ G('btn-rpw').onclick = async () => {
  * @param {string} name
  */
 async function toggleAdmin(uid, isAdmin, name) {
-  // isAdmin has been a string since the data-arg switch. `!"0"` is false — toggling would
-  // then ALWAYS land on "not admin".
+  // isAdmin is a string from data-arg: `!"0"` is false, so toggling would ALWAYS land on "not admin".
   const cur = isAdmin === true || isAdmin === 1 || isAdmin === '1';
   // The dialog names the account: the buttons look the same in every row.
   const title = tRaw(cur ? 'users.role_title_revoke' : 'users.role_title_give', { name });
-  const admin_password = await confirmDeleteWithPassword(title, tRaw('users.admin_confirm_text'), 'lock', {
+  const yes = await confirmDelete(title, tRaw('users.admin_confirm_text'), 'lock', {
     button: 'confirm.btn.role_change',
     kind: 'bp',
   });
-  if (admin_password === null) return;
-  const d = await withSecondFactor(z =>
-    api('PUT', `/v2/auth/users/${uid}/admin`, { is_admin: !cur, admin_password, ...z }),
-  );
-  if (d === null) return;
+  if (!yes) return;
+  const d = await api('PUT', `/v2/auth/users/${uid}/admin`, { is_admin: !cur });
   if (d.success) {
     reportResult(d, tRaw('users.role_changed'));
     loadUsers();
@@ -281,17 +254,14 @@ async function toggleAdmin(uid, isAdmin, name) {
  */
 async function toggleActive(uid, active, name) {
   const isActive = String(active) === '1';
-  const admin_password = await confirmDeleteWithPassword(
+  const yes = await confirmDelete(
     tRaw(isActive ? 'users.deactivate_title' : 'users.activate_title', { name }),
     tRaw('users.admin_confirm_text'),
     'lock',
     { button: isActive ? 'confirm.btn.deactivate' : 'confirm.btn.activate', kind: 'bp' },
   );
-  if (admin_password === null) return;
-  const d = await withSecondFactor(z =>
-    api('PUT', `/v2/auth/users/${uid}/active`, { is_active: !isActive, admin_password, ...z }),
-  );
-  if (d === null) return;
+  if (!yes) return;
+  const d = await api('PUT', `/v2/auth/users/${uid}/active`, { is_active: !isActive });
   if (d.success) {
     reportResult(d, tRaw(isActive ? 'users.deactivated' : 'users.activated'));
     loadUsers();
@@ -302,15 +272,12 @@ async function toggleActive(uid, active, name) {
  * @param {string} name
  */
 async function unlockAccount(uid, name) {
-  const admin_password = await confirmDeleteWithPassword(
-    tRaw('users.unlock_title', { name }),
-    tRaw('users.unlock_text', { name }),
-    'ok',
-    { button: 'confirm.btn.unlock', kind: 'bp' },
-  );
-  if (admin_password === null) return;
-  const d = await withSecondFactor(z => api('PUT', `/v2/auth/users/${uid}/approve`, { admin_password, ...z }));
-  if (d === null) return;
+  const yes = await confirmDelete(tRaw('users.unlock_title', { name }), tRaw('users.unlock_text', { name }), 'ok', {
+    button: 'confirm.btn.unlock',
+    kind: 'bp',
+  });
+  if (!yes) return;
+  const d = await api('PUT', `/v2/auth/users/${uid}/approve`);
   if (d.success) {
     toast(tRaw('users.unlocked', { name }), 'success');
     loadUsers();
@@ -321,15 +288,13 @@ async function unlockAccount(uid, name) {
  * @param {string} name
  */
 async function delUser(uid, name) {
-  const admin_password = await confirmDeleteWithPassword(
-    tRaw('users.delete.title', { name }),
-    tRaw('users.delete.text'),
-    'profile',
-    { button: 'confirm.btn.account_name_delete', values: { name }, kind: 'bd' },
-  );
-  if (admin_password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', `/v2/auth/users/${uid}`, { admin_password, ...z }));
-  if (d === null) return;
+  const yes = await confirmDelete(tRaw('users.delete.title', { name }), tRaw('users.delete.text'), 'profile', {
+    button: 'confirm.btn.account_name_delete',
+    values: { name },
+    kind: 'bd',
+  });
+  if (!yes) return;
+  const d = await api('DELETE', `/v2/auth/users/${uid}`);
   if (d.success) {
     reportResult(d, tRaw('users.deleted', { name }));
     loadUsers();

@@ -1,14 +1,13 @@
 /**
- * Revoking app accesses: only the full identifier from the device list, a
- * foreign access only with password, the own one without. “All others” goes in
- * one confirmed request and leaves the own access in place. The owner
- * gets a hint.
+ * Revoking app accesses: only the full identifier from the device list; the login
+ * is enough, for a foreign access too (docs/SICHERHEIT.md). “All others” goes in
+ * one request and leaves the own access in place. The owner gets a hint.
  *
  * Counter-checks (measured 09.11.2026, each alone):
  *   A  in PATH (src/contract/base.ts) tokenId back to /^[A-Za-z0-9_-]{1,64}$/
  *      → red: “a prefix of the identifier is rejected” (200 instead of 400)
- *   B  in DELETE /settings/tokens/:tokenId the confirmation deleted → red:
- *      “a foreign access needs the password” (200, access gone)
+ *   B  (26.11.2026) a password check back into DELETE /settings/tokens/:tokenId
+ *      → red: “a foreign access ends without password …” (400 instead of 200)
  *   C  hintInBackground() deleted on revocation → red: “… the owner
  *      gets a hint”
  *   D  in andere-beenden `null` instead of the own hash passed to
@@ -101,24 +100,16 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
     assert.equal(await applies(fremd), true, 'a prefix revoked the access');
   });
 
-  await t.test('a foreign access needs the password', async () => {
-    const without = await callFn('DELETE', `/settings/tokens/${tokenId(fremd)}`, own);
-    assert.ok(without.status >= 400 && without.status < 500, JSON.stringify(without.body));
-    const wrong = await callFn('DELETE', `/settings/tokens/${tokenId(fremd)}`, own, { password: 'falsch-falsch-1' });
-    assert.ok(wrong.status >= 400 && wrong.status < 500, JSON.stringify(wrong.body));
-    assert.equal(await applies(fremd), true, 'revoked without the correct password');
-  });
-
   await t.test('a foreign account revokes nothing', async () => {
     const tokB = await auth.createToken(uidB, 'Fremd', true);
-    const r = await callFn('DELETE', `/settings/tokens/${tokenId(fremd)}`, tokB, { password: PASS });
+    const r = await callFn('DELETE', `/settings/tokens/${tokenId(fremd)}`, tokB);
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.deleted, 0);
     assert.equal(await applies(fremd), true, 'another account revoked the access');
   });
 
-  await t.test('with password it works, and the owner gets a notice', async () => {
-    const r = await callFn('DELETE', `/settings/tokens/${tokenId(fremd)}`, own, { password: PASS });
+  await t.test('a foreign access ends without password, and the owner gets a notice', async () => {
+    const r = await callFn('DELETE', `/settings/tokens/${tokenId(fremd)}`, own);
     assert.deepEqual([r.status, r.body.deleted], [200, 1], JSON.stringify(r.body));
     assert.equal(await applies(fremd), false);
     assert.equal(await applies(own), true, 'the own session went along');
@@ -135,13 +126,10 @@ test('revoking app accesses', { concurrency: 1 }, async t => {
     assert.equal((await hints('access_ended', 2)).length, 1, 'signing out oneself reports as a foreign revocation');
   });
 
-  await t.test('all others: one confirmed call, the own one stays', async () => {
+  await t.test('all others: one call without password, the own one stays', async () => {
     const x = await auth.createToken(uidA, 'X', true),
       y = await auth.createToken(uidA, 'Y', true);
-    const without = await callFn('POST', '/settings/sessions/end-others', own, { accesses: true });
-    assert.ok(without.status >= 400 && without.status < 500, JSON.stringify(without.body));
-    assert.equal(await applies(x), true, 'ended without a password');
-    const r = await callFn('POST', '/settings/sessions/end-others', own, { password: PASS, accesses: true });
+    const r = await callFn('POST', '/settings/sessions/end-others', own, { accesses: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.accesses, 2);
     assert.deepEqual([await applies(x), await applies(y), await applies(own)], [false, false, true]);

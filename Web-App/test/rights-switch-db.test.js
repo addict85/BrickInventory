@@ -2,8 +2,8 @@
  * Revoking rights and deleting accounts must reach the open session.
  *
  * Counter-checks (measured on 28.10.):
- *   A  bestaetigePasswort() removed from PUT /users/:id/admin → red:
- *      „Rechte entziehen ohne Verwalterpasswort"
+ *   A  (26.11.2026) a password check back into PUT /users/:id/admin (the
+ *      request carries no password, the login is enough) → red: “revocation failed”
  *   B  protokolliere() before deleting removed → red: log without
  *      „konto_geloescht"
  *
@@ -105,18 +105,12 @@ test("a change of rights and a deletion end the target's session", { concurrency
     await signIn(TARGET);
     assert.equal(await sessions(idTarget), 1, 'precondition: the target has exactly one open session');
 
-    const without = await callFn(AUTH + `/users/${idTarget}/admin`, {
+    const revocation = await callFn(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: false },
     });
-    assert.equal(without.status, 400, 'revoking rights without the admin password');
-    const revocation = await callFn(AUTH + `/users/${idTarget}/admin`, {
-      method: 'PUT',
-      headers: { cookie: chefCookie },
-      body: { is_admin: false, admin_password: PASS },
-    });
-    assert.equal(revocation.status, 200, `Entzug scheiterte: ${JSON.stringify(revocation.body)}`);
+    assert.equal(revocation.status, 200, `revocation failed: ${JSON.stringify(revocation.body)}`);
     assert.ok(revocation.body.effective_at, 'For an admin the revocation is announced');
     assert.equal(await sessions(idTarget), 1, 'Before the deadline the session stays');
     assert.equal(await due(), 1);
@@ -177,13 +171,9 @@ test("a change of rights and a deletion end the target's session", { concurrency
     // ── 4. Kontoloeschung ───────────────────────────────────────────────────
     await signIn(TARGET);
     assert.equal(await sessions(idTarget), 1, 'precondition for the deletion');
-    const withoutPw = await callFn(AUTH + `/users/${idTarget}`, { method: 'DELETE', headers: { cookie: chefCookie } });
-    assert.equal(withoutPw.status, 400, 'Deleting an account requires the admin password');
-    assert.ok(await db.get('SELECT id FROM users WHERE id=$1', [idTarget]), 'deleted anyway without a password');
     const route = await callFn(AUTH + `/users/${idTarget}`, {
       method: 'DELETE',
       headers: { cookie: chefCookie },
-      body: { admin_password: PASS },
     });
     assert.equal(route.status, 200, `deleting failed: ${JSON.stringify(route.body)}`);
     assert.ok(route.body.effective_at, 'For an admin the deletion is announced');

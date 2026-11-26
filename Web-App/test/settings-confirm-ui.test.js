@@ -1,84 +1,81 @@
 /**
- * The server only changes registration and API key with a password. The
- * UI sends without it first; if the server demands it
- * (current_password_required), it asks in a dialog and sends again.
- * Cancelling takes the checkmark back.
+ * Registration, API key and mail server save with ONE request and no password
+ * dialog: a login is enough (docs/SICHERHEIT.md). The checkbox follows the server.
  *
- * Counter-checks (measured 04.11.2026, each on its own):
- *   A  saveRegEnabled() again with api('POST', …) instead of saveSettings()
- *      → red: “registration asks for the password”, „Abbrechen …“
- *   B  btn-sav-rb again with api('POST', …) → red: “the API key asks …”
+ * Counter-checks (measured 26.11.2026, each on its own, bundle rebuilt):
+ *   A  saveRegEnabled() sends `admin_password: ''` along again → red:
+ *      “registration saves without a password”
+ *   B  saveSmtp() behind confirmDelete() again → red: “the mail server saves
+ *      without a dialog” (the dialog opens, no request)
+ *   C  in saveRegEnabled() `if (d.success) box.checked = want` removed → red:
+ *      “registration saves without a password” (the tick does not follow)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, switchTab, waitFor } = require('./helpers/ui');
+const { openUi, switchTab, waitFor, tick } = require('./helpers/ui');
 
 const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
 const posts = calls =>
   calls.filter(a => a.method === 'POST' && /\/v2\/settings$/.test(a.url)).map(a => JSON.parse(a.body));
-/** The server demands the password until it stands in the body. */
-const SERVER = {
-  '/v2/settings': (_url, o) =>
-    o?.method === 'POST' && !JSON.parse(o.body).admin_password
-      ? {
-          $status: 400,
-          success: false,
-          code: 'current_password_required',
-          error: 'Bitte das aktuelle Passwort eingeben.',
-        }
-      : { success: true },
-};
 
-test('registration asks for the password', async () => {
-  const { w, d, calls } = await openUi(SERVER);
+test('registration saves without a password', async () => {
+  const { w, d, calls } = await openUi({ '/v2/settings': { success: true } });
   try {
     await switchTab(w, 'settings');
     const field = d.getElementById('reg-enabled');
     field.checked = true;
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await waitFor(() => openDialog(d)), 'no dialog');
-    d.getElementById('cd-pw').value = 'Chef-Passwort-1';
-    d.getElementById('cd-confirm').click();
-    await waitFor(() => posts(calls).length === 2);
-    assert.deepEqual(posts(calls), [
-      { registration_enabled: '1' },
-      { registration_enabled: '1', admin_password: 'Chef-Passwort-1' },
-    ]);
+    assert.ok(await waitFor(() => posts(calls).length === 1), 'no request');
+    assert.deepEqual(posts(calls), [{ registration_enabled: '1' }]);
+    assert.ok(await waitFor(() => field.checked), 'the tick follows the server');
+    assert.equal(openDialog(d), false, 'no dialog');
   } finally {
     w.close();
   }
 });
 
-test('cancel takes back the checkmark', async () => {
-  const { w, d, calls } = await openUi(SERVER);
+test('a refusal keeps the old state', async () => {
+  const { w, d, calls } = await openUi({
+    '/v2/settings': { $status: 400, success: false, code: 'registration_needs_mail', error: 'Mail fehlt' },
+  });
   try {
     await switchTab(w, 'settings');
     const field = d.getElementById('reg-enabled');
     field.checked = true;
     field.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await waitFor(() => openDialog(d)), 'no dialog');
-    d.getElementById('cd-cancel').click();
-    await waitFor(() => !openDialog(d));
-    await waitFor(() => !field.checked, 500);
-    assert.equal(field.checked, false, 'the tick stays after cancelling');
-    assert.equal(posts(calls).length, 1);
+    assert.ok(await waitFor(() => posts(calls).length === 1), 'no request');
+    await tick(20);
+    assert.equal(field.checked, false, 'the tick stays after the refusal');
   } finally {
     w.close();
   }
 });
 
-test('the API key asks for the password', async () => {
-  const { w, d, calls } = await openUi(SERVER);
+test('the API key saves without a password', async () => {
+  const { w, d, calls } = await openUi({ '/v2/settings': { success: true } });
   try {
     await switchTab(w, 'settings');
     d.getElementById('rb-key').value = 'neuer-schluessel';
     d.getElementById('btn-sav-rb').click();
-    assert.ok(await waitFor(() => openDialog(d)), 'no dialog');
-    d.getElementById('cd-pw').value = 'Chef-Passwort-1';
-    d.getElementById('cd-confirm').click();
-    await waitFor(() => posts(calls).length === 2);
-    assert.equal(posts(calls)[1].admin_password, 'Chef-Passwort-1');
-    assert.equal(posts(calls)[1].rebrickable_api_key, 'neuer-schluessel');
+    assert.ok(await waitFor(() => posts(calls).length === 1), 'no request');
+    assert.equal(posts(calls)[0].rebrickable_api_key, 'neuer-schluessel');
+    assert.equal('admin_password' in posts(calls)[0], false, 'no password in the request');
+    assert.equal(openDialog(d), false, 'no dialog');
+  } finally {
+    w.close();
+  }
+});
+
+test('the mail server saves without a dialog', async () => {
+  const { w, d, calls } = await openUi({ '/v2/settings': { success: true } });
+  try {
+    await switchTab(w, 'settings');
+    d.getElementById('smtp-host').value = 'mail.neu.example';
+    d.getElementById('btn-sav-smtp').click();
+    assert.ok(await waitFor(() => posts(calls).length === 1), 'no request');
+    assert.equal(posts(calls)[0].smtp_host, 'mail.neu.example');
+    assert.equal('admin_password' in posts(calls)[0], false, 'no password in the request');
+    assert.equal(openDialog(d), false, 'no dialog');
   } finally {
     w.close();
   }

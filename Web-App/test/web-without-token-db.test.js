@@ -8,8 +8,8 @@
  *      plus the two following ones (the counts no longer match afterwards)
  *   B  in /sessions/andere-beenden `AND sid <> $2` removed → red: “the own
  *      session stays” (the own one was ended too)
- *   C  (02.11.2026) in /sessions/andere-beenden bestaetigePasswort() removed
- *      → red: “the own session stays” (200 instead of 400 with a wrong password)
+ *   C  (26.11.2026) a password check back into /sessions/end-others → red:
+ *      “the own session stays” (400 instead of 200; a login is enough, docs/SICHERHEIT.md)
  *   D  (03.11.2026) in signedInResponses() the session created again also with
  *      a token → red: “the app gets its token and no session” (cookie
  *      next to the token) and “the own session stays” (three instead of two)
@@ -119,18 +119,7 @@ test('browser without token', { concurrency: 1 }, async t => {
   await t.test('the own session stays', async () => {
     await signIn({ without_token: true }); // a second browser
     assert.equal(await sessions(), 2, 'precondition: two sessions (two browsers; the app has none)');
-    const without = await callFn('/settings/sessions/end-others', {
-      method: 'POST',
-      cookie: owned,
-      body: { password: 'falsch-1234' },
-    });
-    assert.deepEqual([without.status, without.body?.code], [400, 'current_password_wrong']);
-    assert.equal(await sessions(), 2, 'sessions were ended without the right password');
-    const r = await callFn('/settings/sessions/end-others', {
-      method: 'POST',
-      cookie: owned,
-      body: { password: PASS },
-    });
+    const r = await callFn('/settings/sessions/end-others', { method: 'POST', cookie: owned, body: {} });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.deleted, 1);
     assert.equal(await sessions(), 1);

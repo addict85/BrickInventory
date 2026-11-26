@@ -1,179 +1,110 @@
 /**
- * The dialogs of the routes with re-confirmation offer the second factor:
- * if the server reports second_factor_required, the UI asks for the code
- * (or, where the browser can and the account has passkeys, a
- * passkey) and repeats the request. Real bundle in jsdom.
+ * The former re-confirmation routes ask for no password or code in the UI: a login
+ * is enough (owner's decision, docs/SICHERHEIT.md). Destructive steps keep a plain
+ * "are you sure?" without a password field; showing a voucher runs right away.
+ * Real bundle in jsdom.
  *
- * Counter-checks (measured 03.11.2026, each alone, bundle rebuilt):
- *   A  in einstellungen.js “Alles löschen" again api() directly → red: “delete
- *      everything asks for the code" and “the passkey replaces the code"
- *   B  in einstellungen.js creating an account again api() directly → red:
- *      “creating an account asks for the code"
- *   C  in passkeys.js fetchSetPasskey() not called → red: “the
- *      passkey replaces the code"
- *   D  in papierkorb.js or gutscheine.js again confirmDelete() and
- *      api() without password → red: “emptying the trash …” or “deleting a
- *      voucher …" (the password dialog does not appear)
- *   E  in toggleVoucherPin() fetchPlaintext() skipped → red: “the
- *      voucher list shows the mask …" (no password dialog)
- *   F  openVoucherPdf() again openPdfViewer() directly → red: “the
- *      voucher PDF opens only after confirmation …"
+ * Counter-checks (measured 26.11.2026, each alone, bundle rebuilt):
+ *   A  in settings.js "delete everything" sends `{ password: 'x' }` again → red:
+ *      “delete everything asks only yes or no” (the body carries a password)
+ *   B  in trash.js emptyTrash() without confirmDelete() → red: “emptying the
+ *      trash asks only yes or no” (no dialog appears)
+ *   C  in vouchers.js fetchPlaintext() behind confirmDelete() again → red:
+ *      “number and PIN appear without a dialog”
+ *   D  in index.html the password field `cd-pw` back into the dialog → red:
+ *      every “… asks only yes or no” (“the dialog has no password field”)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, waitFor, tick, view } = require('./helpers/ui');
 
-/** Answers without code with second_factor_required and remembers every body. */
-function withFactor(list, passkey = false) {
+/** Remembers every body and answers like the server after the decision.
+ * @param {unknown[]} list @param {Record<string, unknown>} [answer] */
+function recording(list, answer = { success: true, sets: 0, parts: 0, minifigs: 0 }) {
   return (_url, o) => {
-    const body = JSON.parse(o.body);
-    list.push(body);
-    return body.code || body.passkey
-      ? { success: true, sets: 0, parts: 0, minifigs: 0 }
-      : {
-          $status: 400,
-          success: false,
-          code: 'second_factor_required',
-          error: 'Code fehlt',
-          ...(passkey ? { passkey: true } : {}),
-        };
+    list.push(o?.body ? JSON.parse(o.body) : null);
+    return answer;
   };
 }
 
-/** @param {Document} d @param {{ password?: string, code?: string }} input */
-async function confirm(d, { password, code }) {
+/** The plain question: it appears, has no password or code field, and is answered with yes. */
+async function sayYes(d) {
   const modal = d.getElementById('confirm-modal');
-  assert.ok(
-    await waitFor(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
-    'the password dialog appears',
-  );
-  /** @type {HTMLInputElement} */ (d.getElementById('cd-pw')).value = password;
+  assert.ok(await waitFor(() => modal.style.display === 'flex'), 'the question appears');
+  assert.equal(modal.querySelector('input[type="password"]'), null, 'the dialog has no password field');
+  assert.equal(modal.querySelector('[autocomplete="one-time-code"]'), null, 'the dialog has no code field');
   d.getElementById('cd-confirm').click();
   await tick(20);
-  const codeWrap = d.getElementById('cd-code-wrap');
-  assert.ok(await waitFor(() => !codeWrap.hidden && modal.style.display === 'flex'), 'the code dialog appears');
-  if (code === undefined) return;
-  /** @type {HTMLInputElement} */ (d.getElementById('cd-code')).value = code;
-  d.getElementById('cd-confirm').click();
 }
 
-test('delete everything asks for the code', async () => {
-  const callIt = [];
-  const { w, d } = await openUi({ '/v2/inventory': withFactor(callIt) });
+test('delete everything asks only yes or no', async () => {
+  const calls = [];
+  const { w, d } = await openUi({ '/v2/inventory': recording(calls) });
   try {
     d.getElementById('btn-dall').click();
-    await confirm(d, { password: 'Mein-Passwort-1', code: '654321' });
-    assert.ok(await waitFor(() => callIt.length === 2), `only ${callIt.length} request(s)`);
-    assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '654321' }]);
-    assert.equal(d.getElementById('cd-passkey').hidden, true, 'no passkey button without passkey capability');
+    await sayYes(d);
+    assert.ok(await waitFor(() => calls.length === 1), `${calls.length} request(s)`);
+    assert.deepEqual(calls, [null], 'the request carries no password');
   } finally {
     w.close();
   }
 });
 
-test('creating an account asks for the code', async () => {
-  const callIt = [];
+test('creating an account sends no administrator password', async () => {
+  const calls = [];
   const { w, d } = await openUi({
-    '/v2/auth/users': (url, o) => (o?.method === 'POST' ? withFactor(callIt)(url, o) : { success: true, users: [] }),
+    '/v2/auth/users': (url, o) => (o?.method === 'POST' ? recording(calls)(url, o) : { success: true, users: [] }),
   });
   try {
     d.getElementById('nu-n').value = 'bert';
     d.getElementById('nu-p').value = 'Lang-genug-Passwort-1';
     d.getElementById('btn-cu').click();
-    await confirm(d, { password: 'Verwalter-Passwort-1', code: '111222' });
-    assert.ok(await waitFor(() => callIt.length === 2), `only ${callIt.length} request(s)`);
-    assert.equal(callIt[1].admin_password, 'Verwalter-Passwort-1');
-    assert.equal(callIt[1].code, '111222', 'the second request carries the code');
+    assert.ok(await waitFor(() => calls.length === 1), `${calls.length} request(s)`);
+    assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'no dialog in between');
+    assert.deepEqual(calls[0], { username: 'bert', password: 'Lang-genug-Passwort-1', is_admin: false });
   } finally {
     w.close();
   }
 });
 
-test('the passkey replaces the code', async () => {
-  const callIt = [];
-  const buffer = () => new Uint8Array([1, 2, 3]).buffer;
-  const { w, d } = await openUi(
-    {
-      '/v2/inventory': withFactor(callIt, true),
-      '/v2/auth/passkey/login/options': { success: true, options: { challenge: 'AAAA', allowCredentials: [] } },
-    },
-    {
-      before: win => {
-        win.PublicKeyCredential = function PublicKeyCredential() {};
-        Object.defineProperty(win, 'isSecureContext', { value: true });
-        Object.defineProperty(win.navigator, 'credentials', {
-          value: {
-            get: async () => ({
-              id: 'pk1',
-              rawId: buffer(),
-              type: 'public-key',
-              getClientExtensionResults: () => ({}),
-              response: {
-                clientDataJSON: buffer(),
-                authenticatorData: buffer(),
-                signature: buffer(),
-                userHandle: null,
-              },
-            }),
-          },
-        });
-      },
-    },
-  );
-  try {
-    d.getElementById('btn-dall').click();
-    await confirm(d, { password: 'Mein-Passwort-1' });
-    const button = d.getElementById('cd-passkey');
-    assert.equal(button.hidden, false, 'the passkey button appears');
-    button.click();
-    assert.ok(
-      await waitFor(() => callIt.length === 2),
-      `the passkey replaces the code: only ${callIt.length} request(s)`,
-    );
-    assert.equal(callIt[1].passkey?.id, 'pk1', 'the passkey replaces the code');
-    assert.equal(callIt[1].code, undefined);
-  } finally {
-    w.close();
-  }
-});
-
-test('emptying the trash asks for password and code', async () => {
-  const callIt = [];
+test('emptying the trash asks only yes or no', async () => {
+  const calls = [];
   const { w, d } = await openUi({
-    '/v2/trash': (url, o) => (o?.method === 'DELETE' ? withFactor(callIt)(url, o) : { success: true, entries: [] }),
+    '/v2/trash': (url, o) =>
+      o?.method === 'DELETE' ? recording(calls, { success: true, removed: 0 })(url, o) : { success: true, entries: [] },
   });
   try {
     d.getElementById('trash-empty').click();
-    await confirm(d, { password: 'Mein-Passwort-1', code: '246810' });
-    assert.ok(await waitFor(() => callIt.length === 2), `only ${callIt.length} request(s)`);
-    assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '246810' }]);
+    await sayYes(d);
+    assert.ok(await waitFor(() => calls.length === 1), `${calls.length} request(s)`);
+    assert.deepEqual(calls, [null]);
   } finally {
     w.close();
   }
 });
 
-test('deleting a voucher asks for password and code', async () => {
-  const callIt = [];
+test('deleting a voucher asks only yes or no', async () => {
+  const calls = [];
   const { w, d } = await openUi({
     '/v2/vouchers': {
       success: true,
       vouchers: [{ id: 3, number: '6123456789012', pin: '4711', amount: 50, currency: 'CHF', has_pdf: false }],
     },
-    '/v2/vouchers/3': withFactor(callIt),
+    '/v2/vouchers/3': recording(calls, { success: true }),
   });
   try {
     await view(w, 'vouchers');
-    assert.ok(await waitFor(() => d.querySelector('[data-click="deleteVoucher"]')), 'Gutscheinliste');
+    assert.ok(await waitFor(() => d.querySelector('[data-click="deleteVoucher"]')), 'voucher list');
     d.querySelector('[data-click="deleteVoucher"]').click();
-    await confirm(d, { password: 'Mein-Passwort-1', code: '135790' });
-    assert.ok(await waitFor(() => callIt.length === 2), `only ${callIt.length} request(s)`);
-    assert.deepEqual(callIt[1], { password: 'Mein-Passwort-1', code: '135790' });
+    await sayYes(d);
+    assert.ok(await waitFor(() => calls.length === 1), `${calls.length} request(s)`);
+    assert.deepEqual(calls, [null]);
   } finally {
     w.close();
   }
 });
 
-test('the voucher PDF only opens after confirmation, with the ticket', async () => {
+test('the voucher PDF opens without a dialog, with the ticket', async () => {
   const releases = [],
     fetches = [];
   const { w, d } = await openUi({
@@ -192,54 +123,38 @@ test('the voucher PDF only opens after confirmation, with the ticket', async () 
   });
   try {
     await view(w, 'vouchers');
-    assert.ok(await waitFor(() => d.querySelector('[data-click="openVoucherPdf"]')), 'Gutscheinliste');
+    assert.ok(await waitFor(() => d.querySelector('[data-click="openVoucherPdf"]')), 'voucher list');
     d.querySelector('[data-click="openVoucherPdf"]').click();
-    const modal = d.getElementById('confirm-modal');
-    assert.ok(
-      await waitFor(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
-      'the password dialog appears',
-    );
-    assert.deepEqual(fetches, [], 'the PDF is fetched before the confirmation');
-    d.getElementById('cd-pw').value = 'Mein-Passwort-1';
-    d.getElementById('cd-confirm').click();
     assert.ok(await waitFor(() => fetches.length === 1), 'no fetch of the PDF');
-    assert.deepEqual(releases, [{ password: 'Mein-Passwort-1' }]);
+    assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'no dialog in between');
+    assert.deepEqual(releases, [{}]);
     assert.match(fetches[0], /\/api\/v2\/vouchers\/3\/pdf\?ticket=T-123$/);
   } finally {
     w.close();
   }
 });
 
-test('the voucher list shows the mask, number and PIN only after confirmation', async () => {
-  const callIt = [];
+test('number and PIN appear without a dialog', async () => {
+  const calls = [];
   const { w, d } = await openUi({
     '/v2/vouchers': {
       success: true,
       vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', has_pdf: false }],
     },
     '/v2/vouchers/3/plaintext': (_u, o) => {
-      callIt.push(JSON.parse(o.body));
+      calls.push(JSON.parse(o.body));
       return { success: true, id: 3, number: '6123456789012', pin: '4711' };
     },
   });
   try {
     await view(w, 'vouchers');
-    assert.ok(await waitFor(() => d.querySelector('.voucher-row')), 'Gutscheinliste');
-    assert.equal(d.querySelector('.voucher-num').textContent, '…9012');
+    assert.ok(await waitFor(() => d.querySelector('.voucher-row')), 'voucher list');
+    assert.equal(d.querySelector('.voucher-num').textContent, '…9012', 'the list shows the mask');
     d.querySelector('[data-click="toggleVoucherPin"]').click();
-    const modal = d.getElementById('confirm-modal');
-    assert.ok(
-      await waitFor(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
-      'the password dialog appears',
-    );
-    d.getElementById('cd-pw').value = 'Mein-Passwort-1';
-    d.getElementById('cd-confirm').click();
-    assert.ok(
-      await waitFor(() => d.querySelector('.voucher-pin code')?.textContent === '4711'),
-      'the PIN appears after the confirmation',
-    );
+    assert.ok(await waitFor(() => d.querySelector('.voucher-pin code')?.textContent === '4711'), 'the PIN appears');
+    assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'no dialog in between');
     assert.equal(d.querySelector('.voucher-num').textContent, '6123 4567 8901 2');
-    assert.deepEqual(callIt, [{ password: 'Mein-Passwort-1' }]);
+    assert.deepEqual(calls, [{}]);
   } finally {
     w.close();
   }

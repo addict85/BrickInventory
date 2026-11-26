@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { V1_TAKEOVER_KINDS, V1_QR_STATES, V1_PASSKEY_PURPOSES } from './v1Names';
 import { v1Keys, v1Values } from './v1';
 import { input } from '../infra/validate';
-import { type Route, time, Success, whole, confirmed, WITHOUT_BODY, TEXT } from './base';
+import { type Route, time, Success, whole, legacyConfirmation, WITHOUT_BODY, TEXT } from './base';
 import { GenericResponse } from './shared';
 
 export const AppToken = z.looseObject({
@@ -293,8 +293,8 @@ const ProfileChange = {
 };
 /** The app sends `password: null` along (ZweiterFaktorAnfrage); the route accepts no value. */
 const CodeOnly = z.strictObject({ code, password: z.null().optional() });
-const adminConfirmed = <F extends z.ZodRawShape = Record<never, z.ZodType>>(fields: F = {} as F) =>
-  confirmed(fields, 'admin_password');
+const adminLegacyConfirmation = <F extends z.ZodRawShape = Record<never, z.ZodType>>(fields: F = {} as F) =>
+  legacyConfirmation(fields, 'admin_password');
 
 // v1 names of fields whose v2 name also exists unchanged elsewhere (v1.ts).
 v1Keys(AppToken, { current: 'aktuell' });
@@ -341,35 +341,34 @@ export const routes = {
     response: z.looseObject({ success: z.literal(true), username: z.string() }),
     input: z.strictObject({ token: txt(200) }),
   },
-  'PUT /api/v2/auth/profile': { response: ProfileSaved, ...confirmed(ProfileChange, 'password_current') },
+  'PUT /api/v2/auth/profile': { response: ProfileSaved, ...legacyConfirmation(ProfileChange, 'password_current') },
   'POST /api/v2/auth/change-password': {
     response: GenericResponse,
-    ...confirmed(
+    ...legacyConfirmation(
       { newPassword: z.string().max(PASSWORD).optional(), passkeys_revoked: z.boolean().optional() },
       'current',
     ),
   },
   'POST /api/v2/auth/second-factor/setup': {
     response: SecondFactorSetup,
-    ...confirmed(),
+    ...legacyConfirmation(),
     secret: true,
     step: 'second_factor',
   },
   'POST /api/v2/auth/second-factor/confirm': { response: SecondFactorCodes, input: CodeOnly, secret: true },
-  'POST /api/v2/auth/second-factor/disable': { response: GenericResponse, ...confirmed() },
+  'POST /api/v2/auth/second-factor/disable': { response: GenericResponse, ...legacyConfirmation() },
   'POST /api/v2/auth/second-factor/codes': {
     response: SecondFactorCodes,
     input: CodeOnly,
     secret: true,
     step: 'second_factor',
   },
-  // Only revoking a FOREIGN access is confirmed; every device ends its own itself.
-  'DELETE /api/v2/settings/tokens/:tokenId': { response: TokenRevocation, ...confirmed() },
+  'DELETE /api/v2/settings/tokens/:tokenId': { response: TokenRevocation, ...legacyConfirmation() },
   'POST /api/v2/auth/rotate-token': { input: WITHOUT_BODY, response: TokenRotation, secret: true },
   'GET /api/v2/auth/users': { small: true, response: AccountList },
   'POST /api/v2/auth/users': {
     response: Success,
-    ...adminConfirmed({
+    ...adminLegacyConfirmation({
       is_admin: input.toggleOrNo('is_admin'),
       isAdmin: input.toggleOrNo('isAdmin').meta({ deprecated: true, description: 'former name of is_admin' }),
       username: z.string().max(64).optional(),
@@ -378,24 +377,24 @@ export const routes = {
   },
   'PUT /api/v2/auth/users/:id/admin': {
     response: AdminRoute,
-    ...adminConfirmed({ is_admin: input.flag('is_admin') }),
+    ...adminLegacyConfirmation({ is_admin: input.flag('is_admin') }),
   },
   'PUT /api/v2/auth/users/:id/active': {
     response: AccountActive,
-    ...adminConfirmed({ is_active: input.flag('is_active') }),
+    ...adminLegacyConfirmation({ is_active: input.flag('is_active') }),
   },
-  'PUT /api/v2/auth/users/:id/approve': { response: Success, ...adminConfirmed() },
+  'PUT /api/v2/auth/users/:id/approve': { response: Success, ...adminLegacyConfirmation() },
   'PUT /api/v2/auth/users/:id/password': {
     response: AdminRoute,
-    ...adminConfirmed({ password: z.string().max(PASSWORD).optional() }),
+    ...adminLegacyConfirmation({ password: z.string().max(PASSWORD).optional() }),
   },
-  'DELETE /api/v2/auth/users/:id': { response: AdminRoute, ...adminConfirmed() },
-  'DELETE /api/v2/auth/account': { response: Success, ...confirmed() },
-  'DELETE /api/v2/auth/users/:id/second-factor': { response: AdminRoute, ...adminConfirmed() },
-  'POST /api/v2/auth/token-create': { response: TokenCreated, ...confirmed(tokenRequest), secret: true },
+  'DELETE /api/v2/auth/users/:id': { response: AdminRoute, ...adminLegacyConfirmation() },
+  'DELETE /api/v2/auth/account': { response: Success, ...legacyConfirmation() },
+  'DELETE /api/v2/auth/users/:id/second-factor': { response: AdminRoute, ...adminLegacyConfirmation() },
+  'POST /api/v2/auth/token-create': { response: TokenCreated, ...legacyConfirmation(tokenRequest), secret: true },
   'POST /api/v2/auth/qr-token': {
     response: QrToken,
-    ...confirmed({
+    ...legacyConfirmation({
       validity: z
         .union([TEXT(20), whole])
         .nullable()
@@ -416,8 +415,8 @@ export const routes = {
     input: z.strictObject({ token: txt(200), password: txt(PASSWORD) }),
   },
   'GET /api/v2/auth/passkeys': { small: true, response: PasskeyList },
-  'DELETE /api/v2/auth/passkeys/:id': { response: Deleted, ...confirmed() },
-  'POST /api/v2/auth/passkey/register/options': { response: PasskeyOptions, ...confirmed() },
+  'DELETE /api/v2/auth/passkeys/:id': { response: Deleted, ...legacyConfirmation() },
+  'POST /api/v2/auth/passkey/register/options': { response: PasskeyOptions, ...legacyConfirmation() },
   'POST /api/v2/auth/passkey/register': {
     response: PasskeyCreated,
     input: z.strictObject({
@@ -440,6 +439,6 @@ export const routes = {
   },
   'POST /api/v2/settings/sessions/end-others': {
     response: OthersEnded,
-    ...confirmed({ accesses: z.boolean().optional() }),
+    ...legacyConfirmation({ accesses: z.boolean().optional() }),
   },
 } satisfies Record<string, Route>;

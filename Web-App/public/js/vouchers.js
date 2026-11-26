@@ -8,11 +8,10 @@ import { toast } from './messages.js';
 import { openPdfViewer } from './pdfviewer.js';
 import { accountCurrency, settingsSnapshot } from './state.js';
 import { html, joinHtml } from './escaping.js';
-import { confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
+import { confirmDelete } from './confirm-prompt.js';
 import { deleteRestorable } from './deletion.js';
 
-// Vouchers (LEGO gift cards) state directly in the profile instead of in a tab of their own: they should be quickly
-// reachable and, as in the app, be captured, changed and shown.
+// Vouchers (LEGO gift cards) sit in the profile instead of a tab of their own, to be quickly reachable.
 
 /** The most recently loaded list — for the buttons that point to a row. */
 /** @type {import('../../frontend-types/contract').Voucher[]} */
@@ -27,15 +26,14 @@ let _edited = null;
 /** @param {string} id */
 const el = (/** @type {string} */ id) => /** @type {Field} */ (document.getElementById(id));
 
-// The handlers take the id as the FIRST argument and no event: the dispatcher in actions.js passes
-// `data-arg`, `data-arg2` … through in this order and appends the event LAST. An `(ev, id)`
-// would therefore be silently swapped — the id would land in `ev`.
+// The handlers take the id FIRST: the dispatcher in actions.js passes `data-arg`, `data-arg2` …
+// in order and appends the event LAST, so an `(ev, id)` would silently get the id in `ev`.
 
 /** Revealed PINs: even after fetching only on request, against the shoulder next to you. */
 const _visible = new Set();
 
 /** Number and PIN in plaintext per id: the server's list only carries the mask,
- * the plaintext is given confirmed and logged, once per voucher and page. */
+ * the plaintext is fetched (and logged) once per voucher and page. */
 const _plaintext = new Map();
 
 /**
@@ -43,14 +41,7 @@ const _plaintext = new Map();
  */
 async function fetchPlaintext(id) {
   if (_plaintext.has(id)) return _plaintext.get(id);
-  const password = await confirmDeleteWithPassword(
-    tRaw('vouchers.plain_text_title'),
-    tRaw('vouchers.plain_text_text'),
-    'lock',
-    { button: 'confirm.btn.show', kind: 'bp' },
-  );
-  if (password === null) return null;
-  const d = await withSecondFactor(z => api('POST', `/v2/vouchers/${id}/plaintext`, { password, ...z }));
+  const d = await api('POST', `/v2/vouchers/${id}/plaintext`, {});
   if (!d?.success) {
     if (d) toast(d.error || tRaw('vouchers.load_error'), 'error');
     return null;
@@ -366,18 +357,18 @@ export async function saveVoucher() {
 export async function deleteVoucher(id) {
   const g = _vouchers.find(x => String(x.id) === String(id));
   if (!g) return;
-  // The password stays (a voucher is cash), but the server keeps the card for the undo: the toast
+  // A voucher is cash, hence the question; the server keeps the card for the undo: the toast
   // restores it with PIN and PDF, as with the wanted list (js/deletion.js).
-  const password = await confirmDeleteWithPassword(
+  const yes = await confirmDelete(
     tRaw('vouchers.delete_title'),
     tRaw('vouchers.delete_confirm', { number: groupNumber(g.number) }),
     'delete',
     { button: 'common.delete', kind: 'bd' },
   );
-  if (password === null) return;
+  if (!yes) return;
   _plaintext.delete(g.id);
   await deleteRestorable({
-    request: () => withSecondFactor(z => api('DELETE', `/v2/vouchers/${id}`, { password, ...z })),
+    request: () => api('DELETE', `/v2/vouchers/${id}`),
     message: tRaw('vouchers.deleted'),
     undo: async () => {
       const r = await api('POST', `/v2/vouchers/${id}/restore`);
@@ -426,14 +417,7 @@ export async function openVoucherPdf(id) {
  * @param {string} path
  */
 async function pdfRelease(path) {
-  const password = await confirmDeleteWithPassword(
-    tRaw('vouchers.pdf_release_title'),
-    tRaw('vouchers.pdf_release_text'),
-    'lock',
-    { button: 'confirm.btn.pdf_open', kind: 'bp' },
-  );
-  if (password === null) return null;
-  const d = await withSecondFactor(z => api('POST', path, { password, ...z }));
+  const d = await api('POST', path, {});
   if (!d?.success) {
     if (d) toast(d.error || tRaw('settings.error'), 'error');
     return null;

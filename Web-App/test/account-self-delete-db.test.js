@@ -1,12 +1,12 @@
 /**
- * An account deletes itself (DELETE /api/v2/auth/konto) with password and,
- * if set up, second factor; the last administrator cannot.
+ * An account deletes itself (DELETE /api/v2/auth/account) with the login alone, also
+ * with a second factor (docs/SICHERHEIT.md); the last administrator cannot.
  * Unconfirmed registrations are cleared by the daily run after seven days,
  * accounts with only a not yet confirmed new address are not.
  *
  * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
- *   A  confirmWithFactor() deleted in the route → red: “without a password
- *      the account stays …” and “with second factor …”
+ *   A  (26.11.2026) a password check back into the route → red: “the login
+ *      is enough …” and “with a second factor too” (400 instead of 200)
  *   B  deleteOwnAccount() without the administrator condition → red: “the last
  *      administrator stays”
  *   C  deleteOpenRegistrations() without `registration_pending` → red:
@@ -80,30 +80,30 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
     };
   };
 
-  await t.test('without password the account stays, with password it is gone', async () => {
+  await t.test('the login is enough, without a session the account stays', async () => {
     const id = await account(NAMES[0]);
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10294-1')`, [id]);
-    const removeIt = as(id);
-    assert.ok((await removeIt({})).status >= 400);
-    assert.ok((await removeIt({ password: 'falsch-falsch-1' })).status >= 400);
-    assert.ok(await da(id));
-    const r = await removeIt({ password: PASS });
+    const anonymous = testServer(_req, { session: {}, t }).base;
+    const without = await fetch(`${anonymous}/api/v2/auth/account`, { method: 'DELETE' });
+    assert.equal(without.status, 401);
+    assert.ok(await da(id), 'deleted without a session');
+    const r = await as(id)({});
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await da(id), false);
     assert.equal((await db.get('SELECT count(*)::int AS n FROM sets WHERE user_id = $1', [id])).n, 0);
   });
 
-  await t.test('with a second factor the password is not enough', async () => {
+  await t.test('with a second factor too', async () => {
     const id = await account(NAMES[1]);
     await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [id]);
-    const r = await as(id)({ password: PASS });
-    assert.equal(r.body.code, 'second_factor_required', JSON.stringify(r.body));
-    assert.ok(await da(id));
+    const r = await as(id)({});
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(await da(id), false);
   });
 
   await t.test('the last admin stays', async () => {
     const id = await account(NAMES[2], true);
-    const r = await as(id)({ password: PASS });
+    const r = await as(id)({});
     assert.deepEqual([r.status, r.body.code], [409, 'last_admin']);
     assert.ok(await da(id));
   });

@@ -10,8 +10,8 @@
  *   B  createInvitation again with randomBytes(24).base64url → red: “invitation code
  *      in groups of four” (format) and “invitation names the main account”
  *      (entered in lower case without dashes: expired)
- *   C  profile again with tRaw('account.profile') without explanation → red: “e-mail
- *      change: title and new address”
+ *   C  (26.11.2026) btn-sav-prof behind a password dialog again → red: “e-mail change
+ *      without a dialog, the new address waits for its link”
  *   D  discardToasts again “all with a button stay” → red: “toast of the view
  *      closes on switching”
  *   E  Delete branch removed in aktionen.js → red: “delete cross: Delete on the card”
@@ -112,19 +112,16 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     assert.doesNotMatch(await fremd.text(), new RegExp(OTHERS));
   });
 
-  await t.test('email change: title and new address', async () => {
+  await t.test('email change without a dialog, the new address waits for its link', async () => {
     await b.evaluate(klick('.umenu-item[data-arg="profile"]'));
     await until(`!!document.getElementById('prof-email').value`, 'Profile');
     await b.evaluate(
       `document.getElementById('prof-email').value = 'neu-${process.pid}@example.org'; document.getElementById('btn-sav-prof').click(); true`,
     );
-    await until(open, 'Passwortabfrage');
-    assert.equal(await b.evaluate(text('#cd-title')), 'E-Mail-Adresse ändern?');
-    assert.match(
-      await b.evaluate(text('#cd-msg')),
-      new RegExp(`Neue Adresse: neu-${process.pid}@example.org\\..*Passwort`),
-    );
-    await closed();
+    const fresh = async () => (await db.get('SELECT new_email FROM users WHERE id = $1', [app.uid]))?.new_email;
+    for (let i = 0; i < 50 && (await fresh()) !== `neu-${process.pid}@example.org`; i++) await sleep(100);
+    assert.equal(await fresh(), `neu-${process.pid}@example.org`, 'the new address waits for its link');
+    assert.equal(await b.evaluate(open), false, 'a dialog opened');
   });
 
   await t.test("the view's toast closes on a switch", async () => {

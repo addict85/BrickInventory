@@ -1,13 +1,13 @@
 /**
- * Deleting a voucher in the web app (real bundle in jsdom): the dialog asks as a question for the
+ * Deleting a voucher in the web app (real bundle in jsdom): the dialog asks a question without
  * password, the toast offers „Rückgängig“ — also for a card with a PDF, which the old undo
  * (creating it anew) could not bring back — and „Rückgängig“ calls the restore route.
  *
  * Counter-checks (measured 23.11.2026, each on its own, bundle rebuilt):
  *   A  in deleteVoucher() (js/vouchers.js) the `undo` option removed → red: “the toast offers
  *      undo …” (no „Rückgängig“ in the toast)
- *   B  in deleteRestorable() (js/deletion.js) `if (res === null) return null;` removed → red:
- *      “a cancelled code prompt …” (an error toast appears)
+ *   B  (26.11.2026) in deleteVoucher() `if (!yes) return;` removed → red: “cancelling the
+ *      question …” (the DELETE went out)
  *   C  'vouchers.delete_title' in de.js back to „Gutschein löschen“ → red: “the toast offers
  *      undo …” (title without question mark)
  */
@@ -34,14 +34,15 @@ const LIST = {
 };
 const RESTORED = { success: true, voucher: LIST.vouchers[0] };
 
-async function deleteWithPassword(d) {
+/** Opens the question; `yes` answers it, otherwise it is cancelled. */
+async function deleteAsked(d, yes = true) {
   await waitFor(() => d.querySelector('[data-click="deleteVoucher"]'));
   d.querySelector('[data-click="deleteVoucher"]').click();
   const modal = d.getElementById('confirm-modal');
-  assert.ok(await waitFor(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden));
+  assert.ok(await waitFor(() => modal.style.display === 'flex'), 'the question appears');
+  assert.equal(modal.querySelector('input[type="password"]'), null, 'the question asks for a password');
   const dialog = { title: text(d.getElementById('cd-title')), button: text(d.getElementById('cd-confirm')) };
-  d.getElementById('cd-pw').value = 'Mein-Passwort-1';
-  d.getElementById('cd-confirm').click();
+  d.getElementById(yes ? 'cd-confirm' : 'cd-cancel').click();
   await tick(20);
   return dialog;
 }
@@ -56,14 +57,14 @@ test('the toast offers undo for a card with PDF, and undo restores it on the ser
   });
   try {
     await view(w, 'vouchers');
-    const dialog = await deleteWithPassword(d);
+    const dialog = await deleteAsked(d);
     assert.deepEqual(dialog, { title: 'Gutschein löschen?', button: 'Löschen' });
     assert.ok(
       await waitFor(() => toastButtons(d).some(b => /Rückgängig/.test(b.textContent))),
       `no undo in the toast: ${text(d.getElementById('toasts'))}`,
     );
     const del = calls.find(c => c.method === 'DELETE');
-    assert.deepEqual(JSON.parse(del.body), { password: 'Mein-Passwort-1' });
+    assert.equal(del.body ?? null, null, 'the request carries no password');
 
     toastButtons(d)
       .find(b => /Rückgängig/.test(b.textContent))
@@ -83,19 +84,13 @@ test('the toast offers undo for a card with PDF, and undo restores it on the ser
   }
 });
 
-test('a cancelled code prompt deletes nothing and reports nothing', async () => {
-  const { w, d, calls } = await openUi({
-    '/v2/vouchers': LIST,
-    '/v2/vouchers/3': { $status: 400, success: false, code: 'second_factor_required', error: 'Code fehlt' },
-  });
+test('cancelling the question deletes nothing and reports nothing', async () => {
+  const { w, d, calls } = await openUi({ '/v2/vouchers': LIST, '/v2/vouchers/3': { success: true } });
   try {
     await view(w, 'vouchers');
-    await deleteWithPassword(d);
-    const codeWrap = d.getElementById('cd-code-wrap');
-    assert.ok(await waitFor(() => !codeWrap.hidden), 'the code prompt appears');
-    d.getElementById('cd-cancel').click();
+    await deleteAsked(d, false);
     await tick(50);
-    assert.equal(calls.filter(c => c.method === 'DELETE').length, 1);
+    assert.equal(calls.filter(c => c.method === 'DELETE').length, 0);
     assert.equal(text(d.getElementById('toasts')), '', 'a cancel is no error');
   } finally {
     w.close();

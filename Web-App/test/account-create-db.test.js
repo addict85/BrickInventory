@@ -1,10 +1,10 @@
 /**
- * An administrator creates an account only with their password, the log records
- * it, and “false” as a string yields no administrator.
+ * An administrator creates an account with the login alone (no password again,
+ * docs/SICHERHEIT.md), the log records it, and “false” as a string yields no administrator.
  *
  * Counter-checks (measured on 28.10.2026):
- *   A  bestaetigePasswort() removed from POST /users → red: “without
- *      administrator password no account”
+ *   A  (26.11.2026) a password check back into POST /users → red: “an account
+ *      without admin password …” (400 instead of 200)
  *   B  back to `isAdmin ? 1 : 0` instead of strictBool → red: “"false" creates no
  *      administrator”
  *   C  protokolliere(…, 'account_created') removed → red: “the log …”
@@ -70,10 +70,13 @@ test('create account', { concurrency: 1 }, async t => {
   const cookie = a.cookie.split(';')[0];
   const account = n => db.get('SELECT id, is_admin FROM users WHERE username = $1', [n]);
 
-  await t.test('no account without admin password', async () => {
+  await t.test('an account without admin password, but not without a session', async () => {
+    const anonymous = await callFn(AUTH + '/users', { username: NEW[0], password: 'einPasswort123' });
+    assert.equal(anonymous.status, 401, JSON.stringify(anonymous.body));
+    assert.equal(await account(NEW[0]), undefined, 'created without a session');
     const r = await callFn(AUTH + '/users', { username: NEW[0], password: 'einPasswort123' }, cookie);
-    assert.notEqual(r.status, 200);
-    assert.equal(await account(NEW[0]), undefined);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.ok(await account(NEW[0]), 'the account exists');
   });
 
   await t.test('"false" creates no admin', async () => {

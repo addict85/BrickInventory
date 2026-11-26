@@ -11,8 +11,8 @@
  *   F  (29.10.) id="settings-bl" removed → red: “jump bar to the sections”
  *   G  (29.10.) in settingsSection() preventDefault left out or the
  *      class settings-active not set → red: the same check
- *   D  admin_password not sent along in toggleAdmin → red: “revoking admin
- *      rights” (measured on 28.10. after merging)
+ *   D  (26.11.2026) toggleAdmin sends `admin_password` again → red: “revoking admin
+ *      rights” (a login is enough, docs/SICHERHEIT.md)
  *   H  (01.11.) toggleActive sends is_active without inversion → red: “deactivating
  *      and activating …”
  *   J  (04.11.) nutzerAktionen() without the exception for the own account → red:
@@ -93,20 +93,18 @@ test('revoking admin rights sends is_admin:false', async () => {
     await waitFor(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="3"]').click();
     assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
-    // Changing foreign accounts requires the own password (admin log).
-    assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'The password prompt is missing');
-    d.getElementById('cd-pw').value = 'mein-passwort';
+    assert.equal(d.querySelector('#confirm-modal input[type="password"]'), null, 'a password prompt');
     d.getElementById('cd-confirm').click();
     await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin')));
     const put = calls.find(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/3/admin'));
     assert.ok(put, 'No call for the role change');
-    assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
+    assert.deepEqual(JSON.parse(put.body), { is_admin: false });
   } finally {
     w.close();
   }
 });
 
-test('deactivating and activating send is_active with the password', async () => {
+test('deactivating and activating send is_active', async () => {
   const { w, d, calls } = await openUi(USER);
   try {
     await switchTab(w, 'settings');
@@ -119,13 +117,12 @@ test('deactivating and activating send is_active with the password', async () =>
     ]) {
       d.querySelector(`#users-tbl [data-click="toggleActive"][data-arg="${id}"]`).click();
       assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
-      d.getElementById('cd-pw').value = 'mein-passwort';
       d.getElementById('cd-confirm').click();
       await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`)));
       await waitFor(() => d.getElementById('confirm-modal').style.display !== 'flex');
       const put = calls.find(a => a.method === 'PUT' && a.url.includes(`/v2/auth/users/${id}/active`));
       assert.ok(put, `No call for account ${id}`);
-      assert.deepEqual(JSON.parse(put.body), { is_active: want, admin_password: 'mein-passwort' });
+      assert.deepEqual(JSON.parse(put.body), { is_active: want });
     }
   } finally {
     w.close();
@@ -155,10 +152,6 @@ test('SMTP: hint at the old exception, fingerprint and PEM go along', async () =
     assert.equal(d.getElementById('smtp-tls-fp').value, 'AB:CD');
     d.getElementById('smtp-tls-ca').value = '-----BEGIN CERTIFICATE-----';
     d.getElementById('btn-sav-smtp').click();
-    // The dialog clears the password field when opening: only enter it once it is open.
-    assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'No password dialog');
-    d.getElementById('cd-pw').value = 'mein-passwort';
-    d.getElementById('cd-confirm').click();
     const isPost = a => a.method === 'POST' && a.url.endsWith('/v2/settings');
     await waitFor(() => calls.some(isPost));
     const post = calls.find(isPost);
