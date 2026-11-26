@@ -6,8 +6,8 @@ Rot: below Android 13 the voucher page warns before copying, from 13 on not
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
 +++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
-@@ -138,7 +138,6 @@
-             )
+@@ -121,7 +121,6 @@
+             GuardedVoucherCard(g, m, condition, actions, guarded)
          }
          VoucherRaster(condition.vouchers, wide, card)
 -        if (condition.vouchers.isNotEmpty()) SecretCopyWarning()

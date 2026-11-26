@@ -178,4 +178,3 @@ private fun Outcome<VoucherReply>.saved(): Outcome<VoucherStorage> =
     promised({ it.success }, { it.error }) { VoucherStorage.Saved(it.multiple?.added, it.multiple?.updated) }
 
 private fun VoucherInfo.asRequest() = VoucherRequest(number = number, pin = pin, amount = amount.asDouble(), currency = currency)
-

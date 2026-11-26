@@ -73,7 +73,6 @@ data class ProfileSaved(val newAddress: Boolean, val mailSent: Boolean)
 /** Effective design, the admin's default and own choice; without [default] the server knows no design per account. */
 data class DesignState(val effective: Design?, val default: Design?, val own: Design?)
 
-
 data class SecondFactorStatus(val active: Boolean, val codesRemaining: Int)
 
 data class SecondFactorSetup(val secret: String?, val otpauth: String?)

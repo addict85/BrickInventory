@@ -118,24 +118,7 @@ fun VouchersCard(
         EmptyOrError(condition, actions::reload)
 
         val card: @Composable (VoucherView, Modifier) -> Unit = { g, m ->
-            VoucherCard(
-                g = g,
-                pinVisible = g.id in condition.pinVisible,
-                events = VoucherEvents(
-                    // Hiding needs no confirmation, revealing does.
-                    switchPin = {
-                        if (g.id in condition.pinVisible) actions.switchPin(g.id) else guarded { actions.switchPin(g.id) }
-                    },
-                    edit = { guarded { actions.edit(g.id) } },
-                    delete = { guarded { actions.delete(g.id) } },
-                    openPdf = { guarded { actions.openPdf(g.id) } },
-                    copy = { isNumber -> guarded { actions.copy(g.id, isNumber) } },
-                    queryBalance = { actions.queryBalance(g.id) },
-                ),
-                plaintext = condition.plaintext[g.id],
-                balanceRunning = condition.balanceRunning == g.id,
-                modifier = m,
-            )
+            GuardedVoucherCard(g, m, condition, actions, guarded)
         }
         VoucherRaster(condition.vouchers, wide, card)
         if (condition.vouchers.isNotEmpty()) SecretCopyWarning()
@@ -174,6 +157,35 @@ fun VouchersCard(
             onClose = { onNew(false); pdfUri = null; if (condition.edited != null) actions.cancelEdit() },
         )
     }
+}
+
+/** One card; its secrets open only behind the step guard ([protectedStep]). */
+@Composable
+private fun GuardedVoucherCard(
+    g: VoucherView,
+    m: Modifier,
+    condition: VoucherUiState,
+    actions: VoucherCardActions,
+    guarded: (() -> Unit) -> Unit,
+) {
+    VoucherCard(
+        g = g,
+        pinVisible = g.id in condition.pinVisible,
+        events = VoucherEvents(
+            // Hiding needs no confirmation, revealing does.
+            switchPin = {
+                if (g.id in condition.pinVisible) actions.switchPin(g.id) else guarded { actions.switchPin(g.id) }
+            },
+            edit = { guarded { actions.edit(g.id) } },
+            delete = { guarded { actions.delete(g.id) } },
+            openPdf = { guarded { actions.openPdf(g.id) } },
+            copy = { isNumber -> guarded { actions.copy(g.id, isNumber) } },
+            queryBalance = { actions.queryBalance(g.id) },
+        ),
+        plaintext = condition.plaintext[g.id],
+        balanceRunning = condition.balanceRunning == g.id,
+        modifier = m,
+    )
 }
 
 /** Number and PIN, the PDFs and delete: only after the device lock (step guard). */

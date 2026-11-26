@@ -20,7 +20,6 @@ import ch.brickinventoryapp.data.RedemptionOutcome
 import ch.brickinventoryapp.data.SwappedToken
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.classifyRedemption
-import ch.brickinventoryapp.data.collection.asRequest
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.mapData
@@ -253,7 +252,6 @@ data class LoginReply(val response: Login, val passkeyInsteadOfCode: Boolean = f
 private fun LoginResponse.asLogin() =
     Login(success = success, token = token, user = user?.username, admin = admin,
         secondFactor = secondFactor, error = error)
-
 
 /** From the 401 response to the second factor: does a passkey work instead of the code? Not in the contract (the error carries extra fields freely). */
 @Serializable

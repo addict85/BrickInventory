@@ -1879,14 +1879,10 @@
     "anfrage",
     "announced",
     "api",
-    "apkSha256",
-    "apkSize",
-    "apkUrl",
     "app_theme",
     "applied",
     "asked",
     "attempts",
-    "ausgestellt",
     "auth",
     "available",
     "avg",
@@ -1939,7 +1935,6 @@
     "color_name",
     "colors",
     "combined",
-    "commit",
     "condition",
     "condition_used",
     "conditions",
@@ -2036,7 +2031,6 @@
     "gesamtProzent",
     "global",
     "grand_total",
-    "gueltigBis",
     "guide_type",
     "hard_expires_at",
     "has_pdf",
@@ -2370,8 +2364,6 @@
     "values",
     "vars",
     "version",
-    "versionCode",
-    "versionName",
     "via",
     "view",
     "voucher",
@@ -5233,23 +5225,6 @@
         "from_user_id"
       ],
       "required": []
-    },
-    "UpdateDescription": {
-      "fields": [
-        "versionCode",
-        "versionName",
-        "apkUrl",
-        "commit",
-        "apkSize",
-        "apkSha256",
-        "ausgestellt",
-        "gueltigBis"
-      ],
-      "required": [
-        "versionCode",
-        "versionName",
-        "apkUrl"
-      ]
     },
     "UpdateManualItemRequest": {
       "fields": [

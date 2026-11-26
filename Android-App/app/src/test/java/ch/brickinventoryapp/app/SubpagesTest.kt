@@ -57,10 +57,10 @@ import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.testing.SessionFake
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.json.JSONObject
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

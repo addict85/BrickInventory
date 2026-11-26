@@ -8,4 +8,3 @@ import ch.brickinventoryapp.model.util.AppVersion
  * (preview, screenshot) an empty version sits there instead of a crash.
  */
 val LocalAppVersion = staticCompositionLocalOf { AppVersion(name = "", code = 0) }
-
