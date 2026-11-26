@@ -39,8 +39,8 @@ interface VouchersApi {
         @Body request: VoucherRequest,
     ): Response<VoucherReply>
 
-    // @HTTP instead of @DELETE: Retrofit allows no body for @DELETE, the server
-    // requires password and code in it.
+    // @HTTP instead of @DELETE: Retrofit allows no body for @DELETE, and the server still
+    // reads a JSON body there (password and code stay empty since the login suffices).
     @HTTP(method = "DELETE", path = "api/v2/vouchers/{id}", hasBody = true)
     suspend fun deleteVoucher(
         @Path("id") id: Int,

@@ -630,12 +630,8 @@
     <string name="household_invite_copy">Copy</string>
     <string name="household_invite_label">Invitation code</string>
     <string name="household_redeem_title">Accept an invitation</string>
-    <string name="household_redeem_hint">Enter the code from the main account and confirm with the password of this account. Your data stays yours.</string>
+    <string name="household_redeem_hint">Enter the code from the main account. Your data stays yours.</string>
     <string name="household_redeem_submit">Link</string>
-    <string name="household_redeem_password">Password of this account</string>
-    <string name="household_redeem_password_wrong">The password is wrong. Enter the password of the account you are signed in with.</string>
-    <string name="household_redeem_code">Code from the authenticator app or recovery code</string>
-    <string name="household_redeem_code_wrong">The code is wrong or has expired.</string>
     <string name="household_redeem_locked">Too many wrong attempts. Please try again later.</string>
     <string name="household_unlink">Unlink</string>
     <string name="household_remove">Remove</string>
@@ -769,9 +765,7 @@
     <!-- ══════════════ Account card (profile / password) ══════════════ -->
     <string name="account_title">Account</string>
     <string name="account_email_unverified">Email address not confirmed</string>
-    <string name="account_profile_password_needed">To save, enter your current password.</string>
     <string name="account_save">Save profile</string>
-    <string name="account_save_title">Save profile?</string>
     <string name="account_saved">Profile saved</string>
     <string name="account_email_pending">Pending: %1$s. It takes effect once you open the link sent to it; until then the current address stays.</string>
     <string name="account_email_link_sent">Confirmation link sent to %1$s. Until you open it, your current address stays valid.</string>
@@ -943,12 +937,7 @@
     <string name="vouchers_amount_invalid">Please enter a valid amount</string>
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
-    <string name="vouchers_confirm_title">Confirm with password</string>
     <string name="vouchers_delete_title">Delete voucher?</string>
-    <string name="vouchers_confirm_plaintext">The number and PIN are only shown after you confirm. The request is logged.</string>
-    <string name="vouchers_confirm_pdf">The PDF shows the number and PIN. Please confirm with your password.</string>
-    <string name="vouchers_confirm_button">Confirm</string>
-    <string name="vouchers_delete_offline">Deleting needs a connection to the server: your password is not stored on the device.</string>
     <string name="vouchers_mask_hint">Stays unchanged unless you type something new</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
@@ -1274,8 +1263,7 @@
     <string name="alerts_create_lock_reason">Enter the set number and threshold, then create.</string>
     <string name="household_invite_share">Share</string>
     <string name="household_invite_valid_until">Valid until %1$s</string>
-    <string name="household_redeem_lock_reason">Enter code and password, then link.</string>
-    <string name="household_redeem_lock_reason_factor">Enter code, password and second-factor code, then link.</string>
+    <string name="household_redeem_lock_reason">Enter the code, then link.</string>
     <string name="parts_quantity_hint">Number of identical parts</string>
     <string name="minifigs_quantity_hint">Number of identical minifigures</string>
     <string name="background_jobs">Jobs</string>

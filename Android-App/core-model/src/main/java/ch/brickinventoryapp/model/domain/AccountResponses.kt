@@ -59,14 +59,12 @@ data class AccountCreation(
     val language: String,
 )
 
-/** A profile change; [passwordCurrent] is always required by the server, [code] with a second factor. */
+/** A profile change; the signed-in token is enough, the server asks for no password. */
 data class ProfileChange(
     val user: String,
     val email: String,
     val firstName: String?,
     val lastName: String?,
-    val passwordCurrent: String,
-    val code: String?,
 )
 
 /** A new address applies only after the link; [mailSent] says whether it is on its way. */
@@ -75,8 +73,6 @@ data class ProfileSaved(val newAddress: Boolean, val mailSent: Boolean)
 /** Effective design, the admin's default and own choice; without [default] the server knows no design per account. */
 data class DesignState(val effective: Design?, val default: Design?, val own: Design?)
 
-/** Password and, if required, second-factor code for a sensitive action. */
-data class Confirmation(val password: String? = null, val code: String? = null)
 
 data class SecondFactorStatus(val active: Boolean, val codesRemaining: Int)
 

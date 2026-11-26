@@ -55,7 +55,7 @@ class InvitationCopyTest {
                 CompositionLocalProvider(LocalSdkLevel provides level.value) {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         HouseholdCard(HouseholdUiState(status = status, inviteCode = "ABCD-1234"),
-                            onCreateInvite = {}, onRedeemInvite = { _, _, _ -> }, onUnlink = {}, onUnlinkParent = {},
+                            onCreateInvite = {}, onRedeemInvite = {}, onUnlink = {}, onUnlinkParent = {},
                             onDiscard = {})
                     }
                 }

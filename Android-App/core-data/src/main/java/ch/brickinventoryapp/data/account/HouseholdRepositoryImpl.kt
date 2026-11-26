@@ -44,15 +44,9 @@ internal class HouseholdRepositoryImpl @Inject constructor(
     override suspend fun createHouseholdInvite(): Outcome<InvitationView> =
         safeCall { api.createHouseholdInvite() }.promised({ it.success }) { InvitationView(it.code.orEmpty(), it.expiresIn) }
 
-    /**
-     * [password]: the current password of the redeeming account — the server checks it.
-     * [factorCode]: with an active second factor its code; only sent if present.
-     */
-    override suspend fun redeemHouseholdInvite(code: String, password: String, factorCode: String?): Outcome<Unit> =
-        safeCall {
-            api.redeemHouseholdInvite(mapOf("code" to code, "password" to password) +
-                listOfNotNull(factorCode?.trim()?.takeIf { it.isNotEmpty() }?.let { "factor_code" to it }))
-        }.done()
+    /** Only the invitation code: the signed-in token is enough, the server asks for no password. */
+    override suspend fun redeemHouseholdInvite(code: String): Outcome<Unit> =
+        safeCall { api.redeemHouseholdInvite(mapOf("code" to code)) }.done()
 
     /**
      * [subUserId]: unlink a sub-account. [mainUserId]: unlink oneself from this one

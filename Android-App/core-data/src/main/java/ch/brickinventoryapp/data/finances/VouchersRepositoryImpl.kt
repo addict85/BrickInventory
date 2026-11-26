@@ -14,7 +14,6 @@ import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.reconciled
 import ch.brickinventoryapp.data.repository.safeCall
 import ch.brickinventoryapp.model.domain.BalanceInfo
-import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.domain.PlaintextView
 import ch.brickinventoryapp.model.domain.VoucherInfo
@@ -56,26 +55,25 @@ internal class VouchersRepositoryImpl @Inject constructor(
         safeCall { api.changeVoucher(id, info.asRequest()) }.saved()
 
     /**
-     * Delete with password and code. Deliberately without outbox: a buffered delete
-     * would have to keep the password until the next network.
+     * Without outbox: the dialog asked „are you sure“ for a card that is still there; a
+     * buffered delete would run later against whatever the list holds then.
      */
-    override suspend fun deleteVoucher(id: Int, confirmation: Confirmation): Outcome<Unit> =
-        safeCall { api.deleteVoucher(id, confirmation.asRequest()) }.done()
+    override suspend fun deleteVoucher(id: Int): Outcome<Unit> =
+        safeCall { api.deleteVoucher(id, SecondFactorRequest()) }.done()
 
-    /** No password: it gives back what was there and shows nothing. */
     override suspend fun restore(id: Int): Outcome<VoucherStorage> = safeCall { api.restoreVoucher(id) }.saved()
 
     /** Number and PIN in plaintext; never in cache or store. */
-    override suspend fun plaintext(id: Int, confirmation: Confirmation): Outcome<PlaintextView> =
-        safeCall { api.voucherPlaintext(id, confirmation.asRequest()) }.mapData { it.asView() }
+    override suspend fun plaintext(id: Int): Outcome<PlaintextView> =
+        safeCall { api.voucherPlaintext(id, SecondFactorRequest()) }.mapData { it.asView() }
 
     /**
      * A one-time ticket for the PDF of a voucher, without [id] for the PDF
      * of all. The one place for the release contract; the address for it is built by
      * voucherPdfAddress() in VoucherAddresses.kt.
      */
-    override suspend fun pdfRelease(id: Int?, confirmation: Confirmation): Outcome<String> {
-        val request = confirmation.asRequest()
+    override suspend fun pdfRelease(id: Int?): Outcome<String> {
+        val request = SecondFactorRequest()
         return safeCall { if (id == null) api.voucherExportRelease(request) else api.voucherPdfRelease(id, request) }
             .mapData { it.ticket }
     }
@@ -181,4 +179,3 @@ private fun Outcome<VoucherReply>.saved(): Outcome<VoucherStorage> =
 
 private fun VoucherInfo.asRequest() = VoucherRequest(number = number, pin = pin, amount = amount.asDouble(), currency = currency)
 
-private fun Confirmation.asRequest() = SecondFactorRequest(password = password, code = code)

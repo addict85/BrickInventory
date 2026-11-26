@@ -621,12 +621,8 @@
     <string name="household_invite_copy">Kopieren</string>
     <string name="household_invite_label">Einladungscode</string>
     <string name="household_redeem_title">Einladung annehmen</string>
-    <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein und bestätige mit dem Passwort dieses Kontos. Deine Daten bleiben deine.</string>
+    <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein. Deine Daten bleiben deine.</string>
     <string name="household_redeem_submit">Verknüpfen</string>
-    <string name="household_redeem_password">Passwort dieses Kontos</string>
-    <string name="household_redeem_password_wrong">Das Passwort stimmt nicht. Gib das Passwort des Kontos ein, mit dem du angemeldet bist.</string>
-    <string name="household_redeem_code">Code aus der Authenticator-App oder Wiederherstellungscode</string>
-    <string name="household_redeem_code_wrong">Der Code stimmt nicht oder ist abgelaufen.</string>
     <string name="household_redeem_locked">Zu viele Fehlversuche. Bitte versuche es später erneut.</string>
     <string name="household_unlink">Verknüpfung lösen</string>
     <string name="household_remove">Entfernen</string>
@@ -756,9 +752,7 @@
     <!-- ══════════════ Kontokarte (Profil / Passwort) ══════════════ -->
     <string name="account_title">Konto</string>
     <string name="account_email_unverified">E-Mail-Adresse nicht bestätigt</string>
-    <string name="account_profile_password_needed">Zum Speichern bitte das aktuelle Passwort eingeben.</string>
     <string name="account_save">Profil speichern</string>
-    <string name="account_save_title">Profil speichern?</string>
     <string name="account_saved">Profil gespeichert</string>
     <string name="account_email_pending">Ausstehend: %1$s. Gilt nach Bestätigung über den Link in der Mail an diese Adresse; bis dahin bleibt die bisherige.</string>
     <string name="account_email_link_sent">Bestätigungslink an %1$s gesendet. Bis du ihn öffnest, gilt die bisherige Adresse.</string>
@@ -930,12 +924,7 @@
     <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
     <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
-    <string name="vouchers_confirm_title">Mit Passwort bestätigen</string>
     <string name="vouchers_delete_title">Gutschein löschen?</string>
-    <string name="vouchers_confirm_plaintext">Nummer und PIN stehen erst nach der Bestätigung da. Die Abfrage wird protokolliert.</string>
-    <string name="vouchers_confirm_pdf">Das PDF zeigt Nummer und PIN. Bitte mit deinem Passwort bestätigen.</string>
-    <string name="vouchers_confirm_button">Bestätigen</string>
-    <string name="vouchers_delete_offline">Löschen geht nur mit Verbindung zum Server: Das Passwort wird nicht auf dem Gerät gespeichert.</string>
     <string name="vouchers_mask_hint">Bleibt unverändert, solange du nichts Neues eintippst</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
@@ -1256,8 +1245,7 @@
     <string name="alerts_create_lock_reason">Setnummer und Schwelle eingeben, dann anlegen.</string>
     <string name="household_invite_share">Teilen</string>
     <string name="household_invite_valid_until">Gültig bis %1$s</string>
-    <string name="household_redeem_lock_reason">Code und Passwort eingeben, dann verknüpfen.</string>
-    <string name="household_redeem_lock_reason_factor">Code, Passwort und Code des zweiten Faktors eingeben, dann verknüpfen.</string>
+    <string name="household_redeem_lock_reason">Code eingeben, dann verknüpfen.</string>
     <string name="parts_quantity_hint">Anzahl gleicher Teile</string>
     <string name="minifigs_quantity_hint">Anzahl gleicher Minifiguren</string>
     <string name="background_jobs">Aufträge</string>

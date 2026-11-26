@@ -20,7 +20,7 @@ interface HouseholdRepository {
 
     suspend fun createHouseholdInvite(): Outcome<InvitationView>
 
-    suspend fun redeemHouseholdInvite(code: String, password: String, factorCode: String? = null): Outcome<Unit>
+    suspend fun redeemHouseholdInvite(code: String): Outcome<Unit>
 
     suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Outcome<Unit>
 

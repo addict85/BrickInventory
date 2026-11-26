@@ -47,7 +47,6 @@ import ch.brickinventoryapp.collection.ui.dialogs.BarcodeResultDialog
 import ch.brickinventoryapp.collection.ui.screens.WantedItemUndoRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryActions
-import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
 import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.AlarmDirection
@@ -260,7 +259,7 @@ class AreaFlowsTest {
         world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF","sub_accounts":[]}"""
         world.paths.responses["/api/v2/settings/household/invite"] = """{"success":true,"code":"ABCD-1234","expires_in":86400}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
-            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api)))
+            testHouseholdRepository(world.t.api)))
         show { HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
         wait("household") { vm.householdState.value.status != null }
         compose.onNodeWithText(ctx.getString(R.string.household_redeem_lock_reason)).performScrollTo()

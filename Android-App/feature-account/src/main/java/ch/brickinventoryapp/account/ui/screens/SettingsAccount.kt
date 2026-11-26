@@ -26,10 +26,8 @@ import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ErrorRow
-import ch.brickinventoryapp.ui.components.PasswordPrompt
 import ch.brickinventoryapp.ui.components.PasswordSwitchCheck
 import ch.brickinventoryapp.ui.components.PasswordSwitchFields
-import ch.brickinventoryapp.ui.components.SecondFactorCodeField
 import ch.brickinventoryapp.ui.components.SelectionField
 import ch.brickinventoryapp.ui.components.SettingsCard
 import ch.brickinventoryapp.ui.components.announce
@@ -50,8 +48,9 @@ internal fun AccountCard(
     // `accountUiState`, not `condition`: the account pages already use `condition` for other
     // states, and the same name for two types gets confusing to read.
     accountUiState: AccountUiState,
-    onSave: (String, String, String, String, String?, String?) -> Unit,
-    onPassword: (String, String, String?) -> Unit,
+    onSave: (String, String, String, String) -> Unit,
+    /** The new password; the login is enough, the current one isn't asked. */
+    onPassword: (String) -> Unit,
     onMessageRoute: () -> Unit,
 ) {
     val profile = accountUiState.profile
@@ -61,12 +60,8 @@ internal fun AccountCard(
     // NORMALIZED state, not what was typed.
     val draft = remember(profile) { ProfileDraft(profile) }
     // remember, not rememberSaveable: saved state lands in the Bundle and, on
-    // process death, on disk (ActivityManager) — no place for passwords and codes.
+    // process death, on disk (ActivityManager) — no place for passwords.
     val passwords = remember { PasswordDraft() }
-    // The password for a profile change is only asked by the dialog on save.
-    var asksPassword by remember(profile) { mutableStateOf(false) }
-    var factorCode   by remember { mutableStateOf("") }
-    val code = factorCode.takeIf { accountUiState.codeNeeded && it.isNotBlank() }
 
     val changed = profileChanged(profile, draft.username, draft.email, draft.firstName, draft.lastName)
     // Save stays tappable and then marks what's missing (as with the set dialog).
@@ -81,23 +76,17 @@ internal fun AccountCard(
         }
 
         AccountMessages(accountUiState)
-        // Only after the server has demanded it; applies to email and password.
-        if (accountUiState.codeNeeded) SecondFactorCodeField(factorCode) { factorCode = it }
 
         if (profile != null) {
             ProfileFields(profile,
                 error = if (profileChecked) profileError(draft.username, draft.email) else emptyList(),
                 focus = profileFocus,
                 draft = draft, onEdit = onMessageRoute)
-            // Give up focus first: otherwise the last-typed field stays focused behind the
-            // dialog and keeps the keyboard and cursor, even though only the dialog
-            // accepts input.
-            val focus = LocalFocusManager.current
             ProfileSaveButton(nothingChanged = profileChecked && !changed, saves = accountUiState.save.running) {
                 profileChecked = true
                 val first = profileError(draft.username, draft.email).firstOrNull()
                 if (first != null) profileFocus.getValue(first).requestFocus()
-                else if (changed) { focus.clearFocus(); asksPassword = true }
+                else if (changed) onSave(draft.username, draft.email, draft.firstName, draft.lastName)
             }
         }
     }
@@ -109,20 +98,9 @@ internal fun AccountCard(
             passwords = passwords,
             saves = accountUiState.save.running,
             check = passwordCheck,
-            changeOn = { onPassword(passwords.current, passwords.new, code) },
+            changeOn = { onPassword(passwords.new) },
         )
     }
-
-    // The server confirms every profile change with the password: otherwise the
-    // password could be reset via a new address. It's only asked on save.
-    if (asksPassword) PasswordPrompt(
-        title = stringResource(R.string.account_save_title),
-        text = stringResource(R.string.account_profile_password_needed),
-        confirm = stringResource(R.string.account_save),
-        codeNeeded = false, error = null, running = accountUiState.save.running,
-        onConfirm = { pw, _ -> asksPassword = false; onSave(draft.username, draft.email, draft.firstName, draft.lastName, pw, code) },
-        onCancel = { asksPassword = false },
-    )
 }
 
 /**
@@ -136,9 +114,8 @@ private class ProfileDraft(profile: ProfileView?) {
     var lastName by mutableStateOf(profile?.lastName.orEmpty())
 }
 
-/** Current, new and repeated password; only in memory, never in the saved state. */
+/** New and repeated password; only in memory, never in the saved state. */
 private class PasswordDraft {
-    var current by mutableStateOf("")
     var new by mutableStateOf("")
     var repeated by mutableStateOf("")
 }
@@ -252,12 +229,12 @@ private fun PasswordCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         val focus = LocalFocusManager.current
-        PasswordSwitchFields(passwords.current, { passwords.current = it }, passwords.new, { passwords.new = it },
+        PasswordSwitchFields(null, {}, passwords.new, { passwords.new = it },
             passwords.repeated, { passwords.repeated = it }, check,
             KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }))
         // Tonal instead of outlined: a disabled outlined button was barely visible.
         FilledTonalButton(
-            onClick = { check.submit(passwords.current, passwords.new, passwords.repeated, changeOn) },
+            onClick = { check.submit(null, passwords.new, passwords.repeated, changeOn) },
             enabled = !saves,
             colors = toneButtonColors(),
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)

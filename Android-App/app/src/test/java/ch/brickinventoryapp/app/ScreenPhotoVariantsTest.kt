@@ -706,7 +706,7 @@ class ScreenPhotoVariantsTest {
         world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
-            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
+            testHouseholdRepository(world.t.api))).also { it.loadHousehold() }
         show("haushalt", ready = { vm.householdState.value.status != null }, condition = { vm.householdState.value }) {
             HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {})
         }
@@ -1347,7 +1347,7 @@ class ScreenPhotoVariantsTest {
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
         world.paths.responses["/api/v2/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
-            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api))).also { it.now = { FIXED_TIME }; it.loadHousehold() }
+            testHouseholdRepository(world.t.api))).also { it.now = { FIXED_TIME }; it.loadHousehold() }
         show("haushalt-code", ready = { vm.householdState.value.status != null }, condition = { vm.householdState.value }) {
             HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {})
         }
@@ -1550,7 +1550,7 @@ class ScreenPhotoVariantsTest {
         world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[],"open_invites":0}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
-            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
+            testHouseholdRepository(world.t.api))).also { it.loadHousehold() }
         show(name, dark = dark, font = font, ready = { vm.householdState.value.status != null },
             condition = { vm.householdState.value }) {
             HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {})

@@ -28,6 +28,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.json.JSONObject
 import java.io.File
 import java.time.Instant
 
@@ -38,19 +39,22 @@ import java.time.Instant
  *  - The check `list.none { it.current }` removed from redeemQuestion():
  *    "without a recognized own device, nothing is revoked" red — the
  *    confirmation went ahead.
- *  - In redeemConfirm() `codeNeeded` not set: "ein fremdes Gerät verlangt Passwort und bei Bedarf den Code" red; the password not put into
- *    the body: same check red (no "password").
+ *  - Patch counter-checks/devices-question-stays-after-refusal.patch (prompt cleared only on
+ *    success): "a refused sign-out closes the question …" red. Patch
+ *    counter-checks/devices-end-others-with-password.patch: "other devices go in one request …" red.
  *  - The call `sessionService.logout()` removed from changePassword(): "nach dem Passwortwechsel wird abgemeldet" red.
  *  - In secondFactor() `successText` no longer reported: "der bestätigte zweite Faktor zeigt die Codes" red on the message.
  *  - In asDevice() `.minOrNull()` → `.maxOrNull()`: "die Geräteliste zeigt Vollzugriff und die frühere Frist" red (2027 instead of 2026);
  *    `accesses` ignored when counting: "ein schon entwertetes Gerät zählt nicht" red.
- *  - In declined() `codeNeeded` not set: "ohne Code verlangt der zweite Faktor …" and "eine neue E-Mail …" red; in changePassword()
+ *  - In declined() `codeNeeded` not set: "without a code the second factor requires the code field …" red; in changePassword()
  *    the code not passed to changePassword(): same check red (no
  *    "code" in the body).
  *  - In setUpSecondFactorOne() `d.otpauth` taken unchecked:
  *    "a foreign address instead of otpauth is not opened" red.
- *  - Patch counter-checks/profile-without-password.patch (the check
- *    `password.isNullOrBlank()` removed from saveProfile()): "ohne Passwort fragt das Profil den Server nicht" red.
+ *  - Patch counter-checks/profile-save-returns-early.patch (saveProfile() stops before the
+ *    request, as it did without a password): "the profile is saved without password or code" red.
+ *  - Patch counter-checks/second-factor-off-with-password.patch: "new codes and turning off
+ *    need neither password nor code" red.
  *  - Patch counter-checks/profile-mail-not-sent-silent.patch (`emailSent` not
  *    evaluated): "eine neue E-Mail ohne gesendete Mail …" red. Patch
  *    counter-checks/profile-reload-clears-error.patch (fetchProfile() clears the
@@ -133,7 +137,7 @@ class AccountViewModelTest {
         {"token_id":"c3","label":"Alt"}]}"""
 
     @Test
-    fun `other devices go in one confirmed request, the own one stays`() {
+    fun `other devices go in one request after the question, the own one stays`() {
         server.enqueue(response(devices(currentAlong = true)))
         vm.loadDevices()
         until("list") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
@@ -141,41 +145,53 @@ class AccountViewModelTest {
 
         vm.redeemQuestion(null)
         until("confirmation") { vm.devicesState.value.prompt?.tokenId == null && vm.devicesState.value.prompt != null }
+        assertEquals("no request before the question is answered", 1, server.requestCount)
         server.enqueue(response("""{"success":true,"deleted":0,"accesses":2}"""))
         server.enqueue(response(devices(currentAlong = true)))
-        vm.redeemConfirm("geheim", null)
-        until("neu geladen") { server.requestCount == 3 && !vm.devicesState.value.fetch.loading }
+        vm.redeemConfirm()
+        until("reloaded") { server.requestCount == 3 && !vm.devicesState.value.fetch.loading }
 
         val r = server.takeRequest()
         assertTrue(r.path.orEmpty(), r.path.orEmpty().endsWith("/settings/sessions/end-others"))
-        val body = r.body.readUtf8()
-        assertTrue(body, body.contains("\"password\":\"geheim\"") && body.contains("\"accesses\":true"))
+        val body = JSONObject(r.body.readUtf8())
+        assertTrue("$body", body.getBoolean("accesses") && body.isNull("password") && body.isNull("code"))
         assertNull(vm.devicesState.value.prompt)
         assertEquals("m${R.plurals.tokens_revoked_n}:2", channel.text)
     }
 
     @Test
-    fun `a foreign device requires password and, if needed, the code`() {
+    fun `a foreign device is signed out after the question, without password or code`() {
         server.enqueue(response(devices(currentAlong = true)))
         vm.loadDevices()
         until("list") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
         server.takeRequest()
 
         vm.redeemQuestion("b2")
-        server.enqueue(response("""{"success":false,"error":"Code fehlt","code":"second_factor_required"}""", 400))
-        vm.redeemConfirm("geheim", null)
-        until("code required") { vm.devicesState.value.prompt?.codeNeeded == true }
-        val without = server.takeRequest()
-        assertEquals("DELETE", without.method)
-        assertTrue(without.path.orEmpty(), without.path.orEmpty().endsWith("/settings/tokens/b2"))
-        assertTrue(without.body.readUtf8().contains("\"password\":\"geheim\""))
-
+        assertEquals("b2", vm.devicesState.value.prompt?.tokenId)
         server.enqueue(response("""{"success":true,"deleted":1}"""))
         server.enqueue(response(devices(currentAlong = true)))
-        vm.redeemConfirm("geheim", "123456")
-        until("erledigt") { server.requestCount == 4 && vm.devicesState.value.prompt == null }
-        assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"123456\""))
+        vm.redeemConfirm()
+        until("done") { server.requestCount == 3 && vm.devicesState.value.prompt == null }
+        val r = server.takeRequest()
+        assertEquals("DELETE", r.method)
+        assertTrue(r.path.orEmpty(), r.path.orEmpty().endsWith("/settings/tokens/b2"))
+        val body = JSONObject(r.body.readUtf8())
+        assertTrue("$body", body.isNull("password") && body.isNull("code"))
         assertEquals("t${R.string.tokens_revoked}", channel.text)
+    }
+
+    @Test
+    fun `a refused sign-out closes the question and reports the reason`() {
+        server.enqueue(response(devices(currentAlong = true)))
+        vm.loadDevices()
+        until("list") { vm.devicesState.value.devices.size == 3 && !vm.devicesState.value.fetch.loading }
+        vm.redeemQuestion("b2")
+        server.enqueue(response("""{"success":false,"error":"Gerät gesperrt"}""", 400))
+        vm.redeemConfirm()
+        until("refusal") { channel.text != null }
+        assertNull("no question left that cannot be answered", vm.devicesState.value.prompt)
+        assertEquals("Gerät gesperrt", channel.text)
+        assertEquals("the list stays", 3, vm.devicesState.value.devices.size)
     }
 
     @Test
@@ -206,8 +222,8 @@ class AccountViewModelTest {
         vm.redeemQuestion(null)
         server.enqueue(response("""{"success":true,"deleted":1,"accesses":0}"""))
         server.enqueue(response(devices(currentAlong = true)))
-        vm.redeemConfirm("geheim", null)
-        until("neu geladen") { server.requestCount == 3 && !vm.devicesState.value.fetch.loading }
+        vm.redeemConfirm()
+        until("reloaded") { server.requestCount == 3 && !vm.devicesState.value.fetch.loading }
         assertEquals("m${R.plurals.tokens_revoked_n}:0", channel.text)
     }
 
@@ -267,14 +283,14 @@ class AccountViewModelTest {
     fun `a foreign address instead of otpauth is not opened`() {
         server.enqueue(response("""{"success":true,"secret":"JBSWY3DPEHPK3PXP",
             "otpauth":"intent://totp/#Intent;scheme=otpauth;end"}"""))
-        vm.setUpSecondFactorOne("geheim")
+        vm.setUpSecondFactorOne()
         until("setup") { vm.secondFactorState.value.secret != null }
         assertNull("only otpauth:// goes to ACTION_VIEW", vm.secondFactorState.value.otpauth)
         assertEquals("the key stays for typing it in", "JBSWY3DPEHPK3PXP", vm.secondFactorState.value.secret)
 
         val real = "otpauth://totp/BrickInventory%3Amarco?secret=JBSWY3DPEHPK3PXP"
         server.enqueue(response("""{"success":true,"secret":"JBSWY3DPEHPK3PXQ","otpauth":"$real"}"""))
-        vm.setUpSecondFactorOne("geheim")
+        vm.setUpSecondFactorOne()
         until("second setup") { vm.secondFactorState.value.secret == "JBSWY3DPEHPK3PXQ" }
         assertEquals(real, vm.secondFactorState.value.otpauth)
     }
@@ -295,37 +311,33 @@ class AccountViewModelTest {
     }
 
     @Test
-    fun `without a password the profile does not ask the server`() {
-        vm.saveProfile("marco2", "marco@example.org", "", "", null)
-        assertEquals("t${R.string.account_profile_password_needed}", vm.accountState.value.save.errorMessage.text)
-        vm.saveProfile("marco2", "marco@example.org", "", "", "  ")
-        assertEquals(0, server.requestCount)
-        assertFalse(vm.accountState.value.save.running)
-    }
-
-    @Test
-    fun `a new name carries the password along`() {
+    fun `the profile is saved without password or code`() {
         server.enqueue(response("""{"success":true}"""))
         server.enqueue(response("""{"success":true,"user":{"id":1,"username":"marco2"}}"""))
-        vm.saveProfile("marco2", "marco@example.org", "", "", "Mein-Passwort-1")
-        until("gespeichert") { vm.accountState.value.message != null }
-        val body = server.takeRequest().body.readUtf8()
-        assertTrue(body, body.contains("\"password_current\":\"Mein-Passwort-1\"") && body.contains("\"username\":\"marco2\""))
+        vm.saveProfile("marco2", "marco@example.org", "", "")
+        until("saved") { vm.accountState.value.message != null }
+        val body = JSONObject(server.takeRequest().body.readUtf8())
+        assertEquals("marco2", body.getString("username"))
+        assertTrue("$body", body.isNull("password_current") && body.isNull("code"))
+        assertEquals("t${R.string.account_saved}", vm.accountState.value.message.text)
     }
 
     @Test
-    fun `a new e-mail carries the code along`() {
-        server.enqueue(response("""{"success":false,"error":"Bitte den Code eingeben.","code":"second_factor_required"}""", 400))
-        vm.saveProfile("marco", "neu@example.org", "", "", "pw")
-        until("refusal") { vm.accountState.value.codeNeeded }
-        server.takeRequest()
+    fun `new codes and turning off need neither password nor code`() {
+        server.enqueue(response("""{"success":true,"codes":["aaaa-1111","bbbb-2222"]}"""))
+        vm.renewSecondFactorCodes()
+        until("codes") { vm.secondFactorState.value.codes.size == 2 }
+        val renew = server.takeRequest()
+        assertTrue(renew.path.orEmpty(), renew.path.orEmpty().endsWith("/second-factor/codes"))
+        assertTrue(JSONObject(renew.body.readUtf8()).let { it.isNull("password") && it.isNull("code") })
 
         server.enqueue(response("""{"success":true}"""))
-        server.enqueue(response("""{"success":true,"user":{"id":1,"username":"marco"}}"""))
-        vm.saveProfile("marco", "neu@example.org", "", "", "pw", "654321")
-        until("gespeichert") { vm.accountState.value.message != null }
-        assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"654321\""))
-        assertFalse("after success no code field any more", vm.accountState.value.codeNeeded)
+        vm.disableSecondFactor()
+        until("off") { vm.secondFactorState.value.active == false }
+        val off = server.takeRequest()
+        assertTrue(off.path.orEmpty(), off.path.orEmpty().endsWith("/second-factor/disable"))
+        assertTrue(JSONObject(off.body.readUtf8()).let { it.isNull("password") && it.isNull("code") })
+        assertEquals("t${R.string.zf_disabled}", channel.text)
     }
 
     @Test
@@ -333,7 +345,7 @@ class AccountViewModelTest {
         server.enqueue(response("""{"success":true,"emailChanged":true,"emailSent":true}"""))
         server.enqueue(response("""{"success":true,"user":{"id":1,"username":"marco","email":"alt@example.org",
             "email_verified":true,"new_email":"neu@example.org"}}"""))
-        vm.saveProfile("marco", " neu@example.org ", "", "", "pw")
+        vm.saveProfile("marco", " neu@example.org ", "", "")
         until("neu geladen") { vm.accountState.value.profile != null }
         assertEquals(R.string.account_email_link_sent, (vm.accountState.value.message as Message.Resource).id)
         assertNull(vm.accountState.value.save.errorMessage)
@@ -346,7 +358,7 @@ class AccountViewModelTest {
         server.enqueue(response("""{"success":true,"emailChanged":true,"emailSent":false}"""))
         server.enqueue(response("""{"success":true,"user":{"id":1,"username":"marco","email":"alt@example.org",
             "email_verified":true,"new_email":"neu@example.org"}}"""))
-        vm.saveProfile("marco", "neu@example.org", "", "", "pw")
+        vm.saveProfile("marco", "neu@example.org", "", "")
         until("neu geladen") { vm.accountState.value.profile != null }
         assertEquals("the error survives the reload", "t${R.string.account_email_not_sent}", vm.accountState.value.save.errorMessage.text)
         assertNull("no “saved”", vm.accountState.value.message)

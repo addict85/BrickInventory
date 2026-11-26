@@ -25,7 +25,7 @@ data class AccountUiState(
     val save: Operation = Operation.Done,
     /** What saving achieved. */
     val message: Message? = null,
-    /** The server requires the second factor (zweiter_faktor_noetig): show the code field. */
+    /** Start-password mask: the server requires the second factor, show the code field. */
     val codeNeeded: Boolean = false,
     /** Null as long as it isn't loaded, or the server knows no per-account design. */
     val design: DesignChoice? = null,
@@ -57,18 +57,16 @@ internal data class DevicesUiState(
     /** The list fetch; an error stands in place of the list. */
     val fetch: Load<Unit> = Load.Data(Unit),
     val devices: List<DeviceView> = emptyList(),
-    /** The open password prompt before sign-out; null = none. */
+    /** The open follow-up question before sign-out, or the sign-out running; null = none. */
     val prompt: DevicesPrompt? = null,
 )
 
 /**
- * The server signs out a foreign device only with password (and code): a
- * stolen access token must not lock out the owner. [tokenId] null means
- * "all others".
+ * Signing out a device can't be undone, so it asks first; the login is enough, no
+ * password. [tokenId] null means "all others".
  */
 internal data class DevicesPrompt(
     val tokenId: String?,
-    val codeNeeded: Boolean = false,
     val operation: Operation = Operation.Done,
 )
 
@@ -81,14 +79,8 @@ data class HouseholdUiState(
     val inviteCode: String? = null,
     /** Until when the code is valid (milliseconds since 1970); null if the server doesn't say. */
     val inviteValidUntil: Long? = null,
-    /** The password was wrong when redeeming; the field shows it. */
-    val passwordWrong: Boolean = false,
     /** Counts successful redemptions — the view clears its fields on that. */
     val redeemed: Int = 0,
-    /** The second factor is active (or the server required its code): show the code field. */
-    val factorNeeded: Boolean = false,
-    /** The second factor's code was wrong; the field shows it. */
-    val factorWrong: Boolean = false,
 )
 
 /**

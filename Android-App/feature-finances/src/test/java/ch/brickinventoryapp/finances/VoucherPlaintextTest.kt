@@ -13,11 +13,8 @@ import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
 import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.testing.NumbersTexts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,24 +33,27 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Vouchers with a masked list: number and PIN, PDF and delete only after a
- * password (and code), the plain text only in the ViewModel. Against a test server.
+ * Vouchers with a masked list: number, PIN and PDF need only the login (no password, no
+ * code), deleting asks „are you sure“ first; the plain text lives only in the ViewModel.
+ * Against a test server.
  *
  * Counter-checks:
- *  A  In confirm() `codeNeeded = … || error.code in FACTOR_CODES` reset
- *     to `it.confirmation.codeNeeded` → red “revealing a PIN …”
- *     (code field does not appear).
- *  B  In verlange() the plain-text shortcut removed (always a new prompt) → red
- *     “revealing a PIN …” (copying asks again instead of copying).
+ *  A  In require() every step again only opens the prompt instead of running
+ *     (counter-checks/voucher-show-asks-again.patch) → red “revealing the PIN runs …”.
+ *  B  In require() the plain-text shortcut removed → red “revealing a PIN …”
+ *     (copying asks the server again instead of copying).
  *  C  forgetPlaintext() does not clear `plaintext` → red “revealing a PIN …”.
- *  D  In confirm() the offline message on deleting removed (always
- *     texts.message) → red “offline it is not deleted …”.
- *  E  withTicket() does not attach the ticket → red “PDF and export …”.
+ *  D  In require() DELETE runs right away like the other steps → red “deleting asks …”
+ *     (counter-checks/voucher-delete-without-question.patch).
+ *  E  In run() the rejection no longer closes the step → red “offline nothing is
+ *     deleted …” (counter-checks/voucher-refusal-keeps-step.patch).
  *  F  editVoucher() no longer takes `g.pin`, but "" instead → red
  *     “editing sends the mask …” (the PIN would be cleared or missing).
  *  G  inputViaMask() always returns `newValue` → red “the mask is a whole”.
  *  H  pdfWithOnceTicket() always false → red “PDF and export …” (the viewer
  *     retried a used-up ticket).
+ *  I  The repository sends a password again with the PDF release → red “PDF and export …”
+ *     (counter-checks/voucher-pdf-with-password.patch).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoucherPlaintextTest {
@@ -97,55 +97,55 @@ class VoucherPlaintextTest {
         Dispatchers.resetMain()
     }
 
-    @Test
-    fun `revealing the PIN asks for password, then code, and the plaintext lives only on the page`() {
-        vm.switchVoucherPin(1)
-        assertEquals(VoucherStep.PIN_SHOW, vm.state.value.confirmation?.step)
-        assertEquals("no request before the password", 1, server.requestCount)
+    /** The body of a confirmed step: JSON, but without password and code. */
+    private fun assertNoSecrets(body: String) {
+        val o = JSONObject(body)
+        assertTrue("no password in $body", o.isNull("password"))
+        assertTrue("no code in $body", o.isNull("code"))
+    }
 
-        server.enqueue(response("""{"success":false,"error":"Bitte den Code eingeben.","code":"second_factor_required"}""", 400))
-        vm.confirm("geheim", null)
-        pollUntil("Codefeld") { vm.state.value.confirmation?.let { it.codeNeeded && !it.operation.running } == true }
-        assertTrue(vm.state.value.pinVisible.isEmpty())
+    @Test
+    fun `revealing the PIN runs without a prompt, and the plaintext lives only on the page`() {
+        server.enqueue(response(plaintext))
+        vm.switchVoucherPin(1)
+        pollUntil("revealed") { 1 in vm.state.value.pinVisible }
+        assertNull("no prompt left over", vm.state.value.confirmation)
+        assertEquals("1234", vm.state.value.plaintext[1]?.pin)
         val first = server.takeRequest()
         assertEquals("POST /api/v2/vouchers/1/plaintext", "${first.method} ${first.path}")
-        assertEquals("geheim", JSONObject(first.body.readUtf8()).getString("password"))
+        assertNoSecrets(first.body.readUtf8())
 
-        server.enqueue(response(plaintext))
-        vm.confirm("geheim", " 123456 ")
-        pollUntil("aufgedeckt") { 1 in vm.state.value.pinVisible }
-        assertNull(vm.state.value.confirmation)
-        assertEquals("1234", vm.state.value.plaintext[1]?.pin)
-        assertEquals("123456", JSONObject(server.takeRequest().body.readUtf8()).getString("code"))
-
-        // Already there: copying does not ask again and copies the plain text.
+        // Already there: copying does not ask the server again and copies the plain text.
         vm.copyVoucher(1, isNumber = true)
         assertEquals(CopyJob("6000111122223333", true), vm.state.value.copyTo)
         assertNull(vm.state.value.confirmation)
-        assertEquals(3, server.requestCount)
+        assertEquals(2, server.requestCount)
 
         vm.leaveVouchers()
         assertTrue(vm.state.value.plaintext.isEmpty())
         assertTrue(vm.state.value.pinVisible.isEmpty())
         assertNull(vm.state.value.copyTo)
-        // With a password again after leaving.
+        // After leaving the plain text comes from the server again, still without a prompt.
+        server.enqueue(response(plaintext))
         vm.copyVoucher(1, isNumber = false)
-        assertEquals(VoucherStep.PIN_COPY, vm.state.value.confirmation?.step)
+        pollUntil("copied") { vm.state.value.copyTo != null }
+        assertEquals(CopyJob("1234", false), vm.state.value.copyTo)
+        assertEquals(3, server.requestCount)
     }
 
     @Test
-    fun `deleting sends password and code in the body`() {
+    fun `deleting asks first and then sends no password`() {
         vm.deleteVoucher(1)
         assertEquals(VoucherStep.DELETE, vm.state.value.confirmation?.step)
+        assertFalse("nothing runs before „are you sure“", vm.state.value.confirmation!!.operation.running)
+        assertEquals("no request before „are you sure“", 1, server.requestCount)
         server.enqueue(response("""{"success":true}"""))
         server.enqueue(response("""{"success":true,"vouchers":[]}"""))
-        vm.confirm("geheim", "654321")
-        pollUntil("gelöscht") { vm.state.value.vouchers.isEmpty() }
+        vm.confirm()
+        pollUntil("deleted") { vm.state.value.vouchers.isEmpty() }
         val r = server.takeRequest()
         assertEquals("DELETE /api/v2/vouchers/1", "${r.method} ${r.path}")
-        val body = JSONObject(r.body.readUtf8())
-        assertEquals("geheim", body.getString("password"))
-        assertEquals("654321", body.getString("code"))
+        assertNoSecrets(r.body.readUtf8())
         assertNull(vm.state.value.confirmation)
         assertEquals("the undo snackbar names the card", 1, vm.state.value.deleted)
     }
@@ -154,31 +154,31 @@ class VoucherPlaintextTest {
     fun `offline nothing is deleted and nothing buffered`() {
         vm.deleteVoucher(1)
         server.shutdown()
-        vm.confirm("geheim", null)
-        pollUntil("Absage") { vm.state.value.confirmation?.let { it.operation is Operation.Failed } == true }
-        assertEquals("t${R.string.vouchers_delete_offline}", vm.state.value.confirmation?.operation?.errorMessage.text)
+        vm.confirm()
+        pollUntil("refusal") { vm.state.value.confirmation == null && channel.text != null }
         assertEquals("the voucher is still shown", 1, vm.state.value.vouchers.size)
+        assertNull("nothing waits for the network", vm.state.value.deleted)
     }
 
     @Test
     fun `PDF and export only with a ticket`() {
-        vm.openVoucherPdf(1)
-        assertNull("without a password no destination", vm.state.value.pdfTarget)
         server.enqueue(response("""{"success":true,"ticket":"t/1+","valid_seconds":60}"""))
-        vm.confirm("geheim", null)
-        pollUntil("Ticket") { vm.state.value.pdfTarget != null }
+        vm.openVoucherPdf(1)
+        pollUntil("ticket") { vm.state.value.pdfTarget != null }
         assertEquals(VoucherPdfTarget(1, "t/1+"), vm.state.value.pdfTarget)
-        assertEquals("POST /api/v2/vouchers/1/pdf-grant", server.takeRequest().let { "${it.method} ${it.path}" })
+        assertNull("no prompt left over", vm.state.value.confirmation)
+        val grant = server.takeRequest()
+        assertEquals("POST /api/v2/vouchers/1/pdf-grant", "${grant.method} ${grant.path}")
+        assertNoSecrets(grant.body.readUtf8())
         assertEquals("https://brick.example/api/v2/vouchers/1/pdf?ticket=t%2F1%2B",
             voucherPdfAddress("https://brick.example/", vm.state.value.pdfTarget!!))
         assertTrue(pdfWithOnceTicket(voucherPdfAddress("https://brick.example/", vm.state.value.pdfTarget!!)))
         assertFalse(pdfWithOnceTicket("https://brick.example/api/v2/instructions/4/file"))
         vm.voucherPdfAcknowledge()
 
-        vm.openVoucherExport()
         server.enqueue(response("""{"success":true,"ticket":"x","valid_seconds":60}"""))
-        vm.confirm("geheim", null)
-        pollUntil("Ticket") { vm.state.value.pdfTarget != null }
+        vm.openVoucherExport()
+        pollUntil("ticket") { vm.state.value.pdfTarget != null }
         assertEquals("POST /api/v2/vouchers/export/pdf-grant", server.takeRequest().let { "${it.method} ${it.path}" })
         assertEquals("https://brick.example/api/v2/vouchers/export/pdf?ticket=x",
             voucherPdfAddress("https://brick.example", vm.state.value.pdfTarget!!))

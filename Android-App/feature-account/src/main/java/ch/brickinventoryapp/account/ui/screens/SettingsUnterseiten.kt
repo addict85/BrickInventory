@@ -86,7 +86,7 @@ fun HouseholdRoute(
         HouseholdCard(
             state = household,
             onCreateInvite = { vm.createHouseholdInvite() },
-            onRedeemInvite = { code, password, factorCode -> vm.redeemHouseholdInvite(code, password, factorCode) },
+            onRedeemInvite = { code -> vm.redeemHouseholdInvite(code) },
             onUnlink = { id -> vm.unlinkHousehold(subUserId = id) },
             onUnlinkParent = { id -> vm.unlinkHousehold(mainUserId = id) },
             onDiscard = { id -> vm.discardSeparateAccount(id) },
@@ -113,24 +113,24 @@ fun AccountRoute(
         width = ReadingWidth.form) {
         AccountCard(
             accountUiState = accountUiState,
-            onSave = { b, e, v, n, p, c -> account.saveProfile(b, e, v, n, p, c) },
-            onPassword = { old, newValue, c -> account.changePassword(old, newValue, c) },
+            onSave = { b, e, v, n -> account.saveProfile(b, e, v, n) },
+            onPassword = { newValue -> account.changePassword(current = "", newValue = newValue) },
             onMessageRoute = { account.accountMessageRoute() },
         )
         DesignCard(design = accountUiState.design, onChoice = { account.chooseDesign(it) })
         SecondFactorCard(
             secondFactorUiState = secondFactorUiState,
-            onSetUp = { account.setUpSecondFactorOne(it) },
+            onSetUp = { account.setUpSecondFactorOne() },
             onConfirm = { account.confirmSecondFactor(it) },
-            onNewCodes = { account.renewSecondFactorCodes(it) },
-            onTurnOff = { pw, code -> account.disableSecondFactor(pw, code) },
+            onNewCodes = { account.renewSecondFactorCodes() },
+            onTurnOff = { account.disableSecondFactor() },
             onBack = { account.secondFactorBack() },
         )
         DevicesCard(
             condition = devicesUiState,
             onReload = { account.loadDevices() },
             onQuestion = { account.redeemQuestion(it) },
-            onConfirm = { pw, code -> account.redeemConfirm(pw, code) },
+            onConfirm = { account.redeemConfirm() },
             onCancel = { account.cancelRedeem() },
         )
     }

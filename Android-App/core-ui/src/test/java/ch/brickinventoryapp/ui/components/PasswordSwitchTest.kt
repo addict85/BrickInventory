@@ -11,7 +11,8 @@ import org.junit.Test
  * gets the cursor (account and start password).
  *
  * Counter-check (measured locally, JVM):
- *   password-repeat-unchecked  repetition check removed → red „verschiedene Wiederholung …“ and „leer …“
+ *   password-repeat-unchecked  repetition check removed → red „a different repetition …“
+ *   password-current-always-required  `current != null &&` removed → red „without a current field …“
  */
 class PasswordSwitchTest {
 
@@ -30,5 +31,11 @@ class PasswordSwitchTest {
     @Test
     fun `a different repetition is an error`() {
         assertEquals(listOf(RETRY), passwordSwitchError("alt", "zwoelf-zeichen", "zwoelf-zeicheN"))
+    }
+
+    @Test
+    fun `without a current field only the new password and its repetition count`() {
+        assertEquals(listOf(NEW), passwordSwitchError(null, "", ""))
+        assertEquals(emptyList<PasswordFieldError>(), passwordSwitchError(null, "zwoelf-zeichen", "zwoelf-zeichen"))
     }
 }

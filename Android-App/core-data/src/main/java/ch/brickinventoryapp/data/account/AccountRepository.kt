@@ -7,7 +7,6 @@ import ch.brickinventoryapp.model.domain.AccountCreation
 import ch.brickinventoryapp.model.domain.AccountOwner
 import ch.brickinventoryapp.model.domain.AccountSettings
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.DesignState
 import ch.brickinventoryapp.model.domain.DeviceView
@@ -56,13 +55,14 @@ interface AccountRepository {
 
     suspend fun secondFactorStatus(): Outcome<SecondFactorStatus>
 
-    suspend fun setUpSecondFactor(password: String): Outcome<SecondFactorSetup>
+    /** [password] only from the mandatory setup mask; settings send none. */
+    suspend fun setUpSecondFactor(password: String? = null): Outcome<SecondFactorSetup>
 
     suspend fun secondFactorConfirm(code: String): Outcome<List<String>>
 
-    suspend fun disableSecondFactor(password: String, code: String): Outcome<Unit>
+    suspend fun disableSecondFactor(): Outcome<Unit>
 
-    suspend fun secondFactorNewCodes(code: String): Outcome<List<String>>
+    suspend fun secondFactorNewCodes(): Outcome<List<String>>
 
     suspend fun updateProfile(change: ProfileChange): Outcome<ProfileSaved>
 
@@ -71,10 +71,10 @@ interface AccountRepository {
     suspend fun getTokens(): Outcome<List<DeviceView>>
 
     /** How many tokens were invalidated; 0 if it was already gone. */
-    suspend fun revokeToken(tokenId: String, confirmation: Confirmation): Outcome<Int>
+    suspend fun revokeToken(tokenId: String): Outcome<Int>
 
     /** How many accesses were ended. */
-    suspend fun endOther(confirmation: Confirmation): Outcome<Int>
+    suspend fun endOther(): Outcome<Int>
 
     suspend fun rotateToken(oldToken: String): Outcome<SwappedToken>
 

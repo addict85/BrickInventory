@@ -1,0 +1,17 @@
+Gegenprobe: Die Löschfrage bleibt stehen, während das Löschen läuft
+Modul: app
+Test: ch.brickinventoryapp.app.FlowTest
+Rot: deleting asks a plain question without a password
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
+@@ -152,7 +152,7 @@
+     }
+ 
+     // Only deleting asks, and only until it runs (VoucherViewModel.require).
+-    condition.confirmation?.takeIf { it.step == VoucherStep.DELETE && !it.operation.running }?.let { question ->
++    condition.confirmation?.takeIf { it.step == VoucherStep.DELETE }?.let { question ->
+         val number = condition.vouchers.find { it.id == question.id }?.number.orEmpty()
+         Prompt(
+             title = stringResource(R.string.vouchers_delete_title),

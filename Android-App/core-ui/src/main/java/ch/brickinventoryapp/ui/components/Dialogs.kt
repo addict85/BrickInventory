@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -30,13 +28,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -266,51 +261,7 @@ fun Section(
     }
 }
 
-/**
- * The follow-up question for the password before a step the server wants confirmed.
- * The code field only once it has requested the second factor ([codeNeeded]);
- * the password stays put. Both only in remember: saved state ends up
- * in the bundle and, on process death, on disk.
- */
-@Composable
-fun PasswordPrompt(
-    title: String,
-    text: String,
-    confirm: String,
-    onConfirm: (password: String, code: String?) -> Unit,
-    onCancel: () -> Unit,
-    codeNeeded: Boolean = false,
-    error: String? = null,
-    running: Boolean = false,
-) {
-    var password by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
-    // The rejection scrolls into view: with the code field above it, it used to sit on small screens below
-    // the edge of the follow-up question, and you'd only see a new field without the reason for it.
-    val messageVisible = remember { BringIntoViewRequester() }
-    LaunchedEffect(error) {
-        if (error == null) return@LaunchedEffect
-        withFrameNanos { }  // only once the row is set
-        messageVisible.bringIntoView()
-    }
-    AddDialog(
-        title = title,
-        confirm = confirm,
-        onConfirm = { onConfirm(password, code.takeIf { codeNeeded && it.isNotBlank() }) },
-        onCancel = onCancel,
-        confirmEnabled = !running && password.isNotEmpty() && (!codeNeeded || code.isNotBlank()),
-    ) {
-        // A dialog has its own window; the page's protection doesn't reach into it.
-        OverlayGuard()
-        Text(text, style = MaterialTheme.typography.bodyMedium)
-        PasswordField(password, { password = it }, stringResource(R.string.account_password_current),
-            Modifier.fillMaxWidth())
-        if (codeNeeded) SecondFactorCodeField(code) { code = it }
-        if (error != null) ErrorRow(error, Modifier.bringIntoViewRequester(messageVisible))
-    }
-}
-
-/** The second-factor code the server requires for password, email and vouchers. */
+/** The second-factor code the server requires when the start password is replaced. */
 @Composable
 fun SecondFactorCodeField(code: String, onCode: (String) -> Unit) {
     OutlinedTextField(

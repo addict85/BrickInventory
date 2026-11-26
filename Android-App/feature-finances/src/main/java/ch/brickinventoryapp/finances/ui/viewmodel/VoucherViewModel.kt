@@ -11,9 +11,7 @@ import ch.brickinventoryapp.finances.ui.VoucherConfirmation
 import ch.brickinventoryapp.finances.ui.VoucherPdfTarget
 import ch.brickinventoryapp.finances.ui.VoucherStep
 import ch.brickinventoryapp.finances.ui.VoucherUiState
-import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PlaintextView
 import ch.brickinventoryapp.model.domain.VoucherInfo
@@ -27,7 +25,6 @@ import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.Operation
 import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.state.ui.errorMessage
 import ch.brickinventoryapp.state.ui.loadError
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
@@ -92,7 +89,7 @@ class VoucherViewModel @Inject constructor(
         }
     }
 
-    /** Hiding happens right away; revealing needs the plain text and thus password and code. */
+    /** Hiding happens right away; revealing needs the plain text from the server. */
     fun switchVoucherPin(id: Int) {
         if (id in _state.value.pinVisible) _state.update { it.copy(pinVisible = it.pinVisible - id) }
         else require(VoucherStep.PIN_SHOW, id)
@@ -105,51 +102,46 @@ class VoucherViewModel @Inject constructor(
     fun copyAcknowledge() = _state.update { it.copy(copyTo = null) }
 
     /**
-     * A step that shows or destroys money. If this card's plain text is
-     * already there, it runs right away (the UI has checked the device lock); otherwise
-     * only after a password and code via [confirm].
+     * A step that shows or destroys money. The login is enough (owner's decision): showing
+     * runs right away, deleting first asks „are you sure“ via [confirm], because a card
+     * deleted by a stray tap is only back through „undo“ while the snackbar lasts.
      */
     private fun require(step: VoucherStep, id: Int?) {
         val clear = id?.let { _state.value.plaintext[it] }
         if (clear != null && step in PLAINTEXT_STEPS) return runFrom(step, clear)
-        _state.update { it.copy(confirmation = VoucherConfirmation(step, id)) }
+        val b = VoucherConfirmation(step, id)
+        if (step == VoucherStep.DELETE) _state.update { it.copy(confirmation = b) } else run(b)
     }
 
     fun cancelConfirmation() = _state.update { it.copy(confirmation = null) }
 
-    /**
-     * Password and, if the server asked for it, code, to the step's route.
-     * A rejection leaves the prompt open, with the server's sentence; if it asks for the
-     * code, the field for it appears.
-     */
-    fun confirm(password: String, code: String?) {
+    /** „Delete“ in the follow-up question; a second tap while it runs does nothing. */
+    fun confirm() {
         val b = _state.value.confirmation ?: return
-        if (b.operation.running) return
+        if (!b.operation.running) run(b)
+    }
+
+    /** The step at its route; a rejection closes the step and goes to the snackbar. */
+    private fun run(b: VoucherConfirmation) {
         _state.update { it.copy(confirmation = b.copy(operation = Operation.Running)) }
-        val request = Confirmation(password = password, code = code?.trim()?.ifEmpty { null })
         viewModelScope.launch {
-            val error = runStepFrom(b, request)
-            if (error != null) _state.update {
-                it.copy(confirmation = it.confirmation?.copy(
-                    codeNeeded = it.confirmation.codeNeeded || error.code in FACTOR_CODES,
-                    // Offline there is no deleting on spec: the password would otherwise be left lying around.
-                    operation = Operation.Failed(if (error.transient && b.step == VoucherStep.DELETE)
-                        Message.Resource(R.string.vouchers_delete_offline) else errorMessage(error))))
-            }
+            val error = runStepFrom(b) ?: return@launch
+            if (stillOpen(b)) _state.update { it.copy(confirmation = null) }
+            messages.show(texts.messageForSnackbar(error))
         }
     }
 
-    /** The prompt's step at its route; null means done (or nothing to do without a card). */
-    private suspend fun runStepFrom(b: VoucherConfirmation, request: Confirmation): Outcome.Failure? =
+    /** The step at its route; null means done (or nothing to do without a card). */
+    private suspend fun runStepFrom(b: VoucherConfirmation): Outcome.Failure? =
         when (b.step) {
-            VoucherStep.PDF, VoucherStep.EXPORT -> when (val r = repo.pdfRelease(b.id, request)) {
+            VoucherStep.PDF, VoucherStep.EXPORT -> when (val r = repo.pdfRelease(b.id)) {
                 is Outcome.Success -> {
                     if (stillOpen(b)) _state.update { it.copy(confirmation = null, pdfTarget = VoucherPdfTarget(b.id, r.data)) }
                     null
                 }
                 is Outcome.Failure -> r
             }
-            VoucherStep.DELETE -> when (val r = repo.deleteVoucher(b.id ?: return null, request)) {
+            VoucherStep.DELETE -> when (val r = repo.deleteVoucher(b.id ?: return null)) {
                 is Outcome.Success -> {
                     _state.update { it.copy(confirmation = null, plaintext = it.plaintext - b.id,
                         pinVisible = it.pinVisible - b.id, deleted = b.id) }
@@ -159,7 +151,7 @@ class VoucherViewModel @Inject constructor(
                 is Outcome.Failure -> r
             }
             VoucherStep.PIN_SHOW, VoucherStep.NUMBER_COPY, VoucherStep.PIN_COPY ->
-                when (val r = repo.plaintext(b.id ?: return null, request)) {
+                when (val r = repo.plaintext(b.id ?: return null)) {
                     is Outcome.Success -> {
                         // Left or cancelled in the meantime: the plain text is not left lying around.
                         if (stillOpen(b)) {
@@ -186,7 +178,7 @@ class VoucherViewModel @Inject constructor(
 
     /**
      * Plain text gone, PINs hidden again — when the app goes into the background. An
-     * open prompt remains: the code is fetched from the authenticator app.
+     * open delete question remains: it shows no secret.
      */
     fun forgetPlaintext() = _state.update {
         it.copy(plaintext = emptyMap(), pinVisible = emptySet(), copyTo = null)
@@ -424,18 +416,14 @@ class VoucherViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Without „Rückgängig“, unlike sets or storage locations: the server demands a password
-     * or code for it and knows no trash can for vouchers. A pending deletion would hold
-     * the password in memory until the snackbar ends; the confirmation prompt is the protection here.
-     */
+    /** Asks first ([confirm]); afterwards the snackbar offers „undo“ ([restoreVoucher]). */
     fun deleteVoucher(id: Int) = require(VoucherStep.DELETE, id)
 
     /** The UI does the copying (the clipboard is tied to the composition). */
     fun reportVoucherCopied(isNumber: Boolean) =
         report(if (isNumber) R.string.vouchers_copied_number else R.string.vouchers_copied_pin)
 
-    /** PDF viewer: a ticket only after password and code; the graph navigates and acknowledges. */
+    /** PDF viewer: a ticket from the server; the graph navigates and acknowledges. */
     fun openVoucherPdf(id: Int) = require(VoucherStep.PDF, id)
     fun openVoucherExport() = require(VoucherStep.EXPORT, null)
     fun voucherPdfAcknowledge() = _state.update { it.copy(pdfTarget = null) }
@@ -464,9 +452,6 @@ class VoucherViewModel @Inject constructor(
 
 /** Steps the plain text handles; PDF and delete ask every time. */
 private val PLAINTEXT_STEPS = setOf(VoucherStep.PIN_SHOW, VoucherStep.NUMBER_COPY, VoucherStep.PIN_COPY)
-
-/** With these codes the server either demands the second factor or rejects it. */
-private val FACTOR_CODES = setOf(ErrorCode.SECOND_FACTOR_NEEDED, ErrorCode.SECOND_FACTOR_WRONG)
 
 /** Retry the same card at most this many times when the throttle slows things down. */
 private const val GAP_ATTEMPTS = 4

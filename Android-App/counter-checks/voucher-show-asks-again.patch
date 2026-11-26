@@ -1,0 +1,17 @@
+Gegenprobe: Anzeigen von Nummer, PIN und PDF öffnet wieder eine Abfrage
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherPlaintextTest
+Rot: revealing the PIN runs without a prompt
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
+@@ -110,7 +110,7 @@
+         val clear = id?.let { _state.value.plaintext[it] }
+         if (clear != null && step in PLAINTEXT_STEPS) return runFrom(step, clear)
+         val b = VoucherConfirmation(step, id)
+-        if (step == VoucherStep.DELETE) _state.update { it.copy(confirmation = b) } else run(b)
++        _state.update { it.copy(confirmation = b) }
+     }
+ 
+     fun cancelConfirmation() = _state.update { it.copy(confirmation = null) }

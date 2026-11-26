@@ -125,8 +125,8 @@ interface AccountApi {
     @GET("api/v2/settings/tokens")
     suspend fun getTokens(): Response<TokensResponse>
 
-    // @HTTP instead of @DELETE: Retrofit allows no body for @DELETE, and the
-    // server signs out a foreign device only with password and code.
+    // @HTTP instead of @DELETE: Retrofit allows no body for @DELETE, and the server still
+    // reads a JSON body there (password and code stay empty since the login suffices).
     @HTTP(method = "DELETE", path = "api/v2/settings/tokens/{tokenId}", hasBody = true)
     suspend fun revokeToken(
         @Path("tokenId") tokenId: String,

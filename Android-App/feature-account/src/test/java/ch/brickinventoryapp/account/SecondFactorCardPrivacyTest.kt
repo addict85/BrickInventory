@@ -44,7 +44,7 @@ class SecondFactorCardPrivacyTest {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 CompositionLocalProvider(LocalStepGuard provides StepGuard { _, then -> then() }) {
                     SecondFactorCard(condition.value, onSetUp = {}, onConfirm = {}, onNewCodes = {},
-                        onTurnOff = { _, _ -> }, onBack = {})
+                        onTurnOff = {}, onBack = {})
                 }
             }
         }

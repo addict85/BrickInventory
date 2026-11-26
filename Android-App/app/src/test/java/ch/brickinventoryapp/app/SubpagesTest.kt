@@ -60,6 +60,7 @@ import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.json.JSONObject
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -90,7 +91,8 @@ import java.util.Locale
  *   build-list-two-step          creating only after „+“ → red “build list is created …”
  *   build-list-plus-without-effect   „+“ in the field does not take the set → red “build list takes sets …”
  *   build-list-clears-immediately        „Zurücksetzen“ empties without confirmation → red “build list takes sets …”
- *   account-profile-without-confirmation saving without password dialog → red “account asks for the password when saving …”
+ *   account-profile-not-sent  „Profil speichern“ sends nothing (onSave not called) → red “account saves the profile …”
+ *   account-password-asks-current  the current-password field is back in the account → red “account changes …”
  *   account-email-without-pending  the requested address not below the field → red “account names …”
  *   logout-mid-account     sign-out again as the last entry of „Konto und App“, before the
  *                                server group → red “sign-out stands apart …”
@@ -215,7 +217,7 @@ class SubpagesTest {
         world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
-            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
+            testHouseholdRepository(world.t.api))).also { it.loadHousehold() }
         show { HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
         wait("household") { vm.householdState.value.status != null }
 
@@ -291,7 +293,7 @@ class SubpagesTest {
         world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
-            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
+            testHouseholdRepository(world.t.api))).also { it.loadHousehold() }
         show { HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
         wait("household") { vm.householdState.value.status != null }
         val remove = ctx.getString(R.string.household_remove)
@@ -335,7 +337,9 @@ class SubpagesTest {
         fun field(label: Int) = compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(label)))[0]
         val switch = compose.onNode(hasText(ctx.getString(R.string.account_password_button)) and hasClickAction())
         val switched = { world.paths.requests.count { "password" in it } }
-        field(R.string.account_password_current).performTextInput("altes-passwort-1")
+        // The login is enough: the account doesn't ask for the current password.
+        compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(R.string.account_password_current)))
+            .assertCountEquals(0)
         field(R.string.account_password_new).performTextInput("neues-passwort-12")
         field(R.string.register_password_repeat).performTextInput("anderes-passwort-1")
         compose.waitForIdle()
@@ -348,6 +352,9 @@ class SubpagesTest {
         field(R.string.register_password_repeat).performTextInput("neues-passwort-12")
         switch.performScrollTo().performClick()
         wait("password change") { switched() == 1 }
+        val body = JSONObject(world.paths.bodyBytes[world.paths.requests.indexOfFirst { "password" in it }])
+        assertEquals("no current password", "", body.getString("current"))
+        assertEquals("neues-passwort-12", body.getString("newPassword"))
     }
 
     /** A new address applies only after the link: the field shows the current one, below it the requested one. */
@@ -369,9 +376,9 @@ class SubpagesTest {
             .fetchSemanticsNode("Die beantragte Adresse fehlt unter dem Feld")
     }
 
-    /** Changed via the text action, not by typing: no focused field. */
+    /** Changed via the text action, not by typing: no focused field. The login is enough. */
     @Test
-    fun `account asks for the password when saving the profile`() {
+    fun `account saves the profile right away, without a password dialog`() {
         world.paths.responses["/api/v2/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val account = world.t.track(AccountViewModel(
@@ -385,22 +392,12 @@ class SubpagesTest {
         compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(R.string.register_first_name)))[0]
             .performSemanticsAction(SemanticsActions.SetText) { it(AnnotatedString("Marc")) }
         compose.waitForIdle()
-        val save = compose.onNode(hasText(ctx.getString(R.string.account_save)) and hasClickAction())
-        save.performScrollTo()
-        // If a dialog with a text field stands on this page, Compose under Robolectric
-        // no longer comes to rest. Therefore without waitForIdle: stop the clock, drain the looper and
-        // look up the dialog window at Robolectric ourselves.
-        compose.mainClock.autoAdvance = false
-        save.performClick()
-        repeat(3) {
-            compose.mainClock.advanceTimeBy(200)
-            Shadows.shadowOf(Looper.getMainLooper()).idle()
-        }
-        val dialog = ShadowDialog.getLatestDialog()
-        assertTrue("no password dialog when saving", dialog?.isShowing == true)
-        assertTrue("saved without a password: ${world.paths.requests}", world.paths.requests.none { it.startsWith("PUT") })
-        dialog?.dismiss()
-        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        compose.onNode(hasText(ctx.getString(R.string.account_save)) and hasClickAction()).performScrollTo().performClick()
+        wait("saved") { world.paths.requests.any { it.startsWith("PUT") && it.endsWith("/auth/profile") } }
+        assertTrue("a dialog opened when saving", ShadowDialog.getLatestDialog()?.isShowing != true)
+        val body = JSONObject(world.paths.bodyBytes[world.paths.requests.indexOfFirst { it.startsWith("PUT") }])
+        assertEquals("Marc", body.getString("first_name"))
+        assertTrue("$body", body.isNull("password_current"))
     }
 
     /** Resetting throws away sets and list and therefore asks first. */
