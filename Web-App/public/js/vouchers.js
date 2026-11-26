@@ -154,7 +154,7 @@ function row(g) {
           <summary class="btn bs btn-sm v-text" aria-label="${tRaw('vouchers.more')}: ${number}">${ico('menu')}<span>${tRaw('vouchers.more')}</span></summary>
           <div class="more-list">
             ${g.pin ? html`<button class="btn bs btn-sm v-text" type="button" data-click="queryBalance" data-arg="${g.id}">${ico('refresh')}<span>${tRaw('vouchers.balance_one')}</span></button>` : ''}
-            ${g.has_pdf ? html`<button class="btn bs btn-sm v-text" type="button" data-click="openVoucherPdf" data-arg="${g.id}">${ico('file')}<span>${tRaw('vouchers.pdf_open')}</span></button>` : ''}
+            <button class="btn bs btn-sm v-text" type="button" data-click="openVoucherPdf" data-arg="${g.id}">${ico('file')}<span>${tRaw('vouchers.pdf_open')}</span></button>
             <button class="btn bs btn-sm v-text v-btn-danger" type="button" data-click="deleteVoucher"${genuine()} data-arg="${g.id}"
                     aria-label="${tRaw('common.delete')}: ${number}">${ico('delete')}<span>${tRaw('common.delete')}</span></button>
           </div>

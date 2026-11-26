@@ -72,6 +72,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist/
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/public ./public/
+# The LEGO card layout for vouchers without an uploaded original (src/vouchers/templatePdf.ts).
+COPY --from=builder /app/assets ./assets/
 
 COPY docker-entrypoint.sh create-keys.sh data-permissions.sh ./
 RUN chmod +x docker-entrypoint.sh

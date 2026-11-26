@@ -49,7 +49,7 @@ test('voucher number: separators off first, then groups of four; without a PDF i
     await view(w, 'vouchers');
     await waitFor(() => d.querySelector('.voucher-num'));
     assert.equal(text(d.querySelector('.voucher-num')), '6123 4567 8901');
-    assert.equal(text(d.querySelector('.voucher-nopdf')), 'kein PDF');
+    assert.equal(text(d.querySelector('.voucher-nopdf')), 'kein Original');
   } finally {
     w.close();
   }

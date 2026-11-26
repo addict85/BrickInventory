@@ -15,6 +15,7 @@ import { issueTicket } from './pdfTicket';
 import { MAX_PAGES, readInBackground } from './pdfReader';
 import type { VoucherContext } from './context';
 import { PIN_MASK, voucherNumber, voucherPin, voucherCurrency, numberMask } from '../infra/voucherValues';
+import { fillTemplate } from './templatePdf';
 
 export type { VoucherRow } from './repository/vouchers';
 
@@ -264,7 +265,8 @@ export async function voucherPdf(k: VoucherContext, uid: number, id: number): Pr
   const z = await existing(k, uid, id);
   const file = z.pdf_path ? voucherFile(uid, z.pdf_path) : null;
   const pdf = file ? await readVoucherPdf(file).catch(withoutMissingFile('gutschein:pdf lesen', null)) : null;
-  return pdf ?? failDomain('not_found', 'not_found');
+  // Without an original (or with a lost one) the voucher is still downloadable, in LEGO's layout.
+  return pdf ?? fillTemplate({ number: z.number, pin: z.pin, amount: Number(z.amount), currency: z.currency });
 }
 
 /** A missing file does not abort the export, otherwise it would take every other voucher with it. */

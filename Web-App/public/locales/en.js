@@ -1366,7 +1366,7 @@ window.I18N_EN = {
     'The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.',
   'vouchers.pdf_open': 'Open PDF in a new window',
   'vouchers.no_pdf': 'No PDF stored',
-  'vouchers.no_pdf_short': 'no PDF',
+  'vouchers.no_pdf_short': 'no original',
   'vouchers.pin_show': 'Show PIN',
   'vouchers.plain_text_title': 'Show number and PIN',
   'vouchers.pdf_release_title': 'Open voucher PDF',

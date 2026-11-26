@@ -1386,7 +1386,7 @@ window.I18N_DE = {
     'Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.',
   'vouchers.pdf_open': 'PDF in neuem Fenster öffnen',
   'vouchers.no_pdf': 'Kein PDF hinterlegt',
-  'vouchers.no_pdf_short': 'kein PDF',
+  'vouchers.no_pdf_short': 'kein Original',
   'vouchers.pin_show': 'PIN anzeigen',
   'vouchers.plain_text_title': 'Nummer und PIN anzeigen',
   'vouchers.pdf_release_title': 'Gutschein-PDF öffnen',
