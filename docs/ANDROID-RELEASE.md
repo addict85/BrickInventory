@@ -16,7 +16,7 @@ Workflow prüft sie über die API und signiert nicht, wenn eine fehlt.
 
 | Schritt | Was | Wo |
 | --- | --- | --- |
-| 1, 2 | *Prevent self-review* in `release` und `release-beschreibung` einschalten; dafür braucht es eine zweite Person als Pflichtprüfer | Settings → Environments |
+| 1, 2 | *Prevent self-review* in `release` und `release-beschreibung` einschalten, sobald es eine zweite Person als Pflichtprüfer gibt (bis dahin nur eine Warnung) | Settings → Environments |
 | 3, 4 | Bypass-Listen leeren (main: niemand; Etiketten: nur *Repository admin*) | Settings → Rules → Rulesets |
 | 6 | Lesetoken `REGELN_LESETOKEN` für die Bypass-Prüfung anlegen | Developer settings, Environment `release` |
 | 7 | Offline signieren einrichten (`ANDROID_SIGNIERWEG=offline`), danach die Signier-Secrets löschen | Settings → Variables, Environment `release` |
@@ -31,9 +31,9 @@ Workflow prüft sie über die API und signiert nicht, wenn eine fehlt.
 3. *Add deployment branch or tag rule* → *Ref type: Branch* → `main`.
    Danach steht dort genau eine Regel: Zweig `main`.
 4. *Required reviewers*: mindestens eine Person (wie bisher).
-5. *Prevent self-review*: **an**. Seit dem 22.11.2026 ein Fehler, keine Warnung mehr:
-   Wer das Etikett setzt, darf den eigenen Lauf nicht freigeben. Dafür braucht es eine
-   zweite Person unter *Required reviewers* (Vier-Augen-Prinzip).
+5. *Prevent self-review*: empfohlen **an**, sobald eine zweite Person unter *Required
+   reviewers* steht (Vier-Augen-Prinzip). Solange der Inhaber allein veröffentlicht, ist es
+   aus; der Signierlauf warnt dann („Selbstfreigabe“), signiert aber nach der Freigabe.
 6. *Allow administrators to bypass configured protection rules*: **aus**.
 7. Unter *Environment secrets* liegen bis zur Umstellung auf das Offline-Signieren
    (Schritt 7) `KEYSTORE_BASE64`, `KEYSTORE_PASSWORT`, `KEY_ALIAS`, `KEY_PASSWORT`.
@@ -56,7 +56,7 @@ eigenen Job und verschlüsselt mit einer eigenen Passphrase.
 3. *Deployment branches and tags*: **Selected branches and tags**, eine Regel:
    Zweig `main`.
 4. *Required reviewers*: mindestens eine Person; *Allow administrators to bypass*
-   **aus**; *Prevent self-review* **an** (Pflicht wie oben).
+   **aus**; *Prevent self-review* wie oben (empfohlen an, sonst Warnung).
 5. *Environment secrets*:
    - `BESCHREIBUNG_SCHLUESSEL`: der Inhalt von `beschreibung-verschluesselt.pem`
    - `BESCHREIBUNG_PASS`: die Passphrase aus Schritt 1

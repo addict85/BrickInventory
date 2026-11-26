@@ -496,11 +496,11 @@ if [ -n "$JQ" ]; then jq -r "$JQ" "$F"; else cat "$F"; fi
   return { antwort, lauf };
 }
 
-// Four eyes: whoever sets the tag does not approve their own run, in both environments.
-// Counter-checks (local, node --test): in the job signatur the self-review check back to
-// `::warning` without exit → red „release: eigene Freigabe …“; the same in the job
-// beschreibung removed → red „release-beschreibung: eigene Freigabe …“.
-test('both environments refuse self-review', t => {
+// The owner publishes alone: self-review only warns, in both environments; the approval stays.
+// Counter-checks (local, node --test): in the job signatur the `::warning` back to `::error` with
+// `exit 1` → red „release: self-review is refused“; the same in the job beschreibung → red
+// „release-beschreibung: self-review is refused“.
+test('both environments only warn about self-review', t => {
   for (const [job, umgebung] of [
     ['signatur', 'release'],
     ['beschreibung', 'release-beschreibung'],
@@ -521,8 +521,8 @@ test('both environments refuse self-review', t => {
     assert.equal(gut.status, 0, gut.stdout + gut.stderr);
     umgebungMit(false);
     const selbst = api.lauf(skript, { UMGEBUNG: umgebung });
-    assert.notEqual(selbst.status, 0, `${umgebung}: eigene Freigabe geht durch`);
-    assert.match(selbst.stdout, /Prevent self-review/);
+    assert.equal(selbst.status, 0, `${umgebung}: self-review is refused`);
+    assert.match(selbst.stdout, /::warning title=Selbstfreigabe::/);
   }
 });
 
