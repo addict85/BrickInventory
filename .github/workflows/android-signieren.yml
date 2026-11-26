@@ -104,10 +104,10 @@ jobs:
             echo "::error::Die Environment $UMGEBUNG lässt Administratoren die Regeln umgehen (Allow administrators to bypass: aus). Nichts wird signiert."
             exit 1
           fi
-          # Vier Augen: Wer das Etikett setzt, gibt den eigenen Lauf nicht selbst frei.
+          # Nur eine Warnung: Der Inhaber veröffentlicht allein, eine zweite Person als Prüfer gibt es nicht.
+          # Die Freigabe bleibt Pflicht; das Vier-Augen-Prinzip ist bewusst nicht erzwungen.
           if [ "$SELBST" != true ]; then
-            echo "::error title=Selbstfreigabe::Die Environment $UMGEBUNG erlaubt, eigene Läufe selbst freizugeben (Prevent self-review: an, docs/ANDROID-RELEASE.md). Nichts wird signiert."
-            exit 1
+            echo "::warning title=Selbstfreigabe::Die Environment $UMGEBUNG erlaubt, eigene Läufe selbst freizugeben (kein Vier-Augen-Prinzip, docs/ANDROID-RELEASE.md)."
           fi
           if [ "$EIGENE" != true ]; then
             echo "::error::Die Environment $UMGEBUNG lässt jeden Zweig zu (Deployment branches and tags: Selected, nur der Zweig main). Nichts wird signiert."
@@ -119,7 +119,7 @@ jobs:
             echo "::error::Die Environment $UMGEBUNG erlaubt „$REGELN“ statt nur des Zweigs main (docs/ANDROID-RELEASE.md). Nichts wird signiert."
             exit 1
           fi
-          echo "Environment $UMGEBUNG: $PRUEFER Pflichtprüfer, keine Selbstfreigabe, nur der Zweig main."
+          echo "Environment $UMGEBUNG: $PRUEFER Pflichtprüfer, nur der Zweig main."
 
       # Ein Umgehungsrecht im Ruleset von main machte Review und CI zur Bitte. Die Liste
       # sieht nur, wer Rulesets bearbeiten darf; GITHUB_TOKEN sieht sie meist nicht. Dann
@@ -459,9 +459,9 @@ jobs:
             echo "::error::Die Environment $UMGEBUNG braucht Pflichtprüfer, keine Umgehung durch Administratoren und nur den Zweig main (docs/ANDROID-RELEASE.md). Nichts wird signiert."
             exit 1
           fi
+          # Warnung wie bei der Environment release: Der Inhaber veröffentlicht allein.
           if [ "$SELBST" != true ]; then
-            echo "::error title=Selbstfreigabe::Die Environment $UMGEBUNG erlaubt, eigene Läufe selbst freizugeben (Prevent self-review: an). Nichts wird signiert."
-            exit 1
+            echo "::warning title=Selbstfreigabe::Die Environment $UMGEBUNG erlaubt, eigene Läufe selbst freizugeben (kein Vier-Augen-Prinzip)."
           fi
           REGELN=$(gh api "repos/$GITHUB_REPOSITORY/environments/$UMGEBUNG/deployment-branch-policies" \
             --jq '[.branch_policies[] | "\(.type // "branch"):\(.name)"] | sort | join(",")')

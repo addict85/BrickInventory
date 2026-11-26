@@ -617,7 +617,8 @@ test("the app's vulnerability check blocks, and without it no tag is signed (sec
 // comparison `$COMMIT != $LAUF_COMMIT` deleted → red „ein Etikett auf einem anderen Commit …“;
 // the name check `^android-v…$` deleted → red „ein Name mit Sonderzeichen …“; in
 // „Prüfsummen aus der Übergabe“ the selection of the handover job replaced by `true` → red „die
-// Anmerkung eines anderen Jobs …“. The gh stand-in evaluates no --jq: the count of
+// Anmerkung eines anderen Jobs …“; the self-review `::warning` turned back into `::error` + `exit 1`
+// → red „self-review is allowed“ (measured 26.11.2026). The gh stand-in evaluates no --jq: the count of
 // annotations (`if length == 1`) is not checked by this test.
 test('signing happens only with protected main, from main, for a real tag and without bypass by administrators (sec17 B1, B3)', t => {
   const release = fs.readFileSync(path.join(REAL_LOCATION, 'android-release.yml'), 'utf8');
@@ -628,7 +629,7 @@ test('signing happens only with protected main, from main, for a real tag and wi
   assert.notEqual(rules('pull_request'), 0, 'without mandatory checks nothing is signed');
   const sign = fs.readFileSync(path.join(REAL_LOCATION, 'android-signieren.yml'), 'utf8');
   const environment = stepAfter(sign, 'Environment ist geschützt');
-  const env = (bypass, rule = 'branch:main', selfReview = true) =>
+  const envRun = (bypass, rule = 'branch:main', selfReview = true) =>
     withGh(
       t,
       environment,
@@ -641,10 +642,14 @@ test('signing happens only with protected main, from main, for a real tag and wi
         }),
       },
       { UMGEBUNG: 'release' },
-    ).status;
+    );
+  const env = (...args) => envRun(...args).status;
   assert.equal(env(false), 0);
   assert.notEqual(env(true), 0, 'administrators must not bypass the approval');
-  assert.notEqual(env(false, 'branch:main', false), 0, 'without prevent_self_review there is no four-eyes principle');
+  // The owner publishes alone: self-review only warns, the required approval stays.
+  const own = envRun(false, 'branch:main', false);
+  assert.equal(own.status, 0, 'self-review is allowed');
+  assert.match(String(own.stdout), /::warning title=Selbstfreigabe::/, 'self-review is reported as a warning');
   assert.notEqual(
     env(false, 'tag:android-v*'),
     0,
