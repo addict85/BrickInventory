@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import java.security.MessageDigest
 import java.util.concurrent.CopyOnWriteArrayList
@@ -111,6 +112,18 @@ class TokenStore @Inject constructor(
         private val ORIGIN = Info(TOKEN_ORIGIN_SECRET, null, TOKEN_ORIGIN)
     }
 
+    /** Counts unlocks (LockWipe.restore after ACTION_USER_PRESENT). */
+    private val unlocks = MutableStateFlow(0L)
+
+    /**
+     * readPatient's pause, cut short by an unlock: a start while locked reports "" and then
+     * retries only every 30 s, so the sign-in screen would stay that long after unlocking.
+     */
+    private val pauseUntilUnlock: suspend (Long) -> Unit = { ms ->
+        val seen = unlocks.value
+        withTimeoutOrNull(ms) { unlocks.first { it != seen } }
+    }
+
     /** The raw values of a detail in all forms; if none changes, nothing has to be read anew. */
     private fun raw(prefs: Preferences, a: Info): List<String?> = listOf(prefs[a.secret], a.old?.let { prefs[it] }, prefs[a.clear])
 
@@ -131,7 +144,7 @@ class TokenStore @Inject constructor(
     /** Waits for unlocking with a locked device, like the token (readPatient). */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun flow(a: Info): Flow<String> = dataStore.data.map { raw(it, a) }.distinctUntilChanged()
-        .transformLatest { r -> readPatient({ open(r, a) }, null, report = { emit(it) }, lock = lock) }
+        .transformLatest { r -> readPatient({ open(r, a) }, null, report = { emit(it) }, wait = pauseUntilUnlock, lock = lock) }
 
     private fun encrypt(a: Info, value: String): String =
         device.encryptDetail(value, a.secret.name) ?: throw IOException("${a.secret.name} gerade nicht verschlüsselbar")
@@ -165,7 +178,7 @@ class TokenStore @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val authToken: Flow<String> = dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] }
         .distinctUntilChanged()
-        .transformLatest { secret -> readToken(vault, secret, null, report = { emit(it) }, lock = lock) }
+        .transformLatest { secret -> readToken(vault, secret, null, report = { emit(it) }, wait = pauseUntilUnlock, lock = lock) }
     val username:  Flow<String> = flow(NAME)
 
     // ── In-memory cache for the OkHttp interceptor ────────────────────────────
@@ -259,15 +272,15 @@ class TokenStore @Inject constructor(
         // Catching up from the DataStore: for the cold start and for changes
         // that did not come via the save functions (rekeying at start).
         mirror<List<String?>, String>({ raw(it, ADDRESS) }, _serverUrlState) { r, report ->
-            readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, lock = lock)
+            readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, pauseUntilUnlock, lock)
         }
         mirror<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { secret, report ->
-            readToken(vault, secret, null, report, lock = lock)
+            readToken(vault, secret, null, report, pauseUntilUnlock, lock)
         }
         mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
-            readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, lock = lock)
+            readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
         }
-        lockWipe.register(::wipeTokenMirror, ::restoreAfterLock)
+        lockWipe.register(::wipeTokenMirror) { unlocks.value++; restoreAfterLock() }
         prefsScope.launch {
             try {
                 device.prepareBefore()

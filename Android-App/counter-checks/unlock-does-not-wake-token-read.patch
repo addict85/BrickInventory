@@ -1,0 +1,26 @@
+Gegenprobe: Das Entsperren weckt die Wiederholung beim Lesen des Tokens nicht; sie wartet die vollen 30 s
+Modul: core-data
+Test: ch.brickinventoryapp.data.UnlockWakesReadTest
+Rot: the unlock wakes the token read of a process started while locked
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
+@@ -178,7 +178,7 @@
+     @OptIn(ExperimentalCoroutinesApi::class)
+     val authToken: Flow<String> = dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] }
+         .distinctUntilChanged()
+-        .transformLatest { secret -> readToken(vault, secret, null, report = { emit(it) }, wait = pauseUntilUnlock, lock = lock) }
++        .transformLatest { secret -> readToken(vault, secret, null, report = { emit(it) }, wait = { kotlinx.coroutines.delay(it) }, lock = lock) }
+     val username:  Flow<String> = flow(NAME)
+ 
+     // ── In-memory cache for the OkHttp interceptor ────────────────────────────
+@@ -275,7 +275,7 @@
+             readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, pauseUntilUnlock, lock)
+         }
+         mirror<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { secret, report ->
+-            readToken(vault, secret, null, report, pauseUntilUnlock, lock)
++            readToken(vault, secret, null, report, { kotlinx.coroutines.delay(it) }, lock)
+         }
+         mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
+             readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
