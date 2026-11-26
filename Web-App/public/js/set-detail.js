@@ -238,6 +238,8 @@ export async function openModal(sn) {
   G('m-subtitle').textContent = '';
   setDialogImage(G('m-img'), PLACEHOLDER_SET, PLACEHOLDER_SET);
   setHtml(G('m-det'), skeletonRows(4, tRaw('common.loading')));
+  // The previous set's chart would otherwise stay visible until this set's history arrives.
+  G('m-sparkline-content')?.replaceChildren();
   G('m-det-links')?.replaceChildren();
   G('m-instr').replaceChildren();
   G('set-modal').dataset.number = sn;
