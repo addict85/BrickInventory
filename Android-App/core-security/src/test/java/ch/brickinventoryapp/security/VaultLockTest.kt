@@ -135,6 +135,23 @@ class VaultLockTest {
         assertTrue("the start-up stays below the watchdog's waiting time (5 s)", VAULT_ATTEMPT_MS.sum() < 5_000)
     }
 
+    /**
+     * Four `LockedState` results used to tip into the premature „no token“ report with the
+     * old, three-entry VAULT_ATTEMPT_MS — long enough for a real unlock (PIN, fingerprint).
+     * Gegenprobe: shorten VAULT_ATTEMPT_MS back to `listOf(250L, 750L, 2_000L)` → red here
+     * (the reported list gains a leading "").
+     */
+    @Test
+    fun `a realistically slow unlock still reports only the token, no premature empty one`() {
+        val (reported, pauses) = read(Sequence(
+            VaultFinding.LockedState, VaultFinding.LockedState,
+            VaultFinding.LockedState, VaultFinding.LockedState,
+            VaultFinding.Readable("token"),
+        ))
+        assertEquals("no empty token despite the longer unlock", listOf("token"), reported)
+        assertEquals(VAULT_ATTEMPT_MS.take(4), pauses)
+    }
+
     @Test
     fun `a keystore locked for longer reports the token afterwards`() {
         val lock = Array<VaultFinding>(VAULT_ATTEMPT_MS.size + 3) { VaultFinding.LockedState }

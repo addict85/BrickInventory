@@ -381,8 +381,9 @@ private fun ColumnScope.CatalogDetails(
     val bl = detail.bricklink
     val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
     val blLabel = if (bl != null && !bl.exact) R.string.catalog_search_bricklink else R.string.catalog_buy_bricklink
-    // As wide as the buttons above: centered on its own it stood off their axis on the tablet.
-    TextButton(onClick = { onBrickLink(blUrl) }, modifier = button) {
+    // Same shape as the buttons above, not a TextButton: it stood out as a plain link instead
+    // of a third action of equal weight.
+    OutlinedButton(onClick = { onBrickLink(blUrl) }, modifier = button, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
         Icon(Icons.Default.ShoppingCart, null, Modifier.size(withFont(18.dp)))
         Spacer(Modifier.width(Spacing.small))
         Text(stringResource(blLabel))

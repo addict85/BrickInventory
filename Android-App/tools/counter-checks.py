@@ -113,10 +113,12 @@ def measure(project, root, patch, gradle):
         run = subprocess.run(command, cwd=project, capture_output=True, text=True)
         # After a patch in an upstream module KSP sporadically loses its classes („… could
         # not be resolved“) or Hilt finds stale outputs („Attempt to recreate a file“) —
-        # never in a fresh build. Retry once with empty KSP state; a real compile error stays.
+        # never in a fresh build. The Gradle plugin registry itself also drops out
+        # sporadically. Retry once with empty KSP state; a real compile error stays.
         output = run.stdout + run.stderr
         if not os.path.exists(report) and ('could not be resolved' in output
-                                           or 'Attempt to recreate a file' in output):
+                                           or 'Attempt to recreate a file' in output
+                                           or 'could not resolve plugin artifact' in output):
             for stale in glob.glob(os.path.join(project, '*', 'build', 'kspCaches')) + \
                     glob.glob(os.path.join(project, '*', 'build', 'generated', 'ksp')):
                 shutil.rmtree(stale, ignore_errors=True)

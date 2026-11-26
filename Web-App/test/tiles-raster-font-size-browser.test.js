@@ -221,7 +221,10 @@ async function setDetail(_t, a) {
     await size(b, width, phone ? 844 : 900, phone);
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="21318-1"]')`, 'Sammlung');
     await b.evaluate(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
-    await until(`!!document.querySelector('#m-sparkline-content svg')`, 'Preisverlauf');
+    await until(
+      `!!document.querySelector('#m-det .dr') && !!document.querySelector('#m-sparkline-content svg')`,
+      'Preisverlauf',
+    );
     const l = await b.evaluate(`(() => { const r = s => document.querySelector(s).getBoundingClientRect().toJSON();
       const lines = [...document.querySelectorAll('#m-det .dr')].map(z => z.getBoundingClientRect().toJSON());
       return { image: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det .dr'), last: lines.at(-1) }; })()`);

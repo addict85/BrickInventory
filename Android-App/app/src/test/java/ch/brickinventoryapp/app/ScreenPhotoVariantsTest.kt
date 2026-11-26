@@ -1658,7 +1658,7 @@ class ScreenPhotoVariantsTest {
     @Test fun addOfflineDark() = addOfflinePhoto(true, 1f)
     @Test fun addOfflineFont200() = addOfflinePhoto(false, 2f)
 
-    /** The frame around the destination with keyboard focus, here the price comparison on the page “More”. */
+    /** The frame around the destination with keyboard focus, here the wishlist on the page “More”. */
     private fun focusPhoto(dark: Boolean, font: Float) {
         val name = level("fokusrahmen", font)
         show(name, dark = dark, font = font) {
@@ -1666,7 +1666,7 @@ class ScreenPhotoVariantsTest {
             LaunchedEffect(Unit) { mode.requestInputMode(InputMode.Keyboard) }
             MoreScreen({}, isAdmin = false, updateAvailable = false, onLogout = {})
         }
-        val target = ApplicationProvider.getApplicationContext<Context>().getString(R.string.nav_comparison)
+        val target = ApplicationProvider.getApplicationContext<Context>().getString(R.string.nav_wanted)
         compose.onNode(hasText(target) and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
         compose.waitForIdle()
         pause()

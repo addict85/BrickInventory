@@ -100,9 +100,9 @@ class ReachableRoutesTest {
             items[i].performScrollTo().performClick()
         }
         compose.waitForIdle()
-        // Material provides at most five tabs: the inventory destinations in the order of the
-        // web app (wishlist before catalog) and “More”.
-        assertEquals(listOf(CollectionTarget.Gallery, FinanceTarget.Finance, CollectionTarget.Wanted, CatalogTarget.Catalog, AppTarget.More),
+        // Material provides at most five tabs: the inventory destinations, the comparison
+        // tool between the catalog and “More”, and “More” itself. The wishlist moved there.
+        assertEquals(listOf(CollectionTarget.Gallery, FinanceTarget.Finance, CatalogTarget.Catalog, CollectionTarget.Comparison, AppTarget.More),
             bar.map { it.target })
         assertEquals("every entry on “More” names exactly one destination", count, ofMore.size)
         assertTrue("the settings are on “More”", AccountTarget.Settings in ofMore)

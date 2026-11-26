@@ -87,8 +87,8 @@ class TokenBindingLockedTest {
         assertEquals(NetworkPolicy.origin(a), runBlocking { first.tokenStatus().origin })
         end()
 
-        // Restart: the first four openings (startup) are locked, memory reports "".
-        val locked = start(Vault(4))
+        // Restart: the first five openings (startup) are locked, memory reports "".
+        val locked = start(Vault(5))
         runBlocking {
             assertEquals("The startup reports the sign-in mask", "", locked.tokenNow())
             locked.saveServerUrl(b)

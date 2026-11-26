@@ -194,9 +194,19 @@ jobs:
         # Mitschnitt, weil Gradle den roten Test einmal mitten ins Protokoll
         # schreibt; pipefail, sonst bestimmt tee den Rückgabewert. core-model
         # und core-contract sind reines Kotlin und haben `test` statt testDebugUnitTest.
+        # Der Gradle-Plugin-Registry fällt sporadisch kurz aus („could not resolve
+        # plugin artifact“) — dann genau einmal neu versuchen, sonst sofort rot.
         run: |
           set -o pipefail
-          ./gradlew --no-daemon testDebugUnitTest :core-model:test :core-contract:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
+          lauf() { ./gradlew --no-daemon testDebugUnitTest :core-model:test :core-contract:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"; }
+          if ! lauf; then
+            if grep -q 'could not resolve plugin artifact' "$RUNNER_TEMP/test.log"; then
+              echo "::warning title=Gradle-Plugin-Registry::Plugin-Artefakt nicht geladen, einmaliger Neuversuch"
+              lauf
+            else
+              exit 1
+            fi
+          fi
 
       # Das Vergleichsbild liegt nur als Artefakt vor, das hier nicht abrufbar ist:
       # Lage und Grösse der Abweichung je rotem Foto stehen deshalb im Log.
