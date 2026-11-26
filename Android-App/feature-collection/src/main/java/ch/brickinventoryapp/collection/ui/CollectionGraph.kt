@@ -76,7 +76,9 @@ private fun NavGraphBuilder.galleryTarget(navigation: CollectionNavigation) {
         // The gallery loads while observing its state (GalleryViewModel).
         val gallery by galleryVm.galleryState.collectAsStateWithLifecycle()
         val entryVm: EntryViewModel = hiltViewModel()
-        EntryFrame(entry, entryVm, navigation.images) { navController.navigate(CollectionTarget.SetDetail(it)) }
+        EntryFrame(entry, entryVm, navigation.images, onSearch = galleryVm::setGalleryQuery) {
+            navController.navigate(CollectionTarget.SetDetail(it))
+        }
         // One state per visit; only ScrollMemory holds the position.
         val galleryGridState = remember { LazyGridState() }
         ScrollPositionKeeper(
@@ -179,7 +181,9 @@ private fun GalleryBesideDetailRoute(
         navigation.scrollMemory)
     // The gallery's entry flow; the scanner hands the scan back to this destination.
     val entryVm: EntryViewModel = hiltViewModel(galleryEntry)
-    EntryFrame(entry, entryVm, navigation.images) { navController.navigate(CollectionTarget.SetDetail(it)) }
+    EntryFrame(entry, entryVm, navigation.images, onSearch = gallery::setGalleryQuery) {
+        navController.navigate(CollectionTarget.SetDetail(it))
+    }
     navigation.Tab(stringResource(R.string.nav_collection)) {
         GalleryAndDetail(
             gallery = gallery,

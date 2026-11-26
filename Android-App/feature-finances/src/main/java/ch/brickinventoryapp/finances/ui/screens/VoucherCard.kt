@@ -86,7 +86,8 @@ internal fun VoucherCard(
                     if (g.pin != null) MenuEntry(stringResource(R.string.vouchers_menu_balance),
                         stringResource(R.string.vouchers_cd_balance, number), Icons.Default.Sync,
                         enabled = !balanceRunning) { menu = false; events.queryBalance() }
-                    if (g.hasPdf) MenuEntry(stringResource(R.string.vouchers_menu_pdf),
+                    // Without an original the server draws the card into LEGO's layout.
+                    MenuEntry(stringResource(R.string.vouchers_menu_pdf),
                         stringResource(R.string.vouchers_cd_pdf, number), Icons.Default.PictureAsPdf) {
                         menu = false; events.openPdf()
                     }

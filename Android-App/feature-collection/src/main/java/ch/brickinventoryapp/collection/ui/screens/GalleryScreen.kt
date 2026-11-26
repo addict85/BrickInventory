@@ -274,9 +274,8 @@ private fun GallerySearch(
         activeFilter = FilterCount.gallery(condition.glance.householdMembers, condition.accountChoice(), condition.storage.locations,
             condition.storageChoice(), gallery.galleryTheme),
         onFilter = onFilter,
-        // At normal size the FAB itself offers scanning (next to manual entry); with large
-        // text there's no FAB (record sits here instead), so scanning stays next to it.
-        scanOn = onScanBarcode.takeIf { largeFont() },
+        // Scanning here searches the collection; the FAB's scan adds a set instead.
+        scanOn = onScanBarcode,
         record = record,
         active = listOfNotNull(
             accountFilter(condition.glance.householdMembers, condition.accountChoice()) { events.account(ScopeFilter.ALL) },

@@ -126,13 +126,21 @@ class EntryViewModelTest {
         paths.server.shutdown()
     }
 
+    /**
+     * The gallery's scan button searches: the EAN becomes the set number in the search field.
+     * Gegenprobe: the GALLERY_SEARCH branch removed (back to adding) → red
+     * „the set number goes into the search“.
+     */
     @Test
-    fun `a scanned set that already exists is opened instead of added`() {
+    fun `a barcode scanned from the gallery search becomes its set number in the search`() {
         val vm = vm()
         vm.resolveBarcode("5702016616316", ScannerOrigin.GALLERY_SEARCH)
-        until("gefunden") { vm.barcodeState.value.foundSet == "75192-1" }
+        until("the set number goes into the search") { vm.barcodeState.value.searchFor == "75192-1" }
         assertNull("no confirmation dialog", vm.barcodeState.value.result)
+        assertNull("nothing is opened", vm.barcodeState.value.foundSet)
         until("check display gone") { vm.entryState.value.check == null }
+        vm.searchForConsumed()
+        assertNull(vm.barcodeState.value.searchFor)
     }
 
     @Test

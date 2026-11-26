@@ -44,6 +44,7 @@ internal fun EntryFrame(
     entry: NavBackStackEntry,
     entryVm: EntryViewModel,
     images: ImageLoader,
+    onSearch: (String) -> Unit = {},
     onPresent: (String) -> Unit,
 ) {
     val scan by entry.savedStateHandle.getStateFlow<ArrayList<String>?>(SCAN, null).collectAsStateWithLifecycle()
@@ -62,6 +63,11 @@ internal fun EntryFrame(
         val found = barcode.foundSet ?: return@LaunchedEffect
         entryVm.gallerySearchFoundConsumed()
         onPresent(found)
+    }
+    LaunchedEffect(barcode.searchFor) {
+        val number = barcode.searchFor ?: return@LaunchedEffect
+        entryVm.searchForConsumed()
+        onSearch(number)
     }
     if (barcode.result != null) BarcodeResultRoute(entryVm, images)
     SetCheckRoute(entryVm)

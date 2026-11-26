@@ -12,7 +12,7 @@ enum class ScannerOrigin {
     /** Adding from the gallery: hits go into the confirmation dialog. */
     GALLERY,
 
-    /** Search from the gallery: an existing set is opened instead of added. */
+    /** Search from the gallery: the set number goes into the search field, nothing is added. */
     GALLERY_SEARCH,
 
     /** The parts list takes over only the number, nothing is created. */

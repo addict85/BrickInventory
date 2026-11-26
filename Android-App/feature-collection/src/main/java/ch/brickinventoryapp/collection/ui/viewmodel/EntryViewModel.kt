@@ -97,7 +97,11 @@ class EntryViewModel @Inject constructor(
                             _barcodeState.update { it.copy(requestManualEntry = true) }
                             return@launch
                         }
-                        if (_barcodeState.value.source == ScannerOrigin.GALLERY_SEARCH && showExisting(setNum)) return@launch
+                        if (_barcodeState.value.source == ScannerOrigin.GALLERY_SEARCH) {
+                            messages.acknowledge()
+                            _barcodeState.update { it.copy(searchFor = setNum) }
+                            return@launch
+                        }
                         messages.acknowledge()
                         _barcodeState.update { it.copy(
                             result = setNum, setName = r.data.name ?: setNum,
@@ -196,6 +200,11 @@ class EntryViewModel @Inject constructor(
     /** The gallery has navigated to the found set. */
     fun gallerySearchFoundConsumed() {
         _barcodeState.update { it.copy(foundSet = null) }
+    }
+
+    /** The gallery has put the scanned set number into its search. */
+    fun searchForConsumed() {
+        _barcodeState.update { it.copy(searchFor = null) }
     }
 
     /** The confirmation dialog after a scan: watchlist, hand to the parts list, or enter. */
