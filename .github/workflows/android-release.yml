@@ -496,8 +496,14 @@ jobs:
           CODE=$(curl -sS --fail-with-body -X POST -H "$AUTH" -H 'Content-Type: application/octet-stream' \
             --data-binary @signiert/bundle/release/app-release.aab \
             "https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/$PAKET/edits/$EDIT/bundles?uploadType=media" | jq -r .versionCode)
+          # A track name Play does not know answers 404; the names it does know end that guessing.
+          if ! curl -sS -f -H "$AUTH" "$API/edits/$EDIT/tracks/$TRACK" > /dev/null; then
+            NAMEN=$(curl -sS -f -H "$AUTH" "$API/edits/$EDIT/tracks" | jq -r '[.tracks[].track] | join(", ")')
+            echo "::error title=Google Play::Track „$TRACK“ unbekannt. Vorhanden: $NAMEN (Variable PLAY_TRACK)."
+            exit 1
+          fi
           jq -n --arg t "$TRACK" --arg c "$CODE" --arg s "$STATUS" '{track:$t, releases:[{versionCodes:[$c], status:$s}]}' \
-            | curl -sS --fail-with-body -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data @- "$API/edits/$EDIT/tracks/$TRACK" > /dev/null
-          curl -sS --fail-with-body -X POST -H "$AUTH" "$API/edits/$EDIT:commit" > /dev/null
+            | curl -sS --fail-with-body -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data @- "$API/edits/$EDIT/tracks/$TRACK" | jq -c .
+          curl -sS --fail-with-body -X POST -H "$AUTH" "$API/edits/$EDIT:commit" | jq -c '{id}'
           echo "## Google Play" >> "$GITHUB_STEP_SUMMARY"
           echo "versionCode $CODE im Track \`$TRACK\` (Status \`$STATUS\`) eingeliefert." >> "$GITHUB_STEP_SUMMARY"
