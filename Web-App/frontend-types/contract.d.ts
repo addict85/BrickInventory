@@ -197,6 +197,7 @@ export type BalanceReply = {
   voucher: Voucher | null;
   displayed: string | null;
   currency_changed: boolean;
+  removed: boolean;
   reason?: string | null;
   waitSeconds?: number | null;
   error?: string | null;
@@ -2216,6 +2217,7 @@ export type UserSettings = {
   user_default_condition: string | null;
   effective_condition: string;
   app_theme: string;
+  remove_empty_vouchers: boolean;
   [feld: string]: unknown;
 };
 export type ValuationResponse = {

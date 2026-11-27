@@ -223,6 +223,7 @@ data class BalanceReply(
     @SerialName("voucher") val voucher: Voucher? = null,
     @SerialName("displayed") val displayed: String? = null,
     @SerialName("currency_changed") val currencyChanged: Boolean = false,
+    @SerialName("removed") val removed: Boolean = false,
     @SerialName("reason") val reason: String? = null,
     @SerialName("waitSeconds") val waitSeconds: Int? = null,
     @SerialName("error") val error: String? = null,
@@ -2251,6 +2252,7 @@ data class UserSettings(
     @SerialName("user_default_condition") val userDefaultCondition: Condition? = null,
     @SerialName("effective_condition") val effectiveCondition: Condition = Condition.NEW,
     @Serializable(with = DesignOrNothing::class) @SerialName("app_theme") val appTheme: Design? = null,
+    @SerialName("remove_empty_vouchers") val removeEmptyVouchers: Boolean = false,
 )
 
 @Serializable

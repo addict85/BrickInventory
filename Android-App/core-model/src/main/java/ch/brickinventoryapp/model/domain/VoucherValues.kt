@@ -31,4 +31,6 @@ data class BalanceInfo(
     val reason: String? = null,
     val waitSec: Int? = null,
     val error: String? = null,
+    /** The server removed the card at 0.00 (the account's switch); restorable for a few days. */
+    val removed: Boolean = false,
 )

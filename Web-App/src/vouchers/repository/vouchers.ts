@@ -275,3 +275,11 @@ export async function reencryptCopies(db: DbInterface, all = false): Promise<num
   }
   return n;
 }
+
+/** Across accounts, for the nightly run: only cards with a PIN, since LEGO asks for it. */
+export function accountsWithCards(db: DbInterface): Promise<{ user_id: number; cards: number }[]> {
+  return db.all<{ user_id: number; cards: number }>(
+    `SELECT user_id, COUNT(*)::int AS cards FROM vouchers
+      WHERE deleted_at IS NULL AND pin IS NOT NULL GROUP BY user_id ORDER BY user_id`,
+  );
+}

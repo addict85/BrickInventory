@@ -39,6 +39,7 @@ fun VouchersRoute(
     // The list loads as soon as this page observes the state (VoucherViewModel),
     // not when the settings are opened. The plain text only lives as long as the page is in front.
     DisposableEffect(Unit) { onDispose { gvm.leaveVouchers() } }
+    LaunchedEffect(Unit) { gvm.loadRemoveEmpty() }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { gvm.forgetPlaintext() }
     // Number and PIN together are money: marked as a secret, gone after one minute.
     val job = voucherState.copyTo
@@ -67,6 +68,7 @@ fun VouchersRoute(
                 override fun queryBalance(id: Int) = gvm.queryBalance(id)
                 override fun cancelBalanceRun() = gvm.cancelBalanceRun()
                 override fun reload() = gvm.loadVouchers()
+                override fun setRemoveEmpty(on: Boolean) = gvm.setRemoveEmpty(on)
                 override fun confirm() = gvm.confirm()
                 override fun cancelConfirmation() = gvm.cancelConfirmation()
             },

@@ -1328,7 +1328,7 @@ class ScreenPhotoVariantsTest {
         val vm = world.t.track(VoucherViewModel(testVouchersRepository(world.t.api), ContextTexts(),
             object : FileReader {
                 override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
-            }, world.t.messages))
+            }, world.t.messages, testAccountRepository(world.t.api)))
         show("gutschein-formular") {
             VouchersRoute(vm, remember { SnackbarHostState() }, onBack = {})
         }
@@ -1589,7 +1589,7 @@ class ScreenPhotoVariantsTest {
         val vm = world.t.track(VoucherViewModel(testVouchersRepository(world.t.api), ContextTexts(),
             object : FileReader {
                 override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
-            }, world.t.messages))
+            }, world.t.messages, testAccountRepository(world.t.api)))
         show(name, dark = dark, font = font) { VouchersRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
         pause()
         photo(name, dark = dark)

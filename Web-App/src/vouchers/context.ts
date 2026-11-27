@@ -1,12 +1,13 @@
 /** What the services get; kept apart from area.ts so no import cycle forms. */
 import type { ThrottleServices } from '../throttle';
 import type { Db } from '../../db/database';
-import { bound, type Context } from '../infra/area';
+import { asSystem, bound, type Context } from '../infra/area';
 import * as balanceThrottle from './repository/balanceThrottle';
 import * as vouchers from './repository/vouchers';
 import * as pdfTickets from './repository/pdfTickets';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../account';
+import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { Compartments } from '../infra/cache';
 import type { Clock } from '../infra/clock';
@@ -18,6 +19,8 @@ export interface VoucherDependencies {
   account: AccountServices;
   throttle: ThrottleServices;
   externalSources: ForeignSourcesServices;
+  /** For the nightly run: each account's cards under that account's row security. */
+  jobQueue: JobsServices;
   /** Sessions of balance lookups of this set of services. */
   compartments: Compartments;
 }
@@ -39,6 +42,7 @@ export const access = (db: Db) => ({
     purgeDeleted: bound(db)(vouchers.purgeDeletedVoucherRows),
     rememberVoucherPdf: bound(db)(vouchers.rememberVoucherPdf),
     vouchersOfAccount: bound(db)(vouchers.vouchersOfAccount),
+    accountsWithCards: asSystem(db, 'nightly voucher balances: accounts with cards', vouchers.accountsWithCards),
     reencryptAllVouchers: bound(db)(vouchers.reencryptAllVouchers),
     reencryptCopies: bound(db)(vouchers.reencryptCopies),
     reencryptNumbers: bound(db)(vouchers.reencryptNumbers),

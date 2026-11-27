@@ -53,6 +53,8 @@ export const BalanceReply = z.looseObject({
   voucher: Voucher.nullable(),
   displayed: z.string().nullable(),
   currency_changed: z.boolean(),
+  /** The account's switch removed the card at 0.00 (soft delete, restorable). */
+  removed: z.boolean(),
   reason: z.string().nullable().optional(),
   waitSeconds: z.number().int().nullable().optional(),
   error: z.string().nullable().optional(),

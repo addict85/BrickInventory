@@ -1182,6 +1182,12 @@
                     data-i18n="vouchers.balance_all" data-ico="refresh">Guthaben aller Karten abfragen</button>
             <span class="text-medium" id="vouchers-balance-status" role="status"></span>
           </div>
+          <div class="space-top-075" data-only-with-vouchers>
+            <label class="row items-center gap-8 cursor-pointer">
+              <input class="w-auto" type="checkbox" id="vouchers-remove-empty" data-change="saveRemoveEmpty" />
+              <span data-i18n="vouchers.remove_empty">Leere Gutscheine entfernen</span></label>
+            <p class="text-small" data-i18n="vouchers.remove_empty_hint">Karten mit 0.00 Guthaben verschwinden nach der Abfrage, auch nach der nächtlichen.</p>
+          </div>
 
 
           <!-- The export. -->

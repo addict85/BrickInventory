@@ -90,6 +90,9 @@ interface AccountRepository {
 
     suspend fun updateSettings(currency: CurrencyCode, condition: Condition): Outcome<Unit>
 
+    /** The account's switch „remove empty vouchers“; the server applies it after each balance query. */
+    suspend fun setRemoveEmptyVouchers(on: Boolean): Outcome<Unit>
+
     suspend fun getDefaultCondition(): Outcome<Condition>
 
     /** null: back to the server's default. */

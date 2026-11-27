@@ -3,6 +3,7 @@ package ch.brickinventoryapp.finances.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.finances.VouchersRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.finances.ui.BalanceRun
@@ -49,6 +50,7 @@ class VoucherViewModel @Inject constructor(
     private val texts: Texts,
     private val reader: FileReader,
     private val messages: MessageChannel,
+    private val account: AccountRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(VoucherUiState())
@@ -71,6 +73,27 @@ class VoucherViewModel @Inject constructor(
             is Outcome.Failure -> {
                 _state.update { it.copy(fetch = loadError(r)) }
                 messages.show(texts.messageForSnackbar(r))
+            }
+        }
+    }
+
+    /**
+     * The switch as the server stored it. Its own request when the page opens, not part of
+     * [load]: the list reloads after every change, the switch does not change with it.
+     */
+    fun loadRemoveEmpty() {
+        viewModelScope.launch {
+            val r = account.getSettings()
+            if (r is Outcome.Success) _state.update { it.copy(removeEmpty = r.data.removeEmptyVouchers) }
+        }
+    }
+
+    /** The switch follows the server: until it answers, the old state stays. */
+    fun setRemoveEmpty(on: Boolean) {
+        viewModelScope.launch {
+            when (val r = account.setRemoveEmptyVouchers(on)) {
+                is Outcome.Success -> _state.update { it.copy(removeEmpty = on) }
+                is Outcome.Failure -> messages.show(texts.messageForSnackbar(r))
             }
         }
     }
@@ -327,6 +350,7 @@ class VoucherViewModel @Inject constructor(
                         var sentence = texts.text(R.string.vouchers_balance_done, v.number, amount)
                         // Appended instead of as a second message, which would overwrite the first.
                         if (d.currencyChanged) sentence += " " + texts.text(R.string.vouchers_balance_currency, v.currency)
+                        if (d.removed) sentence += " " + removedSentence(1)
                         messages.show(sentence)
                         load()
                     }
@@ -352,10 +376,12 @@ class VoucherViewModel @Inject constructor(
             if (onIt.isEmpty()) return@launch report(R.string.vouchers_balance_none)
             var done = 0
             var error = 0
+            var removed = 0
             try {
                 for (g in onIt) {
                     when (questionBalance(g, done + error, onIt.size)) {
                         BalanceQuery.DONE -> done++
+                        BalanceQuery.REMOVED -> { done++; removed++ }
                         BalanceQuery.ERROR -> error++
                         BalanceQuery.ABORT -> { error++; return@launch }
                     }
@@ -366,8 +392,9 @@ class VoucherViewModel @Inject constructor(
                 // every suspending call would fail right away.
                 _state.update { it.copy(balanceRunning = null, balanceRun = null) }
                 loadVouchers()
-                messages.show(texts.text(R.string.vouchers_balance_all_done,
-                    done.toString(), error.toString()))
+                val summary = texts.text(R.string.vouchers_balance_all_done, done.toString(), error.toString())
+                // One message: a second one would replace the summary in the snackbar.
+                messages.show(if (removed > 0) summary + " · " + removedSentence(removed) else summary)
             }
         }
     }
@@ -383,7 +410,7 @@ class VoucherViewModel @Inject constructor(
             when (val r = repo.balance(g.id)) {
                 is Outcome.Success -> {
                     val d = r.data
-                    if (d.success) return BalanceQuery.DONE
+                    if (d.success) return if (d.removed) BalanceQuery.REMOVED else BalanceQuery.DONE
                     if (d.reason == "abstand" && (d.waitSec ?: 0) > 0) {
                         waitVisible(d.waitSec ?: 0, g.number)
                     } else {
@@ -447,7 +474,9 @@ class VoucherViewModel @Inject constructor(
 
     private fun report(id: Int) { messages.show(Message.Resource(id)) }
 
-    private enum class BalanceQuery { DONE, ERROR, ABORT }
+    private fun removedSentence(count: Int) = texts.quantity(R.plurals.vouchers_removed_empty, count, count)
+
+    private enum class BalanceQuery { DONE, REMOVED, ERROR, ABORT }
 }
 
 /** Steps the plain text handles; PDF and delete ask every time. */

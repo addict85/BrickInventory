@@ -68,6 +68,22 @@ function reportSuccess(response) {
   }
 }
 
+/** Cards the server removed at 0.00 (the account's switch): one toast for the whole run, with undo,
+ * because the removal is the same soft delete as the delete button. @param {(number | string)[]} ids */
+function reportRemoved(ids) {
+  if (!ids.length) return;
+  toast(tRaw('vouchers.removed_empty', { n: ids.length }), 'success', {
+    text: tRaw('trash.undo'),
+    stays: true,
+    fn: async () => {
+      let ok = true;
+      for (const id of ids) ok = !!(await api('POST', `/v2/vouchers/${id}/restore`))?.success && ok;
+      toast(tRaw(ok ? 'trash.restored' : 'vouchers.save_error'), ok ? 'success' : 'error');
+      await loadVouchers();
+    },
+  });
+}
+
 /** One card, on demand, in its row. */
 /** @param {string} id */
 export async function queryBalance(id) {
@@ -79,6 +95,7 @@ export async function queryBalance(id) {
     if (r.kind === 'ok') {
       if (status) status.textContent = '';
       reportSuccess(r.response);
+      if (r.response.removed) reportRemoved([id]);
       await loadVouchers();
       return;
     }
@@ -94,7 +111,7 @@ export async function queryBalance(id) {
   }
 }
 
-/** One voucher, retried while the server asks for spacing. @returns {Promise<'ok' | 'failed' | 'stop'>}
+/** One voucher, retried while the server asks for spacing. @returns {Promise<'ok' | 'removed' | 'failed' | 'stop'>}
  * `stop`: bot protection — this is where it STOPS, not just skips this card. The remaining cards would hit
  * the same wall, and no more requests get generated in that case.
  * @param {{ id: number, number: string }} g @param {() => void} progress */
@@ -104,7 +121,7 @@ async function queryOneBalance(g, progress) {
     const r = await oneQuery(g.id);
     if (r.kind === 'ok') {
       reportSuccess(r.response);
-      return 'ok';
+      return r.response.removed ? 'removed' : 'ok';
     }
     if (r.kind === 'space') {
       await waitVisibly(r.waitSeconds, g.number);
@@ -127,6 +144,8 @@ export async function queryAllBalances() {
   }
   let done = 0,
     failed = 0;
+  /** @type {number[]} */
+  const removed = [];
   for (const g of pending) {
     const progress = () => {
       if (status)
@@ -137,16 +156,19 @@ export async function queryAllBalances() {
         });
     };
     const r = await queryOneBalance(g, progress);
-    if (r === 'ok') done++;
+    if (r === 'ok' || r === 'removed') done++;
     else failed++;
+    if (r === 'removed') removed.push(g.id);
     if (r === 'stop') {
       if (status) status.textContent = '';
+      reportRemoved(removed);
       await loadVouchers();
       return;
     }
   }
   if (status) status.textContent = '';
   toast(tRaw('vouchers.balance_all_done', { done: done, error: failed }), failed ? 'info' : 'success');
+  reportRemoved(removed);
   await loadVouchers();
 }
 

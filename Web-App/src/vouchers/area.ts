@@ -4,6 +4,7 @@ import { Compartments } from '../infra/cache';
 import * as service from './service';
 import * as pdfTicket from './pdfTicket';
 import { encryptLegacyVoucherFiles } from './voucherFiles';
+import { voucherJobKinds } from './nightlyBalances';
 import { access, type VoucherDependencies, type VoucherContext } from './context';
 
 export type { VoucherDependencies, VoucherContext } from './context';
@@ -26,6 +27,7 @@ export function createVouchers(a: Omit<VoucherDependencies, 'compartments'>, ins
       voucherPdf: bound(k)(service.voucherPdf),
       redeemTicket: bound(k)(pdfTicket.redeemTicket),
       cleanup: bound(k)(cleanupVouchers),
+      jobKinds: () => voucherJobKinds(k),
       encryptLegacyFiles: encryptLegacyVoucherFiles,
       // Re-encrypting at startup (startup/database.ts): across all accounts, without a request.
       reencrypt: bound(k)(reencrypt),

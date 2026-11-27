@@ -1,0 +1,17 @@
+Gegenprobe: Der Schalter speichert den umgekehrten Wert
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherRemoveEmptyTest
+Rot: the switch reads and saves
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountRepositoryImpl.kt
+@@ -241,7 +241,7 @@ internal class AccountRepositoryImpl @Inject constructor(
+ 
+     /** Stored as "1"/"0" like every switch of the web app; the server checks the value. */
+     override suspend fun setRemoveEmptyVouchers(on: Boolean): Outcome<Unit> =
+-        safeCall { api.updateSettings(mapOf("remove_empty_vouchers" to if (on) "1" else "0")) }.done()
++        safeCall { api.updateSettings(mapOf("remove_empty_vouchers" to if (on) "0" else "1")) }.done()
+ 
+     override suspend fun getDefaultCondition(): Outcome<Condition> = safeCall { api.getDefaultCondition() }.mapData { it.condition }
+ 

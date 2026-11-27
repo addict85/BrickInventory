@@ -3,6 +3,7 @@ package ch.brickinventoryapp.finances
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.RowsServer
 import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testVouchersRepository
 import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
@@ -74,6 +75,7 @@ class VoucherViewModelTest {
             texts = NumbersTexts,
             reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
             messages = channel,
+            account = testAccountRepository(api),
         )
     }
 

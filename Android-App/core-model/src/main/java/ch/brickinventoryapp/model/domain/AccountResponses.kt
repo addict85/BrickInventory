@@ -83,4 +83,6 @@ data class AccountSettings(
     val priceState: Condition,
     val defaultState: Condition,
     val effectiveState: Condition,
+    /** Cards at 0.00 vanish after a balance query (run or night); an older server sends nothing. */
+    val removeEmptyVouchers: Boolean = false,
 )
