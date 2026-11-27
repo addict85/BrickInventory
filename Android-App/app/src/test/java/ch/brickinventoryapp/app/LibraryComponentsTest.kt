@@ -29,6 +29,9 @@ import org.robolectric.annotation.Config
  *                               “the PDF renderer runs isolated …”
  *   (run here) `<uses-permission REQUEST_INSTALL_PACKAGES>` back in app/src/main/AndroidManifest.xml
  *                               → red “the app does not ask to install packages …”
+ *   foreground-permission-back   tools:node="remove" taken from FOREGROUND_SERVICE → red
+ *                               “the app asks for no foreground service …” (WorkManager brings it)
+ *   foreground-service-back      tools:node="remove" taken from SystemForegroundService → the same test red
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -68,6 +71,16 @@ class LibraryComponentsTest {
             .requestedPermissions.orEmpty().toList()
         assertTrue(requested.toString(), "android.permission.CAMERA" in requested)
         assertEquals(emptyList<String>(), requested.filter { it == "android.permission.REQUEST_INSTALL_PACKAGES" })
+    }
+
+    /** CSV import and PDF export are plain workers; setForeground() would need the permission back. */
+    @Test
+    fun `the app asks for no foreground service and declares none`() {
+        val requested = ctx.packageManager.getPackageInfo(ctx.packageName, PackageManager.GET_PERMISSIONS)
+            .requestedPermissions.orEmpty().toList()
+        assertTrue(requested.toString(), "android.permission.POST_NOTIFICATIONS" in requested)
+        assertEquals(emptyList<String>(), requested.filter { it.startsWith("android.permission.FOREGROUND_SERVICE") })
+        missing("androidx.work.impl.foreground.SystemForegroundService") { ctx.packageManager.getServiceInfo(it, 0) }
     }
 
     @Test

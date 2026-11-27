@@ -2,14 +2,13 @@
 # Geprüft von tools/manifest-check.py im Job apk-pruefen am zusammengeführten Manifest:
 # Bibliotheken bringen eigene mit. Eine neue Zeile nur mit Grund darüber.
 
-# Eigene (app/src/main/AndroidManifest.xml): Server, Netzlage, Scannen, PDF-Export im
-# Vordergrunddienst, Preisalarm-Meldungen, WLAN wachhalten beim Download.
+# Eigene (app/src/main/AndroidManifest.xml): Server, Netzlage, Scannen, Meldungen
+# (Preisalarm, CSV-Import, PDF-Export), WLAN wachhalten beim Download.
+# Kein FOREGROUND_SERVICE: Import und Export laufen als gewöhnliche Worker.
 # Kein REQUEST_INSTALL_PACKAGES: Die App kommt über Google Play und installiert nichts selbst.
 android.permission.INTERNET
 android.permission.ACCESS_NETWORK_STATE
 android.permission.CAMERA
-android.permission.FOREGROUND_SERVICE
-android.permission.FOREGROUND_SERVICE_DATA_SYNC
 android.permission.POST_NOTIFICATIONS
 android.permission.WAKE_LOCK
 

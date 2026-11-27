@@ -6,9 +6,9 @@ Rot: every source file and test class named in INVARIANTEN exists
 diff --git a/Android-App/INVARIANTEN.md b/Android-App/INVARIANTEN.md
 --- a/Android-App/INVARIANTEN.md
 +++ b/Android-App/INVARIANTEN.md
-@@ -169,7 +169,7 @@
- Dateien: `services/service/CsvImportService.kt`, `services/service/PdfExportService.kt`,
- `services/service/PdfExportManager.kt`, `data/util/LanguageManager.kt` · Test: `ServicePolishTest`
+@@ -175,7 +175,7 @@
+ `services/service/PdfExportWorker.kt` · Tests: `LibraryComponentsTest`, `CsvImportWatchTest`,
+ `PdfFollowUpTest`
  
 -**Kein FileProvider.** Die Teileliste gibt nur der eigene `TeilelistenProvider` weiter:
 +**FileProvider nur `pdf/`**, nie ganze Wurzeln. **Kein FileProvider.** Die PartList gibt nur der eigene `PartListsProvider` weiter:

@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The PDF service's notification builds its strings from field values: no
+ * The PDF worker's notification builds its strings from field values: no
  * error is left without a string, even when the server sent none.
  *
  * Counter-check (counter-checks/pdf-service-error-empty.patch, measured with kotlinc):

@@ -6,17 +6,11 @@ import java.io.File
 
 /**
  * Construction rules that without a device only stand in the source: camera resources (ML Kit clients
- * cannot be created under Robolectric), fixed debug version and one CSV status path. The PDF cache
- * budget (InstructionCacheBudgetTest), the CSV service's startup window (CsvStartupGraceTest) and that
+ * cannot be created under Robolectric) and fixed debug version. The single CSV status path
+ * (CsvImportWatchTest), the PDF cache budget (InstructionCacheBudgetTest), the CSV worker's startup window (CsvStartupGraceTest) and that
  * sign-out empties all caches (LogoutCleansEverythingTest) are checked executed.
  */
 class ResourceAndCacheTest {
-
-    private fun read(rel: String): String {
-        val f = File(Sources.root, "$rel")
-        assert(f.exists()) { "File not found: $rel" }
-        return f.readText()
-    }
 
     private fun code(src: String): String {
         val s = src.replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), "")
@@ -82,24 +76,6 @@ class ResourceAndCacheTest {
         val build = Sources.workflow().substringAfter("  build:").substringBefore("  release:")
         assert(Regex("""actions/checkout@\S+.*\n\s+with:\n\s+fetch-depth: 0""").containsMatchIn(build)) {
             "the build job clones shallow: every build would be commit number 1"
-        }
-    }
-
-    // ── CSV status: one path ─────────────────────────────────────────────────
-
-    @Test
-    fun `the CSV service shares the SSE client with the ViewModel`() {
-        val src = code(read("services/service/CsvImportService.kt"))
-        assert(src.contains("sseClient")) {
-            "CsvImportService polls on its own again instead of using the CsvImportSseClient " +
-                "— two separate implementations of the same matter"
-        }
-        val applyCount = Regex("""private fun applyStatus""").findAll(src).count()
-        assert(applyCount == 1) {
-            "the status logic no longer stands in exactly one place ($applyCount hits)"
-        }
-        assert(src.contains("pollOnce()")) {
-            "the polling fallback is missing — on an SSE outage there would be no progress any more"
         }
     }
 }

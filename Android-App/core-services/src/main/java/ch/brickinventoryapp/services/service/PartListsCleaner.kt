@@ -20,7 +20,7 @@ internal class PartListsCleaner(context: Context, params: WorkerParameters) : Wo
 
     override fun doWork(): Result {
         if (cleanOldPartListOn(applicationContext.filesDir, System.currentTimeMillis())) {
-            NotificationManagerCompat.from(applicationContext).cancel(PdfExportService.DONE_ID)
+            NotificationManagerCompat.from(applicationContext).cancel(AndroidPdfNotifier.DONE_ID)
         }
         return Result.success()
     }

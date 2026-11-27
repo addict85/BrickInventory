@@ -38,7 +38,7 @@ class CsvImportSseClient @Inject constructor(
         data class Status(val status: CsvImportStatusView) : Event()
         /**
          * Connection error. [technical] is exclusively for the log: the caller
-         * (CsvImportService via followStream) falls back to polling, the user is
+         * (CsvImportWorker via followStream) falls back to polling, the user is
          * shown nothing — hence no translatable
          * text but the cause in technical form.
          */

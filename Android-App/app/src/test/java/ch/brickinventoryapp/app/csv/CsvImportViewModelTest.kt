@@ -41,7 +41,7 @@ import org.junit.Test
 
 /**
  * The CSV import bar executed, ViewModel including coordinator: stream,
- * foreground service and store in memory, API without network, time virtual. That way
+ * background follow-up and store in memory, API without network, time virtual. That way
  * the five seconds „bar stays“ and the growing delay of the
  * reconnection can be checked without waiting. The ViewModel starts the stream itself
  * as soon as the session is signed in; no screen triggers it.

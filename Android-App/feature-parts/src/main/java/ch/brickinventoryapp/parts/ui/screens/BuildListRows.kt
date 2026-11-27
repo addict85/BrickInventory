@@ -203,4 +203,4 @@ internal fun buildListsGroups(parts: List<PlPart>): List<Pair<String?, List<PlPa
     return if (figures.isEmpty()) colors else colors + (null to figures.sortedWith(afterNumber))
 }
 
-// PartListViewModel.exportPartsPdf runs the PDF export via the foreground service.
+// PartListViewModel.exportPartsPdf runs the PDF export via a WorkManager worker.

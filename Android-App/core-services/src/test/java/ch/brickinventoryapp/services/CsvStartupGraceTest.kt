@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The CSV service starts with the upload, while the server still reports “idle”: an idle answer in
+ * The CSV worker starts with the upload, while the server still reports “idle”: an idle answer in
  * the first seconds is the startup, after them or after a running state it is the end.
  *
  * Counter-checks (run here): `!sawRunning &&` removed → red “after a running state …”;
@@ -16,13 +16,13 @@ import org.junit.Test
 class CsvStartupGraceTest {
 
     @Test
-    fun `an idle answer at the start does not end the service`() {
+    fun `an idle answer at the start does not end the watch`() {
         assertTrue(importGoesOn(sawRunning = false, sinceStartMs = 0))
         assertTrue(importGoesOn(sawRunning = false, sinceStartMs = CSV_GRACE_MS - 1))
     }
 
     @Test
-    fun `after the window an idle answer ends the service`() {
+    fun `after the window an idle answer ends the watch`() {
         assertFalse(importGoesOn(sawRunning = false, sinceStartMs = CSV_GRACE_MS))
     }
 

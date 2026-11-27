@@ -27,7 +27,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToLong
 
-/** Where the export stands, as field values; the records form parts list and service. */
+/** Where the export stands, as field values; the parts list and the worker read it. */
 internal sealed interface PdfExportState {
     data object Idle : PdfExportState
     data class Running(val progress: PdfProgress) : PdfExportState
@@ -36,9 +36,10 @@ internal sealed interface PdfExportState {
 }
 
 /**
- * Controls the PDF export: start the job, wait for completion via SSE (polling
- * as a fallback), download the PDF. The job runs in the application scope, so
- * it survives the screen; the foreground service only keeps the process awake while it does.
+ * Controls the PDF export: start the job here, then hand its id to [PdfExportWorker], which
+ * waits for completion via SSE (polling as a fallback) and downloads the PDF through [follow].
+ * Starting stays in-process because the job (all rows) is too large for WorkManager's input;
+ * the waiting goes to WorkManager so it survives the screen and the process.
  */
 @Singleton
 internal class PdfExportManager @Inject constructor(
@@ -53,11 +54,32 @@ internal class PdfExportManager @Inject constructor(
 
     private var job: Job? = null
 
+    // The job whose worker may write the state; "" while a new one is starting. The old
+    // worker only stops once the new one replaces it and must not report its PDF meanwhile.
+    @Volatile private var current: String? = null
+
     /** A new job replaces a running one; the state immediately switches to „starting“. */
     fun commission(request: PartListJob) {
         job?.cancel()
-        _state.value = PdfExportState.Running(PdfProgress(PdfStep.STARTING))
-        job = areas.application.launch(areas.io) { runFrom(request) }
+        synchronized(this) {
+            current = ""
+            _state.value = PdfExportState.Running(PdfProgress(PdfStep.STARTING))
+        }
+        job = areas.application.launch(areas.io) { start(request) }
+    }
+
+    private suspend fun start(request: PartListJob) {
+        catchUnlessCancelled {
+            val jobId = when (val r = files.startPdfJob(request)) {
+                is Outcome.Success -> r.data
+                is Outcome.Failure -> { fail(PdfFailure.Fetch(r)); return }
+            }
+            synchronized(this) {
+                current = jobId
+                _state.value = PdfExportState.Running(PdfProgress(PdfStep.IMAGES_LOAD))
+            }
+            PdfExportWorker.schedule(context, jobId)
+        }.onFailure { e -> fail(PdfFailure.Fetch(Outcome.Failure.Unknown(technical = e.message))) }
     }
 
     /** Five attempts with a growing pause: the finished PDF is sometimes only ready shortly after the notification. */
@@ -72,14 +94,17 @@ internal class PdfExportManager @Inject constructor(
         return outcome
     }
 
-    suspend fun runFrom(request: PartListJob) {
+    /**
+     * Waits for the server job and downloads the PDF; ends in Done or Error, or Idle when a
+     * newer export replaced this one. Called by the worker, also in a new process after the
+     * old one died (current is then null), so it only needs the job id.
+     */
+    suspend fun follow(jobId: String): PdfExportState {
+        if (current != null && current != jobId) return PdfExportState.Idle
+        current = jobId
+        publish(jobId, PdfExportState.Running(PdfProgress(PdfStep.IMAGES_LOAD)))
         catchUnlessCancelled {
-            val jobId = when (val r = files.startPdfJob(request)) {
-                is Outcome.Success -> r.data
-                is Outcome.Failure -> { fail(PdfFailure.Fetch(r)); return }
-            }
-            _state.value = PdfExportState.Running(PdfProgress(PdfStep.IMAGES_LOAD))
-            val jobRun = JobRun()
+            val jobRun = JobRun(jobId)
             // Alongside the waiting, a ticker: from the server's estimate (etaSeconds ≈
             // missing images), the remaining time every second, but only while it's still being created.
             val reason = coroutineScope {
@@ -89,28 +114,36 @@ internal class PdfExportManager @Inject constructor(
                         val deadline = jobRun.deadlineMs
                         if (jobRun.created && deadline > 0L) {
                             val rest = ((deadline - System.currentTimeMillis() + 999) / 1000L).toInt()
-                            _state.value = PdfExportState.Running(PdfProgress(PdfStep.CREATED, rest))
+                            publish(jobId, PdfExportState.Running(PdfProgress(PdfStep.CREATED, rest)))
                         }
                     }
                 }
                 try { waitOnJob(jobId, jobRun) } finally { ticker.cancel() }
             }
-            if (reason != null) { fail(reason); return }
+            if (reason != null) { publish(jobId, PdfExportState.Error(reason)); return outcomeOf(jobId) }
 
-            _state.value = PdfExportState.Running(PdfProgress(PdfStep.DOWNLOAD))
+            publish(jobId, PdfExportState.Running(PdfProgress(PdfStep.DOWNLOAD)))
             when (val r = loadPdf(jobId)) {
                 is Outcome.Success -> {
                     val file = partListVault.put(context.filesDir, context.getExternalFilesDir(null), r.data)
                     // Even encrypted, the inventory only stays as long as someone wants to open it.
                     runCatching { PartListsCleaner.plane(context) }
-                    _state.value = PdfExportState.Done(file)
+                    publish(jobId, PdfExportState.Done(file))
                 }
-                is Outcome.Failure -> fail(PdfFailure.Fetch(r))
+                is Outcome.Failure -> publish(jobId, PdfExportState.Error(PdfFailure.Fetch(r)))
             }
-        }.onFailure { e -> fail(PdfFailure.Fetch(Outcome.Failure.Unknown(technical = e.message))) }
+        }.onFailure { e -> publish(jobId, PdfExportState.Error(PdfFailure.Fetch(Outcome.Failure.Unknown(technical = e.message)))) }
+        return outcomeOf(jobId)
     }
 
+    private fun outcomeOf(jobId: String) = if (current == jobId) _state.value else PdfExportState.Idle
+
     private fun fail(reason: PdfFailure) { _state.value = PdfExportState.Error(reason) }
+
+    /** Only the current job writes; see [current]. */
+    private fun publish(jobId: String, s: PdfExportState) = synchronized(this) {
+        if (current == jobId) _state.value = s
+    }
 
     /** Waits for completion via SSE, otherwise via polling. Null means done, otherwise the reason. */
     private suspend fun waitOnJob(jobId: String, jobRun: JobRun): PdfFailure? {
@@ -131,7 +164,7 @@ internal class PdfExportManager @Inject constructor(
         return when (state.status) {
             RunStatus.DONE -> {
                 jobRun.created = false
-                _state.value = PdfExportState.Running(PdfProgress(PdfStep.COMPLETION))
+                publish(jobRun.jobId, PdfExportState.Running(PdfProgress(PdfStep.COMPLETION)))
                 Outbox(null)
             }
             RunStatus.ERROR -> { jobRun.created = false; Outbox(PdfFailure.Job(state.error)) }
@@ -159,7 +192,7 @@ internal class PdfExportManager @Inject constructor(
     private class Outbox(val reason: PdfFailure?)
 
     /** What a single job knows about its own time; new for each job. */
-    private class JobRun {
+    private class JobRun(val jobId: String) {
         /** When the PDF will be done according to the first estimate, 0 without an estimate. */
         @Volatile var deadlineMs = 0L
 

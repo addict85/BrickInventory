@@ -17,7 +17,7 @@ import javax.inject.Inject
 
 /**
  * The bar of a running CSV import, also one from the web app. Stream and
- * foreground service are controlled by the [CsvImportCoordinator]; the ViewModel binds it to
+ * background follow-up are controlled by the [CsvImportCoordinator]; the ViewModel binds it to
  * the activity's lifetime and to the sign-in, instead of a LaunchedEffect.
  */
 @HiltViewModel

@@ -1,0 +1,17 @@
+Gegenprobe: Ein fertiger PDF-Export meldet sich nicht mehr mit „PDF bereit, tippen“
+Modul: core-services
+Test: ch.brickinventoryapp.services.PdfFollowUpTest
+Rot: a finished export posts the tap notification
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt
+@@ -79,7 +79,7 @@
+             val bar = launch { progress.collect { (it as? PdfExportState.Running)?.let { r -> notifier.progress(r.progress) } } }
+             try {
+                 when (val end = follow(jobId)) {
+-                    is PdfExportState.Done -> notifier.ready()
++                    is PdfExportState.Done -> {}
+                     is PdfExportState.Error -> notifier.failed(end.reason)
+                     PdfExportState.Idle, is PdfExportState.Running -> {}
+                 }

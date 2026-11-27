@@ -7,7 +7,7 @@ import ch.brickinventoryapp.model.domain.RunStatus
  * table (CsvStatusReloadTest).
  */
 internal enum class CsvSequence {
-    /** An import has just begun — the foreground service must start. */
+    /** An import has just begun — the background follow-up must start. */
     SERVICE_START,
 
     /** A running import has finished — reload data once. */

@@ -18,8 +18,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Follows a CSV import and controls the foreground service for it. Separate from the
- * ViewModel because service and stock sync are side effects of the app; the
+ * Follows a CSV import and controls its background follow-up (a worker). Separate from the
+ * ViewModel because follow-up and stock sync are side effects of the app; the
  * ViewModel only shows [condition]. A singleton so that a new ViewModel after
  * a new activity sees the same bar.
  */
@@ -35,7 +35,7 @@ class CsvImportCoordinator @Inject constructor(
 
     /**
      * Follows the stream as long as [loggedIn] reports true, and ends with the caller.
-     * Signed out the bar is empty and the connection closed; a running service stops.
+     * Signed out the bar is empty and the connection closed; a running follow-up stops.
      * If someone already follows, the call returns immediately: one connection, one bar.
      */
     suspend fun sequence(loggedIn: Flow<Boolean>) {
