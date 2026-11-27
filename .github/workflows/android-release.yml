@@ -490,12 +490,14 @@ jobs:
           echo "::add-mask::$TOKEN"
           API="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/$PAKET"
           AUTH="Authorization: Bearer $TOKEN"
-          EDIT=$(curl -fsS -X POST -H "$AUTH" "$API/edits" | jq -r .id)
-          CODE=$(curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/octet-stream' \
+          # Google answers 400 with a reason (draft app, unknown track, …); without the body the
+          # log shows only the code. The token request above keeps -f: its body holds the token.
+          EDIT=$(curl -sS --fail-with-body -X POST -H "$AUTH" "$API/edits" | jq -r .id)
+          CODE=$(curl -sS --fail-with-body -X POST -H "$AUTH" -H 'Content-Type: application/octet-stream' \
             --data-binary @signiert/bundle/release/app-release.aab \
             "https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/$PAKET/edits/$EDIT/bundles?uploadType=media" | jq -r .versionCode)
           jq -n --arg t "$TRACK" --arg c "$CODE" --arg s "$STATUS" '{track:$t, releases:[{versionCodes:[$c], status:$s}]}' \
-            | curl -fsS -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data @- "$API/edits/$EDIT/tracks/$TRACK" > /dev/null
-          curl -fsS -X POST -H "$AUTH" "$API/edits/$EDIT:commit" > /dev/null
+            | curl -sS --fail-with-body -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data @- "$API/edits/$EDIT/tracks/$TRACK" > /dev/null
+          curl -sS --fail-with-body -X POST -H "$AUTH" "$API/edits/$EDIT:commit" > /dev/null
           echo "## Google Play" >> "$GITHUB_STEP_SUMMARY"
           echo "versionCode $CODE im Track \`$TRACK\` (Status \`$STATUS\`) eingeliefert." >> "$GITHUB_STEP_SUMMARY"
