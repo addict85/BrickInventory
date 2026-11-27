@@ -221,11 +221,14 @@ class TokenStore @Inject constructor(
         readStart.await(5, TimeUnit.SECONDS)
     }
 
-    private fun <R, T> mirror(raw: (Preferences) -> R, target: MutableStateFlow<T?>, read: suspend (R, suspend (T) -> Unit) -> Unit) =
-        prefsScope.launch {
-            tokenLimit.mirror(dataStore.data, { dataStore.data.first() }, raw, read,
-                set = { target.value = it }, onRead = readStart::countDown)
-        }
+    private fun <R, T> mirror(
+        raw: (Preferences) -> R,
+        target: MutableStateFlow<T?>,
+        set: (T) -> Unit = { target.value = it },
+        read: suspend (R, suspend (T) -> Unit) -> Unit,
+    ) = prefsScope.launch {
+        tokenLimit.mirror(dataStore.data, { dataStore.data.first() }, raw, read, set, onRead = readStart::countDown)
+    }
 
     /**
      * The token as it applies now — not as it last stood on disk.
@@ -274,8 +277,16 @@ class TokenStore @Inject constructor(
         mirror<List<String?>, String>({ raw(it, ADDRESS) }, _serverUrlState) { r, report ->
             readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, pauseUntilUnlock, lock)
         }
-        mirror<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { secret, report ->
-            readToken(vault, secret, null, report, pauseUntilUnlock, lock)
+        // null = the "" readToken reports for a still-locked keystore: "not yet", not "signed out".
+        // At cold start it is the sign-in screen; over the placeholder or a token it would send every
+        // request while locked without one. Missing or gone ciphertext still clears the mirror.
+        mirror<String?, String?>({ it[AUTH_TOKEN_ENC] }, _authTokenState,
+            set = { _authTokenState.value = it ?: _authTokenState.value.takeUnless { v -> v.isNullOrEmpty() } ?: "" },
+        ) { secret, report ->
+            if (secret == null) return@mirror report("")
+            var last: VaultFinding? = null
+            readPatient({ vault.open(secret).also { last = it } }, null,
+                report = { report(it.takeUnless { last == VaultFinding.LockedState }) }, pauseUntilUnlock, lock)
         }
         mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
             readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)

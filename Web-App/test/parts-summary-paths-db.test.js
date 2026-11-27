@@ -13,6 +13,10 @@
  *   G  pageFromSummary without GROUP BY in the household → red “the same part … ONE row” (two rows)
  *   H  the household count without GROUP BY → red the same test (total 2)
  *   I  unique_parts as COUNT(*) → red the same test (colors and categories count 2)
+ *   J  rebuildNow returns a running rebuild again (`if (running) return running`) → red
+ *      “rebuildNow builds anew …” (“built from the current version”: false)
+ *   K  “the list takes the old state” without whileLocked, the rebuild delayed by 300 ms in
+ *      partsQuery before reading the summary → red there (6): the lock is what keeps it stale
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -23,6 +27,7 @@ const { buildAndRequire, handlerModule } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { holdsSet, holdsPart } = require('./helpers/inventory');
+const { until } = require('./helpers/time');
 
 const P = process.pid;
 const SN = `81${P}-1`,
@@ -34,6 +39,7 @@ test('parts summary: when the list reads it and when it goes live', { concurrenc
   if (!db) return;
   const H = handlerModule(_req);
   const PS = _req('src/parts/summary.js');
+  const { LOCKS } = _req('src/infra/lockNamespaces.js');
   const names = [`psp-a-${P}`, `psp-b-${P}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [names]);
   const ids = [];
@@ -56,6 +62,23 @@ test('parts summary: when the list reads it and when it goes live', { concurrenc
     await holdsPart(db, u, PART, { setNumber: SN, quantity: 3, colorId: 4, storageId: u === a ? box : null });
   }
   const version = async u => Number((await db.get('SELECT v FROM parts_version_user WHERE user_id = $1', [u]))?.v ?? 0);
+  /** Holds a lock the rebuild of account u needs, in an own transaction, while fn(pid of that backend) runs. */
+  const whileLocked = async (
+    u,
+    fn,
+    lock = 'SELECT pg_advisory_xact_lock($1, $2)',
+    params = [LOCKS.PARTS_SUMMARY, u],
+  ) => {
+    const c = await db.pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query(lock, params);
+      return await fn((await c.query('SELECT pg_backend_pid() AS pid')).rows[0].pid);
+    } finally {
+      await c.query('COMMIT').catch(() => {});
+      c.release();
+    }
+  };
 
   await t.test('one statement, one step of the version counter', async () => {
     const before = await version(a);
@@ -96,11 +119,37 @@ test('parts summary: when the list reads it and when it goes live', { concurrenc
 
   await t.test('metrics read no stale summary, the list may', async () => {
     await db.run('UPDATE set_acquisitions SET quantity = 2 WHERE user_id = $1 AND set_number = $2', [a, SN]);
-    const list = await H.partsQuery(a, { exclude_manual: '1' });
+    // The read starts a background rebuild; under load it committed before the list read the summary.
+    const list = await whileLocked(a, () => H.partsQuery(a, { exclude_manual: '1' }));
     assert.deepEqual([list.source, list.parts[0]?.total_quantity], ['summary', 3], 'the list takes the old state');
     assert.equal((await H.partStatsQuery(a)).total_parts, 6, 'the metrics count live');
     await db.run('UPDATE set_acquisitions SET quantity = 1 WHERE user_id = $1 AND set_number = $2', [a, SN]);
     for (const u of ids) await PS.rebuildNow(u);
+  });
+
+  await t.test('rebuildNow builds anew after a running rebuild that read an older state', async () => {
+    await PS.rebuildNow(a);
+    const quantity = n =>
+      db.run('UPDATE set_acquisitions SET quantity = $3 WHERE user_id = $1 AND set_number = $2', [a, SN, n]);
+    let done;
+    // The background rebuild reads quantity 2, then waits on its state row until rebuildNow was asked.
+    await whileLocked(
+      a,
+      async pid => {
+        await quantity(2);
+        await PS.summaryFresh(a);
+        const waiting = async () =>
+          (await db.get('SELECT count(*)::int AS n FROM pg_locks WHERE $1 = ANY(pg_blocking_pids(pid))', [pid])).n > 0;
+        assert.ok(await until(waiting), 'precondition: the background rebuild waits on the state row');
+        await quantity(1);
+        done = PS.rebuildNow(a);
+      },
+      'SELECT 1 FROM parts_summary_state WHERE user_id = $1 FOR UPDATE',
+      [a],
+    );
+    await done;
+    assert.equal(await PS.summaryFresh(a, { strict: true }), true, 'built from the current version');
+    assert.equal((await H.partsQuery(a, { exclude_manual: '1' })).parts[0]?.total_quantity, 3);
   });
 
   await t.test('the household is fresh only if every account is', async () => {

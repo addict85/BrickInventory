@@ -6,12 +6,12 @@ Rot: a plaintext token of older versions never counts and is removed at start
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -261,7 +261,7 @@
-         mirror<List<String?>, String>({ raw(it, ADDRESS) }, _serverUrlState) { r, report ->
-             readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, pauseUntilUnlock, lock)
-         }
--        mirror<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { secret, report ->
-+        mirror<String?, String>({ it[AUTH_TOKEN_ENC] ?: it[AUTH_TOKEN]?.let(vault::encrypt) }, _authTokenState) { secret, report ->
-             readToken(vault, secret, null, report, pauseUntilUnlock, lock)
-         }
-         mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
+@@ -280,7 +280,7 @@
+         // null = the "" readToken reports for a still-locked keystore: "not yet", not "signed out".
+         // At cold start it is the sign-in screen; over the placeholder or a token it would send every
+         // request while locked without one. Missing or gone ciphertext still clears the mirror.
+-        mirror<String?, String?>({ it[AUTH_TOKEN_ENC] }, _authTokenState,
++        mirror<String?, String?>({ it[AUTH_TOKEN_ENC] ?: it[AUTH_TOKEN]?.let(vault::encrypt) }, _authTokenState,
+             set = { _authTokenState.value = it ?: _authTokenState.value.takeUnless { v -> v.isNullOrEmpty() } ?: "" },
+         ) { secret, report ->
+             if (secret == null) return@mirror report("")

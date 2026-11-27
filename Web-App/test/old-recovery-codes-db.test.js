@@ -12,6 +12,8 @@
  *   C  pruefeCode without codesSindNeu() → red: “a code of the new kind lifts the deadline …”
  *   D  in 0122 the check for the already existing column deleted → red: “the migration
  *      is repeatable …” (column already exists)
+ *   E  (27.11.2026) the `old_codes_expiry` mail delayed by 200 ms in loginCheck.ts, so `token_added`
+ *      arrives first as under load in CI → red with the old wait for any mail, green with this one
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -74,7 +76,10 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
     });
     return r.status;
   };
-  const waitOnMail = () => until(() => sent.length > 0, 1000);
+  // The login with a token also mails `token_added`, in the background too: which of the two
+  // arrives first varies under load, so wait for this one and look only at it.
+  const expiryMails = () => sent.filter(g => g.type === 'old_codes_expiry');
+  const waitOnMail = () => until(() => expiryMails().length > 0, 1000);
 
   await t.test('a code of the old kind applies until the deadline, with mail and hint in the profile', async () => {
     const until = new Date(Date.now() + 3 * 86_400_000);
@@ -84,7 +89,7 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
     assert.equal(await signIn('abcde-12345'), 200);
     await waitOnMail();
     assert.deepEqual(
-      sent.map(g => [g.type, Date.parse(g.until)]),
+      expiryMails().map(g => [g.type, Date.parse(g.until)]),
       [['old_codes_expiry', until.getTime()]],
     );
     const state = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
