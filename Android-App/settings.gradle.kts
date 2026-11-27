@@ -11,6 +11,11 @@ pluginManagement {
         }
         google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
         mavenCentral()
+        // Single Central edge nodes answered 404 for fresh Kotlin artifacts on CI runners;
+        // Google's copy of Central is asked only then, and only for Kotlin's groups.
+        maven("https://maven-central.storage-download.googleapis.com/maven2/") {
+            content { includeGroupByRegex("org\\.jetbrains\\.kotlin(\\..*)?") }
+        }
         gradlePluginPortal()
     }
 }
@@ -26,6 +31,11 @@ dependencyResolutionManagement {
         }
         google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
         mavenCentral()
+        // Single Central edge nodes answered 404 for fresh Kotlin artifacts on CI runners;
+        // Google's copy of Central is asked only then, and only for Kotlin's groups.
+        maven("https://maven-central.storage-download.googleapis.com/maven2/") {
+            content { includeGroupByRegex("org\\.jetbrains\\.kotlin(\\..*)?") }
+        }
     }
 }
 

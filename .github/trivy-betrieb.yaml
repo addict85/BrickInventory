@@ -280,3 +280,33 @@ vulnerabilities:
       - "pkg:apk/alpine/libxml2"
     expired_at: 2026-12-07
     statement: "PostgreSQL nutzt libxml2 nur für die XML-Funktionen (xmlparse, xpath), die die App nicht aufruft. Auch der Digest vom 23.11.2026 enthält noch 2.13.9-r2; behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-11979
+    purls:
+      - "pkg:apk/alpine/libxml2"
+    expired_at: 2026-12-07
+    statement: "PostgreSQL nutzt libxml2 nur für die XML-Funktionen (xmlparse, xpath), die die App nicht aufruft. Der neueste Digest von postgres:18-alpine (21.11.2026) enthält noch 2.13.9-r2; behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-86138
+    purls:
+      - "pkg:apk/alpine/libxml2"
+    expired_at: 2026-12-07
+    statement: "PostgreSQL nutzt libxml2 nur für die XML-Funktionen (xmlparse, xpath), die die App nicht aufruft. Der neueste Digest von postgres:18-alpine (21.11.2026) enthält noch 2.13.9-r2; behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-86139
+    purls:
+      - "pkg:apk/alpine/libxml2"
+    expired_at: 2026-12-07
+    statement: "PostgreSQL nutzt libxml2 nur für die XML-Funktionen (xmlparse, xpath), die die App nicht aufruft. Der neueste Digest von postgres:18-alpine (21.11.2026) enthält noch 2.13.9-r2; behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-86140
+    purls:
+      - "pkg:apk/alpine/libxml2"
+    expired_at: 2026-12-07
+    statement: "PostgreSQL nutzt libxml2 nur für die XML-Funktionen (xmlparse, xpath), die die App nicht aufruft. Der neueste Digest von postgres:18-alpine (21.11.2026) enthält noch 2.13.9-r2; behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-86142
+    purls:
+      - "pkg:apk/alpine/libxml2"
+    expired_at: 2026-12-07
+    statement: "PostgreSQL nutzt libxml2 nur für die XML-Funktionen (xmlparse, xpath), die die App nicht aufruft. Der neueste Digest von postgres:18-alpine (21.11.2026) enthält noch 2.13.9-r2; behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-86143
+    purls:
+      - "pkg:apk/alpine/libxml2"
+    expired_at: 2026-12-07
+    statement: "PostgreSQL nutzt libxml2 nur für die XML-Funktionen (xmlparse, xpath), die die App nicht aufruft. Der neueste Digest von postgres:18-alpine (21.11.2026) enthält noch 2.13.9-r2; behoben mit dem nächsten Bau des Images."

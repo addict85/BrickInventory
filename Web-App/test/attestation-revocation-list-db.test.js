@@ -50,8 +50,16 @@ test('revocation list as a job', { concurrency: 1 }, async t => {
   await t.test('the scheduled job stores the list and schedules the next run', async () => {
     await d.jobQueue.pullPlanBefore('revocation_list', 0);
     const worker = _req('jobs/startJobs.js').startJobWorker(d, { kinds: ['revocation_list'], tickMs: 50 });
+    const planRow = () =>
+      db.get(
+        `SELECT EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek FROM jobs
+          WHERE dedupe_key = 'plan:revocation_list' AND status = 'pending'`,
+      );
+    // The worker plans the next run after storing the list; stopped right after the store,
+    // the old plan row (due now) can still be the pending one.
     try {
       await until(async () => (await saved()) !== null, 10_000);
+      await until(async () => (await planRow())?.in_sek > 60, 10_000);
     } finally {
       await worker.stop(0);
     }
@@ -60,12 +68,6 @@ test('revocation list as a job', { concurrency: 1 }, async t => {
     assert.ok(l.nummern.includes('c35747a084470c3135aeefe2b8d40cd6'));
     assert.ok(Math.abs(Date.now() - new Date(l.state).getTime()) < 60_000);
     assert.ok(fetches[0] instanceof AbortSignal, 'The fetch gets the signal of the job');
-    const planRow = () =>
-      db.get(
-        `SELECT EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek FROM jobs
-          WHERE dedupe_key = 'plan:revocation_list' AND status = 'pending'`,
-      );
-    await until(async () => (await planRow())?.in_sek > 60, 5000);
     const plan = await planRow();
     assert.ok(plan?.in_sek > 5 * 3600 && plan.in_sek <= 6 * 3600, `next run in ${plan?.in_sek} s`);
   });
