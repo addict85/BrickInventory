@@ -11,7 +11,7 @@ Kotlin + Jetpack Compose App für den BrickInventory Manager Server.
 - Android Studio in einer Fassung, die **AGP 9.4** versteht — nur nötig, wenn
   in der IDE gearbeitet wird; auf der Kommandozeile reichen JDK und SDK
 - Gradle muss **nicht** installiert sein: der mitgelieferte Wrapper holt
-  Gradle 9.8.2 selbst (siehe *Gradle-Wrapper* weiter unten)
+  Gradle 9.9.2 selbst (siehe *Gradle-Wrapper* weiter unten)
 - BrickInventory Manager Server läuft und ist erreichbar
 
 ## Öffnen in Android Studio
@@ -77,7 +77,7 @@ unter *Release signieren*.
 
 ### Erster Lauf dauert lange
 
-Der Wrapper lädt beim ersten Aufruf Gradle 9.8.2 (~140 MB), danach ziehen AGP,
+Der Wrapper lädt beim ersten Aufruf Gradle 9.9.2 (~140 MB), danach ziehen AGP,
 Kotlin, KSP und die Abhängigkeiten nochmals einige hundert MB. Das passiert
 einmal pro Rechner; Gradle legt alles unter `~/.gradle/` ab.
 
