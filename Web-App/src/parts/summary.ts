@@ -124,8 +124,10 @@ async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ accounts: n
 /** For call sites that need guaranteed current numbers right after (end of a CSV import). */
 export async function rebuildNow(k: PartsContext, userId: number): Promise<void> {
   const _rebuilding = processState(k).rebuild;
-  const running = _rebuilding.get(userId);
-  if (running) return running;
+  // A running rebuild (e.g. from summaryFresh) may have read the stock before the caller's last
+  // write: wait it out (its error belongs to its own caller), then build from the state as it is now.
+  for (let running = _rebuilding.get(userId); running; running = _rebuilding.get(userId))
+    await Promise.allSettled([running]);
   const v = await currentVersion(k, userId);
   const p = rebuildSummary(k, userId, v).finally(() => {
     _rebuilding.delete(userId);

@@ -12,14 +12,16 @@
  *       body and query in server.ts switched off → red (body cases); both
  *       and the mapping of 22003 gone → 500. Only 22003 gone → „PostgreSQL
  *       22003 …" red.
+ *   P   (27.11.2026) the first port handed out is already served by another HTTP server that
+ *       answers 401 credentials_invalid (a parallel file's server) → red with the former start
+ *       (fetch to the port, no own listen line), green with helpers/server.js realServer
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const net = require('node:net');
 const path = require('node:path');
-const { spawn, execFileSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
@@ -30,14 +32,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { sleep } = require('./helpers/time');
-const { portOf } = require('./helpers/server');
-const freePort = () =>
-  new Promise(r => {
-    const s = net.createServer().listen(0, () => {
-      const p = portOf(s);
-      s.close(() => r(p));
-    });
-  });
+const { realServer } = require('./helpers/server');
 
 test('verification on the real server', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -56,32 +51,14 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freePort();
-  const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-    cwd: ROOT,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    env: {
-      ...process.env,
-      DATABASE_URL: URL_DB,
-      SESSION_SECRET: 'nachpruefung-test-geheimnis-lang-genug-1234',
-      PORT: String(port),
-      TRUST_PROXY: 'false',
-      ROLE: 'web',
-    },
+  const server = await realServer(t, {
+    DATABASE_URL: URL_DB,
+    SESSION_SECRET: 'nachpruefung-test-geheimnis-lang-genug-1234',
+    TRUST_PROXY: 'false',
+    ROLE: 'web',
   });
-  let log = '';
-  srv.stdout.on('data', d => {
-    log += d;
-  });
-  srv.stderr.on('data', d => {
-    log += d;
-  });
-  t.after(async () => {
-    srv.kill('SIGTERM');
-    for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await sleep(100);
-    if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
-  });
-  const basis = `http://127.0.0.1:${port}`;
+  const log = server.log;
+  const basis = server.base;
   for (let i = 0; i < 240 && (await fetch(`${basis}/api/v2/health/live`).catch(() => null)) === null; i++)
     await sleep(250);
 
@@ -90,7 +67,7 @@ test('verification on the real server', { concurrency: 1, timeout: 180_000 }, as
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ username: NAME, password: PASS, without_token: true }),
   });
-  assert.equal(login.status, 200, `${await login.clone().text()}\n${log}`);
+  assert.equal(login.status, 200, `${await login.clone().text()}\n${log()}`);
   const keks = login.headers.get('set-cookie').split(';')[0];
   const fetchIt = (path, o = {}) =>
     fetch(basis + path, { redirect: 'manual', ...o, headers: { cookie: keks, origin: basis, ...(o.headers || {}) } });

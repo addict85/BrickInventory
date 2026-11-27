@@ -84,4 +84,47 @@ function portOf(srv) {
   return a.port;
 }
 
-module.exports = { testServer, routerServer, portOf };
+/** A port that was free a moment ago; only until someone else binds it. @returns {Promise<number>} */
+function freePort() {
+  const net = require('node:net');
+  return new Promise(r => {
+    const s = net.createServer().listen(0, () => {
+      const p = portOf(s);
+      s.close(() => r(p));
+    });
+  });
+}
+
+/**
+ * dist/server.js as its own process. The free port can be taken by a parallel file before the
+ * child binds it; the child then logs EADDRINUSE and stays up without a port, and every request
+ * reaches the other file's server and database (401 credentials_invalid). So it waits for its
+ * own listen line and on EADDRINUSE starts again on a new port.
+ * @param {{ after: Function }} t @param {Record<string, string>} env
+ */
+async function realServer(t, env, port = freePort) {
+  const path = require('node:path');
+  const { spawn } = require('node:child_process');
+  const { until } = require('./time');
+  for (let attempt = 1; ; attempt++) {
+    const at = await port();
+    const p = spawn(process.execPath, [path.join(__dirname, '..', '..', 'dist', 'server.js')], {
+      cwd: path.join(__dirname, '..', '..'),
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, ...env, PORT: String(at) },
+    });
+    let log = '';
+    p.stdout.on('data', d => (log += d));
+    p.stderr.on('data', d => (log += d));
+    const gone = () => p.exitCode !== null || p.signalCode !== null;
+    t.after(async () => {
+      p.kill('SIGTERM');
+      if (!(await until(gone, 4000))) p.kill('SIGKILL');
+    });
+    await until(() => gone() || /EADDRINUSE/.test(log) || log.includes(`localhost:${at}`), 60_000);
+    if (!/EADDRINUSE/.test(log) || attempt >= 4) return { port: at, base: `http://127.0.0.1:${at}`, log: () => log };
+    p.kill('SIGKILL');
+  }
+}
+
+module.exports = { testServer, routerServer, portOf, freePort, realServer };

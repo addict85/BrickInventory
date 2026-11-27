@@ -15,12 +15,12 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Token
      val username:  Flow<String> = flow(NAME)
  
      // ── In-memory cache for the OkHttp interceptor ────────────────────────────
-@@ -275,7 +275,7 @@
-             readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, pauseUntilUnlock, lock)
-         }
-         mirror<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { secret, report ->
--            readToken(vault, secret, null, report, pauseUntilUnlock, lock)
-+            readToken(vault, secret, null, report, { kotlinx.coroutines.delay(it) }, lock)
+@@ -286,7 +286,7 @@
+             if (secret == null) return@mirror report("")
+             var last: VaultFinding? = null
+             readPatient({ vault.open(secret).also { last = it } }, null,
+-                report = { report(it.takeUnless { last == VaultFinding.LockedState }) }, pauseUntilUnlock, lock)
++                report = { report(it.takeUnless { last == VaultFinding.LockedState }) }, { kotlinx.coroutines.delay(it) }, lock)
          }
          mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
              readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
