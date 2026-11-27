@@ -2242,6 +2242,7 @@
     "recorded_at",
     "rejected",
     "remaining",
+    "remove_empty_vouchers",
     "removed",
     "required",
     "resolved",
@@ -2645,6 +2646,7 @@
         "voucher",
         "displayed",
         "currency_changed",
+        "removed",
         "reason",
         "waitSeconds",
         "error",
@@ -5269,7 +5271,8 @@
         "default_price_condition",
         "user_default_condition",
         "effective_condition",
-        "app_theme"
+        "app_theme",
+        "remove_empty_vouchers"
       ],
       "required": []
     },

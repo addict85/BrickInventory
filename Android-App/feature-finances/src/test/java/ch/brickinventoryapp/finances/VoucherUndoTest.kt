@@ -2,6 +2,7 @@ package ch.brickinventoryapp.finances
 
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testVouchersRepository
 import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
@@ -51,6 +52,7 @@ class VoucherUndoTest {
             texts = NumbersTexts,
             reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
             messages = channel,
+            account = testAccountRepository(paths.onTick()),
         )
         vm.loadVouchers()
     }

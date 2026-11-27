@@ -11114,6 +11114,14 @@
                       "null"
                     ]
                   },
+                  "remove_empty_vouchers": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
                   "admin_password": {
                     "anyOf": [
                       {
@@ -18081,6 +18089,9 @@
           "waehrung_geaendert": {
             "type": "boolean"
           },
+          "removed": {
+            "type": "boolean"
+          },
           "grund": {
             "type": [
               "string",
@@ -18116,7 +18127,8 @@
           "success",
           "voucher",
           "angezeigt",
-          "waehrung_geaendert"
+          "waehrung_geaendert",
+          "removed"
         ],
         "additionalProperties": {}
       },
@@ -24422,6 +24434,9 @@
           },
           "app_theme": {
             "type": "string"
+          },
+          "remove_empty_vouchers": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -24431,7 +24446,8 @@
           "default_price_condition",
           "user_default_condition",
           "effective_condition",
-          "app_theme"
+          "app_theme",
+          "remove_empty_vouchers"
         ],
         "additionalProperties": {}
       },

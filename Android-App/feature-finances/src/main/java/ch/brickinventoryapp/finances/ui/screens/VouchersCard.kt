@@ -28,6 +28,7 @@ import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.BoxRow
 import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.HintText
 import ch.brickinventoryapp.ui.components.LabelAndValue
@@ -65,6 +66,9 @@ interface VoucherCardActions {
 
     /** Fetch the list anew after a load error. */
     fun reload() = Unit
+
+    /** The account's switch: the server removes cards at 0.00 after a balance query. */
+    fun setRemoveEmpty(on: Boolean) = Unit
 
     /** „Delete“ in the open follow-up question ([VoucherUiState.confirmation]). */
     fun confirm() = Unit
@@ -129,6 +133,11 @@ fun VouchersCard(
             HorizontalDivider(Modifier.padding(vertical = Spacing.small))
             LabelAndValue(stringResource(R.string.vouchers_total), fmtMoney(sum.first.toDouble(), sum.second),
                 valueWeight = FontWeight.Bold)
+        }
+        // Like the web app: under the list, only where there are cards to query.
+        if (condition.vouchers.isNotEmpty()) {
+            BoxRow(stringResource(R.string.vouchers_remove_empty), condition.removeEmpty, actions::setRemoveEmpty,
+                hint = stringResource(R.string.vouchers_remove_empty_hint))
         }
         }
       }

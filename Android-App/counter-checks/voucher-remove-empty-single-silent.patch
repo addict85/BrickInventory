@@ -1,0 +1,16 @@
+Gegenprobe: Die einzelne Abfrage verschweigt, dass der leere Gutschein entfernt wurde
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherRemoveEmptyTest
+Rot: a single query names a removed card
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
+@@ -350,7 +350,6 @@ class VoucherViewModel @Inject constructor(
+                         var sentence = texts.text(R.string.vouchers_balance_done, v.number, amount)
+                         // Appended instead of as a second message, which would overwrite the first.
+                         if (d.currencyChanged) sentence += " " + texts.text(R.string.vouchers_balance_currency, v.currency)
+-                        if (d.removed) sentence += " " + removedSentence(1)
+                         messages.show(sentence)
+                         load()
+                     }

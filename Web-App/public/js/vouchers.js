@@ -168,6 +168,8 @@ export async function loadVouchers() {
   if (countryField)
     countryField.value = settingsSnapshot?.voucher_country || COUNTRY_TO_CURRENCY[accountCurrency] || 'de-CH';
   showCountryCurrency();
+  const removeEmpty = /** @type {HTMLInputElement | null} */ (G('vouchers-remove-empty'));
+  if (removeEmpty) removeEmpty.checked = settingsSnapshot?.remove_empty_vouchers === '1';
   const cur = G('v-currency');
   if (cur && !_edited && !G('v-amount')?.value) cur.value = countryCurrency();
   checkCurrency();
@@ -554,6 +556,22 @@ export async function saveVoucherCountry() {
   toast(d?.success ? tRaw('settings.saved') : d?.error || tRaw('settings.error'), d?.success ? 'success' : 'error');
 }
 
+/** The account's switch: the server removes cards at 0.00 after a balance query (button or night).
+ * The box follows the server: until it answers it still shows the old state. */
+export async function saveRemoveEmpty() {
+  const box = /** @type {HTMLInputElement | null} */ (G('vouchers-remove-empty'));
+  if (!box) return;
+  const want = box.checked;
+  box.checked = !want;
+  const value = want ? '1' : '0';
+  const d = await api('POST', '/v2/settings', { remove_empty_vouchers: value });
+  if (d?.success) {
+    box.checked = want;
+    if (settingsSnapshot) settingsSnapshot.remove_empty_vouchers = value;
+  }
+  toast(d?.success ? tRaw('settings.saved') : d?.error || tRaw('settings.error'), d?.success ? 'success' : 'error');
+}
+
 /** The name of the chosen file next to the button — the native field showed it itself. @this {HTMLInputElement | undefined} */
 function voucherFileSelected() {
   const name = el('v-pdf-name');
@@ -581,6 +599,7 @@ registerActions({
   openVoucherPdf,
   copyVoucher,
   saveVoucherCountry,
+  saveRemoveEmpty,
 });
 
 // "More" collapses as soon as someone taps next to it, chooses inside it or presses Escape.

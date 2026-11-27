@@ -1,0 +1,17 @@
+Gegenprobe: Der Schalter „Leere Gutscheine entfernen“ übernimmt die gespeicherte Einstellung nicht
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherRemoveEmptyTest
+Rot: the switch reads and saves
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
+@@ -84,7 +84,7 @@ class VoucherViewModel @Inject constructor(
+     internal fun loadRemoveEmpty() {
+         viewModelScope.launch {
+             val r = account.getSettings()
+-            if (r is Outcome.Success) _state.update { it.copy(removeEmpty = r.data.removeEmptyVouchers) }
++            if (r is Outcome.Success) _state.update { it.copy(removeEmpty = false) }
+         }
+     }
+ 

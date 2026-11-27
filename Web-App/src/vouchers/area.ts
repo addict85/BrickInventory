@@ -4,6 +4,7 @@ import { Compartments } from '../infra/cache';
 import * as service from './service';
 import * as pdfTicket from './pdfTicket';
 import { encryptLegacyVoucherFiles } from './voucherFiles';
+import { voucherJobKinds } from './nightlyBalances';
 import { access, type VoucherDependencies, type VoucherContext } from './context';
 
 export type { VoucherDependencies, VoucherContext } from './context';
@@ -26,20 +27,22 @@ export function createVouchers(a: Omit<VoucherDependencies, 'compartments'>, ins
       voucherPdf: bound(k)(service.voucherPdf),
       redeemTicket: bound(k)(pdfTicket.redeemTicket),
       cleanup: bound(k)(cleanupVouchers),
-      encryptLegacyFiles: encryptLegacyVoucherFiles,
-      // Re-encrypting at startup (startup/database.ts): across all accounts, without a request.
+      jobKinds: () => voucherJobKinds(k),
+      // Re-encrypting rows and PDFs at startup (startup/database.ts): across all accounts, without a request.
       reencrypt: bound(k)(reencrypt),
     }),
     inspect,
   );
 }
 
-/** Legacy upgrade (default): numbers and copies still in v1. Key switch (`all`): every row the
- * previous key opens. @returns how many values were rewritten */
+/** Legacy upgrade (default): numbers, copies and PDFs still in v1. Key switch (`all`): every row
+ * and file the previous key opens. Rows and files in one call: every caller needs both.
+ * @returns how many values were rewritten */
 async function reencrypt(k: VoucherContext, o: { all?: boolean } = {}): Promise<number> {
-  return o.all
+  const rows = o.all
     ? (await k.vouchers.reencryptAllVouchers()) + (await k.vouchers.reencryptCopies(true))
     : (await k.vouchers.reencryptNumbers()) + (await k.vouchers.reencryptCopies());
+  return rows + (await encryptLegacyVoucherFiles(o));
 }
 
 /** The hourly cleanup: expired PDF tickets and cards deleted longer than RESTORE_DAYS ago. */

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
 import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
@@ -148,6 +149,7 @@ class ErrorStateTest {
             texts = NumbersTexts,
             reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
             messages = t.messages,
+            account = testAccountRepository(t.api),
         )
         vm.loadVouchers()
         assertTrue("Error", vm.state.value.fetch is Load.Failure)

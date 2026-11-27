@@ -41,7 +41,7 @@ export const GLOBAL_SETTINGS = [
   'default_price_condition',
   'voucher_country',
 ] as const;
-export const ACCOUNT_SETTINGS = ['currency', 'language', 'user_default_condition'] as const;
+export const ACCOUNT_SETTINGS = ['currency', 'language', 'user_default_condition', 'remove_empty_vouchers'] as const;
 type Setting = (typeof GLOBAL_SETTINGS)[number] | (typeof ACCOUNT_SETTINGS)[number];
 const settingFields = Object.fromEntries(
   [...GLOBAL_SETTINGS, ...ACCOUNT_SETTINGS].map(k => [k, SIMPLE.optional()]),
@@ -68,6 +68,7 @@ export const UserSettings = z.looseObject({
   user_default_condition: z.string().nullable(),
   effective_condition: z.string(),
   app_theme: z.string(),
+  remove_empty_vouchers: z.boolean(),
 });
 
 export const SettingsResponse = z.looseObject({

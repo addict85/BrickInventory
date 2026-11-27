@@ -67,6 +67,7 @@ fun VouchersRoute(
                 override fun queryBalance(id: Int) = gvm.queryBalance(id)
                 override fun cancelBalanceRun() = gvm.cancelBalanceRun()
                 override fun reload() = gvm.loadVouchers()
+                override fun setRemoveEmpty(on: Boolean) = gvm.setRemoveEmpty(on)
                 override fun confirm() = gvm.confirm()
                 override fun cancelConfirmation() = gvm.cancelConfirmation()
             },

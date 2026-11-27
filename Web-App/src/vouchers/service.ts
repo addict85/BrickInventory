@@ -288,7 +288,17 @@ export async function exportVouchers(k: VoucherContext, uid: number) {
 
 export type BalanceResult =
   | ({ kind: 'gesperrt' } & Locked)
-  | { kind: 'guthaben'; row: VoucherRow; displayed: string | null; currencyChanged: boolean };
+  | { kind: 'guthaben'; row: VoucherRow; displayed: string | null; currencyChanged: boolean; removed: boolean };
+
+/** The account's switch "remove empty vouchers"; off unless set. */
+export const REMOVE_EMPTY_SETTING = 'remove_empty_vouchers';
+
+/** Only a balance LEGO actually reported as exactly zero: a failed lookup never
+ * reaches here, and the soft delete keeps the card restorable like a manual one. */
+async function removeIfEmpty(k: VoucherContext, uid: number, id: number, amount: number): Promise<boolean> {
+  if (amount !== 0 || (await k.settings.userValue(uid, REMOVE_EMPTY_SETTING, '0')) !== '1') return false;
+  return repo(k).markDeleted(uid, id, k.clock.now());
+}
 
 /** It checks the PIN and the country BEFORE the throttle: a call that cannot
  * succeed should not use up the one slot per 30 seconds for everyone. The
@@ -308,5 +318,6 @@ export async function checkBalance(k: VoucherContext, uid: number, id: number): 
   // The other side's currency wins; a useless value would otherwise ruin the list's total.
   const currency = /^[A-Z]{3}$/.test(g.currency) ? g.currency : old.currency;
   const row = (await repo(k).rememberBalance(uid, id, g.amount, currency)) ?? failDomain('not_found', 'not_found');
-  return { kind: 'guthaben', row, displayed: g.formatted, currencyChanged: currency !== old.currency };
+  const removed = await removeIfEmpty(k, uid, id, g.amount);
+  return { kind: 'guthaben', row, displayed: g.formatted, currencyChanged: currency !== old.currency, removed };
 }

@@ -951,6 +951,12 @@
     <string name="vouchers_balance_none">No card has a PIN — the query needs one.</string>
     <string name="vouchers_balance_occupied">The query is busy (one card every 30 seconds). Please try again later.</string>
     <string name="vouchers_balance_all_done">%1$s queried, %2$s not</string>
+    <string name="vouchers_remove_empty">Remove empty vouchers</string>
+    <string name="vouchers_remove_empty_hint">Cards with a balance of 0.00 disappear after the query, including the nightly one.</string>
+    <plurals name="vouchers_removed_empty">
+        <item quantity="one">%1$d empty voucher removed</item>
+        <item quantity="other">%1$d empty vouchers removed</item>
+    </plurals>
     <string name="vouchers_balance_as_of">queried on %1$s</string>
     <string name="vouchers_balance_never">balance never queried</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>

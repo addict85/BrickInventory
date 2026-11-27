@@ -99,7 +99,8 @@ internal class VouchersRepositoryImpl @Inject constructor(
         else retrofit2.Response.error(response.code(), (raw ?: "").toResponseBody("application/json".toMediaType()))
     }.mapData {
         BalanceInfo(success = it.success && it.voucher != null, voucher = it.voucher?.asView(), displayed = it.displayed,
-            currencyChanged = it.currencyChanged, reason = it.reason, waitSec = it.waitSeconds, error = it.error)
+            currencyChanged = it.currencyChanged, reason = it.reason, waitSec = it.waitSeconds, error = it.error,
+            removed = it.removed)
     }
 
     /**

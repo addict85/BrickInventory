@@ -162,7 +162,8 @@ object Examples {
             testManagementRepository(t.api), t.alerts(), testPartsRepository(t.api), noFiles))
         fun purchases() = t.track(PurchasesViewModel(t.session, t.filter(), t.hints, t.changes, testHouseholdRepository(t.api), t.sets(),
             testFinancesRepository(t.api), testPartsRepository(t.api), testMinifigsRepository(t.api)))
-        fun vouchers() = t.track(VoucherViewModel(testVouchersRepository(t.api), texts, noFiles, t.messages))
+        fun vouchers() = t.track(VoucherViewModel(testVouchersRepository(t.api), texts, noFiles, t.messages,
+            testAccountRepository(t.api, t.io)))
 
         override fun close() {
             t.cleanUp()

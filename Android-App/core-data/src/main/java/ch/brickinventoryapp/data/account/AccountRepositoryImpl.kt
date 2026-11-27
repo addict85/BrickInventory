@@ -223,7 +223,8 @@ internal class AccountRepositoryImpl @Inject constructor(
     override suspend fun getSettings(): Outcome<AccountSettings> =
         safeCall { api.getSettings() }.mapData {
             val e = it.settings
-            AccountSettings(e.currency, e.priceCondition, e.defaultPriceCondition, e.effectiveCondition)
+            AccountSettings(e.currency, e.priceCondition, e.defaultPriceCondition, e.effectiveCondition,
+                e.removeEmptyVouchers)
         }
 
     /** The effective design: with a token the account's, otherwise the default. See AccountApi.getAppTheme. */
@@ -237,6 +238,10 @@ internal class AccountRepositoryImpl @Inject constructor(
 
     override suspend fun updateSettings(currency: CurrencyCode, condition: Condition): Outcome<Unit> =
         safeCall { api.updateSettings(mapOf("currency" to currency.code, "price_condition" to condition.identifier)) }.done()
+
+    /** Stored as "1"/"0" like every switch of the web app; the server checks the value. */
+    override suspend fun setRemoveEmptyVouchers(on: Boolean): Outcome<Unit> =
+        safeCall { api.updateSettings(mapOf("remove_empty_vouchers" to if (on) "1" else "0")) }.done()
 
     override suspend fun getDefaultCondition(): Outcome<Condition> = safeCall { api.getDefaultCondition() }.mapData { it.condition }
 

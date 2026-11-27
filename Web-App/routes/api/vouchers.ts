@@ -155,6 +155,8 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
       displayed: r.displayed,
       // A silently changed currency would be a changed total without a hint.
       currency_changed: r.currencyChanged,
+      // The account's switch removed the card at zero: the list must drop it.
+      removed: r.removed,
     };
   });
   return router;

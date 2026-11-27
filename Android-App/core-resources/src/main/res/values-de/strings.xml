@@ -933,6 +933,12 @@
     <string name="vouchers_balance_none">Keine Karte mit PIN — für die Abfrage braucht es die PIN.</string>
     <string name="vouchers_balance_occupied">Die Abfrage ist belegt (eine Karte alle 30 Sekunden). Bitte später erneut.</string>
     <string name="vouchers_balance_all_done">%1$s abgefragt, %2$s nicht</string>
+    <string name="vouchers_remove_empty">Leere Gutscheine entfernen</string>
+    <string name="vouchers_remove_empty_hint">Karten mit 0.00 Guthaben verschwinden nach der Abfrage, auch nach der nächtlichen.</string>
+    <plurals name="vouchers_removed_empty">
+        <item quantity="one">%1$d leerer Gutschein entfernt</item>
+        <item quantity="other">%1$d leere Gutscheine entfernt</item>
+    </plurals>
     <string name="vouchers_balance_as_of">abgefragt am %1$s</string>
     <string name="vouchers_balance_never">Guthaben noch nie abgefragt</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>

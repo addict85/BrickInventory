@@ -35,6 +35,7 @@ import { deleteManualPart } from './parts.js';
       'renameLocation',
       'voucherFileSelected',
       'saveVoucherCountry',
+      'saveRemoveEmpty',
       'importAlertsCsv',
       'importConfig',
       'importFigsCsv',

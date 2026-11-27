@@ -26,6 +26,7 @@ export const KIND_NAMES = {
   account_files: () => tRaw('monitor.kind.account_files'),
   revocation_list: () => tRaw('monitor.kind.revocation_list'),
   catalog_followup: () => tRaw('monitor.kind.catalog_catch_up'),
+  voucher_balances: () => tRaw('monitor.kind.voucher_balances'),
 };
 /** @type {Record<string, () => string>} */
 const STATUS_NAMES = {

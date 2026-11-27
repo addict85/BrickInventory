@@ -117,6 +117,8 @@ data class VoucherUiState(
      * cancel).
      */
     val balanceRun: BalanceRun? = null,
+    /** The account's switch „remove empty vouchers“, as the server stored it. */
+    val removeEmpty: Boolean = false,
 )
 
 /**

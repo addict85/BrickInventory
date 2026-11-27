@@ -861,6 +861,7 @@ window.I18N_DE = {
   'monitor.kind.image_follow_up': 'Bild-Download (CDN)',
   'monitor.kind.cleanup': 'Aufräumen (stündlich)',
   'monitor.kind.cleanup_daily': 'Aufräumen (täglich)',
+  'monitor.kind.voucher_balances': 'Gutschein-Guthaben (nachts)',
   'prog.processing': 'Wird verarbeitet…',
   'prog.step_meta': 'Set-Informationen abrufen',
   'prog.step_image': 'Bild herunterladen',
@@ -1527,6 +1528,10 @@ window.I18N_DE = {
   'vouchers.balance_none': 'Keine Karte mit PIN — für die Abfrage braucht es die PIN.',
   'vouchers.balance_used': 'Die Abfrage ist belegt (eine Karte alle 30 Sekunden). Bitte später erneut.',
   'vouchers.balance_all_done': '{done} abgefragt, {error} nicht',
+  'vouchers.remove_empty': 'Leere Gutscheine entfernen',
+  'vouchers.remove_empty_hint': 'Karten mit 0.00 Guthaben verschwinden nach der Abfrage, auch nach der nächtlichen.',
+  'vouchers.removed_empty': '{n} leere Gutscheine entfernt',
+  'vouchers.removed_empty_one': '{n} leerer Gutschein entfernt',
   'monitor.intro':
     'Was der Server im Hintergrund holt und rechnet: Kontingente der Dienste, Zwischenspeicher und anstehende Aufträge.',
   'monitor.api_calls_hint': 'API-Aufrufe seit Mitternacht und die Tagesgrenze je Dienst.',

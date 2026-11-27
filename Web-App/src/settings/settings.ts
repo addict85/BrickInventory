@@ -56,12 +56,18 @@ const USER_RULES: Record<string, (v: string) => boolean> = {
   user_default_condition: v => v === 'N' || v === 'U' || v === '',
   price_cache_ttl: v => /^\d{1,4}$/.test(v) && +v >= 1 && +v <= 8760,
   app_theme: v => DESIGNS.includes(v),
+  remove_empty_vouchers: v => v === '0' || v === '1',
 };
 
 /** Validates and writes; currency applies per household and therefore only
  * goes through setUserSetting (userSetting.ts). */
+/** Switches are stored as '1'/'0'; the app sends JSON booleans, which the contract turns into text. */
+const SWITCHES = new Set(['remove_empty_vouchers']);
+const switchValue = (v: string) => (v === 'true' ? '1' : v === 'false' ? '0' : v);
+
 export async function writeUserSetting(k: SettingsContext, userId: number, key: string, value: unknown): Promise<void> {
-  const v = String(value).trim();
+  const raw = String(value).trim();
+  const v = SWITCHES.has(key) ? switchValue(raw) : raw;
   if (key === 'currency') throw new Error('Currency only via setUserSetting');
   const rule = USER_RULES[key];
   if (rule && !rule(v)) failDomain('invalid', 'value_invalid');

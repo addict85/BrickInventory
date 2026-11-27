@@ -82,6 +82,7 @@ export const DECLARED_KINDS: Record<JobKind, true> = {
   prices: true,
   revocation_list: true,
   rework: true,
+  voucher_balances: true,
 };
 
 export class KindNotSignedIn extends Error {}
@@ -96,6 +97,7 @@ function registerJobTypes(d: Services): void {
     ...d.sets.jobKinds(),
     ...d.collection.jobKinds(),
     ...d.parts.jobKinds(),
+    ...d.vouchers.jobKinds(),
     ...d.management.jobTypes(),
   ];
   for (const a of kinds) d.jobQueue.registerKind(a);
@@ -205,7 +207,10 @@ function buildAreas(db: Db, components: Assigned): Services {
     { db, clock, settings, household, catalog, externalSources, images, finances, sets },
     show('wanted'),
   );
-  const vouchers = createVouchers({ db, clock, settings, account, externalSources, throttle }, show('vouchers'));
+  const vouchers = createVouchers(
+    { db, clock, settings, account, externalSources, throttle, jobQueue },
+    show('vouchers'),
+  );
   const collection = createCollection(
     { db, clock, household, jobQueue, catalog, finances, inventory, sets, parts, minifigs, wanted },
     show('collection'),

@@ -102,13 +102,14 @@ export function buildSettingsRouter(
         effective_condition: await d.settings.userDefaultCondition(uid),
         // The account's effective theme, not the administrator's default.
         app_theme: (await d.settings.themeFor(uid)).theme,
+        remove_empty_vouchers: all.remove_empty_vouchers === '1',
       },
     };
   });
 
   router.endpoint('PUT /api/v2/settings', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    const allowed = ['currency', 'price_cache_ttl'];
+    const allowed = ['currency', 'price_cache_ttl', 'remove_empty_vouchers'];
     let updated = 0;
     for (const key of allowed) {
       if (req.input[key] !== undefined) {
