@@ -6,7 +6,6 @@ import { passwordRuleText, formError } from './form.js';
 import { hideRbHint, showRbHint } from './account.js';
 import { toast, discardToasts } from './messages.js';
 import { openCapture, clearerReason } from './components.js';
-import { withSecondFactor, saveSettings } from './confirm-prompt.js';
 import { html } from './escaping.js';
 
 // ═══ First-run setup wizard (server: routes/api/settings.ts /settings/einrichtung) ═
@@ -129,8 +128,7 @@ export async function setupNext() {
 }
 
 export async function setupPassword() {
-  const old = G('wiz-pw-alt').value,
-    newValue = G('wiz-pw-new').value,
+  const newValue = G('wiz-pw-new').value,
     again = G('wiz-pw-repeat').value;
   const box = G('wiz-pw-error');
   formError(box, '');
@@ -143,17 +141,12 @@ export async function setupPassword() {
     formError(box, tRaw('settings.password.mismatch'), ['wiz-pw-repeat']);
     return;
   }
-  const d = await withSecondFactor(z =>
-    api('POST', '/v2/auth/change-password', { current: old, newPassword: newValue, ...z }),
-  );
-  if (!d) return;
+  const d = await api('POST', '/v2/auth/change-password', { newPassword: newValue });
   if (!d?.success) {
-    formError(box, d?.error || tRaw('settings.error'), [
-      d?.code === 'current_password_wrong' ? 'wiz-pw-alt' : 'wiz-pw-new',
-    ]);
+    formError(box, d?.error || tRaw('settings.error'), ['wiz-pw-new']);
     return;
   }
-  ['wiz-pw-alt', 'wiz-pw-new', 'wiz-pw-repeat'].forEach(id => {
+  ['wiz-pw-new', 'wiz-pw-repeat'].forEach(id => {
     G(id).value = '';
   });
   toast(tRaw('setup.pw_done'), 'success');
@@ -197,8 +190,7 @@ export async function setupSource(source) {
  * @param {string} source @param {Record<string, string>} fields @param {Record<string, string>} values
  * @param {string[]} empty */
 async function saveSourceValues(source, fields, values, empty) {
-  const s = await saveSettings(tRaw('settings.api_key_title'), values);
-  if (!s) return false;
+  const s = await api('POST', '/v2/settings', values);
   if (!s?.success) {
     sourceError(source, s?.error || tRaw('settings.error'), '', Object.values(fields));
     return false;

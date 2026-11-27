@@ -54,7 +54,6 @@ import ch.brickinventoryapp.ui.components.LocalOfflineHints
 import ch.brickinventoryapp.ui.components.LocalOpenChanges
 import ch.brickinventoryapp.ui.components.LocalSnackbarSpace
 import ch.brickinventoryapp.ui.components.OutboxBar
-import ch.brickinventoryapp.ui.components.UpdatePoint
 import ch.brickinventoryapp.ui.components.ViewToggle
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.focusFrame
@@ -97,12 +96,6 @@ fun MainScaffold(
     onTabTapped: (Any) -> Unit,
     /** The running CSV import, shown on every tab as in the web app; null: no import bar. */
     csvImport: CsvImportBar? = null,
-    /**
-     * Is a newer version available? The check runs app-wide at start; the
-     * scaffold shows the finding as a dot on the destination “More”, where it stands at the
-     * settings once more. Loading never happens by itself.
-     */
-    updateAvailable: Boolean = false,
     /** Changes saved offline that still have to go to the server; 0 hides the bar. */
     pendingChanges: Int = 0,
     content: @Composable () -> Unit
@@ -132,11 +125,6 @@ fun MainScaffold(
         navController.toTab(target)
     }
 
-    // The icon of a destination, on “More” with the dot for a new version.
-    val symbol: @Composable (Any, @Composable () -> Unit) -> Unit = { screen, icon ->
-        if (screen == AppTarget.More && updateAvailable) BadgedBox(badge = { UpdatePoint() }) { icon() } else icon()
-    }
-
     // The window width decides, not the device: a tablet in split
     // screen is narrow and gets the bar at the bottom.
     // The snackbar lies above the content; its height lifts the add button above it.
@@ -146,7 +134,7 @@ fun MainScaffold(
         // On wide windows the side bar stands at full height on the left, app bar
         // and content to the right of it — the same destinations as below, “More” included.
         Row(Modifier.fillMaxSize()) {
-        if (kind == NavigationMode.SIDEBAR) TabSidebar(bottomNavItems, ::isSelected, ::tabChoose, symbol)
+        if (kind == NavigationMode.SIDEBAR) TabSidebar(bottomNavItems, ::isSelected, ::tabChoose)
         Scaffold(
             modifier = Modifier.weight(1f).nestedScroll(collapse.nestedScrollConnection),
             topBar = {
@@ -159,7 +147,7 @@ fun MainScaffold(
               }
             },
             bottomBar = {
-                if (kind == NavigationMode.BAR_BOTTOM) TabBar(bottomNavItems, ::isSelected, ::tabChoose, symbol)
+                if (kind == NavigationMode.BAR_BOTTOM) TabBar(bottomNavItems, ::isSelected, ::tabChoose)
             },
             snackbarHost = { SnackbarHost(snackbarHostState, Modifier.onSizeChanged { snackbarHeight = it.height }) },
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -250,7 +238,7 @@ private fun MainContent(
 }
 /**
  * The scaffold for a tab destination with everything that is the same in every destination
- * (discarding the scroll position, update dot). A new destination thus cannot
+ * (discarding the scroll position, pending changes). A new destination thus cannot
  * forget anything, because there is nothing to pass on. MainScaffold itself stays
  * for destinations that must deviate.
  */
@@ -261,8 +249,6 @@ fun TabScaffold(
     content: @Composable () -> Unit
 ) {
     val vm = environment.activity.app
-    val selfUpdate = environment.activity.update
-    val updateUiState by selfUpdate.updateState.collectAsStateWithLifecycle()
     val open by vm.pendingChanges.collectAsStateWithLifecycle()
     val csvImport = environment.activity.csvImport
     MainScaffold(
@@ -273,8 +259,6 @@ fun TabScaffold(
         csvImport = CsvImportBar(csvImport.csvImportState) { csvImport.cancelCsvImport() },
         // Tab tapped → start at the top.
         onTabTapped = { target -> vm.scrollMemory.forgetTab(rollKey(target)) },
-        // The silent start check has a result — here it gets a place.
-        updateAvailable = updateUiState.newerVersion != null,
         pendingChanges = open,
         content = content
     )
@@ -320,14 +304,13 @@ private fun TabTarget(
 private fun TabBar(
     targets: List<Tab>,
     chosen: (Any) -> Boolean, onChoice: (Any) -> Unit,
-    symbol: @Composable (Any, @Composable () -> Unit) -> Unit,
 ) {
     val colors = tabColors(MaterialTheme.colorScheme)
     val style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
     val meter = rememberTextMeasurer()
     val density = LocalDensity.current
     Surface(color = colors.bar) {
-        // A margin left and right: at 200 % “More” including the dot hit the screen edge.
+        // A margin left and right: at 200 % “More” hit the screen edge.
         BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
             .padding(horizontal = BAR_EDGE)) {
             val sentence = with(density) {
@@ -341,7 +324,7 @@ private fun TabBar(
                     val space = Modifier.weight(if (i == sentence.chosen) sentence.weight else 1f)
                     val target: @Composable (Modifier) -> Unit = { m ->
                         TabTarget(chosen(screen), name, if (labeled) style.fontSize * sentence.factor else null, colors,
-                            { onChoice(screen) }, m) { symbol(screen, icon) }
+                            { onChoice(screen) }, m) { icon() }
                     }
                     if (labeled) target(space) else WithTooltip(name, space) { target(Modifier.fillMaxWidth()) }
                 }
@@ -355,7 +338,6 @@ private fun TabBar(
 private fun TabSidebar(
     targets: List<Tab>,
     chosen: (Any) -> Boolean, onChoice: (Any) -> Unit,
-    symbol: @Composable (Any, @Composable () -> Unit) -> Unit,
 ) {
     val colors = tabColors(MaterialTheme.colorScheme)
     val size = MaterialTheme.typography.labelMedium.fontSize
@@ -366,7 +348,7 @@ private fun TabSidebar(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             targets.forEach { (screen, icon, name) ->
-                TabTarget(chosen(screen), name, size, colors, { onChoice(screen) }, Modifier.fillMaxWidth()) { symbol(screen, icon) }
+                TabTarget(chosen(screen), name, size, colors, { onChoice(screen) }, Modifier.fillMaxWidth()) { icon() }
             }
         }
     }

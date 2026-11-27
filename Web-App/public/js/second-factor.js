@@ -9,10 +9,10 @@ import { html, rawHtml } from './escaping.js';
 import { fmtDate } from './format.js';
 import { emit } from './events.js';
 import { loggedInAccount } from './state.js';
-import { confirmDeleteWithPassword, questionCode, withSecondFactor, confirmWithPassword } from './confirm-prompt.js';
+import { confirmDelete } from './confirm-prompt.js';
 
 // ═══ Second factor in the profile (server: src/factors/secondFactor.ts) ══════════════
-// Flow: password → QR code and key → confirm code → show the ten recovery codes once. After that: disable
+// Flow: QR code and key → confirm code → show the ten recovery codes once. After that: disable
 // or get new codes.
 
 // On the login screen, while an admin still has to set it up (js/api.js reports it).
@@ -54,8 +54,7 @@ const button = (/** @type {string} */ action, /** @type {string} */ text, kind =
   html`<button type="button" class="btn ${kind} ${rawHtml(buttonKind())}" data-click="${action}"${genuine()}>${rawHtml(text)}</button>`;
 const row = (/** @type {string} */ content) =>
   html`<div class="${mandatory ? 'sf-buttons-wide' : 'sf-buttons'}">${rawHtml(content)}</div>`;
-// The fields are spelled out here rather than behind a helper: test/dom-ids.test.js only finds literal id
-// attributes. The dialog asks for the password when triggered.
+// Spelled out rather than behind a helper: test/dom-ids.test.js only finds literal id attributes.
 const CODE_FIELD = (/** @type {string} */ label, length = 24) =>
   html`<div class="fg"><label for="sf-code">${rawHtml(label)}</label><input type="text" id="sf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${length}" data-first-focus /></div>`;
 
@@ -74,8 +73,7 @@ export async function loadSecondFactor() {
     if (mandatory) G('sf-start')?.focus();
     return;
   }
-  // Every action asks for the code in its own dialog: one field for two buttons would leave open what it
-  // applies to. Old-style codes expire (migration 0122); only the owner knows whether the open ones are old.
+  // Old-style codes expire (migration 0122); only the owner knows whether the open ones are old.
   const old = d.old_codes_until
     ? html`<p role="note" data-style="margin:0 0 .75rem 0">${ico('warning')} ${tRaw('sf.old_codes', { bis: fmtDate(d.old_codes_until) })}</p>`
     : '';
@@ -88,16 +86,7 @@ export async function loadSecondFactor() {
 }
 
 export async function setupSecondFactor() {
-  // Shortly after login the server skips the password (grace period); otherwise it answers without a
-  // counter with current_password_required.
-  const first = await api('POST', '/v2/auth/second-factor/setup', {});
-  const d =
-    first?.code !== 'current_password_required'
-      ? first
-      : await confirmWithPassword(tRaw('sf.title'), (password, z) =>
-          api('POST', '/v2/auth/second-factor/setup', { password, ...z }),
-        );
-  if (!d) return;
+  const d = await api('POST', '/v2/auth/second-factor/setup', {});
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -187,9 +176,7 @@ export async function confirmSecondFactor() {
 }
 
 export async function newRecoveryCodes() {
-  const code = await questionCode(tRaw('sf.new_codes'), tRaw('sf.code_for_codes'));
-  if (!code) return;
-  const d = await api('POST', '/v2/auth/second-factor/codes', { code });
+  const d = await api('POST', '/v2/auth/second-factor/codes', {});
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -198,27 +185,24 @@ export async function newRecoveryCodes() {
 }
 
 // An admin without a second factor may do nothing except set it up: for them, disabling is therefore
-// called "set up again", and the setup starts with that same password right in the mandatory field.
+// called "set up again", and the setup starts right away in the mandatory field.
 export async function disableSecondFactor() {
   const isAdmin = !!loggedInAccount?.isAdmin;
-  let adminPassword = '';
-  const d = await confirmWithPassword(
+  const yes = await confirmDelete(
     tRaw(isAdmin ? 'sf.new_setup' : 'sf.disable'),
-    (password, z) => {
-      adminPassword = password;
-      return api('POST', '/v2/auth/second-factor/disable', { password, ...z });
-    },
     tRaw(isAdmin ? 'sf.new_setup_text' : 'sf.disable_confirm'),
-    { button: isAdmin ? 'sf.new_setup' : 'confirm.btn.disable', kind: 'bd', withCode: true },
+    'lock',
+    { button: isAdmin ? 'sf.new_setup' : 'confirm.btn.disable', kind: 'bd' },
   );
-  if (!d) return;
+  if (!yes) return;
+  const d = await api('POST', '/v2/auth/second-factor/disable', {});
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
   toast(tRaw('sf.disabled'), 'success');
   if (!isAdmin) return loadSecondFactor();
-  const started_ = await api('POST', '/v2/auth/second-factor/setup', { password: adminPassword });
+  const started_ = await api('POST', '/v2/auth/second-factor/setup', {});
   started = started_?.success ? started_ : null;
   emit('secondFactorRequired');
 }
@@ -248,15 +232,12 @@ export function saveRecoveryCodes() {
 /** Admin: remove an account's second factor (phone and codes lost). */
 /** @param {string} uid @param {string} name */
 export async function resetSecondFactor(uid, name) {
-  const admin_password = await confirmDeleteWithPassword(
-    tRaw('sf.reset_title_name', { name }),
-    tRaw('sf.reset_text', { name }),
-    'lock',
-    { button: 'confirm.btn.reset', kind: 'bp' },
-  );
-  if (admin_password === null) return;
-  const d = await withSecondFactor(z => api('DELETE', `/v2/auth/users/${uid}/second-factor`, { admin_password, ...z }));
-  if (d === null) return;
+  const yes = await confirmDelete(tRaw('sf.reset_title_name', { name }), tRaw('sf.reset_text', { name }), 'lock', {
+    button: 'confirm.btn.reset',
+    kind: 'bp',
+  });
+  if (!yes) return;
+  const d = await api('DELETE', `/v2/auth/users/${uid}/second-factor`);
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;

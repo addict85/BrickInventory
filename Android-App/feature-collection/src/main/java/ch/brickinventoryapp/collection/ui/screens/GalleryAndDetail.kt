@@ -31,13 +31,15 @@ fun GalleryAndDetail(
     onSetClick: (String) -> Unit,
     onScanBarcode: () -> Unit,
     gridState: LazyGridState = rememberLazyGridState(),
+    onSearchBarcode: () -> Unit = {},
     detail: @Composable () -> Unit,
 ) {
     ListAndDetail(
         list = {
             CompositionLocalProvider(LocalOpenDetail provides open) {
                 GalleryRoute(vm = gallery, entryVm = entryVm, imageLoader = imageLoader,
-                    onScanBarcode = onScanBarcode, onSetClick = onSetClick, gridState = gridState)
+                    onScanBarcode = onScanBarcode, onSetClick = onSetClick, gridState = gridState,
+                    onSearchBarcode = onSearchBarcode)
             }
         },
         detail = {

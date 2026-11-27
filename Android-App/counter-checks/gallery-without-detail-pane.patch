@@ -6,8 +6,8 @@ Rot: on the tablet gallery and set detail stand side by side at the same time
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryAndDetail.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryAndDetail.kt
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryAndDetail.kt
 +++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryAndDetail.kt
-@@ -33,6 +33,7 @@
-     gridState: LazyGridState = rememberLazyGridState(),
+@@ -34,6 +34,7 @@ fun GalleryAndDetail(
+     onSearchBarcode: () -> Unit = {},
      detail: @Composable () -> Unit,
  ) {
 +    if (open != null) { detail(); return }

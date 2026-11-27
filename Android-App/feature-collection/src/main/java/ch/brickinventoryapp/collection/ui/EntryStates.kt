@@ -14,6 +14,8 @@ data class BarcodeUiState(
      * set already in the collection. The gallery navigates and acknowledges it.
      */
     val foundSet: String? = null,
+    /** A barcode scanned from the gallery's search: this set number goes into the search field. */
+    val searchFor: String? = null,
     /** Where the running scan came from. */
     val source: ScannerOrigin = ScannerOrigin.GALLERY,
     /**

@@ -3,7 +3,6 @@ package ch.brickinventoryapp.account.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.account.ui.HouseholdUiState
-import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.account.HouseholdRepository
 import ch.brickinventoryapp.data.local.StockReconciliation
 import ch.brickinventoryapp.data.repository.Outcome
@@ -38,7 +37,6 @@ class HouseholdViewModel @Inject constructor(
     private val filter: FilterChoice,
     private val sync: StockReconciliation,
     private val household: HouseholdRepository,
-    private val account: AccountRepository,
 ) : ViewModel(), FilterChoice by filter {
 
     val state: StateFlow<AppUiState> = session.state
@@ -58,7 +56,6 @@ class HouseholdViewModel @Inject constructor(
     }
 
     fun loadHousehold() {
-        checkSecondFactor()
         viewModelScope.launch {
             _householdState.update { it.copy(fetch = Load.Loads) }
             when (val r = household.getHousehold()) {
@@ -80,32 +77,19 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
-     * To redeem, the server requires the current password of one's own
-     * account, because linking opens one's own inventory to another
-     * account; with the second factor active, also its code. On success, the
-     * status reloads.
+     * Only the invitation code: the login is enough (owner's decision), no password and no
+     * second factor. On success, the status reloads.
      */
-    fun redeemHouseholdInvite(code: String, password: String, factorCode: String? = null) {
+    fun redeemHouseholdInvite(code: String) {
         viewModelScope.launch {
-            _householdState.update { it.copy(fetch = Load.Loads, passwordWrong = false, factorWrong = false) }
-            when (val r = household.redeemHouseholdInvite(code.trim(), password, factorCode)) {
+            _householdState.update { it.copy(fetch = Load.Loads) }
+            when (val r = household.redeemHouseholdInvite(code.trim())) {
                 is Outcome.Success -> {
                     _householdState.update { it.copy(fetch = Load.Data(Unit), redeemed = it.redeemed + 1) }
                     accountsChanged(inventoryChanged = false)
                 }
-                // If the app doesn't know the second factor yet, only this response shows the code field.
-                is Outcome.Failure -> _householdState.update { it.copy(fetch = redeemError(r),
-                    passwordWrong = r.code == ErrorCode.CURRENT_PASSWORD_WRONG, factorWrong = r.code == ErrorCode.SECOND_FACTOR_WRONG,
-                    factorNeeded = it.factorNeeded || r.code == ErrorCode.SECOND_FACTOR_WRONG) }
+                is Outcome.Failure -> _householdState.update { it.copy(fetch = redeemError(r)) }
             }
-        }
-    }
-
-    /** Before redeeming: if the code field is missing, the first attempt cost a failed try. */
-    private fun checkSecondFactor() {
-        viewModelScope.launch {
-            val r = account.secondFactorStatus()
-            if (r is Outcome.Success && r.data.active) _householdState.update { it.copy(factorNeeded = true) }
         }
     }
 
@@ -114,8 +98,6 @@ class HouseholdViewModel @Inject constructor(
      * dedicated code, only status 429; its message names the wait time and takes precedence.
      */
     private fun redeemError(r: Outcome.Failure): Load.Failure = when {
-        r.code == ErrorCode.CURRENT_PASSWORD_WRONG -> loadError(r).copy(message = Message.Resource(R.string.household_redeem_password_wrong))
-        r.code == ErrorCode.SECOND_FACTOR_WRONG -> loadError(r).copy(message = Message.Resource(R.string.household_redeem_code_wrong))
         r.code == ErrorCode.TOO_MANY_FAILED_ATTEMPTS || (r as? Outcome.Failure.Server)?.status == 429 ->
             loadError(r).copy(message = if (r.message.isBlank()) Message.Resource(R.string.household_redeem_locked) else Message.Text(r.message))
         else -> loadError(r)

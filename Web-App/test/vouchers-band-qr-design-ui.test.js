@@ -47,7 +47,7 @@ test('vouchers: row and actions', async () => {
     await view(o.w, 'vouchers');
     await waitFor(() => o.d.querySelector('.voucher-row'));
     const row = o.d.querySelector('.voucher-row');
-    assert.match(row.querySelector('.voucher-nopdf').textContent.trim(), /^kein PDF$/);
+    assert.match(row.querySelector('.voucher-nopdf').textContent.trim(), /^kein Original$/);
     const remove = row.querySelector('[data-click="deleteVoucher"]');
     const edit = row.querySelector('[data-click="editVoucher"]');
     // Both labeled (UI check 6, M7), delete marked as danger.

@@ -26,7 +26,6 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -42,13 +41,10 @@ import org.junit.Test
  *   C  the old name left empty in renameLocation() → red "ein umbenannter Lagerort heisst auch an den Sets in der Ablage neu" ("Kiste" stayed)
  *   D  saveSettings() only pulling the sets along → red "eine andere Währung …"
  *   E  the household accounts not reloaded in accountsChanged() → red "eine eingelöste Einladung lädt Status und Haushaltskonten"
- *   F  the password not sent in the repository → red "eine eingelöste Einladung …" (body without password)
- *   G  `passwordWrong` not set in redeemHouseholdInvite() → red "ein falsches Passwort beim Einlösen markiert das Feld"
- *   H  the lockout branch removed from redeemError() → red "nach zu vielen Fehlversuchen …" ("fehler" came instead of the own sentence)
- *   I  `faktor_code` not in the body in the repository → red "bei aktivem zweitem Faktor geht dessen Code …"
- *   J  `r.data.active` → `false` in checkSecondFactor() → red
- *      "bei aktivem zweitem Faktor …" (code field timed out)
- *   K  `factorNeeded` not set in the error branch → red "verlangt der Server den Code …"
+ *   F  the repository sends a password again (`"password" to ""` in the body) → red
+ *      "a redeemed invitation …" (the body holds more than the code;
+ *      counter-checks/household-redeem-with-password.patch)
+ *   H  the lockout branch removed from redeemError() → red "after too many failed attempts …" ("fehler" came instead of the own sentence)
  *   L  the success message removed from saveUserDefaultCondition() →
  *      red "the default condition reports the saving" (message timed out)
  */
@@ -154,54 +150,14 @@ class SettingsViewModelTest {
 
     @Test
     fun `a redeemed invitation loads status and household accounts`() {
-        val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
-        vm.redeemHouseholdInvite(" ABC123 ", "geheim1234")
+        val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api)))
+        vm.redeemHouseholdInvite(" ABC123 ")
         assertTrue("accounts there", t.viewport.accounts.value.householdMembers.size == 2)
         assertTrue("status there", vm.householdState.value.status?.isSub == true)
         assertTrue(paths.requestsTo("POST /api/v2/settings/household/redeem").single().isNotEmpty())
         val body = paths.bodyBytes[paths.requests.indexOfFirst { "household/redeem" in it }]
-        assertEquals("""{"code":"ABC123","password":"geheim1234"}""", body)
+        assertEquals("""{"code":"ABC123"}""", body)
         assertEquals(1, vm.householdState.value.redeemed)
-    }
-
-    @Test
-    fun `a wrong password when redeeming marks the field`() {
-        paths.responses["/api/v2/settings/household/redeem"] =
-            """{"success":false,"code":"current_password_wrong","error":"Aktuelles Passwort falsch"}"""
-        paths.codes["/api/v2/settings/household/redeem"] = 400
-        val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
-        vm.redeemHouseholdInvite("ABC123", "falsch")
-        assertTrue("Response", vm.householdState.value.fetch is Load.Failure)
-        assertTrue(vm.householdState.value.passwordWrong)
-        assertEquals("t${R.string.household_redeem_password_wrong}", vm.householdState.value.fetch.errorMessage.text)
-        assertEquals(0, vm.householdState.value.redeemed)
-    }
-
-    @Test
-    fun `with an active second factor its code goes along when redeeming`() {
-        paths.responses["/api/v2/auth/second-factor"] = """{"success":true,"active":true,"codes_left":8}"""
-        val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
-        vm.loadHousehold()
-        assertTrue("Codefeld", vm.householdState.value.factorNeeded)
-        vm.redeemHouseholdInvite("ABC123", "geheim1234", " 123456 ")
-        assertTrue("redeemed", paths.requests.any { "household/redeem" in it })
-        val body = paths.bodyBytes[paths.requests.indexOfFirst { "household/redeem" in it }]
-        assertEquals("""{"code":"ABC123","password":"geheim1234","factor_code":"123456"}""", body)
-    }
-
-    @Test
-    fun `if the server requires the second factor's code, the field appears`() {
-        paths.responses["/api/v2/settings/household/redeem"] =
-            """{"success":false,"code":"second_factor_wrong","error":"Code falsch"}"""
-        paths.codes["/api/v2/settings/household/redeem"] = 400
-        val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
-        assertFalse(vm.householdState.value.factorNeeded)
-        vm.redeemHouseholdInvite("ABC123", "geheim1234")
-        assertTrue("Response", vm.householdState.value.fetch is Load.Failure)
-        assertTrue(vm.householdState.value.factorNeeded)
-        assertTrue(vm.householdState.value.factorWrong)
-        assertFalse(vm.householdState.value.passwordWrong)
-        assertEquals("t${R.string.household_redeem_code_wrong}", vm.householdState.value.fetch.errorMessage.text)
     }
 
     @Test
@@ -209,14 +165,13 @@ class SettingsViewModelTest {
         paths.responses["/api/v2/settings/household/redeem"] =
             """{"success":false,"code":"too_many_failed_attempts","error":"Bitte in 5 Min. erneut"}"""
         paths.codes["/api/v2/settings/household/redeem"] = 429
-        val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api), testAccountRepository(t.api)))
-        vm.redeemHouseholdInvite("ABC123", "falsch")
+        val vm = t.track(HouseholdViewModel(t.session, t.filter(), t.sync, testHouseholdRepository(t.api)))
+        vm.redeemHouseholdInvite("ABC123")
         assertTrue("Response", vm.householdState.value.fetch is Load.Failure)
         assertEquals("Bitte in 5 Min. erneut", vm.householdState.value.fetch.errorMessage.text)
-        assertFalse(vm.householdState.value.passwordWrong)
 
         paths.responses["/api/v2/settings/household/redeem"] = """{"success":false}"""
-        vm.redeemHouseholdInvite("ABC123", "falsch")
+        vm.redeemHouseholdInvite("ABC123")
         assertTrue("second answer", vm.householdState.value.fetch.errorMessage.text == "t${R.string.household_redeem_locked}")
     }
 }

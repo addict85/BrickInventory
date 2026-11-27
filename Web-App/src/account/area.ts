@@ -99,8 +99,6 @@ function accounts(k: AccountContext) {
     targetThrottled: bound(k)(targetThrottle.targetThrottled),
     accountThrottled: bound(k)(targetThrottle.accountThrottled),
     confirmSetupThrottled: bound(k)(passwordConfirmation.confirmSetupThrottled),
-    checkConfirmation: bound(k)(passwordConfirmation.checkConfirmation),
-    checkCodeConfirmation: bound(k)(passwordConfirmation.checkCodeConfirmation),
   };
 }
 

@@ -59,13 +59,11 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
-import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
 import ch.brickinventoryapp.account.ui.screens.SettingsExits
 import ch.brickinventoryapp.account.ui.screens.SettingsScreen
 import ch.brickinventoryapp.account.ui.screens.SettingsState
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.app.ui.components.CsvProgress
@@ -208,15 +206,6 @@ class AccessibilityTest {
     @Test
     fun `the user certificate switch carries its name and toggles via its text`() {
         var ca: Boolean? = null
-        val update = object : UpdateActions {
-            override fun checkOnUpdate(still: Boolean) = Unit
-            override fun checkOnStart() = Unit
-            override fun setStartCheck(an: Boolean) = Unit
-            override fun closeUpdateHint() = Unit
-            override fun loadUpdate() = Unit
-            override fun cancelLoad() = Unit
-            override fun startInstallation() = Unit
-        }
         val appearance = object : AppearanceActions {
             override fun setLanguage(languageCode: String) = Unit
             override fun setBrightness(choice: String) = Unit
@@ -235,9 +224,9 @@ class AccessibilityTest {
             show {
                 Column {
                     SettingsScreen(
-                        condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
+                        condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"),
                             "system", Design.CLASSIC, false, false, false, false),
-                        actions = vm, update = update, appearance = appearance, exits = object : SettingsExits {
+                        actions = vm, appearance = appearance, exits = object : SettingsExits {
                             override fun logout() = Unit
                             override fun switchServer() = Unit
                             override fun setUserCa(on: Boolean) { ca = on }

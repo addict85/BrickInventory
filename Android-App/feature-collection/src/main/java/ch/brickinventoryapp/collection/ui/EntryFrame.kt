@@ -44,6 +44,7 @@ internal fun EntryFrame(
     entry: NavBackStackEntry,
     entryVm: EntryViewModel,
     images: ImageLoader,
+    onSearch: (String) -> Unit = {},
     onPresent: (String) -> Unit,
 ) {
     val scan by entry.savedStateHandle.getStateFlow<ArrayList<String>?>(SCAN, null).collectAsStateWithLifecycle()
@@ -63,6 +64,11 @@ internal fun EntryFrame(
         entryVm.gallerySearchFoundConsumed()
         onPresent(found)
     }
+    LaunchedEffect(barcode.searchFor) {
+        val number = barcode.searchFor ?: return@LaunchedEffect
+        entryVm.searchForConsumed()
+        onSearch(number)
+    }
     if (barcode.result != null) BarcodeResultRoute(entryVm, images)
     SetCheckRoute(entryVm)
 }
@@ -74,7 +80,7 @@ internal fun EntryFrame(
 @Composable
 fun setEntry(entry: NavBackStackEntry, images: ImageLoader, onPresent: (String) -> Unit): (EntryRequest) -> Unit {
     val entryVm: EntryViewModel = hiltViewModel(entry)
-    EntryFrame(entry, entryVm, images, onPresent)
+    EntryFrame(entry, entryVm, images, onPresent = onPresent)
     return entryVm::addSet
 }
 
@@ -91,7 +97,7 @@ fun <T> partListsEntry(
     asScan: (setNumber: String?, manual: Boolean, adopted: () -> Unit, acknowledged: () -> Unit) -> T,
 ): T {
     val entryVm: EntryViewModel = hiltViewModel(entry)
-    EntryFrame(entry, entryVm, images, onPresent)
+    EntryFrame(entry, entryVm, images, onPresent = onPresent)
     val scan by entryVm.barcodeState.collectAsStateWithLifecycle()
     return asScan(scan.forPartList, scan.requestManualEntry,
         entryVm::clearBarcodeForPartsList, entryVm::acknowledgeManualEntry)

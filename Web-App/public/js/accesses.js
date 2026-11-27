@@ -5,15 +5,14 @@ import { errorMessage, api } from './api.js';
 import { ico, G, buttonBusy, setHtml } from './dom.js';
 import { toast } from './messages.js';
 import { html, safeUrl } from './escaping.js';
-import { confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
+import { confirmDelete } from './confirm-prompt.js';
 
 // Account access: app tokens, QR sign-in and the TLS certificate for the app.
 // After scanning, the app announces itself with a device name and shows a code; only once it is typed in
 // here does it get its access. A photographed QR code alone does not open an account this way.
 /** @type {{ id: number, timer: ReturnType<typeof setInterval> } | null} */
 let _pairing = null;
-// Module-wide, so a new code stops the old one's expiry counter; otherwise it would blank out the new code
-// at 0.
+// Module-wide, so a new code stops the old one's expiry counter instead of being blanked at 0.
 /** @type {ReturnType<typeof setInterval> | undefined} */
 let _expiry;
 
@@ -93,9 +92,8 @@ function drawQr(container, qrData) {
 
 /** @param {import('../../frontend-types/api').ApiResponse<'POST', '/v2/auth/qr-token'>} d the QR response @param {string | undefined} serverUrl */
 function showQrHints(d, serverUrl) {
-  // The lifetime from the server's response, not from the selection: if it doesn't know the value, the
-  // sliding default applies. Three cases — 0 means unlimited, null means nothing was chosen; a plain
-  // truthiness check would lump both together.
+  // The lifetime from the server's response, not from the selection (unknown values get the default).
+  // 0 means unlimited, null nothing chosen; a truthiness check would lump both together.
   const caFp = G('qr-ca-fp');
   if (caFp) {
     caFp.hidden = !d.cert_sha256;
@@ -139,21 +137,13 @@ async function generateQrCode() {
   const container = G('qr-code');
   const release = buttonBusy(btn);
   try {
-    // POST, because the call creates a nonce: as a GET, a foreign page could trigger it via navigation
-    // (SameSite=lax). The later token's lifetime travels along with creation, otherwise whoever finds a
-    // code would just pick the longest one.
+    // POST, because the call creates a nonce a foreign page could trigger as a GET (SameSite=lax).
+    // The lifetime travels along, otherwise whoever finds a code would pick the longest one.
     const validity = G('qr-validity')?.value || '';
-    const pw = G('qr-password');
-    const password = pw?.value || '';
-    if (pw) pw.value = '';
     endPairing();
     clearInterval(_expiry);
     if (G('qr-pairing')) G('qr-pairing').hidden = true;
-    const d = await withSecondFactor(z => api('POST', '/v2/auth/qr-token', { validity, password, ...z }));
-    if (d === null) {
-      release();
-      return;
-    }
+    const d = await api('POST', '/v2/auth/qr-token', { validity });
     if (!d.success) {
       hint.textContent = tRaw('toast.error') + ': ' + (d.error || t('common.unknown'));
       // A code next to an error message would look as if it still worked.
@@ -173,8 +163,7 @@ async function generateQrCode() {
     startQrCountdown(hint, container, Number(d.expires_in) || 300);
     _pairing = { id: d.pairing, timer: setInterval(checkPairing, 2000) };
     showQrHints(d, serverUrl);
-    // After the first generation, the button reads "regenerate" — the one place where the label
-    // deliberately changes.
+    // After the first generation the button reads "regenerate": the one deliberate label change.
     release(tRaw('qr.regenerate'));
   } catch (e) {
     hint.textContent = tRaw('toast.error') + ': ' + errorMessage(e);
@@ -278,30 +267,27 @@ function certificateCode(fpHex) {
 }
 
 /**
- * Sign a foreign device out: the server requires password and second factor, so a stolen access token
- * can't lock the owner out. Our own access has no button here.
+ * Sign a foreign device out after a plain question: that device then needs a new login.
+ * Our own access has no button here.
  * @param {string} tokenId
  * @param {string} label
  */
 async function revokeToken(tokenId, label) {
-  const password = await confirmDeleteWithPassword(
+  const yes = await confirmDelete(
     tRaw('tokens.revoke.title'),
     tRaw('tokens.revoke.text', { name: label || '—' }),
     'key',
     { button: 'confirm.btn.device_logout', kind: 'bp' },
   );
-  if (password === null) return;
-  const d = await withSecondFactor(z =>
-    api('DELETE', `/v2/settings/tokens/${encodeURIComponent(tokenId)}`, { password, ...z }),
-  );
-  if (!d) return;
+  if (!yes) return;
+  const d = await api('DELETE', `/v2/settings/tokens/${encodeURIComponent(tokenId)}`);
   if (d.success) {
     toast(tRaw('tokens.revoked'), 'success');
     loadTokens();
   } else toast(d.error || t('settings.error'), 'error');
 }
 
-/** All remaining browser and app access in ONE confirmed request: a second-factor code only works once. */
+/** All remaining browser and app access in ONE request, after one question. */
 async function revokeOtherTokens() {
   const d = await api('GET', '/v2/settings/tokens');
   if (!d.success) {
@@ -309,17 +295,14 @@ async function revokeOtherTokens() {
     return;
   }
   const others = d.tokens.filter(tk => !tk.current);
-  const password = await confirmDeleteWithPassword(
+  const yes = await confirmDelete(
     tRaw('tokens.revoke_others.title'),
     tRaw('tokens.revoke_others.text', { n: others.length }),
     'logout',
     { button: 'confirm.btn.logout', kind: 'bp' },
   );
-  if (password === null) return;
-  const s = await withSecondFactor(z =>
-    api('POST', '/v2/settings/sessions/end-others', { password, accesses: true, ...z }),
-  );
-  if (s === null) return;
+  if (!yes) return;
+  const s = await api('POST', '/v2/settings/sessions/end-others', { accesses: true });
   if (!s.success) {
     toast(s.error || t('settings.error'), 'error');
     return;

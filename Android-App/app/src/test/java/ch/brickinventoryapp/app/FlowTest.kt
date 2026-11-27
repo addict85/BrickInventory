@@ -10,7 +10,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
@@ -36,7 +35,6 @@ import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.Operation
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LocalStepGuard
@@ -71,11 +69,9 @@ import org.robolectric.annotation.GraphicsMode
  *       (counter-checks/voucher-pin-without-device-lock.patch)
  *   (f) the number copied without step guard → red “without device lock the
  *       number is not copied either” (counter-checks/voucher-number-without-device-lock.patch)
- *   (g) in PasswordPrompt the code field never shown → red “the confirmation shows the
- *       code field only on demand” (counter-checks/voucher-confirmation-without-code.patch)
- *   (g2) the refusal does not scroll into view → the same red, „Bitte den Code eingeben.“ is
- *       not visible (counter-checks/confirmation-message-out-of-sight.patch; the state before
- *       the fix, red in CI on 0223f52)
+ *   (g) VouchersCard shows the delete question also while it runs (`&& !it.operation.running`
+ *       removed) → red “deleting asks a plain question …”
+ *       (counter-checks/voucher-question-while-running.patch)
  *   (h) in the set detail the trash always with confirmation → red “a set deletes
  *       immediately with undo …” (counter-checks/set-delete-double-confirmed.patch)
  *   (i) adding without a number does not mark the field → red “a set without a number says …”
@@ -237,6 +233,8 @@ class FlowTest {
     private var level by mutableStateOf(Build.VERSION.SDK_INT)
 
     /** A voucher with PIN 4711; [protection] stands for the device lock. */
+    private var confirmed = 0
+
     private fun showVoucher(protection: StepGuard, copied: MutableList<String> = mutableListOf()) {
         show {
             CompositionLocalProvider(LocalStepGuard provides protection, LocalSdkLevel provides level) {
@@ -245,6 +243,7 @@ class FlowTest {
                     actions = object : VoucherCardActions {
                         override fun switchPin(id: Int) { condition = condition.copy(pinVisible = condition.pinVisible + id) }
                         override fun copy(id: Int, isNumber: Boolean) { copied += id.toString() }
+                        override fun confirm() { confirmed++ }
                     },
                 )
             }
@@ -298,20 +297,23 @@ class FlowTest {
     }
 
     /**
-     * The confirmation asks for the password; the code field comes only when the
-     * server has required it. Without input “Confirm” stays off. Nothing is typed:
-     * a focused field blinks, and Robolectric would never come to rest.
+     * The login is enough: deleting asks only „are you sure“, without a password field, and
+     * a step that is already running (plain text, PDF, the delete itself) shows no dialog.
      */
     @Test
-    fun `the confirmation shows the code field only on demand`() {
-        condition = condition.copy(confirmation = VoucherConfirmation(VoucherStep.PIN_SHOW, 7))
+    fun `deleting asks a plain question without a password, a running step shows none`() {
+        condition = condition.copy(confirmation = VoucherConfirmation(VoucherStep.PIN_SHOW, 7, Operation.Running))
         showVoucher(protection = { _, next -> next() })
-        compose.onNodeWithText(ctx.getString(R.string.account_password_current)).assertIsDisplayed()
-        compose.onNodeWithText(ctx.getString(R.string.login_code)).assertDoesNotExist()
-        compose.onNodeWithText(ctx.getString(R.string.vouchers_confirm_button)).assertIsNotEnabled()
-        condition = condition.copy(confirmation = condition.confirmation?.copy(
-            codeNeeded = true, operation = Operation.Failed(Message.Text("Bitte den Code eingeben."))))
-        compose.onNodeWithText(ctx.getString(R.string.login_code)).assertIsDisplayed()
-        compose.onNodeWithText("Bitte den Code eingeben.").assertIsDisplayed()
+        compose.onNodeWithText(ctx.getString(R.string.vouchers_delete_title)).assertDoesNotExist()
+        compose.onNodeWithText(ctx.getString(R.string.account_password_current)).assertDoesNotExist()
+
+        condition = condition.copy(confirmation = VoucherConfirmation(VoucherStep.DELETE, 7))
+        compose.onNodeWithText(ctx.getString(R.string.vouchers_delete_title)).assertIsDisplayed()
+        compose.onNodeWithText(ctx.getString(R.string.account_password_current)).assertDoesNotExist()
+        compose.onNodeWithText(ctx.getString(R.string.common_delete)).performClick()
+        assertEquals(1, confirmed)
+
+        condition = condition.copy(confirmation = condition.confirmation?.copy(operation = Operation.Running))
+        compose.onNodeWithText(ctx.getString(R.string.vouchers_delete_title)).assertDoesNotExist()
     }
 }

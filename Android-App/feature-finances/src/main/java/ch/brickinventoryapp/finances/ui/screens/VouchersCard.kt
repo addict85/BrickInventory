@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Redeem
@@ -24,7 +25,6 @@ import ch.brickinventoryapp.finances.ui.voucherSum
 import ch.brickinventoryapp.model.domain.VoucherView
 import ch.brickinventoryapp.model.step.StepAction
 import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
@@ -32,7 +32,7 @@ import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.HintText
 import ch.brickinventoryapp.ui.components.LabelAndValue
 import ch.brickinventoryapp.ui.components.LocalStepGuard
-import ch.brickinventoryapp.ui.components.PasswordPrompt
+import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.SecretCopyWarning
 import ch.brickinventoryapp.ui.components.SettingsCard
 import ch.brickinventoryapp.ui.components.WithTooltip
@@ -66,8 +66,8 @@ interface VoucherCardActions {
     /** Fetch the list anew after a load error. */
     fun reload() = Unit
 
-    /** Password and code of the open prompt ([VoucherUiState.confirmation]). */
-    fun confirm(password: String, code: String?) = Unit
+    /** „Delete“ in the open follow-up question ([VoucherUiState.confirmation]). */
+    fun confirm() = Unit
     fun cancelConfirmation() = Unit
 }
 
@@ -118,24 +118,7 @@ fun VouchersCard(
         EmptyOrError(condition, actions::reload)
 
         val card: @Composable (VoucherView, Modifier) -> Unit = { g, m ->
-            VoucherCard(
-                g = g,
-                pinVisible = g.id in condition.pinVisible,
-                events = VoucherEvents(
-                    // Hiding needs no confirmation, revealing does.
-                    switchPin = {
-                        if (g.id in condition.pinVisible) actions.switchPin(g.id) else guarded { actions.switchPin(g.id) }
-                    },
-                    edit = { guarded { actions.edit(g.id) } },
-                    delete = { guarded { actions.delete(g.id) } },
-                    openPdf = { guarded { actions.openPdf(g.id) } },
-                    copy = { isNumber -> guarded { actions.copy(g.id, isNumber) } },
-                    queryBalance = { actions.queryBalance(g.id) },
-                ),
-                plaintext = condition.plaintext[g.id],
-                balanceRunning = condition.balanceRunning == g.id,
-                modifier = m,
-            )
+            GuardedVoucherCard(g, condition, actions, guarded, m)
         }
         VoucherRaster(condition.vouchers, wide, card)
         if (condition.vouchers.isNotEmpty()) SecretCopyWarning()
@@ -151,7 +134,18 @@ fun VouchersCard(
       }
     }
 
-    condition.confirmation?.let { VoucherPrompt(condition, actions::confirm, actions::cancelConfirmation) }
+    // Only deleting asks, and only until it runs (VoucherViewModel.require).
+    condition.confirmation?.takeIf { it.step == VoucherStep.DELETE && !it.operation.running }?.let { question ->
+        val number = condition.vouchers.find { it.id == question.id }?.number.orEmpty()
+        Prompt(
+            title = stringResource(R.string.vouchers_delete_title),
+            text = stringResource(R.string.vouchers_delete_confirm, number),
+            confirm = stringResource(R.string.common_delete),
+            onConfirm = actions::confirm,
+            onCancel = actions::cancelConfirmation,
+            symbol = Icons.Default.Delete,
+        )
+    }
 
     if (newValue || condition.edited != null) {
         VoucherFormSheet(
@@ -165,10 +159,36 @@ fun VouchersCard(
     }
 }
 
-/**
- * Number and PIN, the PDFs and delete: only after the device lock (step guard),
- * after that the ViewModel asks for password and code.
- */
+/** One card; its secrets open only behind the step guard ([protectedStep]). */
+@Composable
+private fun GuardedVoucherCard(
+    g: VoucherView,
+    condition: VoucherUiState,
+    actions: VoucherCardActions,
+    guarded: (() -> Unit) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    VoucherCard(
+        g = g,
+        pinVisible = g.id in condition.pinVisible,
+        events = VoucherEvents(
+            // Hiding needs no confirmation, revealing does.
+            switchPin = {
+                if (g.id in condition.pinVisible) actions.switchPin(g.id) else guarded { actions.switchPin(g.id) }
+            },
+            edit = { guarded { actions.edit(g.id) } },
+            delete = { guarded { actions.delete(g.id) } },
+            openPdf = { guarded { actions.openPdf(g.id) } },
+            copy = { isNumber -> guarded { actions.copy(g.id, isNumber) } },
+            queryBalance = { actions.queryBalance(g.id) },
+        ),
+        plaintext = condition.plaintext[g.id],
+        balanceRunning = condition.balanceRunning == g.id,
+        modifier = modifier,
+    )
+}
+
+/** Number and PIN, the PDFs and delete: only after the device lock (step guard). */
 @Composable
 private fun protectedStep(): (() -> Unit) -> Unit {
     val protection = LocalStepGuard.current
@@ -234,33 +254,6 @@ private fun EmptyOrError(condition: VoucherUiState, onAgain: () -> Unit) {
         HintText(Icons.Default.Redeem, stringResource(R.string.vouchers_empty),
             stringResource(R.string.vouchers_empty_hint))
     }
-}
-
-/** Password and code before deleting, a PDF or plain text ([VoucherUiState.confirmation]). */
-@Composable
-private fun VoucherPrompt(
-    condition: VoucherUiState,
-    onConfirm: (password: String, code: String?) -> Unit,
-    onCancel: () -> Unit,
-) {
-    val question = condition.confirmation ?: return
-    val number = condition.vouchers.find { it.id == question.id }?.number.orEmpty()
-    val delete = question.step == VoucherStep.DELETE
-    val pdf = question.step == VoucherStep.PDF || question.step == VoucherStep.EXPORT
-    PasswordPrompt(
-        title = stringResource(if (delete) R.string.vouchers_delete_title else R.string.vouchers_confirm_title),
-        text = when {
-            delete -> stringResource(R.string.vouchers_delete_confirm, number)
-            pdf -> stringResource(R.string.vouchers_confirm_pdf)
-            else -> stringResource(R.string.vouchers_confirm_plaintext)
-        },
-        confirm = stringResource(if (delete) R.string.common_delete else R.string.vouchers_confirm_button),
-        codeNeeded = question.codeNeeded,
-        error = question.operation.errorMessage?.sentence(),
-        running = question.operation.running,
-        onConfirm = onConfirm,
-        onCancel = onCancel,
-    )
 }
 
 /**

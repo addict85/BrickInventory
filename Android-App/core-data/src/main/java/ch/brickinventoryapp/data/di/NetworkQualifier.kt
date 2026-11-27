@@ -19,8 +19,3 @@ internal annotation class ImageClient
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 internal annotation class SseClient
-
-/** The bare client of the self-update: without token, server and language. */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class UpdateClient

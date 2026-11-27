@@ -1,17 +1,15 @@
 /**
- * Joining a household only works with the own password, and the owner
- * gets a mail. Afterwards the main account reads and writes the stock; with
- * a captured token alone this should not be settable.
+ * Joining a household needs the invitation code and the login, no password or
+ * second factor (docs/SICHERHEIT.md), and the owner gets a mail. Afterwards the
+ * main account reads and writes the stock.
  *
  * Counter-checks (measured on 28.10.2026):
- *   A  bestaetigePasswort() removed from the route → red: “without password no
- *      link”
- *   B  the hint mail not sent → red: “linked with password, and
+ *   B  the hint mail not sent → red: “linked without password, and
  *      the owner learns of it”
- * Counter-check (measured 01.11.2026): code requirement removed in the route → red:
- *   “with a second factor it also needs the code”
+ * Counter-check (26.11.2026): a password check back into the route → red: “linked
+ *   without password …” and “with a second factor no code either” (400 instead of 200)
  * Counter-check (measured 01.11.2026): maskAddress() bypassed in the mailer's console path
- *   → red: “linked with password, and the owner learns of it”
+ *   → red: “linked without password, and the owner learns of it”
  * Counter-check (measured 04.11.2026): accountThrottled() removed from redeem/pruefen
  *   → red: “checking a code is throttled per account” (200 instead of 429)
  *
@@ -94,17 +92,13 @@ test('join household', { concurrency: 1 }, async t => {
     await checkCounter();
   });
 
-  await t.test('no link without password', async () => {
-    const { code } = await createInvitation(main);
-    for (const body of [{ code }, { code, password: 'falsch' }]) {
-      const r = await redeemIt(body);
-      assert.equal(r.status, 400, JSON.stringify(r.body));
-      assert.equal(r.body.code, 'current_password_wrong');
-    }
+  await t.test('no link without a valid code', async () => {
+    const r = await redeemIt({ code: 'XXXX-XXXX-XXXX-XXXX' });
+    assert.ok(r.status >= 400 && r.status < 500, JSON.stringify(r.body));
     assert.equal(await linkedOne(), false);
   });
 
-  await t.test('linked with password, and the owner learns about it', async () => {
+  await t.test('linked without password, and the owner learns about it', async () => {
     const { code } = await createInvitation(main);
     const lines = [];
     const original = console.log;
@@ -113,7 +107,7 @@ test('join household', { concurrency: 1 }, async t => {
     };
     let r;
     try {
-      r = await redeemIt({ code, password: PASS });
+      r = await redeemIt({ code });
       for (let i = 0; i < 50 && !lines.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
     } finally {
       console.log = original;
@@ -132,14 +126,11 @@ test('join household', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('with a second factor the code is needed too', async () => {
+  await t.test('with a second factor no code either', async () => {
     const zf = _req('src/factors/secondFactor.js');
     const secret = await zf.beginSetup(kind);
-    const codes = await zf.confirmSetup(kind, zf.hotp(zf.fromBase32(secret), zf.timeStep()));
+    assert.ok(Array.isArray(await zf.confirmSetup(kind, zf.hotp(zf.fromBase32(secret), zf.timeStep()))));
     const { code } = await createInvitation(main2);
-    const without = await redeemIt({ code, password: PASS });
-    assert.equal(without.status, 400, JSON.stringify(without.body));
-    assert.equal(without.body.code, 'second_factor_required');
     // Wait for the hint mail: written to stdout late, it disturbs the test run.
     const lines = [],
       original = console.log;
@@ -148,7 +139,7 @@ test('join household', { concurrency: 1 }, async t => {
     };
     let withIt;
     try {
-      withIt = await redeemIt({ code, password: PASS, factor_code: codes[0] });
+      withIt = await redeemIt({ code });
       for (let i = 0; i < 50 && !lines.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
     } finally {
       console.log = original;

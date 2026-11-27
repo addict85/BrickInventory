@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AccountName, type Route, confirmed, WITHOUT_BODY, IDENTIFIER, TEXT_OR_EMPTY } from './base';
+import { AccountName, type Route, legacyConfirmation, WITHOUT_BODY, IDENTIFIER, TEXT_OR_EMPTY } from './base';
 import { DEGRADED, GenericResponse } from './shared';
 
 export const HouseholdJoined = GenericResponse.extend({ linked_to: AccountName });
@@ -59,7 +59,7 @@ export const routes = {
   },
   'POST /api/v2/settings/household/redeem': {
     response: HouseholdJoined,
-    ...confirmed({ code: TEXT_OR_EMPTY(64) }, 'password', 'factor_code'),
+    ...legacyConfirmation({ code: TEXT_OR_EMPTY(64) }, 'password', 'factor_code'),
   },
   'POST /api/v2/settings/household/unlink': {
     input: z.strictObject({

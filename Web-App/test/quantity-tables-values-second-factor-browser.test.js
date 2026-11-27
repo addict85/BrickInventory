@@ -15,15 +15,14 @@
  *   F  clearerReason() without the branch for admins → red: „Serverfehler für Verwalter“
  *   G  bar again for every service with total > 0 → red: „Aufträge und Fortschritt“ (also „idle“, „done“);
  *      .mon-extra without display:block → red: same place (number 123 px left of the edge, addition next to it)
- *   H  newRecoveryCodes() reads #zf-code again → red: „Zweiter Faktor: Code im Dialog“ (no dialog)
+ *   H  (26.11.2026) newRecoveryCodes() behind confirmDelete() → red: “second factor: no code asked” (no new codes)
  *   I  refreshPageName() without observeSetDetail() → red: „Seitentitel im Set-Detail“
  *   K  .pl-bar without align-self:stretch → red: „Bauliste: breites Feld“ (1280 px: 205 px);
  *      mobile.css without .pl-setnr { flex-basis: 100% } → red: same place (390 px: 209 of 358 px)
  *   L  .wanted-box-header without display:flex/align-items:center → red: „Merkliste zugeklappt“ (top 9, bottom 32 px)
  *   M  thumbs.ts again fit: 'cover' (dist rebuilt) → red: „Bilder verschiedener Form“ (r25breit-1: preview 1:1
  *      instead of 8:1)
- *   N  (16.11.2026) `withCode: true` deleted in disableSecondFactor() → red: „Zweiter Faktor: Code im Dialog“
- *      (set up anew without a code field)
+ *   N  (26.11.2026) a password input back into #confirm-modal → red: “second factor: no code asked” (pw true)
  *
  * B3: the native date field formats by the language of the browser, not by `lang` (round 24, N16);
  * what is checked is that the page carries `lang="en"` after the language switch and the field inherits it.
@@ -433,23 +432,18 @@ async function secondFactor(_t, a) {
   await geh(a, '#/konto', `!!document.querySelector('#sf-surface [data-click="newRecoveryCodes"]')`, 'Konto');
   assert.equal(await b.evaluate(`!!document.querySelector('#sf-surface input')`), false, 'code field for two actions');
   const dialog = `({ isOpen: document.getElementById('confirm-modal').style.display === 'flex', title: ${text('#cd-title')},
-    code: !document.getElementById('cd-code-wrap').hidden, pw: !document.getElementById('cd-pw-wrap').hidden })`;
-  // New codes: the code in its own dialog.
+    code: !!document.querySelector('#confirm-modal [autocomplete="one-time-code"]'),
+    pw: !!document.querySelector('#confirm-modal input[type="password"]') })`;
+  // New codes: right away, without a code (a login is enough, docs/SICHERHEIT.md).
   await b.evaluate(`document.querySelector('#sf-surface [data-click="newRecoveryCodes"]').click(); true`);
-  await until(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Dialog „Neue Codes“');
-  const fresh = await b.evaluate(dialog);
-  assert.deepEqual([fresh.code, fresh.pw], [true, false], JSON.stringify(fresh));
-  assert.match(fresh.title.replace(/­/g, ''), /Neue Wiederherstellungscodes/);
-  await b.evaluate(`document.getElementById('cd-code').value = ${JSON.stringify(a.furtherCodes[0])};
-    document.getElementById('cd-confirm').click(); true`);
   await until(`!!document.getElementById('sf-codes')`, 'neue Codes');
   await b.evaluate(`document.getElementById('sf-saved').click(); true`);
   await until(`!!document.querySelector('#sf-surface [data-click="disableSecondFactor"]')`, 'zurück');
-  // For admins switching off means „Neu einrichten“: a dialog with password and code, cancelled.
+  // For admins switching off means „Neu einrichten“: a plain question, cancelled.
   await b.evaluate(`document.querySelector('#sf-surface [data-click="disableSecondFactor"]').click(); true`);
   await until(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage Neu einrichten');
   const ab = await b.evaluate(dialog);
-  assert.deepEqual([ab.code, ab.pw], [true, true], JSON.stringify(ab));
+  assert.deepEqual([ab.code, ab.pw], [false, false], JSON.stringify(ab));
   assert.match(ab.title, /Neu einrichten/);
   await b.evaluate(`document.getElementById('cd-cancel').click(); true`);
   await until(`document.getElementById('confirm-modal').style.display !== 'flex'`, 'abgebrochen');
@@ -534,7 +528,7 @@ test('quantity, table values, second factor, build list', { concurrency: 1, time
     // Reloads the page.
     ['Serverfehler für Verwalter', serverErrorAdmin],
     // Replaces the recovery codes: last.
-    ['Zweiter Faktor: Code im Dialog', secondFactor],
+    ['second factor: no code asked', secondFactor],
   ];
   for (const [title, fn] of pruefungen) await t.test(title, () => fn(t, a));
 });

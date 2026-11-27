@@ -17,7 +17,7 @@ process.env.APP_BASE_URL = 'http://lego.example.org';
 
 test('QR code: the second code stays after the first expires', { timeout: 180_000 }, async t => {
   const app = await startApp(t, {
-    // Without admin rights no second factor, so no prompt before the code.
+    // Without admin rights: an administrator would first have to set up the second factor.
     holding: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
   });
   if (app.reason) return t.skip(app.reason);
@@ -42,9 +42,7 @@ test('QR code: the second code stays after the first expires', { timeout: 180_00
   await b.evaluate(`document.querySelector('.ntab[data-tab="settings"]').click(); true`);
   await until(`typeof document.getElementById('btn-gen-qr')?.onclick === 'function'`, 'QR-Knopf verdrahtet');
   const image = `document.querySelector('#qr-code img')?.getAttribute('src') || ''`;
-  const create = () =>
-    b.evaluate(`document.getElementById('qr-password').value = 'app-Passwort-1';
-      document.getElementById('btn-gen-qr').click(); true`);
+  const create = () => b.evaluate(`document.getElementById('btn-gen-qr').click(); true`);
 
   await create();
   await until(

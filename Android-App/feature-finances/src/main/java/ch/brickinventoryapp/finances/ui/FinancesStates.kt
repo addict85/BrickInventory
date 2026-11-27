@@ -93,7 +93,7 @@ data class VoucherUiState(
      * state instead of as a callback, because the graph knows the NavController; it acknowledges.
      */
     val pdfTarget: VoucherPdfTarget? = null,
-    /** The running prompt for password and code, or null. */
+    /** The running step, or the open delete question; null if neither. */
     val confirmation: VoucherConfirmation? = null,
     /**
      * Number and PIN in plain text per id, for as long as the page is open. Only here, never
@@ -148,18 +148,16 @@ data class BalanceRun(
 /** A released PDF; without [id] that of all vouchers. */
 data class VoucherPdfTarget(val id: Int?, val ticket: String)
 
-/** What only happens after the device lock and password. */
+/** What only happens after the device lock. */
 enum class VoucherStep { PIN_SHOW, NUMBER_COPY, PIN_COPY, PDF, EXPORT, DELETE }
 
 /**
- * The password (and code) prompt, before [step] runs for voucher [id];
- * [id] is null for exporting all of them.
+ * [step] for voucher [id] ([id] null: export of all), while it runs; for deleting also
+ * the open „are you sure“ before it ([operation] not yet running).
  */
 data class VoucherConfirmation(
     val step: VoucherStep,
     val id: Int?,
-    /** The server has asked for the second-factor code. */
-    val codeNeeded: Boolean = false,
     val operation: Operation = Operation.Done,
 )
 

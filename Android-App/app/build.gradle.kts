@@ -225,7 +225,6 @@ dependencies {
     // Logging and NetworkPolicy.
     implementation(project(":core-network"))
     implementation(project(":core-security"))
-    implementation(project(":core-update"))
     implementation(project(":core-services"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-inventory"))
@@ -249,7 +248,7 @@ dependencies {
         libs.androidx.navigation.compose, libs.coil.compose, libs.hilt.android)) {
         testFixturesCompileOnly(lib)
     }
-    for (m in listOf(":core-model", ":core-resources", ":core-data", ":core-security", ":core-update", ":core-services", ":core-ui",
+    for (m in listOf(":core-model", ":core-resources", ":core-data", ":core-security", ":core-services", ":core-ui",
         ":core-state", ":core-session", ":feature-collection", ":feature-parts", ":feature-finances", ":feature-account")) {
         testFixturesCompileOnly(project(m))
     }

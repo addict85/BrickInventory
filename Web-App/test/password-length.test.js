@@ -84,7 +84,7 @@ test('the web app checks before submitting', async () => {
       signedOut: true,
     },
     'required change': {
-      fields: { 'required-alt': 'alt-passwort-123', 'required-new': SHORT, 'required-repeat': SHORT },
+      fields: { 'required-new': SHORT, 'required-repeat': SHORT },
       button: 'btn-required',
       where: '#required-err',
     },

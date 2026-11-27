@@ -1684,10 +1684,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "current",
-          "code": "code"
         }
       }
     },
@@ -1907,10 +1903,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -2335,10 +2327,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -2464,10 +2452,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -2620,10 +2604,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password_current",
-          "code": "code"
         }
       }
     },
@@ -3018,10 +2998,6 @@
             }
           }
         },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
-        },
         "x-geheim": true
       }
     },
@@ -3272,10 +3248,6 @@
             }
           }
         },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
-        },
         "x-geheim": true
       }
     },
@@ -3518,10 +3490,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "admin_password",
-          "code": "code"
         }
       }
     },
@@ -3617,10 +3585,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "admin_password",
-          "code": "code"
         }
       }
     },
@@ -3736,10 +3700,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "admin_password",
-          "code": "code"
         }
       }
     },
@@ -3855,10 +3815,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "admin_password",
-          "code": "code"
         }
       }
     },
@@ -3954,10 +3910,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "admin_password",
-          "code": "code"
         }
       }
     },
@@ -4057,10 +4009,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "admin_password",
-          "code": "code"
         }
       }
     },
@@ -4156,10 +4104,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "admin_password",
-          "code": "code"
         }
       }
     },
@@ -4273,10 +4217,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -4488,10 +4428,6 @@
             }
           }
         },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
-        },
         "x-geheim": true
       }
     },
@@ -4576,10 +4512,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -6750,10 +6682,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -6849,10 +6777,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -11238,10 +11162,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "admin_password",
-          "code": "code"
         }
       }
     },
@@ -11671,10 +11591,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "faktor_code"
         }
       }
     },
@@ -12016,10 +11932,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -12108,10 +12020,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -12295,10 +12203,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -13193,10 +13097,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         }
       }
     },
@@ -13343,10 +13243,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         },
         "x-geheim": true
       }
@@ -13502,10 +13398,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         },
         "x-geheim": true
       }
@@ -13678,10 +13570,6 @@
               }
             }
           }
-        },
-        "x-bestaetigung": {
-          "passwort": "password",
-          "code": "code"
         },
         "x-geheim": true
       }

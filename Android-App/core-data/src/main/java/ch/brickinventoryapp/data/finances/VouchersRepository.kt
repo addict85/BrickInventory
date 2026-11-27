@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data.finances
 
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.BalanceInfo
-import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.model.domain.PlaintextView
 import ch.brickinventoryapp.model.domain.VoucherInfo
 import ch.brickinventoryapp.model.domain.VoucherStorage
@@ -20,13 +19,13 @@ interface VouchersRepository {
 
     suspend fun edit(id: Int, info: VoucherInfo): Outcome<VoucherStorage>
 
-    suspend fun deleteVoucher(id: Int, confirmation: Confirmation): Outcome<Unit>
+    suspend fun deleteVoucher(id: Int): Outcome<Unit>
 
     suspend fun restore(id: Int): Outcome<VoucherStorage>
 
-    suspend fun plaintext(id: Int, confirmation: Confirmation): Outcome<PlaintextView>
+    suspend fun plaintext(id: Int): Outcome<PlaintextView>
 
-    suspend fun pdfRelease(id: Int?, confirmation: Confirmation): Outcome<String>
+    suspend fun pdfRelease(id: Int?): Outcome<String>
 
     suspend fun balance(id: Int): Outcome<BalanceInfo>
 

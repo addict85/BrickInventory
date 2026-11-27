@@ -157,9 +157,9 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
     assert.deepEqual(await saved(key), []);
   });
 
-  await t.test('… and a %2F at the end gets no secret or confirmed response', async () => {
+  await t.test('… and a %2F at the end gets no secret response', async () => {
     const secret = ROUTES.filter(({ m, url }) => WRITING.has(m) && answerIsSecret(m, url));
-    assert.ok(secret.length > 20, `only ${secret.length} secret or confirmed routes`);
+    assert.ok(secret.length > 15, `only ${secret.length} secret routes`);
     const succeeded = [];
     for (const { m, url } of secret) {
       const r = await callIt(m, url + '%2F');

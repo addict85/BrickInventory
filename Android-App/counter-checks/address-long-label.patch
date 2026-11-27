@@ -14,4 +14,4 @@ diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/And
 +    <string name="setup_url_label">Serveradresse der BrickInventory Manager Web-App</string>
      <string name="setup_url_placeholder">https://brick.fritz.box</string>
      <string name="setup_url_supporting">Die Adresse der BrickInventory Manager Web-App, z. B. brick.fritz.box oder brick.example.com – https:// darf fehlen</string>
-     <string name="api_app_too_old">Diese App ist zu alt für den Server. Bitte die App aktualisieren (Einstellungen → Aktualisierung).</string>
+     <string name="api_app_too_old">Diese App ist zu alt für den Server. Bitte die App in Google Play aktualisieren.</string>

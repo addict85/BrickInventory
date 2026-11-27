@@ -205,7 +205,6 @@ test('arguments from data-arg are treated as strings', async () => {
     assert.ok(await waitFor(() => d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]')));
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]').click();
     assert.ok(await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex'), 'no dialog');
-    d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
     assert.ok(await waitFor(() => calls.some(a => a.method === 'PUT' && a.url.includes('/v2/auth/users/4/admin'))));
     assert.equal(JSON.parse(calls.find(a => a.url.includes('/v2/auth/users/4/admin')).body).is_admin, true);

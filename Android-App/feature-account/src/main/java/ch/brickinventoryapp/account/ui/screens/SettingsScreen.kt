@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -21,14 +20,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.model.ui.theme.Brightness
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
@@ -45,23 +40,17 @@ import ch.brickinventoryapp.ui.components.SettingsCard
 import ch.brickinventoryapp.ui.components.ToggleRow
 import ch.brickinventoryapp.ui.components.secondaryButtonColors
 import ch.brickinventoryapp.ui.components.secondaryButtonRand
-import ch.brickinventoryapp.ui.components.versionsName
 import ch.brickinventoryapp.ui.components.withFont
-import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.SYSTEM_COLORS_AB_SDK
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.brightnessSelectable
 import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.title
-import ch.brickinventoryapp.update.util.UpdateFresh
-import ch.brickinventoryapp.update.util.permissionIntent
-import ch.brickinventoryapp.update.util.sourceStale
 
-/** What settings shows; the route gathers it from four flows of three ViewModels. */
+/** What settings shows; the route gathers it from the flows of three ViewModels. */
 data class SettingsState(
     val appState: AppUiState,
-    val updateUiState: UpdateUiState,
     val brightness: String,
     val design: Design,
     val systemColors: Boolean,
@@ -82,19 +71,17 @@ interface SettingsExits {
     fun setUserCa(on: Boolean)
 }
 
-/** Settings at the navigation destination; display, trust and update live on the Activity. */
+/** Settings at the navigation destination; display and trust live on the Activity. */
 @Composable
 internal fun SettingsRoute(
     vm: SettingsViewModel,
     onLogout: () -> Unit,
     onServerSwitch: () -> Unit,
     scrollState: ScrollState,
-    selfUpdate: UpdateViewModel,
     appearance: AppearanceViewModel,
     trust: TrustViewModel,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
-    val updateUiState by selfUpdate.updateState.collectAsStateWithLifecycle()
     val brightness by appearance.brightness.collectAsStateWithLifecycle()
     val design by appearance.appTheme.collectAsStateWithLifecycle()
     val systemColors by appearance.systemColors.collectAsStateWithLifecycle()
@@ -107,22 +94,21 @@ internal fun SettingsRoute(
         override fun setUserCa(on: Boolean) { if (on) trust.userCa.requests() else trust.userCa.turnOff() }
     }
     SettingsScreen(
-        condition = SettingsState(appState, updateUiState, brightness, design, systemColors,
+        condition = SettingsState(appState, brightness, design, systemColors,
             hidePreview, widgetValues, userCa),
-        actions = vm, update = selfUpdate, appearance = appearance, exits = exits, scrollState = scrollState,
+        actions = vm, appearance = appearance, exits = exits, scrollState = scrollState,
     )
 }
 
 /**
  * Settings — a few cards instead of a stack: display & prices (every
- * choice applies right away), server and update. The categories with their own page sit on "More"
+ * choice applies right away), server and privacy. The categories with their own page sit on "More"
  * (MoreScreen.kt) and in SettingsUnterseiten.kt.
  */
 @Composable
 fun SettingsScreen(
     condition: SettingsState,
     actions: SettingsActions,
-    update: UpdateActions,
     appearance: AppearanceActions,
     exits: SettingsExits,
     /**
@@ -132,7 +118,6 @@ fun SettingsScreen(
      */
     scrollState: ScrollState,
 ) {
-    val updateUiState = condition.updateUiState
     Column(
         Modifier
             .fillMaxSize()
@@ -144,7 +129,7 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(Spacing.large)
     ) {
         // Here stands only what a setting is in the narrow sense: display & prices,
-        // server, update check; the categories with their own page sit on "More".
+        // server, privacy; the categories with their own page sit on "More".
         // Every choice applies right away and announces itself: a save button below
         // the card was a second rule, and whoever missed it lost the choice.
         SettingsCard(title = stringResource(R.string.settings_group_display),
@@ -163,16 +148,7 @@ fun SettingsScreen(
             onUserCa = exits::setUserCa,
         )
 
-        if (updateUiState.selfUpdateSupported) {
-            UpdateCard(
-                updateUiState = updateUiState,
-                onCheck = { update.checkOnUpdate() },
-                onLoad = { update.loadUpdate() },
-                onInstall = { update.startInstallation() },
-            )
-
-            PrivacyCard(updateUiState.startCheck) { update.setStartCheck(it) }
-        }
+        PrivacyCard()
 
         Spacer(Modifier.height(Spacing.small))
 
@@ -343,156 +319,17 @@ private fun ServerCard(
             Text(stringResource(R.string.main_menu_change_server))
         }
         // Per device and effective right away (util/ServerTrust.kt); switched off, only system CAs.
-        // Only for one's own server; updates and foreign hosts always check against the system.
+        // Only for one's own server; foreign hosts always check against the system.
         // Notice in the error color: it's a risk, not a convenience setting.
         ToggleRow(stringResource(R.string.settings_user_ca), userCa, onUserCa,
             hint = stringResource(R.string.settings_user_ca_hint), hintColor = MaterialTheme.colorScheme.error)
     }
 }
 
-/**
- * Self-update from the GitHub release: check silently on start, never
- * load on its own, and here a button to check manually. The running version always
- * shows, otherwise "Up to date" would have no evidence. Download and install are two
- * buttons, because there can be a detour to the "install packages" permission
- * in between.
- */
-@Composable
-private fun UpdateCard(
-    // `updateUiState`, not `condition`: the check "which name carries which
-    // state type in this file" doesn't distinguish scopes.
-    updateUiState: UpdateUiState,
-    onCheck: () -> Unit,
-    onLoad: () -> Unit,
-    onInstall: () -> Unit,
-) {
-    SettingsCard(title = stringResource(R.string.update_title), icon = Icons.Default.SystemUpdate) {
-        Text(
-            stringResource(R.string.update_installed, versionsName()),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(Spacing.small))
-        UpdateStatus(updateUiState)
-        Spacer(Modifier.height(Spacing.medium))
-        UpdateButtons(updateUiState, onCheck, onLoad, onInstall)
-    }
-}
-
-/** What the last check found: a newer version, "current", a stale source, progress, permission, error. */
-@Composable
-private fun UpdateStatus(updateUiState: UpdateUiState) {
-    val ctx = LocalContext.current
-    val newer = updateUiState.newerVersion
-    when {
-        newer != null -> Text(
-            stringResource(R.string.update_available, newer.versionName),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        // Only after a check: beforehand "current" would be a claim
-        // about something no one has looked at. A stale source
-        // is never "current" (notice below).
-        updateUiState.checked && !sourceStale(updateUiState.freshness) -> Text(
-            stringResource(R.string.update_current, versionsName()),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-    if (sourceStale(updateUiState.freshness)) {
-        Spacer(Modifier.height(Spacing.small))
-        Text(
-            stringResource(if (updateUiState.freshness == UpdateFresh.EXPIRED)
-                R.string.update_source_expired else R.string.update_source_reset),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-        )
-    }
-
-    updateUiState.progress?.let { p ->
-        Spacer(Modifier.height(Spacing.small))
-        Text(stringResource(R.string.update_downloading, p),
-            style = MaterialTheme.typography.bodySmall)
-        Spacer(Modifier.height(Spacing.tiny))
-        LinearProgressIndicator(
-            progress = { p / 100f },
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-
-    if (updateUiState.permissionAbsent) {
-        Spacer(Modifier.height(Spacing.small))
-        Text(
-            stringResource(R.string.update_permission_needed),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(Spacing.tiny))
-        TextButton(onClick = {
-            ctx.startActivity(permissionIntent(ctx))
-        }) { Text(stringResource(R.string.update_permission_grant)) }
-    }
-
-    updateUiState.error?.let { f ->
-        Spacer(Modifier.height(Spacing.small))
-        Text(f.sentence(), style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error)
-    }
-}
-
-/** Check always; download only if there's something to fetch; install only once it's on disk. */
-@Composable
-private fun UpdateButtons(updateUiState: UpdateUiState, onCheck: () -> Unit, onLoad: () -> Unit, onInstall: () -> Unit) {
-    // 48 dp high like "Sign out": Material draws 40 dp, and the node for tapping and
-    // reading would only be as tall as the drawing.
-    val buttonHeight = Modifier.heightIn(min = 48.dp)
-    val checkable = !updateUiState.check.running && updateUiState.progress == null
-    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-        verticalAlignment = Alignment.CenterVertically) {
-        OutlinedButton(onClick = onCheck, modifier = buttonHeight, enabled = checkable,
-            colors = secondaryButtonColors(), border = secondaryButtonRand(checkable)) {
-            if (updateUiState.check.running) {
-                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(Spacing.small))
-            }
-            Text(stringResource(R.string.update_check))
-        }
-        if (updateUiState.newerVersion != null && !updateUiState.readyToInstallation) {
-            Button(onClick = onLoad, modifier = buttonHeight, enabled = updateUiState.progress == null) {
-                Text(stringResource(R.string.update_download))
-            }
-        }
-        if (updateUiState.readyToInstallation) {
-            Button(onClick = onInstall, modifier = buttonHeight) {
-                Text(stringResource(R.string.update_install))
-            }
-        }
-    }
-}
-
-/** Per device: the check on start is a request to GitHub (privacy). */
-@Composable
-private fun StartCheckRow(an: Boolean, onSwitch: (Boolean) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = an, role = Role.Switch, onValueChange = onSwitch),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.update_at_start), style = MaterialTheme.typography.bodyMedium)
-            Text(stringResource(R.string.update_at_start_hint), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Switch(checked = an, onCheckedChange = null)
-    }
-}
-
 /** Who the app talks to (MASVS-PRIVACY): the same list as in `PLAYSTORE.md`. */
 @Composable
-private fun PrivacyCard(startCheck: Boolean, onStartCheck: (Boolean) -> Unit) {
+private fun PrivacyCard() {
     SettingsCard(title = stringResource(R.string.privacy_title), icon = Icons.Default.PrivacyTip) {
         Text(stringResource(R.string.privacy_text), style = MaterialTheme.typography.bodyMedium)
-        StartCheckRow(startCheck, onStartCheck)
     }
 }

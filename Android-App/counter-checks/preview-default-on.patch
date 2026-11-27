@@ -1,0 +1,17 @@
+Gegenprobe: Bildschirmfotos und Vorschau ohne Wahl wieder gesperrt
+Modul: app
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
+Rot: a new installation allows screenshots until the user hides the preview
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/DevicesStore.kt
+@@ -393,7 +393,7 @@
+      * of the app are wanted (store pictures, sharing); whoever wants the overview hidden turns
+      * it on. Secrets (login, vouchers, 2FA codes) stay protected regardless (PrivacyShield).
+      */
+-    override fun hidePreview(): Boolean = designMirror.getBoolean(PREVIEW_HIDE, false)
++    override fun hidePreview(): Boolean = designMirror.getBoolean(PREVIEW_HIDE, true)
+     override fun applyPreviewHidden(an: Boolean) {
+         designMirror.edit { putBoolean(PREVIEW_HIDE, an) }
+     }

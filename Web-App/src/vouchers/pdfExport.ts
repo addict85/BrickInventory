@@ -14,6 +14,7 @@ import {
 } from '@cantoo/pdf-lib';
 import { valuesFromPdf, pdfText, textOperators, type ParsedVoucher } from './pdfParsing';
 import { reportAndDeliver } from '../infra/error';
+import { fillTemplate } from './templatePdf';
 
 /** Only here does a literal ASCII string print what it says. Without /Encoding it
  * is a standard font with StandardEncoding — the same holds there. */
@@ -225,35 +226,8 @@ export interface ExportResult {
   reason: string | null;
 }
 
-/** A manually entered voucher has no original in which to replace anything. */
-async function buildPage(g: ExportVoucher): Promise<Buffer> {
-  const doc = await PdfLibDocument.create();
-  const page = doc.addPage([595, 842]);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const normal = await doc.embedFont(StandardFonts.Helvetica);
-  const gray = rgb(0.45, 0.45, 0.45);
-
-  page.drawText('Geschenkkarte', { x: 60, y: 760, size: 22, font: bold });
-  // LITERALLY the original's sentence, so that readPageByPage finds it just as
-  // it would on a real card.
-  page.drawText(
-    `Ihre LEGO-Geschenkkarte im Wert von ` +
-      `${g.amount
-        .toLocaleString('de-CH', { minimumFractionDigits: Number.isInteger(g.amount) ? 0 : 2 })
-        .replace(/’/g, "'")} ${g.currency}:`,
-    { x: 60, y: 700, size: 14, font: normal },
-  );
-  page.drawText(g.number, { x: 60, y: 660, size: 16, font: bold });
-  if (g.pin) page.drawText(`PIN: ${g.pin}`, { x: 60, y: 630, size: 14, font: normal });
-  page.drawText('Von Hand erfasst — zu diesem Gutschein liegt kein Original-PDF vor.', {
-    x: 60,
-    y: 590,
-    size: 9,
-    font: normal,
-    color: gray,
-  });
-  return Buffer.from(await doc.save());
-}
+/** A manually entered voucher has no original: it is drawn into LEGO's card layout. */
+const buildPage = (g: ExportVoucher): Promise<Buffer> => fillTemplate(g);
 
 /** A voucher that was not replaced is still included, with a reason in the result:
  * an explanation, not an abort. */

@@ -20,7 +20,6 @@ import ch.brickinventoryapp.data.RedemptionOutcome
 import ch.brickinventoryapp.data.SwappedToken
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.classifyRedemption
-import ch.brickinventoryapp.data.collection.asRequest
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.mapData
@@ -33,7 +32,6 @@ import ch.brickinventoryapp.model.domain.AccountCreation
 import ch.brickinventoryapp.model.domain.AccountOwner
 import ch.brickinventoryapp.model.domain.AccountSettings
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.DesignState
 import ch.brickinventoryapp.model.domain.DeviceView
@@ -154,23 +152,23 @@ internal class AccountRepositoryImpl @Inject constructor(
     override suspend fun secondFactorStatus(): Outcome<SecondFactorStatus> =
         safeCall { api.secondFactorStatus() }.promised({ it.success }, { it.error }) { SecondFactorStatus(it.active, it.codesLeft) }
 
-    override suspend fun setUpSecondFactor(password: String): Outcome<SecondFactorSetup> =
+    override suspend fun setUpSecondFactor(password: String?): Outcome<SecondFactorSetup> =
         safeCall { api.setUpSecondFactor(SecondFactorRequest(password = password)) }
             .promised({ it.success }, { it.error }) { SecondFactorSetup(it.secret, it.otpauth) }
 
     override suspend fun secondFactorConfirm(code: String): Outcome<List<String>> =
         safeCall { api.secondFactorConfirm(SecondFactorRequest(code = code)) }.promised({ it.success }, { it.error }) { it.codes }
 
-    override suspend fun disableSecondFactor(password: String, code: String): Outcome<Unit> =
-        safeCall { api.disableSecondFactor(SecondFactorRequest(password = password, code = code)) }.done()
+    override suspend fun disableSecondFactor(): Outcome<Unit> =
+        safeCall { api.disableSecondFactor(SecondFactorRequest()) }.done()
 
-    override suspend fun secondFactorNewCodes(code: String): Outcome<List<String>> =
-        safeCall { api.secondFactorNewCodes(SecondFactorRequest(code = code)) }.promised({ it.success }, { it.error }) { it.codes }
+    override suspend fun secondFactorNewCodes(): Outcome<List<String>> =
+        safeCall { api.secondFactorNewCodes(SecondFactorRequest()) }.promised({ it.success }, { it.error }) { it.codes }
 
     override suspend fun updateProfile(change: ProfileChange): Outcome<ProfileSaved> =
         safeCall {
             api.updateProfile(ProfileRequest(username = change.user, email = change.email, firstName = change.firstName,
-                lastName = change.lastName, passwordCurrent = change.passwordCurrent, code = change.code))
+                lastName = change.lastName))
         }.promised({ it.success }) { ProfileSaved(newAddress = it.emailChanged == true, mailSent = it.emailSent == true) }
 
     override suspend fun changePassword(current: String, newValue: String, code: String?): Outcome<Unit> =
@@ -179,11 +177,11 @@ internal class AccountRepositoryImpl @Inject constructor(
     override suspend fun getTokens(): Outcome<List<DeviceView>> =
         safeCall { api.getTokens() }.promised({ it.success }, { it.error }) { r -> r.tokens.map { it.asDevice() } }
 
-    override suspend fun revokeToken(tokenId: String, confirmation: Confirmation): Outcome<Int> =
-        safeCall { api.revokeToken(tokenId, confirmation.asRequest()) }.mapData { it.deleted }
+    override suspend fun revokeToken(tokenId: String): Outcome<Int> =
+        safeCall { api.revokeToken(tokenId, SecondFactorRequest()) }.mapData { it.deleted }
 
-    override suspend fun endOther(confirmation: Confirmation): Outcome<Int> =
-        safeCall { api.endOther(EndOthersRequest(password = confirmation.password, code = confirmation.code)) }
+    override suspend fun endOther(): Outcome<Int> =
+        safeCall { api.endOther(EndOthersRequest()) }
             .mapData { it.accesses }
 
     /**
@@ -254,8 +252,6 @@ data class LoginReply(val response: Login, val passkeyInsteadOfCode: Boolean = f
 private fun LoginResponse.asLogin() =
     Login(success = success, token = token, user = user?.username, admin = admin,
         secondFactor = secondFactor, error = error)
-
-private fun Confirmation.asRequest() = SecondFactorRequest(password = password, code = code)
 
 /** From the 401 response to the second factor: does a passkey work instead of the code? Not in the contract (the error carries extra fields freely). */
 @Serializable

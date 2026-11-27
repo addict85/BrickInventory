@@ -2,7 +2,18 @@ import { z } from 'zod';
 import { V1_SETTING_KEYS } from './v1Names';
 import { v1Keys, v1Values } from './v1';
 import { AdminCondition, AdminTheme } from './management';
-import { type Route, Success, whole, time, confirmed, WITHOUT_BODY, TEXT, CONDITION, SETTINGS, SIMPLE } from './base';
+import {
+  type Route,
+  Success,
+  whole,
+  time,
+  legacyConfirmation,
+  WITHOUT_BODY,
+  TEXT,
+  CONDITION,
+  SETTINGS,
+  SIMPLE,
+} from './base';
 import { GLOBAL_RULES } from './globalRules';
 
 /** What POST /settings accepts: global only from the admin, per account from everyone. */
@@ -188,14 +199,14 @@ export const routes = {
   'GET /api/v2/settings/raw': { response: RawSettings },
   'GET /api/v2/settings/tls': { response: TlsState },
   'GET /api/v2/settings/user/default-condition': { response: DefaultConditionResponse },
-  'POST /api/v2/settings': { response: Success, ...confirmed(settingFields, 'admin_password') },
+  'POST /api/v2/settings': { response: Success, ...legacyConfirmation(settingFields, 'admin_password') },
   'GET /api/v2/settings/export': { response: Backup },
   'POST /api/v2/settings/import': { form: true, response: BackupRestored },
   'GET /api/v2/health': { response: Health },
   'GET /api/v2/health/live': { response: Heartbeat },
   'GET /api/v2/health/ready': { response: Heartbeat },
   'GET /api/v2/settings/export/data': { kind: 'zip' },
-  'POST /api/v2/settings/smtp-test': { response: SmtpProbe, ...confirmed({ to: TEXT(320).optional() }) },
+  'POST /api/v2/settings/smtp-test': { response: SmtpProbe, ...legacyConfirmation({ to: TEXT(320).optional() }) },
   'POST /api/v2/settings/test-source': {
     input: v1Keys(z.strictObject({ source: TEXT(40) }), { source: 'quelle' }),
     response: Success,

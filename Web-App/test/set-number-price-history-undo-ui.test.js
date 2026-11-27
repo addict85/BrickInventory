@@ -130,10 +130,7 @@ test('account: currency applies immediately, password has its own button', async
     );
     d.getElementById('pw-n').value = d.getElementById('pw-r').value = 'neu-Passwort-1';
     d.getElementById('btn-sav-pw').click();
-    await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex');
-    d.getElementById('cd-pw').value = 'alt-Passwort-1';
-    d.getElementById('cd-confirm').click();
-    await waitFor(() => calls.some(a => a.url.endsWith('/v2/auth/change-password')));
+    assert.ok(await waitFor(() => calls.some(a => a.url.endsWith('/v2/auth/change-password'))), 'no password request');
     assert.equal(
       calls.some(a => a.url.endsWith('/v2/auth/profile') && a.method === 'PUT'),
       false,

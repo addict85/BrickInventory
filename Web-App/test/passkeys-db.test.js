@@ -21,8 +21,8 @@
  *   G  (31.10.2026) in /passkey/anmelden `mit_token` ignored (always false) →
  *      red: “the registered app logs in …” (no token)
  * Counter-checks (measured 01.11.2026):
- *   H  code requirement removed in /passkey/registrieren/optionen → red: “with a second
- *      factor a new passkey also requires the code”
+ *   H  (26.11.2026) a password check back into /passkey/register/options → red:
+ *      “with a second factor a new passkey needs no code either” (400 instead of 200)
  *   I  setPasswordBack() without loescheAlleDesKontos → red: “resetting via mail …”
  *   J  hintInBackground() removed in /reset-password → red: „kein Hinweis verschickt“
  *   K  passkeys_widerrufen ignored → red: “a password change revokes passkeys only on request”
@@ -198,7 +198,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
   const sess = async name => (await callFn('/login', { username: name, password: PASS, without_token: true })).cookie;
   const register = async (name, key) => {
     const c = await sess(name);
-    const o = await callFn('/passkey/register/options', { password: PASS }, c);
+    const o = await callFn('/passkey/register/options', {}, c);
     assert.equal(o.status, 200, JSON.stringify(o.body));
     assert.equal(o.body.options.rp.id, RP);
     const r = await callFn(
@@ -252,7 +252,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     const fremd = anna.signIn(await options(), { origin: 'https://boese.test' });
     assert.equal((await callFn('/passkey/login', { response: fremd })).status, 401);
     const c = await sess('pk_bert');
-    const o = await callFn('/passkey/register/options', { password: PASS }, c);
+    const o = await callFn('/passkey/register/options', {}, c);
     const r = await callFn(
       '/passkey/register',
       { response: authenticator().register(o.body.options.challenge, 'https://boese.test') },
@@ -345,7 +345,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(without.status, 401, 'Without an entry the server accepts no app');
   });
 
-  await t.test('deleting requires the password', async () => {
+  await t.test('deleting needs only the login', async () => {
     const c = await sess('pk_bert');
     const list = (await callFn('/passkeys', undefined, c)).body.passkeys;
     assert.equal(list.length, 2);
@@ -355,20 +355,16 @@ test('Passkeys', { concurrency: 1 }, async t => {
         headers: { 'content-type': 'application/json', cookie: c },
         body: JSON.stringify(body),
       });
-    assert.equal((await removeIt(list[0].id, { password: 'falsch' })).status, 400);
-    for (const p of list) assert.equal((await (await removeIt(p.id, { password: PASS })).json()).deleted, 1);
+    for (const p of list) assert.equal((await (await removeIt(p.id, {})).json()).deleted, 1);
     assert.equal((await callFn('/passkey/login', { response: bert.signIn(await options()) })).status, 401);
   });
 
   const count = async uid => (await db.get('SELECT COUNT(*)::int n FROM passkeys WHERE user_id = $1', [uid])).n;
 
-  await t.test('with a second factor a new passkey also requires the code', async () => {
+  await t.test('with a second factor a new passkey needs no code either', async () => {
     const c = (await callFn('/login', { username: 'pk_anna', password: PASS, without_token: true, code: annaCodes[0] }))
       .cookie;
-    const without = await callFn('/passkey/register/options', { password: PASS }, c);
-    assert.equal(without.status, 400, 'A password alone mints a passkey past the second factor');
-    assert.equal(without.body.code, 'second_factor_required');
-    const withIt = await callFn('/passkey/register/options', { password: PASS, code: annaCodes[1] }, c);
+    const withIt = await callFn('/passkey/register/options', {}, c);
     assert.equal(withIt.status, 200, JSON.stringify(withIt.body));
     const r = await callFn(
       '/passkey/register',

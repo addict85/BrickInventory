@@ -3,7 +3,8 @@
 # Bibliotheken bringen eigene mit. Eine neue Zeile nur mit Grund darüber.
 
 # Eigene (app/src/main/AndroidManifest.xml): Server, Netzlage, Scannen, PDF-Export im
-# Vordergrunddienst, Preisalarm-Meldungen, WLAN wachhalten beim Download, Selbst-Update.
+# Vordergrunddienst, Preisalarm-Meldungen, WLAN wachhalten beim Download.
+# Kein REQUEST_INSTALL_PACKAGES: Die App kommt über Google Play und installiert nichts selbst.
 android.permission.INTERNET
 android.permission.ACCESS_NETWORK_STATE
 android.permission.CAMERA
@@ -11,7 +12,6 @@ android.permission.FOREGROUND_SERVICE
 android.permission.FOREGROUND_SERVICE_DATA_SYNC
 android.permission.POST_NOTIFICATIONS
 android.permission.WAKE_LOCK
-android.permission.REQUEST_INSTALL_PACKAGES
 
 # WorkManager: Aufträge nach einem Neustart wieder einplanen.
 android.permission.RECEIVE_BOOT_COMPLETED

@@ -4,7 +4,6 @@ import ch.brickinventoryapp.data.finances.VouchersRepository
 import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.TestApi
-import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.VoucherInfo
@@ -42,8 +41,8 @@ import java.io.File
  * Counter-checks:
  *  - withoutSecret() returns the voucher unchanged → red “the stored list holds neither …”.
  *  - @PUT("api/v2/vouchers/{id}") to POST → red “the app calls the same addresses as the web app”.
- *  - deleting again as @DELETE without body (confirmation not sent along) → red
- *    “deleting, plaintext and PDF release carry password and code”.
+ *  - plaintext() sends a password again → red “deleting, plaintext and PDF release send a
+ *    body without password or code” (counter-checks/vouchers-plaintext-with-password.patch).
  *  - pdfRelease() calls the route of the single PDF (with id 0) for id=null → red
  *    “the app calls the same addresses as the web app”.
  */
@@ -92,37 +91,35 @@ class VouchersContractTest {
     @Test
     fun `the app calls the same addresses as the web app`() = withServer { paths, repo, _ ->
         val g = VoucherInfo(number = "1234-5678", pin = "9876", amount = Money.from(50.0)!!, currency = CurrencyCode.CHF)
-        val b = Confirmation(password = "geheim")
         runBlocking {
             repo.list()
             repo.create(g)
             repo.edit(5, g)
-            repo.deleteVoucher(5, b)
+            repo.deleteVoucher(5)
             repo.fromPdf("karte.pdf", "application/pdf", byteArrayOf(1, 2, 3))
-            repo.plaintext(5, b)
-            repo.pdfRelease(5, b)
-            repo.pdfRelease(null, b)
+            repo.plaintext(5)
+            repo.pdfRelease(5)
+            repo.pdfRelease(null)
         }
         assertEquals(listOf("GET /api/v2/vouchers", "POST /api/v2/vouchers", "PUT /api/v2/vouchers/5",
             "DELETE /api/v2/vouchers/5", "POST /api/v2/vouchers/pdf", "POST /api/v2/vouchers/5/plaintext",
             "POST /api/v2/vouchers/5/pdf-grant", "POST /api/v2/vouchers/export/pdf-grant"), paths.requests.toList())
     }
 
-    /** Without a body the server answers with 400: deleting and plaintext require the confirmation. */
+    /** The server still parses a JSON body; the login is enough, so it holds no secret. */
     @Test
-    fun `deleting, plaintext and PDF release carry password and code`() = withServer { paths, repo, _ ->
-        val b = Confirmation(password = "geheim", code = "123456")
+    fun `deleting, plaintext and PDF release send a body without password or code`() = withServer { paths, repo, _ ->
         runBlocking {
-            repo.deleteVoucher(5, b)
-            repo.plaintext(5, b)
-            repo.pdfRelease(5, b)
-            repo.pdfRelease(null, b)
+            repo.deleteVoucher(5)
+            repo.plaintext(5)
+            repo.pdfRelease(5)
+            repo.pdfRelease(null)
         }
         assertEquals(4, paths.bodyBytes.size)
         for ((i, k) in paths.bodyBytes.withIndex()) {
             val o = JSONObject(k)
-            assertEquals("${paths.requests[i]}: password", "geheim", o.getString("password"))
-            assertEquals("${paths.requests[i]}: Code", "123456", o.getString("code"))
+            assertTrue("${paths.requests[i]}: password", o.isNull("password"))
+            assertTrue("${paths.requests[i]}: code", o.isNull("code"))
         }
     }
 

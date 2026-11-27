@@ -10,8 +10,8 @@
  *   B  createInvitation again with randomBytes(24).base64url → red: “invitation code
  *      in groups of four” (format) and “invitation names the main account”
  *      (entered in lower case without dashes: expired)
- *   C  profile again with tRaw('account.profile') without explanation → red: “e-mail
- *      change: title and new address”
+ *   C  (26.11.2026) btn-sav-prof behind a password dialog again → red: “e-mail change
+ *      without a dialog, the new address waits for its link”
  *   D  discardToasts again “all with a button stay” → red: “toast of the view
  *      closes on switching”
  *   E  Delete branch removed in aktionen.js → red: “delete cross: Delete on the card”
@@ -112,19 +112,16 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     assert.doesNotMatch(await fremd.text(), new RegExp(OTHERS));
   });
 
-  await t.test('email change: title and new address', async () => {
+  await t.test('email change without a dialog, the new address waits for its link', async () => {
     await b.evaluate(klick('.umenu-item[data-arg="profile"]'));
     await until(`!!document.getElementById('prof-email').value`, 'Profile');
     await b.evaluate(
       `document.getElementById('prof-email').value = 'neu-${process.pid}@example.org'; document.getElementById('btn-sav-prof').click(); true`,
     );
-    await until(open, 'Passwortabfrage');
-    assert.equal(await b.evaluate(text('#cd-title')), 'E-Mail-Adresse ändern?');
-    assert.match(
-      await b.evaluate(text('#cd-msg')),
-      new RegExp(`Neue Adresse: neu-${process.pid}@example.org\\..*Passwort`),
-    );
-    await closed();
+    const fresh = async () => (await db.get('SELECT new_email FROM users WHERE id = $1', [app.uid]))?.new_email;
+    for (let i = 0; i < 50 && (await fresh()) !== `neu-${process.pid}@example.org`; i++) await sleep(100);
+    assert.equal(await fresh(), `neu-${process.pid}@example.org`, 'the new address waits for its link');
+    assert.equal(await b.evaluate(open), false, 'a dialog opened');
   });
 
   await t.test("the view's toast closes on a switch", async () => {
@@ -182,20 +179,20 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   });
 
   await t.test('price missing: grey if it is missing almost everywhere', async () => {
-    const chars = async () => {
+    const count = `({ rot: document.querySelectorAll('#fin-tbl tbody .pst-err').length, grau: document.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody .pst-empty').length })`;
+    // The table of the previous visit is still there for a moment; wait until it marks all held sets.
+    const chars = async sets => {
       await geh('sammlung');
       await geh('finanzen');
-      await until(`!!document.querySelector('#fin-tbl [data-fin-kind="sets"] tfoot')`, 'Finances', 300);
-      return b.evaluate(
-        `({ rot: document.querySelectorAll('#fin-tbl tbody .pst-err').length, grau: document.querySelectorAll('#fin-tbl [data-fin-kind="sets"] tbody .pst-empty').length })`,
-      );
+      await until(`(c => c.rot + c.grau === ${sets})(${count})`, `Finances with ${sets} sets marked`, 300);
+      return b.evaluate(count);
     };
     // Without a price in the cache and without BrickLink access the fetch fails.
     await holdsSet(db, app.uid, '60001-1', 1, { price: 20, am: '2026-06-03T10:00:00Z' });
-    assert.deepEqual(await chars(), { rot: 1, grau: 0 }, 'a single failure stays red');
+    assert.deepEqual(await chars(1), { rot: 1, grau: 0 }, 'a single failure stays red');
     for (const nr of ['60002-1', '60003-1', '60004-1', '60005-1', '60006-1'])
       await holdsSet(db, app.uid, nr, 1, { price: 20, am: '2026-06-03T10:00:00Z' });
-    assert.deepEqual(await chars(), { rot: 0, grau: 6 }, 'if it is missing almost everywhere, it is no alarm');
+    assert.deepEqual(await chars(6), { rot: 0, grau: 6 }, 'if it is missing almost everywhere, it is no alarm');
     await db.run(`DELETE FROM set_acquisitions WHERE user_id = $1 AND set_number LIKE '6000_-1'`, [app.uid]);
     await db.run(`DELETE FROM sets WHERE user_id = $1 AND set_number LIKE '6000_-1'`, [app.uid]);
   });

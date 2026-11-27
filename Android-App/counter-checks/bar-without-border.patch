@@ -6,9 +6,9 @@ Rot: the bar keeps distance to the screen edge at 200 percent
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -329,7 +329,7 @@
+@@ -312,7 +312,7 @@ private fun TabBar(
      Surface(color = colors.bar) {
-         // A margin left and right: at 200 % “More” including the dot hit the screen edge.
+         // A margin left and right: at 200 % “More” hit the screen edge.
          BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
 -            .padding(horizontal = BAR_EDGE)) {
 +) {

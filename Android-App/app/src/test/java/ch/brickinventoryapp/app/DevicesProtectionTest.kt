@@ -40,13 +40,13 @@ import java.io.File
 /**
  * Protection on the device: a tap while a foreign window covers part of the
  * screen does not count in protected areas; without a choice by the
- * user the app overview shows no thumbnail.
+ * user screenshots and the app overview's thumbnail are allowed.
  *
  * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
  *   (a) OverlayGuard() does not install the filter → red “a partially
  *       obscured window …” (counter-checks/partially-obscured-let-through.patch)
- *   (b) hidePreview() with default false → red “a new installation
- *       hides the preview …” (counter-checks/preview-default-off.patch)
+ *   (b) hidePreview() with default true → red “a new installation
+ *       allows screenshots …” (counter-checks/preview-default-on.patch)
  *   (c) Schrittsperre shows the content without confirmation (`if (unlocked || reason.isNotEmpty())`) →
  *       red “the management shows itself only after the device lock”
  *       (counter-checks/management-without-device-lock.patch)
@@ -215,10 +215,10 @@ class DevicesProtectionTest {
     }
 
     @Test
-    fun `a new installation hides the preview until the user turns it off`() {
+    fun `a new installation allows screenshots until the user hides the preview`() {
         val (_, prefs) = stores()
-        assertTrue("without a choice the app overview shows everything", prefs.hidePreview())
-        prefs.applyPreviewHidden(false)
-        assertFalse(prefs.hidePreview())
+        assertFalse("without a choice screenshots are blocked", prefs.hidePreview())
+        prefs.applyPreviewHidden(true)
+        assertTrue(prefs.hidePreview())
     }
 }

@@ -1,8 +1,9 @@
 /**
  * Signed-in devices: list and lock out — both paths, real database.
  *
- * Counter-check (measured 09.11.2026): in DELETE /settings/tokens/:tokenId the
- * confirmation deleted → red: “without a password one device locks no other out”
+ * Counter-check (measured 26.11.2026): a password check back into DELETE
+ * /settings/tokens/:tokenId → red: “one device locks out another without a password”
+ * (400 instead of 200); the login is enough (docs/SICHERHEIT.md).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -128,17 +129,11 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     );
 
     const deleteTo = perToken.body.tokens.find(x => x.label === 'Tablet');
-    const without = await callFn(SETTINGS + '/tokens/' + deleteTo.token_id, {
-      method: 'DELETE',
-      headers: { authorization: `Bearer ${phone.body.token}` },
-    });
-    assert.equal(without.status, 400, 'without a password one device does not lock out another');
     const route = await callFn(SETTINGS + '/tokens/' + deleteTo.token_id, {
       method: 'DELETE',
       headers: { authorization: `Bearer ${phone.body.token}` },
-      body: { password: PASS },
     });
-    assert.equal(route.status, 200);
+    assert.equal(route.status, 200, 'one device locks out another without a password');
     assert.equal(route.body.deleted, 1);
 
     // And REALLY: the tablet's token no longer applies. That is the

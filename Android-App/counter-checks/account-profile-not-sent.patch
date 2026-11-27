@@ -1,0 +1,17 @@
+Gegenprobe: Profil speichern schickt nichts ab
+Modul: app
+Test: ch.brickinventoryapp.app.SubpagesTest
+Rot: account saves the profile right away, without a password dialog
+
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsAccount.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsAccount.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsAccount.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsAccount.kt
+@@ -86,7 +86,7 @@
+                 profileChecked = true
+                 val first = profileError(draft.username, draft.email).firstOrNull()
+                 if (first != null) profileFocus.getValue(first).requestFocus()
+-                else if (changed) onSave(draft.username, draft.email, draft.firstName, draft.lastName)
++                else if (changed) Unit
+             }
+         }
+     }

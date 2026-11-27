@@ -56,7 +56,7 @@
     <string name="login_passkey_rpid_missing">The server did not say which domain the passkey belongs to. Cancelled for your security; sign in with your password.</string>
     <string name="login_passkey_rpid_foreign">The server asks for a passkey for a domain other than %1$s. Cancelled for your security: check the server address or sign in with your password.</string>
     <string name="settings_user_ca">Trust user-installed certificate authorities (risk)</string>
-    <string name="settings_user_ca_hint">Only for the connection to your server, never for updates. Risk: an authority installed by a user – for example by your employer or by malware – can issue certificates for any server and so read the traffic. Only turn this on if you installed the authority yourself for your server.</string>
+    <string name="settings_user_ca_hint">Only for the connection to your server. Risk: an authority installed by a user – for example by your employer or by malware – can issue certificates for any server and so read the traffic. Only turn this on if you installed the authority yourself for your server.</string>
     <string name="user_ca_question_title">Trust user-installed authorities?</string>
     <string name="user_ca_question_text">The app will then also accept certificates for your server that were issued by a certificate authority a user installed.\n\nSuch an authority may come from your employer, a network administrator or malware. Whoever controls it can read and change the traffic, including your password and sign-in token. The only remaining protection is comparing the fingerprint with the web app.\n\nUpdates from GitHub are still checked against the system authorities only.\n\nOnly turn this on if you installed the authority yourself for your server.</string>
     <string name="user_ca_question_yes">Turn on anyway</string>
@@ -131,7 +131,7 @@
     <string name="setup_url_label">Address</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
     <string name="setup_url_supporting">The address of the BrickInventory Manager web app, e.g. brick.fritz.box or brick.example.com – https:// may be omitted</string>
-    <string name="api_app_too_old">This app is too old for the server. Please update the app (Settings → Update).</string>
+    <string name="api_app_too_old">This app is too old for the server. Please update the app in Google Play.</string>
     <string name="api_server_too_old">The server is older than this app. Some functions may be missing — please update the server.</string>
     <string name="setup_continue">Continue</string>
     <string name="setup_qr_detected">QR code detected</string>
@@ -461,7 +461,6 @@
     <string name="main_menu_logout">Sign out</string>
     <string name="logout_confirm_title">Sign out?</string>
     <string name="logout_confirm_text">You will be signed out on this device. To continue, sign in again with your password.</string>
-    <string name="update_badge">Update available</string>
     <string name="main_menu_change_server">Change server</string>
     <string name="vm_settings_saved">Settings saved</string>
 
@@ -631,12 +630,8 @@
     <string name="household_invite_copy">Copy</string>
     <string name="household_invite_label">Invitation code</string>
     <string name="household_redeem_title">Accept an invitation</string>
-    <string name="household_redeem_hint">Enter the code from the main account and confirm with the password of this account. Your data stays yours.</string>
+    <string name="household_redeem_hint">Enter the code from the main account. Your data stays yours.</string>
     <string name="household_redeem_submit">Link</string>
-    <string name="household_redeem_password">Password of this account</string>
-    <string name="household_redeem_password_wrong">The password is wrong. Enter the password of the account you are signed in with.</string>
-    <string name="household_redeem_code">Code from the authenticator app or recovery code</string>
-    <string name="household_redeem_code_wrong">The code is wrong or has expired.</string>
     <string name="household_redeem_locked">Too many wrong attempts. Please try again later.</string>
     <string name="household_unlink">Unlink</string>
     <string name="household_remove">Remove</string>
@@ -770,9 +765,7 @@
     <!-- ══════════════ Account card (profile / password) ══════════════ -->
     <string name="account_title">Account</string>
     <string name="account_email_unverified">Email address not confirmed</string>
-    <string name="account_profile_password_needed">To save, enter your current password.</string>
     <string name="account_save">Save profile</string>
-    <string name="account_save_title">Save profile?</string>
     <string name="account_saved">Profile saved</string>
     <string name="account_email_pending">Pending: %1$s. It takes effect once you open the link sent to it; until then the current address stays.</string>
     <string name="account_email_link_sent">Confirmation link sent to %1$s. Until you open it, your current address stays valid.</string>
@@ -860,35 +853,6 @@
     <string name="pdfexp_http_error">The server answered with %1$d</string>
 
 
-    <!-- ══════════════ Self-update from the GitHub release (util/AppUpdate.kt) ══════════════ -->
-    <string name="update_title">Update</string>
-    <string name="update_check">Check for updates</string>
-    <string name="update_current">Up to date (%1$s)</string>
-    <string name="update_dialog_title">Update available</string>
-    <string name="update_dialog_text">Version %1$s is ready. You are running %2$s.</string>
-    <string name="update_dialog_now">Update now</string>
-    <string name="update_dialog_later">Later</string>
-    <string name="update_available">Version %1$s is available</string>
-    <string name="update_installed">Installed: %1$s</string>
-    <string name="update_version_unknown">unknown</string>
-    <string name="update_download">Download</string>
-    <string name="update_downloading">Downloading… %1$d%%</string>
-    <string name="update_install">Install</string>
-    <string name="update_permission_needed">Android needs your permission once to install apps from this source. Nothing is installed without your confirmation.</string>
-    <string name="update_permission_grant">Grant permission</string>
-    <string name="update_check_failed">Could not check for updates — no connection to GitHub.</string>
-    <string name="update_load_failed">Download failed. The partially downloaded file was deleted.</string>
-    <string name="update_signature_wrong">The downloaded app is not signed with the same key as this one and was deleted. It was not installed.</string>
-    <string name="update_version_wrong">The downloaded app carries a different version than announced and was deleted. It was not installed.</string>
-    <string name="update_foreign_address">The update points to an address outside our release. Nothing was downloaded.</string>
-    <string name="update_description_unsigned">The update description is not signed with this app’s key. Nothing is offered.</string>
-    <string name="update_checksum_wrong">The downloaded app is not the one announced in the signed description and was deleted. It was not installed.</string>
-    <string name="update_installer_missing">The installation could not be started.</string>
-    <string name="update_installation_failed">The installation failed: %1$s</string>
-    <string name="update_installer_foreign">The confirmation does not lead to the system installer. Nothing was opened.</string>
-    <string name="update_source_expired">The update description has expired; it was not re-signed in time. A newer version might exist: either nothing has been released for a long while, or someone is holding updates back. An offered update is still genuinely signed and newer than the installed version. Check the project\'s release page and this device\'s date and time.</string>
-    <string name="update_source_reset">The update description is older than one this app has already seen. The update source is outdated or has been tampered with, and newer versions may be withheld from you. That is why the app is not offering an update right now. Check the project\'s release page.</string>
-
     <string name="price_from_other_condition_new">Purchase price taken from the "new" market price — BrickLink has no price for "used".</string>
     <string name="price_from_other_condition_used">Purchase price taken from the "used" market price — BrickLink has no price for "new".</string>
 
@@ -973,12 +937,7 @@
     <string name="vouchers_amount_invalid">Please enter a valid amount</string>
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
-    <string name="vouchers_confirm_title">Confirm with password</string>
     <string name="vouchers_delete_title">Delete voucher?</string>
-    <string name="vouchers_confirm_plaintext">The number and PIN are only shown after you confirm. The request is logged.</string>
-    <string name="vouchers_confirm_pdf">The PDF shows the number and PIN. Please confirm with your password.</string>
-    <string name="vouchers_confirm_button">Confirm</string>
-    <string name="vouchers_delete_offline">Deleting needs a connection to the server: your password is not stored on the device.</string>
     <string name="vouchers_mask_hint">Stays unchanged unless you type something new</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
@@ -1277,10 +1236,8 @@
         <item quantity="one">In the collection, %1$s copy</item>
         <item quantity="other">In the collection, %1$s copies</item>
     </plurals>
-    <string name="update_at_start">Check for updates on start</string>
-    <string name="update_at_start_hint">Asks GitHub once per start whether a newer version exists; GitHub sees the IP address of the device. Applies to this device.</string>
     <string name="privacy_title">Privacy</string>
-    <string name="privacy_text">The app talks to:\n• your own server, which stores everything you enter;\n• GitHub, only to look for updates (on start if switched on, otherwise when you tap “Check”);\n• Google Play services for barcode scanning and passkeys; text recognition (ML Kit) runs on the device, and the app has switched off its channel for usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
+    <string name="privacy_text">The app talks to:\n• your own server, which stores everything you enter;\n• Google Play services for barcode scanning and passkeys; text recognition (ML Kit) runs on the device, and the app has switched off its channel for usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
     <plurals name="csv_progress">
         <item quantity="one">%1$d of %2$d set</item>
         <item quantity="other">%1$d of %2$d sets</item>
@@ -1306,8 +1263,7 @@
     <string name="alerts_create_lock_reason">Enter the set number and threshold, then create.</string>
     <string name="household_invite_share">Share</string>
     <string name="household_invite_valid_until">Valid until %1$s</string>
-    <string name="household_redeem_lock_reason">Enter code and password, then link.</string>
-    <string name="household_redeem_lock_reason_factor">Enter code, password and second-factor code, then link.</string>
+    <string name="household_redeem_lock_reason">Enter the code, then link.</string>
     <string name="parts_quantity_hint">Number of identical parts</string>
     <string name="minifigs_quantity_hint">Number of identical minifigures</string>
     <string name="background_jobs">Jobs</string>

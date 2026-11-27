@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.account.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Share
@@ -15,7 +14,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.account.ui.HouseholdUiState
 import ch.brickinventoryapp.model.domain.HouseholdStatusView
@@ -26,7 +24,6 @@ import ch.brickinventoryapp.model.util.fmtStatus
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ExplainText
 import ch.brickinventoryapp.ui.components.LockReason
-import ch.brickinventoryapp.ui.components.PasswordField
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.Section
 import ch.brickinventoryapp.ui.components.announce
@@ -56,14 +53,14 @@ import ch.brickinventoryapp.ui.util.twentyFourHours
 internal fun HouseholdCard(
     state: HouseholdUiState,
     onCreateInvite: () -> Unit,
-    onRedeemInvite: (code: String, password: String, factorCode: String?) -> Unit,
+    onRedeemInvite: (code: String) -> Unit,
     onUnlink: (Int) -> Unit,
     onUnlinkParent: (Int) -> Unit,
     onDiscard: (Int) -> Unit,
 ) {
     val st = state.status
     // remember, not rememberSaveable: saved state lands in the Bundle and, on
-    // process death, on disk (ActivityManager) — no place for passwords and codes.
+    // process death, on disk (ActivityManager) — no place for an invitation code.
     val redeem = remember { RedeemDraft() }
     LaunchedEffect(state.redeemed) { if (state.redeemed > 0) redeem.code = "" }
     // Unlinking takes a main account's view of someone else's data away; getting
@@ -103,11 +100,9 @@ internal fun HouseholdCard(
     }
 }
 
-/** Code, password and second factor of the invitation being accepted; only in memory. */
+/** The code of the invitation being accepted; only in memory. */
 private class RedeemDraft {
     var code by mutableStateOf("")
-    var password by mutableStateOf("")
-    var factorCode by mutableStateOf("")
 }
 
 /** Main accounts above, sub-accounts below, then links that ended; [onSeparate] gets (id, isParent). */
@@ -227,12 +222,12 @@ private fun InviteHandOver(c: String) {
     }
 }
 
-/** Accept an invitation: code, password and — with the second factor active — its code. */
+/** Accept an invitation: only its code, the login is enough (no password, no second factor). */
 @Composable
 private fun RedeemSection(
     state: HouseholdUiState,
     draft: RedeemDraft,
-    onRedeemInvite: (code: String, password: String, factorCode: String?) -> Unit,
+    onRedeemInvite: (code: String) -> Unit,
 ) {
     Section(stringResource(R.string.household_redeem_title)) {
         Text(stringResource(R.string.household_redeem_hint),
@@ -244,42 +239,16 @@ private fun RedeemSection(
             label = { Text(stringResource(R.string.household_invite_label)) },
             modifier = Modifier.fillMaxWidth(), shape = Shapes.field,
         )
-        // After a failed attempt the field is empty and red, until typed in again.
-        val passwordWrong = state.passwordWrong && draft.password.isEmpty()
-        PasswordField(draft.password, { draft.password = it }, stringResource(R.string.household_redeem_password),
-            Modifier.fillMaxWidth(),
-            hint = if (passwordWrong) stringResource(R.string.household_redeem_password_wrong) else null,
-            faulty = passwordWrong)
-        // With the second factor active, the server requires its code (or a recovery code).
-        if (state.factorNeeded) {
-            val factorWrong = state.factorWrong && draft.factorCode.isEmpty()
-            OutlinedTextField(
-                value = draft.factorCode, onValueChange = { draft.factorCode = it.take(24) }, singleLine = true,
-                label = { Text(stringResource(R.string.household_redeem_code)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                isError = factorWrong,
-                supportingText = if (factorWrong) {
-                    { Text(stringResource(R.string.household_redeem_code_wrong)) }
-                } else null,
-                modifier = Modifier.fillMaxWidth(),
-                shape = Shapes.field,
-            )
-        }
         // The server's message (currency differs, already linked) right above the button,
         // not at the page's end below every section.
-        state.fetch.errorMessage?.takeUnless { state.passwordWrong || state.factorWrong }?.let {
+        state.fetch.errorMessage?.let {
             Text(it.sentence(), Modifier.announce(), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
-        val ready = draft.code.isNotBlank() && draft.password.isNotEmpty() &&
-            (!state.factorNeeded || draft.factorCode.isNotBlank())
+        val ready = draft.code.isNotBlank()
         // As at sign-in: a disabled button says what's missing.
-        if (!ready) LockReason(stringResource(if (state.factorNeeded) R.string.household_redeem_lock_reason_factor
-                                              else R.string.household_redeem_lock_reason))
-        Button(onClick = {
-                onRedeemInvite(draft.code, draft.password, draft.factorCode.takeIf { state.factorNeeded })
-                draft.password = ""; draft.factorCode = ""
-            },
+        if (!ready) LockReason(stringResource(R.string.household_redeem_lock_reason))
+        Button(onClick = { onRedeemInvite(draft.code) },
                enabled = ready && !state.fetch.loading, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.household_redeem_submit))
         }

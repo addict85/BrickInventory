@@ -22,8 +22,7 @@ object ModuleEdges {
         "core-security" to setOf("core-model", "core-network"),
         "core-offline" to setOf("core-model", "core-security"),
         "core-data" to setOf("core-model", "core-contract", "core-resources", "core-network", "core-security", "core-offline"),
-        // They depend on core-data, never the other way round and never on each other.
-        "core-update" to setOf("core-resources", "core-data"),
+        // It depends on core-data, never the other way round.
         "core-services" to setOf("core-resources", "core-data"),
         "core-ui" to setOf("core-model", "core-resources"),
         // Only presentation: with data or state it would become the detour on which areas know each other after all.
@@ -53,7 +52,7 @@ object ModuleEdges {
      * UI below the state, and via it an area would reach what it should not know.
      */
     val withoutUi: Set<String> = setOf(
-        "core-model", "core-contract", "core-network", "core-security", "core-offline", "core-data", "core-update", "core-services",
+        "core-model", "core-contract", "core-network", "core-security", "core-offline", "core-data", "core-services",
         "core-session", "core-state",
     )
 

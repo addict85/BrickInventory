@@ -1,4 +1,4 @@
-// Settings: account, household, storage locations, CSV, alerts and updates.
+// Settings: account, household, storage locations, CSV and alerts.
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }
@@ -10,7 +10,6 @@ android {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-data"))
-    implementation(project(":core-update"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-inventory"))
     implementation(project(":core-state"))
@@ -20,6 +19,4 @@ dependencies {
 
     testImplementation(project(":core-testing"))
     testImplementation(testFixtures(project(":core-state")))
-    // UpdateViewModelTest builds a trust store (PinStore from core-security).
-    testImplementation(project(":core-security"))
 }

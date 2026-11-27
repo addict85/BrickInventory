@@ -20,6 +20,8 @@
  *      in POST /settings removed
  *   G  (04.11.) switchRegistrationFree() leaves registration_pending standing or
  *      the route does not log → red: “the administrator approves …”
+ *   H  (26.11.2026) a password check back into PUT /users/:id/approve (the request
+ *      carries no password) → red: “the administrator approves …” (400 instead of 200)
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
@@ -163,8 +165,7 @@ test('registration and yes/no settings', { concurrency: 1 }, async t => {
     const inList = async () => (await callIt('GET', '/auth/users')).body.users.find(u => u.id === fresh);
     assert.equal((await inList()).awaiting_confirmation, true);
     assert.equal(assertLoginAllowed(await row())?.code, 'email_not_confirmed');
-    assert.equal((await callIt('PUT', `/auth/users/${fresh}/approve`, {})).status, 400, 'without a password');
-    const r = await callIt('PUT', `/auth/users/${fresh}/approve`, { admin_password: PASS });
+    const r = await callIt('PUT', `/auth/users/${fresh}/approve`, {});
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const z = await row();
     assert.deepEqual(

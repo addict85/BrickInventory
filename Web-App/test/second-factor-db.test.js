@@ -7,18 +7,19 @@
  *   B  `last_step < $2` removed in pruefeCode()     → red: „derselbe Code zweimal"
  *   C  loginFailed removed for the wrong code      → red: „keine Sperre"
  *   D  hotp(): offset from the first instead of the last byte → red: RFC vectors
- *   E  change-password again with 401                    → red: „die Clients melden dann ab"
  *   F  (28.10.) beendeAndereZugaenge() removed on confirming → red: „Ein
  *      Token von vor dem Einschalten gilt weiter"
- *   G  (28.10.) on switching off again without counting the wrong code → red:
- *      „Code beim Abschalten beliebig oft ratbar"
  *   H  (01.11.) hashCode() again as bare SHA-256 → red: „ungesalzenes SHA-256";
  *      randomBytes(7)/10 characters → red: format; fallback to alterHash removed → red:
  *      „alter Code gilt nicht mehr"
  *   I  (01.11.) /zweiter-faktor/bestaetigen again directly via zf.confirmSetup →
  *      red: „Einrichtungscode beliebig oft ratbar"
  *   J  (02.11.) in DELETE /users/:id/zweiter-faktor the check for the own account
- *      removed → red: „eigener Faktor nur mit Passwort entfernt"
+ *      removed → red: „own factor removed only with a password“
+ *   K  (26.11.2026) a password check back into /second-factor/disable → red:
+ *      “switching off needs only the login” (400 instead of 200)
+ * Setting up, switching off and new recovery codes need no password or code
+ * inside the session (docs/SICHERHEIT.md); the login itself still asks for the code.
  *
  * Prerequisite: test DB via TEST_DATABASE_URL.
  */
@@ -126,12 +127,7 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
   /** Set up until active; returns the token and the recovery codes. */
   const setUpAccount = async name => {
     const token = (await signIn(name)).body.token;
-    assert.equal(
-      (await callFn('/second-factor/setup', { password: 'falsch' }, token)).status,
-      400,
-      'setup without the right password',
-    );
-    const e = await callFn('/second-factor/setup', { password: PASS }, token);
+    const e = await callFn('/second-factor/setup', {}, token);
     assert.equal(e.status, 200, JSON.stringify(e.body));
     assert.match(e.body.otpauth, /^otpauth:\/\/totp\/BrickInventory%3A/);
     // Before the confirmation the factor does not apply: logging in still works without a code.
@@ -196,13 +192,7 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     assert.equal((await signIn(NAME, codes[0])).status, 401, 'recovery code valid twice');
     assert.equal((await callFn('/second-factor', null, token)).body.codes_left, 9);
 
-    // Switching off requires password AND code.
-    assert.equal((await callFn('/second-factor/disable', { password: PASS, code: '000000' }, token)).status, 400);
-    assert.equal((await callFn('/second-factor/disable', { password: 'falsch', code: codes[1] }, token)).status, 400);
-    // And on password change: a 401 would mean „logged out" for web and app.
-    const pw = await callFn('/change-password', { current: 'falsch', newPassword: 'neuesPasswort123' }, token);
-    assert.equal(pw.status, 400, 'a wrong current password on change is a 401 — the clients then log out');
-    assert.equal((await callFn('/second-factor/disable', { password: PASS, code: codes[1] }, token)).status, 200);
+    assert.equal((await callFn('/second-factor/disable', {}, token)).status, 200, 'switching off needs only the login');
     assert.equal((await signIn(NAME)).status, 200, 'after disabling, without a code again');
     assert.equal(
       (
@@ -219,22 +209,15 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     for (let i = 0; i < 5; i++) await signIn(LOCK, String(100000 + i));
     const locked = await signIn(LOCK, await codeFor(LOCK));
     assert.equal(locked.status, 429, `no lock after five wrong codes: ${JSON.stringify(locked.body)}`);
-
-    // The same when switching off: with a known password the code could be
-    // guessed arbitrarily often, because the right password reset the counter.
-    for (let i = 0; i < 5; i++)
-      await callFn('/second-factor/disable', { password: PASS, code: String(200000 + i) }, tS);
-    const guessed = await callFn('/second-factor/disable', { password: PASS, code: cS[0] }, tS);
-    assert.equal(guessed.status, 429, `code can be guessed any number of times when disabling: ${guessed.status}`);
-    assert.equal(
-      (await callFn('/second-factor/codes', { code: cS[1] }, tS)).status,
-      429,
-      'Renewing the recovery codes must be locked as well',
-    );
+    // New recovery codes need only the login, too; the old ones stop applying.
+    const fresh = await callFn('/second-factor/codes', {}, tS);
+    assert.equal(fresh.status, 200, JSON.stringify(fresh.body));
+    assert.equal(fresh.body.codes.length, 10);
+    assert.ok(!fresh.body.codes.includes(cS[0]), 'the old codes are renewed');
 
     // Confirming the setup throttles just the same.
     const tB = (await signIn(BRAKE)).body.token;
-    assert.equal((await callFn('/second-factor/setup', { password: PASS }, tB)).status, 200);
+    assert.equal((await callFn('/second-factor/setup', {}, tB)).status, 200);
     for (let i = 0; i < 5; i++) await callFn('/second-factor/confirm', { code: String(300000 + i) }, tB);
     const late = await callFn('/second-factor/confirm', { code: await codeFor(BRAKE) }, tB);
     assert.equal(late.status, 429, `Einrichtungscode beliebig oft ratbar: ${late.status}`);
@@ -264,7 +247,7 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
       const r = await fetch(`${basis}/users/${id}/second-factor`, {
         method: 'DELETE',
         headers: { 'content-type': 'application/json', cookie: keks },
-        body: JSON.stringify({ admin_password: PASS, code: await codeFor(ADMINISTRATOR, 1) }),
+        body: JSON.stringify({}),
       });
       return { status: r.status, body: await r.json().catch(() => null) };
     };
@@ -272,7 +255,7 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     assert.deepEqual(
       [own.status, own.body?.code],
       [400, 'own_second_factor'],
-      'own factor removed only with a password',
+      'own factor removed via the emergency exit',
     );
     assert.equal(await zf.isActive(idV), true);
     assert.equal((await remove(idS)).status, 200, 'a foreign factor can no longer be removed');

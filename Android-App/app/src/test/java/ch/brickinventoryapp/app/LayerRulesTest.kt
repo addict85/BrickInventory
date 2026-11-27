@@ -11,7 +11,7 @@ import java.io.File
  *
  * Counter-checks (05.11.2026, measured locally with kotlinc, one patch each in counter-checks/):
  *   layer-viewmodel-android   `import android.net.Uri` in VoucherViewModel → red “a ViewModel …”
- *   layer-viewmodel-okhttp    `import okhttp3.OkHttpClient` in UpdateViewModel → red “presentation …”
+ *   layer-viewmodel-okhttp    `import okhttp3.OkHttpClient` in SettingsViewModel → red “presentation …”
  *   layer-presentation-network  `import retrofit2.Response` in GalleryScreen → red “presentation …”
  *   layer-scope-api         `import ch.brickinventoryapp.data.api.SetsApi` in WantedListViewModel
  *                               → red “an area does not know the Retrofit interfaces”

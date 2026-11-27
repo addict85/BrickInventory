@@ -15,6 +15,9 @@ enum class ScannerOrigin {
     /** Search from the gallery: an existing set is opened instead of added. */
     GALLERY_SEARCH,
 
+    /** The scan button next to the gallery's search: the set number goes into the search field. */
+    GALLERY_FILTER,
+
     /** The parts list takes over only the number, nothing is created. */
     PART_LIST,
 

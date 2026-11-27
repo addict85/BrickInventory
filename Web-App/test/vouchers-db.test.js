@@ -297,10 +297,10 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     // Counter-checks (measured 03.11.2026, each on its own): in GET /vouchers/:id/pdf the
     // ticket check removed → red „ohne Ticket kein PDF“; in redeemTicket() the
     // deletion left out → red „ein Ticket gilt einmal“; the comparison of the target
-    // deleted → red „… nur für sein PDF“; confirmWithFactor() removed in the release
-    // → red „Freigabe nur mit Passwort“; protokolliere() removed → red
+    // deleted → red „… nur für sein PDF“; (26.11.2026) a password check back into the
+    // release → red “the approval needs only the login”; protokolliere() removed → red
     // „die Freigabe steht im Protokoll“; period set to -1 s → red „… 60 Sekunden“.
-    await t.test('the PDF only with a one-time ticket from a confirmed approval', async () => {
+    await t.test('the PDF only with a one-time ticket from an approval', async () => {
       const list = await (await hole('/api/v2/vouchers', cookieGrandparent)).json();
       const withPdf = list.vouchers.find(v => v.has_pdf);
       const pdf = ticket =>
@@ -311,17 +311,13 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         [403, 'pdf_grant_required'],
         'without a ticket no PDF',
       );
-      const withoutPw = await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', {});
-      assert.deepEqual(
-        [withoutPw.status, (await withoutPw.json()).code],
-        [400, 'current_password_wrong'],
-        'approval only with a password',
-      );
       await db.run("DELETE FROM admin_log WHERE action IN ('voucher_pdf', 'voucher_export')");
-      const f = await (
-        await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', { password: PASS })
-      ).json();
-      assert.deepEqual([f.success, typeof f.ticket, f.valid_seconds], [true, 'string', 60]);
+      const f = await (await jsonTo(`/api/v2/vouchers/${withPdf.id}/pdf-grant`, cookieGrandparent, 'POST', {})).json();
+      assert.deepEqual(
+        [f.success, typeof f.ticket, f.valid_seconds],
+        [true, 'string', 60],
+        'the approval needs only the login',
+      );
       assert.ok(f.ticket.length >= 32);
       assert.equal(
         (await hole(`/api/v2/vouchers/${grandparentsVoucher}/pdf?ticket=${f.ticket}`, cookieGrandparent)).status,
@@ -472,10 +468,10 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     });
 
     // Counter-checks (measured 03.11.2026, each on its own): forOuter() again with
-    // z.number/z.pin → red „die Liste zeigt nur das Ende“; confirmWithFactor()
-    // removed in /klartext → red „Klartext nur mit Passwort“; protokolliere()
+    // z.number/z.pin → red „die Liste zeigt nur das Ende“; (26.11.2026) a password check
+    // back into /plaintext → red “… the plain text with the login …”; protokolliere()
     // removed → red „… steht im Protokoll“.
-    await t.test('the list shows only the end, plain text only with password, and it is in the log', async () => {
+    await t.test('the list shows only the end, the plain text with the login, and it is in the log', async () => {
       const list = (await (await hole('/api/v2/vouchers', cookieGrandparent)).json()).vouchers;
       const withPin = list.find(v => v.id === grandparentsVoucher);
       assert.deepEqual([withPin.number, withPin.pin], ['…1166', '•••'], 'the list shows only the end');
@@ -483,20 +479,10 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
         !JSON.stringify(list).includes('5045076374450011166') && !JSON.stringify(list).includes('5225'),
         'number or PIN in plain text in the list',
       );
-      const without = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {});
-      assert.deepEqual(
-        [without.status, (await without.json()).code],
-        [400, 'current_password_wrong'],
-        'plain text only with a password',
-      );
-      const fremd = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandchild, 'POST', {
-        password: PASS,
-      });
+      const fremd = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandchild, 'POST', {});
       assert.equal(fremd.status, 404, 'a foreign account reads the plain text');
       await db.run("DELETE FROM admin_log WHERE action = 'voucher_plaintext'");
-      const k = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {
-        password: PASS,
-      });
+      const k = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/plaintext`, cookieGrandparent, 'POST', {});
       assert.deepEqual(await k.json(), {
         success: true,
         id: grandparentsVoucher,
@@ -547,25 +533,18 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     });
 
     // ── Deleting ────────────────────────────────────────────────────────────
-    // Counter-check (measured 03.11.2026): confirmWithFactor() removed in DELETE
-    // /vouchers/:id → red „löschen ohne Passwort" (200 instead of 400).
+    // Counter-check (26.11.2026): a password check back into DELETE /vouchers/:id
+    // → red “deleting without a password” (400 instead of 200).
     // Row and file stay marked for the undo; the cleanup removes them (voucher-undo-db.test.js).
-    await t.test('deleting needs the password and hides the card, row and file stay for the undo', async () => {
+    await t.test('deleting needs only the login and hides the card, row and file stay for the undo', async () => {
       const list = await (await hole('/api/v2/vouchers', cookieGrandparent)).json();
       const withPdf = list.vouchers.find(v => v.has_pdf);
       const row = await db.get('SELECT pdf_path FROM vouchers WHERE id=$1', [withPdf.id]);
       const file = path.join(VOUCHER_DIR, row.pdf_path);
       assert.ok(fs.existsSync(file), 'precondition: the file is there');
 
-      const without = await hole(`/api/v2/vouchers/${withPdf.id}`, cookieGrandparent, { method: 'DELETE' });
-      assert.deepEqual(
-        [without.status, (await without.json()).code],
-        [400, 'current_password_wrong'],
-        'deleting without a password',
-      );
-      assert.ok(fs.existsSync(file), 'without a password the file is gone');
-      const r = await jsonTo(`/api/v2/vouchers/${withPdf.id}`, cookieGrandparent, 'DELETE', { password: PASS });
-      assert.equal(r.status, 200);
+      const r = await hole(`/api/v2/vouchers/${withPdf.id}`, cookieGrandparent, { method: 'DELETE' });
+      assert.equal(r.status, 200, 'deleting without a password');
       const after = await (await hole('/api/v2/vouchers', cookieGrandparent)).json();
       assert.ok(!after.vouchers.some(v => v.id === withPdf.id), 'the deleted card is still listed');
       assert.ok((await db.get('SELECT deleted_at FROM vouchers WHERE id=$1', [withPdf.id])).deleted_at);

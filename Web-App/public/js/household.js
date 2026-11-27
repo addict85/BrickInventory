@@ -4,24 +4,18 @@ import { api } from './api.js';
 import { G, setHtml } from './dom.js';
 import { toast } from './messages.js';
 import { esc, html, rawHtml, joinHtml } from './escaping.js';
-import { confirmDelete, confirmDeleteWithPassword, withSecondFactor } from './confirm-prompt.js';
+import { confirmDelete } from './confirm-prompt.js';
 // Settings, section household: invite, join, unlink. An account then sees the inventories of the
 // linked accounts; the rules for it live in the server (src/household).
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HOUSEHOLD — link accounts
-// ═══════════════════════════════════════════════════════════════════════════
 /**
  * Inviting and joining need both sides: the main account creates, the other redeems. Depending on the role
  * only one of the boxes stands there — a button the server always rejects is worse than none.
  */
 export async function loadHousehold() {
-  const [d, sf] = await Promise.all([api('GET', '/v2/settings/household'), api('GET', '/v2/auth/second-factor')]);
+  const d = await api('GET', '/v2/settings/household');
   if (!d?.success) return;
   renderHousehold(d);
-  // With a second factor the server also requires the code when redeeming.
-  const factor = G('household-redeem-factor');
-  if (factor) factor.style.display = sf?.active ? '' : 'none';
 }
 
 /**
@@ -36,9 +30,7 @@ function renderHousehold(d) {
   const redeemEl = G('household-redeem-box');
   if (!stateEl) return;
 
-  // A grid on the list, the rows as display:contents: that way all names and all buttons state in
-  // the same two columns. Names and all buttons in the same two columns; the icon marks the names as
-  // accounts.
+  // A grid with rows as display:contents: names and buttons share two columns; the icon marks accounts.
   const list = (
     /** @type {{ id: number, username?: string | null, via?: string | null }[]} */ entries,
     /** @type {(a: { id: number, username?: string | null, via?: string | null }) => string} */ action,
@@ -84,8 +76,7 @@ function renderHousehold(d) {
   }
   setHtml(stateEl, joinHtml(parts));
 
-  // Every account may invite and redeem: an account can have several parent accounts, and each needs
-  // its own invitation.
+  // Every account may invite and redeem: each of several parent accounts needs its own invitation.
   if (inviteEl) inviteEl.style.display = '';
   if (redeemEl) redeemEl.style.display = '';
 }
@@ -105,8 +96,7 @@ export async function createHouseholdInvite() {
 export async function copyHouseholdInvite() {
   const el = G('household-invite-code');
   if (!el?.value) return;
-  // The clipboard can fail (no HTTPS, permission denied) — then select instead of letting the action
-  // fizzle silently.
+  // The clipboard can fail (no HTTPS, permission denied): then select instead of failing silently.
   try {
     await navigator.clipboard.writeText(el.value);
     toast(tRaw('household.invite_copied'), 'success');
@@ -129,32 +119,21 @@ export async function redeemHouseholdInvite() {
     return;
   }
   const name = p.inviter.username;
-  // The main account then sees and changes the own collection — hence with password.
-  const password = await confirmDeleteWithPassword(
+  // The main account then sees and changes the own collection — hence the question naming it.
+  const yes = await confirmDelete(
     tRaw('household.redeem_question', { name }),
     tRaw('household.redeem_confirm_text', { name }),
     'link',
     { button: 'confirm.btn.invitation_accept', kind: 'bp' },
   );
-  if (password === null) return;
-  const factor_code = (G('household-redeem-factor-code')?.value || '').trim();
-  const d = await withSecondFactor(z =>
-    api('POST', '/v2/settings/household/redeem', {
-      code,
-      password,
-      ...(z.code || factor_code ? { factor_code: z.code || factor_code } : {}),
-      ...(z.passkey ? { passkey: z.passkey } : {}),
-    }),
-  );
-  if (d === null) return;
+  if (!yes) return;
+  const d = await api('POST', '/v2/settings/household/redeem', { code });
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
   }
   G('household-redeem-code').value = '';
-  if (G('household-redeem-factor-code')) G('household-redeem-factor-code').value = '';
-  // tRaw + raw name: the toast sets text, no HTML — with esc() it would say "Marco &amp; Co" instead of "Marco
-  // & Co".
+  // tRaw + raw name: the toast sets text, so esc() would show "Marco &amp; Co".
   const linked = /** @type {{ linked_to?: { username?: string } }} */ (d).linked_to;
   toast(tRaw('household.redeem_ok', { name: linked?.username || '' }), 'success');
   loadHousehold();

@@ -53,8 +53,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.AccountUiState
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
-import ch.brickinventoryapp.account.ui.UpdateUiState
-import ch.brickinventoryapp.account.ui.dialogs.UpdateRoute
 import ch.brickinventoryapp.account.ui.screens.AccountRoute
 import ch.brickinventoryapp.account.ui.screens.CsvImportRoute
 import ch.brickinventoryapp.account.ui.screens.HouseholdRoute
@@ -68,7 +66,6 @@ import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
 import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
@@ -159,10 +156,8 @@ import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import ch.brickinventoryapp.ui.components.OfflineHint
 import ch.brickinventoryapp.ui.screens.CameraPermissionHint
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.update.util.UpdateDescription
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -457,7 +452,7 @@ class ScreenPhotoVariantsTest {
         MainScaffold(
             title = title, navController = nav, bottomNavItems = tab,
             snackbarHostState = snackbar,
-            updateAvailable = true, onTabTapped = {},
+            onTabTapped = {},
             pendingChanges = pendingChanges,
         ) {
             NavHost(nav, startDestination = CollectionTarget.Gallery) {
@@ -468,7 +463,7 @@ class ScreenPhotoVariantsTest {
                     }
                 }
                 composable<AppTarget.More> {
-                    MoreScreen(onTarget = nav::openOfMore, isAdmin = true, updateAvailable = true, onLogout = {})
+                    MoreScreen(onTarget = nav::openOfMore, isAdmin = true, onLogout = {})
                 }
             }
         }
@@ -591,7 +586,7 @@ class ScreenPhotoVariantsTest {
     /** The confirmation before sign-out — the same design as when deleting a set. */
     private fun dialogLogoutPhoto(name: String, dark: Boolean, device: String, font: Float) {
         show(name, dark = dark, device = device, font = font) {
-            MoreScreen({}, isAdmin = false, updateAvailable = true, onLogout = {})
+            MoreScreen({}, isAdmin = false, onLogout = {})
         }
         compose.onNodeWithText("Abmelden").performClick()
         compose.waitForIdle()
@@ -711,7 +706,7 @@ class ScreenPhotoVariantsTest {
         world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
-            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
+            testHouseholdRepository(world.t.api))).also { it.loadHousehold() }
         show("haushalt", ready = { vm.householdState.value.status != null }, condition = { vm.householdState.value }) {
             HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {})
         }
@@ -1186,18 +1181,8 @@ class ScreenPhotoVariantsTest {
         photo(name)
     }
 
-    // ── Flows that had no photo otherwise: settings, update, scanner, barcode,
+    // ── Flows that had no photo otherwise: settings, scanner, barcode,
     // purchase prices, single part, background work, voucher, invitation, CSV import ──
-
-    private val noUpdate = object : UpdateActions {
-        override fun checkOnUpdate(still: Boolean) = Unit
-        override fun checkOnStart() = Unit
-        override fun setStartCheck(an: Boolean) = Unit
-        override fun closeUpdateHint() = Unit
-        override fun loadUpdate() = Unit
-        override fun cancelLoad() = Unit
-        override fun startInstallation() = Unit
-    }
 
     private val noRendering = object : AppearanceActions {
         override fun setLanguage(languageCode: String) = Unit
@@ -1213,20 +1198,15 @@ class ScreenPhotoVariantsTest {
         override fun setUserCa(on: Boolean) = Unit
     }
 
-    private fun settingsPhoto(name: String, dark: Boolean, device: String, update: UpdateUiState = UpdateUiState(),
+    private fun settingsPhoto(name: String, dark: Boolean, device: String,
                                   font: Float = 1f, language: String? = GERMAN) {
         val vm = settings()
         show(name, dark = dark, device = device, font = font, language = language) {
             SettingsScreen(
-                condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"), update,
+                condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"),
                     "system", Design.CLASSIC, false, false, false, false),
-                actions = vm, update = noUpdate, appearance = noRendering, exits = noExits, scrollState = androidx.compose.foundation.rememberScrollState(),
+                actions = vm, appearance = noRendering, exits = noExits, scrollState = androidx.compose.foundation.rememberScrollState(),
             )
-        }
-        // The update card stands further down: without scrolling the progress was missing from the image.
-        update.progress?.let { p ->
-            compose.onNodeWithText(ApplicationProvider.getApplicationContext<Context>()
-                .getString(R.string.update_downloading, p)).performScrollTo()
         }
         pause()
         photo(name, dark = dark, device = device)
@@ -1236,10 +1216,6 @@ class ScreenPhotoVariantsTest {
     @Test fun settingsTabletDark() = settingsPhoto("einstellungen", true, "tablet")
     @Test fun settingsFont200() = settingsPhoto("einstellungen-schrift200", false, "telefon", font = 2f)
     @Test fun settingsEnglish() = settingsPhoto("einstellungen-en", false, "telefon", language = ENGLISH)
-
-    @Test fun updateLoads() = settingsPhoto("update-laedt", false, "telefon",
-        UpdateUiState(checked = true, progress = 42,
-            newerVersion = UpdateDescription(versionCode = 240, versionName = "2.4.0", apkUrl = "https://brick.example.org/app.apk")))
 
     // Without a camera only the overlay: frame, hint, light and close.
     private fun scannerPhoto(device: String) {
@@ -1371,7 +1347,7 @@ class ScreenPhotoVariantsTest {
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
         world.paths.responses["/api/v2/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
-            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api))).also { it.now = { FIXED_TIME }; it.loadHousehold() }
+            testHouseholdRepository(world.t.api))).also { it.now = { FIXED_TIME }; it.loadHousehold() }
         show("haushalt-code", ready = { vm.householdState.value.status != null }, condition = { vm.householdState.value }) {
             HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {})
         }
@@ -1441,22 +1417,6 @@ class ScreenPhotoVariantsTest {
     @Test fun setUpQrLight() = setUpQrPhoto(false, 1f)
     @Test fun setUpQrDark() = setUpQrPhoto(true, 1f)
     @Test fun setUpQrFont200() = setUpQrPhoto(false, 2f)
-
-    /** The hint about a new version, as the app shows it after the check. */
-    private fun updateDialogPhoto(dark: Boolean, font: Float) {
-        val name = level("dialog-update", font)
-        val updateState = MutableStateFlow(UpdateUiState(checked = true,
-            newerVersion = UpdateDescription(versionCode = 240, versionName = "2.4.0", apkUrl = "https://brick.example.org/app.apk")))
-        val source = object : UpdateActions.WithState, UpdateActions by noUpdate {
-            override val uiState = updateState
-        }
-        showDialog(name, dark = dark, font = font) { UpdateRoute(source) }
-        dialogPhoto(name, "classic", dark, "telefon", font)
-    }
-
-    @Test fun dialogUpdateLight() = updateDialogPhoto(false, 1f)
-    @Test fun dialogUpdateDark() = updateDialogPhoto(true, 1f)
-    @Test fun dialogUpdateFont200() = updateDialogPhoto(false, 2f)
 
     /** The question about a new server certificate with a fingerprint to compare. */
     private fun certificatePhoto(dark: Boolean, font: Float) {
@@ -1590,7 +1550,7 @@ class ScreenPhotoVariantsTest {
         world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[],"open_invites":0}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
-            testHouseholdRepository(world.t.api), testAccountRepository(world.t.api, world.t.io))).also { it.loadHousehold() }
+            testHouseholdRepository(world.t.api))).also { it.loadHousehold() }
         show(name, dark = dark, font = font, ready = { vm.householdState.value.status != null },
             condition = { vm.householdState.value }) {
             HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {})
@@ -1664,7 +1624,7 @@ class ScreenPhotoVariantsTest {
         show(name, dark = dark, font = font) {
             val mode = LocalInputModeManager.current
             LaunchedEffect(Unit) { mode.requestInputMode(InputMode.Keyboard) }
-            MoreScreen({}, isAdmin = false, updateAvailable = false, onLogout = {})
+            MoreScreen({}, isAdmin = false, onLogout = {})
         }
         val target = ApplicationProvider.getApplicationContext<Context>().getString(R.string.nav_wanted)
         compose.onNode(hasText(target) and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)

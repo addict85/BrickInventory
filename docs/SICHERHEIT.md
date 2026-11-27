@@ -136,15 +136,21 @@ handelte der Prozess für jede gerade aktive Sitzung.
 ### Anmeldung und Sitzung (2, 3)
 - „Passwort ≠ Benutzername“ gilt auch beim Ändern mit App-Token und beim
   Setzen durch den Verwalter (Name aus der Tabelle) — `password-rule-db`.
-- „Andere Sitzungen beenden“ verlangt das Passwort (und bei aktivem TOTP den
-  Code): Eine erbeutete Sitzung sperrt den Inhaber nicht aus — `web-without-token-db`.
-- Bremsen der erneuten Bestätigung je Konto **und** Zugang (Sitzung, gehasht,
-  oder Token-Familie über `created_at`, das der Tausch erbt): Fehlversuche aus
-  einer erbeuteten Sitzung sperren weder „andere beenden“ noch den
-  Passwortwechsel des Inhabers. Falsche Codes zählen in einem eigenen Zähler
-  (5 je Stunde), den nur ein richtiger Code löscht; ein richtiges Passwort
-  setzt ihn nicht zurück: `src/account/passwordConfirmation.ts`,
-  `src/account/loginLimiter.ts` — `confirmation-brakes-db`.
+- **Keine erneute Bestätigung im angemeldeten Bereich** (Entscheid des
+  Inhabers, 26.11.2026): Wer angemeldet ist, darf alles, ohne Passwort oder
+  zweiten Faktor ein zweites Mal einzugeben — Passwort und E-Mail ändern, 2FA
+  ein- und ausschalten, Passkeys, App-Tokens und QR-Codes anlegen oder
+  widerrufen, „andere beenden“, Konto löschen, Verwalterrouten, globale
+  Einstellungen, Papierkorb, Gutscheine. Ältere Apps dürfen die Felder
+  (`password`, `admin_password`, `code`, …) weiter senden; der Server
+  übergeht sie (`legacyConfirmation()` in `src/contract/base.ts`). Ohne
+  gültige Sitzung bzw. Token bleibt es bei 401 — `login-is-enough-db`.
+  Geschützt bleiben die Anmeldung selbst (Passwort, TOTP, Passkey, QR mit
+  Gerätecode), das Rücksetzen per Mail und der Schrittschutz der App.
+- Der Code beim Einrichten des zweiten Faktors hat eine Bremse je Konto
+  **und** Zugang (Sitzung, gehasht, oder Token-Familie über `created_at`, das
+  der Tausch erbt): `src/account/passwordConfirmation.ts`,
+  `src/account/loginLimiter.ts` — `second-factor-db`.
 - Kein Passwort-Orakel für gesperrte und unbestätigte Konten: Sie bekommen bei
   richtigem Passwort dieselbe 401 `anmeldedaten_ungueltig` wie bei falschem
   (gezählt als Fehlversuch). Einen neuen Bestätigungslink gibt
@@ -201,19 +207,9 @@ handelte der Prozess für jede gerade aktive Sitzung.
   sie älter als `ATTESTATION_REVOCATION_DAYS` (7), nimmt der Server keinen neuen
   Schlüssel an, statt ungeprüft anzunehmen (UPGRADE.md §60) —
   `devices-attestation`, `step-protection-db`, `attestation-revocation-list-db`.
-- Kein Weg am zweiten Faktor vorbei: Es gibt genau einen Bestätigungsweg,
-  `bestaetigeMitFaktor` (`src/account/http/login.ts`). Bei aktivem TOTP
-  verlangt er immer Code oder Passkey-Antwort, auch mit dem
-  Verwalterpasswort; fehlt beides, 400 `zweiter_faktor_noetig` ohne Zählung.
-  Jede Route, die einen Zugang prägt oder Schutz abbaut, trägt im API-Vertrag
-  `bestaetigung` (token-create, qr-token, Passkey anlegen/löschen, alle
-  Verwalterrouten an Konten, `DELETE /bestand`, andere beenden, Passwort,
-  E-Mail, 2FA abschalten, Haushalt beitreten, SMTP). Der Wächter
-  `confirmation-contract-db` ruft jede markierte Route ohne und mit falschem
-  Code, verlangt die Marke für jede Passwort-Eingabe des Vertrags und lässt
-  `bcrypt.compare` nur im Pool und `@node-rs/argon2` nur in
-  `src/account/passwordHash.ts` zu (Vergleich nur über `passwortPasst`); eine Route ohne Marke,
-  die bestätigt, antwortet in Tests mit 500. Den Notausgang des Verwalters
+- Passwörter vergleicht nur `passwortPasst` (`src/account/passwordHash.ts`):
+  `bcrypt.compare` steht nur im Pool, `@node-rs/argon2` nur dort —
+  `login-is-enough-db`. Den Notausgang des Verwalters
   (`DELETE /auth/users/:id/zweiter-faktor`) gibt es nur für fremde Konten.
   Eine neue E-Mail gilt auch beim Verwalter erst nach dem Link als bestätigt
   — `second-factor-sensitive-db`, `passkeys-db`, `household-join-db`.
@@ -250,7 +246,8 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `routes/api/middleware.ts` — `password-required-switch-db`, `step-protection-db`.
 - Benutzernamen ohne Rücksicht auf Gross-/Kleinschreibung eindeutig
   (Index, Migration 0090) — `account-create-db`.
-- „Alle meine Daten löschen" nur mit Passwort — `everything-delete-household-db`.
+- „Alle meine Daten löschen" löscht nur das eigene Konto, nach einer Rückfrage
+  ohne Passwort — `everything-delete-household-db`.
 - Mailadressen stehen im Protokoll nur maskiert — `household-join-db`.
 - In Produktion kein Start mit Beispiel-`SESSION_SECRET` oder
   Beispiel-Datenbankpasswort: `server.ts`, `src/infra/config.ts` (`startVerbote`) — `startverbot`.
@@ -745,11 +742,14 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 - **Datenschlüssel auf demselben Rechner**: `schluessel/` liegt neben `data/`.
   Wer den ganzen Rechner hat, hat auch die Geheimnisse; nur eine Sicherung von
   `data/` allein gibt sie nicht preis.
-- **Mehrere erbeutete Zugänge**: Die Bremsen gelten je Sitzung bzw.
-  Token-Familie. Wer mehrere Sitzungen desselben Kontos erbeutet, rät in jeder
-  5 Codes je Stunde. Einen neuen Zugang prägt nur, wer den zweiten Faktor
-  hat. Bei der Anmeldung zählen falsche Codes in die Anmeldebremse je
-  Adresse und Konto.
+- **Eine erbeutete Sitzung ist das ganze Konto** (bewusst, Entscheid des
+  Inhabers): Ohne erneute Bestätigung kann, wer eine offene Sitzung oder einen
+  App-Token mit vollem Scope hat, Passwort und E-Mail ändern, den zweiten
+  Faktor abschalten, neue Zugänge prägen und das Konto löschen. Was bleibt:
+  die Hinweis-Mails (neuer Zugang, Passwortwechsel, 2FA, neue Adresse an die
+  alte), Leerlauf- und Höchstdauer der Sitzung, das Verwaltungsprotokoll und
+  „Passwort vergessen“. Bei der Anmeldung zählen falsche Codes weiter in die
+  Anmeldebremse je Adresse und Konto.
 - **Geheimnisse auf demselben Rechner**: `./geheimnisse/` ist nur für seinen
   Besitzer offen; wer root auf dem Server ist, liest sie trotzdem.
 - **Anfrage-Raten am Rand**: Caddy begrenzt bei den Anmeldewegen nur Grösse
@@ -776,22 +776,12 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
   in `postgres` steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`; Caddy
   prüft der Job `trivy-eigenbau` ohne Ausnahmen.
 - **Verwalter setzen jedes Konto zurück**: Ein Verwalter kann Passwort und
-  zweiten Faktor jedes Kontos zurücksetzen. Gedeckelt ist das durch Passwort
-  und zweiten Faktor des Verwalters selbst, eine Hinweis-Mail an den Inhaber
+  zweiten Faktor jedes Kontos zurücksetzen. Gedeckelt ist das durch die
+  Anmeldung des Verwalters, eine Hinweis-Mail an den Inhaber
   und alle Verwalter und das Verwaltungsprotokoll; verhindern lässt es sich
   nicht, nur erkennen.
-- **Update der Android-App per Sideload**: Die App darf Pakete installieren
-  (`REQUEST_INSTALL_PACKAGES`). Abgesichert ist das durch die Signatur des
-  APK, seine SHA-256-Prüfsumme, die signierte Fassungsbeschreibung und ein
-  Frischefenster gegen alte Fassungen. Restrisiko: Signier- und
-  Beschreibungsschlüssel liegen als Secret in GitHub-Environments, und eine
-  Person gibt frei; wer das Konto erbeutet, kann Updates veröffentlichen. Wie
-  sich das stärken lässt: „Release-Freigabe stärken“ oben.
-- **Beschreibungsschlüssel**: Die App nimmt eine Fassungsbeschreibung nur mit der
-  Signatur des eigenen Beschreibungsschlüssels an; der frühere Übergangsweg über
-  das Zertifikat der installierten App ist entfernt (12.11.2026). Die Beschreibung
-  gilt sieben Tage; danach meldet die App sie als veraltet, bis ein neues Etikett
-  sie auffrischt. Eine abgelaufene, aber neuere Fassung bietet sie trotzdem an,
-  mit dem Hinweis, dass es Neueres geben könnte; eine ältere als die installierte
-  oder als die schon gesehene nie (Rückroll-Schutz über versionCode und
-  Ausstellungszeit).
+- **Updates der Android-App über Google Play**: Die App installiert keine Pakete
+  selbst und verlangt `REQUEST_INSTALL_PACKAGES` nicht; die Prüfung des fertigen
+  APK (`tools/manifest-permissions.txt`) ist rot, sobald die Berechtigung wieder
+  auftaucht. Restrisiko: Wer das Play-Konto oder den Upload-Schlüssel erbeutet,
+  kann Updates veröffentlichen.

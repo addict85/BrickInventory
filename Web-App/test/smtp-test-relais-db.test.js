@@ -1,11 +1,10 @@
 /**
- * The SMTP test is not a mail relay: to the admin's own address
- * it goes without a prompt (at most 10 per hour), to any other only with
- * password — like changing the mail server.
+ * The SMTP test is not a mail relay: at most 10 per hour and account. Any address
+ * needs only the administrator login, no password (docs/SICHERHEIT.md).
  *
  * Counter-checks (measured on 07.11.2026, each on its own):
- *   A  the password check for foreign addresses removed → red: “a foreign
- *      address needs the password” (200 instead of 400, mail went out)
+ *   A  (26.11.2026) a password check back into /smtp-test → red: “a
+ *      foreign address needs no password either” (400 instead of 200)
  *   B  the throttle removed → red: “from the eleventh mail in an hour
  *      it stops” (200 instead of 429)
  *
@@ -34,7 +33,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const NAME = `smtprelais_${process.pid}`,
   PASS = 'chef-Passwort-1';
 
-test('SMTP test only to the own address or with password', { concurrency: 1 }, async t => {
+test('SMTP test with the login, throttled', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const owned = `${NAME}@example.org`;
@@ -47,7 +46,6 @@ test('SMTP test only to the own address or with password', { concurrency: 1 }, a
   ).id;
   t.after(async () => {
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%|konto:${uid}%`]);
-    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${uid}|%`]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
@@ -71,15 +69,9 @@ test('SMTP test only to the own address or with password', { concurrency: 1 }, a
     assert.deepEqual(sent, [owned, owned.toUpperCase()]);
   });
 
-  await t.test('a foreign address needs the password', async () => {
+  await t.test('a foreign address needs no password either', async () => {
     sent.length = 0;
-    const r = await probe({ to: 'fremd@example.net' });
-    assert.deepEqual([r.status, r.body.code], [400, 'current_password_wrong']);
-    assert.deepEqual(sent, []);
-    const wrong = await probe({ to: 'fremd@example.net', password: 'falsch' });
-    assert.equal(wrong.status, 400);
-    assert.deepEqual(sent, []);
-    const ok = await probe({ to: 'fremd@example.net', password: PASS });
+    const ok = await probe({ to: 'fremd@example.net' });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
     assert.deepEqual(sent, ['fremd@example.net']);
   });

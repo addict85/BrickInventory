@@ -20,8 +20,6 @@ export interface Route {
   event?: z.ZodType;
   /** The request is a form with a file (multipart). */
   form?: true;
-  /** Fields for password and code of the re-confirmation (confirmWithFactor). */
-  confirmation?: { password: string; code: string };
   /** The response carries an access, code or plaintext: it is never stored. */
   secret?: true;
   /** An app token first needs the device key's approval for this step
@@ -31,10 +29,9 @@ export interface Route {
   small?: true;
 }
 
-/** Idempotency never repeats confirmed and secret responses: a
- * repetition with a wrong password would otherwise get the stored response. */
+/** Idempotency never repeats secret responses: they would otherwise be stored. */
 export function notRetryable(route: Route | undefined): boolean {
-  return !!(route?.secret || route?.confirmation);
+  return !!route?.secret;
 }
 
 export const whole = z.number().int();
@@ -118,8 +115,9 @@ const factorFields = {
 type Confirmation<P extends string, C extends string> = { [K in P]: z.ZodOptional<z.ZodNullable<z.ZodString>> } & {
   [K in C]: typeof factorFields.code;
 } & { passkey: typeof factorFields.passkey };
-/** Brand and input from one hand: the guard test sends exactly these fields. */
-export function confirmed<
+/** The password and factor fields older clients still send: accepted so that their
+ * requests stay valid, but never checked, since a login is enough (docs/SICHERHEIT.md). */
+export function legacyConfirmation<
   F extends z.ZodRawShape = Record<never, z.ZodType>,
   const P extends string = 'password',
   const C extends string = 'code',
@@ -130,10 +128,7 @@ export function confirmed<
     [code]: factorFields.code,
     passkey: factorFields.passkey,
   };
-  return {
-    confirmation: { password: password as NoInfer<P>, code: code as NoInfer<C> },
-    input: z.strictObject({ ...fields, ...(extra as Confirmation<P, C>) }),
-  };
+  return { input: z.strictObject({ ...fields, ...(extra as Confirmation<P, C>) }) };
 }
 
 export const SIMPLE = z.union([z.string(), z.number(), z.boolean(), z.null()]);

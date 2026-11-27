@@ -305,7 +305,6 @@
       <div class="text-small space-bottom-075" data-i18n="required.hint">Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Administrator vergeben hat. Bitte zuerst ein eigenes setzen.</div>
       <div class="lerr" id="required-err" role="alert"></div>
       <form class="sform" data-submit="btn-required">
-        <div class="fg" id="required-alt-row"><label for="required-alt" data-i18n="required.alt">Vorläufiges Passwort</label><input type="password" id="required-alt" autocomplete="current-password" /></div>
         <div class="fg"><label for="required-new" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="required-new" autocomplete="new-password" aria-describedby="required-rule" />
           <div class="text-small" id="required-rule" data-i18n="required.rule" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
         <div class="fg"><label for="required-repeat" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="required-repeat" autocomplete="new-password" /></div>
@@ -1136,7 +1135,7 @@
       <div class="ssec danger-zone">
         <p class="text-medium space-bottom-075" data-i18n="settings.danger.hint">Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.</p>
         <button class="btn bd" id="btn-dall" data-writing data-i18n="settings.delete_all_btn" data-ico="delete">Alle meine Daten löschen</button>
-        <p class="text-medium space-top-125 space-bottom-075" data-i18n="settings.delete_account.hint">Das Konto selbst löschen: endgültig, ohne Papierkorb, mit Passwort und zweitem Faktor.</p>
+        <p class="text-medium space-top-125 space-bottom-075" data-i18n="settings.delete_account.hint">Das Konto selbst löschen: endgültig, ohne Papierkorb.</p>
         <button class="btn bd" id="btn-account-delete" data-writing data-i18n="settings.delete_account.btn" data-ico="delete">Konto endgültig löschen</button>
       </div>
     </div>
@@ -1375,10 +1374,6 @@
               <label for="household-redeem-code" data-i18n="household.invite_code">Einladungscode</label>
               <input class="mono-2" type="text" id="household-redeem-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" />
             </div>
-            <div class="fg" id="household-redeem-factor" data-style="display:none">
-              <label for="household-redeem-factor-code" data-i18n="login.code">Code aus der Authenticator-App</label>
-              <input type="text" id="household-redeem-factor-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" />
-            </div>
             <div class="account-footer">
               <button class="btn bp" data-click="redeemHouseholdInvite">
                 <svg class="ico" aria-hidden="true"><use href="#i-ok"/></svg> <span data-i18n="household.redeem_submit">Verknüpfen</span>
@@ -1400,7 +1395,7 @@
 
 
             <p class="hint-paragraph">
-              <span data-i18n="settings.data_zip_hint">Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Eingelesen wird jede Datei über „Importieren“ auf ihrer eigenen Seite. Gutscheine sind nicht enthalten: Nummer und PIN wirken wie Bargeld. Sie lassen sich unter „Gutscheine“ nach Bestätigung mit dem Passwort als PDF sichern.</span>
+              <span data-i18n="settings.data_zip_hint">Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Eingelesen wird jede Datei über „Importieren“ auf ihrer eigenen Seite. Gutscheine sind nicht enthalten: Nummer und PIN wirken wie Bargeld. Sie lassen sich unter „Gutscheine“ als PDF sichern.</span>
             </p>
             <div class="row gap-10 flex-wrap items-center space-bottom-1">
               <a class="btn bs" href="/api/v2/settings/export/data" data-i18n="settings.data_zip_btn" data-ico="export">Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
@@ -1467,10 +1462,6 @@
               <option value="1m" data-i18n="qr.validity_1m">1 Monat</option>
               <option value="2m" data-i18n="qr.validity_2m">2 Monate</option>
             </select>
-          </div>
-          <div class="fg">
-            <label for="qr-password" data-i18n="qr.password_label">Dein Passwort</label>
-            <input type="password" id="qr-password" autocomplete="current-password">
           </div>
           <div><button type="button" class="btn bp" id="btn-gen-qr" data-writing data-i18n="settings.qr.generate" data-ico="refresh">QR-Code generieren</button></div>
           </form>
@@ -1590,15 +1581,6 @@
     <p class="dialog-text-center" id="cd-msg"></p>
     <form class="without-border" data-submit="cd-confirm">
     <fieldset id="cd-choice" class="cd-choice" aria-labelledby="cd-title" hidden></fieldset>
-    <div id="cd-pw-wrap" class="confirmation-password" hidden>
-      <label for="cd-pw" id="cd-pw-label" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
-      <input type="password" id="cd-pw" autocomplete="current-password">
-    </div>
-    <div id="cd-code-wrap" class="confirmation-password" hidden>
-      <label for="cd-code" data-i18n="login.code">Code aus der Authenticator-App</label>
-      <input type="text" id="cd-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24">
-      <button type="button" class="btn bs btn-sm" id="cd-passkey" hidden data-i18n="sf.with_passkey">Stattdessen Passkey verwenden</button>
-    </div>
     <div class="button-row-center button-row-wide">
       <button type="button" class="btn bs min-100" id="cd-cancel" data-dialog-close data-first-focus data-i18n="common.cancel">Abbrechen</button>
       <button type="button" class="btn bd min-100" id="cd-confirm" data-writing data-i18n="confirm.delete_btn">Löschen</button>
@@ -1957,8 +1939,7 @@
       <p class="text-3" data-i18n="setup.pw_hint">Das Startpasswort stand nur im Protokoll des Servers. Bitte jetzt ein eigenes setzen.</p>
       <div class="lerr" id="wiz-pw-error" role="alert"></div>
       <form class="sform" data-submit="wiz-pw-set">
-        <div class="fg"><label for="wiz-pw-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="wiz-pw-alt" autocomplete="current-password" data-first-focus /></div>
-        <div class="fg"><label for="wiz-pw-new" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="wiz-pw-new" autocomplete="new-password" /></div>
+        <div class="fg"><label for="wiz-pw-new" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="wiz-pw-new" autocomplete="new-password" data-first-focus /></div>
         <div class="fg"><label for="wiz-pw-repeat" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="wiz-pw-repeat" autocomplete="new-password" /></div>
         <div><button type="button" class="btn bp" id="wiz-pw-set" data-click="setupPassword" data-i18n="setup.pw_set">Passwort setzen</button></div>
       </form>

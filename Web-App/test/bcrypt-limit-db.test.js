@@ -1,16 +1,14 @@
 /**
  * At most as many concurrent bcrypt runs as the barrier allows
  * (src/account/bcryptLimit.ts); behind it a bounded queue with a
- * deadline, everything beyond gets 503 server_busy — at login and
- * on every password confirmation.
+ * deadline, everything beyond gets 503 server_busy at login. (A signed-in
+ * session checks no password any more, docs/SICHERHEIT.md.)
  *
  * Counter-checks (measured on 03.11.2026, each alone):
  *   A  in newLimit() the queue limit removed → red: both
  *      tests (the surplus one waited instead of being rejected)
  *   B  checkCredentials() without bcryptGate.run() → red: “with a full
  *      barrier …” (the login got through)
- *   C  checkConfirmation() without bcryptGate.run() → red: “with a full
- *      barrier …” (the password confirmation got through)
  *
  * Whoever last logged in from this address with this name waits
  * at the front and is not rejected because of the queue length (round 12, H3).
@@ -95,7 +93,7 @@ test('priority: to the front of the queue, even if it is full', async () => {
   assert.deepEqual(rowList, ['v', 'b']);
 });
 
-test('with a full limit, login and password confirmation answer 503', { concurrency: 1 }, async t => {
+test('with a full limit, the login answers 503', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -141,14 +139,6 @@ test('with a full limit, login and password confirmation answer 503', { concurre
   try {
     const login = await post('/login', { username: NAME, password: PASS });
     assert.deepEqual([login.status, login.body.code], [503, 'server_busy'], JSON.stringify(login.body));
-    session.userId = uid;
-    session.username = NAME;
-    const confirmation = await post('/qr-token', { password: PASS });
-    assert.deepEqual(
-      [confirmation.status, confirmation.body.code],
-      [503, 'server_busy'],
-      JSON.stringify(confirmation.body),
-    );
   } finally {
     while (open.length || bcryptGate.state().running) {
       for (const r of open.splice(0)) r();
@@ -156,7 +146,6 @@ test('with a full limit, login and password confirmation answer 503', { concurre
     }
     await Promise.all(occupied);
   }
-  delete session.userId;
   const afterwards = await post('/login', { username: NAME, password: PASS });
   assert.equal(afterwards.status, 200, JSON.stringify(afterwards.body));
 

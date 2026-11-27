@@ -48,7 +48,7 @@ class MorePageTest {
     @Test
     fun `the vouchers are the first entry of the More page`() {
         val opened = mutableListOf<Any>()
-        compose.setContent { MoreScreen(onTarget = { opened += it }, isAdmin = true, updateAvailable = false, onLogout = {}) }
+        compose.setContent { MoreScreen(onTarget = { opened += it }, isAdmin = true, onLogout = {}) }
         compose.waitForIdle()
         compose.onAllNodes(hasClickAction()).onFirst().performClick()
         assertEquals(listOf<Any>(FinanceTarget.Vouchers), opened)

@@ -44,7 +44,7 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.okhttp.sse)
     // Coil, DataStore and WorkManager only here: areas get Coil via Compose,
-    // whoever names DataStore or WorkManager themselves (app, core-services, core-update) includes them themselves.
+    // whoever names DataStore or WorkManager themselves (app, core-services) include them themselves.
     implementation(libs.coil.core)
     implementation(libs.coil.network.okhttp)
     implementation(libs.androidx.datastore)

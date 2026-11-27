@@ -38,7 +38,7 @@
     <string name="login_passkey_rpid_missing">Der Server hat nicht gesagt, für welche Domain der Passkey gilt. Aus Sicherheitsgründen wurde abgebrochen; melde dich mit Passwort an.</string>
     <string name="login_passkey_rpid_foreign">Der Server verlangt einen Passkey für eine andere Domain als %1$s. Aus Sicherheitsgründen wurde abgebrochen: Prüfe die Serveradresse oder melde dich mit Passwort an.</string>
     <string name="settings_user_ca">Nutzer-Zertifizierungsstellen vertrauen (Risiko)</string>
-    <string name="settings_user_ca_hint">Nur für die Verbindung zu deinem Server, nie für Updates. Risiko: Eine vom Nutzer installierte Zertifizierungsstelle – etwa von der Firma oder von Schadsoftware – kann Zertifikate für jeden Server ausstellen und so den Verkehr mitlesen. Nur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
+    <string name="settings_user_ca_hint">Nur für die Verbindung zu deinem Server. Risiko: Eine vom Nutzer installierte Zertifizierungsstelle – etwa von der Firma oder von Schadsoftware – kann Zertifikate für jeden Server ausstellen und so den Verkehr mitlesen. Nur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
     <string name="user_ca_question_title">Nutzer-Zertifizierungsstellen vertrauen?</string>
     <string name="user_ca_question_text">Die App nimmt dann für deinen Server auch Zertifikate an, die eine vom Nutzer installierte Zertifizierungsstelle ausgestellt hat.\n\nEine solche Stelle kann von deiner Firma, einem Netzwerkverwalter oder von Schadsoftware stammen. Wer sie kontrolliert, kann den Verkehr mitlesen und verändern, auch Passwort und Anmeldetoken. Schutz bleibt dann nur der Vergleich des Fingerabdrucks mit der Web-App.\n\nUpdates von GitHub prüft die App weiter nur gegen die Zertifizierungsstellen des Systems.\n\nNur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
     <string name="user_ca_question_yes">Trotzdem einschalten</string>
@@ -113,7 +113,7 @@
     <string name="setup_url_label">Adresse</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
     <string name="setup_url_supporting">Die Adresse der BrickInventory Manager Web-App, z. B. brick.fritz.box oder brick.example.com – https:// darf fehlen</string>
-    <string name="api_app_too_old">Diese App ist zu alt für den Server. Bitte die App aktualisieren (Einstellungen → Aktualisierung).</string>
+    <string name="api_app_too_old">Diese App ist zu alt für den Server. Bitte die App in Google Play aktualisieren.</string>
     <string name="api_server_too_old">Der Server ist älter als diese App. Manches fehlt womöglich — bitte den Server aktualisieren.</string>
     <string name="setup_continue">Weiter</string>
     <string name="setup_qr_detected">QR-Code erkannt</string>
@@ -442,7 +442,6 @@
     <string name="main_menu_logout">Abmelden</string>
     <string name="logout_confirm_title">Abmelden?</string>
     <string name="logout_confirm_text">Du meldest dich auf diesem Gerät ab. Zum Weiterarbeiten meldest du dich wieder mit deinem Passwort an.</string>
-    <string name="update_badge">Update verfügbar</string>
     <string name="main_menu_change_server">Server ändern</string>
     <string name="vm_settings_saved">Einstellungen gespeichert</string>
 
@@ -622,12 +621,8 @@
     <string name="household_invite_copy">Kopieren</string>
     <string name="household_invite_label">Einladungscode</string>
     <string name="household_redeem_title">Einladung annehmen</string>
-    <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein und bestätige mit dem Passwort dieses Kontos. Deine Daten bleiben deine.</string>
+    <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein. Deine Daten bleiben deine.</string>
     <string name="household_redeem_submit">Verknüpfen</string>
-    <string name="household_redeem_password">Passwort dieses Kontos</string>
-    <string name="household_redeem_password_wrong">Das Passwort stimmt nicht. Gib das Passwort des Kontos ein, mit dem du angemeldet bist.</string>
-    <string name="household_redeem_code">Code aus der Authenticator-App oder Wiederherstellungscode</string>
-    <string name="household_redeem_code_wrong">Der Code stimmt nicht oder ist abgelaufen.</string>
     <string name="household_redeem_locked">Zu viele Fehlversuche. Bitte versuche es später erneut.</string>
     <string name="household_unlink">Verknüpfung lösen</string>
     <string name="household_remove">Entfernen</string>
@@ -757,9 +752,7 @@
     <!-- ══════════════ Kontokarte (Profil / Passwort) ══════════════ -->
     <string name="account_title">Konto</string>
     <string name="account_email_unverified">E-Mail-Adresse nicht bestätigt</string>
-    <string name="account_profile_password_needed">Zum Speichern bitte das aktuelle Passwort eingeben.</string>
     <string name="account_save">Profil speichern</string>
-    <string name="account_save_title">Profil speichern?</string>
     <string name="account_saved">Profil gespeichert</string>
     <string name="account_email_pending">Ausstehend: %1$s. Gilt nach Bestätigung über den Link in der Mail an diese Adresse; bis dahin bleibt die bisherige.</string>
     <string name="account_email_link_sent">Bestätigungslink an %1$s gesendet. Bis du ihn öffnest, gilt die bisherige Adresse.</string>
@@ -847,35 +840,6 @@
     <string name="pdfexp_http_error">Der Server antwortete mit %1$d</string>
 
 
-    <!-- ══════════════ Selbstaktualisierung aus dem GitHub-Release (util/AppUpdate.kt) ══════════════ -->
-    <string name="update_title">Aktualisierung</string>
-    <string name="update_check">Nach Update suchen</string>
-    <string name="update_current">Aktuell (%1$s)</string>
-    <string name="update_dialog_title">Neue Version verfügbar</string>
-    <string name="update_dialog_text">Version %1$s liegt bereit. Installiert ist %2$s.</string>
-    <string name="update_dialog_now">Jetzt aktualisieren</string>
-    <string name="update_dialog_later">Später</string>
-    <string name="update_available">Version %1$s ist verfügbar</string>
-    <string name="update_installed">Installiert: %1$s</string>
-    <string name="update_version_unknown">unbekannt</string>
-    <string name="update_download">Herunterladen</string>
-    <string name="update_downloading">Wird geladen… %1$d%%</string>
-    <string name="update_install">Installieren</string>
-    <string name="update_permission_needed">Android braucht dafür einmalig deine Erlaubnis, Apps aus dieser Quelle zu installieren. Ohne deine Bestätigung wird nichts installiert.</string>
-    <string name="update_permission_grant">Erlaubnis erteilen</string>
-    <string name="update_check_failed">Die Suche nach einem Update ist fehlgeschlagen — keine Verbindung zu GitHub.</string>
-    <string name="update_load_failed">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde gelöscht.</string>
-    <string name="update_signature_wrong">Die geladene App ist nicht mit demselben Schlüssel signiert wie diese und wurde gelöscht. Installiert wurde nichts.</string>
-    <string name="update_version_wrong">Die geladene App trägt eine andere Version als angekündigt und wurde gelöscht. Installiert wurde nichts.</string>
-    <string name="update_foreign_address">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
-    <string name="update_description_unsigned">Die Beschreibung des Updates ist nicht mit dem Schlüssel dieser App signiert. Es wird nichts angeboten.</string>
-    <string name="update_checksum_wrong">Die geladene App ist nicht die in der signierten Beschreibung angekündigte und wurde gelöscht. Installiert wurde nichts.</string>
-    <string name="update_installer_missing">Die Installation liess sich nicht starten.</string>
-    <string name="update_installation_failed">Die Installation ist gescheitert: %1$s</string>
-    <string name="update_installer_foreign">Die Bestätigung führt nicht zum Installer des Systems. Geöffnet wurde nichts.</string>
-    <string name="update_source_expired">Die Update-Beschreibung ist abgelaufen, sie wurde nicht rechtzeitig neu signiert. Eine neuere Version könnte existieren: Entweder gab es lange keine Veröffentlichung, oder jemand hält Updates zurück. Ein angebotenes Update ist trotzdem echt signiert und neuer als die installierte Version. Prüfe die Release-Seite des Projekts sowie Datum und Uhrzeit des Geräts.</string>
-    <string name="update_source_reset">Die Update-Beschreibung ist älter als eine, die diese App schon gesehen hat. Die Update-Quelle ist veraltet oder manipuliert, und neuere Fassungen werden dir womöglich vorenthalten. Deshalb bietet die App gerade kein Update an. Prüfe die Release-Seite des Projekts.</string>
-
     <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
     <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
 
@@ -960,12 +924,7 @@
     <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
     <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
-    <string name="vouchers_confirm_title">Mit Passwort bestätigen</string>
     <string name="vouchers_delete_title">Gutschein löschen?</string>
-    <string name="vouchers_confirm_plaintext">Nummer und PIN stehen erst nach der Bestätigung da. Die Abfrage wird protokolliert.</string>
-    <string name="vouchers_confirm_pdf">Das PDF zeigt Nummer und PIN. Bitte mit deinem Passwort bestätigen.</string>
-    <string name="vouchers_confirm_button">Bestätigen</string>
-    <string name="vouchers_delete_offline">Löschen geht nur mit Verbindung zum Server: Das Passwort wird nicht auf dem Gerät gespeichert.</string>
     <string name="vouchers_mask_hint">Bleibt unverändert, solange du nichts Neues eintippst</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
@@ -1259,10 +1218,8 @@
         <item quantity="one">In der Sammlung, %1$s Exemplar</item>
         <item quantity="other">In der Sammlung, %1$s Exemplare</item>
     </plurals>
-    <string name="update_at_start">Beim Start nach Updates suchen</string>
-    <string name="update_at_start_hint">Fragt bei jedem Start einmal bei GitHub nach einer neueren Version; GitHub sieht dabei die IP-Adresse des Geräts. Gilt für dieses Gerät.</string>
     <string name="privacy_title">Datenschutz</string>
-    <string name="privacy_text">Die App spricht mit:\n• deinem eigenen Server, der alles speichert, was du erfasst;\n• GitHub, nur für die Update-Prüfung (beim Start, wenn eingeschaltet, sonst auf „Prüfen“);\n• den Google Play-Diensten für Barcode-Scan und Passkeys; die Texterkennung (ML Kit) läuft auf dem Gerät, ihren Kanal für Nutzungsstatistiken an Google hat die App abgeschaltet;\n• anderen Websites (BrickLink, Anleitungen) nur auf Tipp, im Browser.\nKein Tracking, keine Werbung, keine Auswertung.</string>
+    <string name="privacy_text">Die App spricht mit:\n• deinem eigenen Server, der alles speichert, was du erfasst;\n• den Google Play-Diensten für Barcode-Scan und Passkeys; die Texterkennung (ML Kit) läuft auf dem Gerät, ihren Kanal für Nutzungsstatistiken an Google hat die App abgeschaltet;\n• anderen Websites (BrickLink, Anleitungen) nur auf Tipp, im Browser.\nKein Tracking, keine Werbung, keine Auswertung.</string>
     <plurals name="csv_progress">
         <item quantity="one">%1$d von %2$d Set</item>
         <item quantity="other">%1$d von %2$d Sets</item>
@@ -1288,8 +1245,7 @@
     <string name="alerts_create_lock_reason">Setnummer und Schwelle eingeben, dann anlegen.</string>
     <string name="household_invite_share">Teilen</string>
     <string name="household_invite_valid_until">Gültig bis %1$s</string>
-    <string name="household_redeem_lock_reason">Code und Passwort eingeben, dann verknüpfen.</string>
-    <string name="household_redeem_lock_reason_factor">Code, Passwort und Code des zweiten Faktors eingeben, dann verknüpfen.</string>
+    <string name="household_redeem_lock_reason">Code eingeben, dann verknüpfen.</string>
     <string name="parts_quantity_hint">Anzahl gleicher Teile</string>
     <string name="minifigs_quantity_hint">Anzahl gleicher Minifiguren</string>
     <string name="background_jobs">Aufträge</string>

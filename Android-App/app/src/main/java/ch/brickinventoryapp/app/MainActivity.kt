@@ -25,7 +25,6 @@ import ch.brickinventoryapp.BuildConfig
 import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
 import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
 import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.csv.CsvImportViewModel
 import ch.brickinventoryapp.app.nav.ActivityState
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
@@ -72,12 +71,11 @@ class MainActivity : OnlyLauncherStart() {
     private val vm: AppViewModel by viewModels()
     private val appearance: AppearanceViewModel by viewModels()
     private val trust: TrustViewModel by viewModels()
-    private val selfUpdate: UpdateViewModel by viewModels()
     private val csvImport: CsvImportViewModel by viewModels()
 
     /** Fetched here once so that no destination searches the activity's ViewModelStore itself. */
     private fun activityState() = ActivityState(
-        app = vm, update = selfUpdate, csvImport = csvImport, appearance = appearance, trust = trust,
+        app = vm, csvImport = csvImport, appearance = appearance, trust = trust,
     )
 
     // Only for the mandatory forms (start password, second factor) that lie above everything.

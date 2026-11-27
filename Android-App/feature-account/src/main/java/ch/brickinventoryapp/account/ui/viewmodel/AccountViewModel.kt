@@ -10,7 +10,6 @@ import ch.brickinventoryapp.account.ui.SecondFactorUiState
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.model.domain.DesignState
 import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.domain.ProfileChange
@@ -26,6 +25,7 @@ import ch.brickinventoryapp.model.util.otpauthAddress
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.session.SessionRepository
+import ch.brickinventoryapp.state.ui.errorMessage
 import ch.brickinventoryapp.state.ui.failed
 import ch.brickinventoryapp.state.ui.loadError
 import ch.brickinventoryapp.state.ui.viewmodel.Observed
@@ -92,15 +92,8 @@ class AccountViewModel @Inject constructor(
         }
     }
 
-    fun saveProfile(
-        username: String, email: String, firstName: String, lastName: String, password: String? = null,
-        code: String? = null,
-    ) {
-        // The server requires the password for every profile change; don't even ask without it.
-        if (password.isNullOrBlank()) {
-            _accountState.update { it.copy(save = Operation.Failed(Message.Resource(R.string.account_profile_password_needed)), message = null) }
-            return
-        }
+    /** The login is enough: no password and no code (owner's decision). */
+    fun saveProfile(username: String, email: String, firstName: String, lastName: String) {
         viewModelScope.launch {
             _accountState.update { it.copy(save = Operation.Running, message = null) }
             val change = ProfileChange(
@@ -109,8 +102,6 @@ class AccountViewModel @Inject constructor(
                 // Empty means "not given", not "empty first name".
                 firstName = firstName.trim().ifBlank { null },
                 lastName = lastName.trim().ifBlank { null },
-                passwordCurrent = password,
-                code = code?.trim()?.ifBlank { null },
             )
             when (val r = account.updateProfile(change)) {
                 is Outcome.Success -> {
@@ -118,7 +109,7 @@ class AccountViewModel @Inject constructor(
                         // suggest it already applies, and without the mail it waits for nothing.
                         val newAddress = r.data.newAddress
                         val withoutMail = newAddress && !r.data.mailSent
-                        _accountState.update { it.copy(codeNeeded = false,
+                        _accountState.update { it.copy(
                             message = when {
                                 withoutMail -> null
                                 newAddress -> Message.Resource(R.string.account_email_link_sent, listOf(change.email))
@@ -128,15 +119,14 @@ class AccountViewModel @Inject constructor(
                         // Fetch again: the server normalizes, the card shows its state.
                         fetchProfile()
                     }
-                is Outcome.Failure -> declined(r)
+                is Outcome.Failure -> _accountState.update { it.copy(save = failed(r)) }
             }
         }
     }
 
     /**
-     * With the second factor active, the server requires a code for password and email.
-     * If it's missing, the state remembers that; the UI shows the field,
-     * and the next request carries it along. A wrong code leaves the field standing.
+     * The start-password mask: with the second factor active, the server requires its code.
+     * The state remembers that, the mask shows the field, the next request carries it along.
      */
     private fun declined(r: Outcome.Failure) = _accountState.update {
         it.copy(save = failed(r),
@@ -146,7 +136,8 @@ class AccountViewModel @Inject constructor(
     /**
      * Change password. The server then invalidates ALL of the account's tokens, this
      * one included; that's why it goes through the app's full sign-out path afterward. The
-     * explanation goes into the snackbar — the account card is gone by then.
+     * explanation goes into the snackbar — the account card is gone by then. Settings send
+     * no [current] (the login is enough); the start-password mask still does.
      */
     fun changePassword(current: String, newValue: String, code: String? = null) {
         viewModelScope.launch {
@@ -226,15 +217,14 @@ class AccountViewModel @Inject constructor(
 
     fun cancelRedeem() = _devicesState.update { it.copy(prompt = null) }
 
-    /** Password and, if the server demanded it, code; a refusal leaves the prompt open. */
-    fun redeemConfirm(password: String, code: String?) {
+    /** „Sign out“ in the follow-up question; a refusal closes it and goes to the snackbar. */
+    fun redeemConfirm() {
         val question = _devicesState.value.prompt ?: return
         if (question.operation.running) return
         _devicesState.update { it.copy(prompt = question.copy(operation = Operation.Running)) }
-        val request = Confirmation(password = password, code = code?.trim()?.ifEmpty { null })
         viewModelScope.launch {
             val error: Outcome.Failure? = if (question.tokenId != null) {
-                when (val r = account.revokeToken(question.tokenId, request)) {
+                when (val r = account.revokeToken(question.tokenId)) {
                     is Outcome.Success -> {
                         // deleted = 0: already gone (another device was faster) — the list is correct again after this.
                         messages.show(Message.Resource(if (r.data > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
@@ -243,7 +233,7 @@ class AccountViewModel @Inject constructor(
                     is Outcome.Failure -> r
                 }
             } else {
-                when (val r = account.endOther(request)) {
+                when (val r = account.endOther()) {
                     is Outcome.Success -> {
                         val gone = r.data
                         messages.show(Message.Quantity(R.plurals.tokens_revoked_n, gone))
@@ -252,14 +242,8 @@ class AccountViewModel @Inject constructor(
                     is Outcome.Failure -> r
                 }
             }
-            if (error == null) {
-                _devicesState.update { it.copy(prompt = null) }
-                loadDevices()
-            } else _devicesState.update {
-                it.copy(prompt = it.prompt?.copy(operation = failed(error),
-                    codeNeeded = it.prompt.codeNeeded || error.code == ErrorCode.SECOND_FACTOR_NEEDED ||
-                        error.code == ErrorCode.SECOND_FACTOR_WRONG))
-            }
+            _devicesState.update { it.copy(prompt = null) }
+            if (error == null) loadDevices() else messages.show(errorMessage(error))
         }
     }
 
@@ -269,7 +253,8 @@ class AccountViewModel @Inject constructor(
         s.copy(active = d.active, codesRemaining = d.codesRemaining)
     }
 
-    fun setUpSecondFactorOne(password: String) = secondFactor({ account.setUpSecondFactor(password) }) { s, d ->
+    /** [password] only from the mandatory setup mask; settings start without one. */
+    fun setUpSecondFactorOne(password: String? = null) = secondFactor({ account.setUpSecondFactor(password) }) { s, d ->
         s.copy(secret = d.secret, otpauth = otpauthAddress(d.otpauth))
     }
 
@@ -278,12 +263,12 @@ class AccountViewModel @Inject constructor(
         s.copy(active = true, codesRemaining = d.size, secret = null, otpauth = null, codes = d)
     }
 
-    fun renewSecondFactorCodes(code: String) = secondFactor({ account.secondFactorNewCodes(code.trim()) }) { s, d ->
+    fun renewSecondFactorCodes() = secondFactor({ account.secondFactorNewCodes() }) { s, d ->
         s.copy(codesRemaining = d.size, codes = d)
     }
 
-    fun disableSecondFactor(password: String, code: String) =
-        secondFactor({ account.disableSecondFactor(password, code.trim()) }, R.string.zf_disabled) { _, _ ->
+    fun disableSecondFactor() =
+        secondFactor({ account.disableSecondFactor() }, R.string.zf_disabled) { _, _ ->
             SecondFactorUiState(active = false)
         }
 

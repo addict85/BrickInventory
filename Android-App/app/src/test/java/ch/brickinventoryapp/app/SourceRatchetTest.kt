@@ -38,14 +38,14 @@ import java.io.File
  *   fully-qualified          `ch.brickinventoryapp.model.util.catchUnlessCancelled` written out → red
  *                              “no fully qualified project name …” and “fully qualified names …”
  *   wait-in-real-time         PartsViewModelTest sleeps 200 ms again → red “real-time waiting …”
- *   core-data-public      isBelow without internal → red “the public surface of the data modules …”
+ *   core-data-public      partListsStore without internal → red “the public surface of the data modules …”
  *   scope-public        qrSwitchesServer without internal → red “the public surface of the areas …”
  *   capture-on-the-activity  EntryViewModel again via `by viewModels()` in MainActivity
  *                              → red “the activity no longer holds ViewModels …”
  *   padding-fixed-number         DetailRow2 again `padding(vertical = 5.dp)` → red “fixed numbers in padding …”
  *   spacing-between-fixed-number  storage locations again `Spacer(Modifier.width(8.dp))` → red, the same test
- *   dialog-without-window-name    UpdateDialog without paneTitle → red “no AlertDialog without window name …”
- *   dialog-grey-surface       UpdateDialog without windowSurface() → red “every AlertDialog lies on the window surface“
+ *   dialog-without-window-name    SetCheckDialog without paneTitle → red “no AlertDialog without window name …”
+ *   dialog-grey-surface       SetCheckDialog without windowSurface() → red “every AlertDialog lies on the window surface“
  *   voucher-own-button-row  voucher form again with its own row Save | Cancel
  *                              → red “Cancel and main button stand together only in the button row …”
  *   string-format-without-locale  MonitoringScreen again `String.format(fmt, sn)` → red “no String-format …”
@@ -113,7 +113,7 @@ class SourceRatchetTest {
 
     @Test
     fun `test functions that read source become fewer, never more`() {
-        val FUNCTIONS = 147
+        val FUNCTIONS = 141
         val ONLY_SOURCE_TEXT = 32
         // Every module and build-logic, with device tests and test fixtures: a check that moves does not vanish.
         val all = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
@@ -513,9 +513,7 @@ class SourceRatchetTest {
         // What only the own module needs is internal: every public declaration is
         // interface for all areas. Counted at the top level, across core-data and
         // everything split off from it; otherwise the number would sink spuriously when moving.
-        // Among them UPDATE_FOLDER: public because core-data and core-update share it.
-        // 210 since installedFromPlayStore(): UpdateDevice's implementations differ per platform.
-        val LIMIT_AREAS = 210
+        val LIMIT_AREAS = 182
         val other = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
         val module = Sources.module.filter { it.name.startsWith("core-") && it.name !in other }
@@ -527,9 +525,9 @@ class SourceRatchetTest {
     @Test
     fun `the public surface of the areas does not grow`() {
         // An area shows the app routes and destinations; what only it needs itself is internal.
-        // Much is still public because graphs and UI tests live in app. 136 since CertificateQrScanner:
-        // the certificate dialog in app reuses the login area's QR scanner.
-        val LIMIT_AREAS = 136
+        // Much is still public because graphs and UI tests live in app; the certificate dialog
+        // in app reuses the login area's QR scanner (CertificateQrScanner).
+        val LIMIT_AREAS = 132
         val module = Sources.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Only ${module.size} areas — does the search still apply?" }
         ratchet("public declarations of the areas", LIMIT_AREAS, public(module, 100),
@@ -667,7 +665,7 @@ class SourceRatchetTest {
     fun `the activity no longer holds ViewModels`() {
         // Activity-wide only what lies above every destination (ActivityState) and the mandatory forms;
         // everything else gets its destination with hiltViewModel() at its entry.
-        val LIMIT_AREAS = 6
+        val LIMIT_AREAS = 5
         val activity = Sources.module.map { File(it, "src/main") }.filter { it.isDirectory }
             .flatMap { d -> d.walkTopDown().filter { it.isFile && it.name == "MainActivity.kt" }.toList() }
         assertEquals("exactly one MainActivity", 1, activity.size)
@@ -693,7 +691,7 @@ class SourceRatchetTest {
     @Test
     fun `fully qualified names of foreign packages become fewer`() {
         // Written out only for a real name clash, and then better with `import … as`.
-        val MAIN = 161
+        val MAIN = 156
         val TESTS = 0
         val full = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun count(files: Sequence<File>) = files.sumOf { f ->

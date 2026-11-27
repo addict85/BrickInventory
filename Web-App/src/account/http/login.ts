@@ -3,14 +3,10 @@
 import type { Request, Response, NextFunction } from 'express';
 import { rotationDue, type TokenCheck } from '../deviceToken';
 import type { LoginResult } from '../loginCheck';
-import type { ConfirmationRejection, Factor } from '../passwordConfirmation';
 import { createHash } from 'node:crypto';
-import { routeFor } from '../../contract';
-import { errorText, responseLanguage } from '../../infra/errorTexts';
 import { reportAndDeliver } from '../../infra/error';
 import { userId, signedInUserId } from '../../http/userId';
 import { sendError } from '../../http/httpResponse';
-import { STATUS_THE_KIND } from '../../http/errorKind';
 import { attempts } from '../../infra/result';
 import type { AccountServices } from '../area';
 
@@ -48,7 +44,6 @@ export async function establishSession(
     username: string;
     isAdmin: boolean;
     mustChangePassword?: boolean;
-    passwordConfirmedAt?: number;
   },
 ): Promise<void> {
   // Without an answer 0: when in doubt, the comparison signs out the next request.
@@ -78,20 +73,6 @@ export async function establishSession(
       );
     });
   });
-}
-
-/** Grace period after a password entry; short, because a session captured in this time
- * could otherwise set the factor and lock out the account. */
-export const PASSWORD_GRACE_PERIOD_MS = 5 * 60 * 1000;
-
-/** Only with a session, never with a token, and only once: the call consumes the period. */
-export function consumeGracePeriod(req: Request): boolean {
-  const s = req.session,
-    am = s?.passwordConfirmedAt;
-  if (!s?.userId || req.tokenUserId || typeof am !== 'number') return false;
-  delete s.passwordConfirmedAt;
-  const alter = Date.now() - am;
-  return alter >= 0 && alter < PASSWORD_GRACE_PERIOD_MS;
 }
 
 /** The whole user, not only the id: otherwise a handler would not know whether
@@ -181,53 +162,4 @@ export function accessOf(req: Request): string {
       .slice(0, 16)}`;
   const since = req.apiUser?.created_at;
   return `t:${since ? new Date(since).getTime() : '?'}`;
-}
-
-function rejections(req: Request, res: Response, refusal: ConfirmationRejection): void {
-  const status = STATUS_THE_KIND[refusal.kind];
-  if (!refusal.passkey) {
-    sendError(req, res, refusal.kind, refusal.code, refusal.vars);
-    return;
-  }
-  res.status(status).json({
-    success: false,
-    code: refusal.code,
-    passkey: true,
-    error: errorText(refusal.code, responseLanguage(req), refusal.vars),
-  });
-}
-
-/** Password, with an active second factor also code or passkey; only for routes
- * with `bestaetigung` in the contract, which the guard test checks individually. */
-export async function confirmWithFactor(
-  account: AccountServices,
-  req: Request,
-  res: Response,
-  uid: number,
-  password: string | null | undefined,
-  codeField = 'code',
-): Promise<boolean> {
-  // The key under which the contract router registered the route; an error of the
-  // wiring, not a case of the request, hence loud in operation too.
-  const key = String(res.locals.contractKey ?? '');
-  if (routeFor(key) && !routeFor(key)?.confirmation)
-    throw new Error(`${key} bestätigt, ohne \`bestaetigung\` im Vertrag`);
-  // The checked body (checkInput): the confirmation fields are in the contract (bestaetigt()).
-  const input = (req as Request & { input?: Record<string, unknown> }).input ?? {};
-  const factor = { code: input[codeField], passkey: input.passkey } as Factor;
-  const refusal = await account.checkConfirmation(uid, accessOf(req), password, factor);
-  if (refusal) rejections(req, res, refusal);
-  return !refusal;
-}
-
-export async function confirmCode(
-  account: AccountServices,
-  req: Request,
-  res: Response,
-  uid: number,
-  code: string | number | null | undefined,
-): Promise<boolean> {
-  const refusal = await account.checkCodeConfirmation(uid, accessOf(req), code);
-  if (refusal) rejections(req, res, refusal);
-  return !refusal;
 }

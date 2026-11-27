@@ -6,7 +6,6 @@ import { FOREIGN_FILE_CSP } from '../../src/http/serveFile';
 import { DomainError, fileError, type ErrorCode, failDomain } from '../../src/infra/errorTexts';
 import { GAP_SEC, TICKET_SEC, readAs, masked, type VoucherRow } from '../../src/vouchers';
 import { accountGate, guardFor } from './middleware';
-import { confirmWithFactor } from '../../src/account/http/login';
 import { pageFrom } from '../../src/infra/page';
 import { contractRouter } from '../../src/http/contractRouter';
 import type { Services } from '../../src/services';
@@ -84,8 +83,9 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
 
   // The batch paths BEFORE the :id paths: otherwise `:id` would catch the word "export".
 
-  router.endpoint('POST /api/v2/vouchers/export/pdf-grant', requireToken, async (req, res) => {
-    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
+  // Showing or deleting a voucher needs only the login, as the owner decided; an app token
+  // still needs the device key's approval (`step` in the contract).
+  router.endpoint('POST /api/v2/vouchers/export/pdf-grant', requireToken, async req => {
     return { ticket: await d.vouchers.releasePdf(req.apiUser.user_id, null), valid_seconds: TICKET_SEC };
   });
 
@@ -108,10 +108,9 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
     return { voucher: forOuter(await d.vouchers.changeVoucher(req.apiUser.user_id, id, req.input)) };
   });
 
-  // Cash: with confirmation, even though it stays restorable for a few days (restoreVoucher).
-  router.endpoint('DELETE /api/v2/vouchers/:id', requireToken, async (req, res) => {
+  // Stays restorable for a few days (restoreVoucher), so a login is enough.
+  router.endpoint('DELETE /api/v2/vouchers/:id', requireToken, async req => {
     const id = req.pathArgs.id;
-    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
     await d.vouchers.deleteVoucher(req.apiUser.user_id, id);
     return {};
   });
@@ -120,16 +119,14 @@ export function buildVouchersRouter(d: Pick<Services, 'account' | 'vouchers'>) {
     return { voucher: forOuter(await d.vouchers.restoreVoucher(req.apiUser.user_id, req.pathArgs.id)) };
   });
 
-  router.endpoint('POST /api/v2/vouchers/:id/plaintext', requireToken, async (req, res) => {
+  router.endpoint('POST /api/v2/vouchers/:id/plaintext', requireToken, async req => {
     const id = req.pathArgs.id;
-    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
     const z = await d.vouchers.voucherPlaintext(req.apiUser.user_id, id);
     return { id: z.id, number: z.number, pin: z.pin };
   });
 
-  router.endpoint('POST /api/v2/vouchers/:id/pdf-grant', requireToken, async (req, res) => {
+  router.endpoint('POST /api/v2/vouchers/:id/pdf-grant', requireToken, async req => {
     const id = req.pathArgs.id;
-    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.input.password))) return;
     return { ticket: await d.vouchers.releasePdf(req.apiUser.user_id, id), valid_seconds: TICKET_SEC };
   });
 

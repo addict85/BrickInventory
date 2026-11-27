@@ -389,11 +389,11 @@ class DevicesStore @Inject constructor(
     }
 
     /**
-     * No thumbnail in the app overview, no screenshots; per device. Default
-     * on: the overview shows stock, prices and account to anyone who briefly
-     * holds the phone. Whoever needs screenshots turns it off.
+     * No thumbnail in the app overview, no screenshots; per device. Default off: screenshots
+     * of the app are wanted (store pictures, sharing); whoever wants the overview hidden turns
+     * it on. Secrets (login, vouchers, 2FA codes) stay protected regardless (PrivacyShield).
      */
-    override fun hidePreview(): Boolean = designMirror.getBoolean(PREVIEW_HIDE, true)
+    override fun hidePreview(): Boolean = designMirror.getBoolean(PREVIEW_HIDE, false)
     override fun applyPreviewHidden(an: Boolean) {
         designMirror.edit { putBoolean(PREVIEW_HIDE, an) }
     }

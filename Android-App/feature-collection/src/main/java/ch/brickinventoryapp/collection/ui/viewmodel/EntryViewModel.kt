@@ -97,6 +97,11 @@ class EntryViewModel @Inject constructor(
                             _barcodeState.update { it.copy(requestManualEntry = true) }
                             return@launch
                         }
+                        if (_barcodeState.value.source == ScannerOrigin.GALLERY_FILTER) {
+                            messages.acknowledge()
+                            _barcodeState.update { it.copy(searchFor = setNum) }
+                            return@launch
+                        }
                         if (_barcodeState.value.source == ScannerOrigin.GALLERY_SEARCH && showExisting(setNum)) return@launch
                         messages.acknowledge()
                         _barcodeState.update { it.copy(
@@ -198,6 +203,11 @@ class EntryViewModel @Inject constructor(
         _barcodeState.update { it.copy(foundSet = null) }
     }
 
+    /** The gallery has put the scanned set number into its search. */
+    fun searchForConsumed() {
+        _barcodeState.update { it.copy(searchFor = null) }
+    }
+
     /** The confirmation dialog after a scan: watchlist, hand to the parts list, or enter. */
     override fun confirmAddBarcode(wish: EntryRequest) {
         val setNum = wish.setNumber
@@ -216,7 +226,7 @@ class EntryViewModel @Inject constructor(
                 _barcodeState.update { withoutResult(it).copy(forPartList = setNum) }
                 return
             }
-            ScannerOrigin.GALLERY, ScannerOrigin.GALLERY_SEARCH -> Unit
+            ScannerOrigin.GALLERY, ScannerOrigin.GALLERY_SEARCH, ScannerOrigin.GALLERY_FILTER -> Unit
         }
         _barcodeState.update { withoutResult(it).copy(add = Operation.Running) }
         viewModelScope.launch {

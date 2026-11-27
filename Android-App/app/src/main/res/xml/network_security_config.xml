@@ -14,22 +14,6 @@
   ausgestellte Kette; eigene und Nutzer-CAs nimmt Android davon aus.
 -->
 <network-security-config>
-    <!--
-      Die Selbstaktualisierung lädt ein APK von GitHub: nur System-CAs, auch wenn
-      der Nutzer für seinen Server eigene CAs erlaubt. Die Signaturprüfung fängt
-      ein fremdes APK ab, nicht aber ein unterdrücktes Update oder einen
-      vorgetäuschten Downgrade. Zwei Hosts, weil der Anhang von
-      *.githubusercontent.com ausgeliefert wird.
-    -->
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">github.com</domain>
-        <domain includeSubdomains="true">githubusercontent.com</domain>
-        <certificateTransparency enabled="true" />
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </domain-config>
-
     <base-config cleartextTrafficPermitted="false">
         <certificateTransparency enabled="true" />
         <trust-anchors>

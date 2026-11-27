@@ -3,6 +3,10 @@ package ch.brickinventoryapp.ui.components
 import android.view.Window
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -20,7 +24,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
 
 /**
- * A revealed password in a prompt is under FLAG_SECURE right away, even
+ * A revealed password in a dialog is under FLAG_SECURE right away, even
  * if the app overview isn't hidden: the dialog has its own
  * window, which would only pick up the page's protection on its next rebuild.
  *
@@ -46,8 +50,10 @@ class DialogPrivacyScreenTest {
     fun `a revealed password in the dialog is protected immediately and free again afterwards`() {
         compose.setContent {
             BrickInventoryManagerTheme {
-                PasswordPrompt(title = "Bestätigen", text = "Passwort", confirm = "OK", codeNeeded = false,
-                    error = null, running = false, onConfirm = { _, _ -> }, onCancel = {})
+                var password by remember { mutableStateOf("") }
+                AddDialog(title = "Bestätigen", confirm = "OK", onConfirm = {}, onCancel = {}) {
+                    PasswordField(password, { password = it }, "Passwort")
+                }
             }
         }
         // Tapping rebuilds the dialog; after that only the eye changes its content.

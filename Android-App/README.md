@@ -175,9 +175,6 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
 
 - **Dein Server** — alles, was zum Konto gehört. Auch Bilder kommen nur über seinen
   Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`network/util/ImageHosts.kt`).
-- **GitHub** — nur die Update-Prüfung (`update/util/AppUpdate.kt`): beim Start, solange
-  der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
-  Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
 - **Google Play-Dienste** — Barcode-Scan (ML Kit, nachgeladen) und Passkeys
   (Credential Manager). Barcode-Scan und Texterkennung laufen auf dem Gerät. Den Weg,
   über den ML Kit Nutzungsstatistiken an Google meldet (datatransport, Backend `cct`
@@ -220,8 +217,7 @@ Stunden). Unter einer öffentlichen CA fragt die App bei jedem neuen Serverschl�
 (Caddy erneuert ACME-Zertifikate standardmässig mit neuem Schlüssel, etwa alle 60
 Tage). Wechselt die Wurzel innerhalb einer Familie (ISRG Root X1 → X2, GTS R1 → R4
 usw.), fragt sie nicht; die Familien stehen fest in `CA_FAMILIES`, nicht im frei
-wählbaren `O=` des Subjekts. Andere Hosts
-(GitHub für die Selbstaktualisierung) prüft nur die System-CA-Liste.
+wählbaren `O=` des Subjekts. Andere Hosts prüft nur die System-CA-Liste.
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
 ausdrücklich einschaltet.
 
@@ -271,7 +267,7 @@ Herunterladen gibt es nur für Anleitungen, nicht für Gutscheine (der
 Druckdialog kann „Als PDF speichern“).
 
 **Abmelden:** Token, Bestand samt Kennzahlen und Ausgang, Vorschauen, beide
-Bildcaches, PDFs, Update-APK, Widget-Zahlen und alle Meldungen der App sind danach
+Bildcaches, PDFs, Widget-Zahlen und alle Meldungen der App sind danach
 weg, die Marke des Preisalarms ebenfalls. Zuletzt erneuert `Ablageschluessel` den
 Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war, auch
 gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `SignOutCleansEverythingTest`
@@ -292,13 +288,9 @@ gilt als „kein Pin“ bzw. „Schalter aus“; der Nutzer bestätigt dann neu.
 gelöscht (`TrustEncryptedTest`). Wer Code mit der UID der App ausführt,
 kann den Keystore weiterhin benutzen wie die App.
 
-**Update-Angebot nie aus einer zurückgesetzten Beschreibung (sec12 H2):** Ist die
-signierte Beschreibung älter als eine schon gesehene oder als die installierte
-Fassung, bietet die App kein Update an; die Einstellungen sagen, warum. Sonst hielte
-eine wieder eingespielte, echt signierte Beschreibung auf einer bekannt verwundbaren
-Zwischenfassung fest. Eine nur abgelaufene, aber neuere Beschreibung bietet ihre
-Fassung an, mit dem Hinweis, dass es Neueres geben könnte (`UpdateFreshTest`):
-Ohne neues Etikett binnen sieben Tagen bliebe das Gerät sonst auf der alten Fassung.
+**Kein Selbst-Update:** Die App kommt über Google Play und aktualisiert sich dort.
+Sie lädt und installiert selbst keine APK und verlangt `REQUEST_INSTALL_PACKAGES`
+nicht (`LibraryComponentsTest`, `tools/manifest-permissions.txt`).
 
 ## Manipulationsschutz (MASVS-RESILIENCE)
 
@@ -307,8 +299,7 @@ quelloffen und selbst gehostet; wer sie auf seinem Gerät untersucht, ist in der
 Regel ihr Besitzer. Solche Prüfungen lassen sich mit Frida oder Magisk umgehen
 und sperren Nutzer eigener ROMs aus, ohne die Daten zu schützen. Was sie
 schützen soll, liegt an anderer Stelle: Der Server prüft jeden Zugriff,
-lokale Ablagen sind verschlüsselt, Updates sind signiert und werden vor der
-Installation geprüft. MASVS-R wird nicht angestrebt; die Geräteintegrität, die
+lokale Ablagen sind verschlüsselt, Updates kommen signiert über Google Play. MASVS-R wird nicht angestrebt; die Geräteintegrität, die
 für heikle Schritte zählt (gesperrter Bootloader, verifizierter Start, echte
 App), prüft der Server über die Key Attestation des Geräteschlüssels
 (`docs/SICHERHEIT.md`, „Android: Resilienz“).
@@ -410,7 +401,6 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 | `core-security` | `ch.brickinventoryapp.security` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
 | `core-offline` | `ch.brickinventoryapp.offline` | Room samt Schema (`core-offline/schemas`, SQLCipher), Offlineablage, Ausgang und lokale Anwendung von Bearbeitungen, alles in Fachtypen; kennt weder Netz noch Repositories noch das Wire-Format |
 | `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories (geben Fach- und Ansichtstypen zurück), DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, Vertrag und Strom des PDF-Auftrags. Repositories nach Bereich in `data.catalog`, `data.collection`, `data.parts`, `data.finances`, `data.account`: Schnittstelle öffentlich, Implementierung `internal`, gebunden in `di/RepositoryModule`; gemeinsamer Kern (`Outcome`, Abrufhelfer) in `data.repository`, kennt keinen Bereich (ModuleBoundariesTest). Testhilfen (Test-API, Testserver, Repository-Fabriken) in `src/testFixtures`, Paket `data.testing` |
-| `core-update` | `ch.brickinventoryapp.update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
 | `core-services` | `ch.brickinventoryapp.services` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine, geheime Zwischenablage); kennt keine Ansichten und keine Servermodelle |
 | `core-ui-inventory` | `ch.brickinventoryapp.shared` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-resources`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |

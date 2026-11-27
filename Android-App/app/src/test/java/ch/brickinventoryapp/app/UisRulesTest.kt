@@ -285,7 +285,7 @@ class UisRulesTest {
             ) {
                 NavHost(nav, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { }
-                    composable<AppTarget.More> { MoreScreen(nav::openOfMore, isAdmin = false, updateAvailable = false, onLogout = {}) }
+                    composable<AppTarget.More> { MoreScreen(nav::openOfMore, isAdmin = false, onLogout = {}) }
                 }
             }
         }
@@ -475,7 +475,7 @@ class UisRulesTest {
             ) {
                 NavHost(nav, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { }
-                    composable<AppTarget.More> { MoreScreen(nav::openOfMore, isAdmin = false, updateAvailable = false, onLogout = {}) }
+                    composable<AppTarget.More> { MoreScreen(nav::openOfMore, isAdmin = false, onLogout = {}) }
                     composable<CollectionTarget.Wanted> { Text("Merklisteseite") }
                     composable<PartsTarget.PartsList> { Text("Baulistenseite") }
                 }
@@ -521,7 +521,7 @@ class UisRulesTest {
             ) {
                 NavHost(n, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { Text("Galerieseite") }
-                    composable<AppTarget.More> { MoreScreen(n::openOfMore, isAdmin = false, updateAvailable = false, onLogout = {}) }
+                    composable<AppTarget.More> { MoreScreen(n::openOfMore, isAdmin = false, onLogout = {}) }
                     composable<CollectionTarget.Wanted> { Text("Merklisteseite") }
                 }
             }
@@ -574,13 +574,12 @@ class UisRulesTest {
     }
 
     /**
-     * One floating button, no scan icon next to the search: the button itself asks manual or
-     * scan, so the search row carries only the filter.
+     * One floating button that asks manual or scan (to add), and a scan icon next to the
+     * search that fills the search field — two scanners with two different jobs.
      *
-     * Counter-check (run here): `.takeIf { largeFont() }` removed from `scanOn` in
-     * GalleryScreen's GallerySearch → red "no scan icon next to the search" (the icon
-     * reappears there). Counter-check (run here): the scan menu item's `onClick` no longer
-     * calling `onScanBarcode` → red "choosing scan calls onScanBarcode".
+     * Counter-checks (counter-checks/gallery-two-buttons.patch, gallery-search-scan-adds.patch):
+     * a second floating scan button → red (two scan icons); the search row's scan wired to
+     * onScanBarcode → red "the scan next to the search fills the search, it does not add".
      */
     @Test
     fun `gallery's floating button opens a choice between manual entry and scan`() {
@@ -595,17 +594,22 @@ class UisRulesTest {
                         kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
                 }))
             var scanned = 0
+            var searched = 0
             show {
                 GalleryRoute(vm = vm, entryVm = entryVm,
-                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = { scanned++ }, onSetClick = {})
+                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = { scanned++ }, onSetClick = {},
+                    onSearchBarcode = { searched++ })
             }
             wait("gallery") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.fetch.loading }
-            compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode)).assertCountEquals(0)
+            val scanIcons = compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode))
+            scanIcons.assertCountEquals(1)
+            scanIcons[0].performClick()
+            assertEquals("the scan next to the search fills the search, it does not add", 1 to 0, searched to scanned)
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_add_set)).assertCountEquals(1)
             compose.onNodeWithContentDescription(ctx.getString(R.string.gallery_add_set)).performClick()
             compose.onNodeWithText(ctx.getString(R.string.gallery_add_manually)).fetchSemanticsNode()
             compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).performClick()
-            assertEquals("choosing scan calls onScanBarcode", 1, scanned)
+            assertEquals("choosing scan calls onScanBarcode", 1 to 1, scanned to searched)
         } finally {
             world.close()
         }

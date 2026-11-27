@@ -20,9 +20,9 @@ import ch.brickinventoryapp.resources.R
 /** A field of the password change that isn't valid before submitting. */
 enum class PasswordFieldError { CURRENT, NEW, RETRY }
 
-/** What isn't valid before submitting, in the order of the fields. */
-fun passwordSwitchError(current: String, newValue: String, retried: String): List<PasswordFieldError> = buildList {
-    if (current.isBlank()) add(PasswordFieldError.CURRENT)
+/** What isn't valid before submitting, in the order of the fields; [current] null: no such field. */
+fun passwordSwitchError(current: String?, newValue: String, retried: String): List<PasswordFieldError> = buildList {
+    if (current != null && current.isBlank()) add(PasswordFieldError.CURRENT)
     if (passwordToShort(newValue)) add(PasswordFieldError.NEW)
     if (retried != newValue) add(PasswordFieldError.RETRY)
 }
@@ -37,7 +37,7 @@ class PasswordSwitchCheck {
         private set
     internal val focus = PasswordFieldError.entries.associateWith { FocusRequester() }
 
-    fun submit(current: String, newValue: String, retried: String, next: () -> Unit) {
+    fun submit(current: String?, newValue: String, retried: String, next: () -> Unit) {
         checked = true
         val first = passwordSwitchError(current, newValue, retried).firstOrNull() ?: return next()
         try { focus.getValue(first).requestFocus() } catch (_: IllegalStateException) { /* not arranged */ }
@@ -49,10 +49,13 @@ class PasswordSwitchCheck {
 @Composable
 fun rememberPasswordSwitchCheck(): PasswordSwitchCheck = remember { PasswordSwitchCheck() }
 
-/** Current, new and repeated password, with the errors from [check]. */
+/**
+ * Current, new and repeated password, with the errors from [check]. Without [current]
+ * (settings: the login is enough) only new and repeated; the start-password mask asks it.
+ */
 @Composable
 fun PasswordSwitchFields(
-    current: String,
+    current: String?,
     onCurrent: (String) -> Unit,
     newValue: String,
     onNew: (String) -> Unit,
@@ -66,7 +69,7 @@ fun PasswordSwitchFields(
     // Too short and different show up while typing already, empty only after submitting.
     val newWrong = PasswordFieldError.NEW in error || (newValue.isNotEmpty() && passwordToShort(newValue))
     val different = PasswordFieldError.RETRY in error || (retried.isNotEmpty() && retried != newValue)
-    PasswordField(current, onCurrent, stringResource(R.string.account_password_current),
+    if (current != null) PasswordField(current, onCurrent, stringResource(R.string.account_password_current),
         Modifier.fillMaxWidth().focusRequester(check.focus.getValue(PasswordFieldError.CURRENT)),
         hint = if (currentMissing) stringResource(R.string.login_password_missing) else null,
         faulty = currentMissing, imeAction = ImeAction.Next, keyboardActions = next)

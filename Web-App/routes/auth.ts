@@ -8,7 +8,6 @@ import {
   userId,
   signedInUserId,
   ipThrottle,
-  confirmWithFactor,
   secondFactorRequired,
 } from '../src/account/http/login';
 import type { Request, Response } from 'express';
@@ -44,7 +43,6 @@ async function signedInResponses(
   user: SignedIn,
   wish: TokenWish,
   withToken: boolean,
-  withPassword = false,
 ) {
   await d.account.admin.cancelTakeovers(Number(user.id));
   if (!withToken)
@@ -53,8 +51,6 @@ async function signedInResponses(
       username: user.username,
       isAdmin: user.is_admin,
       mustChangePassword: user.must_change_password === true,
-      // Only after a password, not after a passkey alone: the basis of the grace period.
-      ...(withPassword ? { passwordConfirmedAt: Date.now() } : {}),
     });
   res.json({
     success: true,
@@ -162,7 +158,7 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     if (!devicesNameContentValid(req.input.label)) failDomain('invalid', 'device_name_invalid');
     const check = await login(d.account, req, username, password, secondCode, passkey);
     if (!check.ok) loginRejections(check.refusal);
-    await signedInResponses(d, req, res, check.user as SignedIn, req.input, without_token !== true, true);
+    await signedInResponses(d, req, res, check.user as SignedIn, req.input, without_token !== true);
   });
 
   /** End the session AND invalidate the token, so one call clears both. */
@@ -221,13 +217,12 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     },
   );
 
-  /** Only from a session, with password and second factor: otherwise a
-   * captured access would mint a permanent one. The mail reports it to the owner. */
-  router.endpoint('POST /api/v2/auth/token-create', requireLogin, async (req, res) => {
+  /** Only from a session: a token minting tokens would outlive its own scope.
+   * No password: the owner decided that a login is enough; the mail reports it. */
+  router.endpoint('POST /api/v2/auth/token-create', requireLogin, async req => {
     if (!req.session?.userId) failDomain('forbidden', 'session_only');
     if (!devicesNameContentValid(req.input.label)) failDomain('invalid', 'device_name_invalid');
     const userId = signedInUserId(req);
-    if (!(await confirmWithFactor(d.account, req, res, userId, req.input.password))) return;
     const t = await d.account.devicesTokenIssue(userId, req.input.label, req.input.scope, req.ip);
     return { token: t.token, label: t.label, never_expires: false, token_info: t.token_info };
   });
@@ -238,8 +233,8 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     return { user };
   });
 
-  router.endpoint('PUT /api/v2/auth/profile', requireLogin, async (req, res) => {
-    const { username, email, first_name, last_name, password, password_current } = req.input;
+  router.endpoint('PUT /api/v2/auth/profile', requireLogin, async req => {
+    const { username, email, first_name, last_name, password } = req.input;
     const user = await d.account.accountFullOf(userId(req)!);
     if (!user) notFound('user_not_found');
 
@@ -247,31 +242,25 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
     if (password) failDomain('invalid', 'password_via_change_password');
 
     checkProfileInput(user, { username, email, first_name, last_name });
-    // With password (and second factor): a new address could be used to reset the
-    // password; only after that does the availability check reveal whether a name or address exists.
-    if (!password_current) failDomain('invalid', 'current_password_required');
-    if (!(await confirmWithFactor(d.account, req, res, user.id, String(password_current)))) return;
     const r = await d.account.changeProfile(user, { username, email, first_name, last_name });
     if (r.emailChanged) return { emailChanged: true, emailSent: r.emailSent ?? false };
     return {};
   });
 
-  // The own account, permanently: password and, if set up, second factor.
+  // The own account, permanently; the client asks "are you sure?", the server only the login.
   router.endpoint('DELETE /api/v2/auth/account', requireLogin, async (req, res) => {
     const uid = signedInUserId(req);
-    if (!(await confirmWithFactor(d.account, req, res, uid, req.input.password))) return;
     await d.account.removeAccount(uid, null);
     console.log(`[konto] Konto ${uid} hat sich selbst gelöscht`);
     req.session.destroy(() => res.clearCookie(sessionCookieName(), sessionCookieOptions()).json({ success: true }));
   });
 
-  router.endpoint('POST /api/v2/auth/change-password', requireLogin, async (req, res) => {
-    const { current, newPassword } = req.input;
-    if (!current || !newPassword) failDomain('invalid', 'all_fields_required');
+  // `current` is still accepted from older clients but no longer checked: a login is enough.
+  router.endpoint('POST /api/v2/auth/change-password', requireLogin, async req => {
+    const { newPassword } = req.input;
+    if (!newPassword) failDomain('invalid', 'all_fields_required');
     const uid = userId(req);
     if (uid == null) failDomain('not_signed_in', 'not_signed_in');
-    if (!(await confirmWithFactor(d.account, req, res, uid, String(current)))) return;
-    // AFTER checking the old password: a stranger learns nothing through the new one.
     // Ends all accesses, including the own; the session is rebuilt afterwards.
     const account = await d.account.changeOwnPassword(uid, newPassword, req.input.passkeys_revoked === true);
     if (req.session?.userId && account) {
@@ -280,7 +269,6 @@ export function buildAuthRouter(d: Pick<Services, 'settings' | 'mail' | 'account
         username: account.username,
         isAdmin: req.session.isAdmin === true,
         mustChangePassword: false,
-        passwordConfirmedAt: Date.now(),
       });
     }
     return {};

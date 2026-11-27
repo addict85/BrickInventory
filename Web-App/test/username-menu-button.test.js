@@ -196,9 +196,6 @@ test('with administrator rights (Administrator) follows, without only the name',
     await waitFor(() => d.getElementById('prof-user').value === 'anna');
     d.getElementById('prof-user').value = 'anna2';
     d.getElementById('btn-sav-prof').click();
-    await waitFor(() => d.getElementById('confirm-modal').style.display === 'flex');
-    d.getElementById('cd-pw').value = 'Mein-Passwort-1';
-    d.getElementById('cd-confirm').click();
     assert.ok(
       await waitFor(() => d.getElementById('ubadge').textContent.trim() === 'anna2 (Administrator)'),
       `after saving: ${d.getElementById('ubadge').textContent}`,

@@ -1,11 +1,12 @@
 /**
  * Second factor in the profile, in jsdom. An admin must have one: for him „Abschalten“ means
- * „Neu einrichten“, a dialog asks for password and code together, and the setup begins right away
- * in the required field — without a second password question, with „Schlüssel kopieren“ and an otpauth:// link for the
+ * „Neu einrichten“, a plain question without password or code (docs/SICHERHEIT.md), and the setup
+ * begins right away in the required field, with „Schlüssel kopieren“ and an otpauth:// link for the
  * phone. An ordinary account switches off as the text says, without a setup afterwards.
  *
  * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
- *   A  `withCode: true` deleted in disableSecondFactor() → red: both tests (code field hidden)
+ *   A  (26.11.2026) disableSecondFactor() sends `{ password: '' }` again → red: both
+ *      tests (“the request carries no password”)
  *   B  in disableSecondFactor() `begonnen = null` instead of the setup → red: “admin” (no key in the
  *      required field)
  *   C  the otpauth link never made visible → red: “admin” (link hidden)
@@ -42,8 +43,8 @@ const dialog = d => ({
   open: d.getElementById('confirm-modal').style.display === 'flex',
   title: d.getElementById('cd-title').textContent,
   text: d.getElementById('cd-msg').textContent,
-  pw: !d.getElementById('cd-pw-wrap').hidden,
-  code: !d.getElementById('cd-code-wrap').hidden,
+  pw: !!d.querySelector('#confirm-modal input[type="password"]'),
+  code: !!d.querySelector('#confirm-modal [autocomplete="one-time-code"]'),
 });
 
 test('administrator: set up again in one dialog, then key and link', async () => {
@@ -57,16 +58,14 @@ test('administrator: set up again in one dialog, then key and link', async () =>
     button.click();
     await waitFor(() => dialog(d).open);
     const f = dialog(d);
-    assert.deepEqual([f.title, f.pw, f.code], ['Neu einrichten', true, true], JSON.stringify(f));
+    assert.deepEqual([f.title, f.pw, f.code], ['Neu einrichten', false, false], JSON.stringify(f));
     assert.match(f.text, /Administrator.*neuen ein/);
-    d.getElementById('cd-pw').value = 'geheim-Passwort-1';
-    d.getElementById('cd-code').value = '123456';
     d.getElementById('cd-confirm').click();
     await waitFor(() => calls.some(a => a.url.endsWith('/second-factor/setup')));
     const ab = calls.find(a => a.url.endsWith('/second-factor/disable'));
-    assert.deepEqual(JSON.parse(ab.body), { password: 'geheim-Passwort-1', code: '123456' });
+    assert.deepEqual(JSON.parse(ab.body), {}, 'the request carries no password');
     const on = calls.find(a => a.url.endsWith('/second-factor/setup'));
-    assert.deepEqual(JSON.parse(on.body), { password: 'geheim-Passwort-1' });
+    assert.deepEqual(JSON.parse(on.body), {});
     assert.ok(await waitFor(() => d.querySelector('#sf-required-surface #sf-key')), 'no key in the mandatory field');
     assert.equal(d.getElementById('panel-second-factor-required').style.display, 'block', 'mandatory field not open');
     assert.equal(d.getElementById('sf-start'), null, '„Einrichten“ once more');
@@ -90,11 +89,12 @@ test('account without admin rights: switching off as announced, without setup', 
     d.querySelector('#sf-surface [data-click="disableSecondFactor"]').click();
     await waitFor(() => dialog(d).open);
     const f = dialog(d);
-    assert.deepEqual([f.title, f.pw, f.code], ['Abschalten', true, true], JSON.stringify(f));
+    assert.deepEqual([f.title, f.pw, f.code], ['Abschalten', false, false], JSON.stringify(f));
     assert.match(f.text, /Passwort allein/);
-    d.getElementById('cd-pw').value = 'geheim-Passwort-1';
     d.getElementById('cd-confirm').click();
     await waitFor(() => calls.some(a => a.url.endsWith('/second-factor/disable')));
+    const ab = calls.find(a => a.url.endsWith('/second-factor/disable'));
+    assert.deepEqual(JSON.parse(ab.body), {}, 'the request carries no password');
     await waitFor(() => !dialog(d).open);
     assert.equal(
       calls.some(a => a.url.endsWith('/second-factor/setup')),

@@ -8,8 +8,9 @@
  *   A  reportLoginEvent() removed in fehlversuch() → red: “an unknown
  *      name …”, “wrong password …”, “a wrong code …”
  *   B  the line at loginAllowed() removed → red: “the lock is in the log”
- *   C  reportLoginEvent() removed in gebremst() (passwordConfirmation) →
- *      red: “a wrong confirmation …”, “the line ends up in app_logs”
+ *   C  reportLoginEvent() removed in braked() (passwordConfirmation) →
+ *      red: “a wrong setup code …”, “the line ends up in app_logs”
+ *      (re-measured 26.11.2026 on the setup confirmation, the only braked code left)
  *   D  the mail removed in fehlversuch() → red: “wrong password …” (no
  *      mail), “the mail at most once a day”
  *   E  accountThrottled() before the mail removed → red: “the mail at most once a day”
@@ -192,12 +193,15 @@ test('login events in the log', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('a wrong confirmation', async () => {
+  await t.test('a wrong setup code is in the log, the code is not', async () => {
+    const secret = await zf.beginSetup(uid);
+    const right = zf.hotp(zf.fromBase32(secret), zf.timeStep());
+    const wrong = right === '000000' ? '000001' : '000000';
     lines.length = 0;
-    assert.equal(await callFn('/change-password', { current: WRONG, newPassword: 'Neues-Passwort-77' }), 400);
+    assert.equal(await callFn('/second-factor/confirm', { code: wrong }), 400);
     const [z] = eventList('bestaetigung_fehlgeschlagen');
-    assert.deepEqual([z?.kontext.konto, z?.kontext.kind], [uid, 'passwort']);
-    assert.ok(!lines.join('\n').includes(WRONG));
+    assert.deepEqual([z?.kontext.konto, z?.kontext.kind], [uid, 'faktor']);
+    assert.ok(!lines.join('\n').includes(`"${wrong}"`), 'the code is in the log');
   });
 
   await t.test('the line ends up in app_logs', async () => {

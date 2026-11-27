@@ -16,7 +16,6 @@ import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.screens.SettingsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.HouseholdViewModel
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.navigation.AreaEnvironment
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
@@ -24,12 +23,11 @@ import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 
 /**
- * What the settings need from the app: update, design and certificate live with
- * the Activity, because their notice sits above every screen, or because they
+ * What the settings need from the app: design and certificate live with the
+ * Activity, because their notice sits above every screen, or because they
  * decide the whole app's theme.
  */
 interface AccountNavigation : AreaEnvironment {
-    val update: UpdateViewModel
     val appearance: AppearanceViewModel
     val trust: TrustViewModel
 
@@ -64,7 +62,6 @@ private fun NavGraphBuilder.settingsTarget(navigation: AccountNavigation) {
                 // The categories don't navigate further from here; they sit on "More"
                 // (MoreScreen.kt).
                 scrollState = settingsScrollState,
-                selfUpdate = navigation.update,
                 appearance = navigation.appearance,
                 trust = navigation.trust,
             )

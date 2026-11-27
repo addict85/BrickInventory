@@ -33,7 +33,6 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ButtonRow
 import ch.brickinventoryapp.ui.components.ErrorRow
 import ch.brickinventoryapp.ui.components.LocalStepGuard
-import ch.brickinventoryapp.ui.components.PasswordField
 import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.ui.components.SettingsCard
 import ch.brickinventoryapp.ui.components.announce
@@ -104,21 +103,20 @@ internal fun openWithSelection(ctx: Context, uri: String, title: String): Boolea
 @Composable
 internal fun SecondFactorCard(
     secondFactorUiState: SecondFactorUiState,
-    onSetUp: (String) -> Unit,
+    onSetUp: () -> Unit,
     onConfirm: (String) -> Unit,
-    onNewCodes: (String) -> Unit,
-    onTurnOff: (String, String) -> Unit,
+    onNewCodes: () -> Unit,
+    onTurnOff: () -> Unit,
     onBack: () -> Unit,
 ) {
-    // Passwords only in remember, see above.
+    // The confirmation code only in remember, see above.
     val draft = remember { FactorDraft() }
-    // Clear the fields as soon as a step succeeds — otherwise the
-    // password would still be there at the next step.
+    // Clear the field as soon as a step succeeds — an old code would fail at the next one.
     LaunchedEffect(secondFactorUiState.active, secondFactorUiState.secret, secondFactorUiState.codes) {
-        draft.password = ""; draft.code = ""
+        draft.code = ""
     }
-    // New codes and a new key appear in plain text right after: only
-    // behind the device lock (step protection), in addition to password or code.
+    // New codes and a new key appear in plain text right after: only behind the
+    // device lock (step protection). No password or code: the login is enough.
     val protection = LocalStepGuard.current.forTarget(StepAction.SECOND_FACTOR)
     val codesReason = stringResource(R.string.step_codes)
     val loading = secondFactorUiState.fetch.loading
@@ -149,23 +147,18 @@ internal fun SecondFactorCard(
             secondFactorUiState.active == true -> {
                 Text(pluralStringResource(R.plurals.zf_active, secondFactorUiState.codesRemaining, secondFactorUiState.codesRemaining),
                     color = MaterialTheme.colorScheme.primary)
-                FactorPasswordField(draft)
-                FactorCodeField(draft, stringResource(R.string.login_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-                    val renewable = draft.code.isNotBlank() && !loading
-                    OutlinedButton(onClick = { protection.confirm(codesReason) { onNewCodes(draft.code) } }, enabled = renewable,
-                        colors = secondaryButtonColors(), border = secondaryButtonRand(renewable)) { Text(stringResource(R.string.zf_new_codes)) }
-                    val disableable = draft.password.isNotBlank() && draft.code.isNotBlank() && !loading
-                    OutlinedButton(onClick = { onTurnOff(draft.password, draft.code) },
-                        enabled = disableable,
+                    OutlinedButton(onClick = { protection.confirm(codesReason) { onNewCodes() } }, enabled = !loading,
+                        colors = secondaryButtonColors(), border = secondaryButtonRand(!loading)) { Text(stringResource(R.string.zf_new_codes)) }
+                    OutlinedButton(onClick = onTurnOff,
+                        enabled = !loading,
                         colors = secondaryButtonColors(),
-                        border = secondaryButtonRand(disableable)) { Text(stringResource(R.string.zf_disable)) }
+                        border = secondaryButtonRand(!loading)) { Text(stringResource(R.string.zf_disable)) }
                 }
             }
             // 4. Not set up.
             secondFactorUiState.active == false -> {
-                FactorPasswordField(draft)
-                Button(onClick = { protection.confirm(codesReason) { onSetUp(draft.password) } }, enabled = draft.password.isNotBlank() && !loading,
+                Button(onClick = { protection.confirm(codesReason) { onSetUp() } }, enabled = !loading,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                 ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
             }
@@ -173,18 +166,11 @@ internal fun SecondFactorCard(
     }
 }
 
-/** Password and code of the next step; the code field marks itself when Confirm finds it empty. */
+/** The code that confirms the setup; the field marks itself when Confirm finds it empty. */
 private class FactorDraft {
-    var password by mutableStateOf("")
     var code by mutableStateOf("")
     var codeMissing by mutableStateOf(false)
     val focus = FocusRequester()
-}
-
-@Composable
-private fun FactorPasswordField(draft: FactorDraft) {
-    PasswordField(draft.password, { draft.password = it }, stringResource(R.string.account_password_current),
-        Modifier.fillMaxWidth())
 }
 
 @Composable

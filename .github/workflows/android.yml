@@ -610,6 +610,17 @@ jobs:
           path: ~/.m2/repository/org/robolectric
           key: robolectric-${{ hashFiles('Android-App/gradle/libs.versions.toml') }}
           restore-keys: robolectric-
+      # Central weist einzelne Läufer zeitweise ab („Could not find …-bom“); dann scheitert
+      # jede Gegenprobe in einer Sekunde. Einmal vorab auflösen, mit Pause und Neuversuch.
+      - name: Gradle-Plugins auflösen
+        run: |
+          chmod +x gradlew
+          for i in 1 2 3; do
+            ./gradlew --no-daemon --refresh-dependencies help -q && exit 0
+            echo "::warning::Plugin-Auflösung fehlgeschlagen (Versuch $i), neuer Versuch in 60 s"
+            sleep 60
+          done
+          exit 1
       - name: Gegenproben messen
         env:
           COUNTER_CHECK_BASIS: ${{ github.event_name == 'push' && github.event.before || github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}

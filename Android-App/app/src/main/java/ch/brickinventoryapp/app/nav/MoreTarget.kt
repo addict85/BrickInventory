@@ -23,12 +23,10 @@ internal fun NavGraphBuilder.moreTarget(u: TargetEnvironment) {
     composable<AppTarget.More> {
         val vm = u.activity.app
         val state by vm.state.collectAsStateWithLifecycle()
-        val update by u.update.updateState.collectAsStateWithLifecycle()
         u.Tab(stringResource(R.string.nav_more)) {
             MoreScreen(
                 onTarget = navController::openOfMore,
                 isAdmin = state.isAdmin,
-                updateAvailable = update.newerVersion != null,
                 onLogout = {
                     vm.logout()
                     u.loggedOut()

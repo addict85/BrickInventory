@@ -71,8 +71,8 @@ Dateien: `ui/components/KeyBinding.kt`, `data/account/StepBindingImpl.kt`,
 
 **Ein OkHttp-Stack.** Ausserhalb von core-data kein eigener `OkHttpClient.Builder()`: Er
 liefe am Wächter vorbei (Token, Klartext-Verbot, 401). Abweichende Zeiten über `newBuilder()`
-des injizierten Clients. core-data baut drei Grundlagen: Server (mit Wächter), Update (nur
-GitHub), Entwertung (ohne Wächter, mit dem Token des Auftrags).
+des injizierten Clients. core-data baut zwei Grundlagen: Server (mit Wächter) und Entwertung (ohne
+Wächter, mit dem Token des Auftrags).
 Dateien: `finances/ui/pdf/InstructionLoader.kt`, `data/di/ServerClient.kt` · Test: `InstructionDownloadTest`
 
 **Ergebnis hat zwei Varianten.** Kein `else` in einem `when` über `Ergebnis`: Eine neue
@@ -175,9 +175,9 @@ nicht exportiert, Leserecht nur über die Auswahl des Systems, Klartext nur im S
 Dateien: `data/service/PartListsProvider.kt`, `data/util/PartListVault.kt` ·
 Tests: `ServicePolishTest`, `PartListsStoreTest`, `InvariantsReferencesTest`
 
-**Update nur aus signierter Beschreibung.** Ohne gültige Signatur eines
-Beschreibungsschlüssels gilt keine Beschreibung, auch keine unsignierte `version.json`.
-Datei: `update/util/UpdateSignature.kt` · Tests: `UpdateFreshTest`, `InvariantsReferencesTest`
+**Kein Selbst-Update.** Die App kommt über Google Play und installiert nichts selbst:
+keine Berechtigung `REQUEST_INSTALL_PACKAGES`, kein Installer-Empfänger.
+Tests: `LibraryComponentsTest`, `ManifestCheckTest`
 
 **Ein CSV-Statuspfad.** SSE zuerst, Polling nur als Rückfall, die Statuslogik in
 `applyStatus()` samt Anlaufschutz. Dateien: `services/service/CsvImportService.kt`,
@@ -281,10 +281,6 @@ Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
 - **Pins unter einem Schlüssel ohne Entsperr-Bedingung:** Die TLS-Prüfung braucht sie bei
   jeder Verbindung. Sie sind öffentlich (Fingerabdrücke), nur ihre Unverfälschtheit zählt;
   die Namen verraten den Server nicht.
-- **Abgelaufene, neuere Beschreibung bietet an:** Ohne Etikett binnen sieben Tagen
-  bliebe ein Gerät sonst auf der alten Fassung. Die App sagt dazu, dass es Neueres
-  geben könnte; eine Beschreibung unter der installierten oder schon gesehenen
-  Fassung bietet nie an (`UpdateFreshTest`).
 - **Teileliste 30 Minuten abrufbar:** Verschlüsselt auf der Platte, aber die Ziel-App
   liest sie im Klartext und kann sie behalten; danach löscht die App ihre Kopie.
 - **Anleitung über 64 MB in einer namenlosen Datei:** Ein memfd dieser Grösse kostete

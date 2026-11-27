@@ -13,14 +13,12 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.AccountUiState
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
-import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
 import ch.brickinventoryapp.account.ui.screens.SettingsExits
 import ch.brickinventoryapp.account.ui.screens.SettingsScreen
 import ch.brickinventoryapp.account.ui.screens.SettingsState
 import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
-import ch.brickinventoryapp.account.ui.viewmodel.UpdateActions
 import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
@@ -69,7 +67,7 @@ import java.util.Locale
  * Replaces the source search for small IconButtons (TouchTargetSizeTest).
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
- *   tap-target-small         „Nach Update suchen“ without heightIn, Material button 40 dp → red “settings”
+ *   tap-target-small         “Sign out” in settings without heightIn, Material button 40 dp → red “settings”
  *                          (a 40 dp row without its own shape stayed green: touchBoundsInRoot stretches it to 48 dp)
  *   tap-target-without-name    add button without description → red “gallery” (without name)
  */
@@ -199,9 +197,9 @@ class TipTargetAndNameTest {
     @Test
     fun settings() = check("settings") {
         SettingsScreen(
-            condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
+            condition = SettingsState(AppUiState(serverUrl = "https://brick.example.org"),
                 "system", Design.CLASSIC, false, false, false, false),
-            actions = none<SettingsActions>(), update = none<UpdateActions>(),
+            actions = none<SettingsActions>(),
             appearance = none<AppearanceActions>(), exits = none<SettingsExits>(),
             scrollState = androidx.compose.foundation.rememberScrollState(),
         )

@@ -4,11 +4,12 @@ Test: ch.brickinventoryapp.app.ListScrollPositionTest
 Rot: only the ScrollMemory holds the scroll position
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/CollectionGraph.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/CollectionGraph.kt
+index 86d1b849..5cc46a18 100644
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/CollectionGraph.kt
 +++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/CollectionGraph.kt
-@@ -78,7 +78,7 @@
-         val entryVm: EntryViewModel = hiltViewModel()
-         EntryFrame(entry, entryVm, navigation.images) { navController.navigate(CollectionTarget.SetDetail(it)) }
+@@ -80,7 +80,7 @@ private fun NavGraphBuilder.galleryTarget(navigation: CollectionNavigation) {
+             navController.navigate(CollectionTarget.SetDetail(it))
+         }
          // One state per visit; only ScrollMemory holds the position.
 -        val galleryGridState = remember { LazyGridState() }
 +        val galleryGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()

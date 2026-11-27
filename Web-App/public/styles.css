@@ -957,13 +957,9 @@ input.search-field{width:220px}
 /* Until js/styles.js has applied the style (and removed data-style), hidden things stay hidden. */
 [data-style*="display:none"]{display:none}
 .without-border{margin:0}
-/* Password prompts: QR code for the app and admin actions */
-.confirmation-password{margin:0 0 1.25rem;text-align:left}
 .cd-choice{border:0;padding:0;margin:0 0 1.25rem;text-align:left;display:grid;gap:.25rem}
 .cd-choice[hidden]{display:none}
 .cd-choice-row{display:flex;align-items:center;gap:.6rem;min-height:44px;cursor:pointer}
-.confirmation-password label{font-size:var(--fs-2)}
-.confirmation-password input{width:100%;margin-top:.35rem}
 #wanted-xml-modal :is(input,select){min-height:24px}
 #wanted-xml-modal .btn{hyphens:auto}
 .zoombar{cursor:zoom-in}

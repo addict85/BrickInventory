@@ -14,11 +14,10 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.account.ui.DevicesUiState
 import ch.brickinventoryapp.model.domain.DeviceView
 import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.ui.components.PasswordPrompt
+import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.SettingsCard
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.secondaryButtonColors
@@ -39,7 +38,7 @@ internal fun DevicesCard(
     condition: DevicesUiState,
     onReload: () -> Unit,
     onQuestion: (tokenId: String?) -> Unit,
-    onConfirm: (password: String, code: String?) -> Unit,
+    onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {
     SettingsCard(title = stringResource(R.string.tokens_title), icon = Icons.Default.Devices) {
@@ -81,20 +80,20 @@ internal fun DevicesCard(
         }
     }
 
-    // Confirmation with password: an access token that's gone doesn't come back, and
-    // a stolen access token alone shouldn't be able to sign out the others.
+    // Asks first, without a password: an access token that's gone doesn't come back,
+    // and that device then has to sign in again. Hidden while the sign-out runs.
     val question = condition.prompt
-    if (question != null) {
+    if (question != null && !question.operation.running) {
         val affected = condition.devices.count { !it.current }
-        PasswordPrompt(
+        Prompt(
             title = stringResource(if (question.tokenId == null) R.string.tokens_revoke_others_title else R.string.tokens_revoke_title),
             text = if (question.tokenId == null) pluralStringResource(R.plurals.tokens_revoke_others_text, affected, affected)
                    else stringResource(R.string.tokens_revoke_text,
                        condition.devices.firstOrNull { it.tokenId == question.tokenId }?.name ?: "—"),
             confirm = stringResource(R.string.tokens_revoke_confirm),
-            codeNeeded = question.codeNeeded, error = question.operation.errorMessage?.sentence(), running = question.operation.running,
             onConfirm = onConfirm,
             onCancel = onCancel,
+            symbol = Icons.Default.Delete,
         )
     }
 }

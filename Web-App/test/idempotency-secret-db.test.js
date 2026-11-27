@@ -14,13 +14,9 @@
  *   E  `geheim` removed from /auth/zweiter-faktor/codes in the contract → red:
  *      “every writing route …" (the route stands in the list of missing ones)
  *
- * Counter-checks for confirmed routes (measured 03.11.2026):
- *   I  notRetryable() only checks `geheim`, not `bestaetigung` → red:
- *      “every route with confirmation …”; together with `geheim` removed from
- *      /vouchers/:id/klartext also “the repetition with a wrong
- *      password …” (the PIN came with Idempotent-Replay)
+ * Counter-check (measured 03.11.2026):
  *   J  routeForRequest() always returns undefined → red: the first four
- *      subtests, “every writing route …” and “every route with confirmation …”
+ *      subtests and “every writing route …”
  *
  * Counter-checks for the fingerprint (measured 02.11.2026), each red: “the
  * fingerprint does not reveal the password”:
@@ -103,7 +99,7 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
     }).then(async r => ({ status: r.status, replay: r.headers.get('idempotent-replay'), body: await r.json() }));
   const row = k => db.get('SELECT status, response FROM idempotency WHERE user_id = $1 AND key = $2', [uid, k]);
 
-  await t.test('the repetition with a wrong password gets neither PIN nor response', async () => {
+  await t.test('the repetition gets neither PIN nor response', async () => {
     const fresh = await post('/vouchers', 'v-1', {
       number: '1234567890123456',
       pin: '4321',
@@ -112,10 +108,10 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
     });
     assert.equal(fresh.status, 200, JSON.stringify(fresh.body));
     const path = `/vouchers/${fresh.body.voucher.id}/plaintext`;
-    const erst = await post(path, 'k-1', { password: PASS });
+    const erst = await post(path, 'k-1', {});
     assert.deepEqual([erst.status, erst.body.pin], [200, '4321'], JSON.stringify(erst.body));
     assert.deepEqual(await row('k-1'), { status: 200, response: null });
-    const wrong = await post(path, 'k-1', { password: 'falsch-falsch-falsch' });
+    const wrong = await post(path, 'k-1', {});
     assert.equal(wrong.status, 409, JSON.stringify(wrong.body));
     assert.equal(wrong.body.code, 'idempotency_not_repeatable');
     assert.equal(wrong.replay, null);
@@ -254,13 +250,8 @@ test('every writing route with access or code is on the list', () => {
   assert.equal(responseIsSecret('PUT', '/api/v2/parts/3001/5'), false);
 });
 
-test('every route with confirmation is not repeatable', () => {
-  const withConfirmation = Object.entries(CONTRACT).filter(([, r]) => r.confirmation);
-  assert.ok(withConfirmation.length >= 20, `only ${withConfirmation.length} routes with confirmation`);
-  const retryable = withConfirmation
-    .map(([k]) => k.split(' '))
-    .filter(([m, p]) => !responseIsSecret(m, p.replace(/:\w+/g, '1')))
-    .map(x => x.join(' '));
-  assert.deepEqual(retryable, []);
+test('only secret routes are not repeatable', () => {
+  // Counter-check (26.11.2026): notRetryable() always true → red (a plain route counts as secret).
   assert.equal(notRetryable({ response: undefined }), false);
+  assert.equal(notRetryable({ secret: true }), true);
 });

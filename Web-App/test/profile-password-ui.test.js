@@ -1,13 +1,13 @@
 /**
- * The profile only saves with the current password, even if only
- * the username changes. It is asked once when saving, in a dialog
- * instead of in its own field per section; a wrong password asks again.
+ * The profile and the own password save without asking for the current password:
+ * a login is enough (docs/SICHERHEIT.md). One request, no dialog, no field
+ * „Aktuelles Passwort“.
  *
- * Counter-checks (measured 04.11.2026, each on its own):
- *   A  in btn-sav-prof directly api('PUT', …) without confirmWithPassword → red:
- *      all three cases (no dialog opens)
- *   B  in confirmWithPassword the repetition on current_password_wrong
- *      removed → red: “a wrong password asks again”
+ * Counter-checks (measured 26.11.2026, each on its own, bundle rebuilt):
+ *   A  btn-sav-prof behind confirmDelete() again → red: “the profile saves with
+ *      one request” (the dialog opens, no request)
+ *   B  btn-sav-pw sends `current: ''` along again → red: “the password changes
+ *      without the old one”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,71 +16,44 @@ const { openUi, view, waitFor } = require('./helpers/ui');
 const PROFILE = {
   '/v2/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
 };
-const putCalls = calls => calls.filter(a => a.method === 'PUT' && a.url.endsWith('/v2/auth/profile'));
+const sent = (calls, method, end) =>
+  calls.filter(a => a.method === method && a.url.endsWith(end)).map(a => JSON.parse(a.body));
 const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
 
-async function store(w, d) {
-  await view(w, 'profile');
-  await waitFor(() => d.getElementById('prof-user').value === 'anna');
-  assert.equal(
-    d.querySelectorAll('#tab-profile input[type="password"][autocomplete="current-password"]').length,
-    0,
-    'no „Aktuelles Passwort“ field on the page any more',
-  );
-  d.getElementById('prof-user').value = 'anna2';
-  d.getElementById('btn-sav-prof').click();
-  await waitFor(() => openDialog(d));
-}
-
-test('without a password no request goes out', async () => {
+test('the profile saves with one request, even a mere name change', async () => {
   const { w, d, calls } = await openUi(PROFILE);
   try {
-    await store(w, d);
-    assert.deepEqual(putCalls(calls), [], 'before the confirmation');
-    d.getElementById('cd-cancel').click();
-    await waitFor(() => !openDialog(d));
-    assert.deepEqual(putCalls(calls), [], 'after cancelling');
-  } finally {
-    w.close();
-  }
-});
-
-test('with a password it goes along, even with a mere name change', async () => {
-  const { w, d, calls } = await openUi(PROFILE);
-  try {
-    await store(w, d);
-    d.getElementById('cd-pw').value = 'Mein-Passwort-1';
-    d.getElementById('cd-confirm').click();
-    await waitFor(() => putCalls(calls).length);
-    const body = JSON.parse(putCalls(calls)[0].body);
-    assert.equal(body.username, 'anna2');
-    assert.equal(body.password_current, 'Mein-Passwort-1');
-    assert.equal(d.getElementById('cd-pw').value, '', 'the password does not stay in the field');
-  } finally {
-    w.close();
-  }
-});
-
-test('a wrong password asks again', async () => {
-  let n = 0;
-  const { w, d, calls } = await openUi({
-    ...PROFILE,
-    '/v2/auth/profile': (_url, o) =>
-      o?.method === 'PUT' && ++n === 1
-        ? { success: false, code: 'current_password_wrong', error: 'Aktuelles Passwort falsch' }
-        : PROFILE['/v2/auth/profile'],
-  });
-  try {
-    await store(w, d);
-    d.getElementById('cd-pw').value = 'wrong';
-    d.getElementById('cd-confirm').click();
-    await waitFor(
-      () => putCalls(calls).length === 1 && openDialog(d) && /falsch/.test(d.getElementById('cd-msg').textContent),
+    await view(w, 'profile');
+    await waitFor(() => d.getElementById('prof-user').value === 'anna');
+    assert.equal(
+      d.querySelectorAll('#tab-profile input[type="password"][autocomplete="current-password"]').length,
+      0,
+      'no „Aktuelles Passwort“ field on the page',
     );
-    d.getElementById('cd-pw').value = 'richtig';
-    d.getElementById('cd-confirm').click();
-    await waitFor(() => putCalls(calls).length === 2);
-    assert.equal(JSON.parse(putCalls(calls)[1].body).password_current, 'richtig');
+    d.getElementById('prof-user').value = 'anna2';
+    d.getElementById('btn-sav-prof').click();
+    assert.ok(await waitFor(() => sent(calls, 'PUT', '/v2/auth/profile').length === 1), 'no request');
+    const [body] = sent(calls, 'PUT', '/v2/auth/profile');
+    assert.equal(body.username, 'anna2');
+    assert.equal('password_current' in body, false, 'no password in the request');
+    assert.equal(openDialog(d), false, 'no dialog');
+  } finally {
+    w.close();
+  }
+});
+
+test('the password changes without the old one', async () => {
+  const { w, d, calls } = await openUi({ ...PROFILE, '/v2/auth/change-password': { success: true } });
+  try {
+    await view(w, 'profile');
+    d.getElementById('pw-n').value = 'Ein-neues-Passwort-42';
+    d.getElementById('pw-r').value = 'Ein-neues-Passwort-42';
+    d.getElementById('btn-sav-pw').click();
+    assert.ok(await waitFor(() => sent(calls, 'POST', '/v2/auth/change-password').length === 1), 'no request');
+    const [body] = sent(calls, 'POST', '/v2/auth/change-password');
+    assert.equal(body.newPassword, 'Ein-neues-Passwort-42');
+    assert.equal('current' in body, false, 'the old password is sent along');
+    assert.equal(openDialog(d), false, 'no dialog');
   } finally {
     w.close();
   }
