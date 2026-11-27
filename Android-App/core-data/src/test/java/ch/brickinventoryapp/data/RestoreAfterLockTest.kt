@@ -23,7 +23,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Screen off wipes the token from the interceptor's mirror; a request while the device is still
@@ -42,11 +41,9 @@ class RestoreAfterLockTest {
     /** Like the Keystore under setUnlockedDeviceRequired: locked, it answers LockedState. */
     private class LockableVault : TokenEncryption {
         @Volatile var locked = false
-        val opens = AtomicInteger()
         override fun encrypt(plaintext: String) = "ENC($plaintext)"
         override fun decrypt(saved: String) = saved.removePrefix("ENC(").removeSuffix(")")
         override fun open(saved: String): VaultFinding {
-            opens.incrementAndGet()
             return if (locked) VaultFinding.LockedState else VaultFinding.Readable(decrypt(saved))
         }
     }
@@ -80,12 +77,15 @@ class RestoreAfterLockTest {
         waitFor(p, TokenStore.TOKEN_WIPED)
 
         // A request while locked (ServerClient.token()); readToken gives up its start-up attempts after ~4.5 s.
-        val before = vault.opens.get()
+        // Watched for longer than those attempts: other readers open the vault too, so counting
+        // opens does not tell when this restore has decided.
         p.restoreAfterLock()
-        runBlocking { withTimeout(10_000) { while (vault.opens.get() < before + 5) delay(20) } }
-        runBlocking { delay(300) }
-        assertNotEquals("locked, the mirror keeps the placeholder instead of reading as signed out",
-            "", p.authTokenState.value)
+        val deadline = System.currentTimeMillis() + 7_000
+        while (System.currentTimeMillis() < deadline) {
+            assertNotEquals("locked, the mirror keeps the placeholder instead of reading as signed out",
+                "", p.authTokenState.value)
+            runBlocking { delay(20) }
+        }
 
         // Unlocked: ACTION_USER_PRESENT → LockWipe.restore().
         vault.locked = false
