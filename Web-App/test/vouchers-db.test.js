@@ -294,6 +294,22 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       );
     });
 
+    // Counter-check (27.11.2026): releasePdf() again rejecting a voucher without pdf_path
+    // → red “a voucher without an original gets a ticket too”.
+    await t.test('a voucher without an original comes out as a filled LEGO card', async () => {
+      const grant = await jsonTo(`/api/v2/vouchers/${grandparentsVoucher}/pdf-grant`, cookieGrandparent, 'POST', {});
+      const g = await grant.json();
+      assert.equal(grant.status, 200, `a voucher without an original gets a ticket too: ${JSON.stringify(g)}`);
+      const show = await hole(`/api/v2/vouchers/${grandparentsVoucher}/pdf?ticket=${g.ticket}`, cookieGrandparent);
+      assert.equal(show.status, 200);
+      const [card] = await _req('src/vouchers/pdfExport.js').readPageByPage(Buffer.from(await show.arrayBuffer()));
+      assert.deepEqual(
+        [card?.number, card?.pin, card?.amount],
+        ['5045076374450011166', '5225', 400],
+        'the card carries number, PIN and amount',
+      );
+    });
+
     // Counter-checks (measured 03.11.2026, each on its own): in GET /vouchers/:id/pdf the
     // ticket check removed → red „ohne Ticket kein PDF“; in redeemTicket() the
     // deletion left out → red „ein Ticket gilt einmal“; the comparison of the target

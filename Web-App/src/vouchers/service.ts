@@ -255,8 +255,8 @@ export async function releasePdf(k: VoucherContext, uid: number, id: number | nu
     await k.account.admin.rememberAdminAction(uid, uid, 'voucher_export', `${n}`);
     return issueTicket(k, uid, 'export');
   }
+  // Every voucher has a PDF: without an original, voucherPdf() fills the LEGO template.
   const z = await existing(k, uid, id);
-  if (!z.pdf_path) failDomain('not_found', 'not_found');
   await k.account.admin.rememberAdminAction(uid, uid, 'voucher_pdf', masked(z).number);
   return issueTicket(k, uid, String(id));
 }
