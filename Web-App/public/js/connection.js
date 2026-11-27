@@ -84,6 +84,7 @@ export const WRITING_ACTIONS = new Set([
   'queryAllBalances',
   'editVoucher',
   'saveVoucherCountry',
+  'saveRemoveEmpty',
   'deleteVoucher',
   'saveVoucher',
   'importAlertsCsv',

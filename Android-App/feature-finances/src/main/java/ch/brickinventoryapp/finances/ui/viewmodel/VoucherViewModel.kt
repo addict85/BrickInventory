@@ -59,7 +59,7 @@ class VoucherViewModel @Inject constructor(
     private var balanceJob: Job? = null
 
     init {
-        observeLoadOn(_state) { loadVouchers() }
+        observeLoadOn(_state) { loadVouchers(); loadRemoveEmpty() }
     }
 
     fun loadVouchers() {
@@ -78,10 +78,10 @@ class VoucherViewModel @Inject constructor(
     }
 
     /**
-     * The switch as the server stored it. Its own request when the page opens, not part of
-     * [load]: the list reloads after every change, the switch does not change with it.
+     * The switch as the server stored it, on entering the page. Not part of [load]: the list
+     * reloads after every change, the switch does not change with it.
      */
-    fun loadRemoveEmpty() {
+    internal fun loadRemoveEmpty() {
         viewModelScope.launch {
             val r = account.getSettings()
             if (r is Outcome.Success) _state.update { it.copy(removeEmpty = r.data.removeEmptyVouchers) }

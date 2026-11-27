@@ -52,8 +52,7 @@ export async function legacyStockUpgrade(d: Services): Promise<{ rekeyed: number
   const n =
     (await d.vouchers.reencrypt()) +
     (await d.factors.encryptLegacySecrets()) +
-    (await d.idempotency.reencryptResponses()) +
-    (await d.vouchers.encryptLegacyFiles());
+    (await d.idempotency.reencryptResponses());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
   const alt = await d.idempotency.deleteOldFingerprints();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
@@ -66,10 +65,7 @@ export async function legacyStockUpgrade(d: Services): Promise<{ rekeyed: number
  * do not disturb each other: every row is only replaced if it is unchanged. */
 export async function keySwitch(d: Services): Promise<number | null> {
   if (!altKey()) return null;
-  const n =
-    (await d.factors.encryptLegacySecrets({ all: true })) +
-    (await d.vouchers.reencrypt({ all: true })) +
-    (await d.vouchers.encryptLegacyFiles({ all: true }));
+  const n = (await d.factors.encryptLegacySecrets({ all: true })) + (await d.vouchers.reencrypt({ all: true }));
   // Responses and fingerprints apply for 24 hours and depend on the key; recomputing is not worth it.
   await d.idempotency.forgetAll();
   console.log(

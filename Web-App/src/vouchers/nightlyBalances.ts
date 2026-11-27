@@ -62,7 +62,8 @@ async function oneCard(
     if (r.reason === 'botschutz') return 'stop';
     await pause(r.waitSeconds, run?.signal);
   }
-  return { error: 'throttle stayed busy' };
+  // The code the button gets for the same wait (errorTexts), not a sentence of its own.
+  return { error: 'balance_interval' };
 }
 
 function tally(report: NightlyReport, id: number, outcome: Outcome): void {

@@ -28,20 +28,21 @@ export function createVouchers(a: Omit<VoucherDependencies, 'compartments'>, ins
       redeemTicket: bound(k)(pdfTicket.redeemTicket),
       cleanup: bound(k)(cleanupVouchers),
       jobKinds: () => voucherJobKinds(k),
-      encryptLegacyFiles: encryptLegacyVoucherFiles,
-      // Re-encrypting at startup (startup/database.ts): across all accounts, without a request.
+      // Re-encrypting rows and PDFs at startup (startup/database.ts): across all accounts, without a request.
       reencrypt: bound(k)(reencrypt),
     }),
     inspect,
   );
 }
 
-/** Legacy upgrade (default): numbers and copies still in v1. Key switch (`all`): every row the
- * previous key opens. @returns how many values were rewritten */
+/** Legacy upgrade (default): numbers, copies and PDFs still in v1. Key switch (`all`): every row
+ * and file the previous key opens. Rows and files in one call: every caller needs both.
+ * @returns how many values were rewritten */
 async function reencrypt(k: VoucherContext, o: { all?: boolean } = {}): Promise<number> {
-  return o.all
+  const rows = o.all
     ? (await k.vouchers.reencryptAllVouchers()) + (await k.vouchers.reencryptCopies(true))
     : (await k.vouchers.reencryptNumbers()) + (await k.vouchers.reencryptCopies());
+  return rows + (await encryptLegacyVoucherFiles(o));
 }
 
 /** The hourly cleanup: expired PDF tickets and cards deleted longer than RESTORE_DAYS ago. */
