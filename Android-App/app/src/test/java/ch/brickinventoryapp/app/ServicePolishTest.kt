@@ -5,7 +5,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Safeguarding of the cleanup round: localized service notifications,
+ * Safeguarding of the cleanup round: localized worker notifications,
  * status icon and the parts list without FileProvider. That the PDF download goes via the
  * api client is checked by InstructionDownloadTest, executed.
  *
@@ -35,13 +35,14 @@ class ServicePolishTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    // ── Lokalisierte Foreground-Services ─────────────────────────────────────
+    // ── Localized notifications ──────────────────────────────────────────────
 
     @Test
-    fun `service notifications come from resources, not hard-coded`() {
+    fun `worker notifications come from resources, not hard-coded`() {
         for (rel in listOf(
-            "java/ch/brickinventoryapp/services/service/CsvImportService.kt",
-            "java/ch/brickinventoryapp/services/service/PdfExportService.kt",
+            "java/ch/brickinventoryapp/services/service/CsvImportNotifier.kt",
+            "java/ch/brickinventoryapp/services/service/PdfExportNotifier.kt",
+            "java/ch/brickinventoryapp/services/service/PdfExportWorker.kt",
             "java/ch/brickinventoryapp/services/service/PdfExportManager.kt",
         )) {
             val src = code(read(rel))
@@ -59,16 +60,16 @@ class ServicePolishTest {
     }
 
     @Test
-    fun `services use the localized context`() {
-        // setApplicationLocales() only localizes activities. A service that
-        // calls getString() on its own context gets the SYSTEM language below
+    fun `notifiers use the localized context`() {
+        // setApplicationLocales() only localizes activities. A worker that
+        // calls getString() on the application context gets the SYSTEM language below
         // Android 13 — the wrapper from LanguageManager
         // is therefore mandatory, otherwise the localization is only apparently there.
         for (rel in listOf(
-            "java/ch/brickinventoryapp/services/service/CsvImportService.kt",
-            "java/ch/brickinventoryapp/services/service/PdfExportService.kt",
+            "java/ch/brickinventoryapp/services/service/CsvImportNotifier.kt",
+            "java/ch/brickinventoryapp/services/service/PdfExportNotifier.kt",
         )) {
-            assert(code(read(rel)).contains("LanguageManager.localizedContext(this)")) {
+            assert(code(read(rel)).contains("LanguageManager.localizedContext(context)")) {
                 "$rel calls getString() without LanguageManager.localizedContext()"
             }
         }
@@ -84,7 +85,7 @@ class ServicePolishTest {
         val de = read("res/values-de/strings.xml")
         for (key in listOf(
             "notif_csv_title", "notif_csv_running", "notif_csv_done",
-            "notif_pdf_title", "notif_pdf_running", "notif_pdf_done_tap", "notif_pdf_failed",
+            "notif_pdf_title", "notif_pdf_done_tap", "notif_pdf_failed",
             "pdfexp_starting", "pdfexp_unknown_error", "pdfexp_creating_eta",
         )) {
             assert(en.contains("name=\"$key\"")) { "$key is missing in values/strings.xml" }
@@ -100,8 +101,8 @@ class ServicePolishTest {
             "drawable/ic_stat_brick.xml is missing"
         }
         for (rel in listOf(
-            "java/ch/brickinventoryapp/services/service/CsvImportService.kt",
-            "java/ch/brickinventoryapp/services/service/PdfExportService.kt",
+            "java/ch/brickinventoryapp/services/service/CsvImportNotifier.kt",
+            "java/ch/brickinventoryapp/services/service/PdfExportNotifier.kt",
         )) {
             val src = code(read(rel))
             assert(!src.contains("setSmallIcon(R.mipmap")) {

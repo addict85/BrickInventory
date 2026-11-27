@@ -1,0 +1,18 @@
+Gegenprobe: Die FOREGROUND_SERVICE-Erlaubnis von WorkManager bleibt im zusammengeführten Manifest
+Modul: app
+Test: ch.brickinventoryapp.app.LibraryComponentsTest
+Rot: the app asks for no foreground service
+
+diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml
+--- a/Android-App/app/src/main/AndroidManifest.xml
++++ b/Android-App/app/src/main/AndroidManifest.xml
+@@ -42,9 +42,6 @@
+       (services/service/CsvImportWorker.kt, PdfExportWorker.kt). WorkManager brings this
+       permission for setForeground(); the app never calls it, so it goes.
+     -->
+-    <uses-permission
+-        android:name="android.permission.FOREGROUND_SERVICE"
+-        tools:node="remove" />
+     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+     <uses-permission android:name="android.permission.WAKE_LOCK" />
+ 

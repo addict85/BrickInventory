@@ -120,7 +120,12 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
       const r = await hole(H, route);
       assert.equal(r.status, 200, `${route}: ${r.text}`);
       assert.match(r.head.get('content-security-policy') ?? '', /^sandbox\b.*default-src 'none'/, route);
-      assert.match(r.head.get('content-disposition') ?? '', /^attachment; filename="[^"]+\.pdf"$/, route);
+      // content-disposition 2 (Express 5.3) quotes the name only when it needs quoting.
+      assert.match(
+        r.head.get('content-disposition') ?? '',
+        /^attachment; filename=(?:"[^"]+\.pdf"|[^";\s]+\.pdf)$/,
+        route,
+      );
     }
   });
 

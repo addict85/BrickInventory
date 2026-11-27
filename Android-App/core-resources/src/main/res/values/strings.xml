@@ -515,7 +515,7 @@
     <string name="logout_failed_text">This device could not sign out at %1$s. The login may still be valid there: revoke it in the web app under “Signed-in devices”.</string>
     <string name="vm_rights_revoked">Your administrator rights no longer apply — the administration areas are hidden.</string>
 
-    <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
+    <!-- Notifications of the CSV import and PDF export workers -->
     <string name="notif_csv_title">BrickInventory – CSV import</string>
     <string name="notif_csv_running">CSV import running…</string>
     <string name="notif_csv_importing">Importing…</string>
@@ -523,7 +523,6 @@
     <string name="notif_csv_channel_name">CSV import progress</string>
     <string name="notif_csv_channel_desc">Shows the progress of the CSV import</string>
     <string name="notif_pdf_title">BrickInventory – PDF export</string>
-    <string name="notif_pdf_running">PDF export running…</string>
     <string name="notif_pdf_done_tap">PDF ready – tap to open</string>
     <string name="notif_pdf_failed">PDF export failed: %1$s</string>
     <string name="notif_pdf_channel_name">PDF export progress</string>

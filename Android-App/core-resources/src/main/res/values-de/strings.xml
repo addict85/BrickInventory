@@ -495,7 +495,7 @@
     <string name="logout_failed_text">Dieses Gerät konnte sich bei %1$s nicht abmelden. Die Anmeldung gilt dort womöglich noch: In der Web-App unter „Angemeldete Geräte“ widerrufen.</string>
     <string name="vm_rights_revoked">Deine Administratorrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
 
-    <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
+    <!-- Notifications of the CSV import and PDF export workers -->
     <string name="notif_csv_title">BrickInventory – CSV-Import</string>
     <string name="notif_csv_running">CSV-Import läuft…</string>
     <string name="notif_csv_importing">Importiere…</string>
@@ -503,7 +503,6 @@
     <string name="notif_csv_channel_name">CSV-Import Fortschritt</string>
     <string name="notif_csv_channel_desc">Zeigt den Fortschritt des CSV-Imports</string>
     <string name="notif_pdf_title">BrickInventory – PDF-Export</string>
-    <string name="notif_pdf_running">PDF-Export läuft…</string>
     <string name="notif_pdf_done_tap">PDF bereit – tippen zum Öffnen</string>
     <string name="notif_pdf_failed">PDF-Export fehlgeschlagen: %1$s</string>
     <string name="notif_pdf_channel_name">PDF-Export Fortschritt</string>

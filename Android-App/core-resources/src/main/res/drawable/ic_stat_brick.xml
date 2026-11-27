@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Status-Icon für die Foreground-Service-Benachrichtigungen.
+  Status-Icon für die Benachrichtigungen von CSV-Import und PDF-Export.
 
   setSmallIcon() braucht ein MONOCHROMES Drawable: Android rendert Status-
   Icons nur über ihren Alpha-Kanal. Das vorher benutzte adaptive Launcher-

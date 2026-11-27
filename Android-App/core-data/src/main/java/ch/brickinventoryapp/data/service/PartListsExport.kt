@@ -21,7 +21,7 @@ sealed interface ExportResult {
     data class Failure(val reason: PdfFailure) : ExportResult
 }
 
-/** The PDF export as a foreground service that lives longer than the screen; in the test a double. */
+/** The PDF export as background work that lives longer than the screen; in the test a double. */
 interface PartListsExport {
     /** Where a running export stands, null without an export. */
     val progress: Flow<PdfProgress?>

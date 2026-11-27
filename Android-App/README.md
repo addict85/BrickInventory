@@ -11,7 +11,7 @@ Kotlin + Jetpack Compose App für den BrickInventory Manager Server.
 - Android Studio in einer Fassung, die **AGP 9.4** versteht — nur nötig, wenn
   in der IDE gearbeitet wird; auf der Kommandozeile reichen JDK und SDK
 - Gradle muss **nicht** installiert sein: der mitgelieferte Wrapper holt
-  Gradle 9.8.2 selbst (siehe *Gradle-Wrapper* weiter unten)
+  Gradle 9.9.2 selbst (siehe *Gradle-Wrapper* weiter unten)
 - BrickInventory Manager Server läuft und ist erreichbar
 
 ## Öffnen in Android Studio
@@ -77,7 +77,7 @@ unter *Release signieren*.
 
 ### Erster Lauf dauert lange
 
-Der Wrapper lädt beim ersten Aufruf Gradle 9.8.2 (~140 MB), danach ziehen AGP,
+Der Wrapper lädt beim ersten Aufruf Gradle 9.9.2 (~140 MB), danach ziehen AGP,
 Kotlin, KSP und die Abhängigkeiten nochmals einige hundert MB. Das passiert
 einmal pro Rechner; Gradle legt alles unter `~/.gradle/` ab.
 
@@ -401,7 +401,7 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 | `core-security` | `ch.brickinventoryapp.security` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
 | `core-offline` | `ch.brickinventoryapp.offline` | Room samt Schema (`core-offline/schemas`, SQLCipher), Offlineablage, Ausgang und lokale Anwendung von Bearbeitungen, alles in Fachtypen; kennt weder Netz noch Repositories noch das Wire-Format |
 | `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories (geben Fach- und Ansichtstypen zurück), DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, Vertrag und Strom des PDF-Auftrags. Repositories nach Bereich in `data.catalog`, `data.collection`, `data.parts`, `data.finances`, `data.account`: Schnittstelle öffentlich, Implementierung `internal`, gebunden in `di/RepositoryModule`; gemeinsamer Kern (`Outcome`, Abrufhelfer) in `data.repository`, kennt keinen Bereich (ModuleBoundariesTest). Testhilfen (Test-API, Testserver, Repository-Fabriken) in `src/testFixtures`, Paket `data.testing` |
-| `core-services` | `ch.brickinventoryapp.services` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
+| `core-services` | `ch.brickinventoryapp.services` | CSV-Import und PDF-Export im Hintergrund sowie stündlicher Preisalarm, alles über WorkManager (keine Vordergrunddienste); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine, geheime Zwischenablage); kennt keine Ansichten und keine Servermodelle |
 | `core-ui-inventory` | `ch.brickinventoryapp.shared` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-resources`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
 | `core-session` | `ch.brickinventoryapp.session` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |

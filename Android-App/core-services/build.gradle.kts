@@ -1,5 +1,5 @@
-// Background services with their own Android entry point: CSV import and PDF export as
-// foreground services, and the hourly price alert (WorkManager). Depends on
+// Background work with its own Android entry point, all on WorkManager: following the CSV
+// import and the PDF export, and the hourly price alert. Depends on
 // core-data (repositories, stores); core-data does not know this module.
 plugins {
     alias(libs.plugins.brickinventory.android.library)

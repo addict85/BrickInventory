@@ -1,0 +1,16 @@
+Gegenprobe: Der PDF-Worker lässt seinen laufenden Balken nach dem Ende stehen
+Modul: core-services
+Test: ch.brickinventoryapp.services.PdfFollowUpTest
+Rot: a cancelled run removes its bar
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt
+@@ -87,7 +87,6 @@
+             } finally {
+                 // Joined first, so no late progress lands after the bar is gone.
+                 withContext(NonCancellable) { bar.cancelAndJoin() }
+-                notifier.clearProgress()
+             }
+         }
+         return ListenableWorker.Result.success()

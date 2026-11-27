@@ -1,0 +1,16 @@
+Gegenprobe: Ein abgebrochener CSV-Worker räumt seinen laufenden Balken nicht mehr weg
+Modul: core-services
+Test: ch.brickinventoryapp.services.CsvImportWatchTest
+Rot: a cancelled watch removes its bar
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvImportWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvImportWorker.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvImportWorker.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvImportWorker.kt
+@@ -125,7 +125,6 @@
+         val end = try {
+             withTimeoutOrNull(budgetMs) { follow() } ?: End.OUT_OF_TIME
+         } catch (e: CancellationException) {
+-            notifier.clear()
+             throw e
+         }
+         if (end == End.FINISHED) notifier.finished() else notifier.clear()

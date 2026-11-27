@@ -62,7 +62,7 @@ class CsvStatusReloadTest {
     fun `a running import starts the service exactly once`() {
         for (status in listOf("running", "pending")) {
             assert(csvSequence(wasBeforeActive = false, status = RunStatus.from(status)) == CsvSequence.SERVICE_START) {
-                "On starting up (\"$status\") the foreground service must start"
+                "On starting up (\"$status\") the background follow-up must start"
             }
             assert(csvSequence(wasBeforeActive = true, status = RunStatus.from(status)) == CsvSequence.NOTHING) {
                 "Every progress row starts the service again — the same pattern " +

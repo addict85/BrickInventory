@@ -39,8 +39,8 @@ import org.junit.Test
  *      → sub-step 1 red (receiver no longer comes from localizedContext).
  *   b) in GalleryFeature a message set back to `ctx.getString(...)`
  *      → sub-step 1 red.
- *   c) in CsvImportService `loc` replaced by `this` → sub-step 1 red.
- *      The services were already right; the probe shows that they must
+ *   c) in the CSV notifier `loc` replaced by `this` → sub-step 1 red.
+ *      The notifiers were already right; the probe shows that they must
  *      stay so.
  *   d) in the helper `if (args.isEmpty())` removed → sub-step 3 red.
  *

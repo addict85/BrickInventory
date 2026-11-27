@@ -1,0 +1,17 @@
+Gegenprobe: Ein Import über das Zeitbudget beendet den Worker als erledigt statt mit einem neuen Versuch
+Modul: core-services
+Test: ch.brickinventoryapp.services.CsvImportWatchTest
+Rot: an import that outlasts the budget
+
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvImportWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvImportWorker.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvImportWorker.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvImportWorker.kt
+@@ -101,7 +101,7 @@
+ /** Only out of time asks for another run; unreachable ends quietly, as the foreground service did. */
+ internal fun CsvImportWatch.End.toWorkResult(): ListenableWorker.Result = when (this) {
+     CsvImportWatch.End.FINISHED, CsvImportWatch.End.UNREACHABLE -> ListenableWorker.Result.success()
+-    CsvImportWatch.End.OUT_OF_TIME -> ListenableWorker.Result.retry()
++    CsvImportWatch.End.OUT_OF_TIME -> ListenableWorker.Result.success()
+ }
+ 
+ /**

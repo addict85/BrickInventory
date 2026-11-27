@@ -1,0 +1,18 @@
+Gegenprobe: Der SystemForegroundService von WorkManager bleibt im zusammengeführten Manifest
+Modul: app
+Test: ch.brickinventoryapp.app.LibraryComponentsTest
+Rot: the app asks for no foreground service
+
+diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml
+--- a/Android-App/app/src/main/AndroidManifest.xml
++++ b/Android-App/app/src/main/AndroidManifest.xml
+@@ -112,9 +112,6 @@
+         </service>
+ 
+         <!-- Without FOREGROUND_SERVICE this WorkManager service could never start (see above). -->
+-        <service
+-            android:name="androidx.work.impl.foreground.SystemForegroundService"
+-            tools:node="remove" />
+ 
+         <!--
+           ── WorkManager NICHT beim Start hochfahren ───────────────────────────

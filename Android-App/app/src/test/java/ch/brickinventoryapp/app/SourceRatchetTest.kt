@@ -113,7 +113,7 @@ class SourceRatchetTest {
 
     @Test
     fun `test functions that read source become fewer, never more`() {
-        val FUNCTIONS = 141
+        val FUNCTIONS = 140
         val ONLY_SOURCE_TEXT = 32
         // Every module and build-logic, with device tests and test fixtures: a check that moves does not vanish.
         val all = (Sources.module + File(Sources.project, "build-logic")).flatMap { m ->
@@ -458,7 +458,7 @@ class SourceRatchetTest {
                 if (swallows) "${f.name}:${c.substring(0, m.range.first).count { it == '\n' } + 1}" else null
             }.toList()
         }
-        assert(names.size > 100 && checked >= 15) { "Only ${names.size} suspend functions, $checked catches — does the search still apply?" }
+        assert(names.size > 100 && checked >= 13) { "Only ${names.size} suspend functions, $checked catches — does the search still apply?" }
         assert(findings.isEmpty()) {
             "Broad catch around a suspending call without a cancellation branch; use catchUnlessCancelled:\n  " +
                 findings.joinToString("\n  ")
@@ -513,7 +513,7 @@ class SourceRatchetTest {
         // What only the own module needs is internal: every public declaration is
         // interface for all areas. Counted at the top level, across core-data and
         // everything split off from it; otherwise the number would sink spuriously when moving.
-        val LIMIT_AREAS = 182
+        val LIMIT_AREAS = 180
         val other = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
         val module = Sources.module.filter { it.name.startsWith("core-") && it.name !in other }

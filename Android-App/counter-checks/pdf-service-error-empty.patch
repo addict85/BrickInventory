@@ -3,10 +3,10 @@ Modul: core-services
 Test: ch.brickinventoryapp.services.PdfServiceTextsTest
 Rot: every error has a sentence, without the server's sentence from code or kind
 
-diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportService.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportService.kt
---- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportService.kt
-+++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportService.kt
-@@ -180,7 +180,7 @@
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/PdfExportWorker.kt
+@@ -109,7 +109,7 @@
  /** Never empty: without a string from the server, the error code speaks, otherwise the kind of error. */
  internal fun errorText(reason: PdfFailure, sentence: Sentence): String = when (reason) {
      is PdfFailure.Job -> reason.sentence?.takeIf { it.isNotBlank() } ?: sentence(R.string.pdfexp_server_error, emptyList())

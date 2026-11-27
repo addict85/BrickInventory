@@ -68,7 +68,6 @@ internal val structureChecks: Map<String, String> = mapOf(
     "ResourceAndCacheTest.kt: both camera screens release executor and ML Kit client" to
         "rule over every camera screen; ML Kit clients cannot be created under Robolectric",
     "ResourceAndCacheTest.kt: the version comes from Git, not from the clock" to "build script and workflow",
-    "ResourceAndCacheTest.kt: the CSV service shares the SSE client with the ViewModel" to "one implementation",
     "MediaAuthTest.kt: images are not loaded bypassing the ImageLoader" to "ban",
     "MediaAuthTest.kt: the app does not assemble image paths itself" to "ban",
     "MediaAuthTest.kt: no when over Result uses an else branch" to "ban",

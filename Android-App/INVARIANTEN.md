@@ -164,10 +164,16 @@ solange „läuft nicht“ gilt. Datei: `app/csv/CsvImportViewModel.kt` · Test:
 
 ## Dienste, Dateien, Caches
 
-**Services lokalisiert.** Texte aus den Ressourcen über
-`LanguageManager.localizedContext(this)`; `setSmallIcon()` nur mit monochromem Drawable.
-Dateien: `services/service/CsvImportService.kt`, `services/service/PdfExportService.kt`,
+**Meldungen lokalisiert.** Texte aus den Ressourcen über
+`LanguageManager.localizedContext(…)`; `setSmallIcon()` nur mit monochromem Drawable.
+Dateien: `services/service/CsvImportNotifier.kt`, `services/service/PdfExportNotifier.kt`,
 `services/service/PdfExportManager.kt`, `data/util/LanguageManager.kt` · Test: `ServicePolishTest`
+
+**Keine Vordergrunddienste.** CSV-Import und PDF-Export laufen nach dem Verlassen der App als
+gewöhnliche Worker ohne `setForeground()` weiter und melden ihr Ende; `FOREGROUND_SERVICE`
+nimmt das Manifest auch WorkManager weg. Dateien: `services/service/CsvImportWorker.kt`,
+`services/service/PdfExportWorker.kt` · Tests: `LibraryComponentsTest`, `CsvImportWatchTest`,
+`PdfFollowUpTest`
 
 **Kein FileProvider.** Die Teileliste gibt nur der eigene `TeilelistenProvider` weiter:
 nicht exportiert, Leserecht nur über die Auswahl des Systems, Klartext nur im Speicher
@@ -180,8 +186,8 @@ keine Berechtigung `REQUEST_INSTALL_PACKAGES`, kein Installer-Empfänger.
 Tests: `LibraryComponentsTest`, `ManifestCheckTest`
 
 **Ein CSV-Statuspfad.** SSE zuerst, Polling nur als Rückfall, die Statuslogik in
-`applyStatus()` samt Anlaufschutz. Dateien: `services/service/CsvImportService.kt`,
-`data/CsvImportSseClient.kt` · Test: `ResourceAndCacheTest`
+`applyStatus()` samt Anlaufschutz. Dateien: `services/service/CsvImportWorker.kt`,
+`data/CsvImportSseClient.kt` · Test: `CsvImportWatchTest`
 
 **PDF-Cache mit Budget.** `prunePdfCache()` hält `PDF_CACHE_BUDGET_BYTES`, älteste zuerst,
 ohne die gerade angeforderte Datei. Datei: `finances/ui/pdf/InstructionLoader.kt` · Tests:
