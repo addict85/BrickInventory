@@ -28,7 +28,7 @@ interface SetsRepository {
     /**
      * The gallery from the store by search, theme and storage location, sorted as on the
      * server — the source of the display; [refreshSets] fills it. The view over
-     * selected accounts is its own read model (Kontosicht).
+     * selected accounts is its own read model (AccountView).
      */
     fun observeSets(search: String? = null, theme: String? = null, storageLocation: String? = null,
                       sort: SetSort? = null): Flow<Local<SetView>>

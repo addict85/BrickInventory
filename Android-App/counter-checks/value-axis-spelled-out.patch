@@ -3,9 +3,9 @@ Modul: core-ui-inventory
 Test: ch.brickinventoryapp.shared.AxesRoundTest
 Rot: large font labels the value axis briefly
 
-diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAchsen.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAchsen.kt
---- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAchsen.kt
-+++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAchsen.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAxes.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAxes.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAxes.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ChartAxes.kt
 @@ -48,7 +48,6 @@
   * took up a third of the chart width at 200%; the amount sits in the header card above it.
   */

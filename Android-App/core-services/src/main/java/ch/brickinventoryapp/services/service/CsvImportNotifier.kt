@@ -55,7 +55,7 @@ internal class AndroidCsvNotifier(context: Context) : CsvNotifier {
         .setContentTitle(loc.getString(R.string.notif_csv_title))
         .setContentText(text)
         .setSmallIcon(R.drawable.ic_stat_brick)
-        // Only the title while locked, like the notifications in core-data (Sperrbildschirm.kt).
+        // Only the title while locked, like the notifications in core-data (LockScreenNotification.kt).
         .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
         .setPublicVersion(NotificationCompat.Builder(loc, CHANNEL_ID).setSmallIcon(R.drawable.ic_stat_brick)
             .setContentTitle(loc.getString(R.string.notif_csv_title)).build())

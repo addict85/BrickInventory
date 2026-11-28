@@ -173,7 +173,7 @@ class TokenStore @Inject constructor(
         } else raw
     /**
      * The bearer token in plaintext, only from the encrypted value ([AUTH_TOKEN] never applies).
-     * A locked keystore is waited for and caught up on (util/Tresorbefund.readToken).
+     * A locked keystore is waited for and caught up on (util/VaultFinding.readToken).
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val authToken: Flow<String> = dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] }
@@ -323,7 +323,7 @@ class TokenStore @Inject constructor(
         }
         tokenLimit.write(newSession = newOrigin) {
             // Decided via the disk, not via memory: with a locked
-            // keystore memory reports "", but the token is still there (Tresorbefund).
+            // keystore memory reports "", but the token is still there (VaultFinding).
             val plate = dataStore.data.first()
             // Before everything else: if it cannot be stored, everything stays with the old server.
             val address = encrypt(ADDRESS, normalized)

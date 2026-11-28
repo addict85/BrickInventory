@@ -46,7 +46,7 @@ object StateModule {
 
     // The ViewModels only see interfaces, so tests can swap them out without Hilt; the implementations are singletons.
     @Provides fun provideScope(b: ScopeService): Scope = b
-    // The session (core-session) loads after sign-in via these steps of the Blickfeld.
+    // The session (core-session) loads after sign-in via these steps of the scope.
     @Provides fun provideFilterSource(b: ScopeService): FilterSource = b
     @Provides fun provideOutboxNotifier(a: InitialObserver): OutboxNotifier = a
     // One holder for all tabs: a second one wouldn't have the first one's positions.

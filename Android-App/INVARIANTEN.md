@@ -236,7 +236,7 @@ rechnet, die App rechnet nicht nach. Dateien: `finances/ui/screens/FinanceScreen
 **Beträge sind Geld, Zeitpunkte Instant.** Fachtypen tragen Beträge als `Geld`
 (Zehntausendstel wie der Server), gerundet auf Rappen erst in der Anzeige; Zeitpunkte als
 `Instant`, der Kalendertag ist der in UTC. Double und Text gibt es nur auf der Leitung.
-Dateien: `model/domain/Money.kt`, `model/util/DatumFormat.kt` · Tests: `MoneyTest`, `SourceRatchetTest`
+Dateien: `model/domain/Money.kt`, `model/util/DateFormat.kt` · Tests: `MoneyTest`, `SourceRatchetTest`
 
 ## Bau und Plattform
 

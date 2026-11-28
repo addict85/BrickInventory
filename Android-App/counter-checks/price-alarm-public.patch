@@ -1,4 +1,4 @@
-Gegenprobe: Der Preisalarm zeigt Set und Preis auf dem Sperrbildschirm
+Gegenprobe: Der Preisalarm zeigt Set und Preis auf dem LockScreenNotification
 Modul: app
 Test: ch.brickinventoryapp.app.PriceAlertMessageTest
 Rot: on the lock screen neither set nor price is shown

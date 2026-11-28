@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
-import ch.brickinventoryapp.data.parts.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.parts.MinifigsRepositoryImpl
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.PathServer
@@ -37,7 +37,7 @@ class PartsSlotValuesTest {
     )
     private val api = paths.onTick()
     private val parts = PartsRepositoryImpl(api, store, RetryPolicy.ONCE)
-    private val figures = FiguresRepositoryImpl(api, store, RetryPolicy.ONCE)
+    private val figures = MinifigsRepositoryImpl(api, store, RetryPolicy.ONCE)
 
     @After
     fun tearDown() = paths.server.shutdown()

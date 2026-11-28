@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.account.AccountRepositoryImpl
-import ch.brickinventoryapp.data.account.AdminRepositoryImpl
+import ch.brickinventoryapp.data.account.ManagementRepositoryImpl
 import ch.brickinventoryapp.data.account.HouseholdRepositoryImpl
 import ch.brickinventoryapp.data.account.StepBindingImpl
 import ch.brickinventoryapp.data.api.AccountApi
@@ -20,7 +20,7 @@ import ch.brickinventoryapp.data.catalog.CatalogRepositoryImpl
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
 import ch.brickinventoryapp.data.finances.FinancesRepositoryImpl
 import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
-import ch.brickinventoryapp.data.parts.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.parts.MinifigsRepositoryImpl
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.TestApi
@@ -61,15 +61,15 @@ class ApiAreasTest {
     @Test
     fun `every repository sees only its area`() {
         val expected = mapOf(
-            AccountRepositoryImpl::class to AccountApi::class.java, AdminRepositoryImpl::class to ManagementApi::class.java,
-            CatalogRepositoryImpl::class to CatalogApi::class.java, FiguresRepositoryImpl::class to MinifigsApi::class.java,
+            AccountRepositoryImpl::class to AccountApi::class.java, ManagementRepositoryImpl::class to ManagementApi::class.java,
+            CatalogRepositoryImpl::class to CatalogApi::class.java, MinifigsRepositoryImpl::class to MinifigsApi::class.java,
             SetsRepositoryImpl::class to SetsApi::class.java,
             PartsRepositoryImpl::class to PartsApi::class.java, HouseholdRepositoryImpl::class to HouseholdApi::class.java,
             FinancesRepositoryImpl::class to FinancesApi::class.java, VouchersRepositoryImpl::class to VouchersApi::class.java,
             StepBindingImpl::class to DeviceApi::class.java,
         )
         for ((repo, api) in expected) {
-            // With a default value (Offlineablage) Kotlin generates a second constructor;
+            // With a default value (OfflineStore) Kotlin generates a second constructor;
             // the area stands first in both.
             val type = repo.java.constructors.map { it.parameterTypes.first() }.distinct().single()
             assertEquals(repo.simpleName, api, type)

@@ -13,7 +13,7 @@ data class Appearance(val design: Design, val dark: Boolean, val systemColors: B
 const val SYSTEM_COLORS_AB_SDK = 31
 
 /**
- * [brightness] (Helligkeit.SYSTEM/LIGHT/DARK) decides whether the dark variant
+ * [brightness] (Brightness.SYSTEM/LIGHT/DARK) decides whether the dark variant
  * applies for the SAME theme as on the web (data-dunkel), not a different theme.
  * Werkbank is already dark and stays as it is. System colors always have a
  * dark variant; below Android 12 they don't exist, then the theme applies.

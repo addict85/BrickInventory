@@ -52,7 +52,7 @@ class ColorAloneTest {
     /** The files whose color statement demonstrably has a second carrier. */
     private val checked = setOf(
         "MonitoringScreen.kt",
-        "MonitoringKontingente.kt",
+        "MonitoringQuotas.kt",
         "SetupQr.kt",
         "BarcodeScannerScreen.kt",
         "PortfolioChart.kt",

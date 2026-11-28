@@ -15,7 +15,7 @@ import ch.brickinventoryapp.model.ui.theme.Design
 
 /**
  * The management of the server (admins only), in views: the wire format stays
- * behind the implementation (AdminRepositoryImpl). Actions without a usable response
+ * behind the implementation (ManagementRepositoryImpl). Actions without a usable response
  * deliver Unit; a `success: false` of the server comes as [Outcome.Failure.Refusal].
  */
 interface ManagementRepository {

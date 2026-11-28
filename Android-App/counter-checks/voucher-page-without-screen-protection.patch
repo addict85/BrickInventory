@@ -3,9 +3,9 @@ Modul: feature-finances
 Test: ch.brickinventoryapp.finances.VoucherPrivacyScreenDisplayTest
 Rot: the voucher page is protected as long as it is shown
 
-diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersUnterseite.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersUnterseite.kt
---- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersUnterseite.kt
-+++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersUnterseite.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersSubpage.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersSubpage.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersSubpage.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersSubpage.kt
 @@ -28,7 +28,6 @@
      onBack: () -> Unit,
  ) {

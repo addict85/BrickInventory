@@ -55,7 +55,7 @@ class RedemptionWorker @AssistedInject constructor(
     private val vault: TokenEncryption,
     private val areas: Scopes,
     private val lock: DeviceLock,
-    /** Reads the job (Auftragsablage) and records a failed one (Entwertungsprotokoll). */
+    /** Reads the job (JobStore) and records a failed one (RedemptionLog). */
     private val device: DevicesStore,
 ) : CoroutineWorker(context, params) {
 
@@ -100,7 +100,7 @@ class RedemptionWorker @AssistedInject constructor(
     }
 
     companion object {
-        /** The whole job as a ciphertext (Auftragsablage). */
+        /** The whole job as a ciphertext (JobStore). */
         const val JOB = "auftrag_geheim"
         /** Fields of older versions: only read any more. */
         const val SERVER = "server"

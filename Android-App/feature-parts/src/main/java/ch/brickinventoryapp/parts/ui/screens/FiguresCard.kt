@@ -196,7 +196,7 @@ private fun MinifigCardTexts(fig: FigureView) {
             Text(stringResource(R.string.name_unknown), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        // A shared helper (util/DatumFormat.kt): it also handles timestamps without
+        // A shared helper (util/DateFormat.kt): it also handles timestamps without
         // milliseconds.
         val dateLabel = remember(fig.setAddedAt) {
             fmtTag(fig.setAddedAt, DateYear.SHORT)

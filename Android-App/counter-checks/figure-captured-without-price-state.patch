@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.PartsSlotValuesTest
 Rot: adding a figure reports new and the state of the purchase price
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/FiguresRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/FiguresRepositoryImpl.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/FiguresRepositoryImpl.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/FiguresRepositoryImpl.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/MinifigsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/MinifigsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/MinifigsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/parts/MinifigsRepositoryImpl.kt
 @@ -81,7 +81,7 @@
              store.write(Editing.RecordFigure(entry),
                  { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { key ->

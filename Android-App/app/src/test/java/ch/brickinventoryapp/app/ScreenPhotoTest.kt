@@ -74,20 +74,27 @@ import java.util.Locale
  * verifyRoborazziDebug red) and not measurable here without the Android SDK; until then
  * SampleDataTest checks that the images show content.
  */
+/**
+ * The design as it appears in the photo's name: the English enum name (`color-fan`), not the
+ * stored identifier, which keeps its German spelling for older clients.
+ */
+internal fun photoDesign(name: String): Design =
+    checkNotNull(Design.entries.firstOrNull { it.name.lowercase().replace('_', '-') == name }) { name }
+
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ScreenPhotoTest(private val design: String, private val dark: Boolean, private val device: String) {
 
     companion object {
         private val DEVICES = mapOf(
-            "telefon" to "w411dp-h891dp-port-xxhdpi",
+            "phone" to "w411dp-h891dp-port-xxhdpi",
             "tablet" to "w1280dp-h800dp-land-xhdpi",
         )
 
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-{1}-{2}")
         fun cases(): List<Array<Any>> =
-            listOf("classic", "brick", "noppe").flatMap { d ->
+            listOf("classic", "brick", "stud").flatMap { d ->
                 listOf(false, true).flatMap { dk -> DEVICES.keys.map { g -> arrayOf<Any>(d, dk, g) } }
             }
     }
@@ -116,15 +123,15 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
         Locale.setDefault(Locale.forLanguageTag("de-CH"))
         provide(name, ready, condition)
         compose.setContent {
-            BrickInventoryManagerTheme(theme = checkNotNull(Design.from(design)) { design }, dark = dark) {
+            BrickInventoryManagerTheme(theme = photoDesign(design), dark = dark) {
                 Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
         }
         // The screen partly loads more on appearing (e.g. the purchases). These
         // responses also come via the main looper, so drive it again.
-        provide("$name (angezeigt)", ready, condition)
+        provide("$name (shown)", ready, condition)
         compose.waitForIdle()
-        val light = if (dark) "dunkel" else "hell"
+        val light = if (dark) "dark" else "light"
         compose.onRoot().captureRoboImage("src/test/screenshots/${name}_${design}_${light}_$device.png")
     }
 
@@ -138,7 +145,7 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
     @Test
     fun gallery() {
         val vm = world.gallery().also { it.loadSets(); it.loadStats() }
-        photo("galerie", { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.fetch.loading } }, { vm.galleryState.value }) {
+        photo("gallery", { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.fetch.loading } }, { vm.galleryState.value }) {
             GalleryRoute(vm = vm, entryVm = entryVm(), imageLoader = images, onScanBarcode = {}, onSetClick = {})
         }
     }
@@ -160,7 +167,7 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
     @Test
     fun parts() {
         val vm = world.parts().also { it.loadParts() }
-        photo("teile", { vm.partsState.value.parts.isNotEmpty() }, { vm.partsState.value }) {
+        photo("parts", { vm.partsState.value.parts.isNotEmpty() }, { vm.partsState.value }) {
             PartsRoute(vm = vm, imageLoader = images)
         }
     }
@@ -168,7 +175,7 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
     @Test
     fun figures() {
         val vm = world.figures().also { it.loadMinifigs() }
-        photo("figuren", { vm.minifigsState.value.minifigs.isNotEmpty() }, { vm.minifigsState.value }) {
+        photo("minifigs", { vm.minifigsState.value.minifigs.isNotEmpty() }, { vm.minifigsState.value }) {
             MinifigsRoute(vm = vm, imageLoader = images)
         }
     }
@@ -177,7 +184,7 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
     fun finances() {
         val vm = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
         // loadValuation() loads parts, figures and P&L only after the valuation.
-        photo("finanzen", { vm.financeState.value.let { it.valuation != null && it.partsValuation != null &&
+        photo("finances", { vm.financeState.value.let { it.valuation != null && it.partsValuation != null &&
             it.figsValuation != null && it.pnl != null && it.historyPoints.isNotEmpty() &&
             !it.valuationLoad.loading && !it.history.loading } }, { vm.financeState.value }) {
             FinanceRoute(vm = vm, imageLoader = images)
@@ -187,14 +194,14 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
     @Test
     fun wantedList() {
         val vm = world.wantedList().also { it.loadWanted() }
-        photo("merkliste", { vm.wantedState.value.wantedItem.isNotEmpty() }, { vm.wantedState.value }) {
+        photo("wanted-list", { vm.wantedState.value.wantedItem.isNotEmpty() }, { vm.wantedState.value }) {
             WantedRoute(vm = vm, imageLoader = images, onScan = {}, onOpenSingle = { _, _ -> })
         }
     }
 
     @Test
     fun logIn() {
-        photo("anmelden") {
+        photo("login") {
             LoginScreen(
                 LoginScreenState(serverUrl = "https://brick.example.org", registrationOpen = true),
                 object : LoginActions {},
@@ -204,23 +211,23 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
 
     @Test
     fun setUp() {
-        photo("einrichten") { SetupScreen(currentUrl = "https://brick.fritz.box", onSave = {}, development = false) }
+        photo("setup") { SetupScreen(currentUrl = "https://brick.fritz.box", onSave = {}, development = false) }
     }
 
     /** A saved http address from an older version: at the top the instructions for https. */
     @Test
     fun setUpLegacyStock() {
-        photo("einrichten-altbestand") { SetupScreen(currentUrl = "http://nas:3000", onSave = {}, development = false) }
+        photo("setup-legacy") { SetupScreen(currentUrl = "http://nas:3000", onSave = {}, development = false) }
     }
 
     @Test
     fun vouchers() {
-        photo("gutscheine") { Vouchers() }
+        photo("vouchers") { Vouchers() }
     }
 
     @Test
     fun register() {
-        photo("registrieren") {
+        photo("register") {
             LoginScreen(
                 LoginScreenState(serverUrl = "https://brick.example.org", form = LoginForm.REGISTER, registrationOpen = true),
                 object : LoginActions {},
@@ -231,12 +238,12 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
     /** The mandatory forms are dead ends until the end — hence in every design. */
     @Test
     fun startPassword() {
-        photo("startpasswort") { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
+        photo("start-password") { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
     }
 
     @Test
     fun secondFactor() {
-        photo("zweiter-faktor") { SecondFactorRequiredMask(SecondFactorUiState(active = false), {}, {}, {}, {}) }
+        photo("second-factor") { SecondFactorRequiredMask(SecondFactorUiState(active = false), {}, {}, {}, {}) }
     }
 }
 

@@ -79,7 +79,7 @@ interface FilterChoice {
 
 /**
  * In the app's scope: a filter that someone set is remembered, even if
- * the screen disappears right after. The Blickfeld state is a
+ * the screen disappears right after. The scope state is a
  * singleton and tolerates any thread.
  */
 class AreaFilter @Inject constructor(

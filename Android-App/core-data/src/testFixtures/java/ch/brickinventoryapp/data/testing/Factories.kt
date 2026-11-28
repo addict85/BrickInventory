@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.account.AccountRepositoryImpl
 import ch.brickinventoryapp.data.account.AccountView
-import ch.brickinventoryapp.data.account.AdminRepositoryImpl
+import ch.brickinventoryapp.data.account.ManagementRepositoryImpl
 import ch.brickinventoryapp.data.account.HouseholdRepository
 import ch.brickinventoryapp.data.account.HouseholdRepositoryImpl
 import ch.brickinventoryapp.data.account.ManagementRepository
@@ -30,14 +30,14 @@ import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.collection.SetFilesRepositoryImpl
 import ch.brickinventoryapp.data.collection.SetsRepository
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
-import ch.brickinventoryapp.data.collection.WantedListRepositoryImpl
+import ch.brickinventoryapp.data.collection.WantedRepositoryImpl
 import ch.brickinventoryapp.data.collection.WantedRepository
 import ch.brickinventoryapp.data.finances.FinancesRepository
 import ch.brickinventoryapp.data.finances.FinancesRepositoryImpl
 import ch.brickinventoryapp.data.finances.VouchersRepository
 import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
 import ch.brickinventoryapp.data.local.StockReconciliation
-import ch.brickinventoryapp.data.parts.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.parts.MinifigsRepositoryImpl
 import ch.brickinventoryapp.data.parts.MinifigsRepository
 import ch.brickinventoryapp.data.parts.PartsRepository
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
@@ -62,7 +62,7 @@ fun testSetsRepository(api: SetsApi, store: OfflineStore = TestStore()): SetsRep
     SetsRepositoryImpl(api, store, RetryPolicy.ONCE)
 
 fun testWantedRepository(api: SetsApi, store: OfflineStore = TestStore()): WantedRepository =
-    WantedListRepositoryImpl(api, store, RetryPolicy.ONCE)
+    WantedRepositoryImpl(api, store, RetryPolicy.ONCE)
 
 fun testAlarmRepository(api: SetsApi, store: OfflineStore = TestStore()): AlarmRepository =
     AlarmRepositoryImpl(api, store, RetryPolicy.ONCE)
@@ -77,7 +77,7 @@ fun testPartsRepository(api: PartsApi, store: OfflineStore = TestStore()): Parts
     PartsRepositoryImpl(api, store, RetryPolicy.ONCE)
 
 fun testMinifigsRepository(api: MinifigsApi, store: OfflineStore = TestStore()): MinifigsRepository =
-    FiguresRepositoryImpl(api, store, RetryPolicy.ONCE)
+    MinifigsRepositoryImpl(api, store, RetryPolicy.ONCE)
 
 fun testVouchersRepository(api: VouchersApi): VouchersRepository =
     VouchersRepositoryImpl(api, TestStore())
@@ -93,7 +93,7 @@ fun testHouseholdRepository(api: HouseholdApi, store: OfflineStore = TestStore()
     HouseholdRepositoryImpl(api, store)
 
 fun testManagementRepository(api: ManagementApi): ManagementRepository =
-    AdminRepositoryImpl(api)
+    ManagementRepositoryImpl(api)
 
 fun testCatalogRepository(api: CatalogApi, store: OfflineStore = TestStore()): CatalogRepository =
     CatalogRepositoryImpl(api, store, RetryPolicy.ONCE)
@@ -104,9 +104,9 @@ fun testAccountView(api: BrickApiService, store: OfflineStore = TestStore()): Ac
 
 /** Sets, parts and figures on one shared [store]. */
 fun testStockReconciliation(api: BrickApiService, store: OfflineStore): StockReconciliation =
-    StockReconciliation(SetsRepositoryImpl(api, store, RetryPolicy.ONCE), WantedListRepositoryImpl(api, store, RetryPolicy.ONCE),
+    StockReconciliation(SetsRepositoryImpl(api, store, RetryPolicy.ONCE), WantedRepositoryImpl(api, store, RetryPolicy.ONCE),
         PartsRepositoryImpl(api, store, RetryPolicy.ONCE),
-        FiguresRepositoryImpl(api, store, RetryPolicy.ONCE), store)
+        MinifigsRepositoryImpl(api, store, RetryPolicy.ONCE), store)
 
 /** The device store's trust cipher with a fixed key: Robolectric has no Keystore. */
 fun testTrustCipher(key: Byte = 7): TrustCipher = TrustCipher { ByteArray(32) { key } }

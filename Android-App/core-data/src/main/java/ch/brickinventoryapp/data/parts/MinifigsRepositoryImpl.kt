@@ -41,7 +41,7 @@ import javax.inject.Singleton
  * Minifigures from sets and manually added ones — via Retrofit; the common fetch logic stands in Fetch.kt.
  */
 @Singleton
-internal class FiguresRepositoryImpl @Inject constructor(
+internal class MinifigsRepositoryImpl @Inject constructor(
     private val api: MinifigsApi,
     private val store: OfflineStore,
     private val retry: RetryPolicy,

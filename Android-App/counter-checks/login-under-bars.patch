@@ -3,9 +3,9 @@ Modul: feature-login
 Test: ch.brickinventoryapp.login.LoginEdgeTest
 Rot: sign-in starts below the status bar and ends above the gesture bar
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SystemBars.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SystemBars.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SystemBars.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/SystemBars.kt
 @@ -11,4 +11,4 @@
   * doesn't shrink the window. The keyboard last, so it only subtracts what sticks
   * out past the gesture bar.

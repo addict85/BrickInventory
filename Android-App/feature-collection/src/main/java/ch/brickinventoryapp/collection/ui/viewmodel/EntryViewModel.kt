@@ -41,7 +41,7 @@ import javax.inject.Inject
  * Entering sets: barcode and text recognition, entering via the set number
  * (gallery, catalog) and the "checking" display.
  *
- * Tied to the destination that scans or enters (Erfassungsrahmen): the scanner
+ * Tied to the destination that scans or enters (EntryFrame): the scanner
  * hands its result back there, checking and confirmation sit above that
  * destination, and no other destination reads the results.
  */

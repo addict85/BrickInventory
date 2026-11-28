@@ -79,7 +79,7 @@ class SessionService @Inject constructor(
     override fun launch() {
         if (!started.compareAndSet(false, true)) return
         reportFailedRedemption()
-        // The session reads currency and theme from the store (Kontowerte); here
+        // The session reads currency and theme from the store (AccountValues); here
         // only the server is asked whether the theme has changed.
         area.launch {
             launch { loadDesign() }

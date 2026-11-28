@@ -1,6 +1,6 @@
 // The rules by which the app talks to the server: guard interceptor,
 // network policy, address check. Knows neither Room nor repositories nor Hilt;
-// what the guard needs from the device (token, address) comes in via Zugangslage.
+// what the guard needs from the device (token, address) comes in via AccessState.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)

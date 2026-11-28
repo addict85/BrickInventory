@@ -66,7 +66,7 @@ import javax.inject.Singleton
 
 /**
  * The local store: Room (core-offline) for lists and outbox, WorkManager for
- * sending. The logic (Offlineablage, sync) knows only the interfaces and is
+ * sending. The logic (OfflineStore, sync) knows only the interfaces and is
  * thus checkable without Android.
  */
 @Module

@@ -204,7 +204,7 @@ internal class AccountRepositoryImpl @Inject constructor(
     /**
      * Invalidate the token at the server before it disappears locally — otherwise it would stay
      * valid until it expires. At most [limitMs]: sign-out must not depend on the
-     * network. What is then still open is caught up by data/Abmeldung.
+     * network. What is then still open is caught up by data/Redemption.
      */
     override suspend fun logoutAtServer(limitMs: Long): Boolean =
         redeemAtServer(limitMs) == RedemptionOutcome.REDEEMED

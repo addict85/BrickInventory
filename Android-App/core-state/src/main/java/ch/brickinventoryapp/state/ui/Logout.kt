@@ -11,7 +11,7 @@ import javax.inject.Inject
 /**
  * The order of signing out: first the server revokes the token (on a
  * server change that's still the old server), then the data layer cleans up the device,
- * and finally widget, session and Blickfeld clear their state.
+ * and finally widget, session and scope clear their state.
  */
 class Logout @Inject constructor(
     private val cleanup: SessionCleanup,

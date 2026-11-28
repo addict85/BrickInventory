@@ -115,7 +115,7 @@ class MainActivity : OnlyLauncherStart() {
 
     /**
      * A tapped notification while the app is already running (singleTop). The
-     * target lies in the Meldungseingang; OnlyLauncherStart has already removed extras and data
+     * target lies in the MessageInbox; OnlyLauncherStart has already removed extras and data
      * of the intent, because any app can start this activity.
      */
     override fun onNewIntent(intent: Intent) {

@@ -113,7 +113,7 @@ class ColorRolesTest {
     }
 
     /**
-     * The loading skeleton (Skelett.kt) draws skeletonTone on background.
+     * The loading skeleton (Skeleton.kt) draws skeletonTone on background.
      * Counter-check: skeletonTone returning surfaceVariant →
      * red „Ladekacheln heben sich …“ (classic 1.05, brick 1.03, `farbfaecher` 1.05, `noppe` 1.07).
      */

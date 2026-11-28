@@ -40,7 +40,7 @@ import javax.inject.Singleton
 
 /** The wishlist via Retrofit and store. */
 @Singleton
-internal class WantedListRepositoryImpl @Inject constructor(
+internal class WantedRepositoryImpl @Inject constructor(
     private val api: SetsApi,
     private val store: OfflineStore,
     private val retry: RetryPolicy,

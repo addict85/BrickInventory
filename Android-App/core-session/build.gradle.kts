@@ -24,5 +24,5 @@ dependencies {
 
     testFixturesImplementation(project(":core-data"))
     testFixturesImplementation(libs.kotlinx.coroutines.android)
-    // SessionService is tested in core-state: its tests assemble it together with the Blickfeld.
+    // SessionService is tested in core-state: its tests assemble it together with the scope.
 }

@@ -25,7 +25,7 @@ import java.io.File
  *   build-comment-too-long      six lines in gradle.properties → red “no comment in build files …”
  *   reference-to-archive        an „Ausführlich: docs/begruendungen/…“ in TokenVault.kt → red “no reference
  *                              to the reasoning archive …”
- *   kdoc-twice               an orphaned KDoc block before Alarmabholung → red, the same test
+ *   kdoc-twice               an orphaned KDoc block before AlarmFetch → red, the same test
  *   detekt-baseline-grows    upper limit one below the entries → red “the detekt baseline …”
  *   detekt-baseline-foreign-rule  a MagicNumber entry → red, the same test
  *   start-swallows-cancellation     makes “no broad catch …” red
@@ -33,7 +33,7 @@ import java.io.File
  *                              result is dropped silently” [Parts.kt:…]
  *   runcatching-um-suspend     BrickInventoryApp takes over the old token in runCatching again
  *                              → red “no runCatching swallows …”
- *   runcatching-around-suspend-lambda  Offlineablage calls the suspend source (a field of type
+ *   runcatching-around-suspend-lambda  OfflineStore calls the suspend source (a field of type
  *                              `suspend () -> String?`) in runCatching → red, the same test
  *   fully-qualified          `ch.brickinventoryapp.model.util.catchUnlessCancelled` written out → red
  *                              “no fully qualified project name …” and “fully qualified names …”

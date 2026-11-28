@@ -32,7 +32,7 @@ import kotlinx.coroutines.flow.Flow
 interface PartsRepository {
     /**
      * The parts from the store by search, color, category and spare parts; [refreshParts]
-     * fills them. Account, storage location and „In Sets“ are computed only by the server: Kontosicht.
+     * fills them. Account, storage location and „In Sets“ are computed only by the server: AccountView.
      */
     fun observeParts(search: String? = null, color: ColorPicker = ColorPicker.All, category: CategoryChoice = CategoryChoice.All,
                        spareParts: SparePartChoice = SparePartChoice.ALL): Flow<Local<PartView>>
@@ -42,7 +42,7 @@ interface PartsRepository {
     /** All pages of the parts and the manual parts into the store; the store is shown. */
     suspend fun refreshParts(): Outcome<Unit>
 
-    /** Only the manual parts — where the others come from the Kontosicht. */
+    /** Only the manual parts — where the others come from the AccountView. */
     suspend fun refreshManualParts(): Outcome<Unit>
 
     suspend fun getPartsStats(accounts: AccountSelection? = null): Outcome<PartsMetricsView?>

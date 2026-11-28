@@ -127,8 +127,8 @@ class MessageChannelTest {
             name.endsWith("ViewModel.kt") && Regex("""\bzeigeMeldung\(|\bmessages\.show\(""").containsMatchIn(s)
         }
         assert(writer.isNotEmpty()) { "No ViewModel writes messages — pattern outdated?" }
-        // The area ViewModels get it as Meldungen (Bereichshelfer.kt).
-        val helper = allWithoutComments().single { it.first == "Bereichshelfer.kt" }.second
+        // The area ViewModels get it as Meldungen (AreaHelpers.kt).
+        val helper = allWithoutComments().single { it.first == "AreaHelpers.kt" }.second
         assert(helper.contains("override fun show(text: String?) = channel.show(text)")) {
             "messages are no longer passed on into the app's channel"
         }

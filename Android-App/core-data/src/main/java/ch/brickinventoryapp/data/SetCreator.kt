@@ -22,7 +22,7 @@ interface SetCreator {
     ): Flow<SetCreateStep>
 }
 
-/** What the server reports during creation; the last step is Fertig, Fehler or NoConnection. */
+/** What the server reports during creation; the last step is Done, Failure or NoConnection. */
 sealed class SetCreateStep {
     data class MasterData(val name: String?) : SetCreateStep()
     object Image : SetCreateStep()

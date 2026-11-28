@@ -3,9 +3,9 @@ Modul: core-model
 Test: ch.brickinventoryapp.model.DateFormatTest
 Rot: the time follows the device's 12 or 24 hour setting
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DateFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DateFormat.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DateFormat.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DateFormat.kt
 @@ -111,6 +111,6 @@
   */
  fun timeOfDayFormat(locale: Locale, twentyFour: Boolean, seconds: Boolean = false): DateTimeFormatter =

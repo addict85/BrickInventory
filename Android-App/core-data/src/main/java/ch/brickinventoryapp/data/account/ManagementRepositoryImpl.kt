@@ -33,7 +33,7 @@ import javax.inject.Singleton
  * Operation and data maintenance: CSV import, log, background work, caches, quotas, global defaults — via Retrofit; the common fetch logic stands in Fetch.kt.
  */
 @Singleton
-internal class AdminRepositoryImpl @Inject constructor(
+internal class ManagementRepositoryImpl @Inject constructor(
     private val api: ManagementApi,
 ) : ManagementRepository {
 

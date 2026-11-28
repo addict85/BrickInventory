@@ -10,7 +10,7 @@ import org.junit.Test
  * The retry rule of the fetches: only on temporary errors, with
  * growing pause, and without network not at all — then the store shows its state.
  *
- * Counter-checks (kotlinc and JUnit against Netzlage.Wiederholung):
+ * Counter-checks (kotlinc and JUnit against NetworkState.Wiederholung):
  *   A  the pause not doubled → red “a temporary error is retried with
  *      growing pause” ([1000, 1000, 1000, 1000])
  *   B  the check for NO_NETWORK removed → red “without network there is no waiting”

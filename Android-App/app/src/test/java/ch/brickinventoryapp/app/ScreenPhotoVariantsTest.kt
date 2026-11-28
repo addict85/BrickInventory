@@ -184,7 +184,7 @@ import java.util.Locale
  * on 360 dp, list and detail on the tablet as well as the subpages storage locations,
  * household, CSV import and the build list. As there in German (de-CH),
  * where `-en` does not stand in the name. Names as there:
- * `<screen>[-variant]_<design>_<light|dark>_<gerät>.png`; device `quer` is the
+ * `<screen>[-variant]_<design>_<light|dark>_<device>.png`; device `landscape` is the
  * phone in landscape. Plus the catalog as a list, empty and failed tabs,
  * tablet at 200 % and the sign-in in landscape and at 200 %.
  *
@@ -221,23 +221,23 @@ class ScreenPhotoVariantsTest {
         driveUntil(name, requests = { world.paths.requests.size }, condition = condition, ready = ready)
     }
 
-    // Workbench is a dark design without a light version; „hell“ in the name was misleading.
+    // Workbench is a dark design without a light version; `light` in the name would mislead.
     private fun path(name: String, design: String, dark: Boolean, device: String) =
-        "src/test/screenshots/${name}_${design}_${if (dark || design == "werkbank") "dunkel" else "hell"}_$device.png"
+        "src/test/screenshots/${name}_${design}_${if (dark || design == "workbench") "dark" else "light"}_$device.png"
 
     /**
      * Shows [content] and waits for the data; the caller takes the photo so that
      * it can tap before (More, dialog) or stop the clock (loading).
      */
     private fun show(
-        name: String, design: String = "classic", dark: Boolean = false, device: String = "telefon",
+        name: String, design: String = "classic", dark: Boolean = false, device: String = "phone",
         language: String? = GERMAN, font: Float = 1f, ready: () -> Boolean = { true }, condition: () -> Any? = { null },
         wait: Boolean = true, content: @Composable () -> Unit,
     ) {
         val mask = when (device) {
             "tablet" -> "w1280dp-h800dp-land-xhdpi"
-            "schmal" -> "w360dp-h740dp-port-xxhdpi"
-            "quer" -> "w891dp-h411dp-land-xxhdpi"
+            "narrow" -> "w360dp-h740dp-port-xxhdpi"
+            "landscape" -> "w891dp-h411dp-land-xxhdpi"
             else -> "w411dp-h891dp-port-xxhdpi"
         }
         RuntimeEnvironment.setQualifiers(if (language != null) "$language-$mask" else mask)
@@ -247,7 +247,7 @@ class ScreenPhotoVariantsTest {
         if (language != null) Locale.setDefault(Locale.forLanguageTag(language.replace("-r", "-")))
         if (wait) provide(name, ready, condition)
         compose.setContent {
-            BrickInventoryManagerTheme(theme = checkNotNull(Design.from(design)) { design }, dark = dark) {
+            BrickInventoryManagerTheme(theme = photoDesign(design), dark = dark) {
                 val density = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(density.density, font)) {
                     Surface(color = MaterialTheme.colorScheme.background) { content() }
@@ -255,7 +255,7 @@ class ScreenPhotoVariantsTest {
             }
         }
         if (wait) {
-            provide("$name (angezeigt)", ready, condition)
+            provide("$name (shown)", ready, condition)
             compose.waitForIdle()
         }
     }
@@ -263,7 +263,7 @@ class ScreenPhotoVariantsTest {
     /**
      * Stop the clock and advance in fixed steps: the image then does not depend
      * on how far an animation (loading circle, fade-in, retraction of the pull indicator)
-     * was when triggering. galerie-fehler deviated between recording and verification.
+     * was when triggering. gallery-error deviated between recording and verification.
      */
     private fun pause() {
         compose.mainClock.autoAdvance = false
@@ -273,7 +273,7 @@ class ScreenPhotoVariantsTest {
         }
     }
 
-    private fun photo(name: String, design: String = "classic", dark: Boolean = false, device: String = "telefon") =
+    private fun photo(name: String, design: String = "classic", dark: Boolean = false, device: String = "phone") =
         compose.onRoot().captureRoboImage(path(name, design, dark, device))
 
     private fun entryVm() = world.t.track(EntryViewModel(world.t.session, world.t.filter(), world.t.hints, testSetsRepository(world.t.api), world.t.setCatalog(), world.t.wantedList(),
@@ -329,14 +329,14 @@ class ScreenPhotoVariantsTest {
     // ── The three designs the grid in ScreenPhotoTest does not carry ──
     // One test each, because a Compose rule may draw only once per test.
 
-    @Test fun galleryColorSlotsLight() = galleryPhoto("galerie", "farbfaecher")
-    @Test fun galleryColorSlotsDark() = galleryPhoto("galerie", "farbfaecher", dark = true)
-    @Test fun galleryGlossyLight() = galleryPhoto("galerie", "hochglanz")
-    @Test fun galleryGlossyDark() = galleryPhoto("galerie", "hochglanz", dark = true)
-    @Test fun galleryWorkbench() = galleryPhoto("galerie", "werkbank")
-    @Test fun detailColorSlots() = detailPhoto("set-detail", "farbfaecher")
-    @Test fun detailGlossyDark() = detailPhoto("set-detail", "hochglanz", dark = true)
-    @Test fun detailWorkbench() = detailPhoto("set-detail", "werkbank")
+    @Test fun galleryColorSlotsLight() = galleryPhoto("gallery", "color-fan")
+    @Test fun galleryColorSlotsDark() = galleryPhoto("gallery", "color-fan", dark = true)
+    @Test fun galleryGlossyLight() = galleryPhoto("gallery", "glossy")
+    @Test fun galleryGlossyDark() = galleryPhoto("gallery", "glossy", dark = true)
+    @Test fun galleryWorkbench() = galleryPhoto("gallery", "workbench")
+    @Test fun detailColorSlots() = detailPhoto("set-detail", "color-fan")
+    @Test fun detailGlossyDark() = detailPhoto("set-detail", "glossy", dark = true)
+    @Test fun detailWorkbench() = detailPhoto("set-detail", "workbench")
 
     // ── Four-digit amounts on a narrow phone (360 dp) ──
     // A purchase price above CHF 1’000 in the value tiles: there „CHF 700.0 / 0“
@@ -358,21 +358,21 @@ class ScreenPhotoVariantsTest {
                      "x":["2026-08-01","2026-09-01","2026-10-01"]},
             "pnl_percent":19.2,"purchase_price":1049.0}"""
         val vm = world.setDetail()
-        show(name, device = "schmal", font = font, ready = detailDone(vm), condition = { vm.setDetailState.value }) { Detail(vm) }
+        show(name, device = "narrow", font = font, ready = detailDone(vm), condition = { vm.setDetailState.value }) { Detail(vm) }
         pause()
-        photo(name, device = "schmal")
+        photo(name, device = "narrow")
     }
 
-    @Test fun detailFourDigitNarrow() = detailExpensivePhoto("set-detail-vierstellig", 1f)
-    @Test fun detailFourDigitNarrowFont200() = detailExpensivePhoto("set-detail-vierstellig-schrift200", 2f)
+    @Test fun detailFourDigitNarrow() = detailExpensivePhoto("set-detail-four-digit", 1f)
+    @Test fun detailFourDigitNarrowFont200() = detailExpensivePhoto("set-detail-four-digit-font200", 2f)
 
     // ── English (en-GB): texts, numbers, amounts and axes ──
 
-    @Test fun galleryEnglish() = galleryPhoto("galerie-en", language = ENGLISH)
+    @Test fun galleryEnglish() = galleryPhoto("gallery-en", language = ENGLISH)
     @Test fun detailEnglish() = detailPhoto("set-detail-en", language = ENGLISH)
 
     @Test
-    fun financesEnglish() = financesPhoto("finanzen-en", language = ENGLISH)
+    fun financesEnglish() = financesPhoto("finances-en", language = ENGLISH)
 
     private fun financesPhoto(name: String, language: String? = GERMAN, font: Float = 1f) {
         val vm = world.finances().also { it.loadValuation(); it.loadPortfolioHistory("week") }
@@ -384,53 +384,53 @@ class ScreenPhotoVariantsTest {
 
     // ── Large font: 130 % and 200 % ──
 
-    @Test fun loginFont130() = loginPhoto("anmelden-schrift130", 1.3f)
-    @Test fun loginFont200() = loginPhoto("anmelden-schrift200", 2.0f)
-    @Test fun galleryFont130() = galleryPhoto("galerie-schrift130", font = 1.3f)
-    @Test fun galleryFont200() = galleryPhoto("galerie-schrift200", font = 2.0f)
-    @Test fun detailFont130() = detailPhoto("set-detail-schrift130", font = 1.3f)
-    @Test fun detailFont200() = detailPhoto("set-detail-schrift200", font = 2.0f)
-    @Test fun financesFont200() = financesPhoto("finanzen-schrift200", font = 2.0f)
+    @Test fun loginFont130() = loginPhoto("login-font130", 1.3f)
+    @Test fun loginFont200() = loginPhoto("login-font200", 2.0f)
+    @Test fun galleryFont130() = galleryPhoto("gallery-font130", font = 1.3f)
+    @Test fun galleryFont200() = galleryPhoto("gallery-font200", font = 2.0f)
+    @Test fun detailFont130() = detailPhoto("set-detail-font130", font = 1.3f)
+    @Test fun detailFont200() = detailPhoto("set-detail-font200", font = 2.0f)
+    @Test fun financesFont200() = financesPhoto("finances-font200", font = 2.0f)
 
     @Test
     fun wantedFont200() {
         val vm = world.wantedList().also { it.loadWanted() }
-        show("merkliste-schrift200", font = 2.0f, ready = { vm.wantedState.value.wantedItem.isNotEmpty() },
+        show("wanted-list-font200", font = 2.0f, ready = { vm.wantedState.value.wantedItem.isNotEmpty() },
             condition = { vm.wantedState.value }) {
             WantedRoute(vm = vm, imageLoader = images, onScan = {}, onOpenSingle = { _, _ -> })
         }
-        photo("merkliste-schrift200")
+        photo("wanted-list-font200")
     }
 
     @Test
     fun partsEnglish() {
         val vm = world.parts().also { it.loadParts() }
-        show("teile-en", language = ENGLISH, ready = { vm.partsState.value.parts.isNotEmpty() },
+        show("parts-en", language = ENGLISH, ready = { vm.partsState.value.parts.isNotEmpty() },
             condition = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = images) }
-        photo("teile-en")
+        photo("parts-en")
     }
 
     @Test
     fun partsFont200() {
         val vm = world.parts().also { it.loadParts() }
-        show("teile-schrift200", font = 2.0f, ready = { vm.partsState.value.parts.isNotEmpty() },
+        show("parts-font200", font = 2.0f, ready = { vm.partsState.value.parts.isNotEmpty() },
             condition = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = images) }
-        photo("teile-schrift200")
+        photo("parts-font200")
     }
 
     /** The figure grid grows with the font (ReadableColumns): long names fully readable. */
     @Test
     fun minifigsFont200() {
         val vm = world.figures().also { it.loadMinifigs() }
-        show("figuren-schrift200", font = 2.0f, ready = { vm.minifigsState.value.minifigs.isNotEmpty() },
+        show("minifigs-font200", font = 2.0f, ready = { vm.minifigsState.value.minifigs.isNotEmpty() },
             condition = { vm.minifigsState.value }) { MinifigsRoute(vm = vm, imageLoader = images) }
-        photo("figuren-schrift200")
+        photo("minifigs-font200")
     }
 
     @Test
     fun vouchersFont200() {
-        show("gutscheine-schrift200", font = 2.0f) { Vouchers() }
-        photo("gutscheine-schrift200")
+        show("vouchers-font200", font = 2.0f) { Vouchers() }
+        photo("vouchers-font200")
     }
 
     // ── Scaffold: app bar with four inventory destinations and “More” ──
@@ -472,25 +472,25 @@ class ScreenPhotoVariantsTest {
 
     private fun scaffoldPhoto(device: String) {
         val gallery = world.gallery().also { it.loadSets(); it.loadStats() }
-        show("geruest", device = device, ready = galleryDone(gallery), condition = { gallery.galleryState.value }) { Scaffold(gallery) }
-        photo("geruest", device = device)
+        show("scaffold", device = device, ready = galleryDone(gallery), condition = { gallery.galleryState.value }) { Scaffold(gallery) }
+        photo("scaffold", device = device)
     }
 
-    @Test fun scaffoldPhone() = scaffoldPhoto("telefon")
+    @Test fun scaffoldPhone() = scaffoldPhoto("phone")
     @Test fun scaffoldTablet() = scaffoldPhoto("tablet")
 
     /** The switcher Sets | Parts | Minifigures at 200 %: segments, scrollable sideways, no word broken. */
     @Test
     fun scaffoldFont200() {
         val gallery = world.gallery().also { it.loadSets(); it.loadStats() }
-        show("geruest-schrift200", font = 2.0f, ready = galleryDone(gallery),
+        show("scaffold-font200", font = 2.0f, ready = galleryDone(gallery),
             condition = { gallery.galleryState.value }) { Scaffold(gallery) }
         pause()
-        photo("geruest-schrift200")
+        photo("scaffold-font200")
     }
 
     /** The page “More”: all other destinations grouped, with the dot for a new version. */
-    private fun morePhoto(device: String, dark: Boolean, name: String = "mehr", font: Float = 1f,
+    private fun morePhoto(device: String, dark: Boolean, name: String = "more", font: Float = 1f,
                          language: String? = GERMAN) {
         val gallery = world.gallery().also { it.loadSets(); it.loadStats() }
         show(name, dark = dark, device = device, language = language, font = font, ready = galleryDone(gallery),
@@ -502,10 +502,10 @@ class ScreenPhotoVariantsTest {
         photo(name, dark = dark, device = device)
     }
 
-    @Test fun morePhone() = morePhoto("telefon", dark = true)
+    @Test fun morePhone() = morePhoto("phone", dark = true)
     @Test fun moreTablet() = morePhoto("tablet", dark = false)
-    @Test fun moreFont200() = morePhoto("telefon", dark = false, name = "mehr-schrift200", font = 2f)
-    @Test fun moreEnglish() = morePhoto("telefon", dark = false, name = "mehr-en", language = ENGLISH)
+    @Test fun moreFont200() = morePhoto("phone", dark = false, name = "more-font200", font = 2f)
+    @Test fun moreEnglish() = morePhoto("phone", dark = false, name = "more-en", language = ENGLISH)
 
     // ── Dialoge ──
 
@@ -550,7 +550,7 @@ class ScreenPhotoVariantsTest {
      * main looper, not via the Compose clock.
      */
     private fun showDialog(
-        name: String, dark: Boolean = false, device: String = "telefon", font: Float = 1f,
+        name: String, dark: Boolean = false, device: String = "phone", font: Float = 1f,
         dialog: @Composable () -> Unit,
     ) {
         val open = mutableStateOf(false)
@@ -575,14 +575,14 @@ class ScreenPhotoVariantsTest {
 
     private fun dialogSetDeletePhoto(name: String, font: Float) {
         val vm = world.setDetail()
-        show(name, design = "noppe", font = font, ready = detailDone(vm), condition = { vm.setDetailState.value }) { Detail(vm) }
+        show(name, design = "stud", font = font, ready = detailDone(vm), condition = { vm.setDetailState.value }) { Detail(vm) }
         compose.onNodeWithContentDescription("Millennium Falcon löschen").performClick()
         compose.waitForIdle()
-        dialogPhoto(name, "noppe", false, "telefon", font)
+        dialogPhoto(name, "stud", false, "phone", font)
     }
 
-    @Test fun deleteDialogSet() = dialogSetDeletePhoto("dialog-set-loeschen", 1f)
-    @Test fun dialogSetDeleteFont200() = dialogSetDeletePhoto("dialog-set-loeschen-schrift200", 2f)
+    @Test fun deleteDialogSet() = dialogSetDeletePhoto("dialog-set-delete", 1f)
+    @Test fun dialogSetDeleteFont200() = dialogSetDeletePhoto("dialog-set-delete-font200", 2f)
 
     /** The confirmation before sign-out — the same design as when deleting a set. */
     private fun dialogLogoutPhoto(name: String, dark: Boolean, device: String, font: Float) {
@@ -594,9 +594,9 @@ class ScreenPhotoVariantsTest {
         dialogPhoto(name, "classic", dark, device, font)
     }
 
-    @Test fun logoutDialog() = dialogLogoutPhoto("dialog-abmelden", true, "telefon", 1f)
-    @Test fun dialogLogoutFont200() = dialogLogoutPhoto("dialog-abmelden-schrift200", false, "telefon", 2f)
-    @Test fun dialogLogoutTablet() = dialogLogoutPhoto("dialog-abmelden", false, "tablet", 1f)
+    @Test fun logoutDialog() = dialogLogoutPhoto("dialog-logout", true, "phone", 1f)
+    @Test fun dialogLogoutFont200() = dialogLogoutPhoto("dialog-logout-font200", false, "phone", 2f)
+    @Test fun dialogLogoutTablet() = dialogLogoutPhoto("dialog-logout", false, "tablet", 1f)
 
     private fun dialogWantedItemPhoto(name: String, dark: Boolean, font: Float) {
         val vm = world.wantedList().also { it.loadWanted() }
@@ -614,11 +614,11 @@ class ScreenPhotoVariantsTest {
             compose.mainClock.advanceTimeBy(200)
             Shadows.shadowOf(Looper.getMainLooper()).idle()
         }
-        dialogPhoto(name, "classic", dark, "telefon", font)
+        dialogPhoto(name, "classic", dark, "phone", font)
     }
 
-    @Test fun createDialogWantedItem() = dialogWantedItemPhoto("dialog-merkposten", true, 1f)
-    @Test fun dialogWantedItemFont200() = dialogWantedItemPhoto("dialog-merkposten-schrift200", false, 2f)
+    @Test fun createDialogWantedItem() = dialogWantedItemPhoto("dialog-wanted-item", true, 1f)
+    @Test fun dialogWantedItemFont200() = dialogWantedItemPhoto("dialog-wanted-item-font200", false, 2f)
 
     // ── List and detail side by side (tablet) ──
 
@@ -634,7 +634,7 @@ class ScreenPhotoVariantsTest {
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":431.0},{"x":"2026-09-01","y":440.0},{"x":"2026-10-01","y":449.95}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-09-01","2026-10-01"]}}"""
         val vm = world.wantedList().also { it.loadWanted() }
-        show("merkliste-detail", device = "tablet", ready = { vm.wantedState.value.wantedItem.isNotEmpty() },
+        show("wanted-list-detail", device = "tablet", ready = { vm.wantedState.value.wantedItem.isNotEmpty() },
             condition = { vm.wantedState.value }) {
             WantedRoute(vm = vm, imageLoader = images, sideBySide = true,
                 onScan = {}, onOpenSingle = { _, _ -> })
@@ -649,7 +649,7 @@ class ScreenPhotoVariantsTest {
             { vm.wantedItemDetailState.value })
         compose.waitForIdle()
         pause()
-        photo("merkliste-detail", device = "tablet")
+        photo("wanted-list-detail", device = "tablet")
     }
 
     /** Gallery and set detail side by side, as the tablet shows them after a tap. */
@@ -657,14 +657,14 @@ class ScreenPhotoVariantsTest {
     fun galleryWithDetailTablet() {
         val gallery = world.gallery().also { it.loadSets(); it.loadStats() }
         val detail = world.setDetail()
-        show("galerie-mit-detail", device = "tablet", ready = { galleryDone(gallery)() && detailDone(detail)() },
+        show("gallery-with-detail", device = "tablet", ready = { galleryDone(gallery)() && detailDone(detail)() },
             condition = { gallery.galleryState.value }) {
             GalleryAndDetail(gallery, entryVm(), images, open = Examples.SET, onSetClick = {}, onScanBarcode = {}) {
                 Detail(detail)
             }
         }
         pause()
-        photo("galerie-mit-detail", device = "tablet")
+        photo("gallery-with-detail", device = "tablet")
     }
 
     // ── Subpages and adding that had no photo before (I2) ──
@@ -676,8 +676,8 @@ class ScreenPhotoVariantsTest {
             override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
         }))
 
-    @Test fun storageLocations() = locationsPhoto("lagerorte", 1f)
-    @Test fun locationsFont200() = locationsPhoto("lagerorte-schrift200", 2f)
+    @Test fun storageLocations() = locationsPhoto("storage-locations", 1f)
+    @Test fun locationsFont200() = locationsPhoto("storage-locations-font200", 2f)
 
     private fun locationsPhoto(name: String, font: Float) {
         world.paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[
@@ -708,16 +708,16 @@ class ScreenPhotoVariantsTest {
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api))).also { it.loadHousehold() }
-        show("haushalt", ready = { vm.householdState.value.status != null }, condition = { vm.householdState.value }) {
+        show("household", ready = { vm.householdState.value.status != null }, condition = { vm.householdState.value }) {
             HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {})
         }
         pause()
-        photo("haushalt")
+        photo("household")
     }
 
-    @Test fun buildList() = buildListPhoto("bauliste", PartListUiState(), 1f)
-    @Test fun buildListWithContent() = buildListPhoto("bauliste-inhalt", buildListFilled, 1f)
-    @Test fun buildListWithContentFont200() = buildListPhoto("bauliste-inhalt-schrift200", buildListFilled, 2f)
+    @Test fun buildList() = buildListPhoto("build-list", PartListUiState(), 1f)
+    @Test fun buildListWithContent() = buildListPhoto("build-list-content", buildListFilled, 1f)
+    @Test fun buildListWithContentFont200() = buildListPhoto("build-list-content-font200", buildListFilled, 2f)
 
     /** Two sets, generated, with stock: color groups, quantities and „vorhanden“ stand in the image. */
     private val buildListFilled = PartListUiState(
@@ -741,10 +741,10 @@ class ScreenPhotoVariantsTest {
         photo(name)
     }
 
-    @Test fun addDialogPart() = addPhoto("dialog-teil-erfassen", figure = false, font = 1f)
-    @Test fun dialogPartAddFont200() = addPhoto("dialog-teil-erfassen-schrift200", figure = false, font = 2f)
-    @Test fun addDialogMinifig() = addPhoto("dialog-figur-erfassen", figure = true, font = 1f)
-    @Test fun dialogMinifigAddFont200() = addPhoto("dialog-figur-erfassen-schrift200", figure = true, font = 2f)
+    @Test fun addDialogPart() = addPhoto("dialog-part-add", figure = false, font = 1f)
+    @Test fun dialogPartAddFont200() = addPhoto("dialog-part-add-font200", figure = false, font = 2f)
+    @Test fun addDialogMinifig() = addPhoto("dialog-minifig-add", figure = true, font = 1f)
+    @Test fun dialogMinifigAddFont200() = addPhoto("dialog-minifig-add-font200", figure = true, font = 2f)
 
     /**
      * Adding part and figure are internal to the area; opened as by hand via the
@@ -766,25 +766,25 @@ class ScreenPhotoVariantsTest {
             compose.mainClock.advanceTimeBy(200)
             Shadows.shadowOf(Looper.getMainLooper()).idle()
         }
-        dialogPhoto(name, "classic", false, "telefon", font)
+        dialogPhoto(name, "classic", false, "phone", font)
     }
 
     /** Adding: the gallery's dialog with number, quantity, price, condition and storage location. */
-    @Test fun addDialogSet() = dialogSetAddPhoto("dialog-set-erfassen", 1f)
+    @Test fun addDialogSet() = dialogSetAddPhoto("dialog-set-add", 1f)
 
     /** At 200 % condition and storage location stand as chips or full row, nothing breaks within a word. */
-    @Test fun dialogSetAddFont200() = dialogSetAddPhoto("dialog-set-erfassen-schrift200", 2f)
+    @Test fun dialogSetAddFont200() = dialogSetAddPhoto("dialog-set-add-font200", 2f)
 
     /** On the tablet the dialog stands in its Material width above the surface. */
-    @Test fun dialogSetAddTablet() = dialogSetAddPhoto("dialog-set-erfassen", 1f, device = "tablet")
+    @Test fun dialogSetAddTablet() = dialogSetAddPhoto("dialog-set-add", 1f, device = "tablet")
 
-    private fun dialogSetAddPhoto(name: String, font: Float, device: String = "telefon") {
+    private fun dialogSetAddPhoto(name: String, font: Float, device: String = "phone") {
         showDialog(name, device = device, font = font) {
             AddSetDialog(onDismiss = {},
                 onAdd = {}, storageLocations = listOf("Keller", "Estrich"), immediatelyFocus = false)
         }
         dialogPhoto(name, "classic", false, device, font)
-        if (font == 1f && device == "telefon") {
+        if (font == 1f && device == "phone") {
             // One pattern for all adding dialogs: the storage location is as wide as the set number.
             // Measured at the dialog window like the photo: the synchronization waited forever.
             val ctx = ApplicationProvider.getApplicationContext<Context>()
@@ -811,9 +811,9 @@ class ScreenPhotoVariantsTest {
         world.paths.missing += "/api/v2/sets"
         val gallery = world.gallery().also { it.loadSets() }
         compose.mainClock.autoAdvance = false
-        show("galerie-laedt", wait = false) { Gallery(gallery) }
+        show("gallery-loading", wait = false) { Gallery(gallery) }
         compose.mainClock.advanceTimeBy(300)
-        photo("galerie-laedt")
+        photo("gallery-loading")
     }
 
     /**
@@ -830,21 +830,21 @@ class ScreenPhotoVariantsTest {
         loadGermanBeforeThe()
         world.paths.codes["/api/v2/sets"] = 500
         val gallery = world.gallery().also { it.loadSets() }
-        show("galerie-fehler", ready = { gallery.galleryState.value.let { !it.fetch.loading && it.fetch is Load.Failure } },
+        show("gallery-error", ready = { gallery.galleryState.value.let { !it.fetch.loading && it.fetch is Load.Failure } },
             condition = { gallery.galleryState.value }) { Gallery(gallery) }
         pause()
-        photo("galerie-fehler")
+        photo("gallery-error")
     }
 
     @Test
     fun wantedEmpty() {
         world.paths.responses["/api/v2/wanted"] = """{"success":true,"item":[]}"""
         val vm = world.wantedList().also { it.loadWanted() }
-        show("merkliste-leer", dark = true, ready = { vm.wantedState.value.let { !it.fetch.loading && it.fetch !is Load.Failure } },
+        show("wanted-list-empty", dark = true, ready = { vm.wantedState.value.let { !it.fetch.loading && it.fetch !is Load.Failure } },
             condition = { vm.wantedState.value }) {
             WantedRoute(vm = vm, imageLoader = images, onScan = {}, onOpenSingle = { _, _ -> })
         }
-        photo("merkliste-leer", dark = true)
+        photo("wanted-list-empty", dark = true)
     }
 
     // ── Screens that had no photo so far ──
@@ -855,7 +855,7 @@ class ScreenPhotoVariantsTest {
         bricklink = BrickLinkView(number = "10305-1",
             url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
 
-    private fun catalogDetailPhoto(dark: Boolean, device: String, font: Float = 1f, name: String = "katalog-detail") {
+    private fun catalogDetailPhoto(dark: Boolean, device: String, font: Float = 1f, name: String = "catalog-detail") {
         show(name, dark = dark, device = device, font = font) {
             CatalogDetailScreen(setNumber = "10305-1", loaded = Load.Data(catalogDetail), imageLoader = images, serverUrl = "",
                 actions = object : CatalogDetailActions {})
@@ -864,13 +864,13 @@ class ScreenPhotoVariantsTest {
         photo(name, dark = dark, device = device)
     }
 
-    @Test fun catalogDetailPhone() = catalogDetailPhoto(false, "telefon")
+    @Test fun catalogDetailPhone() = catalogDetailPhoto(false, "phone")
     /** Both actions below each other and fully readable, also at 200 %. */
-    @Test fun catalogDetailFont200() = catalogDetailPhoto(false, "telefon", 2f, "katalog-detail-schrift200")
+    @Test fun catalogDetailFont200() = catalogDetailPhoto(false, "phone", 2f, "catalog-detail-font200")
     @Test fun catalogDetailTabletDark() = catalogDetailPhoto(true, "tablet")
 
-    @Test fun comparison() = comparisonPhoto("vergleich", 1f)
-    @Test fun comparisonFont200() = comparisonPhoto("vergleich-schrift200", 2f)
+    @Test fun comparison() = comparisonPhoto("comparison", 1f)
+    @Test fun comparisonFont200() = comparisonPhoto("comparison-font200", 2f)
 
     private fun comparisonPhoto(name: String, font: Float) {
         show(name, font = font) { ComparisonScreen(ComparisonUiState(), NoComparison) }
@@ -879,7 +879,7 @@ class ScreenPhotoVariantsTest {
     }
 
     /** Account: profile, design, second factor and two signed-in devices; on request with a requested address. */
-    private fun accountPhoto(dark: Boolean, device: String, name: String = "konto", emailNew: String? = null) {
+    private fun accountPhoto(dark: Boolean, device: String, name: String = "account", emailNew: String? = null) {
         val newValue = emailNew?.let { ""","new_email":"$it"""" } ?: ""
         world.paths.responses["/api/v2/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true$newValue}}"""
@@ -899,13 +899,13 @@ class ScreenPhotoVariantsTest {
         photo(name, dark = dark, device = device)
     }
 
-    @Test fun accountPhone() = accountPhoto(false, "telefon")
+    @Test fun accountPhone() = accountPhoto(false, "phone")
     @Test fun accountTabletDark() = accountPhoto(true, "tablet")
     /** The new address waits for its link: the field shows the current one, below it the requested one. */
-    @Test fun accountEmailPending() = accountPhoto(false, "telefon", "konto-email-ausstehend", "marco.neu@example.org")
+    @Test fun accountEmailPending() = accountPhoto(false, "phone", "account-email-pending", "marco.neu@example.org")
 
     /** Price alerts: one armed, one already triggered — in the normal case with name and image. */
-    private fun priceAlertsPhoto(dark: Boolean, device: String, font: Float = 1f, name: String = "preisalarme") {
+    private fun priceAlertsPhoto(dark: Boolean, device: String, font: Float = 1f, name: String = "price-alerts") {
         world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF",
              "name":"Millennium Falcon","image_local":"/beispiel/set1.png"},
@@ -921,9 +921,9 @@ class ScreenPhotoVariantsTest {
         photo(name, dark = dark, device = device)
     }
 
-    @Test fun priceAlertsPhone() = priceAlertsPhoto(false, "telefon")
+    @Test fun priceAlertsPhone() = priceAlertsPhoto(false, "phone")
     /** The triggered alert at 200 %: badge and last price wrap, no single character on its own. */
-    @Test fun priceAlertsFont200() = priceAlertsPhoto(false, "telefon", 2f, "preisalarme-schrift200")
+    @Test fun priceAlertsFont200() = priceAlertsPhoto(false, "phone", 2f, "price-alerts-font200")
     @Test fun priceAlertsTabletDark() = priceAlertsPhoto(true, "tablet")
 
     /** Part from sets: on the tablet to the right of the list, on the phone as a dialog. */
@@ -934,7 +934,7 @@ class ScreenPhotoVariantsTest {
             "sets":[{"set_number":"75192-1","set_name":"Millennium Falcon","quantity":8,"image_local":"/beispiel/set1.png","owner_user_id":1},
                     {"set_number":"21318-1","set_name":"Baumhaus","quantity":4,"image_local":"/beispiel/set3.png","owner_user_id":1}]}"""
         val vm = world.parts().also { it.loadParts() }
-        show("teil-detail", dark = dark, device = device, ready = { vm.partsState.value.parts.isNotEmpty() },
+        show("part-detail", dark = dark, device = device, ready = { vm.partsState.value.parts.isNotEmpty() },
             condition = { vm.partsState.value }) {
             PartsListAndDetailRoute(vm, images, "", { _, _, _, _ -> }, {}, { _, _, _, _ -> }) { _ ->
                 PartsRoute(vm = vm, imageLoader = images)
@@ -944,8 +944,8 @@ class ScreenPhotoVariantsTest {
             androidx.compose.ui.test.hasClickAction()).performClick()
         provide("teil-detail (offen)", { !vm.setItemState.value.fetch.loading }, { vm.setItemState.value })
         pause()
-        if (device == "telefon") sheetPhoto(R.string.setitem_used_in, "teil-detail", "classic", dark, device)
-        else photo("teil-detail", dark = dark, device = device)
+        if (device == "phone") sheetPhoto(R.string.setitem_used_in, "part-detail", "classic", dark, device)
+        else photo("part-detail", dark = dark, device = device)
     }
 
     /**
@@ -970,13 +970,13 @@ class ScreenPhotoVariantsTest {
         world.paths.responses["/api/v2/storage"] = """{"success":true,"locations":[
             {"location":"Keller","sets":2,"parts":40},{"location":"Regal Wohnzimmer","sets":1,"parts":0}]}"""
         val vm = world.gallery().also { it.refresh() }
-        show("filter-galerie", ready = { galleryDone(vm)() && vm.storageState.value.locations.isNotEmpty() &&
+        show("filter-gallery", ready = { galleryDone(vm)() && vm.storageState.value.locations.isNotEmpty() &&
             vm.galleryState.value.galleryThemes.isNotEmpty() }, condition = { vm.galleryState.value }) { Gallery(vm) }
         compose.onNodeWithContentDescription(ApplicationProvider.getApplicationContext<Context>()
             .getString(R.string.filter_button)).performClick()
         compose.waitForIdle()
         sheetRaise()
-        sheetPhoto(R.string.filter_title, "filter-galerie", "classic", false, "telefon")
+        sheetPhoto(R.string.filter_title, "filter-gallery", "classic", false, "phone")
     }
 
     /**
@@ -995,33 +995,33 @@ class ScreenPhotoVariantsTest {
 
     @Test
     fun startPasswordFont200() {
-        show("startpasswort-schrift200", font = 2.0f) {
+        show("start-password-font200", font = 2.0f) {
             StartPasswordMask(AccountUiState(), { _, _, _ -> }, {})
         }
-        photo("startpasswort-schrift200")
+        photo("start-password-font200")
     }
 
     @Test
     fun secondFactorFont200() {
-        show("zweiter-faktor-schrift200", font = 2.0f) {
+        show("second-factor-font200", font = 2.0f) {
             SecondFactorRequiredMask(
                 SecondFactorUiState(active = false), {}, {}, {}, {})
         }
-        photo("zweiter-faktor-schrift200")
+        photo("second-factor-font200")
     }
 
     /** Step 3: the emergency codes, „Weiter“ only after the check mark. */
     @Test
     fun secondFactorCodes() {
-        show("zweiter-faktor-codes", dark = true) {
+        show("second-factor-codes", dark = true) {
             SecondFactorRequiredMask(
                 SecondFactorUiState(active = true,
                     codes = listOf("a1b2-c3d4", "e5f6-g7h8", "i9j0-k1l2", "m3n4-o5p6")), {}, {}, {}, {})
         }
-        photo("zweiter-faktor-codes", dark = true)
+        photo("second-factor-codes", dark = true)
     }
 
-    @Test fun partDetailPhone() = partDetailPhoto("telefon", false)
+    @Test fun partDetailPhone() = partDetailPhoto("phone", false)
     @Test fun partDetailTablet() = partDetailPhoto("tablet", false)
 
     /**
@@ -1045,7 +1045,7 @@ class ScreenPhotoVariantsTest {
         photo("snackbar", dark = dark, device = device)
     }
 
-    @Test fun snackbarPhone() = snackbarPhoto("telefon", false)
+    @Test fun snackbarPhone() = snackbarPhoto("phone", false)
     @Test fun snackbarTabletDark() = snackbarPhoto("tablet", true)
 
     // ── Catalog, empty and error per tab, tablet 200 %, landscape ──
@@ -1069,7 +1069,7 @@ class ScreenPhotoVariantsTest {
     }
 
     private fun catalogPhoto(
-        dark: Boolean, device: String, name: String = "katalog", font: Float = 1f,
+        dark: Boolean, device: String, name: String = "catalog", font: Float = 1f,
         condition: CatalogUiState =
             CatalogUiState(loadedPages = mapOf(1 to catalogSets), total = catalogSets.size),
     ) {
@@ -1081,11 +1081,11 @@ class ScreenPhotoVariantsTest {
         photo(name, dark = dark, device = device)
     }
 
-    @Test fun catalogPhone() = catalogPhoto(false, "telefon")
+    @Test fun catalogPhone() = catalogPhoto(false, "phone")
     @Test fun catalogTabletDark() = catalogPhoto(true, "tablet")
-    @Test fun catalogFont200() = catalogPhoto(false, "telefon", "katalog-schrift200", 2f)
-    @Test fun catalogEmpty() = catalogPhoto(false, "telefon", "katalog-leer", condition = CatalogUiState())
-    @Test fun catalogError() = catalogPhoto(true, "telefon", "katalog-fehler",
+    @Test fun catalogFont200() = catalogPhoto(false, "phone", "catalog-font200", 2f)
+    @Test fun catalogEmpty() = catalogPhoto(false, "phone", "catalog-empty", condition = CatalogUiState())
+    @Test fun catalogError() = catalogPhoto(true, "phone", "catalog-error",
         condition = CatalogUiState(fetch = Load.Failure(ErrorClass.UNKNOWN, Message.Text("Serverfehler (500)"))))
 
     @Test
@@ -1093,22 +1093,22 @@ class ScreenPhotoVariantsTest {
         loadGermanBeforeThe()
         world.paths.codes["/api/v2/wanted"] = 500
         val vm = world.wantedList().also { it.loadWanted() }
-        show("merkliste-fehler", ready = { vm.wantedState.value.let { !it.fetch.loading && it.fetch is Load.Failure } },
+        show("wanted-list-error", ready = { vm.wantedState.value.let { !it.fetch.loading && it.fetch is Load.Failure } },
             condition = { vm.wantedState.value }) {
             WantedRoute(vm = vm, imageLoader = images, onScan = {}, onOpenSingle = { _, _ -> })
         }
         pause()
-        photo("merkliste-fehler")
+        photo("wanted-list-error")
     }
 
     @Test
     fun partsEmpty() {
         world.paths.responses["/api/v2/parts"] = """{"success":true,"total":0,"parts":[]}"""
         val vm = world.parts().also { it.loadParts() }
-        show("teile-leer", ready = { vm.partsState.value.let { it.partsFetch is Load.Data } },
+        show("parts-empty", ready = { vm.partsState.value.let { it.partsFetch is Load.Data } },
             condition = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = images) }
         pause()
-        photo("teile-leer")
+        photo("parts-empty")
     }
 
     @Test
@@ -1116,10 +1116,10 @@ class ScreenPhotoVariantsTest {
         loadGermanBeforeThe()
         world.paths.codes["/api/v2/parts"] = 500
         val vm = world.parts().also { it.loadParts() }
-        show("teile-fehler", dark = true, ready = { vm.partsState.value.let { it.partsFetch is Load.Failure } },
+        show("parts-error", dark = true, ready = { vm.partsState.value.let { it.partsFetch is Load.Failure } },
             condition = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = images) }
         pause()
-        photo("teile-fehler", dark = true)
+        photo("parts-error", dark = true)
     }
 
     @Test
@@ -1127,25 +1127,25 @@ class ScreenPhotoVariantsTest {
         loadGermanBeforeThe()
         world.paths.codes["/api/v2/finance/valuation"] = 500
         val vm = world.finances().also { it.loadValuation() }
-        show("finanzen-fehler", ready = { vm.financeState.value.let { !it.valuationLoad.loading && !it.history.loading && it.valuationLoad is Load.Failure } },
+        show("finances-error", ready = { vm.financeState.value.let { !it.valuationLoad.loading && !it.history.loading && it.valuationLoad is Load.Failure } },
             condition = { vm.financeState.value }) { FinanceRoute(vm = vm, imageLoader = images) }
         pause()
-        photo("finanzen-fehler")
+        photo("finances-error")
     }
 
     @Test
     fun galleryTabletFont200() {
         val vm = world.gallery().also { it.loadSets(); it.loadStats() }
-        show("galerie-schrift200", device = "tablet", font = 2f, ready = galleryDone(vm),
+        show("gallery-font200", device = "tablet", font = 2f, ready = galleryDone(vm),
             condition = { vm.galleryState.value }) { Gallery(vm) }
-        photo("galerie-schrift200", device = "tablet")
+        photo("gallery-font200", device = "tablet")
     }
 
     @Test
     fun galleryAcross() {
         val vm = world.gallery().also { it.loadSets(); it.loadStats() }
-        show("galerie", device = "quer", ready = galleryDone(vm), condition = { vm.galleryState.value }) { Gallery(vm) }
-        photo("galerie", device = "quer")
+        show("gallery", device = "landscape", ready = galleryDone(vm), condition = { vm.galleryState.value }) { Gallery(vm) }
+        photo("gallery", device = "landscape")
     }
 
     private fun loginPhoto(name: String, form: LoginForm, device: String, font: Float) {
@@ -1158,20 +1158,20 @@ class ScreenPhotoVariantsTest {
         photo(name, device = device)
     }
 
-    @Test fun loginAcross() = loginPhoto("anmelden", LoginForm.LOGIN, "quer", 1f)
-    @Test fun registerFont200() = loginPhoto("registrieren-schrift200", LoginForm.REGISTER, "telefon", 2f)
+    @Test fun loginAcross() = loginPhoto("login", LoginForm.LOGIN, "landscape", 1f)
+    @Test fun registerFont200() = loginPhoto("register-font200", LoginForm.REGISTER, "phone", 2f)
 
     @Test
     fun setUpAcross() {
-        show("einrichten", device = "quer") {
+        show("setup", device = "landscape") {
             SetupScreen(currentUrl = "https://brick.fritz.box", onSave = {}, development = false)
         }
-        photo("einrichten", device = "quer")
+        photo("setup", device = "landscape")
     }
 
     /** Without network: hint with state above the list, three changes wait in the outbox. */
     @Test fun offline() = offlinePhoto("offline", 1f)
-    @Test fun offlineFont200() = offlinePhoto("offline-schrift200", 2f)
+    @Test fun offlineFont200() = offlinePhoto("offline-font200", 2f)
 
     private fun offlinePhoto(name: String, font: Float) {
         val gallery = world.gallery().also { it.loadSets(); it.loadStats() }
@@ -1213,10 +1213,10 @@ class ScreenPhotoVariantsTest {
         photo(name, dark = dark, device = device)
     }
 
-    @Test fun settingsPhone() = settingsPhoto("einstellungen", false, "telefon")
-    @Test fun settingsTabletDark() = settingsPhoto("einstellungen", true, "tablet")
-    @Test fun settingsFont200() = settingsPhoto("einstellungen-schrift200", false, "telefon", font = 2f)
-    @Test fun settingsEnglish() = settingsPhoto("einstellungen-en", false, "telefon", language = ENGLISH)
+    @Test fun settingsPhone() = settingsPhoto("settings", false, "phone")
+    @Test fun settingsTabletDark() = settingsPhoto("settings", true, "tablet")
+    @Test fun settingsFont200() = settingsPhoto("settings-font200", false, "phone", font = 2f)
+    @Test fun settingsEnglish() = settingsPhoto("settings-en", false, "phone", language = ENGLISH)
 
     // Without a camera only the overlay: frame, hint, light and close.
     private fun scannerPhoto(device: String) {
@@ -1227,12 +1227,12 @@ class ScreenPhotoVariantsTest {
         photo("scanner", dark = true, device = device)
     }
 
-    @Test fun scannerPhone() = scannerPhoto("telefon")
+    @Test fun scannerPhone() = scannerPhoto("phone")
     @Test fun scannerTablet() = scannerPhoto("tablet")
 
     @Test
     fun scannerPermission() {
-        show("scanner-erlaubnis", wait = false) {
+        show("scanner-permission", wait = false) {
             Box(Modifier.fillMaxSize()
                 .background(Color.Black)) {
                 CameraPermissionHint(stringResource(R.string.scanner_camera_purpose_barcode),
@@ -1240,14 +1240,14 @@ class ScreenPhotoVariantsTest {
             }
         }
         pause()
-        photo("scanner-erlaubnis", dark = true)
+        photo("scanner-permission", dark = true)
     }
 
     private fun barcodePhoto(dark: Boolean) {
         val condition = BarcodeDialogState(AppUiState(), ScopeUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", ownershipQuantity = 1), StorageUiState())
-        showDialog("dialog-barcode-ergebnis", dark = dark) { BarcodeResultDialog(condition, entryVm(), images) }
-        dialogPhoto("dialog-barcode-ergebnis", "classic", dark, "telefon", 1f)
+        showDialog("dialog-barcode-result", dark = dark) { BarcodeResultDialog(condition, entryVm(), images) }
+        dialogPhoto("dialog-barcode-result", "classic", dark, "phone", 1f)
     }
 
     @Test fun dialogBarcodeResult() = barcodePhoto(false)
@@ -1260,14 +1260,14 @@ class ScreenPhotoVariantsTest {
 
     private fun purchasePricesPhoto(dark: Boolean, device: String) {
         val vm = purchases()
-        show("kaufpreise", dark = dark, device = device) {
+        show("purchase-prices", dark = dark, device = device) {
             AcquisitionManagementRoute(vm, type = ItemKind.SET, id = Examples.SET, title = "Millennium Falcon", onBack = {})
         }
         pause()
-        photo("kaufpreise", dark = dark, device = device)
+        photo("purchase-prices", dark = dark, device = device)
     }
 
-    @Test fun purchasePricesPhone() = purchasePricesPhoto(false, "telefon")
+    @Test fun purchasePricesPhone() = purchasePricesPhoto(false, "phone")
     @Test fun purchasePricesTabletDark() = purchasePricesPhoto(true, "tablet")
 
     // A manually added part with two purchases: the sample data has no manual parts.
@@ -1281,15 +1281,15 @@ class ScreenPhotoVariantsTest {
             "totals":{"quantity":12,"amount":1.44,"priced_rows":2}}"""
         val vm = purchases()
         val parts = world.parts()
-        show("einzelteil-detail", dark = dark, device = device) {
+        show("single-part-detail", dark = dark, device = device) {
             ManualItemDetailRoute(vm, parts, world.figures(), item = PartsTarget.ManualItemDetail(ItemKind.PART, "3001", 5, "Brick 2 x 4"),
                 imageLoader = images, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
         }
         pause()
-        photo("einzelteil-detail", dark = dark, device = device)
+        photo("single-part-detail", dark = dark, device = device)
     }
 
-    @Test fun singlePartDetailPhone() = singlePartPhoto(false, "telefon")
+    @Test fun singlePartDetailPhone() = singlePartPhoto(false, "phone")
     @Test fun singlePartDetailTabletDark() = singlePartPhoto(true, "tablet")
 
     // The same response as in BackgroundWorkTest: one running and one failed job.
@@ -1311,16 +1311,16 @@ class ScreenPhotoVariantsTest {
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         val background = vm.background.value
-        show("hintergrundarbeiten", dark = dark, device = device, wait = false) {
+        show("background-work", dark = dark, device = device, wait = false) {
             // Wi-Fi allowed, the others not: both switch positions in the image.
             MonitoringScreen(MonitoringState(MonitoringUiState(), background, ManagementUiState(),
                 mapOf(PrewarmNetwork.WIFI to true), Design.CLASSIC, 0L), vm, events)
         }
         pause()
-        photo("hintergrundarbeiten", dark = dark, device = device)
+        photo("background-work", dark = dark, device = device)
     }
 
-    @Test fun backgroundWorkPhone() = backgroundPhoto(false, "telefon")
+    @Test fun backgroundWorkPhone() = backgroundPhoto(false, "phone")
     @Test fun backgroundWorkTabletDark() = backgroundPhoto(true, "tablet")
 
     @Test
@@ -1330,7 +1330,7 @@ class ScreenPhotoVariantsTest {
             object : FileReader {
                 override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
             }, world.t.messages, testAccountRepository(world.t.api), SavedStateHandle()))
-        show("gutschein-formular") {
+        show("voucher-form") {
             VouchersRoute(vm, remember { SnackbarHostState() }, onBack = {})
         }
         val ctx = ApplicationProvider.getApplicationContext<Context>()
@@ -1339,7 +1339,7 @@ class ScreenPhotoVariantsTest {
         compose.waitForIdle()
         sheetRaise()
         // Recognized by the PIN field: the sheet's title also stands on the button below.
-        sheetPhoto(R.string.vouchers_pin, "gutschein-formular", "classic", false, "telefon")
+        sheetPhoto(R.string.vouchers_pin, "voucher-form", "classic", false, "phone")
     }
 
     @Test
@@ -1349,7 +1349,7 @@ class ScreenPhotoVariantsTest {
         world.paths.responses["/api/v2/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
             testHouseholdRepository(world.t.api))).also { it.now = { FIXED_TIME }; it.loadHousehold() }
-        show("haushalt-code", ready = { vm.householdState.value.status != null }, condition = { vm.householdState.value }) {
+        show("household-code", ready = { vm.householdState.value.status != null }, condition = { vm.householdState.value }) {
             HouseholdRoute(vm, remember { SnackbarHostState() }, onBack = {})
         }
         val ctx = ApplicationProvider.getApplicationContext<Context>()
@@ -1357,32 +1357,32 @@ class ScreenPhotoVariantsTest {
         provide("haushalt-code (Code)", { vm.householdState.value.inviteCode != null }, { vm.householdState.value })
         compose.onNodeWithText(ctx.getString(R.string.household_invite_share)).performScrollTo()
         pause()
-        photo("haushalt-code")
+        photo("household-code")
     }
 
     private fun csvRunningPhoto(dark: Boolean, device: String) {
-        show("csv-import-laeuft", dark = dark, device = device, wait = false) {
+        show("csv-import-running", dark = dark, device = device, wait = false) {
             Column {
                 CsvImportBanner(CsvProgress(done = 37, total = 120, current = "75192-1 Millennium Falcon",
                     ok = 35, warn = 1, err = 1), running = true, onCancel = {})
             }
         }
         pause()
-        photo("csv-import-laeuft", dark = dark, device = device)
+        photo("csv-import-running", dark = dark, device = device)
     }
 
-    @Test fun csvImportRunningPhone() = csvRunningPhoto(false, "telefon")
+    @Test fun csvImportRunningPhone() = csvRunningPhoto(false, "phone")
     @Test fun csvImportRunningTabletDark() = csvRunningPhoto(true, "tablet")
 
     // ── What had no reference image yet, each light, dark and 200 % ──
-    // Name with „-schrift200“ at large font, otherwise as above. Everything with fixed data:
+    // Name with `-font200` at large font, otherwise as above. Everything with fixed data:
     // the images are created in CI and must be the same on every run.
 
-    private fun level(name: String, font: Float) = if (font == 2f) "$name-schrift200" else name
+    private fun level(name: String, font: Float) = if (font == 2f) "$name-font200" else name
 
     /** Sign in with the passkey button; with [code] the second stage including „Passkey statt Code“. */
     private fun loginPasskeyPhoto(code: Boolean, dark: Boolean, font: Float) {
-        val name = level(if (code) "anmelden-code" else "anmelden-passkey", font)
+        val name = level(if (code) "login-code" else "login-passkey", font)
         show(name, dark = dark, font = font) {
             LoginScreen(
                 LoginScreenState(serverUrl = "https://brick.example.org", codeNeeded = code, registrationOpen = true),
@@ -1404,7 +1404,7 @@ class ScreenPhotoVariantsTest {
 
     /** The QR scanner during setup without a camera: Robolectric grants no permission, the hint stands there. */
     private fun setUpQrPhoto(dark: Boolean, font: Float) {
-        val name = level("einrichten-qr", font)
+        val name = level("setup-qr", font)
         show(name, dark = dark, font = font) {
             SetupScreen(currentUrl = "", onSave = {}, development = false)
         }
@@ -1421,14 +1421,14 @@ class ScreenPhotoVariantsTest {
 
     /** The question about a new server certificate with a fingerprint to compare. */
     private fun certificatePhoto(dark: Boolean, font: Float) {
-        val name = level("dialog-zertifikat", font)
+        val name = level("dialog-certificate", font)
         val question = CertificateUnresolved("brick.example.org:443",
             "3F:A1:09:7C:22:5D:E8:41:9B:0C:66:D2:7A:13:F4:88:51:2E:C9:07:B6:4D:30:9A:E1:75:2C:68:0F:D3:4B:91",
             CertificateUnresolved.Kind.FIRST_CONTACT)
         showDialog(name, dark = dark, font = font) {
             CertificateDialog(question, userCaEnabled = false, trustOn = { true }, onUserCa = {}, onCancel = {})
         }
-        dialogPhoto(name, "classic", dark, "telefon", font)
+        dialogPhoto(name, "classic", dark, "phone", font)
     }
 
     @Test fun dialogCertificateLight() = certificatePhoto(false, 1f)
@@ -1437,14 +1437,14 @@ class ScreenPhotoVariantsTest {
 
     /** Without a known CA: scanning the web app's code first, the manual comparison below it. */
     @Test fun dialogCertificateScanLight() {
-        val name = "dialog-zertifikat-scan"
+        val name = "dialog-certificate-scan"
         val question = CertificateUnresolved("brick.example.org:443",
             "P6EJfCJd6EGbDGbSehP0iFEuyQe2TTCa4XUsaA/TS5E=", CertificateUnresolved.Kind.UNKNOWN_CA)
         showDialog(name, dark = false, font = 1f) {
             CertificateDialog(question, userCaEnabled = true, trustOn = { true }, onUserCa = {}, onCancel = {},
                 codeScan = CodeScan(trust = { CodeCheck.FITS_NOT }) { _, _ -> })
         }
-        dialogPhoto(name, "classic", false, "telefon", 1f)
+        dialogPhoto(name, "classic", false, "phone", 1f)
     }
 
     /** Account, scrolled to [section]: the list of devices or the second factor. */
@@ -1467,17 +1467,17 @@ class ScreenPhotoVariantsTest {
         photo(full, dark = dark)
     }
 
-    @Test fun accountDevicesLight() = accountSectionPhoto("konto-geraete", R.string.tokens_title, false, 1f)
-    @Test fun accountDevicesDark() = accountSectionPhoto("konto-geraete", R.string.tokens_title, true, 1f)
-    @Test fun accountDevicesFont200() = accountSectionPhoto("konto-geraete", R.string.tokens_title, false, 2f)
-    @Test fun accountSecondFactorLight() = accountSectionPhoto("konto-zweiter-faktor", R.string.zf_title, false, 1f)
-    @Test fun accountSecondFactorDark() = accountSectionPhoto("konto-zweiter-faktor", R.string.zf_title, true, 1f)
-    @Test fun accountSecondFactorFont200() = accountSectionPhoto("konto-zweiter-faktor", R.string.zf_title, false, 2f)
+    @Test fun accountDevicesLight() = accountSectionPhoto("account-devices", R.string.tokens_title, false, 1f)
+    @Test fun accountDevicesDark() = accountSectionPhoto("account-devices", R.string.tokens_title, true, 1f)
+    @Test fun accountDevicesFont200() = accountSectionPhoto("account-devices", R.string.tokens_title, false, 2f)
+    @Test fun accountSecondFactorLight() = accountSectionPhoto("account-second-factor", R.string.zf_title, false, 1f)
+    @Test fun accountSecondFactorDark() = accountSectionPhoto("account-second-factor", R.string.zf_title, true, 1f)
+    @Test fun accountSecondFactorFont200() = accountSectionPhoto("account-second-factor", R.string.zf_title, false, 2f)
 
     // ── Leer ──
 
     private fun financesEmptyPhoto(dark: Boolean, font: Float) {
-        val name = level("finanzen-leer", font)
+        val name = level("finances-empty", font)
         world.paths.responses["/api/v2/finance/valuation"] = """{"success":true,"currency":"CHF","sets":[],
             "totals":{"min":"0.00","avg":"0.00","max":"0.00","qty_avg":"0.00"}}"""
         world.paths.responses["/api/v2/finance/pnl"] = """{"success":true,"currency":"CHF","totals":{"purchase":"0.00","current":"0.00",
@@ -1509,15 +1509,15 @@ class ScreenPhotoVariantsTest {
         photo(full, dark = dark)
     }
 
-    @Test fun minifigsEmptyLight() = minifigsPhoto("figuren-leer", false, 1f, error = false)
-    @Test fun minifigsEmptyDark() = minifigsPhoto("figuren-leer", true, 1f, error = false)
-    @Test fun minifigsEmptyFont200() = minifigsPhoto("figuren-leer", false, 2f, error = false)
-    @Test fun minifigsErrorLight() = minifigsPhoto("figuren-fehler", false, 1f, error = true)
-    @Test fun minifigsErrorDark() = minifigsPhoto("figuren-fehler", true, 1f, error = true)
-    @Test fun minifigsErrorFont200() = minifigsPhoto("figuren-fehler", false, 2f, error = true)
+    @Test fun minifigsEmptyLight() = minifigsPhoto("minifigs-empty", false, 1f, error = false)
+    @Test fun minifigsEmptyDark() = minifigsPhoto("minifigs-empty", true, 1f, error = false)
+    @Test fun minifigsEmptyFont200() = minifigsPhoto("minifigs-empty", false, 2f, error = false)
+    @Test fun minifigsErrorLight() = minifigsPhoto("minifigs-error", false, 1f, error = true)
+    @Test fun minifigsErrorDark() = minifigsPhoto("minifigs-error", true, 1f, error = true)
+    @Test fun minifigsErrorFont200() = minifigsPhoto("minifigs-error", false, 2f, error = true)
 
     private fun locationsEmptyPhoto(dark: Boolean, font: Float) {
-        val name = level("lagerorte-leer", font)
+        val name = level("storage-locations-empty", font)
         world.paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[]}"""
         val vm = settings().also { it.loadOwnLocations() }
         show(name, dark = dark, font = font) { LocationsRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
@@ -1530,7 +1530,7 @@ class ScreenPhotoVariantsTest {
     @Test fun locationsEmptyFont200() = locationsEmptyPhoto(false, 2f)
 
     private fun priceAlertsEmptyPhoto(dark: Boolean, font: Float) {
-        val name = level("preisalarme-leer", font)
+        val name = level("price-alerts-empty", font)
         world.paths.responses["/api/v2/alerts"] = """{"success":true,"alerts":[]}"""
         val vm = settings()
         show(name, dark = dark, font = font) {
@@ -1547,7 +1547,7 @@ class ScreenPhotoVariantsTest {
 
     /** A main account without linked accounts and without an open invitation. */
     private fun householdEmptyPhoto(dark: Boolean, font: Float) {
-        val name = level("haushalt-leer", font)
+        val name = level("household-empty", font)
         world.paths.responses["/api/v2/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[],"open_invites":0}"""
         val vm = world.t.track(HouseholdViewModel(world.t.session, world.t.filter(), world.t.sync,
@@ -1567,7 +1567,7 @@ class ScreenPhotoVariantsTest {
     // ── Fehler ──
 
     private fun accountErrorPhoto(dark: Boolean, font: Float) {
-        val name = level("konto-fehler", font)
+        val name = level("account-error", font)
         loadGermanBeforeThe()
         world.paths.codes["/api/v2/auth/profile"] = 500
         val account = world.t.track(AccountViewModel(testAccountRepository(world.t.api, world.t.io),
@@ -1584,7 +1584,7 @@ class ScreenPhotoVariantsTest {
     @Test fun accountErrorFont200() = accountErrorPhoto(false, 2f)
 
     private fun vouchersErrorPhoto(dark: Boolean, font: Float) {
-        val name = level("gutscheine-fehler", font)
+        val name = level("vouchers-error", font)
         loadGermanBeforeThe()
         world.paths.codes["/api/v2/vouchers"] = 500
         val vm = world.t.track(VoucherViewModel(testVouchersRepository(world.t.api), ContextTexts(),
@@ -1602,7 +1602,7 @@ class ScreenPhotoVariantsTest {
 
     /** Added without network: hint with state, one pending change and the message for it. */
     private fun addOfflinePhoto(dark: Boolean, font: Float) {
-        val name = level("erfassen-offline", font)
+        val name = level("add-offline", font)
         val gallery = world.gallery().also { it.loadSets(); it.loadStats() }
         val message = SnackbarHostState()
         val text = ApplicationProvider.getApplicationContext<Context>().resources
@@ -1621,7 +1621,7 @@ class ScreenPhotoVariantsTest {
 
     /** The frame around the destination with keyboard focus, here the wishlist on the page “More”. */
     private fun focusPhoto(dark: Boolean, font: Float) {
-        val name = level("fokusrahmen", font)
+        val name = level("focus-frame", font)
         show(name, dark = dark, font = font) {
             val mode = LocalInputModeManager.current
             LaunchedEffect(Unit) { mode.requestInputMode(InputMode.Keyboard) }

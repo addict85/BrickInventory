@@ -14,7 +14,7 @@ fun interface WarmUp {
 }
 
 /**
- * What SessionService loads after a sign-in. The Blickfeld that holds these
+ * What SessionService loads after a sign-in. The scope that holds these
  * lists lives one layer up, in the state (core-state); the session only knows these
  * four steps, otherwise it would depend on the scopes' filters.
  */

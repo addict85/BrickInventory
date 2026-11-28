@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: parts name colors in German and names as English
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/CatalogTexts.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/CatalogTexts.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/CatalogTexts.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/CatalogTexts.kt
 @@ -24,7 +24,7 @@
   */
  @Composable

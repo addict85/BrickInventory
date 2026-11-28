@@ -197,7 +197,7 @@ class SettingsViewModel @Inject constructor(
     private val waitingThresholds = mutableMapOf<Pair<String, Condition>, Job>()
 
     /**
-     * Saves while typing, debounced like in the set detail (Alarmeingabe.QUIET_MS): the
+     * Saves while typing, debounced like in the set detail (AlarmInput.QUIET_MS): the
      * overview used to be the only place with a save button that only appeared on
      * change. In the ViewModel, so the input survives leaving the page.
      * An empty field doesn't delete here — the trash icon next to it is for that.

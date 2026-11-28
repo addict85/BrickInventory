@@ -32,7 +32,7 @@ class AppearanceViewModel @Inject constructor(
 
     /**
      * Only the theme, so MainActivity doesn't recompose on every state change.
-     * The first value comes from the store's synchronous mirror (Kontowerte), before the first frame.
+     * The first value comes from the store's synchronous mirror (AccountValues), before the first frame.
      */
     val appTheme: StateFlow<Design> =
         session.state.map { it.appTheme }.stateIn(viewModelScope, SharingStarted.Eagerly, session.state.value.appTheme)

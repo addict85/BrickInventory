@@ -318,7 +318,7 @@ internal fun LazyListScope.setDetailHeroImage(
 /**
  * Price alert — "let me know when this set falls below X". Its own card, because the
  * alert belongs to the account, not the set, and doesn't move with it on a move.
- * Saved on typing after a quiet period (Alarmeingabe.QUIET_MS, in the
+ * Saved on typing after a quiet period (AlarmInput.QUIET_MS, in the
  * ViewModel so it survives leaving): on the phone the focus change
  * often never happens.
  */

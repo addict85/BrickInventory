@@ -40,7 +40,7 @@ internal class SetCreateSseClient @Inject constructor(
     /**
      * Cold flow: the request only goes out on collecting. Cancelling the collection
      * closes the connection, the creation on the server keeps running — hence there is
-     * no cancel button. The last step is always Fertig, Fehler or NoConnection.
+     * no cancel button. The last step is always Done, Failure or NoConnection.
      */
     override fun create(
         setNumber: String, quantity: Int, purchasePrice: Money?,

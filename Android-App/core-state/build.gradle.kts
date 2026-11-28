@@ -1,5 +1,5 @@
-// What the scopes share without knowing each other: Blickfeld, texts, the foundation
-// of the scope ViewModels and the AppViewModel — without Compose; the surroundings of destinations
+// What the areas share without knowing each other: the scope (Scope.kt), texts, the foundation
+// of the area ViewModels and the AppViewModel — without Compose; the surroundings of destinations
 // live in core-navigation. What only the app knows (widget) comes in as an interface.
 plugins {
     alias(libs.plugins.brickinventory.android.library)

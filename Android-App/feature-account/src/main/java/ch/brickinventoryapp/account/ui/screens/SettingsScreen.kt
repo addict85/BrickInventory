@@ -103,7 +103,7 @@ internal fun SettingsRoute(
 /**
  * Settings — a few cards instead of a stack: this device, account (every
  * choice applies right away), server and privacy. The categories with their own page sit on "More"
- * (MoreScreen.kt) and in SettingsUnterseiten.kt.
+ * (MoreScreen.kt) and in SettingsSubpages.kt.
  */
 @Composable
 fun SettingsScreen(

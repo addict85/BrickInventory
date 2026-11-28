@@ -39,7 +39,7 @@ class KeystoreLegacyStockTest {
 
     private val file = File(folder, "ablage.schluessel")
 
-    /** What Ablageschluessel wrote: a result of the run, not source code. */
+    /** What StoreKey wrote: a result of the run, not source code. */
     private fun stored() = file.readBytes().decodeToString()
 
     @After

@@ -1,4 +1,4 @@
-// What every area needs from the app to show its destinations (Bereichsumgebung).
+// What every area needs from the app to show its destinations (AreaEnvironment).
 // Own module because it knows Compose, Navigation and Coil: core-state thus stays
 // without UI (ModuleEdges.withoutUi).
 plugins {

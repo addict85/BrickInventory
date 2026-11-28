@@ -42,7 +42,7 @@ class ScopeFilterStore @Inject constructor(
  *
  * A singleton, because gallery, parts, finances, wishlist and settings
  * show the same accounts and locations. Whoever changes a filter afterwards reloads its
- * own list; the Blickfeld service itself loads no inventory data.
+ * own list; the scope service itself loads no inventory data.
  */
 interface Scope : FilterSource {
     val accounts: StateFlow<ScopeUiState>
@@ -115,7 +115,7 @@ class ScopeService @Inject constructor(
         }
     }
 
-    /** The occupied locations in the gallery's Blickfeld — they feed the storage filter. */
+    /** The occupied locations in the gallery's scope — they feed the storage filter. */
     override suspend fun fetchStorageLocations() {
         when (val r = parts.getLocations(accountFor(ScopeFilter.View.GALLERY))) {
             is Outcome.Success -> _storage.update { it.copy(locations = r.data, locationsFetch = Load.Data(Unit)) }

@@ -28,7 +28,7 @@ internal class EncryptedInventoryFactory(
             prepare(file, password, store.newCreated)
             SupportOpenHelperFactory(password).create(configuration)
         }
-        // On sign-out (Ablageschluessel.erneuere): nothing stays behind with the old key.
+        // On sign-out (StoreKey.erneuere): nothing stays behind with the old key.
         store.beforeRenewal {
             helper.shutDown()
             deleteDatabase(file)

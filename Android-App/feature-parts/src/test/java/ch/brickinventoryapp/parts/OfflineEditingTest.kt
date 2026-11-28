@@ -43,7 +43,7 @@ import java.util.Collections
  *      “if something waits, new things go behind it” (the second change went out directly)
  *   C  in ServerSender for SetQuantity `quantity = step` instead of `quantityDelta` →
  *      red “what is sent is the step”
- *   D  in Offlineablage.refreshPaged (Fetch.kt) the empty list taken over even on an
+ *   D  in OfflineStore.refreshPaged (Fetch.kt) the empty list taken over even on an
  *      error → red “without a connection the list stays in the store”
  *   (E–I measured)
  *   E  in the store's write (Fetch.kt) take a new key when buffering after the direct

@@ -110,7 +110,7 @@ object Sources {
     }
 
     /**
-     * All state classes: they live per scope in <stamm>/ui/Zustand*.kt. With a
+     * All state classes: they live per scope in <root>/ui/<Area>States.kt. With a
      * lower bound, otherwise a renamed folder would check nothing and still be green.
      */
     fun states(): String {

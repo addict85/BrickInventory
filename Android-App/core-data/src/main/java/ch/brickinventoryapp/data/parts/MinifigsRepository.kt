@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Minifigures: stock and manually added figures.
  * An interface so that ViewModels and tests do not depend on the implementation with
- * Retrofit and store (FiguresRepositoryImpl).
+ * Retrofit and store (MinifigsRepositoryImpl).
  */
 interface MinifigsRepository {
     /** The figures from the store by search text; [refreshMinifigs] fills them. */
