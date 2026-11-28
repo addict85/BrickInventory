@@ -16,8 +16,6 @@
     <string name="detail_price_placeholder">Market price</string>
         <string name="common_back">Back</string>
     <string name="acq_delete_title">Delete entry</string>
-    <string name="acq_delete_question">Delete entry?</string>
-    <string name="acq_delete_text">Delete this purchase price entry? The total quantity will be adjusted accordingly.</string>
     <string name="acq_deleted">Purchase deleted</string>
     <string name="common_delete">Delete</string>
     <string name="common_edit">Edit</string>
@@ -232,8 +230,6 @@
     <string name="storage_rename">Rename</string>
     <string name="storage_rename_title">Rename storage location</string>
     <string name="storage_menu_cd">Actions for %1$s</string>
-    <string name="storage_delete_title">Delete storage location?</string>
-    <string name="storage_delete_text">“%1$s” will be deleted. This only works while nothing is stored there.</string>
     <string name="detail_storage">Storage</string>
     <string name="detail_alert">Price alert</string>
     <string name="alert_channel_name">Price alerts</string>
@@ -442,7 +438,6 @@
     <string name="parts_breakdown">%1$s from sets · %2$s loose</string>
     <string name="nav_partslist">Build list</string>
     <string name="nav_finance">Finance</string>
-    <string name="nav_comparison">Compare</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_more">More</string>
     <string name="nav_group_prices">Prices and vouchers</string>
@@ -928,7 +923,6 @@
     <string name="step_admin">Open administration</string>
     <string name="step_full_access">Sign in with administrator rights</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
-    <string name="vouchers_delete_confirm">Voucher %1$s and its stored PDF will be deleted. Right afterwards you can still undo it.</string>
     <string name="vouchers_saved">Voucher saved</string>
     <string name="vouchers_deleted">Voucher deleted</string>
     <string name="vouchers_restored">Voucher restored</string>
@@ -938,7 +932,6 @@
     <string name="vouchers_amount_invalid">Please enter a valid amount</string>
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
-    <string name="vouchers_delete_title">Delete voucher?</string>
     <string name="vouchers_mask_hint">Stays unchanged unless you type something new</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
@@ -1010,35 +1003,34 @@
     <string name="cert_title_first_contact">Trust this server?</string>
     <string name="cert_title_unknown">Unknown certificate</string>
     <string name="cert_title_changed">The server\'s certificate has changed</string>
-    <string name="cert_text_first_contact_type">This is the first encrypted connection to %1$s. Its certificate comes from a publicly recognized authority, but a wrongly issued certificate would look exactly the same. That is why the connection only counts once you copy the fingerprint:\n1. Open the web app in the browser on your computer.\n2. Open the certificate details (padlock next to the address) and select the topmost certificate of the chain.\n3. Type the last 12 pairs of “Public key, SHA-256” into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nOnly the beginning of the fingerprint is shown here.</string>
-    <string name="cert_first_contact_input">Last 12 pairs of the fingerprint (e.g. 3F:A2:…), copied from your browser\'s certificate details on the computer (topmost certificate, fingerprints → public key, SHA-256)</string>
-    <string name="cert_text_unknown">The app cannot check who %1$s is: the server issued its certificate itself, or your own authority did. That is normal for a server at home, but it could also be someone in between.\n\nThe easiest way is to scan the QR code from the web app (Menu → Android App). If no QR code is possible, do this:\n1. Open the web app on a computer.\n2. Go to Menu → Android App → Server certificate.\n3. Copy the last 12 pairs of the fingerprint into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nThe fingerprint is an ID that belongs to this server. If it matches, it is your server. This screen only shows its beginning.</string>
-    <string name="cert_text_changed">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the web app shows the new fingerprint (Menu → Android App → Server certificate); for a public certificate authority, so does your browser (certificate details, public key SHA-256 of the top authority). Copy its last 12 pairs, e.g. 3F:A2:…</string>
-    <string name="cert_fingerprint">Fingerprint (SHA-256 of the public key)</string>
+    <string name="cert_text_first_contact_type">This is the first encrypted connection to %1$s. A wrongly issued certificate would look exactly the same – so it only counts once you copy the fingerprint from the browser on your computer.</string>
+    <string name="cert_first_contact_input">In the browser on your computer: padlock next to the address → certificate details → topmost certificate → “Public key, SHA-256”. Copy the last 12 pairs, e.g. 3F:A2:…</string>
+    <string name="cert_text_unknown">The app cannot check who %1$s is: the certificate was issued by the server itself or by your own authority. Confirm it with the QR code or the fingerprint from the web app.</string>
+    <string name="cert_text_changed">%1$s shows a different certificate than the one you confirmed; nothing has been sent. Only accept it if you changed the server yourself – otherwise someone may be listening in.</string>
     <string name="cert_previous">Previously confirmed</string>
     <string name="cert_trust">Trust this certificate</string>
     <string name="cert_trust_new">Accept the new certificate</string>
     <string name="cert_title_key_new">The server has a new key</string>
-    <string name="cert_text_key_new">%1$s shows a valid certificate from the same certificate authority, but with a different key than before. That is normal after the server renewed its certificate – but it can also be a certificate issued to someone else. Nothing has been sent. Only accept it if the server\'s certificate was just renewed.</string>
+    <string name="cert_text_key_new">%1$s shows a certificate from the same authority, but with a new key; nothing has been sent. That is normal after a renewal – otherwise it may be a certificate issued to someone else.</string>
     <string name="cert_user_ca">Use an authority installed on this device instead</string>
-    <string name="cert_changed_input">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from the web app (Menu → Android App → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
-    <string name="cert_key_new_input">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from your computer\'s browser certificate details (Fingerprints → Public key, SHA-256)</string>
+    <string name="cert_changed_input">In the web app under Menu → Android App → Server certificate; for a public authority also in the certificate details of your browser. Copy the last 12 pairs, e.g. 3F:A2:…</string>
+    <string name="cert_key_new_input">In the browser on your computer: certificate details → topmost certificate → “Public key, SHA-256”. Copy the last 12 pairs of the new fingerprint, e.g. 3F:A2:…</string>
     <string name="cert_changed_qr">Alternatively, scan a new QR code from the web app.</string>
     <string name="cert_scan_qr">Scan QR code</string>
-    <string name="cert_scan_explain">Easier than copying: the web app shows a QR code under Menu → Android App → Server certificate. The app compares the whole fingerprint with it.</string>
+    <string name="cert_manual_compare">Compare manually</string>
     <string name="cert_scan_hint">Scan the server certificate\'s QR code</string>
     <string name="scanner_camera_purpose_cert">The camera reads the QR code with the fingerprint of the server certificate.</string>
     <string name="cert_scan_compare_instead">Compare by hand</string>
     <string name="cert_scan_mismatch">The QR code names a different fingerprint than the server. The certificate is not trusted. If the code comes from this server\'s web app, someone may be redirecting the connection.</string>
     <string name="cert_scan_not_code">This is not a certificate code. Scan the QR code under Menu → Android App → Server certificate in the web app.</string>
     <string name="cert_scan_unknown_version">This app version does not know this certificate code. Update the app or compare the fingerprint by hand.</string>
-    <string name="cert_unknown_input">Last 12 pairs of the fingerprint (e.g. 3F:A2:…), copied from the web app (Menu → Android App → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
+    <string name="cert_unknown_input">In the web app under Menu → Android App → Server certificate. Copy the last 12 pairs, e.g. 3F:A2:…</string>
     <string name="cert_input_wrong">That does not match this server\'s fingerprint.</string>
     <string name="cert_input_too_short">Characters so far: %1$d/%2$d. Copy the last 12 pairs.</string>
     <string name="cert_input_counter">%1$d/%2$d</string>
     <string name="cert_input_label">Last 12 pairs</string>
     <string name="cert_starts_with">Fingerprint starts with (for orientation only)</string>
-    <string name="cert_text_user_ca">The certificate of %1$s comes from an authority that was installed on this device. That may be your own – or one that someone with access to the device slipped in.\n\nWhat to do:\n1. Open the web app on a computer.\n2. Go to Menu → Android App → Server certificate.\n3. Copy the last 12 pairs of the fingerprint into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nThis screen only shows the beginning of the fingerprint.</string>
+    <string name="cert_text_user_ca">The certificate of %1$s comes from an authority installed on this device – by you or by someone with access to the device. Confirm it with the QR code or the fingerprint from the web app.</string>
     <string name="cert_title_user_ca">Certificate from an installed authority</string>
     <string name="cert_title_code_mismatch">The server does not match the QR code</string>
     <string name="cert_text_code_mismatch">%1$s shows a different key than the QR code you just scanned. Sign-in was cancelled; nothing has been sent. This happens when someone redirects the connection – or when the code is old. Create a new QR code in the web app (Menu → Android App) and scan it again.</string>
@@ -1086,6 +1078,7 @@
     <string name="widget_today">Today</string>
     <string name="widget_total">Overall</string>
     <string name="widget_empty">Open the app once to load the figures.</string>
+    <string name="widget_as_of">As of %1$s</string>
     <string name="widget_description">Collection value, profit/loss today and overall.</string>
     <string name="widget_preview_value">CHF 112,480.00</string>
     <string name="widget_preview_today">+CHF 1,035.20</string>

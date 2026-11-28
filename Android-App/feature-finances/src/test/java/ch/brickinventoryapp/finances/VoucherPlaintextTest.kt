@@ -7,7 +7,6 @@ import ch.brickinventoryapp.data.testing.testVouchersRepository
 import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.finances.ui.CopyJob
 import ch.brickinventoryapp.finances.ui.VoucherPdfTarget
-import ch.brickinventoryapp.finances.ui.VoucherStep
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.finances.ui.viewmodel.inputViaMask
 import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
@@ -35,7 +34,7 @@ import java.io.File
 
 /**
  * Vouchers with a masked list: number, PIN and PDF need only the login (no password, no
- * code), deleting asks „are you sure“ first; the plain text lives only in the ViewModel.
+ * code), deleting runs at once (the snackbar offers undo); the plain text lives only in the ViewModel.
  * Against a test server.
  *
  * Counter-checks:
@@ -44,8 +43,8 @@ import java.io.File
  *  B  In require() the plain-text shortcut removed → red “revealing a PIN …”
  *     (copying asks the server again instead of copying).
  *  C  forgetPlaintext() does not clear `plaintext` → red “revealing a PIN …”.
- *  D  In require() DELETE runs right away like the other steps → red “deleting asks …”
- *     (counter-checks/voucher-delete-without-question.patch).
+ *  D  In require() DELETE waits for an „are you sure“ again → red “deleting runs at once …”
+ *     (counter-checks/voucher-delete-waits.patch).
  *  E  In run() the rejection no longer closes the step → red “offline nothing is
  *     deleted …” (counter-checks/voucher-refusal-keeps-step.patch).
  *  F  editVoucher() no longer takes `g.pin`, but "" instead → red
@@ -136,14 +135,10 @@ class VoucherPlaintextTest {
     }
 
     @Test
-    fun `deleting asks first and then sends no password`() {
-        vm.deleteVoucher(1)
-        assertEquals(VoucherStep.DELETE, vm.state.value.confirmation?.step)
-        assertFalse("nothing runs before „are you sure“", vm.state.value.confirmation!!.operation.running)
-        assertEquals("no request before „are you sure“", 1, server.requestCount)
+    fun `deleting runs at once, sends no password and leaves the undo to the snackbar`() {
         server.enqueue(response("""{"success":true}"""))
         server.enqueue(response("""{"success":true,"vouchers":[]}"""))
-        vm.confirm()
+        vm.deleteVoucher(1)
         pollUntil("deleted") { vm.state.value.vouchers.isEmpty() }
         val r = server.takeRequest()
         assertEquals("DELETE /api/v2/vouchers/1", "${r.method} ${r.path}")
@@ -154,9 +149,8 @@ class VoucherPlaintextTest {
 
     @Test
     fun `offline nothing is deleted and nothing buffered`() {
-        vm.deleteVoucher(1)
         server.shutdown()
-        vm.confirm()
+        vm.deleteVoucher(1)
         pollUntil("refusal") { vm.state.value.confirmation == null && channel.text != null }
         assertEquals("the voucher is still shown", 1, vm.state.value.vouchers.size)
         assertNull("nothing waits for the network", vm.state.value.deleted)

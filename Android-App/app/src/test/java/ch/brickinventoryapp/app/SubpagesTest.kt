@@ -175,7 +175,7 @@ class SubpagesTest {
     }
 
     @Test
-    fun `storage locations stand as rows with a menu and delete only after confirmation`() {
+    fun `storage locations stand as rows with a menu and delete without a question, with undo`() {
         world.paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
         val vm = settings().also { it.loadOwnLocations() }
@@ -189,19 +189,17 @@ class SubpagesTest {
 
         compose.onNodeWithContentDescription(ctx.getString(R.string.storage_menu_cd, "Keller")).performClick()
         compose.waitForIdle()
-        compose.onNodeWithText(ctx.getString(R.string.common_delete)).performClick()
-        compose.waitForIdle()
-        assertTrue("deleted before the confirmation: ${world.paths.requests}", world.paths.requests.none { it.startsWith("DELETE") })
-        compose.onNodeWithText(ctx.getString(R.string.storage_delete_title)).fetchSemanticsNode()
-        // Confirmed is only marked: the location is missing, the server learns of it only when the
-        // snackbar ends without „Rückgängig“. The clock stands still so that it does not expire by itself.
+        // „Löschen“ only marks: the location is missing, the server learns of it only when the
+        // snackbar ends without „Rückgängig“. No question before: the undo is the safeguard.
+        // The clock stands still so that the snackbar does not expire by itself.
         compose.mainClock.autoAdvance = false
-        inDialog(ctx.getString(R.string.common_delete)).performClick()
+        compose.onNodeWithText(ctx.getString(R.string.common_delete)).performClick()
         repeat(5) {
             compose.mainClock.advanceTimeBy(100)
             Shadows.shadowOf(Looper.getMainLooper()).idle()
         }
         assertTrue("no snackbar with undo", message.currentSnackbarData != null)
+        assertTrue("a question before the undo", compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty())
         compose.onAllNodesWithText("Keller").assertCountEquals(0)
         assertTrue("deleted before the snackbar ran out", world.paths.requests.none { it.startsWith("DELETE") })
         message.currentSnackbarData?.dismiss()

@@ -214,8 +214,6 @@
     <string name="storage_rename">Umbenennen</string>
     <string name="storage_rename_title">Lagerort umbenennen</string>
     <string name="storage_menu_cd">Aktionen für %1$s</string>
-    <string name="storage_delete_title">Lagerort löschen?</string>
-    <string name="storage_delete_text">„%1$s“ wird gelöscht. Das geht nur, solange nichts darin liegt.</string>
     <string name="detail_storage">Lagerort</string>
     <string name="detail_alert">Preisalarm</string>
     <string name="alert_channel_name">Preisalarme</string>
@@ -427,7 +425,6 @@
     <string name="parts_breakdown">%1$s aus Sets · %2$s einzeln</string>
     <string name="nav_partslist">Bauliste</string>
     <string name="nav_finance">Finanzen</string>
-    <string name="nav_comparison">Vergleich</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="nav_more">Mehr</string>
     <string name="nav_group_prices">Preise und Gutscheine</string>
@@ -522,8 +519,6 @@
     <string name="condition_new">Neuware</string>
     <string name="condition_used">Gebraucht</string>
     <string name="acq_delete_title">Erfassung löschen</string>
-    <string name="acq_delete_question">Erfassung löschen?</string>
-    <string name="acq_delete_text">Diese Kaufpreis-Erfassung wirklich löschen? Die Gesamtanzahl wird angepasst.</string>
     <string name="acq_deleted">Kauf gelöscht</string>
     <string name="common_back">Zurück</string>
     <string name="common_delete">Löschen</string>
@@ -915,7 +910,6 @@
     <string name="step_admin">Verwaltung öffnen</string>
     <string name="step_full_access">Mit Administratorrechten anmelden</string>
     <string name="vouchers_pin_hide">PIN verbergen</string>
-    <string name="vouchers_delete_confirm">Gutschein %1$s und das hinterlegte PDF werden gelöscht. Gleich danach kannst du es noch rückgängig machen.</string>
     <string name="vouchers_saved">Gutschein gespeichert</string>
     <string name="vouchers_deleted">Gutschein gelöscht</string>
     <string name="vouchers_restored">Gutschein wiederhergestellt</string>
@@ -925,7 +919,6 @@
     <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
     <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
-    <string name="vouchers_delete_title">Gutschein löschen?</string>
     <string name="vouchers_mask_hint">Bleibt unverändert, solange du nichts Neues eintippst</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
@@ -992,35 +985,34 @@
     <string name="cert_title_first_contact">Diesem Server vertrauen?</string>
     <string name="cert_title_unknown">Unbekanntes Zertifikat</string>
     <string name="cert_title_changed">Das Zertifikat des Servers hat sich geändert</string>
-    <string name="cert_text_first_contact_type">Das ist die erste verschlüsselte Verbindung zu %1$s. Das Zertifikat des Servers stammt von einer öffentlich anerkannten Stelle, aber ein falsch ausgestelltes Zertifikat sähe genau gleich aus. Deshalb gilt die Verbindung erst, wenn du den Fingerabdruck abschreibst:\n1. Öffne die Web-App im Browser am Computer.\n2. Öffne die Zertifikatdetails (Schloss neben der Adresse) und wähle das oberste Zertifikat der Kette.\n3. Schreibe die letzten 12 Paare von „Öffentlicher Schlüssel, SHA-256“ unten ins Feld, z. B. 3F:A2:…; die Doppelpunkte setzt die App selbst.\n\nHier steht nur der Anfang des Fingerabdrucks.</string>
-    <string name="cert_first_contact_input">Die letzten 12 Paare des Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus den Zertifikatdetails des Browsers am Rechner (oberstes Zertifikat, Fingerabdrücke → Öffentlicher Schlüssel, SHA-256)</string>
-    <string name="cert_text_unknown">Die App kann nicht prüfen, wer hinter %1$s steht: Der Server hat sein Zertifikat selbst ausgestellt, oder deine eigene Stelle hat es getan. Bei einem Server zu Hause ist das üblich, es könnte aber auch jemand dazwischen sein.\n\nAm einfachsten scannst du den QR-Code aus der Web-App (Menü → Android-App). Wenn kein QR-Code möglich ist, gehst du so vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Menü → Android-App → Server-Zertifikat.\n3. Schreibe die letzten 12 Paare des Fingerabdrucks unten ins Feld, z. B. 3F:A2:…; die Doppelpunkte setzt die App selbst.\n\nDer Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Stimmt sie überein, ist es dein Server. Hier steht nur sein Anfang.</string>
-    <string name="cert_text_changed">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast: Den neuen Fingerabdruck zeigt die Web-App (Menü → Android-App → Server-Zertifikat), bei einer öffentlichen Zertifizierungsstelle auch der Browser (Zertifikatdetails, SHA-256 des öffentlichen Schlüssels der obersten Stelle). Schreibe seine letzten 12 Paare ab, z. B. 3F:A2:…</string>
-    <string name="cert_fingerprint">Fingerabdruck (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="cert_text_first_contact_type">Das ist die erste verschlüsselte Verbindung zu %1$s. Ein falsch ausgestelltes Zertifikat sähe genau gleich aus – deshalb gilt sie erst, wenn du den Fingerabdruck aus dem Browser am Computer abschreibst.</string>
+    <string name="cert_first_contact_input">Im Browser am Computer: Schloss neben der Adresse → Zertifikatdetails → oberstes Zertifikat → „Öffentlicher Schlüssel, SHA-256“. Die letzten 12 Paare abschreiben, z. B. 3F:A2:…</string>
+    <string name="cert_text_unknown">Die App kann nicht prüfen, wer hinter %1$s steht: Das Zertifikat ist selbst ausgestellt oder stammt von deiner eigenen Stelle. Bestätige es mit dem QR-Code oder dem Fingerabdruck aus der Web-App.</string>
+    <string name="cert_text_changed">%1$s zeigt ein anderes Zertifikat als das bestätigte; es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast – sonst hört womöglich jemand mit.</string>
     <string name="cert_previous">Bisher bestätigt</string>
     <string name="cert_trust">Diesem Zertifikat vertrauen</string>
     <string name="cert_trust_new">Neues Zertifikat annehmen</string>
     <string name="cert_title_key_new">Der Server hat einen neuen Schlüssel</string>
-    <string name="cert_text_key_new">%1$s zeigt ein gültiges Zertifikat derselben Zertifizierungsstelle, aber mit einem anderen Schlüssel als bisher. Das ist nach einer Erneuerung des Zertifikats normal – es kann aber auch ein Zertifikat sein, das jemand anderem ausgestellt wurde. Es wurde nichts gesendet. Nur annehmen, wenn das Zertifikat des Servers gerade erneuert wurde.</string>
+    <string name="cert_text_key_new">%1$s zeigt ein Zertifikat derselben Stelle, aber mit einem neuen Schlüssel; es wurde nichts gesendet. Nach einer Erneuerung ist das normal – sonst kann es ein Zertifikat für jemand anderen sein.</string>
     <string name="cert_user_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
-    <string name="cert_changed_input">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Menü → Android-App → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
-    <string name="cert_key_new_input">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus den Zertifikatdetails des Browsers am Rechner (Fingerabdrücke → Öffentlicher Schlüssel, SHA-256)</string>
+    <string name="cert_changed_input">In der Web-App unter Menü → Android-App → Server-Zertifikat, bei einer öffentlichen Stelle auch in den Zertifikatdetails des Browsers. Die letzten 12 Paare abschreiben, z. B. 3F:A2:…</string>
+    <string name="cert_key_new_input">Im Browser am Computer: Zertifikatdetails → oberstes Zertifikat → „Öffentlicher Schlüssel, SHA-256“. Die letzten 12 Paare des neuen Fingerabdrucks abschreiben, z. B. 3F:A2:…</string>
     <string name="cert_changed_qr">Oder einen neuen QR-Code aus der Web-App scannen.</string>
     <string name="cert_scan_qr">QR-Code scannen</string>
-    <string name="cert_scan_explain">Bequemer als Abschreiben: Die Web-App zeigt unter Menü → Android-App → Server-Zertifikat einen QR-Code. Die App vergleicht damit den ganzen Fingerabdruck.</string>
+    <string name="cert_manual_compare">Manuell vergleichen</string>
     <string name="cert_scan_hint">QR-Code des Server-Zertifikats scannen</string>
     <string name="scanner_camera_purpose_cert">Die Kamera liest den QR-Code mit dem Fingerabdruck des Server-Zertifikats.</string>
     <string name="cert_scan_compare_instead">Von Hand vergleichen</string>
     <string name="cert_scan_mismatch">Der QR-Code nennt einen anderen Fingerabdruck als der Server. Dem Zertifikat wird nicht vertraut. Stammt der Code aus der Web-App dieses Servers, leitet womöglich jemand die Verbindung um.</string>
     <string name="cert_scan_not_code">Das ist kein Zertifikats-Code. Scanne den QR-Code unter Menü → Android-App → Server-Zertifikat in der Web-App.</string>
     <string name="cert_scan_unknown_version">Diesen Zertifikats-Code kennt diese App-Version nicht. Aktualisiere die App oder vergleiche den Fingerabdruck von Hand.</string>
-    <string name="cert_unknown_input">Die letzten 12 Paare des Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Menü → Android-App → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="cert_unknown_input">In der Web-App unter Menü → Android-App → Server-Zertifikat. Die letzten 12 Paare abschreiben, z. B. 3F:A2:…</string>
     <string name="cert_input_wrong">Das passt nicht zum Fingerabdruck dieses Servers.</string>
     <string name="cert_input_too_short">Noch zu kurz: %1$d von %2$d Zeichen. Abgeschrieben werden die letzten 12 Paare.</string>
     <string name="cert_input_counter">%1$d/%2$d</string>
     <string name="cert_input_label">Letzte 12 Paare</string>
     <string name="cert_starts_with">Fingerabdruck beginnt mit (nur zur Orientierung)</string>
-    <string name="cert_text_user_ca">Das Zertifikat von %1$s stammt von einer Stelle, die auf diesem Gerät installiert wurde. Das kann deine eigene sein – oder eine, die jemand mit Zugriff auf das Gerät eingeschleust hat.\n\nSo gehst du vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Menü → Android-App → Server-Zertifikat.\n3. Schreibe die letzten 12 Paare des Fingerabdrucks unten ins Feld, z. B. 3F:A2:…; die Doppelpunkte setzt die App selbst.\n\nHier steht nur der Anfang des Fingerabdrucks.</string>
+    <string name="cert_text_user_ca">Das Zertifikat von %1$s stammt von einer Stelle, die auf diesem Gerät installiert wurde – von dir oder von jemandem mit Zugriff auf das Gerät. Bestätige es mit dem QR-Code oder dem Fingerabdruck aus der Web-App.</string>
     <string name="cert_title_user_ca">Zertifikat einer installierten Zertifizierungsstelle</string>
     <string name="cert_title_code_mismatch">Der Server passt nicht zum QR-Code</string>
     <string name="cert_text_code_mismatch">%1$s zeigt einen anderen Schlüssel als der eben gescannte QR-Code. Die Anmeldung wurde abgebrochen, nichts wurde gesendet. Das passiert, wenn jemand die Verbindung umleitet – oder wenn der Code alt ist. Erzeuge in der Web-App (Menü → Android-App) einen neuen QR-Code und scanne ihn noch einmal.</string>
@@ -1068,6 +1060,7 @@
     <string name="widget_today">Heute</string>
     <string name="widget_total">Gesamt</string>
     <string name="widget_empty">Öffne die App einmal, um die Zahlen zu laden.</string>
+    <string name="widget_as_of">Stand %1$s</string>
     <string name="widget_description">Wert der Sammlung, Gewinn/Verlust heute und gesamt.</string>
     <string name="widget_preview_value">CHF 112’480.00</string>
     <string name="widget_preview_today">+CHF 1’035.20</string>

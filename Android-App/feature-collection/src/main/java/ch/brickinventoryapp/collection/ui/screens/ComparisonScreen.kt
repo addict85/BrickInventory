@@ -16,9 +16,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ch.brickinventoryapp.collection.ui.comparisonUrl
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonActions
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonUiState
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonViewModel
@@ -124,10 +124,6 @@ private fun ComparisonSearchField(text: String, actions: ComparisonActions, sear
         keyboardActions = KeyboardActions(onSearch = { search() })
     )
 }
-
-/** The address of the search at toppreise.ch; the query is encoded, a `#` or `&` would change the address. */
-private fun comparisonUrl(query: String): String =
-    "https://www.toppreise.ch/produktsuche".toUri().buildUpon().appendQueryParameter("q", query).build().toString()
 
 @Composable
 private fun ScannedBarcode(barcode: String) {

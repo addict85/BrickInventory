@@ -1,0 +1,17 @@
+Gegenprobe: Die Erklärung im Zertifikatsdialog wieder mit einem dritten Satz
+Modul: app
+Test: ch.brickinventoryapp.app.CertificateDialogTest
+Rot: every explanation has at most two sentences
+
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
+@@ -987,7 +987,7 @@
+     <string name="cert_title_changed">Das Zertifikat des Servers hat sich geändert</string>
+     <string name="cert_text_first_contact_type">Das ist die erste verschlüsselte Verbindung zu %1$s. Ein falsch ausgestelltes Zertifikat sähe genau gleich aus – deshalb gilt sie erst, wenn du den Fingerabdruck aus dem Browser am Computer abschreibst.</string>
+     <string name="cert_first_contact_input">Im Browser am Computer: Schloss neben der Adresse → Zertifikatdetails → oberstes Zertifikat → „Öffentlicher Schlüssel, SHA-256“. Die letzten 12 Paare abschreiben, z. B. 3F:A2:…</string>
+-    <string name="cert_text_unknown">Die App kann nicht prüfen, wer hinter %1$s steht: Das Zertifikat ist selbst ausgestellt oder stammt von deiner eigenen Stelle. Bestätige es mit dem QR-Code oder dem Fingerabdruck aus der Web-App.</string>
++    <string name="cert_text_unknown">Die App kann nicht prüfen, wer hinter %1$s steht: Das Zertifikat ist selbst ausgestellt oder stammt von deiner eigenen Stelle. Bestätige es mit dem QR-Code oder dem Fingerabdruck aus der Web-App. Hier steht nur sein Anfang.</string>
+     <string name="cert_text_changed">%1$s zeigt ein anderes Zertifikat als das bestätigte; es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast – sonst hört womöglich jemand mit.</string>
+     <string name="cert_previous">Bisher bestätigt</string>
+     <string name="cert_trust">Diesem Zertifikat vertrauen</string>

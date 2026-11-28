@@ -24,7 +24,6 @@ import ch.brickinventoryapp.model.file.Read
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.loadError
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
@@ -125,24 +124,17 @@ class VoucherViewModel @Inject constructor(
     fun copyAcknowledge() = _state.update { it.copy(copyTo = null) }
 
     /**
-     * A step that shows or destroys money. The login is enough (owner's decision): showing
-     * runs right away, deleting first asks „are you sure“ via [confirm], because a card
-     * deleted by a stray tap is only back through „undo“ while the snackbar lasts.
+     * A step that shows or destroys money. The login is enough (owner's decision), every step
+     * runs right away: a deleted card stays on the server until the snackbar's „undo“ has
+     * passed ([restoreVoucher]), a question before it made deleting two steps (user's decision).
      */
     private fun require(step: VoucherStep, id: Int?) {
         val clear = id?.let { _state.value.plaintext[it] }
         if (clear != null && step in PLAINTEXT_STEPS) return runFrom(step, clear)
-        val b = VoucherConfirmation(step, id)
-        if (step == VoucherStep.DELETE) _state.update { it.copy(confirmation = b) } else run(b)
+        run(VoucherConfirmation(step, id))
     }
 
     fun cancelConfirmation() = _state.update { it.copy(confirmation = null) }
-
-    /** „Delete“ in the follow-up question; a second tap while it runs does nothing. */
-    fun confirm() {
-        val b = _state.value.confirmation ?: return
-        if (!b.operation.running) run(b)
-    }
 
     /** The step at its route; a rejection closes the step and goes to the snackbar. */
     private fun run(b: VoucherConfirmation) {
@@ -199,15 +191,12 @@ class VoucherViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Plain text gone, PINs hidden again — when the app goes into the background. An
-     * open delete question remains: it shows no secret.
-     */
+    /** Plain text gone, PINs hidden again — when the app goes into the background. */
     fun forgetPlaintext() = _state.update {
         it.copy(plaintext = emptyMap(), pinVisible = emptySet(), copyTo = null)
     }
 
-    /** On leaving the page: the open prompt along with it. */
+    /** On leaving the page: a running step along with it. */
     fun leaveVouchers() {
         forgetPlaintext()
         cancelConfirmation()
@@ -443,7 +432,7 @@ class VoucherViewModel @Inject constructor(
         }
     }
 
-    /** Asks first ([confirm]); afterwards the snackbar offers „undo“ ([restoreVoucher]). */
+    /** Runs at once; the snackbar offers „undo“ afterwards ([restoreVoucher]). */
     fun deleteVoucher(id: Int) = require(VoucherStep.DELETE, id)
 
     /** The UI does the copying (the clipboard is tied to the composition). */
@@ -479,7 +468,7 @@ class VoucherViewModel @Inject constructor(
     private enum class BalanceQuery { DONE, REMOVED, ERROR, ABORT }
 }
 
-/** Steps the plain text handles; PDF and delete ask every time. */
+/** Steps the plain text handles; PDF and delete go to the server every time. */
 private val PLAINTEXT_STEPS = setOf(VoucherStep.PIN_SHOW, VoucherStep.NUMBER_COPY, VoucherStep.PIN_COPY)
 
 /** Retry the same card at most this many times when the throttle slows things down. */

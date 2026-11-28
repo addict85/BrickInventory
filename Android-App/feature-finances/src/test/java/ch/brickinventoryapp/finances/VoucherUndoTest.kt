@@ -65,7 +65,6 @@ class VoucherUndoTest {
 
     private fun delete() {
         vm.deleteVoucher(1)
-        vm.confirm()
     }
 
     @Test

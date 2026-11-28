@@ -7,6 +7,11 @@ import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtPercent
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 
 /**
  * What the home screen widget shows: collection value, P&L today and in total.
@@ -93,4 +98,25 @@ fun gvText(amount: Double?, percent: Double?, currency: CurrencyCode): String {
     val sign = if (amount > 0.005) "+" else ""
     val money = sign + fmtMoney(amount, currency)
     return if (percent != null) "$money (${fmtPercent(percent)})" else money
+}
+
+/**
+ * The worker fetches hourly; numbers older than a day mean it has been stuck (offline, battery
+ * saver), and a value on the home screen should not look current then.
+ */
+const val WIDGET_STALE_AFTER_MS = 24L * 60 * 60 * 1000
+
+/** When the numbers are from ([stamp], null if unknown) and whether they are shown dimmed. */
+data class WidgetAge(val stamp: String?, val stale: Boolean)
+
+/**
+ * Today only the time („14:05“), otherwise the date: a time alone would read as today's.
+ * Without a fetch time (stores from before it was saved) the numbers count as old.
+ */
+fun widgetAge(state: Long, now: Long, zone: ZoneId, locale: Locale): WidgetAge {
+    if (state <= 0) return WidgetAge(null, stale = true)
+    val fetched = Instant.ofEpochMilli(state).atZone(zone)
+    val today = fetched.toLocalDate() == Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+    val format = if (today) DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) else DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
+    return WidgetAge(format.withLocale(locale).format(fetched), stale = now - state > WIDGET_STALE_AFTER_MS)
 }

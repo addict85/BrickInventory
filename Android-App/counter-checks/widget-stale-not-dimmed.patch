@@ -1,0 +1,17 @@
+Gegenprobe: Alte Zahlen im Widget werden nicht mehr abgeschwächt
+Modul: app
+Test: ch.brickinventoryapp.app.WidgetPreviewTest
+Rot: the widget says when its numbers are from
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/CollectionWidget.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/CollectionWidget.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/CollectionWidget.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/CollectionWidget.kt
+@@ -234,7 +234,7 @@
+     val age = widgetAge(numbers.state, now, zone, ctx.resources.configuration.locales[0])
+     return WidgetContent(title, "", ctx.getString(R.string.widget_value) to value,
+         listOf(ctx.getString(R.string.widget_today) to today, ctx.getString(R.string.widget_total) to total),
+-        age.stamp?.let { ctx.getString(R.string.widget_as_of, it) }, age.stale)
++        age.stamp?.let { ctx.getString(R.string.widget_as_of, it) }, false)
+ }
+ 
+ /** Registers the widget with Android; updating begins with the first widget. */

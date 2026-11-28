@@ -1,0 +1,16 @@
+Gegenprobe: Das Scan-Ergebnis bietet keinen Preisvergleich mehr an
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.PriceComparisonActionTest
+Rot: the scan result opens the comparison
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
+@@ -200,7 +200,6 @@
+         InfoBadge(stringResource(R.string.barcode_already_owned, barcodeState.ownershipQuantity), icon = Icons.Default.Check)
+     HorizontalDivider()
+     BarcodeStats(barcodeState)
+-    if (!forPartList) ScanComparison(barcodeState)
+ }
+ 
+ /**

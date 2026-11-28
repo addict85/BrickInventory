@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.collection.ui.BarcodeUiState
+import ch.brickinventoryapp.collection.ui.PriceComparisonButton
+import ch.brickinventoryapp.collection.ui.setComparisonUrl
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryActions
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.model.domain.Condition
@@ -39,6 +41,7 @@ import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.AddDialog
 import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.components.movementReduced
 import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Spacing
@@ -197,6 +200,20 @@ private fun BarcodeFound(barcodeState: BarcodeUiState, serverUrl: String, imageL
         InfoBadge(stringResource(R.string.barcode_already_owned, barcodeState.ownershipQuantity), icon = Icons.Default.Check)
     HorizontalDivider()
     BarcodeStats(barcodeState)
+    if (!forPartList) ScanComparison(barcodeState)
+}
+
+/**
+ * In the shop the scan answers "what does it cost elsewhere?" before "add it". The dialog has
+ * no snackbar, so a missing browser is said right below the button.
+ */
+@Composable
+private fun ScanComparison(barcodeState: BarcodeUiState) {
+    val url = setComparisonUrl(barcodeState.result.orEmpty(), barcodeState.setName) ?: return
+    var noBrowser by remember(url) { mutableStateOf(false) }
+    PriceComparisonButton(url, onNoApp = { noBrowser = true }, modifier = Modifier.fillMaxWidth())
+    if (noBrowser) Text(stringResource(R.string.common_no_app_to_open), Modifier.announce(),
+        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
 }
 
 /**

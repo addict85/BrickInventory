@@ -1,9 +1,11 @@
 package ch.brickinventoryapp.app
 
 import ch.brickinventoryapp.app.widget.WIDGET_HIDDEN
+import ch.brickinventoryapp.app.widget.WidgetAge
 import ch.brickinventoryapp.app.widget.WidgetNumbers
 import ch.brickinventoryapp.app.widget.WithoutToken
 import ch.brickinventoryapp.app.widget.gvText
+import ch.brickinventoryapp.app.widget.widgetAge
 import ch.brickinventoryapp.app.widget.widgetDisplay
 import ch.brickinventoryapp.app.widget.widgetNumbers
 import ch.brickinventoryapp.app.widget.widgetValues
@@ -17,6 +19,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.util.Locale
 
 /**
  * The numbers of the home screen widget, computed from real responses of the
@@ -37,6 +42,10 @@ import org.junit.Test
  *      (32.40 instead of 212.40)
  *   G  withoutToken() always LEEREN → red “without a token the worker clears only when signed out …”;
  *      counter-checks/widget-clears-on-lock.patch
+ *   H  widgetAge() never stale → red “numbers older than a day are dimmed …”;
+ *      counter-checks/widget-never-stale.patch
+ *   I  widgetAge() always the time → red “numbers from an earlier day name the date …”;
+ *      counter-checks/widget-stamp-time-only.patch
  */
 class WidgetNumbersTest {
 
@@ -120,5 +129,29 @@ class WidgetNumbersTest {
         val z = widgetNumbers(pnl, history, 42)!!
         val text = BrickJson.encodeToString(WidgetNumbers.serializer(), z)
         assertEquals(z, BrickJson.decodeFromString(WidgetNumbers.serializer(), text))
+    }
+
+    private val zurich = ZoneId.of("Europe/Zurich")
+    private val swiss = Locale.forLanguageTag("de-CH")
+    private fun at(day: Int, hour: Int, minute: Int = 0) =
+        ZonedDateTime.of(2026, 11, day, hour, minute, 0, 0, zurich).toInstant().toEpochMilli()
+
+    @Test
+    fun `numbers from today name the time and are not dimmed`() {
+        assertEquals(WidgetAge("14:05", stale = false), widgetAge(at(28, 14, 5), now = at(28, 16), zurich, swiss))
+    }
+
+    @Test
+    fun `numbers from an earlier day name the date, a time alone would read as today`() {
+        val lastNight = widgetAge(at(27, 23), now = at(28, 9), zurich, swiss)
+        assertTrue("date instead of time: ${lastNight.stamp}", lastNight.stamp!!.startsWith("27.11."))
+        assertEquals("ten hours old is not yet stale", false, lastNight.stale)
+    }
+
+    @Test
+    fun `numbers older than a day are dimmed, without a fetch time too`() {
+        assertEquals(true, widgetAge(at(27, 9), now = at(28, 9, 1), zurich, swiss).stale)
+        assertEquals(false, widgetAge(at(27, 9, 2), now = at(28, 9, 1), zurich, swiss).stale)
+        assertEquals(WidgetAge(null, stale = true), widgetAge(0, now = at(28, 9), zurich, swiss))
     }
 }

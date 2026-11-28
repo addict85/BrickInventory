@@ -153,10 +153,7 @@ data class VoucherPdfTarget(val id: Int?, val ticket: String)
 /** What only happens after the device lock. */
 enum class VoucherStep { PIN_SHOW, NUMBER_COPY, PIN_COPY, PDF, EXPORT, DELETE }
 
-/**
- * [step] for voucher [id] ([id] null: export of all), while it runs; for deleting also
- * the open „are you sure“ before it ([operation] not yet running).
- */
+/** [step] for voucher [id] ([id] null: export of all), while it runs. */
 data class VoucherConfirmation(
     val step: VoucherStep,
     val id: Int?,

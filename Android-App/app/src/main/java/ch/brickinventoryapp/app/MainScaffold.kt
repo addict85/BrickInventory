@@ -434,12 +434,12 @@ private val COLLECTION: Set<KClass<out Any>> = COLLECTION_TARGETS.map { it::clas
 
 /** Pages with a bottom bar that are reached via “More” — there “More” stays selected. */
 private val MORE: Set<KClass<out Any>> = setOf(AppTarget.More::class, PartsTarget.PartsList::class,
-    CollectionTarget.Wanted::class, CollectionTarget.WantedItemDetail::class,
-    AccountTarget.Settings::class, ManagementTarget.Monitoring::class)
+    CollectionTarget.Comparison::class, AccountTarget.Settings::class, ManagementTarget.Monitoring::class)
 
 /** The destinations at which a bar destination counts as selected. */
 private fun targetsOf(screen: Any): Set<KClass<out Any>> = when (screen) {
     CollectionTarget.Gallery -> COLLECTION + CollectionTarget.SetDetail::class
+    CollectionTarget.Wanted -> setOf(CollectionTarget.Wanted::class, CollectionTarget.WantedItemDetail::class)
     AppTarget.More -> MORE
     else -> setOf(screen::class)
 }

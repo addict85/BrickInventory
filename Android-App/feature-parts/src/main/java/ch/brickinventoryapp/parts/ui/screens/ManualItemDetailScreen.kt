@@ -166,8 +166,11 @@ internal fun ManualItemDetailScreen(
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
+    // The entry is gone afterwards — this screen would otherwise show a dead card.
+    val delete = { entry.delete(actions, condition.undo); onBack() }
     Scaffold(
-        topBar = { ManualItemTopBar(title, onBack) { showDeleteConfirm = true } },
+        // With „Rückgängig“ in the list behind it that is the safeguard; only without it, it asks.
+        topBar = { ManualItemTopBar(title, onBack) { if (condition.undo) delete() else showDeleteConfirm = true } },
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) { padding ->
 
@@ -197,13 +200,7 @@ internal fun ManualItemDetailScreen(
                 isFig = isFig,
                 title = title,
                 onClose = { showDeleteConfirm = false },
-                deleteOn = {
-                    showDeleteConfirm = false
-                    entry.delete(actions, condition.undo)
-                    // The entry is gone — this screen would otherwise show a
-                    // dead card with a quantity choice and purchase prices.
-                    onBack()
-                },
+                deleteOn = { showDeleteConfirm = false; delete() },
             )
         }
 

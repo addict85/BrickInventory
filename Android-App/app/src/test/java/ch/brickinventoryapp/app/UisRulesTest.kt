@@ -455,17 +455,21 @@ class UisRulesTest {
     }
 
     /**
-     * Wishlist and build list are reached via “More”: there “More” stays selected, and the
-     * arrow at the top leads back there as on the other More subpages.
+     * Price comparison and build list are reached via “More”: there “More” stays selected, and
+     * the arrow at the top leads back there as on the other More subpages. The wishlist is a
+     * tab of its own: selected itself, without an arrow.
      */
     @Test
-    fun `wishlist and build list mark More and lead back there with Back`() {
+    fun `comparison and build list mark More and lead back there with Back, the wishlist is a tab`() {
         val more = ctx.getString(R.string.nav_more)
+        val wanted = ctx.getString(R.string.nav_wanted)
+        var navigation: NavHostController? = null
         show {
-            val nav = rememberNavController()
+            val nav = rememberNavController().also { navigation = it }
             val tab = remember {
                 listOf(
                     Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Tab(CollectionTarget.Wanted, { Icon(Icons.Default.ViewInAr, null) }, wanted),
                     Tab(AppTarget.More, { Icon(Icons.Default.ViewInAr, null) }, more))
             }
             MainScaffold(
@@ -477,6 +481,8 @@ class UisRulesTest {
                     composable<CollectionTarget.Gallery> { }
                     composable<AppTarget.More> { MoreScreen(nav::openOfMore, isAdmin = false, onLogout = {}) }
                     composable<CollectionTarget.Wanted> { Text("Merklisteseite") }
+                    composable<CollectionTarget.WantedItemDetail> { Text("Merkpostenseite") }
+                    composable<CollectionTarget.Comparison> { Text("Vergleichsseite") }
                     composable<PartsTarget.PartsList> { Text("Baulistenseite") }
                 }
             }
@@ -484,7 +490,7 @@ class UisRulesTest {
         val back = ctx.getString(R.string.common_back)
         // On a tab itself no back: it is a root.
         compose.onAllNodesWithContentDescription(back).assertCountEquals(0)
-        for ((entry, content) in listOf(R.string.nav_wanted to "Merklisteseite", R.string.nav_partslist to "Baulistenseite")) {
+        for ((entry, content) in listOf(R.string.comparison_title to "Vergleichsseite", R.string.nav_partslist to "Baulistenseite")) {
             compose.onNode(hasText(more) and hasClickAction()).performClick()
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(entry)).performClick()
@@ -497,6 +503,16 @@ class UisRulesTest {
             // Back on “More”: its entries are there again.
             compose.onNodeWithText(ctx.getString(R.string.vouchers_title)).fetchSemanticsNode()
         }
+        compose.onNode(hasText(wanted) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Merklisteseite").fetchSemanticsNode()
+        compose.onNode(hasText(wanted) and androidx.compose.ui.test.isSelected())
+            .fetchSemanticsNode("the wishlist tab is not selected on its own page")
+        compose.onAllNodesWithContentDescription(back).assertCountEquals(0)
+        compose.runOnIdle { navigation!!.navigate(CollectionTarget.WantedItemDetail("75192-1", Condition.NEW)) }
+        compose.onNodeWithText("Merkpostenseite").fetchSemanticsNode()
+        compose.onNode(hasText(wanted) and androidx.compose.ui.test.isSelected())
+            .fetchSemanticsNode("the wishlist tab is not selected on an item's detail")
     }
 
     /**
@@ -522,13 +538,13 @@ class UisRulesTest {
                 NavHost(n, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { Text("Galerieseite") }
                     composable<AppTarget.More> { MoreScreen(n::openOfMore, isAdmin = false, onLogout = {}) }
-                    composable<CollectionTarget.Wanted> { Text("Merklisteseite") }
+                    composable<PartsTarget.PartsList> { Text("Baulistenseite") }
                 }
             }
         }
-        // As from within a set: the wishlist directly above the gallery, without “More”.
-        compose.runOnIdle { nav!!.navigate(CollectionTarget.Wanted) }
-        compose.onNodeWithText("Merklisteseite").fetchSemanticsNode()
+        // As from within a set: the build list directly above the gallery, without “More”.
+        compose.runOnIdle { nav!!.navigate(PartsTarget.PartsList) }
+        compose.onNodeWithText("Baulistenseite").fetchSemanticsNode()
         compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Galerieseite").fetchSemanticsNode("Der Pfeil führte nicht dorthin, wohin Zurück führt")

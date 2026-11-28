@@ -1,0 +1,17 @@
+Gegenprobe: Der Papierkorb im Teile-Detail löscht auch ohne „Rückgängig“ ohne Rückfrage
+Modul: app
+Test: ch.brickinventoryapp.app.UiUniformTest
+Rot: the part detail deletes without a question only where undo exists
+
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ManualItemDetailScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ManualItemDetailScreen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ManualItemDetailScreen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/ManualItemDetailScreen.kt
+@@ -170,7 +170,7 @@
+     val delete = { entry.delete(actions, condition.undo); onBack() }
+     Scaffold(
+         // With „Rückgängig“ in the list behind it that is the safeguard; only without it, it asks.
+-        topBar = { ManualItemTopBar(title, onBack) { if (condition.undo) delete() else showDeleteConfirm = true } },
++        topBar = { ManualItemTopBar(title, onBack) { delete() } },
+         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+     ) { padding ->
+ 

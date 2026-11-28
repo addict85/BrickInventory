@@ -1,0 +1,16 @@
+Gegenprobe: Das Widget nennt auch für gestrige Zahlen nur die Uhrzeit
+Modul: app
+Test: ch.brickinventoryapp.app.WidgetNumbersTest
+Rot: numbers from an earlier day name the date
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
+@@ -117,6 +117,6 @@
+     if (state <= 0) return WidgetAge(null, stale = true)
+     val fetched = Instant.ofEpochMilli(state).atZone(zone)
+     val today = fetched.toLocalDate() == Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+-    val format = if (today) DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) else DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
++    val format = if (today || true) DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) else DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
+     return WidgetAge(format.withLocale(locale).format(fetched), stale = now - state > WIDGET_STALE_AFTER_MS)
+ }

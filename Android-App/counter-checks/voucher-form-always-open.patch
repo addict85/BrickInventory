@@ -6,8 +6,8 @@ Rot: adding a voucher opens the form only on request
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
 +++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VouchersCard.kt
-@@ -164,7 +164,7 @@
-         )
+@@ -137,7 +137,7 @@
+       }
      }
  
 -    if (newValue || condition.edited != null) {

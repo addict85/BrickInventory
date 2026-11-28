@@ -178,7 +178,7 @@ class LargeFontAndTabletTest {
         RuntimeEnvironment.setQualifiers("$language-w411dp-h891dp-port-xxhdpi")
         val r = ApplicationProvider.getApplicationContext<Context>()
         val targets = listOf(CollectionTarget.Gallery to R.string.nav_collection, FinanceTarget.Finance to R.string.nav_finance,
-            CatalogTarget.Catalog to R.string.nav_catalog, CollectionTarget.Comparison to R.string.nav_comparison,
+            CatalogTarget.Catalog to R.string.nav_catalog, CollectionTarget.Wanted to R.string.nav_wanted,
             AppTarget.More to R.string.nav_more).map { (target, text) -> target to r.getString(text) }
         show {
             val nav = rememberNavController()

@@ -1,0 +1,15 @@
+Gegenprobe: Das Widget zeigt Zahlen von vorgestern so, als wären sie aktuell
+Modul: app
+Test: ch.brickinventoryapp.app.WidgetNumbersTest
+Rot: numbers older than a day are dimmed
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetNumbers.kt
+@@ -118,5 +118,5 @@
+     val fetched = Instant.ofEpochMilli(state).atZone(zone)
+     val today = fetched.toLocalDate() == Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+     val format = if (today) DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) else DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
+-    return WidgetAge(format.withLocale(locale).format(fetched), stale = now - state > WIDGET_STALE_AFTER_MS)
++    return WidgetAge(format.withLocale(locale).format(fetched), stale = false)
+ }

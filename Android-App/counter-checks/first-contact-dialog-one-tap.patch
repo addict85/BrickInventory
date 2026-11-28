@@ -6,12 +6,12 @@ Rot: on first contact it is typed, a tap is not enough
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
-@@ -110,7 +110,7 @@
-     val (title, text) = titleAndText(question)
-     val changed = question.kind == CertificateUnresolved.Kind.CHANGED || question.kind == CertificateUnresolved.Kind.KEY_NEW
-     val public = question.kind == CertificateUnresolved.Kind.FIRST_CONTACT || question.kind == CertificateUnresolved.Kind.KEY_NEW
--    val writeOff = question.transcriptNeeded
-+    val writeOff = question.transcriptNeeded && question.kind != CertificateUnresolved.Kind.FIRST_CONTACT
-     val window = stringResource(title)
-     AlertDialog(
-         containerColor = windowSurface(),
+@@ -159,7 +159,7 @@
+         },
+         confirmButton = {
+             // Folded away the button would trust nothing anyway; it appears with the field.
+-            if (manual) TrustButton(changed, active = input.isNotBlank()) {
++            if (manual) TrustButton(changed, active = input.isNotBlank() || question.kind == CertificateUnresolved.Kind.FIRST_CONTACT) {
+                 finding = findingAfter(trustOn(input), input, question.fingerprint)
+             }
+         },

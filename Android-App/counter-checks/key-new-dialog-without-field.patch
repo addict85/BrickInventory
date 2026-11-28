@@ -6,12 +6,12 @@ Rot: a new server key is typed, only the beginning is shown
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
-@@ -110,7 +110,7 @@
-     val (title, text) = titleAndText(question)
-     val changed = question.kind == CertificateUnresolved.Kind.CHANGED || question.kind == CertificateUnresolved.Kind.KEY_NEW
-     val public = question.kind == CertificateUnresolved.Kind.FIRST_CONTACT || question.kind == CertificateUnresolved.Kind.KEY_NEW
--    val writeOff = question.transcriptNeeded
-+    val writeOff = question.transcriptNeeded && question.kind != CertificateUnresolved.Kind.KEY_NEW
-     val window = stringResource(title)
-     AlertDialog(
-         containerColor = windowSurface(),
+@@ -138,7 +138,7 @@
+                     ScanChoice(scan)
+                     ManualToggle(manual) { manualChosen = !manual }
+                 }
+-                if (manual) {
++                if (manual && question.kind != CertificateUnresolved.Kind.KEY_NEW) {
+                     FingerprintDisplay(question, changed)
+                     FingerprintField(
+                         input = input,

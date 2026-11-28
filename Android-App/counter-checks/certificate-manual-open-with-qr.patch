@@ -1,0 +1,17 @@
+Gegenprobe: Mit QR-Weg steht das Feld zum Abtippen gleich offen da, der Dialog wird wieder eine Textwand
+Modul: app
+Test: ch.brickinventoryapp.app.CertificateDialogTest
+Rot: with a QR route the scan comes first
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+@@ -125,7 +125,7 @@
+     // A failed scan opens the way by hand: its message points there.
+     val scanFailed = scan?.let { scanError(it.finding) } != null
+     LaunchedEffect(scanFailed) { if (scanFailed) manualChosen = true }
+-    val manual = scan == null || manualChosen
++    val manual = true
+     val window = stringResource(title)
+     AlertDialog(
+         containerColor = windowSurface(),

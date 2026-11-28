@@ -17,7 +17,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ch.brickinventoryapp.collection.ui.PriceComparisonButton
 import ch.brickinventoryapp.collection.ui.SetDetailUiState
+import ch.brickinventoryapp.collection.ui.setComparisonUrl
 import ch.brickinventoryapp.collection.ui.viewmodel.INSTRUCTION_TYPES
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailActions
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
@@ -169,6 +171,7 @@ internal fun SetDetailScreen(
             setDetailStatChips(set)
             setDetailValueTiles(set, price, pnlPct, ::fmtPrice)
             setDetailPriceSection(detailState, price, history, currency, actions::refresh)
+            setDetailComparison(set) { coroutineScope.launch { messages.showSnackbar(noAppText) } }
         }) {
             setDetailDetailsSection(set, setNumber, condition.storageUiState, actions,
                 PurchaseSummary(acquisitions, currency, ::fmtDate), onNavigateToAcqMgmt)
@@ -181,9 +184,7 @@ internal fun SetDetailScreen(
             )
         }
 
-        if (showSetDeleteConfirm) SetDeleteConfirm(set, { showSetDeleteConfirm = false; onDelete(setNumber) }) {
-            showSetDeleteConfirm = false
-        }
+        if (showSetDeleteConfirm) SetDeleteConfirm(set, { showSetDeleteConfirm = false; onDelete(setNumber) }) { showSetDeleteConfirm = false }
 
         // Shared implementation with the catalog detail
         // (ui/components/ZoomableImageDialog.kt), so the gesture and state logic only exists once.
@@ -191,6 +192,15 @@ internal fun SetDetailScreen(
             ZoomableImageDialog(imageUrl = imageUrl, contentDescription = set.name, imageLoader = imageLoader,
                 onDismiss = { showImageZoom = false })
         }
+    }
+}
+
+/** Below the prices: what the set costs elsewhere is the next question after its value. */
+private fun LazyListScope.setDetailComparison(set: SetView, onNoApp: () -> Unit) {
+    val url = set.priceComparisonUrl?.takeIf { it.isNotBlank() } ?: setComparisonUrl(set.setNumber, set.name) ?: return
+    item(key = "preisvergleich") {
+        PriceComparisonButton(url, onNoApp,
+            Modifier.padding(horizontal = Spacing.large, vertical = Spacing.tiny).fillMaxWidth())
     }
 }
 

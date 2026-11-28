@@ -1626,7 +1626,7 @@ class ScreenPhotoVariantsTest {
             LaunchedEffect(Unit) { mode.requestInputMode(InputMode.Keyboard) }
             MoreScreen({}, isAdmin = false, onLogout = {})
         }
-        val target = ApplicationProvider.getApplicationContext<Context>().getString(R.string.nav_wanted)
+        val target = ApplicationProvider.getApplicationContext<Context>().getString(R.string.comparison_title)
         compose.onNode(hasText(target) and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
         compose.waitForIdle()
         pause()
