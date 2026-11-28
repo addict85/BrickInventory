@@ -1,0 +1,16 @@
+Gegenprobe: StoreCipher lässt die übergebene Schlüsselkopie stehen
+Modul: core-security
+Test: ch.brickinventoryapp.security.KeyCopyZeroedTest
+Rot: the cipher zeroes
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
+@@ -181,7 +181,6 @@
+         try {
+             return SecretKeySpec(raw, "AES")
+         } finally {
+-            raw.fill(0)
+         }
+     }
+ 

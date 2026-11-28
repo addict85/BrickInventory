@@ -120,10 +120,12 @@ class RenderingAndTrustTest {
         val store = StorageTrust()
         var drops = 0
         val vm = TrustViewModel(store, { drops++ }, question)
-        question.report(CertificateUnresolved("brick.example:443", "AB:CD", CertificateUnresolved.Kind.FIRST_CONTACT, ctForced = true))
+        question.report(CertificateUnresolved("brick.example:443", "AB:CD", CertificateUnresolved.Kind.FIRST_CONTACT))
         assertEquals("AB:CD", vm.certificate.value?.fingerprint)
 
-        assertTrue(vm.trustCertificate())
+        assertFalse("a tap alone is not enough on first contact", vm.trustCertificate())
+        assertEquals(0, drops)
+        assertTrue(vm.trustCertificate("AB:CD"))
         assertEquals("AB:CD", store.pins["brick.example:443"])
         assertEquals("connections with the old trust stay open", 1, drops)
         assertNull(vm.certificate.value)

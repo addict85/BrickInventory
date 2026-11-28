@@ -65,10 +65,10 @@ class InvariantsReferencesTest {
         try {
             val key = ByteArray(32) { it.toByte() }
             val pdf = "%PDF-1.7 Teileliste 3001 rot x4".toByteArray()
-            val file = PartListVault(StoreCipher { key }).put(intern, null, pdf)
+            val file = PartListVault(StoreCipher { key.copyOf() }).put(intern, null, pdf)
             val plate = file.readBytes()
             assertFalse("plain text on disk", plate.decodeToString(throwOnInvalidSequence = false).contains("Teileliste 3001"))
-            assertArrayEquals("the provider reads it back", pdf, PartListVault(StoreCipher { key }).read(intern))
+            assertArrayEquals("the provider reads it back", pdf, PartListVault(StoreCipher { key.copyOf() }).read(intern))
             assertNull("unreadable under another key",
                 PartListVault(StoreCipher { ByteArray(32) { 7 } }).read(intern))
         } finally {

@@ -69,6 +69,9 @@ class AndroidUnittestConvention : Plugin<Project> {
                 testLog(test)
                 // The app's photo tests alone take minutes; two forks on the CI runner.
                 test.maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+                // Robolectric on API 36 sets FileDescriptor's descriptor via SharedSecrets (ApplicationSharedMemory);
+                // without it a test pinned to Android 16 fails before its first line.
+                test.jvmArgs("--add-opens=java.base/java.io=ALL-UNNAMED", "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
             }
             target.group("testImplementation", "unit.tests")
         }

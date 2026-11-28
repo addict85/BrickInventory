@@ -25,7 +25,8 @@ class StoreKey(private val file: File, private val vault: TokenEncryption) {
         private set
 
     // Callers get a copy: forgetInMemory() overwrites the cached bytes, and an encryption
-    // running at that moment must not end up under an all-zero key.
+    // running at that moment must not end up under an all-zero key. Whoever takes it
+    // zeroes it after use, or the master key lingers on the heap until GC.
     @Synchronized
     fun fetch(): ByteArray = (known ?: load()).copyOf()
 
@@ -107,14 +108,11 @@ class StoreKey(private val file: File, private val vault: TokenEncryption) {
         state++
         // Locked, the new one is only created on the next access: a sign-out in the background
         // should not fail just because the device isn't letting anything be encrypted right now.
-        catchUnlessCancelled { fetch() }
+        catchUnlessCancelled { fetch().fill(0) }
     }
 
     /** Derived with HMAC-SHA256: database and files don't share a key. */
-    fun forTarget(purpose: String): ByteArray = Mac.getInstance("HmacSHA256").run {
-        init(SecretKeySpec(fetch(), "HmacSHA256"))
-        doFinal(purpose.toByteArray(Charsets.UTF_8))
-    }
+    fun forTarget(purpose: String): ByteArray = derive(fetch(), purpose)
 
     private companion object {
         const val LENGTH = 32
@@ -124,18 +122,32 @@ class StoreKey(private val file: File, private val vault: TokenEncryption) {
     }
 }
 
+/** HMAC of [purpose] under [key]; [key] is a copy from [StoreKey.fetch] and is zeroed here. */
+internal fun derive(key: ByteArray, purpose: String): ByteArray = try {
+    // SecretKeySpec keeps its own clone, so zeroing ours does not break the MAC.
+    Mac.getInstance("HmacSHA256").run {
+        init(SecretKeySpec(key, "HmacSHA256"))
+        doFinal(purpose.toByteArray(Charsets.UTF_8))
+    }
+} finally {
+    key.fill(0)
+}
+
 /**
  * AES-256-GCM for the app's files. Format: marker ‖ IV ‖ ciphertext including tag. The
  * binding (purpose and file name) goes in as AAD: a file under a foreign name
  * fails the check instead of being read as the other one. Without a
  * marker a file counts as legacy plaintext; the caller discards it.
  */
-class StoreCipher(private val key: () -> ByteArray) {
+class StoreCipher(
+    /** Hands out a fresh array per call: it is zeroed once the cipher holds its own copy. */
+    private val key: () -> ByteArray,
+) {
 
     fun encrypt(plaintext: ByteArray, binding: String): ByteArray {
         val iv = ByteArray(IV_LENGTH).also(SecureRandom()::nextBytes)
         val c = Cipher.getInstance(PROCEDURE)
-        c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key(), "AES"), GCMParameterSpec(TAG_BITS, iv))
+        c.init(Cipher.ENCRYPT_MODE, spec(), GCMParameterSpec(TAG_BITS, iv))
         c.updateAAD(binding.toByteArray(Charsets.UTF_8))
         return ID + iv + c.doFinal(plaintext)
     }
@@ -153,7 +165,7 @@ class StoreCipher(private val key: () -> ByteArray) {
     // unreadable ciphertext; read as null, callers would delete the file.
     private fun open(data: ByteArray, identifier: ByteArray, binding: String?): ByteArray? {
         if (data.size <= identifier.size + IV_LENGTH || !data.copyOfRange(0, identifier.size).contentEquals(identifier)) return null
-        val k = SecretKeySpec(key(), "AES")
+        val k = spec()
         return runCatching {
             val c = Cipher.getInstance(PROCEDURE)
             c.init(Cipher.DECRYPT_MODE, k,
@@ -161,6 +173,16 @@ class StoreCipher(private val key: () -> ByteArray) {
             if (binding != null) c.updateAAD(binding.toByteArray(Charsets.UTF_8))
             c.doFinal(data, identifier.size + IV_LENGTH, data.size - identifier.size - IV_LENGTH)
         }.getOrNull()
+    }
+
+    /** SecretKeySpec clones the bytes; the raw copy goes right away. */
+    private fun spec(): SecretKeySpec {
+        val raw = key()
+        try {
+            return SecretKeySpec(raw, "AES")
+        } finally {
+            raw.fill(0)
+        }
     }
 
     private companion object {

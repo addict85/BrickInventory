@@ -54,13 +54,11 @@ fun CertificateDialog(
     trustOn: (input: String?) -> Boolean,
     onUserCa: () -> Unit,
     onCancel: () -> Unit,
-    /** With a screen lock a new key from Android 16 is confirmed with it; without one, typed off. */
-    deviceSecure: Boolean = true,
     /** Scanning the web app's certificate code; null where there is no camera (previews). */
     codeScan: CodeScan? = null,
 ) {
     if (question.kind == CertificateUnresolved.Kind.CODE_MISMATCH) CodeDeviationDialog(question, onCancel)
-    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure, codeScan)
+    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, codeScan)
 }
 
 /**
@@ -80,7 +78,6 @@ private fun CertificateQuestionDialog(
     trustOn: (input: String?) -> Boolean,
     onUserCa: () -> Unit,
     onCancel: () -> Unit,
-    deviceSecure: Boolean,
     codeScan: CodeScan?,
 ) {
     var scanning by rememberSaveable(question.fingerprint) { mutableStateOf(false) }
@@ -94,7 +91,7 @@ private fun CertificateQuestionDialog(
     }
     val scanChoice: (@Composable () -> Unit)? =
         scan?.let { { ScanChoice(codeFinding) { codeFinding = null; scanning = true } } }
-    QuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure, scanChoice)
+    QuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, scanChoice)
 }
 
 /** [scanChoice] replaces the old hint to scan a new sign-in code. */
@@ -105,20 +102,15 @@ private fun QuestionDialog(
     trustOn: (input: String?) -> Boolean,
     onUserCa: () -> Unit,
     onCancel: () -> Unit,
-    deviceSecure: Boolean,
     scanChoice: (@Composable () -> Unit)?,
 ) {
     var input by rememberSaveable(question.fingerprint) { mutableStateOf("") }
     var finding by remember(question.fingerprint) { mutableStateOf<Transcript?>(null) }
-    // Voluntary on first contact with CT requirement: whoever types sees only the beginning as usual.
-    var typeInSelected by rememberSaveable(question.fingerprint) { mutableStateOf(false) }
     val host = question.key.substringBeforeLast(':')
     val (title, text) = titleAndText(question)
     val changed = question.kind == CertificateUnresolved.Kind.CHANGED || question.kind == CertificateUnresolved.Kind.KEY_NEW
-    val firstContact = question.kind == CertificateUnresolved.Kind.FIRST_CONTACT
-    val public = firstContact || question.kind == CertificateUnresolved.Kind.KEY_NEW
-    val byDevice = question.deviceConfirmationNeeded && deviceSecure
-    val writeOff = mustTranscribe(question, typeInSelected, deviceSecure)
+    val public = question.kind == CertificateUnresolved.Kind.FIRST_CONTACT || question.kind == CertificateUnresolved.Kind.KEY_NEW
+    val writeOff = question.transcriptNeeded
     val window = stringResource(title)
     AlertDialog(
         containerColor = windowSurface(),
@@ -131,11 +123,7 @@ private fun QuestionDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
                 Text(stringResource(text, host))
                 FingerprintDisplay(question, writeOff, changed)
-                if (byDevice) Text(stringResource(R.string.cert_device_confirm), style = MaterialTheme.typography.bodySmall)
                 scanChoice?.invoke()
-                if (firstContact && !writeOff) {
-                    TextButton(onClick = { typeInSelected = true }) { Text(stringResource(R.string.cert_first_contact_type)) }
-                }
                 if (writeOff) {
                     FingerprintField(
                         input = input,
@@ -193,11 +181,6 @@ internal fun scanError(finding: CodeCheck?): Int? = when (finding) {
     CodeCheck.UNKNOWN_VERSION -> R.string.cert_scan_unknown_version
     CodeCheck.NOT_A_CODE -> R.string.cert_scan_not_code
 }
-
-/** Without CT, when chosen on first contact, or a new key from Android 16 without a screen lock. */
-private fun mustTranscribe(question: CertificateUnresolved, typeInSelected: Boolean, deviceSecure: Boolean): Boolean =
-    question.transcriptNeeded || question.kind == CertificateUnresolved.Kind.FIRST_CONTACT && typeInSelected ||
-        question.deviceConfirmationNeeded && !deviceSecure
 
 /** A changed key colors the button as a warning; otherwise the usual button. */
 @Composable
@@ -286,10 +269,9 @@ private fun inputHelp(kind: CertificateUnresolved.Kind): Int = when (kind) {
     else -> R.string.cert_unknown_input
 }
 
-/** Heading and explanation per kind of question; without CT requirement the first contact explains typing. */
+/** Heading and explanation per kind of question. */
 private fun titleAndText(question: CertificateUnresolved): Pair<Int, Int> = when (question.kind) {
-    CertificateUnresolved.Kind.FIRST_CONTACT -> R.string.cert_title_first_contact to
-        if (question.transcriptNeeded) R.string.cert_text_first_contact_type else R.string.cert_text_first_contact
+    CertificateUnresolved.Kind.FIRST_CONTACT -> R.string.cert_title_first_contact to R.string.cert_text_first_contact_type
     CertificateUnresolved.Kind.UNKNOWN_CA -> R.string.cert_title_unknown to R.string.cert_text_unknown
     CertificateUnresolved.Kind.USER_CA -> R.string.cert_title_user_ca to R.string.cert_text_user_ca
     CertificateUnresolved.Kind.CHANGED -> R.string.cert_title_changed to R.string.cert_text_changed

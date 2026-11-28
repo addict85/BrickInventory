@@ -249,7 +249,7 @@ class LoginViewModelTest {
         paths.priority = { _, path ->
             if (first && path == "/api/v2/auth/qr-login") {
                 first = false
-                question.report(CertificateUnresolved("brick.example.org:443", fp, CertificateUnresolved.Kind.FIRST_CONTACT, ctForced = true))
+                question.report(CertificateUnresolved("brick.example.org:443", fp, CertificateUnresolved.Kind.FIRST_CONTACT))
                 503 to """{"success":false}"""
             } else null
         }
@@ -268,7 +268,7 @@ class LoginViewModelTest {
         assertTrue("Waits for the dialog instead of „Keine Verbindung“", vm.loginState.value.login.running)
         assertNull(vm.loginState.value.login.errorMessage)
 
-        assertTrue(question.confirm(pinsTheStore))
+        assertTrue(question.confirm(pinsTheStore, fp))
         assertEquals("Second attempt", 2, paths.requests.count { it == "POST /api/v2/auth/qr-login" })
         vm.decideQrAccount(true)
         assertTrue("signed in: ${store.log}", t.session.state.value.isLoggedIn)

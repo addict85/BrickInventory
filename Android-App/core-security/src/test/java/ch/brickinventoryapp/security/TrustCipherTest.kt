@@ -25,8 +25,8 @@ class TrustCipherTest {
     private var locked = false
     private val cipher = TrustCipher(info = {
         if (locked) throw IOException("Keystore gerade nicht bereit")
-        detailsKey
-    }) { trust }
+        detailsKey.copyOf()
+    }) { trust.copyOf() }
 
     @Test
     fun `a name does not reveal the server and stays the same`() {
@@ -55,7 +55,7 @@ class TrustCipherTest {
     fun `an entry under a foreign name or key is gone`() {
         val secret = cipher.encryptDetail("anna", "username")!!
         assertEquals(VaultFinding.Gone, cipher.openDetail(secret, "server_url"))
-        assertEquals(VaultFinding.Gone, TrustCipher { trust }.openDetail(secret, "username"))
+        assertEquals(VaultFinding.Gone, TrustCipher { trust.copyOf() }.openDetail(secret, "username"))
         assertEquals(VaultFinding.Gone, cipher.openDetail("kein-base64-%%%", "username"))
         assertNull("a pin ciphertext is no statement", cipher.decrypt(secret, "username"))
     }

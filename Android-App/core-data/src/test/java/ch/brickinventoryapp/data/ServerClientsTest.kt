@@ -8,6 +8,8 @@ import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.di.NetworkModule
 import ch.brickinventoryapp.data.di.NetworkStores
 import ch.brickinventoryapp.data.di.buildInterceptorClient
+import ch.brickinventoryapp.data.di.buildRedemptionBase
+import ch.brickinventoryapp.data.di.serverConnectionSpecs
 import ch.brickinventoryapp.data.testing.testTrustCipher
 import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.ImageHostGuard
@@ -18,9 +20,11 @@ import ch.brickinventoryapp.security.TokenEncryption
 import coil3.request.ImageRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
+import okhttp3.ConnectionSpec
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.logging.HttpLoggingInterceptor
@@ -54,6 +58,9 @@ import java.util.concurrent.TimeUnit
  *   coil-without-image-client          Coil without the image client's fetcher → red “Coil loads …”
  * Counter-check (run here): `if (isApiClient && BuildConfig.DEBUG)` around the recording → red
  * “both clients are logged …” (image client).
+ * Counter-checks (run here, tools/counter-checks.py): server-tls-modern  RESTRICTED_TLS back to
+ * MODERN_TLS → red “every server client …”; sign-out-tls-unrestricted  the sign-out client without
+ * connectionSpecs → red, the same test.
  * Counter-checks (run here): previewTap no longer hooked in → red “… a preview comes from the preview
  * store”. previewTap behind the offline fallback stays green: the tap then catches the connection error itself.
  */
@@ -94,6 +101,26 @@ class ServerClientsTest {
 
     private fun imageClient() = NetworkModule.provideImageOkHttpClient(ctx, network, SessionExpiredSignal(), previews,
         CertificateQuestion(), StoreKey(File(ctx.noBackupFilesDir, "clients.schluessel"), PlainVault))
+
+    private fun sseClient() = NetworkModule.provideSseOkHttpClient(ctx, network, SessionExpiredSignal(), CertificateQuestion(),
+        TokenSwap(state = { error("not used") }, replace = { _, _, _ -> false }, rotate = { error("not used") },
+            background = CoroutineScope(Job())))
+
+    /**
+     * MODERN_TLS would still offer CBC and non-forward-secret suites on TLS 1.2; the derived
+     * clients (Coil, PDF, per-job sign-out) inherit the specs through newBuilder().
+     */
+    @Test
+    fun `every server client offers only restricted TLS, plaintext only in the debug build`() {
+        val clients = listOf("api" to apiClient(), "image" to imageClient(), "sse" to sseClient(),
+            "sign-out" to buildRedemptionBase(network, CertificateQuestion()))
+        for ((name, c) in clients) {
+            assertEquals("$name: TLS specs", listOf(ConnectionSpec.RESTRICTED_TLS), c.connectionSpecs.filter { it.isTls })
+            assertTrue("$name: no cipher suite without forward secrecy",
+                c.connectionSpecs.flatMap { it.cipherSuites.orEmpty() }.all { "_ECDHE_" in it.javaName || it.javaName.startsWith("TLS_AES") || it.javaName.startsWith("TLS_CHACHA20") })
+        }
+        assertEquals("release: no plaintext spec at all", listOf(ConnectionSpec.RESTRICTED_TLS), serverConnectionSpecs(development = false))
+    }
 
     private fun fetch(client: OkHttpClient, address: String) =
         client.newCall(Request.Builder().url(address).build()).execute().use { it.code to it.body.string() }

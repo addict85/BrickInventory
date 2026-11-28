@@ -128,36 +128,23 @@ class CertificateUnresolved(
     val expected: String? = null,
     /** The leaf's key; with a yes to the root pin it becomes the second pin. */
     val sheet: String? = null,
-    /** Does the system itself check Certificate Transparency (from Android 16, network_security_config)? */
-    val ctForced: Boolean = false,
 ) : CertificateException("Zertifikat von $key nicht bestätigt ($kind)") {
     /** Where a yes stores the [fingerprint]. */
     val storeKey: String get() = if (kind == Kind.KEY_NEW) sheetPinKey(key) else key
 
     /**
-     * Does a yes only count with a transcript from a second source? Without CT requirement (Android 11–15)
-     * on first contact and on a new server key, yes: otherwise a misissued
-     * chain from any public CA plus a tap would suffice. A deviation from the code can never
-     * be confirmed.
+     * Does a yes only count with a transcript from a second source? On every API level, yes:
+     * that the system enforces Certificate Transparency on the app's own TrustManager path is
+     * unproven, so a misissued public chain plus a tap would otherwise suffice. A deviation
+     * from the code can never be confirmed.
      */
     val transcriptNeeded: Boolean get() = when (kind) {
         Kind.CODE_MISMATCH -> false
-        Kind.FIRST_CONTACT, Kind.KEY_NEW -> !ctForced
-        Kind.UNKNOWN_CA, Kind.USER_CA, Kind.CHANGED -> true
+        Kind.FIRST_CONTACT, Kind.KEY_NEW, Kind.UNKNOWN_CA, Kind.USER_CA, Kind.CHANGED -> true
     }
 
-    /**
-     * From Android 16 a new key under the same public root needs no transcript (the system
-     * checked CT), but a single tap must still not move the pin: whoever briefly holds the
-     * unlocked phone could confirm an intercepted key. The screen lock confirms it instead.
-     */
-    val deviceConfirmationNeeded: Boolean get() = kind == Kind.KEY_NEW && ctForced
-
     enum class Kind {
-        /**
-         * First contact, the chain is publicly valid: show the fingerprint and have it
-         * confirmed, typed in only without CT requirement ([transcriptNeeded]).
-         */
+        /** First contact, the chain is publicly valid: the fingerprint is typed in ([transcriptNeeded]). */
         FIRST_CONTACT,
         /** No known authority issued the certificate (self-issued, internal CA). */
         UNKNOWN_CA,
@@ -176,7 +163,7 @@ class CertificateUnresolved(
         /**
          * Same public root, but a different server key than the remembered one
          * (renewal with a new key, or a misissued chain from the same CA).
-         * To be typed in as long as the system doesn't require CT ([transcriptNeeded]).
+         * To be typed in like a first contact ([transcriptNeeded]).
          */
         KEY_NEW,
     }
@@ -189,8 +176,7 @@ class CertificateUnresolved(
 interface CertificateQuestion {
     val open: StateFlow<CertificateUnresolved?>
     fun report(question: CertificateUnresolved)
-    /** [deviceConfirmed]: the screen lock was just passed ([CertificateUnresolved.deviceConfirmationNeeded]). */
-    fun confirm(pins: PinStore, input: String? = null, deviceConfirmed: Boolean = false): Boolean
+    fun confirm(pins: PinStore, input: String? = null): Boolean
 
     /**
      * Yes by the certificate code from the web app ([CertificateCode]): the whole fingerprint from a
@@ -233,16 +219,12 @@ internal class CertificatePrompt : CertificateQuestion {
      * Yes: from now on exactly this key applies for this server. Where
      * [CertificateUnresolved.transcriptNeeded] applies, only with [input] from a second
      * source ([Transcript.confirmed]): a tap alone would be exactly what an attacker in
-     * between would need. On first contact with a CT requirement, typing it in is optional; whoever
-     * does it must type it correctly.
+     * between would need.
      */
-    override fun confirm(pins: PinStore, input: String?, deviceConfirmed: Boolean): Boolean {
+    override fun confirm(pins: PinStore, input: String?): Boolean {
         val f = _open.value ?: return false
         if (f.kind == CertificateUnresolved.Kind.CODE_MISMATCH) return false
-        val verify = f.transcriptNeeded || f.kind == CertificateUnresolved.Kind.FIRST_CONTACT && !input.isNullOrBlank()
-        if (verify && !Transcript.confirmed(input, f.fingerprint)) return false
-        // Without a screen lock there is nothing to confirm with; then the transcript counts instead.
-        if (f.deviceConfirmationNeeded && !deviceConfirmed && !Transcript.confirmed(input, f.fingerprint)) return false
+        if (f.transcriptNeeded && !Transcript.confirmed(input, f.fingerprint)) return false
         adopt(pins, f)
         return true
     }
@@ -287,8 +269,6 @@ class PinTrust(
     private val foreignHosts: X509ExtendedTrustManager,
     /** Roots between which a public pin may silently switch ([CA_FAMILIES]). */
     private val families: Map<String, String> = CA_FAMILIES,
-    /** From Android 16 the system checks CT; then a tap suffices for a new server key. */
-    private val ctForced: Boolean = false,
 ) : X509ExtendedTrustManager() {
 
     private fun key(session: SSLSession?): String? =
@@ -299,8 +279,7 @@ class PinTrust(
         if (chain.isEmpty() || key != ownServer()) return with(foreignHosts)
         // Without a pin, trust is never silent; what the follow-up question is depends on the chain's status.
         val pin = pins.pin(key) ?: throw situation(chain, with).let {
-            reported(CertificateUnresolved(key, it.fingerprint, it.kindWithoutPin, sheet = spkiFingerprint(chain[0]),
-                ctForced = ctForced))
+            reported(CertificateUnresolved(key, it.fingerprint, it.kindWithoutPin, sheet = spkiFingerprint(chain[0])))
         }
         val fromCode = pins.fromCode(key)
         // A pin on a system root only counts via the system check including Certificate
@@ -327,7 +306,7 @@ class PinTrust(
 
     /**
      * A public pin binds to the pinned root or another one from the same operator:
-     * without a CT requirement (Android 11–15) any misissued chain from any CA would otherwise suffice.
+     * otherwise any misissued chain from any public CA would suffice (CT is not proven on this path).
      * Intermediates (R10 → R11) and roots of a family (ISRG X1 → X2) switch silently;
      * a different operator is treated like a changed key. A code demands exactly its root.
      */
@@ -346,7 +325,7 @@ class PinTrust(
         if (wanted == newValue) return
         if (wanted == null || fromCode) return pins.rememberPin(sheetPinKey(key), newValue)
         throw reported(CertificateUnresolved(key, newValue, CertificateUnresolved.Kind.KEY_NEW,
-            expected = wanted, ctForced = ctForced))
+            expected = wanted))
     }
 
     /** Both are system roots of the same known family; the O= in the subject is chosen by each CA itself. */

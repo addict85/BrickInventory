@@ -6,12 +6,12 @@ Rot: a code from the signed-in screen swaps the server key without a question
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
 +++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
-@@ -312,7 +312,7 @@
+@@ -323,7 +323,7 @@
          val newValue = spkiFingerprint(sheet)
          val wanted = pins.pin(sheetPinKey(key))
          if (wanted == newValue) return
 -        if (wanted == null || fromCode) return pins.rememberPin(sheetPinKey(key), newValue)
 +        if (wanted == null) return pins.rememberPin(sheetPinKey(key), newValue)
          throw reported(CertificateUnresolved(key, newValue, CertificateUnresolved.Kind.KEY_NEW,
-             expected = wanted, ctForced = ctForced))
+             expected = wanted))
      }

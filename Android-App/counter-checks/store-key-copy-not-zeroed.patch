@@ -1,0 +1,16 @@
+Gegenprobe: Die Kopie des Ablageschlüssels bleibt nach dem Ableiten im Speicher
+Modul: core-security
+Test: ch.brickinventoryapp.security.KeyCopyZeroedTest
+Rot: the copy handed to the derivation
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
+@@ -130,7 +130,6 @@
+         doFinal(purpose.toByteArray(Charsets.UTF_8))
+     }
+ } finally {
+-    key.fill(0)
+ }
+ 
+ /**

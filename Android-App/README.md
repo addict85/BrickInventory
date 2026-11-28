@@ -201,9 +201,9 @@ https-Adresse eintragen).
 | Weg | Was passiert |
 | --- | --- |
 | QR-Code mit `fp` | Der Fingerabdruck (SHA-256 des öffentlichen Schlüssels der Caddy-Wurzel) gilt schon für die erste Anfrage, gespeichert wird er erst nach gelungener Anmeldung. Ein Code kann von jedem stammen: Ohne Abtippen gilt er nur, wenn er auf eine System-Wurzel zeigt (deren Kette ohnehin öffentlich gültig sein muss) oder dem schon bestätigten Pin entspricht. Sonst verlangt der Dialog die letzten 24 Zeichen aus der Webapp (Einstellungen → Server-Zertifikat), beim ersten Einrichten wie bei einem abweichenden Pin. |
-| Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich); wer will, tippt ihn stattdessen ab („Fingerabdruck stattdessen abtippen“), dann gilt nur eine passende Abschrift. Auf Android 11–15 prüft das System kein Certificate Transparency: Dort gilt der erste Kontakt nur mit abgeschriebenem Fingerabdruck (Zertifikatdetails des Browsers am Rechner, oberstes Zertifikat), ein Tipp genügt erst ab Android 16. |
+| Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst, wenn der Fingerabdruck abgeschrieben ist (Zertifikatdetails des Browsers am Rechner, oberstes Zertifikat) oder der Zertifikat-QR-Code passt — auf allen Android-Versionen: Dass das System Certificate Transparency auch auf dem eigenen TrustManager-Pfad der App durchsetzt, ist nicht belegt, ein Tipp genügt darum nie. |
 | Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur, wenn man mindestens die letzten 24 Zeichen des neuen aus einer zweiten Quelle abschreibt (Webapp oder Zertifikatdetails des Browsers) — oder per neuem QR-Code. |
-| Neuer Serverschlüssel unter öffentlicher CA | Ist eine System-Wurzel gepinnt, merkt sich die App zusätzlich den Schlüssel des Blatts (zweiter Pin, `host:port#blatt`). Zeigt der Server später einen anderen, geht nichts hinaus; der Dialog „Der Server hat einen neuen Schlüssel“ nennt beide, übernommen wird nach bewusster Bestätigung (ohne Abtippen: die Kette hat das System samt CT geprüft) oder still über einen Code mit `fp` vom angemeldeten Bildschirm. Ältere Fassungen ohne zweiten Pin merken ihn beim nächsten Verbindungsaufbau. |
+| Neuer Serverschlüssel unter öffentlicher CA | Ist eine System-Wurzel gepinnt, merkt sich die App zusätzlich den Schlüssel des Blatts (zweiter Pin, `host:port#blatt`). Zeigt der Server später einen anderen, geht nichts hinaus; der Dialog „Der Server hat einen neuen Schlüssel“ nennt beide, übernommen wird erst mit abgeschriebenem neuem Fingerabdruck oder still über einen Code mit `fp` vom angemeldeten Bildschirm. Ältere Fassungen ohne zweiten Pin merken ihn beim nächsten Verbindungsaufbau. |
 
 Die Dialoge zum Fingerabdruck erklären in einfachen Worten, was er ist und in
 drei Schritten, wo er in der Webapp steht (Texte `zert_text_*`, `setup_qr_pin_abtippen`).
@@ -330,11 +330,6 @@ App meldet sich nach 90 Tagen auch selbst ab. Eine Woche vor dem Ende (das kürz
 und `token_info.hard_expires_at` aus `/auth/me`) bittet sie um eine neue Anmeldung; ein 401 danach
 meldet „Sitzung abgelaufen — bitte erneut anmelden“. Das Anmeldedatum liegt verschlüsselt und an das Token gebunden
 (`TokenAblage.SIGNED_IN_SECRET`): Ein gelöschtes oder verändertes Datum gilt als abgelaufen.
-
-**Neuer Serverschlüssel ab Android 16:** Dort prüft das System Certificate Transparency, und
-ein neuer Schlüssel unter derselben öffentlichen Wurzel braucht kein Abtippen mehr. Ein
-Tippen allein genügt trotzdem nicht: Die App fragt die Displaysperre (ohne Displaysperre:
-Abtippen wie bis Android 15).
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern

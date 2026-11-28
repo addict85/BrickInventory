@@ -1,0 +1,18 @@
+Gegenprobe: Ab Android 16 genügen Erstkontakt und neuer Serverschlüssel wieder ein Tipp (die alte CT-Lockerung)
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerTrustApi36Test
+Rot: on API 36 first contact and a new server key need the transcript
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
+@@ -140,7 +140,8 @@
+      */
+     val transcriptNeeded: Boolean get() = when (kind) {
+         Kind.CODE_MISMATCH -> false
+-        Kind.FIRST_CONTACT, Kind.KEY_NEW, Kind.UNKNOWN_CA, Kind.USER_CA, Kind.CHANGED -> true
++        Kind.FIRST_CONTACT, Kind.KEY_NEW -> android.os.Build.VERSION.SDK_INT < 36
++        Kind.UNKNOWN_CA, Kind.USER_CA, Kind.CHANGED -> true
+     }
+ 
+     enum class Kind {

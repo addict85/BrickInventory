@@ -1,0 +1,16 @@
+Gegenprobe: Die angekündigte Gesamtgrösse wird nicht gegen die Obergrenze geprüft
+Modul: core-data
+Test: ch.brickinventoryapp.data.InstructionLimitTest
+Rot: a resume announcing a total over the limit
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
+@@ -164,7 +164,6 @@
+                 throw IOException("Content-Range does not start at byte $ab")
+             }
+             val total = announcedTotal(resp, ab, resuming)
+-            if (total > limit) throw TooLarge()
+             copyInto(resp.body, part, if (resuming) ab else 0L, total, onProgress)
+         }
+     }

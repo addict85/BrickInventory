@@ -1,17 +1,18 @@
-Gegenprobe: Beim Erstkontakt gilt auch eine falsche Abschrift
+Gegenprobe: Beim Erstkontakt prüft confirm() die Abschrift nicht, ein Tipp genügt
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: on first contact one may type, wrongly typed input does not apply
+Rot: on first contact a tap is not enough, the fingerprint is transcribed
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
 +++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
-@@ -217,7 +217,7 @@
-     override fun confirm(pins: PinStore, input: String?, deviceConfirmed: Boolean): Boolean {
+@@ -224,7 +224,8 @@
+     override fun confirm(pins: PinStore, input: String?): Boolean {
          val f = _open.value ?: return false
          if (f.kind == CertificateUnresolved.Kind.CODE_MISMATCH) return false
--        val verify = f.transcriptNeeded || f.kind == CertificateUnresolved.Kind.FIRST_CONTACT && !input.isNullOrBlank()
-+        val verify = f.transcriptNeeded
-         if (verify && !Transcript.confirmed(input, f.fingerprint)) return false
-         // Without a screen lock there is nothing to confirm with; then the transcript counts instead.
-         if (f.deviceConfirmationNeeded && !deviceConfirmed && !Transcript.confirmed(input, f.fingerprint)) return false
+-        if (f.transcriptNeeded && !Transcript.confirmed(input, f.fingerprint)) return false
++        if (f.transcriptNeeded && f.kind != CertificateUnresolved.Kind.FIRST_CONTACT &&
++            !Transcript.confirmed(input, f.fingerprint)) return false
+         adopt(pins, f)
+         return true
+     }

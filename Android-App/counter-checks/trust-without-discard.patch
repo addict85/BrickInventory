@@ -6,10 +6,10 @@ Rot: a confirmed first contact remembers the pin and discards the open connectio
 diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt
 --- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt
 +++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/TrustViewModel.kt
-@@ -36,7 +36,6 @@
-      */
-     fun trustCertificate(input: String? = null, deviceConfirmed: Boolean = false): Boolean {
-         if (!certificateQuestion.confirm(prefs, input, deviceConfirmed)) return false
+@@ -34,7 +34,6 @@
+     /** Yes to the shown certificate; except for a code deviation only with a matching [input]. */
+     fun trustCertificate(input: String? = null): Boolean {
+         if (!certificateQuestion.confirm(prefs, input)) return false
 -        drop.discard()
          return true
      }
