@@ -5,13 +5,16 @@
 
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Währung</string>
-    <string name="settings_price_condition">Preiszustand</string>
-    <string name="settings_default_condition">Mein Zustand beim Hinzufügen</string>
-    <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
-    <string name="settings_default_condition_hint">Damit beginnt ein neu hinzugefügtes Set. „Allgemein“ übernimmt die Vorgabe für alle Konten.</string>
+    <string name="settings_price_condition">Preise für</string>
+    <string name="settings_default_condition">Vorauswahl beim Hinzufügen</string>
+    <string name="settings_default_condition_effective">Aktuell: %1$s.</string>
+    <string name="settings_default_condition_hint">Dieser Zustand ist vorgewählt, wenn du ein Set hinzufügst. „Allgemein“ übernimmt die Vorgabe für alle Konten.</string>
     <string name="settings_default_condition_global">Allgemein</string>
     <string name="monitoring_default_condition">Zustand beim Hinzufügen für alle Konten</string>
-    <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
+    <string name="settings_price_basis">Marktwert und Gewinn rechnen mit BrickLink-Preisen für neue oder gebrauchte Sets.</string>
+    <string name="settings_group_device">Dieses Gerät</string>
+    <string name="settings_group_account">Konto</string>
+    <string name="settings_group_account_hint">Gilt für dein Konto, auf allen Geräten.</string>
     <string name="settings_condition_new">Neuware</string>
     <string name="settings_condition_used">Gebraucht</string>
     <string name="settings_save">Speichern</string>
@@ -130,7 +133,7 @@
     <string name="gallery_pnl_profit">Gewinn %1$s</string>
     <string name="gallery_pnl_loss">Verlust %1$s</string>
     <string name="gallery_card_market">Marktpreis</string>
-    <string name="gallery_card_paid">Kaufpreis</string>
+    <string name="gallery_card_no_market">kein Marktpreis</string>
     <string name="gallery_delete_title">Set löschen?</string>
     <string name="gallery_delete_text">%1$s und seine Teile werden gelöscht. Danach bleibt kurz Zeit für „Rückgängig“.</string>
     <string name="common_undo">Rückgängig</string>
@@ -414,7 +417,7 @@
     <string name="detail_section_price_history">Preisverlauf</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
-    <string name="settings_dark_label">Darstellung auf diesem Gerät</string>
+    <string name="settings_dark_label">Darstellung</string>
     <string name="settings_light_system">System</string>
     <string name="settings_light_light">Hell</string>
     <string name="settings_light_dark">Dunkel</string>
@@ -465,7 +468,7 @@
     <string name="parts_filter_spare">Nur Ersatzteile</string>
     <string name="common_quantity">Anzahl</string>
     <string name="common_unit_price">Kaufpreis je Stück (optional)</string>
-    <string name="common_unit_price_placeholder">Leer = aktueller Marktpreis</string>
+    <string name="common_unit_price_placeholder">Leer lassen: Der heutige Marktpreis wird übernommen</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="common_loading">Lädt…</string>
     <string name="detail_price_loading">Preis wird geladen…</string>
@@ -903,7 +906,7 @@
     <string name="app_lock_locked">BrickInventory ist gesperrt</string>
     <string name="app_lock_unlock">Entsperren</string>
     <string name="step_without_lock_title">Keine Displaysperre</string>
-    <string name="step_without_lock_text">Dieser Schritt (%1$s) fragt sonst nach der Displaysperre, doch das Gerät hat keine: Wer das Telefon hat, kommt an Gutschein-PINs, Wiederherstellungscodes und die Verwaltung. Richte unter Einstellungen → Sicherheit eine Sperre ein.</string>
+    <string name="step_without_lock_text">Dieser Schritt (%1$s) fragt sonst nach der Displaysperre, doch dieses Gerät hat keine. So kommt jeder mit dem Telefon an Gutschein-PINs, Wiederherstellungscodes und die Verwaltung. Richte unter Einstellungen → Sicherheit eine Sperre ein.</string>
     <string name="step_without_lock_next">Ungeschützt fortfahren</string>
     <string name="step_voucher">Gutschein-PIN anzeigen</string>
     <string name="step_codes">Wiederherstellungscodes</string>
@@ -938,7 +941,6 @@
     <string name="vouchers_balance_never">Guthaben noch nie abgefragt</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>
     <string name="vouchers_balance_currency">Währung auf %1$s geändert.</string>
-    <string name="settings_group_display">Anzeige &amp; Preise</string>
     <string name="zf_title">Zweiter Faktor</string>
     <string name="zf_hint">Zusätzlich zum Passwort ein Code aus einer Authenticator-App. Schützt, falls jemand dein Passwort kennt.</string>
     <string name="zf_setup">Einrichten</string>
@@ -979,7 +981,7 @@
     <string name="settings_system_colors">Systemfarben (Material You)</string>
     <string name="settings_system_colors_hint">Farben aus dem Hintergrundbild statt der Farben des Designs. Formen und Schrift bleiben.</string>
     <string name="settings_preview_hide">Vorschau in der App-Übersicht verbergen</string>
-    <string name="settings_preview_hide_hint">Kein Vorschaubild in der App-Übersicht und keine Bildschirmfotos der App. Gilt für dieses Gerät.</string>
+    <string name="settings_preview_hide_hint">Kein Vorschaubild in der App-Übersicht und keine Bildschirmfotos der App.</string>
     <string name="settings_widget_values">Beträge im Widget zeigen</string>
     <string name="settings_widget_values_hint">Sonst sind Sammlungswert und Gewinn auf dem Startbildschirm verdeckt; dort liest sie jeder, der das Telefon sieht. Gilt für dieses Gerät.</string>
     <string name="cert_title_first_contact">Diesem Server vertrauen?</string>
@@ -1151,7 +1153,6 @@
     <string name="record_discard_title">Änderungen verwerfen?</string>
     <string name="record_discard_text">Was du eingegeben hast, geht verloren.</string>
     <string name="record_discard">Verwerfen</string>
-    <string name="gallery_quantity_hint">Anzahl gleicher Sets</string>
     <string name="record_quantity_invalid">Eine ganze Anzahl ab 1 eingeben.</string>
     <string name="record_price_invalid">Einen Betrag wie 12,50 oder 1.299,00 eingeben.</string>
     <string name="record_number_invalid" tools:ignore="TypographyDashes">Das ist keine Setnummer. Erwartet wird z. B. 10294 oder 10294-1.</string>

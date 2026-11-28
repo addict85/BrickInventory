@@ -4,9 +4,10 @@ Test: ch.brickinventoryapp.collection.SetTileTest
 Rot: tile at 200 percent wraps neither amount nor percent
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
+index c637b1a..45db6db 100644
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
 +++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
-@@ -116,7 +116,7 @@
+@@ -114,7 +114,7 @@ fun SetCard(
      val pnlAnnouncement = if (pct != null && amount != null) stringResource(
          if (pct >= 0) R.string.gallery_pnl_profit else R.string.gallery_pnl_loss, fmtPercent(pct)) else null
      val quantityAnnouncement = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity)) else null
@@ -15,20 +16,20 @@ diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/c
          PnlBadge(pct)
      }) else null
      val quantity: (@Composable () -> Unit)? = if (set.quantity > 1) ({
-@@ -330,7 +330,7 @@
+@@ -322,7 +322,7 @@ private fun TileAmountRows(set: SetView, row: Boolean, amount: Money?, currency:
          maxLines = 1, overflow = TextOverflow.Ellipsis)
      // FlowRow with one line each: if the width doesn't suffice, "each" moves under
      // the amount instead of wrapping character by character.
 -    if (amount != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
 +    if (amount != null) Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-         if (row) Text(source, style = MaterialTheme.typography.bodySmall,
+         if (row) Text(label, style = MaterialTheme.typography.bodySmall,
              color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
              modifier = Modifier.align(Alignment.CenterVertically))
-@@ -338,6 +338,7 @@
+@@ -330,6 +330,7 @@ private fun TileAmountRows(set: SetView, row: Boolean, amount: Money?, currency:
              fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface,
              maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
              modifier = Modifier.align(Alignment.CenterVertically))
-+        price?.pnlPct?.let { Text(fmtPercent(it), style = MaterialTheme.typography.labelSmall) }
++        Text(fmtPercent(16.1), style = MaterialTheme.typography.labelSmall)
          // The amount applies per piece; the finances show the same set with the value
          // of all pieces, and without the hint the numbers wouldn't match up.
          if (set.quantity > 1) Text(stringResource(R.string.gallery_price_each),

@@ -1,7 +1,7 @@
 Gegenprobe: Das Mengenfeld der Erfassung hat wieder nur bei einem Fehler eine Zeile darunter
 Modul: app
-Test: ch.brickinventoryapp.app.FlowTest
-Rot: every field when adding a set has a help line, also while typing
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
+Rot: adding parts names quantity, price per piece and storage location
 
 diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
 --- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt

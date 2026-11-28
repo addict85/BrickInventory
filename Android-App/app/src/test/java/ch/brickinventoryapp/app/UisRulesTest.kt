@@ -131,7 +131,8 @@ import java.util.Locale
  *                                   segments …”
  *   finances-purchase-per-piece         purchase of the row again per piece → red “finances name …”
  *   finances-header-without-base        header card from all positions instead of the basis → red “finance header …”
- *   tile-source-ignored         tile also calls the purchase price „Marktpreis“ → red “gallery tile …”
+ *   tile-source-ignored         tile shows the purchase price as „Marktpreis“ again → red “gallery tile …”
+ *   tile-falls-back-to-purchase tile without market price shows the own purchase price → red “gallery tile …”
  *   more-without-comparison             comparison not under “More” → red “comparison and build list mark …”
  *   more-arrow-differs-from-back   arrow always leads to “More” → red “the arrow of a More subpage …”
  *   gallery-tile-large            set tile at 200 % too with an image across the width → red “gallery at 200 percent …”
@@ -938,16 +939,19 @@ class UisRulesTest {
         }
     }
 
-    /** Without market price the server delivers the purchase price (kachel_quelle "kauf"); the tile says so. */
+    /**
+     * Without market price the server delivers the purchase price (kachel_quelle "kauf"); the
+     * tile still shows only market prices and says „kein Marktpreis“ instead of switching value.
+     */
     @Test
-    fun `gallery tile names the purchase price as purchase price`() {
+    fun `gallery tile shows the market price only and names a missing one`() {
         val images = coil3.ImageLoader.Builder(ctx).build()
         val market = ctx.getString(R.string.gallery_card_market)
-        val purchase = ctx.getString(R.string.gallery_card_paid)
+        val none = ctx.getString(R.string.gallery_card_no_market)
         show {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
-                    SetCard(SetView(setNumber = "21318-1", name = "Baumhaus"), "", images, {},
+                    SetCard(SetView(setNumber = "21318-1", name = "Baumhaus", avgPurchasePrice = Money.from(170.0)), "", images, {},
                         price = TilePrice(Money.from(180.0), null, "purchase"), currency = CurrencyCode("CHF"))
                 }
                 // Older servers without kachel_quelle delivered only market prices.
@@ -957,8 +961,10 @@ class UisRulesTest {
                 }
             }
         }
-        compose.onAllNodesWithText(purchase, useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithText(none, useUnmergedTree = true).assertCountEquals(1)
         compose.onAllNodesWithText(market, useUnmergedTree = true).assertCountEquals(1)
-        assertTrue(showsText(fmtMoney(180.0, CurrencyCode("CHF"))))
+        assertTrue("market price", showsText(fmtMoney(812.5, CurrencyCode("CHF"))))
+        assertTrue("purchase price shown on the tile", !showsText(fmtMoney(180.0, CurrencyCode("CHF"))))
+        assertTrue("own purchase price shown on the tile", !showsText(fmtMoney(170.0, CurrencyCode("CHF"))))
     }
 }

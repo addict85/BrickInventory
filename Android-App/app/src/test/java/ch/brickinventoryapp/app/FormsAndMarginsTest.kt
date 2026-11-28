@@ -123,7 +123,7 @@ import android.graphics.Color as Color
  *
  * Counter-checks (patches under counter-checks/, measured only in CI — Robolectric):
  *   purchase-prices-column-headers        column header „Zustand“ again above the rows → red “the purchase prices carry field labels …”
- *   barcode-fields-without-hint     barcode dialog without help line below the quantity → red “barcode names the number …”
+ *   capture-quantity-without-help-line  quantity field help line only on error → red “adding parts names …”
  *   barcode-badge-before-number     „Schon in deiner Sammlung“ again between name and number
  *                                   → red “barcode names the number …”
  *   price-store-indented       price cache again with its own page margin → red “background work with a title, …” (indent)
@@ -248,16 +248,19 @@ class FormsAndMarginsTest {
 
     // ── Erfassen-Formulare ──
 
-    /** What every form says below quantity, price and storage location; the quantity per item. */
-    private fun checkHints(name: String, texts: List<String>, countHint: Int) {
-        for (hint in listOf(text(countHint), text(R.string.common_unit_price_placeholder), text(R.string.detail_storage_ph)))
+    /**
+     * What every form says below price and storage location, and below a typed quantity what
+     * is counted; sets count with the stepper ([countHint] null) and need no such line.
+     */
+    private fun checkHints(name: String, texts: List<String>, countHint: Int?) {
+        for (hint in listOfNotNull(countHint?.let { text(it) }, text(R.string.common_unit_price_placeholder), text(R.string.detail_storage_ph)))
             assertTrue("$name: hint “$hint” missing", hint in texts)
     }
 
     @Test
     fun `adding a set names quantity, price and storage location with a help line`() {
         val root = openDialog { AddSetDialog(onDismiss = {}, onAdd = {}, storageLocations = listOf("Keller"), immediatelyFocus = false) }
-        checkHints("Set", texts(root).map { it.first }, R.string.gallery_quantity_hint)
+        checkHints("Set", texts(root).map { it.first }, null)
     }
 
     @Test
@@ -279,7 +282,7 @@ class FormsAndMarginsTest {
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", ownershipQuantity = 1), StorageUiState())
         val root = openDialog { BarcodeResultDialog(condition, entryVm(), SampleImages.loader(ctx)) }
         val all = texts(root)
-        checkHints("Barcode", all.map { it.first }, R.string.gallery_quantity_hint)
+        checkHints("Barcode", all.map { it.first }, null)
         val name = situation(all, "Millennium Falcon")
         val number = situation(all, "75192-1")
         val badge = situation(all, text(R.string.barcode_already_owned, 1))

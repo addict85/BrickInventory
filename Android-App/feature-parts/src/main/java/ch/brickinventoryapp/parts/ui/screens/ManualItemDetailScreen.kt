@@ -4,9 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.remember
@@ -14,8 +12,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.model.domain.ColorView
@@ -47,11 +43,10 @@ import ch.brickinventoryapp.state.ui.viewmodel.PurchasesActions
 import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.Prompt
-import ch.brickinventoryapp.ui.components.QuantitiesButton
+import ch.brickinventoryapp.ui.components.QuantityStepper
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.components.colorTranslator
-import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.LocalAccentSurfaces
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtMoney
@@ -289,7 +284,7 @@ private fun ManualItemDetails(
             else entry.fig?.quantity ?: entry.part?.quantity ?: 1
         var qty by remember(acqTotal) { mutableIntStateOf(acqTotal) }
 
-        QuantitiesRow(
+        QuantityStepper(
             quantity = qty,
             onFewer = { if (qty > 1) { qty--; entry.setQuantity(actions, qty) } },
             onMore = { qty++; entry.setQuantity(actions, qty) },
@@ -393,31 +388,6 @@ private fun LazyListScope.manualMarketSection(manDetailState: ManualItemDetailUi
             chart?.takeIf { it.values.isNotEmpty() }?.let {
                 Spacer(Modifier.height(Spacing.small))
                 PriceChart(it, currency)
-            }
-        }
-    }
-}
-
-/** Quantity with minus and plus; what a change writes is decided by the caller. */
-@Composable
-private fun QuantitiesRow(quantity: Int, onFewer: () -> Unit, onMore: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = Spacing.tiny),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(stringResource(R.string.common_quantity),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.medium)) {
-            WithTooltip(stringResource(R.string.cd_qty_decrease)) {
-                QuantitiesButton(onClick = onFewer) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(withFont(14.dp))) }
-            }
-            Text("$quantity", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
-            WithTooltip(stringResource(R.string.cd_qty_increase)) {
-                QuantitiesButton(onClick = onMore) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(withFont(14.dp))) }
             }
         }
     }

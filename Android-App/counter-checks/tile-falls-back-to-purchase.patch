@@ -1,0 +1,18 @@
+Gegenprobe: Galeriekachel nimmt ohne Marktpreis wieder still den eigenen Kaufpreis
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: gallery tile shows the market price only
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
+index c637b1a..f95a995 100644
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
+@@ -109,7 +109,7 @@ fun SetCard(
+ 
+     // In the list row, the badges move from the image into the text: the image is too small there.
+     val pct = price?.pnlPct
+-    val amount = tileMarketPrice(price)
++    val amount = tileMarketPrice(price) ?: set.avgPurchasePrice
+     // What the badges on the image say, TalkBack reads at the end of the tile: the name comes first.
+     val pnlAnnouncement = if (pct != null && amount != null) stringResource(
+         if (pct >= 0) R.string.gallery_pnl_profit else R.string.gallery_pnl_loss, fmtPercent(pct)) else null

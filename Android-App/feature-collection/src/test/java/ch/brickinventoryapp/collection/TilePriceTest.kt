@@ -1,14 +1,11 @@
 package ch.brickinventoryapp.collection
 
 import ch.brickinventoryapp.collection.ui.TilePrice
-import ch.brickinventoryapp.collection.ui.TileSource
-import ch.brickinventoryapp.collection.ui.tileAmount
+import ch.brickinventoryapp.collection.ui.tileMarketPrice
 import ch.brickinventoryapp.collection.ui.tilePrices
-import ch.brickinventoryapp.collection.ui.tileSource
 import ch.brickinventoryapp.contract.PnlSetRow
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.SetView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -28,12 +25,10 @@ import org.junit.Test
  *      states …” (750.0 instead of 191.7)
  *   B  only pnl_pct read, not baseline_pnl_pct → red “a row without
  *      a purchase price …”
- *   C  in tileAmount() the purchase price put ahead of the market price → red
- *      “the market price takes priority …”
  *
  * Counter-check:
- *   Q  in tileSource() `price.source == "purchase"` not honored → red “the
- *      server's source …” (MARKT instead of PURCHASE); measured in the UI by
+ *   Q  in tileMarketPrice() `source != "purchase"` dropped → red “the tile shows
+ *      only market prices …” (180.0 instead of null); measured in the UI by
  *      counter-checks/tile-source-ignored.patch
  */
 class TilePriceTest {
@@ -69,25 +64,15 @@ class TilePriceTest {
     }
 
     @Test
-    fun `the market price goes first, otherwise the weighted purchase price`() {
-        val set = SetView(setNumber = "1-1", avgPurchasePrice = Money.from(40.0), maxPurchasePrice = Money.from(60.0))
-        assertEquals(Money.from(55.0), tileAmount(set, TilePrice(Money.from(55.0), 37.5)))
-        assertEquals(Money.from(40.0), tileAmount(set, TilePrice(Money.from(0.0), null)))
-        assertEquals(Money.from(40.0), tileAmount(set, null))
-        assertNull(tileAmount(SetView(setNumber = "2-1"), null))
-    }
-
-    @Test
-    fun `the server's source determines the tile's label`() {
+    fun `the tile shows only market prices, never the purchase price`() {
         val p = tilePrices(listOf(PnlSetRow(setNumber = "21318-1", quantity = 1, currentPrice = null, baselinePrice = 180.0, tilePrice = 180.0, tileSource = "purchase")))
         assertEquals(TilePrice(Money.from(180.0), null, "purchase"), p["21318-1"])
-        val set = SetView(setNumber = "21318-1")
-        assertEquals(TileSource.PURCHASE, tileSource(set, p["21318-1"]))
-        assertEquals(TileSource.MARKET, tileSource(set, TilePrice(Money.from(812.5), 16.1, "market")))
+        assertNull(tileMarketPrice(p["21318-1"]))
+        assertEquals(Money.from(812.5), tileMarketPrice(TilePrice(Money.from(812.5), 16.1, "market")))
         // Older servers without kachel_quelle delivered only market prices.
-        assertEquals(TileSource.MARKET, tileSource(set, TilePrice(Money.from(812.5), 16.1)))
-        assertEquals(TileSource.PURCHASE, tileSource(SetView(setNumber = "1-1", avgPurchasePrice = Money.from(40.0)), null))
-        assertNull(tileSource(set, null))
+        assertEquals(Money.from(812.5), tileMarketPrice(TilePrice(Money.from(812.5), 16.1)))
+        assertNull(tileMarketPrice(TilePrice(Money.from(0.0), null)))
+        assertNull(tileMarketPrice(null))
     }
 }
 

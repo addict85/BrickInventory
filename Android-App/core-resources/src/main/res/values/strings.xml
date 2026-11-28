@@ -9,7 +9,7 @@
 
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Currency</string>
-    <string name="settings_price_condition">Price condition</string>
+    <string name="settings_price_condition">Prices for</string>
     <string name="common_condition">Condition</string>
     <string name="detail_edit_prices">Edit prices</string>
     <string name="detail_purchase_price">Purchase price</string>
@@ -20,14 +20,17 @@
     <string name="common_delete">Delete</string>
     <string name="common_edit">Edit</string>
     <string name="common_cancel">Cancel</string>
-    <string name="settings_default_condition">My condition when adding</string>
-    <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
-    <string name="settings_default_condition_hint">A newly added set starts with this. “General” uses the default for all accounts.</string>
+    <string name="settings_default_condition">Preselected when adding</string>
+    <string name="settings_default_condition_effective">Currently: %1$s.</string>
+    <string name="settings_default_condition_hint">This condition is preselected when you add a set. “General” uses the default for all accounts.</string>
     <string name="settings_default_condition_global">General</string>
     <string name="condition_new">New</string>
     <string name="condition_used">Used</string>
     <string name="monitoring_default_condition">Condition when adding, for all accounts</string>
-    <string name="settings_price_basis">Price basis for BrickLink valuations</string>
+    <string name="settings_price_basis">Market value and gains use BrickLink prices for new or used sets.</string>
+    <string name="settings_group_device">This device</string>
+    <string name="settings_group_account">Account</string>
+    <string name="settings_group_account_hint">Applies to your account on all devices.</string>
     <string name="settings_condition_new">New</string>
     <string name="settings_condition_used">Used</string>
     <string name="settings_save">Save</string>
@@ -146,7 +149,7 @@
     <string name="gallery_pnl_profit">Gain %1$s</string>
     <string name="gallery_pnl_loss">Loss %1$s</string>
     <string name="gallery_card_market">Market price</string>
-    <string name="gallery_card_paid">Purchase price</string>
+    <string name="gallery_card_no_market">no market price</string>
     <string name="gallery_delete_title">Delete set?</string>
     <string name="gallery_delete_text">%1$s and its parts will be deleted. You can still undo it for a moment afterwards.</string>
     <string name="common_undo">Undo</string>
@@ -427,7 +430,7 @@
     <string name="detail_section_price_history">Price history</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
-    <string name="settings_dark_label">Appearance on this device</string>
+    <string name="settings_dark_label">Appearance</string>
     <string name="settings_light_system">System</string>
     <string name="settings_light_light">Light</string>
     <string name="settings_light_dark">Dark</string>
@@ -484,7 +487,7 @@
     <string name="parts_filter_spare">Spare parts only</string>
     <string name="common_quantity">Quantity</string>
     <string name="common_unit_price">Purchase price per piece (optional)</string>
-    <string name="common_unit_price_placeholder">Empty = current market price</string>
+    <string name="common_unit_price_placeholder">Leave empty to use today\'s market price</string>
     <string name="common_loading">Loading…</string>
     <string name="detail_price_loading">Loading price…</string>
     <string name="vm_saved">Saved</string>
@@ -916,7 +919,7 @@
     <string name="app_lock_locked">BrickInventory is locked</string>
     <string name="app_lock_unlock">Unlock</string>
     <string name="step_without_lock_title">No screen lock</string>
-    <string name="step_without_lock_text">This step (%1$s) normally asks for the screen lock. This device has none: anyone holding the phone can get to voucher PINs, recovery codes and administration without further ado. Set up a PIN, pattern or password in the system settings under Security.</string>
+    <string name="step_without_lock_text">This step (%1$s) normally asks for the screen lock, but this device has none. Anyone holding the phone can reach voucher PINs, recovery codes and administration. Set up a lock under Settings → Security.</string>
     <string name="step_without_lock_next">Continue unprotected</string>
     <string name="step_voucher">Show voucher PIN</string>
     <string name="step_codes">Recovery codes</string>
@@ -956,7 +959,6 @@
     <string name="vouchers_balance_never">balance never queried</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>
     <string name="vouchers_balance_currency">Currency changed to %1$s.</string>
-    <string name="settings_group_display">Display &amp; prices</string>
     <string name="zf_title">Two-factor authentication</string>
     <string name="zf_hint">A code from an authenticator app in addition to your password. Protects you if someone knows your password.</string>
     <string name="zf_setup">Set up</string>
@@ -997,7 +999,7 @@
     <string name="settings_system_colors">System colors (Material You)</string>
     <string name="settings_system_colors_hint">Colors from your wallpaper instead of the design\'s colors. Shapes and fonts stay.</string>
     <string name="settings_preview_hide">Hide preview in the app overview</string>
-    <string name="settings_preview_hide_hint">No preview in the recent apps overview and no screenshots of the app. Applies to this device.</string>
+    <string name="settings_preview_hide_hint">No preview in the recent apps overview and no screenshots of the app.</string>
     <string name="settings_widget_values">Show amounts in the widget</string>
     <string name="settings_widget_values_hint">Otherwise the collection value and gains are hidden on the home screen, where anyone who sees the phone can read them. Applies to this device.</string>
     <string name="cert_title_first_contact">Trust this server?</string>
@@ -1169,7 +1171,6 @@
     <string name="record_discard_title">Discard changes?</string>
     <string name="record_discard_text">What you entered will be lost.</string>
     <string name="record_discard">Discard</string>
-    <string name="gallery_quantity_hint">Number of identical sets</string>
     <string name="record_quantity_invalid">Enter a whole quantity of 1 or more.</string>
     <string name="record_price_invalid">Enter an amount such as 12.50 or 1,299.00.</string>
     <string name="record_number_invalid" tools:ignore="TypographyDashes">That is not a set number. Expected e.g. 10294 or 10294-1.</string>

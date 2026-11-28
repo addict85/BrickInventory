@@ -21,7 +21,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.performTextReplacement
 import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
@@ -123,7 +122,10 @@ class FlowTest {
         var recorded: Pair<String, Int>? = null
         show { AddSetDialog(onDismiss = {}, onAdd = { recorded = it.setNumber to it.quantity }) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_set_number)).performTextInput("75192")
-        compose.onNodeWithText(ctx.getString(R.string.common_quantity)).performTextReplacement("3")
+        // The stepper as on the set page: twice plus, once minus below 1 has no effect.
+        val more = compose.onNodeWithContentDescription(ctx.getString(R.string.cd_qty_increase))
+        compose.onNodeWithContentDescription(ctx.getString(R.string.cd_qty_decrease)).performClick()
+        more.performClick(); more.performClick()
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
         assertEquals("75192" to 3, recorded)
     }
@@ -142,16 +144,13 @@ class FlowTest {
     /**
      * Every field of “Add set” carries a help line; without it the fields stood
      * unevenly far apart, and the hint about the price vanished as a placeholder while typing.
-     * Counter-check: quantity field again without help line (only on error) → red, „Anzahl“ missing
-     * (counter-checks/capture-quantity-without-help-line.patch).
      */
     @Test
     fun `every field when adding a set has a help line, also while typing`() {
         show { AddSetDialog(onDismiss = {}, onAdd = {}, immediatelyFocus = false) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_purchase_price)).performTextInput("12")
         compose.waitForIdle()
-        for (id in listOf(R.string.gallery_set_number_placeholder, R.string.gallery_quantity_hint,
-                R.string.common_unit_price_placeholder)) {
+        for (id in listOf(R.string.gallery_set_number_placeholder, R.string.common_unit_price_placeholder)) {
             compose.onNodeWithText(ctx.getString(id), useUnmergedTree = true).assertExists()
         }
     }

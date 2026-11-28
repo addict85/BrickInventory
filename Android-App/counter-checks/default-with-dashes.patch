@@ -4,12 +4,13 @@ Test: ch.brickinventoryapp.app.StringResourceParityTest
 Rot: one term per thing in both languages
 
 diff --git a/Android-App/core-resources/src/main/res/values/strings.xml b/Android-App/core-resources/src/main/res/values/strings.xml
+index 9f780be..4c426b7 100644
 --- a/Android-App/core-resources/src/main/res/values/strings.xml
 +++ b/Android-App/core-resources/src/main/res/values/strings.xml
 @@ -25,7 +25,7 @@
-     <string name="settings_default_condition">My condition when adding</string>
-     <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
-     <string name="settings_default_condition_hint">A newly added set starts with this. “General” uses the default for all accounts.</string>
+     <string name="settings_default_condition">Preselected when adding</string>
+     <string name="settings_default_condition_effective">Currently: %1$s.</string>
+     <string name="settings_default_condition_hint">This condition is preselected when you add a set. “General” uses the default for all accounts.</string>
 -    <string name="settings_default_condition_global">General</string>
 +    <string name="settings_default_condition_global">— General —</string>
      <string name="condition_new">New</string>

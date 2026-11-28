@@ -32,7 +32,6 @@ import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.shared.ui.ConditionRow
-import ch.brickinventoryapp.shared.ui.CountField
 import ch.brickinventoryapp.shared.ui.InfoBadge
 import ch.brickinventoryapp.shared.ui.OwnerPicker
 import ch.brickinventoryapp.shared.ui.PurchasePriceField
@@ -41,6 +40,7 @@ import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.AddDialog
 import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.QuantityStepper
 import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.components.movementReduced
 import ch.brickinventoryapp.ui.components.withFont
@@ -84,7 +84,7 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
 
     // Fresh per scanned barcode, and across a rotation (rememberSaveable): price
     // and storage location got lost on rotating.
-    var barcodeQuantity by rememberSaveable(barcodeState.result) { mutableStateOf("1") }
+    var barcodeQuantity by rememberSaveable(barcodeState.result) { mutableIntStateOf(1) }
     var barcodePriceText by rememberSaveable(barcodeState.result) { mutableStateOf("") }
     var barcodeUiState by rememberSaveable(barcodeState.result) { mutableStateOf(state.userDefaultCondition ?: Condition.NEW) }
     // Pre-fill the owner as in the gallery dialog: one's own account. The repository, API
@@ -113,7 +113,7 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
             } else {
                 actions.confirmAddBarcode(EntryRequest(
                     setNumber = barcodeState.result,
-                    quantity = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+                    quantity = barcodeQuantity,
                     purchasePrice = NumericInput.readMoney(barcodePriceText),
                     condition = barcodeUiState,
                     // Without a household, send nothing at all — the server then stays on
@@ -140,9 +140,11 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
             OwnerPicker(
                 glance.householdMembers, barcodeOwner, { barcodeOwner = it }
             )
-            // The same fields as "Add set": label, help line, check.
-            CountField(barcodeQuantity, { barcodeQuantity = it }, stringResource(R.string.gallery_quantity_hint))
-            PurchasePriceField(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price))
+            // The same fields as "Add set" and the same stepper as on the set page.
+            QuantityStepper(barcodeQuantity, onFewer = { if (barcodeQuantity > 1) barcodeQuantity-- },
+                onMore = { barcodeQuantity++ })
+            PurchasePriceField(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price),
+                currency = state.currency)
             ConditionRow(
                 condition = barcodeUiState,
                 onUiState = { barcodeUiState = it }

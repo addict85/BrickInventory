@@ -1,0 +1,21 @@
+Gegenprobe: Preis-Einstellungen stehen wieder in der Gerätekarte, die Karte „Konto“ fehlt
+Modul: feature-account
+Test: ch.brickinventoryapp.account.SettingsGroupsTest
+Rot: device and account settings stand in two cards
+
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsScreen.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsScreen.kt
+index 11914b0..1d40b4c 100644
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsScreen.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsScreen.kt
+@@ -134,11 +134,6 @@ fun SettingsScreen(
+         SettingsCard(title = stringResource(R.string.settings_group_device),
+                      icon = Icons.Default.Smartphone) {
+             DisplaySettings(condition, appearance)
+-        }
+-        SettingsCard(title = stringResource(R.string.settings_group_account),
+-                     icon = Icons.Default.Person) {
+-            Text(stringResource(R.string.settings_group_account_hint), style = MaterialTheme.typography.bodySmall,
+-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+             PriceSettings(condition.appState, actions)
+         }
+ 

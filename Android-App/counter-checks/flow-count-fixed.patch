@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.app.FlowTest
 Rot: adding a set takes number and quantity
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt
+index aae3f29..9b97409 100644
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt
 +++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt
-@@ -121,7 +121,7 @@
-             // On an unreadable quantity or price the dialog stays open; the fields show the error.
+@@ -124,7 +124,7 @@ fun AddSetDialog(
+             // On an unreadable price the dialog stays open; the fields show the error.
              onAdd(EntryRequest(
                  setNumber = setNumber,
--                quantity = quantity.toIntOrNull() ?: 1,
+-                quantity = quantity,
 +                quantity = 1,
                  purchasePrice = NumericInput.readMoney(purchasePrice),
                  condition = condition,

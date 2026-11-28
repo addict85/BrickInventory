@@ -1,8 +1,10 @@
 package ch.brickinventoryapp.ui.components
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
@@ -19,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.model.ui.ListView
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 
@@ -83,3 +86,11 @@ fun SearchField(
 }
 
 private const val PLACEHOLDER_ROWS_LARGE = 3
+
+/**
+ * A search field in a row with its buttons: grows up to [ReadingWidth.search]. Across a
+ * whole tablet a short query sat lost at the left of a 1200 dp line; the row needs
+ * `Arrangement.Center`, so field and buttons stay together in the middle.
+ */
+fun Modifier.searchFieldWidth(row: RowScope): Modifier =
+    with(row) { this@searchFieldWidth.weight(1f, fill = false) }.widthIn(max = ReadingWidth.search).fillMaxWidth()

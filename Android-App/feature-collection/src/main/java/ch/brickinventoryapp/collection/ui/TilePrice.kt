@@ -2,7 +2,6 @@ package ch.brickinventoryapp.collection.ui
 
 import ch.brickinventoryapp.model.domain.GainRowView
 import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.domain.SetView
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -11,9 +10,6 @@ import java.math.RoundingMode
  * tile_source ("market"/"purchase"): without a market price it delivers the purchase price as the amount.
  */
 data class TilePrice(val amount: Money?, val pnlPct: Double?, val source: String? = null)
-
-/** What the tile's amount is — the label above it names it as in the web. */
-internal enum class TileSource { MARKET, PURCHASE }
 
 /**
  * One value per set from /finance/pnl. The server calculates amount and P&L
@@ -50,18 +46,10 @@ private fun tilePriceBeforeServer(z: List<GainRowView>): TilePrice {
     return TilePrice(z[0].currentPrice, pct?.toDouble())
 }
 
-/** The tile's amount: the server's, otherwise the set's quantity-weighted purchase price. */
-internal fun tileAmount(set: SetView, price: TilePrice?): Money? =
-    price?.amount?.takeIf { it.positive } ?: set.avgPurchasePrice ?: set.maxPurchasePrice
-
 /**
- * Where [tileAmount] comes from. A server amount is a market price unless it
- * says "purchase"; older servers without tile_source only delivered market prices. Without
- * it, one's own purchase price stands there, without both, nothing.
+ * The tile's amount: always the market price, never the purchase price. Tiles that
+ * switched silently between both made neighbors incomparable; the server marks its
+ * purchase-price fallback with source "purchase", older servers sent market prices only.
  */
-internal fun tileSource(set: SetView, price: TilePrice?): TileSource? {
-    val amount = price?.amount
-    if (price != null && amount != null && amount.positive)
-        return if (price.source == "purchase") TileSource.PURCHASE else TileSource.MARKET
-    return if (set.avgPurchasePrice != null || set.maxPurchasePrice != null) TileSource.PURCHASE else null
-}
+internal fun tileMarketPrice(price: TilePrice?): Money? =
+    price?.takeIf { it.source != "purchase" }?.amount?.takeIf { it.positive }
