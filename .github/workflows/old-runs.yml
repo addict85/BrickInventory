@@ -1,0 +1,42 @@
+name: Alte Läufe entfernen
+
+# Vor jedem neuen Lauf: alle beendeten Läufe löschen, nur der jüngste je Workflow und Zweig
+# bleibt (die Release-Kette liest dessen Artefakte). Laufende und wartende Läufe bleiben.
+on:
+  workflow_run:
+    workflows:
+      - Android-App
+      - Android-Etikett setzen
+      - Android-Herkunft
+      - Android-Release
+      - Android-Signieren
+      - CI
+      - Sicherheit
+      - Web-App
+    types: [requested]
+  workflow_dispatch:
+
+permissions: {}
+
+# Ein Aufräumen genügt; ein zweites, das währenddessen ansteht, findet den Rest.
+concurrency:
+  group: old-runs
+  cancel-in-progress: false
+
+jobs:
+  remove:
+    name: Alte Läufe entfernen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Beendete Läufe löschen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/old-runs.js
