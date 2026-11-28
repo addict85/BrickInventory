@@ -10,15 +10,16 @@
 /**
  * Runs to delete: every finished run except the newest per workflow and branch. The newest
  * stays because the release chain reads its artifacts (a tag's green build, the signed APK)
- * and a re-release by hand looks up the tag's last build. Running or waiting runs are never
- * touched.
- * @param {{ id: number, workflow_id: number, head_branch: string | null, status: string, created_at: string }[]} runs
+ * and a re-release by hand looks up the tag's last build. A skipped run never counts as the
+ * newest: every build on main starts an Android-Release that skips, and it would push the
+ * real release run out. Running or waiting runs are never touched.
+ * @param {{ id: number, workflow_id: number, head_branch: string | null, status: string, conclusion: string | null, created_at: string }[]} runs
  * @returns {number[]}
  */
 function deletable(runs) {
   const newest = new Map();
   for (const r of runs) {
-    if (r.status !== 'completed') continue;
+    if (r.status !== 'completed' || r.conclusion === 'skipped') continue;
     const key = `${r.workflow_id}\u0000${r.head_branch ?? ''}`;
     const kept = newest.get(key);
     if (!kept || r.created_at > kept.created_at || (r.created_at === kept.created_at && r.id > kept.id))
