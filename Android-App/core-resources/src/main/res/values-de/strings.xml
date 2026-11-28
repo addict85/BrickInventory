@@ -899,7 +899,7 @@
     <string name="step_server_error">Der Server hat die Bestätigung nicht angenommen. Bitte erneut versuchen.</string>
     <string name="app_lock_set_up">Neu installiert ist sie auf 5 Minuten gestellt, wenn das Telefon eine Displaysperre hat. Sie verdeckt die App und fragt nach Fingerabdruck oder Gerätesperre; ändern lässt sie sich jederzeit in den Einstellungen.</string>
     <string name="app_lock_title">App sperren</string>
-    <string name="app_lock_hint">Nach so vielen Minuten im Hintergrund fragt die App nach Fingerabdruck oder Gerätesperre. Gilt für dieses Gerät.</string>
+    <string name="app_lock_hint">Nach so vielen Minuten im Hintergrund fragt die App nach Fingerabdruck oder Gerätesperre.</string>
     <string name="app_lock_without_screen_lock">Braucht eine Displaysperre auf diesem Gerät.</string>
     <string name="app_lock_from">Aus</string>
     <string name="app_lock_minutes">%1$d Min.</string>
@@ -983,7 +983,7 @@
     <string name="settings_preview_hide">Vorschau in der App-Übersicht verbergen</string>
     <string name="settings_preview_hide_hint">Kein Vorschaubild in der App-Übersicht und keine Bildschirmfotos der App.</string>
     <string name="settings_widget_values">Beträge im Widget zeigen</string>
-    <string name="settings_widget_values_hint">Sonst sind Sammlungswert und Gewinn auf dem Startbildschirm verdeckt; dort liest sie jeder, der das Telefon sieht. Gilt für dieses Gerät.</string>
+    <string name="settings_widget_values_hint">Sonst sind Sammlungswert und Gewinn auf dem Startbildschirm verdeckt; dort liest sie jeder, der das Telefon sieht.</string>
     <string name="cert_title_first_contact">Diesem Server vertrauen?</string>
     <string name="cert_title_unknown">Unbekanntes Zertifikat</string>
     <string name="cert_title_changed">Das Zertifikat des Servers hat sich geändert</string>

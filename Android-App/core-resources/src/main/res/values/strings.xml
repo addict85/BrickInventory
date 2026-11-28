@@ -912,7 +912,7 @@
     <string name="step_server_error">The server did not accept the confirmation. Please try again.</string>
     <string name="app_lock_set_up">On a new installation it is set to 5 minutes if the phone has a screen lock. It covers the app and asks for your fingerprint or device lock; you can change it at any time in Settings.</string>
     <string name="app_lock_title">Lock the app</string>
-    <string name="app_lock_hint">After this many minutes in the background the app asks for your fingerprint or device lock. Applies to this device.</string>
+    <string name="app_lock_hint">After this many minutes in the background the app asks for your fingerprint or device lock.</string>
     <string name="app_lock_without_screen_lock">Needs a screen lock on this device.</string>
     <string name="app_lock_from">Off</string>
     <string name="app_lock_minutes">%1$d min</string>
@@ -1001,7 +1001,7 @@
     <string name="settings_preview_hide">Hide preview in the app overview</string>
     <string name="settings_preview_hide_hint">No preview in the recent apps overview and no screenshots of the app.</string>
     <string name="settings_widget_values">Show amounts in the widget</string>
-    <string name="settings_widget_values_hint">Otherwise the collection value and gains are hidden on the home screen, where anyone who sees the phone can read them. Applies to this device.</string>
+    <string name="settings_widget_values_hint">Otherwise the collection value and gains are hidden on the home screen, where anyone who sees the phone can read them.</string>
     <string name="cert_title_first_contact">Trust this server?</string>
     <string name="cert_title_unknown">Unknown certificate</string>
     <string name="cert_title_changed">The server\'s certificate has changed</string>
