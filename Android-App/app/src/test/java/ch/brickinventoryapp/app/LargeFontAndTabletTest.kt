@@ -54,6 +54,7 @@ import ch.brickinventoryapp.shared.ui.PriceChart
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -74,6 +75,7 @@ import java.util.Locale
  *   tab-shrinks-to-7sp  lower bound again fixed 7 sp → red “tab bar never shrinks …”
  *   tab-floor-normal-size  lower bound again the normal size → red “tab label grows …”
  *   tab-own-size     all labelled, each in its own size → red “tab bar breaks …”
+ *   tab-label-slack-wide  8 dp kept free beside each label → red “at normal size every destination …”
  *   search-beside-filter-text    filter button with text already from 360 dp → red “search placeholder …”
  *   history-from-two-points   line already from two points → red “price history …”
  *   parts-detail-as-dialog   parts detail as a dialog on the tablet too → red “tablet shows part …”
@@ -163,6 +165,34 @@ class LargeFontAndTabletTest {
         visible.forEach { wholeOneRow(it, "Reiterleiste") }
         val sizes = visible.map { layout(textNode(it)).layoutInput.style.fontSize }.toSet()
         assertTrue("tab bar in different sizes: $sizes", sizes.size == 1)
+    }
+
+    /** The app's own five destinations at normal size: each carries its label, not only the selected one. */
+    @Test
+    fun `at normal size every destination of the bar is labelled`() = everyLabelled("de-rCH")
+
+    @Test
+    fun `at normal size every destination of the bar is labelled in English`() = everyLabelled("en-rGB")
+
+    private fun everyLabelled(language: String) {
+        RuntimeEnvironment.setQualifiers("$language-w411dp-h891dp-port-xxhdpi")
+        val r = ApplicationProvider.getApplicationContext<Context>()
+        val targets = listOf(CollectionTarget.Gallery to R.string.nav_collection, FinanceTarget.Finance to R.string.nav_finance,
+            CatalogTarget.Catalog to R.string.nav_catalog, CollectionTarget.Comparison to R.string.nav_comparison,
+            AppTarget.More to R.string.nav_more).map { (target, text) -> target to r.getString(text) }
+        show {
+            val nav = rememberNavController()
+            val tab = remember { targets.map { (target, text) -> Tab(target, { Icon(Icons.Default.ViewInAr, null) }, text) } }
+            MainScaffold(
+                title = "Titel", navController = nav, bottomNavItems = tab,
+                snackbarHostState = remember { SnackbarHostState() },
+                onTabTapped = {},
+            ) {
+                NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { } }
+            }
+        }
+        assertEquals("$language: labelled destinations", targets.map { it.second }, visibleLabels(targets))
+        visibleLabels(targets).forEach { wholeOneRow(it, "$language bar") }
     }
 
     /** At 200 % the labels stand at least one and a half times as large as at 100 %. */

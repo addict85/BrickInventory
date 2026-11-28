@@ -1,0 +1,17 @@
+Gegenprobe: Neben jeder Reiterbeschriftung wieder 8 dp frei: bei Normalgrösse nur der gewählte Reiter beschriftet
+Modul: app
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: at normal size every destination of the bar is labelled
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -418,7 +418,7 @@
+  * The label may use its whole item; 2 dp absorb rounding. More, and „Sammlung“ no longer
+  * fitted a fifth of a phone at normal size: only the selected destination was labelled.
+  */
+-private val LABEL_SLACK = 2.dp
++private val LABEL_SLACK = 8.dp
+ /** Distance of the outermost destinations to the screen edge. */
+ private val BAR_EDGE = 8.dp
+ private val SIDEBAR_WIDTH = 80.dp

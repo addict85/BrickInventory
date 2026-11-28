@@ -117,7 +117,7 @@ import java.util.Locale
  * Findings of the tenth and eleventh UI review (Android), executed as behavior: the
  * add button rises above the snackbar, offline a neutral banner stands instead of two
  * contradictory lines, errors in forms are announced, password fields
- * know autofill and eye, admin rights stand under „Erweitert“, the server chip
+ * know autofill and eye, admin rights stand under „Zugriffsumfang“, the server chip
  * says what it does, the key figures wrap in collection and detail, the catalog detail uses the tablet, and the finances name the market value
  * before the history.
  *
@@ -128,7 +128,7 @@ import java.util.Locale
  *   error-without-announcement          ansagen() without live region → red “errors of the sign-in …”
  *   password-field-without-autofill  PasswordField without contentType → red “start password form fills …”
  *   initial-password-full-width  form without reading width → red “start password form stands in reading width …”
- *   manager-rights-open       „Erweitert“ open from the start → red “admin rights stand collapsed …”
+ *   manager-rights-open       „Zugriffsumfang“ open from the start → red “admin rights stand collapsed …”
  *   metrics-without-wrap     key figures in a Row instead of FlowRow → red “collection key figures …”
  *   offline-in-error-red        banner again in tertiaryContainer (Classic: red) → red “offline hint reports …”
  *   server-chip-without-role    chip without description → red “server chip names …”
@@ -442,7 +442,7 @@ class ScaffoldAndFormTest {
         }
         val full = ctx.getString(R.string.login_full_access)
         compose.onAllNodesWithText(full, substring = true).assertCountEquals(0)
-        compose.onNode(hasText(ctx.getString(R.string.login_extended)) and hasClickAction()).performClick()
+        compose.onNode(hasText(ctx.getString(R.string.login_access_scope)) and hasClickAction()).performClick()
         compose.waitForIdle()
         compose.onAllNodesWithText(full, substring = true).assertCountEquals(1)
     }

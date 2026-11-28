@@ -1,0 +1,20 @@
+Gegenprobe: Thema, Jahr und „0 Sets im Katalog“ wieder über dem leeren Katalog
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogEmptyStateTest
+Rot: the empty catalog shows no filters and no count
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
+@@ -99,9 +99,9 @@
+     val emptyCatalog = state.total == 0 && error == null && !state.fetch.loading && !state.filtered
+     Column(Modifier.fillMaxSize()) {
+         CatalogSearchField(state, onQueryChange, onSortChange)
+-        if (!emptyCatalog) CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
++        CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
+         // Hit count — not on error: "0 sets in catalog" used to sit there next to the error.
+-        if ((error == null || state.total > 0) && !emptyCatalog) Text(
++        if (error == null || state.total > 0) Text(
+             // pluralStringResource instead of stringResource: "1 set in catalog",
+             // not "1 sets".
+             pluralStringResource(R.plurals.catalog_result_count, state.total, state.total),

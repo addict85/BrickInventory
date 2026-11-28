@@ -63,7 +63,7 @@ import kotlin.math.roundToInt
  * Counter-checks (patches under counter-checks/, measured only in the CI — Robolectric):
  *   login-behind-keyboard     imePadding() removed from outsideTheSystemBars → red “Registrieren stays …”
  *   login-under-bars       systemBarsPadding() removed from outsideTheSystemBars → red “Anmelden starts …”
- *   extended-without-state        semantics removed from the „Erweitert“ button → red “Erweitert reports …”
+ *   extended-without-state        semantics removed from the „Zugriffsumfang“ button → red “access scope toggle reports …”
  *   register-tablet-single-column  two columns only from 4000 dp → red “on the tablet …”
  *   next-tonal-again           „Weiter“ back to FilledTonalButton → red “Weiter stands out …”
  *   address-long-label        setup_url_label back to „Serveradresse der BrickInventory Manager Web-App“
@@ -240,9 +240,9 @@ class LoginEdgeTest {
     }
 
     @Test
-    fun `Advanced reports whether the area is open`() {
+    fun `access scope toggle reports whether the area is open`() {
         show { Login(LoginForm.LOGIN) }
-        val button = compose.onNode(hasText(text(R.string.login_extended)) and hasClickAction())
+        val button = compose.onNode(hasText(text(R.string.login_access_scope)) and hasClickAction())
         button.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, text(R.string.state_collapsed)))
         button.assert(SemanticsMatcher.keyIsDefined(SemanticsActions.Expand))
         button.performClick()

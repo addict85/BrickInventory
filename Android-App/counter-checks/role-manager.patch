@@ -9,7 +9,7 @@ diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/And
 @@ -1175,7 +1175,7 @@
          <item quantity="other">Schritt %1$d von %2$d: %3$s</item>
      </plurals>
-     <string name="alerts_intro_more">Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
+     <string name="alerts_intro_more">Gemeldet wird einmal je Übergang – erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
 -    <string name="zf_required_short">Administratorrechte brauchen einen zweiten Faktor.</string>
 +    <string name="zf_required_short">Verwalterrechte brauchen einen zweiten Faktor.</string>
      <string name="zf_share">Teilen</string>

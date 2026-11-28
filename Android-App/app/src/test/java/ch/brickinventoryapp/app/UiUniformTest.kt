@@ -282,7 +282,7 @@ class UiUniformTest {
         assertEquals("jump menu of the year bar", listOf(2), jumpTargets)
     }
 
-    // ── Texts: „hinzufügen“ as on the web, one name for the price comparison ──
+    // ── Texts: „hinzufügen“ as on the web, one name for the price comparison (short in the bar) ──
 
     @Test
     fun `texts say add and price comparison`() {
@@ -291,7 +291,10 @@ class UiUniformTest {
             val r = ApplicationProvider.getApplicationContext<Context>()
             assertEquals("$language: title and button for the part", r.getString(R.string.parts_add), r.getString(R.string.parts_add_title))
             assertEquals("$language: title and button for the figure", r.getString(R.string.minifigs_add), r.getString(R.string.minifigs_add_title))
-            assertEquals("$language: destination and side of the comparison", r.getString(R.string.comparison_title), r.getString(R.string.nav_comparison))
+            // The bar label is the short form of the page title: „Vergleich“ within „Preisvergleich“.
+            val title = r.getString(R.string.comparison_title)
+            val label = r.getString(R.string.nav_comparison)
+            assertTrue("$language: bar label „$label“ is not a short form of „$title“", title.contains(label, ignoreCase = true) && label.length < title.length)
         }
         RuntimeEnvironment.setQualifiers("de-rCH")
         val de = ApplicationProvider.getApplicationContext<Context>()

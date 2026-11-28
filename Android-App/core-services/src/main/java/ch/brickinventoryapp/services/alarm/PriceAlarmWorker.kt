@@ -11,6 +11,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import ch.brickinventoryapp.model.util.PRICE_ALERT_CHANNEL
 import ch.brickinventoryapp.resources.R
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -47,7 +48,7 @@ class PriceAlarmWorker @AssistedInject constructor(
         const val EXTRA_SET = "preisalarm_set"
 
         private const val NAME = "preisalarm-abruf"
-        internal const val CHANNEL = "preisalarm"
+        internal const val CHANNEL = PRICE_ALERT_CHANNEL
 
         /**
          * Schedule or unschedule. KEEP instead of UPDATE, so that frequently opening the app

@@ -6,20 +6,22 @@ Rot: tab bar breaks no word at 200 percent
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -305,7 +305,6 @@
-             // Bold and in the primary color: the selected destination also differs in shape.
-             fontWeight = if (chosen) FontWeight.Bold else FontWeight.Medium,
-             color = if (chosen) colors.chosen else colors.unselected,
--            maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
-         )
-     }
- }
-@@ -337,7 +336,7 @@
+@@ -323,7 +323,7 @@
+         }
+         NavigationBar(containerColor = colors.bar, windowInsets = insets) {
+             targets.forEachIndexed { i, (screen, icon, name) ->
+-                val labeled = sentence.all || i == sentence.chosen
++                val labeled = true
+                 // NavigationBarItem weighs itself 1f; the wider selected destination needs its own Row.
+                 Row(Modifier.weight(if (i == sentence.chosen) sentence.weight else 1f)) {
+                     val item: @Composable RowScope.() -> Unit = {
+@@ -355,8 +355,7 @@
+                 // Only as wide as the text: the slot is wider, and an unwrapped line laid out
+                 // at slot width counts as overflowing.
+                 Text(name, Modifier.width(IntrinsicSize.Max), fontSize = s,
+-                    fontWeight = if (chosen) FontWeight.Bold else FontWeight.Medium,
+-                    maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
++                    fontWeight = if (chosen) FontWeight.Bold else FontWeight.Medium)
              }
-             Row(Modifier.fillMaxWidth().heightIn(min = BAR_HEIGHT).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-                 targets.forEachIndexed { i, (screen, icon, name) ->
--                    val labeled = sentence.all || i == sentence.chosen
-+                    val labeled = true
-                     val space = Modifier.weight(if (i == sentence.chosen) sentence.weight else 1f)
-                     val target: @Composable (Modifier) -> Unit = { m ->
-                         TabTarget(chosen(screen), name, if (labeled) style.fontSize * sentence.factor else null, colors,
+         },
+         colors = NavigationBarItemDefaults.colors(
