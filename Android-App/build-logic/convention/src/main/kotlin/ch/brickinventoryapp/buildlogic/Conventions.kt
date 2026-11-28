@@ -72,6 +72,10 @@ class AndroidUnittestConvention : Plugin<Project> {
                 // Robolectric on API 36 sets FileDescriptor's descriptor via SharedSecrets (ApplicationSharedMemory);
                 // without it a test pinned to Android 16 fails before its first line.
                 test.jvmArgs("--add-opens=java.base/java.io=ALL-UNNAMED", "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
+                // Robolectric fetches its Android library at test time, past Gradle; from the same
+                // Google copy of Central as the build, since Central answers CI runners with 429.
+                test.systemProperty("robolectric.dependency.repo.url", "https://maven-central.storage-download.googleapis.com/maven2")
+                test.systemProperty("robolectric.dependency.repo.id", "CentralMirror")
             }
             target.group("testImplementation", "unit.tests")
         }

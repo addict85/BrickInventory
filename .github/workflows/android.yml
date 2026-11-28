@@ -166,7 +166,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.m2/repository/org/robolectric
-          key: robolectric-${{ hashFiles('Android-App/gradle/libs.versions.toml') }}
+          key: robolectric-sdk36-${{ hashFiles('Android-App/gradle/libs.versions.toml') }}
           restore-keys: robolectric-
 
       # Auf Windows committete Dateien tragen das Ausführbar-Bit oft nicht.
@@ -608,7 +608,7 @@ jobs:
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.m2/repository/org/robolectric
-          key: robolectric-${{ hashFiles('Android-App/gradle/libs.versions.toml') }}
+          key: robolectric-sdk36-${{ hashFiles('Android-App/gradle/libs.versions.toml') }}
           restore-keys: robolectric-
       # Central weist einzelne Läufer zeitweise ab („Could not find …-bom“); dann scheitert
       # jede Gegenprobe in einer Sekunde. Einmal vorab auflösen, mit Pause und Neuversuch.
