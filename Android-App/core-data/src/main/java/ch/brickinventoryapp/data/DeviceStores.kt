@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.security.PinStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow

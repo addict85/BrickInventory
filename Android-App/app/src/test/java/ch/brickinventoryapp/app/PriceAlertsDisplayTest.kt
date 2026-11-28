@@ -25,9 +25,9 @@ import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.util.resolveThumbUrl
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

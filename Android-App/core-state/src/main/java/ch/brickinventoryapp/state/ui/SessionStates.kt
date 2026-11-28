@@ -4,10 +4,10 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.LocationEntryView
 import ch.brickinventoryapp.model.domain.LocationView
 import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.uistate.Load
 
 /*
- * The state classes live per area in ui/Zustand*.kt; here, what applies alongside
+ * The state classes live per area in ui/<Area>States.kt; here, what applies alongside
  * the session (core-session, AppUiState): filter, storage locations, the notification target.
  * Whatever changes often has its own flows, so not every AppUiState consumer
  * has to redraw.
@@ -39,13 +39,13 @@ data class ScopeUiState(
 data class StorageUiState(
     /** Chosen storage location PER VIEW — empty means „not filtered“. */
     val modes: Map<ScopeFilter.View, String> = emptyMap(),
-    /** The occupied storage locations in the Blickfeld — feeds the FILTER. */
+    /** The occupied storage locations in the scope — feeds the FILTER. */
     val locations: List<LocationView> = emptyList(),
     /** The last fetch of [locations] or [stock]; on failure the previous lists stay. */
     val locationsFetch: Load<Unit> = Load.Data(Unit),
     /**
      * The stock for the detail that's currently open — what's available to choose. Not [locations]
-     * (the Blickfeld's occupied locations), but the owner's selectable locations; for the
+     * (the scope's occupied locations), but the owner's selectable locations; for the
      * grandchild's set, theirs.
      */
     val stock: List<LocationEntryView> = emptyList(),

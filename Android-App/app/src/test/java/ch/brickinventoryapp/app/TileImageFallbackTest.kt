@@ -7,11 +7,11 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.catalog.ui.screens.CatalogSetCard
 import ch.brickinventoryapp.collection.ui.screens.SetCard
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.FigureView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.screens.MinifigCard
 import ch.brickinventoryapp.parts.ui.screens.PartCard
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

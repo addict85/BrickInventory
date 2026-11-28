@@ -8,10 +8,10 @@ import ch.brickinventoryapp.data.testing.testMinifigsRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
+import ch.brickinventoryapp.uistate.loading
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

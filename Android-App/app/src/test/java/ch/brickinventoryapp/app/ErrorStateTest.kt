@@ -15,12 +15,7 @@ import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.errorKind
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.resources.R
@@ -28,6 +23,11 @@ import ch.brickinventoryapp.state.testing.NumbersTexts
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.ui.LoadingIndicator
 import ch.brickinventoryapp.ui.loadingIndicator
+import ch.brickinventoryapp.uistate.ErrorClass
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.errorKind
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

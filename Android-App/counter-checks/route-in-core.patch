@@ -3,12 +3,12 @@ Modul: app
 Test: ch.brickinventoryapp.app.ModuleBoundariesTest
 Rot: no area depends on another area or on the app, none names foreign route types
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/uistate/Zentralziel.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/uistate/Zentralziel.kt
 new file mode 100644
 --- /dev/null
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/uistate/Zentralziel.kt
 @@ -0,0 +1,6 @@
-+package ch.brickinventoryapp.model.ui
++package ch.brickinventoryapp.uistate
 +
 +import kotlinx.serialization.Serializable
 +
@@ -21,7 +21,7 @@ diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/m
  import ch.brickinventoryapp.resources.R
  import ch.brickinventoryapp.ui.components.OverlayGuard
  import ch.brickinventoryapp.ui.components.StepLock
-+import ch.brickinventoryapp.model.ui.Zentralziel
++import ch.brickinventoryapp.uistate.Zentralziel
  
  /** Management only needs what every area gets. */
  interface ManagementNavigation : AreaEnvironment

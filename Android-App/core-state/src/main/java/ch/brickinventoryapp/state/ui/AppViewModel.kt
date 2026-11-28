@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.state.ui
 
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.session.SessionRepository
+import ch.brickinventoryapp.uistate.ScrollMemory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

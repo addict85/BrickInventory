@@ -3,9 +3,9 @@ Modul: core-contract
 Test: ch.brickinventoryapp.contract.DomainTypesTest
 Rot: an empty or unknown design of the server means no information
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/theme/Design.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/theme/Design.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/theme/Design.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/theme/Design.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/appearance/Design.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/appearance/Design.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/appearance/Design.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/appearance/Design.kt
 @@ -52,5 +52,5 @@
          if (value == null) encoder.encodeNull() else encoder.encodeString(value.identifier)
  

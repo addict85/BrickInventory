@@ -23,11 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.collection.ui.TilePrice
 import ch.brickinventoryapp.collection.ui.screens.SetCard
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtPercent

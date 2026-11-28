@@ -41,16 +41,18 @@ rootProject.name = "BrickInventoryManager"
 include(":app")
 
 // Dependencies only in this direction: app → feature-* → core-*; no area
-// knows another. Among the core modules: core-services →
-// core-data → core-offline → core-security → core-network → core-contract → core-model; core-navigation →
-// core-state → core-session → core-data.
+// knows another, and an area sees the data layer only through core-data-api. Among the core
+// modules: core-services → core-data → core-data-api, core-offline → core-security → core-network →
+// core-model; core-navigation → core-state → core-session → core-data; core-ui → core-ui-state → core-model.
 // The rule: build-logic/…/edges/ModuleEdges.kt (task moduleEdgesCheck, ModuleBoundariesTest).
 include(":core-model")
+include(":core-ui-state")
 include(":core-contract")
 include(":core-resources")
 include(":core-network")
 include(":core-security")
 include(":core-offline")
+include(":core-data-api")
 include(":core-data")
 include(":core-services")
 include(":core-ui")

@@ -22,9 +22,9 @@ import ch.brickinventoryapp.collection.ui.comparisonUrl
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonActions
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonUiState
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonViewModel
-import ch.brickinventoryapp.network.util.externalAddress
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.HintText
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.ScanButton
 import ch.brickinventoryapp.ui.components.StateHint
 import ch.brickinventoryapp.ui.components.WithTooltip
@@ -45,13 +45,14 @@ internal fun ComparisonRoute(vm: ComparisonViewModel = hiltViewModel()) {
 @Composable
 fun ComparisonScreen(state: ComparisonUiState, actions: ComparisonActions) {
     val context = LocalContext.current
+    val addresses = LocalAddressRules.current
     val noAppText = stringResource(R.string.common_no_app_to_open)
     // Snackbar instead of Toast as on the detail pages: stays readable until TalkBack is done.
     val messages = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     LaunchedEffect(state.pendingQuery) {
         val query = state.pendingQuery ?: return@LaunchedEffect
-        val opened = openExtern(context, externalAddress(comparisonUrl(query)))
+        val opened = openExtern(context, addresses.external(comparisonUrl(query)))
         // Acknowledging ends this effect; the hint runs on in the page's own scope.
         actions.queryOpened()
         if (!opened) scope.launch { messages.showSnackbar(noAppText) }

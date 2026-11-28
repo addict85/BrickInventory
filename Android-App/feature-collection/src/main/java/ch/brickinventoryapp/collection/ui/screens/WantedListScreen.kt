@@ -30,9 +30,6 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.ui.errorKind
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.shared.ui.ScopeFilterRow
@@ -59,6 +56,9 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.loadingIndicator
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.uistate.errorKind
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 
 /**
  * A row's key: number, condition and account. The same set can stand new and

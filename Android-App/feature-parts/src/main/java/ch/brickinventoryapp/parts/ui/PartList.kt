@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.parts.ui
 
-import ch.brickinventoryapp.data.catalog.SetCatalogRepository
-import ch.brickinventoryapp.data.parts.PartsRepository
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.dataapi.catalog.SetCatalogRepository
+import ch.brickinventoryapp.dataapi.parts.PartsRepository
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.FigureView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartialKey
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.IMG_PROXY
 import ch.brickinventoryapp.parts.ui.screens.comparePartNumbers
 import ch.brickinventoryapp.parts.ui.screens.plColorCollator

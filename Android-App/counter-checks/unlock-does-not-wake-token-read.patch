@@ -6,21 +6,21 @@ Rot: the unlock wakes the token read of a process started while locked
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -178,7 +178,7 @@
+@@ -144,7 +144,7 @@ class TokenStore @Inject constructor(
      @OptIn(ExperimentalCoroutinesApi::class)
      val authToken: Flow<String> = dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] }
          .distinctUntilChanged()
 -        .transformLatest { secret -> readToken(vault, secret, null, report = { emit(it) }, wait = pauseUntilUnlock, lock = lock) }
 +        .transformLatest { secret -> readToken(vault, secret, null, report = { emit(it) }, wait = { kotlinx.coroutines.delay(it) }, lock = lock) }
-     val username:  Flow<String> = flow(NAME)
+     val username:  Flow<String> = details.flow(NAME)
  
      // ── In-memory cache for the OkHttp interceptor ────────────────────────────
-@@ -286,7 +286,7 @@
+@@ -252,7 +252,7 @@ class TokenStore @Inject constructor(
              if (secret == null) return@mirror report("")
              var last: VaultFinding? = null
              readPatient({ vault.open(secret).also { last = it } }, null,
 -                report = { report(it.takeUnless { last == VaultFinding.LockedState }) }, pauseUntilUnlock, lock)
 +                report = { report(it.takeUnless { last == VaultFinding.LockedState }) }, { kotlinx.coroutines.delay(it) }, lock)
          }
-         mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
-             readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
+         mirror<List<String?>, String?>({ details.raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
+             readPatient({ details.open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)

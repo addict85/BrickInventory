@@ -3,6 +3,7 @@ package ch.brickinventoryapp.collection
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -23,12 +24,14 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.ScannerOrigin
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.uistate.ScannerOrigin
 import coil3.ImageLoader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -78,7 +81,7 @@ class PriceComparisonActionTest {
         val state = BarcodeDialogState(AppUiState(), ScopeUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", source = source), StorageUiState())
         val images = ImageLoader.Builder(ctx).build()
-        compose.setContent { BrickInventoryManagerTheme { BarcodeResultDialog(state, NoEntry, images) } }
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { BarcodeResultDialog(state, NoEntry, images) }  } }
         compose.waitForIdle()
     }
 
@@ -111,12 +114,12 @@ class PriceComparisonActionTest {
             priceComparisonUrl = "https://www.toppreise.ch/produktsuche?q=LEGO+75192+Millennium+Falcon")
         val condition = SetDetailState(AppUiState(), SetDetailUiState(setDetail = falcon), StorageUiState())
         val images = ImageLoader.Builder(ctx).build()
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme {
                 SetDetailScreen(setNumber = "75192-1", condition = condition, actions = NoDetail,
                     serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
             }
-        }
+         } }
         compose.waitForIdle()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(compare))
         compose.onNodeWithText(compare).performClick()

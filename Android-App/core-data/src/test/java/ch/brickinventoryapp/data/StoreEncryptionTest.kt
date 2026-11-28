@@ -23,9 +23,9 @@ import java.io.IOException
  * SQLCipher itself runs only on the device.
  *
  * Counter-checks:
- *   B  Ablageschluessel.hole() creates a new key on Gesperrt (as on
+ *   B  StoreKey.hole() creates a new key on Gesperrt (as on
  *      Weg) → red “a locked keystore does not replace the key”
- *   C  Ablageschluessel.forTarget() returns the shared key instead of a
+ *   C  StoreKey.forTarget() returns the shared key instead of a
  *      derived one → red “the key is created once …” and “plaintext
  *      and foreign data do not count” (widget and cache shared a key)
  *   D  in StoreCipher both `updateAAD(…)` struck → red “a

@@ -27,7 +27,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Shapes

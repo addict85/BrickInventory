@@ -6,13 +6,13 @@ import ch.brickinventoryapp.model.domain.PriceAlertView
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
-import ch.brickinventoryapp.data.repository.Outcome as FetchOutcome
+import ch.brickinventoryapp.model.outcome.Outcome as FetchOutcome
 
 /**
  * The query itself — a type alias, so the signature of [AlarmFetch.fetch]
  * stays readable. Top-level, because Kotlin only allows type aliases there.
  */
-typealias Question = suspend (String?) -> FetchOutcome<AlarmFetchView>
+internal typealias Question = suspend (String?) -> FetchOutcome<AlarmFetchView>
 
 /**
  * What is decided when fetching triggered price alerts — outside of the

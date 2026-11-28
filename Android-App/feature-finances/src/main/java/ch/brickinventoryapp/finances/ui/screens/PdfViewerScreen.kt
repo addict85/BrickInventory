@@ -24,7 +24,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.data.util.InstructionStore
+import ch.brickinventoryapp.dataapi.instructions.InstructionFiles
 import ch.brickinventoryapp.finances.ui.pdf.PagesRenderer
 import ch.brickinventoryapp.finances.ui.pdf.PdfError
 import ch.brickinventoryapp.finances.ui.pdf.PdfLoadState
@@ -47,7 +47,7 @@ import kotlin.math.ceil
 
 /**
  * In-app PDF viewer for large instruction manuals: the download runs streamed and
- * encrypted onto disk ([InstructionStore]; vouchers only into memory),
+ * encrypted onto disk ([InstructionFiles]; vouchers only into memory),
  * displayed from an area without a name ([PdfSource]). PdfRenderer renders the
  * pages one by one. „Herunterladen“ copies the loaded instruction manual instead of fetching it again via the
  * DownloadManager — that one does not know the bearer token.

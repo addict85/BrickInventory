@@ -5,7 +5,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.lifecycle.ViewModelProvider
-import ch.brickinventoryapp.model.ui.theme.Brightness
+import ch.brickinventoryapp.model.appearance.Brightness
 import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
 import org.junit.Assert.assertTrue
 import org.junit.Rule

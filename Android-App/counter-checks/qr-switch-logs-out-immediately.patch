@@ -6,11 +6,11 @@ Rot: a no to the account of another server leaves the previous sign-in
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
 +++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
-@@ -220,10 +220,10 @@
+@@ -237,10 +237,10 @@ internal class LoginViewModel @Inject constructor(
              if (key != null && fingerprint != null) store.holdBefore(key, fingerprint)
              // Signed in to a different server: it stays until the browser and account-yes confirm the
              // pairing (pairQr); a cancel would otherwise leave no sign-in at all.
--            val switch = session.state.value.isLoggedIn && !NetworkPolicy.sameServer(store.serverUrlNow(), newValue)
+-            val switch = session.state.value.isLoggedIn && !addresses.sameServer(store.serverUrlNow(), newValue)
 +            val switch = false
              pairingWithSwitch = switch
              try {

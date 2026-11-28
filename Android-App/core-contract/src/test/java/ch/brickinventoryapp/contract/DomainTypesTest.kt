@@ -4,6 +4,7 @@ import ch.brickinventoryapp.contract.testing.decodeCompleted
 import ch.brickinventoryapp.contract.testing.testAppThemeResponse
 import ch.brickinventoryapp.contract.testing.testCsvImportStatus
 import ch.brickinventoryapp.contract.testing.testUserSettings
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.CategoryChoice
 import ch.brickinventoryapp.model.domain.ColorPicker
@@ -11,7 +12,6 @@ import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.RunStatus
 import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

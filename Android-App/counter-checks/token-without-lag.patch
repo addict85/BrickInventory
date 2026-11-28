@@ -6,9 +6,9 @@ Rot: a new process gets token and address from the DataStore
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -277,17 +277,6 @@
-         mirror<List<String?>, String>({ raw(it, ADDRESS) }, _serverUrlState) { r, report ->
-             readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, pauseUntilUnlock, lock)
+@@ -243,17 +243,6 @@ class TokenStore @Inject constructor(
+         mirror<List<String?>, String>({ details.raw(it, ADDRESS) }, _serverUrlState) { r, report ->
+             readPatient({ details.open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, pauseUntilUnlock, lock)
          }
 -        // null = the "" readToken reports for a still-locked keystore: "not yet", not "signed out".
 -        // At cold start it is the sign-in screen; over the placeholder or a token it would send every
@@ -21,6 +21,6 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Token
 -            readPatient({ vault.open(secret).also { last = it } }, null,
 -                report = { report(it.takeUnless { last == VaultFinding.LockedState }) }, pauseUntilUnlock, lock)
 -        }
-         mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
-             readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
+         mirror<List<String?>, String?>({ details.raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
+             readPatient({ details.open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
          }

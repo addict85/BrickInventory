@@ -47,7 +47,6 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.LocationView
 import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.accountOptions
-import ch.brickinventoryapp.model.ui.ListView
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ChoiceChip
 import ch.brickinventoryapp.ui.components.ScanButton
@@ -57,6 +56,7 @@ import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.largeFont
 import ch.brickinventoryapp.ui.components.searchFieldWidth
 import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.uistate.ListView
 
 /**
  * Search, and next to it a „Filter“ button — the header above gallery, parts and

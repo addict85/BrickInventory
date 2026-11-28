@@ -26,9 +26,9 @@ const DOMAIN_TYPES = {
     empty: 'AlarmDirection.BELOW',
   },
   Design: {
-    pkg: 'ch.brickinventoryapp.model.ui.theme.Design',
+    pkg: 'ch.brickinventoryapp.model.appearance.Design',
     empty: 'null',
-    serializer: 'ch.brickinventoryapp.model.ui.theme.DesignOrNothing',
+    serializer: 'ch.brickinventoryapp.model.appearance.DesignOrNothing',
   },
 };
 

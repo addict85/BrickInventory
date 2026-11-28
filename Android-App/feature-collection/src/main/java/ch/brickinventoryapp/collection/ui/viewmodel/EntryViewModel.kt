@@ -7,26 +7,26 @@ import ch.brickinventoryapp.collection.ui.BarcodeUiState
 import ch.brickinventoryapp.collection.ui.CheckPhase
 import ch.brickinventoryapp.collection.ui.Entry
 import ch.brickinventoryapp.collection.ui.EntryUiState
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.data.catalog.CatalogRepository
-import ch.brickinventoryapp.data.catalog.SetCatalogRepository
-import ch.brickinventoryapp.data.collection.SetsRepository
-import ch.brickinventoryapp.data.collection.WantedRepository
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.dataapi.catalog.CatalogRepository
+import ch.brickinventoryapp.dataapi.catalog.SetCatalogRepository
+import ch.brickinventoryapp.dataapi.collection.SetCreateStep
+import ch.brickinventoryapp.dataapi.collection.SetCreator
+import ch.brickinventoryapp.dataapi.collection.SetsRepository
+import ch.brickinventoryapp.dataapi.collection.WantedRepository
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.domain.SetRecorded
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.ScannerOrigin
-import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
 import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
+import ch.brickinventoryapp.uistate.Operation
+import ch.brickinventoryapp.uistate.ScannerOrigin
+import ch.brickinventoryapp.uistate.running
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -41,7 +41,7 @@ import javax.inject.Inject
  * Entering sets: barcode and text recognition, entering via the set number
  * (gallery, catalog) and the "checking" display.
  *
- * Tied to the destination that scans or enters (Erfassungsrahmen): the scanner
+ * Tied to the destination that scans or enters (EntryFrame): the scanner
  * hands its result back there, checking and confirmation sit above that
  * destination, and no other destination reads the results.
  */

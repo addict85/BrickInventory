@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.account.AccountRepository
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.completingConverter
 import ch.brickinventoryapp.data.testing.testAccountRepository
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy

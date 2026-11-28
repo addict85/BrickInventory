@@ -25,7 +25,7 @@ import java.io.File
  *   build-comment-too-long      six lines in gradle.properties → red “no comment in build files …”
  *   reference-to-archive        an „Ausführlich: docs/begruendungen/…“ in TokenVault.kt → red “no reference
  *                              to the reasoning archive …”
- *   kdoc-twice               an orphaned KDoc block before Alarmabholung → red, the same test
+ *   kdoc-twice               an orphaned KDoc block before AlarmFetch → red, the same test
  *   detekt-baseline-grows    upper limit one below the entries → red “the detekt baseline …”
  *   detekt-baseline-foreign-rule  a MagicNumber entry → red, the same test
  *   start-swallows-cancellation     makes “no broad catch …” red
@@ -33,7 +33,7 @@ import java.io.File
  *                              result is dropped silently” [Parts.kt:…]
  *   runcatching-um-suspend     BrickInventoryApp takes over the old token in runCatching again
  *                              → red “no runCatching swallows …”
- *   runcatching-around-suspend-lambda  Offlineablage calls the suspend source (a field of type
+ *   runcatching-around-suspend-lambda  OfflineStore calls the suspend source (a field of type
  *                              `suspend () -> String?`) in runCatching → red, the same test
  *   fully-qualified          `ch.brickinventoryapp.model.util.catchUnlessCancelled` written out → red
  *                              “no fully qualified project name …” and “fully qualified names …”
@@ -514,7 +514,7 @@ class SourceRatchetTest {
         // interface for all areas. Counted at the top level, across core-data and
         // everything split off from it; otherwise the number would sink spuriously when moving.
         val LIMIT_AREAS = 180
-        val other = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
+        val other = setOf("core-model", "core-ui-state", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
         val module = Sources.module.filter { it.name.startsWith("core-") && it.name !in other }
         assert("core-data" in module.map { it.name }) { "core-data not under ${module.map { it.name }} — does the search still apply?" }
@@ -691,7 +691,7 @@ class SourceRatchetTest {
     @Test
     fun `fully qualified names of foreign packages become fewer`() {
         // Written out only for a real name clash, and then better with `import … as`.
-        val MAIN = 156
+        val MAIN = 154
         val TESTS = 0
         val full = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun count(files: Sequence<File>) = files.sumOf { f ->
@@ -747,9 +747,9 @@ class SourceRatchetTest {
         assertTrue("The pattern no longer recognizes $unrecognized", unrecognized.isEmpty())
         assertTrue("Only $states state files — does the search still apply?", states >= 10)
         ratchet("old loading forms (Boolean loading/…running/saves/…ing)", OLD, old,
-            "Take Load<T> (model/ui/Load.kt) for fetches, Operation (model/ui/Operation.kt) for actions.")
+            "Take Load<T> (uistate/Load.kt) for fetches, Operation (uistate/Operation.kt) for actions.")
         ratchet("finished texts in the state (String error/message/…)", TEXT, texts,
-            "Store a Message (model/ui/Message.kt) or error class; the screen forms the sentence.")
+            "Store a Message (model/text/Message.kt) or error class; the screen forms the sentence.")
     }
 
     @Test

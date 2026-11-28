@@ -77,7 +77,7 @@ Dateien: `finances/ui/pdf/InstructionLoader.kt`, `data/di/ServerClient.kt` · Te
 
 **Ergebnis hat zwei Varianten.** Kein `else` in einem `when` über `Ergebnis`: Eine neue
 Variante soll den Bau dort brechen, wo sie behandelt werden muss.
-Datei: `data/repository/Outcome.kt` · Test: `MediaAuthTest`
+Datei: `model/outcome/Outcome.kt` · Test: `MediaAuthTest`
 
 **Fehlermeldungen an einer Stelle.** Die Datenschicht meldet die Art des Fehlers, keinen
 Satz; den Satz bildet `AppTexte.meldung()`, die Meldung des Servers hat Vorrang.
@@ -166,9 +166,9 @@ solange „läuft nicht“ gilt. Datei: `app/csv/CsvImportViewModel.kt` · Test:
 ## Dienste, Dateien, Caches
 
 **Meldungen lokalisiert.** Texte aus den Ressourcen über
-`LanguageManager.localizedContext(…)`; `setSmallIcon()` nur mit monochromem Drawable.
+`AppLanguage.localizedContext(…)` (injiziert); `setSmallIcon()` nur mit monochromem Drawable.
 Dateien: `services/service/CsvImportNotifier.kt`, `services/service/PdfExportNotifier.kt`,
-`services/service/PdfExportManager.kt`, `data/util/LanguageManager.kt` · Test: `ServicePolishTest`
+`services/service/PdfExportManager.kt`, `data/util/AppCompatLanguage.kt` · Test: `ServicePolishTest`
 
 **Keine Vordergrunddienste.** CSV-Import und PDF-Export laufen nach dem Verlassen der App als
 gewöhnliche Worker ohne `setForeground()` weiter und melden ihr Ende; `FOREGROUND_SERVICE`
@@ -236,7 +236,7 @@ rechnet, die App rechnet nicht nach. Dateien: `finances/ui/screens/FinanceScreen
 **Beträge sind Geld, Zeitpunkte Instant.** Fachtypen tragen Beträge als `Geld`
 (Zehntausendstel wie der Server), gerundet auf Rappen erst in der Anzeige; Zeitpunkte als
 `Instant`, der Kalendertag ist der in UTC. Double und Text gibt es nur auf der Leitung.
-Dateien: `model/domain/Money.kt`, `model/util/DatumFormat.kt` · Tests: `MoneyTest`, `SourceRatchetTest`
+Dateien: `model/domain/Money.kt`, `model/util/DateFormat.kt` · Tests: `MoneyTest`, `SourceRatchetTest`
 
 ## Bau und Plattform
 

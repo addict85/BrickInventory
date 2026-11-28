@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
 import ch.brickinventoryapp.model.domain.CategoryView
@@ -14,9 +13,7 @@ import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartsMetricsView
 import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.model.ui.ListView
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.parts.ui.Figures
 import ch.brickinventoryapp.parts.ui.MinifigsLocal
 import ch.brickinventoryapp.parts.ui.Parts
@@ -24,6 +21,9 @@ import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.PartsLocal
 import ch.brickinventoryapp.parts.ui.PartsSource
 import ch.brickinventoryapp.parts.ui.PartsUiState
+import ch.brickinventoryapp.uistate.ListView
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.collection
 
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToNodeAction
@@ -15,16 +16,18 @@ import ch.brickinventoryapp.collection.ui.SetDetailUiState
 import ch.brickinventoryapp.collection.ui.screens.SetDetailScreen
 import ch.brickinventoryapp.collection.ui.screens.SetDetailState
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailActions
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.InstructionView
 import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import coil3.ImageLoader
 import org.junit.Assert.assertEquals
@@ -78,13 +81,13 @@ class InstructionRowTest {
         val condition = SetDetailState(AppUiState(currency = CurrencyCode.CHF),
             SetDetailUiState(setDetail = falcon), StorageUiState())
         val images = ImageLoader.Builder(ctx).build()
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 SetDetailScreen(setNumber = "75192-1", condition = condition, actions = actions,
                     serverUrl = server, imageLoader = images, onBack = {}, onDelete = {},
                     onOpenPdf = { url, t -> opened += url to t })
             }
-        }
+         } }
         compose.waitForIdle()
         // The manuals sit below the value tiles; which list scrolls depends on the width.
         val areas = compose.onAllNodes(hasScrollToNodeAction())

@@ -40,8 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
 import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.otpauthAddress
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.BrandsHeader
@@ -67,6 +65,8 @@ import ch.brickinventoryapp.ui.util.LocalSdkLevel
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.util.SecretClipboard
 import ch.brickinventoryapp.ui.util.secretCopyable
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 
 /**
  * Admin rights without a second factor: the server rejects almost every

@@ -19,7 +19,6 @@ import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.ManualMinifigView
 import ch.brickinventoryapp.model.domain.ManualPartView
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.parts.ui.MinifigsUiState
 import ch.brickinventoryapp.parts.ui.PartsTarget
@@ -50,6 +49,7 @@ import ch.brickinventoryapp.ui.components.colorTranslator
 import ch.brickinventoryapp.ui.theme.LocalAccentSurfaces
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.uistate.loading
 import coil3.ImageLoader
 
 /**

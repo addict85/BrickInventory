@@ -2,7 +2,7 @@ package ch.brickinventoryapp.finances.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.DownloadFailed
+import ch.brickinventoryapp.dataapi.instructions.DownloadFailed
 import ch.brickinventoryapp.finances.ui.pdf.PdfError
 import ch.brickinventoryapp.finances.ui.pdf.PdfHolder
 import ch.brickinventoryapp.finances.ui.pdf.PdfLoadState
@@ -11,10 +11,10 @@ import ch.brickinventoryapp.finances.ui.pdf.PdfPagesSource
 import ch.brickinventoryapp.finances.ui.pdf.PdfWriter
 import ch.brickinventoryapp.finances.ui.pdf.copyCancellable
 import ch.brickinventoryapp.finances.ui.pdf.pdfErrorClass
+import ch.brickinventoryapp.model.address.AddressRules
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
-import ch.brickinventoryapp.network.util.pdfInViewer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +35,7 @@ internal class PdfViewerViewModel @Inject constructor(
     /** Renders the pages for the screen; only passed through here. */
     val pages: PdfPagesSource,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    private val addresses: AddressRules,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<PdfLoadState>(PdfLoadState.Downloading(0, 0, 0))
@@ -52,7 +53,7 @@ internal class PdfViewerViewModel @Inject constructor(
         address = pdfUrl
         server = serverUrl
         // Only addresses of our own server: loaded with the token client.
-        if (!pdfInViewer(pdfUrl, serverUrl)) {
+        if (!addresses.inViewer(pdfUrl, serverUrl)) {
             _state.value = PdfLoadState.Error(null, PdfError.FOREIGN_HOST)
             return
         }

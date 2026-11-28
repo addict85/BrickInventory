@@ -16,16 +16,18 @@ import ch.brickinventoryapp.contract.SecondFactorRequest
 import ch.brickinventoryapp.contract.mapping.admin
 import ch.brickinventoryapp.contract.mapping.asDevice
 import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.data.RedemptionOutcome
-import ch.brickinventoryapp.data.SwappedToken
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.classifyRedemption
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.safeCall
 import ch.brickinventoryapp.data.repository.withoutContent
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.LoginReply
+import ch.brickinventoryapp.dataapi.account.RedemptionOutcome
+import ch.brickinventoryapp.dataapi.account.SwappedToken
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher
 import ch.brickinventoryapp.model.domain.AccountCreation
@@ -46,7 +48,7 @@ import ch.brickinventoryapp.model.domain.RegistrationState
 import ch.brickinventoryapp.model.domain.SecondFactorSetup
 import ch.brickinventoryapp.model.domain.SecondFactorStatus
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.model.util.parseInstant
 import ch.brickinventoryapp.network.util.AppLog
@@ -204,7 +206,7 @@ internal class AccountRepositoryImpl @Inject constructor(
     /**
      * Invalidate the token at the server before it disappears locally — otherwise it would stay
      * valid until it expires. At most [limitMs]: sign-out must not depend on the
-     * network. What is then still open is caught up by data/Abmeldung.
+     * network. What is then still open is caught up by data/Redemption.
      */
     override suspend fun logoutAtServer(limitMs: Long): Boolean =
         redeemAtServer(limitMs) == RedemptionOutcome.REDEEMED
@@ -249,10 +251,6 @@ internal class AccountRepositoryImpl @Inject constructor(
     override suspend fun setUserDefaultCondition(condition: Condition?): Outcome<Unit> =
         safeCall { api.setUserDefaultCondition(mapOf("condition" to condition?.identifier.orEmpty())) }.promised({ it.success }) { }
 }
-
-/** The response to [AccountRepository.login]; [passkeyInsteadOfCode] if the server also
- * takes a passkey for the second factor. */
-data class LoginReply(val response: Login, val passkeyInsteadOfCode: Boolean = false)
 
 private fun LoginResponse.asLogin() =
     Login(success = success, token = token, user = user?.username, admin = admin,

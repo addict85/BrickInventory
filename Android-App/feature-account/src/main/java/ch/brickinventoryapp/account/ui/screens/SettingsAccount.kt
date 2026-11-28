@@ -19,11 +19,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.account.ui.AccountUiState
 import ch.brickinventoryapp.account.ui.DesignChoice
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.ProfileView
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ErrorRow
 import ch.brickinventoryapp.ui.components.PasswordSwitchCheck
@@ -38,6 +35,9 @@ import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.mainButtonColors
 import ch.brickinventoryapp.ui.theme.toneButtonColors
 import ch.brickinventoryapp.ui.title
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
+import ch.brickinventoryapp.uistate.running
 
 /**
  * One's own account: profile and password. Via /auth/profile and

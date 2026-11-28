@@ -26,8 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
 import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.otpauthAddress
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ButtonRow
@@ -47,6 +45,8 @@ import ch.brickinventoryapp.ui.title
 import ch.brickinventoryapp.ui.util.LocalSdkLevel
 import ch.brickinventoryapp.ui.util.SecretClipboard
 import ch.brickinventoryapp.ui.util.secretCopyable
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 
 /** The suggested name; the user picks the location in the system's save dialog. */
 internal const val CODES_FILE = "brickinventory-wiederherstellungscodes.txt"

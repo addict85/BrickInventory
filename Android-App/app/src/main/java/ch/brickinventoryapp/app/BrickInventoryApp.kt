@@ -19,10 +19,10 @@ import ch.brickinventoryapp.data.AlarmStore
 import ch.brickinventoryapp.data.LanguageStore
 import ch.brickinventoryapp.data.TokenAdoption
 import ch.brickinventoryapp.data.di.Scopes
-import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.data.util.cleanOldPartListOn
 import ch.brickinventoryapp.data.util.cleanUpConfidentialPdfs
 import ch.brickinventoryapp.data.util.cleanUpPlaintextInstructions
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.model.util.LockWipe
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.network.util.AppLog
@@ -46,6 +46,7 @@ class BrickInventoryApp : Application(), Configuration.Provider {
     private val alerts get() = alertsLazy.get()
     private val language get() = languageLazy.get()
     @Inject lateinit var areas: Scopes
+    @Inject lateinit var appLanguage: AppLanguage
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var sessionLazy: dagger.Lazy<SessionRepository>
     @Inject lateinit var outboxNotifierLazy: dagger.Lazy<OutboxNotifier>
@@ -111,11 +112,11 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         if (Build.VERSION.SDK_INT < 33) {
             val wanted = language.rememberedLanguage()
             if (wanted != null) {
-                LanguageManager.applyLanguage(wanted)
+                appLanguage.applyLanguage(wanted)
             } else {
                 areas.application.launch(areas.main) {
                     val lang = catchUnlessCancelled { language.followUpLanguage() }.getOrNull() ?: return@launch
-                    LanguageManager.applyLanguage(lang)
+                    appLanguage.applyLanguage(lang)
                 }
             }
         }

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui.theme
 
-import ch.brickinventoryapp.model.ui.theme.Brightness
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Brightness
+import ch.brickinventoryapp.model.appearance.Design
 
 /**
  * What is drawn: the server's theme, in its dark variant where
@@ -13,7 +13,7 @@ data class Appearance(val design: Design, val dark: Boolean, val systemColors: B
 const val SYSTEM_COLORS_AB_SDK = 31
 
 /**
- * [brightness] (Helligkeit.SYSTEM/LIGHT/DARK) decides whether the dark variant
+ * [brightness] (Brightness.SYSTEM/LIGHT/DARK) decides whether the dark variant
  * applies for the SAME theme as on the web (data-dunkel), not a different theme.
  * Werkbank is already dark and stays as it is. System colors always have a
  * dark variant; below Android 12 they don't exist, then the theme applies.

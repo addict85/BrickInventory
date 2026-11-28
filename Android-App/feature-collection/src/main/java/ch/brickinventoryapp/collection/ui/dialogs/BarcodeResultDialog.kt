@@ -27,8 +27,6 @@ import ch.brickinventoryapp.collection.ui.viewmodel.EntryActions
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
-import ch.brickinventoryapp.model.ui.ScannerOrigin
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.shared.ui.ConditionRow
@@ -48,6 +46,8 @@ import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.title
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.util.fmtInt
+import ch.brickinventoryapp.uistate.ScannerOrigin
+import ch.brickinventoryapp.uistate.running
 import coil3.ImageLoader
 import coil3.request.crossfade
 

@@ -3,7 +3,7 @@ package ch.brickinventoryapp.ui
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.ui.theme.ChartColors
 import ch.brickinventoryapp.ui.theme.StatusColors
 import ch.brickinventoryapp.ui.theme.accentSurfaces

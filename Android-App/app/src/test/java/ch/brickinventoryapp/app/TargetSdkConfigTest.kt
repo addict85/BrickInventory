@@ -75,7 +75,7 @@ class TargetSdkConfigTest {
 
     // Android 11 as the lower bound: below it no security updates, and
     // only from 30 does the device lock bind a keystore key including PIN/pattern
-    // (Schrittschutz). Whoever lowers it brings back the special paths for 8 to 10.
+    // (StepGuard). Whoever lowers it brings back the special paths for 8 to 10.
     @Test
     fun `minSdk is Android 11`() {
         assert(intAfter("minSdk") == 30) {

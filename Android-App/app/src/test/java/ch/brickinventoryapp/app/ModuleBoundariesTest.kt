@@ -58,6 +58,10 @@ import java.time.LocalDate
  *      red „core-offline knows the wire format“ (layering of the core modules)
  *   T  counter-checks/scope-knows-scope.patch: feature-parts includes feature-catalog →
  *      red „feature-parts depends on feature-catalog“
+ *   X  counter-checks/area-knows-network.patch: feature-catalog includes core-network →
+ *      red „feature-catalog depends on core-network, which lies below the state“
+ *   Y  counter-checks/area-knows-data-implementation.patch: feature-parts includes core-data →
+ *      red „feature-parts depends on core-data, which lies below the state“
  *   R  counter-checks/ui-knows-view.patch: a core-ui file imports a view from
  *      model.domain → red „core-ui kennt Fachmodelle“ (layering of the core modules)
  *   S  counter-checks/ui-new-screen.patch: a new file in core-ui/ui/screens →
@@ -116,7 +120,7 @@ class ModuleBoundariesTest {
         // Every module has its own package root (table in `README.md`): an import
         // thus reveals the module, and no package spreads across two modules.
         val master = mapOf(
-            "app" to "app", "core-model" to "model", "core-contract" to "contract", "core-network" to "network", "core-data" to "data",
+            "app" to "app", "core-model" to "model", "core-ui-state" to "uistate", "core-contract" to "contract", "core-network" to "network", "core-data-api" to "dataapi", "core-data" to "data",
             "core-security" to "security", "core-offline" to "offline",
             "core-services" to "services", "core-ui" to "ui", "core-state" to "state",
             "core-navigation" to "navigation",
@@ -218,7 +222,7 @@ class ModuleBoundariesTest {
 
     /**
      * core-data is cut by area (catalog, collection, parts, finances, account): each shows
-     * its repositories as interfaces, the implementations are internal and only Hilt binds them.
+     * its repositories as interfaces in core-data-api, the implementations are internal and only Hilt binds them.
      * The shared kernel (repository: Outcome, fetch helpers) knows no area.
      */
     private fun checkDataAreas() {
@@ -238,7 +242,7 @@ class ModuleBoundariesTest {
             }
         }
         val interfaces = areas.associateWith { a ->
-            File(root, a).listFiles().orEmpty().count { Regex("""^interface\s+\w+Repository\b""", RegexOption.MULTILINE).containsMatchIn(it.readText()) }
+            File(project, "core-data-api/src/main/java/ch/brickinventoryapp/dataapi/$a").listFiles().orEmpty().count { Regex("""^interface\s+\w+Repository\b""", RegexOption.MULTILINE).containsMatchIn(it.readText()) }
         }
         assertTrue("areas without a public repository interface: $interfaces", interfaces.values.all { it > 0 })
         assertTrue("Schichtung in core-data:\n  " + findings.joinToString("\n  "), findings.isEmpty())

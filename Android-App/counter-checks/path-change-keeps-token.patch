@@ -6,8 +6,8 @@ Rot: a different path on the same host discards the token
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -307,8 +307,7 @@
-             val origin = value(plate, ORIGIN) ?: _tokenOriginState.value ?: oldAddress
+@@ -297,8 +297,7 @@ class TokenStore @Inject constructor(
+             val origin = details.value(plate, ORIGIN) ?: _tokenOriginState.value ?: oldAddress
              val hasToken = plate[AUTH_TOKEN_ENC] != null || tokenNow().isNotBlank()
              val other = hasToken &&
 -                (!NetworkPolicy.sameOrigin(origin, normalized) ||

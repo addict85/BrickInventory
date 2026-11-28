@@ -14,11 +14,11 @@ import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice
 import ch.brickinventoryapp.model.domain.ColorPicker
 import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.testing.InMemoryRoom
 import kotlinx.coroutines.flow.first

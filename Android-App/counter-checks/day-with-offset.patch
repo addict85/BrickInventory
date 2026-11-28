@@ -3,9 +3,9 @@ Modul: core-model
 Test: ch.brickinventoryapp.model.MoneyTest
 Rot: the calendar day is the server's, not that of the device zone
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DateFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DateFormat.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DateFormat.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DateFormat.kt
 @@ -82,7 +82,7 @@
   * The calendar day in UTC as the server writes it: [fmtDatum] does not convert into the zone
   * of the device, because hours would otherwise turn an acquisition day into the previous day.

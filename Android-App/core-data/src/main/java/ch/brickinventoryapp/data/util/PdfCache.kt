@@ -35,18 +35,6 @@ internal fun pdfStep(finishedSize: Long, partSize: Long): PdfStep = when {
 /** Folder in which older versions stored voucher PDFs; only kept for cleaning up. */
 const val PDF_CONFIDENTIAL_FOLDER = "pdf_vertraulich"
 
-/**
- * Where the viewer stores a PDF: instructions encrypted in the cache
- * ([InstructionStore]). A confidential PDF gets no file (null) and stays in
- * memory ([loadPdfIntoMemory]). The name is SHA-256 of the address: with 32 bits
- * (hashCode) two addresses would easily share a file.
- */
-fun pdfStore(cacheDir: File, pdfUrl: String, confidential: Boolean): File? {
-    if (confidential) return null
-    val hash = java.security.MessageDigest.getInstance("SHA-256").digest(pdfUrl.toByteArray())
-    return File(cacheDir, INSTRUCTION_PREFIX + hash.joinToString("") { "%02x".format(it) } + INSTRUCTION_EXTENSION)
-}
-
 /** Delete voucher PDFs of older versions: at start and at sign-out. */
 fun cleanUpConfidentialPdfs(cacheDir: File) {
     File(cacheDir, PDF_CONFIDENTIAL_FOLDER).deleteRecursively()
@@ -82,7 +70,7 @@ fun cleanOldPartListOn(intern: File, now: Long, deadline: Long = PART_LIST_DEADL
  * At sign-out: parts list (inventory) and shared PDFs in both roots. The cache
  * alone was not enough — filesDir survives sign-out, and the next user on the device would otherwise open the previous one's inventory.
  */
-fun cleanUpAccountFiles(intern: File, extern: File?) {
+internal fun cleanUpAccountFiles(intern: File, extern: File?) {
     File(intern, "pdf").deleteRecursively()
     extern?.let { File(it, "pdf").deleteRecursively() }
 }

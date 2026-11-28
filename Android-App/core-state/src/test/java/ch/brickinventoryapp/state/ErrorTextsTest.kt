@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.state.ui.errorClass
 import ch.brickinventoryapp.state.ui.errorTextArgument
 import ch.brickinventoryapp.state.ui.errorTextId
+import ch.brickinventoryapp.uistate.ErrorClass
 import org.junit.Test
 
 /**

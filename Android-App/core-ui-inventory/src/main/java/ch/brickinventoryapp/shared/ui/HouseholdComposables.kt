@@ -172,7 +172,7 @@ fun ScopeFilterChip(
 
 /**
  * Owner badges — only in a household. The server only attaches `owners` when
- * several accounts are in the Blickfeld; in a single account „belongs to me“ on every
+ * several accounts are in the scope; in a single account „belongs to me“ on every
  * tile would be noise, in a household it's the most important piece of information — without it
  * you'd move the wrong copy. Several names: the same set across several accounts,
  * deliberately one tile with the sum of the quantities.

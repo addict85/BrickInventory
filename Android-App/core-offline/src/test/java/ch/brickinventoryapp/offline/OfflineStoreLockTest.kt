@@ -24,7 +24,7 @@ import org.junit.Test
  *      a server response is not lost” (quantity 1 instead of 2)
  *   B  in applyChange() the lock removed → red “two simultaneous applyChange both
  *      count” (quantity 2 instead of 3)
- *   C  in Offlineablage `current` derived from `areaSource` instead of `areaFlow`
+ *   C  in OfflineStore `current` derived from `areaSource` instead of `areaFlow`
  *      → red “the observed area follows the session without anyone writing”
  */
 class OfflineStoreLockTest {

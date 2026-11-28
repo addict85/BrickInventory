@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.dataapi.account.SwappedToken
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.network.di.RotationReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,12 +25,6 @@ internal enum class ExchangeOutcome { EXCHANGED, ALREADY_SWAPPED, LATER, NEW_PAI
 
 /** What the swap sees of the store; [generation] counts sign-in, sign-out and server switch. */
 data class TokenStatus(val token: String, val origin: String?, val generation: Long)
-
-/**
- * The new token and the origin of the request that brought it (after rewriting and redirect).
- * Only these two values: the swap needs no more, and the wire format stays in core-data.
- */
-data class SwappedToken(val token: String?, val origin: String?)
 
 /**
  * Lock and generation for every write of the token. A swap can retry for up to

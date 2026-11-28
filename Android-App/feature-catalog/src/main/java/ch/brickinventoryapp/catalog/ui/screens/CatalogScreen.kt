@@ -23,12 +23,9 @@ import ch.brickinventoryapp.catalog.ui.CatalogTarget
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogViewModel
-import ch.brickinventoryapp.data.catalog.CATALOG_PAGE_SIZE
+import ch.brickinventoryapp.dataapi.catalog.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.CatalogSort
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.ErrorHint
@@ -42,6 +39,9 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.ScrollMemory
+import ch.brickinventoryapp.uistate.loading
 import coil3.ImageLoader
 
 /**

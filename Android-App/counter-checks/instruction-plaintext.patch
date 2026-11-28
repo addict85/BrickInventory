@@ -6,17 +6,17 @@ Rot: an instruction lies encrypted and can be read again
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
-@@ -51,11 +51,11 @@
+@@ -40,11 +40,11 @@ class InstructionStore(cipher: StoreCipher) : InstructionFiles {
      /** New or appending; only `close` finishes with the end marker. */
-     fun write(file: File, resume: Boolean): OutputStream {
+     override fun write(file: File, resume: Boolean): OutputStream {
          val path = file.toOkioPath()
 -        return (if (resume) fs.appendingSink(path) else fs.sink(path)).buffer().outputStream()
 +        return (if (resume) FileSystem.SYSTEM.appendingSink(path) else FileSystem.SYSTEM.sink(path)).buffer().outputStream()
      }
  
      /** Decrypts while reading; throws IOException if the file was changed or truncated. */
--    fun read(file: File): InputStream = fs.source(file.toOkioPath()).buffer().inputStream()
-+    fun read(file: File): InputStream = FileSystem.SYSTEM.source(file.toOkioPath()).buffer().inputStream()
+-    override fun read(file: File): InputStream = fs.source(file.toOkioPath()).buffer().inputStream()
++    override fun read(file: File): InputStream = FileSystem.SYSTEM.source(file.toOkioPath()).buffer().inputStream()
  
      private companion object {
          const val PURPOSE = "anleitungen"

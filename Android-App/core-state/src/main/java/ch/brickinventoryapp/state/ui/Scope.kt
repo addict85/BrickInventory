@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.state.ui
 
 import ch.brickinventoryapp.data.ScopeFilterStorage
-import ch.brickinventoryapp.data.account.HouseholdRepository
-import ch.brickinventoryapp.data.parts.PartsRepository
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.dataapi.account.HouseholdRepository
+import ch.brickinventoryapp.dataapi.parts.PartsRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.accountOptions
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.session.FilterSource
+import ch.brickinventoryapp.uistate.Load
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,7 +42,7 @@ class ScopeFilterStore @Inject constructor(
  *
  * A singleton, because gallery, parts, finances, wishlist and settings
  * show the same accounts and locations. Whoever changes a filter afterwards reloads its
- * own list; the Blickfeld service itself loads no inventory data.
+ * own list; the scope service itself loads no inventory data.
  */
 interface Scope : FilterSource {
     val accounts: StateFlow<ScopeUiState>
@@ -115,7 +115,7 @@ class ScopeService @Inject constructor(
         }
     }
 
-    /** The occupied locations in the gallery's Blickfeld — they feed the storage filter. */
+    /** The occupied locations in the gallery's scope — they feed the storage filter. */
     override suspend fun fetchStorageLocations() {
         when (val r = parts.getLocations(accountFor(ScopeFilter.View.GALLERY))) {
             is Outcome.Success -> _storage.update { it.copy(locations = r.data, locationsFetch = Load.Data(Unit)) }

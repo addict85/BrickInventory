@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.CatalogThemeView
 import ch.brickinventoryapp.model.domain.YearCountView
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.uistate.Load
 
 /**
  * Catalog state — its own flow (like SetDetail/CsvImport): search and

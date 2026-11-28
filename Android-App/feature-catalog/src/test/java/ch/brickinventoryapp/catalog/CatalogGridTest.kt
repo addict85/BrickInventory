@@ -23,13 +23,13 @@ import ch.brickinventoryapp.catalog.ui.screens.CatalogScreen
 import ch.brickinventoryapp.catalog.ui.screens.HANDLE_TAG
 import ch.brickinventoryapp.catalog.ui.screens.PLACEHOLDER_TAG
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
-import ch.brickinventoryapp.data.catalog.CATALOG_PAGE_SIZE
+import ch.brickinventoryapp.dataapi.catalog.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.YearCountView
-import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.uistate.ScrollMemory
 import coil3.ImageLoader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

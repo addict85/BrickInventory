@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.di.NetworkStores
 import ch.brickinventoryapp.data.di.buildInterceptorClient
 import ch.brickinventoryapp.data.testing.testTrustCipher
+import ch.brickinventoryapp.data.util.AppCompatLanguage
 import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.security.CertificateUnresolved
 import ch.brickinventoryapp.security.TokenEncryption
@@ -106,7 +107,7 @@ class ServerTrustApi36Test {
     }
 
     private val client: OkHttpClient by lazy {
-        buildInterceptorClient(network, isApiClient = true, sessionExpired = SessionExpiredSignal(), ctx = ctx,
+        buildInterceptorClient(network, isApiClient = true, sessionExpired = SessionExpiredSignal(), ctx = ctx, appLanguage = AppCompatLanguage(),
             question = question)
     }
 

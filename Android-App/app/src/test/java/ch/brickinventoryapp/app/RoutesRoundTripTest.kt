@@ -13,8 +13,8 @@ import ch.brickinventoryapp.login.ui.LoginTarget
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.NO_COLOR
-import ch.brickinventoryapp.model.ui.ScannerOrigin
 import ch.brickinventoryapp.parts.ui.PartsTarget
+import ch.brickinventoryapp.uistate.ScannerOrigin
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

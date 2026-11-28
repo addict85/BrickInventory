@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.resources.R
 
 // Lets composables recognize whether the "Stein (Blau)" theme is active,
@@ -115,7 +115,7 @@ private val BrickBlueColors = lightColorScheme(
     error               = Color(0xFFA34B3C),
 )
 
-// ── Diagrammfarben je Zustand ────────────────────────────────────────────────
+// ── Chart colors per state ────────────────────────────────────────────────
 /**
  * Colors of the history lines from the theme, like --chart-new/--chart-used on the
  * web. In the brick theme, sage green and sand, the same colors as the
@@ -435,7 +435,7 @@ private fun standingOut(color: Color, toward: Color, bar: Color, side: Color): C
 }
 
 /**
- * Base tone of the loading tiles (Skelett.kt), measured against the background
+ * Base tone of the loading tiles (Skeleton.kt), measured against the background
  * instead of surface: surfaceVariant and even surfaceContainerHighest sat only
  * 1.03–1.18:1 above background in the light designs, the tiles were barely visible.
  */

@@ -6,7 +6,7 @@ Rot: every server client offers only restricted TLS
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
-@@ -113,7 +113,7 @@
+@@ -113,7 +113,7 @@ private fun trustServer(prefs: NetworkStores, question: CertificateQuestion): Pi
   * development hosts through (NetworkPolicy.connectionAllowed).
   */
  internal fun serverConnectionSpecs(development: Boolean = NetworkPolicy.development): List<ConnectionSpec> =
@@ -14,4 +14,4 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/Se
 +    listOf(ConnectionSpec.MODERN_TLS) + if (development) listOf(ConnectionSpec.CLEARTEXT) else emptyList()
  
  /** Token and trust together: the server clients need both, nothing else from the stores. */
- class NetworkStores @Inject constructor(val token: TokenMirror, val trust: NetworkTrust)
+ internal class NetworkStores @Inject constructor(val token: TokenMirror, val trust: NetworkTrust)

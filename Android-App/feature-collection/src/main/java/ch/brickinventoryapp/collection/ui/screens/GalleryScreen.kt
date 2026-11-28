@@ -34,9 +34,6 @@ import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.MetricsView
 import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.ui.errorKind
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.shared.ui.ActiveFilter
@@ -67,6 +64,9 @@ import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.uistate.errorKind
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 import coil3.ImageLoader
 
 /** What the gallery shows; the route gathers it from the ViewModels' flows. */

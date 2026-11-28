@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
 import androidx.compose.ui.graphics.toArgb
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.ui.theme.DarkTokens
 import ch.brickinventoryapp.ui.theme.SlateBlueStud
 import ch.brickinventoryapp.ui.theme.argb

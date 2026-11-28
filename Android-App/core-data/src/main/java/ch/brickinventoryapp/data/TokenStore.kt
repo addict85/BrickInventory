@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data
 
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -31,8 +30,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.IOException
-import java.security.MessageDigest
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -44,7 +41,9 @@ import javax.inject.Singleton
 /**
  * Server, token, origin and generation of the signed-in account including the
  * in-memory mirrors for the interceptor. Separate from the DevicesStore;
- * all writes of the token run here under a [TokenLimit].
+ * all writes of the token run here under a [TokenLimit]. The details' cipher
+ * ([TokenDetails]), the sign-in date ([SignInExpiry]) and what older versions left
+ * ([LegacyTokenTakeover]) each have a class of their own: they keep no state of the mirrors.
  */
 @Singleton
 class TokenStore @Inject constructor(
@@ -124,46 +123,13 @@ class TokenStore @Inject constructor(
         withTimeoutOrNull(ms) { unlocks.first { it != seen } }
     }
 
-    /** The raw values of a detail in all forms; if none changes, nothing has to be read anew. */
-    private fun raw(prefs: Preferences, a: Info): List<String?> = listOf(prefs[a.secret], a.old?.let { prefs[it] }, prefs[a.clear])
+    private val details = TokenDetails(dataStore, device, pauseUntilUnlock, lock)
+    private val signIn = SignInExpiry(device)
+    private val legacy = LegacyTokenTakeover(dataStore, vault)
 
-    /** An earlier form (under the pins' key or plaintext) until the start takes it over. */
-    private fun earlier(raw: List<String?>, a: Info): String? =
-        a.old?.let { k -> raw[1]?.let { device.decryptOldDetail(it, k.name) } } ?: raw[2]
+    val serverUrl: Flow<String> = details.flow(ADDRESS).map(::schemaSmall)
 
-    /** First the ciphertext, then an earlier form. Locked means wait, not „no address“. */
-    private fun open(raw: List<String?>, a: Info): VaultFinding {
-        val b = raw[0]?.let { device.openDetail(it, a.secret.name) } ?: VaultFinding.Gone
-        if (b != VaultFinding.Gone) return b
-        return earlier(raw, a)?.let { VaultFinding.Readable(it) } ?: VaultFinding.Gone
-    }
-
-    /** Without waiting; locked is null here like „not there“. */
-    private fun value(prefs: Preferences, a: Info): String? = (open(raw(prefs, a), a) as? VaultFinding.Readable)?.plaintext
-
-    /** Waits for unlocking with a locked device, like the token (readPatient). */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun flow(a: Info): Flow<String> = dataStore.data.map { raw(it, a) }.distinctUntilChanged()
-        .transformLatest { r -> readPatient({ open(r, a) }, null, report = { emit(it) }, wait = pauseUntilUnlock, lock = lock) }
-
-    private fun encrypt(a: Info, value: String): String =
-        device.encryptDetail(value, a.secret.name) ?: throw IOException("${a.secret.name} gerade nicht verschlüsselbar")
-
-    private fun MutablePreferences.set(a: Info, secret: String) {
-        this[a.secret] = secret
-        a.old?.let { remove(it) }
-        remove(a.clear)
-    }
-
-    private fun MutablePreferences.remove(a: Info) {
-        remove(a.secret)
-        a.old?.let { remove(it) }
-        remove(a.clear)
-    }
-
-    val serverUrl: Flow<String> = flow(ADDRESS).map(::schemaSmall)
-
-    private fun addressFrom(prefs: Preferences): String = schemaSmall(value(prefs, ADDRESS) ?: "")
+    private fun addressFrom(prefs: Preferences): String = schemaSmall(details.value(prefs, ADDRESS) ?: "")
 
     /** The scheme in lowercase (HTTPs → https), as saveServerUrl stores it. */
     private fun schemaSmall(raw: String): String =
@@ -173,13 +139,13 @@ class TokenStore @Inject constructor(
         } else raw
     /**
      * The bearer token in plaintext, only from the encrypted value ([AUTH_TOKEN] never applies).
-     * A locked keystore is waited for and caught up on (util/Tresorbefund.readToken).
+     * A locked keystore is waited for and caught up on (util/VaultFinding.readToken).
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val authToken: Flow<String> = dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] }
         .distinctUntilChanged()
         .transformLatest { secret -> readToken(vault, secret, null, report = { emit(it) }, wait = pauseUntilUnlock, lock = lock) }
-    val username:  Flow<String> = flow(NAME)
+    val username:  Flow<String> = details.flow(NAME)
 
     // ── In-memory cache for the OkHttp interceptor ────────────────────────────
     // The interceptor runs on OkHttp dispatcher threads and must not
@@ -274,8 +240,8 @@ class TokenStore @Inject constructor(
     init {
         // Catching up from the DataStore: for the cold start and for changes
         // that did not come via the save functions (rekeying at start).
-        mirror<List<String?>, String>({ raw(it, ADDRESS) }, _serverUrlState) { r, report ->
-            readPatient({ open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, pauseUntilUnlock, lock)
+        mirror<List<String?>, String>({ details.raw(it, ADDRESS) }, _serverUrlState) { r, report ->
+            readPatient({ details.open(r, ADDRESS) }, null, report = { report(schemaSmall(it)) }, pauseUntilUnlock, lock)
         }
         // null = the "" readToken reports for a still-locked keystore: "not yet", not "signed out".
         // At cold start it is the sign-in screen; over the placeholder or a token it would send every
@@ -288,15 +254,15 @@ class TokenStore @Inject constructor(
             readPatient({ vault.open(secret).also { last = it } }, null,
                 report = { report(it.takeUnless { last == VaultFinding.LockedState }) }, pauseUntilUnlock, lock)
         }
-        mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
-            readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
+        mirror<List<String?>, String?>({ details.raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
+            readPatient({ details.open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
         }
         lockWipe.register(::wipeTokenMirror) { unlocks.value++; restoreAfterLock() }
         prefsScope.launch {
             try {
                 device.prepareBefore()
                 catchUnlessCancelled { bindLegacyStock() }
-                catchUnlessCancelled { dataStore.edit { adoptDetails(it) } }
+                catchUnlessCancelled { dataStore.edit { details.adoptDetails(it, listOf(ADDRESS, NAME, ORIGIN)) } }
                 // Cleaning up is secondary: if it fails, the app starts anyway.
                 catchUnlessCancelled { dataStore.edit { PlaintextRemainder.remove(it) } }
             } finally {
@@ -323,12 +289,12 @@ class TokenStore @Inject constructor(
         }
         tokenLimit.write(newSession = newOrigin) {
             // Decided via the disk, not via memory: with a locked
-            // keystore memory reports "", but the token is still there (Tresorbefund).
+            // keystore memory reports "", but the token is still there (VaultFinding).
             val plate = dataStore.data.first()
             // Before everything else: if it cannot be stored, everything stays with the old server.
-            val address = encrypt(ADDRESS, normalized)
+            val address = details.encrypt(ADDRESS, normalized)
             val oldAddress = serverUrlNow()
-            val origin = value(plate, ORIGIN) ?: _tokenOriginState.value ?: oldAddress
+            val origin = details.value(plate, ORIGIN) ?: _tokenOriginState.value ?: oldAddress
             val hasToken = plate[AUTH_TOKEN_ENC] != null || tokenNow().isNotBlank()
             val other = hasToken &&
                 (!NetworkPolicy.sameOrigin(origin, normalized) ||
@@ -355,7 +321,7 @@ class TokenStore @Inject constructor(
      */
     private fun orphanedToken(plate: Preferences, oldAddress: String): RedemptionJob? {
         val secret = plate[AUTH_TOKEN_ENC] ?: return null
-        val origin = value(plate, ORIGIN) ?: NetworkPolicy.origin(oldAddress)
+        val origin = details.value(plate, ORIGIN) ?: NetworkPolicy.origin(oldAddress)
         if (oldAddress.isBlank() || origin == null || origin != NetworkPolicy.origin(oldAddress)) return null
         return RedemptionJob(oldAddress, secret, pinKey(oldAddress)?.let(device::pin), origin)
     }
@@ -366,8 +332,8 @@ class TokenStore @Inject constructor(
      */
     private suspend fun bindLegacyStock() {
         dataStore.edit { p ->
-            if (p[AUTH_TOKEN_ENC] == null || raw(p, ORIGIN).any { it != null }) return@edit
-            NetworkPolicy.origin(addressFrom(p))?.let { p.set(ORIGIN, encrypt(ORIGIN, it)); _tokenOriginState.value = it }
+            if (p[AUTH_TOKEN_ENC] == null || details.raw(p, ORIGIN).any { it != null }) return@edit
+            NetworkPolicy.origin(addressFrom(p))?.let { p.set(ORIGIN, details.encrypt(ORIGIN, it)); _tokenOriginState.value = it }
         }
     }
 
@@ -387,12 +353,12 @@ class TokenStore @Inject constructor(
     private suspend fun writeToken(token: String, origin: String?, loggedInAt: Long?, previousToken: String? = null) {
         // Encrypt first: if it fails (locked), memory and disk still stand at the old values.
         val secret = vault.encrypt(token)
-        val originSecret = origin?.let { encrypt(ORIGIN, it) }
+        val originSecret = origin?.let { details.encrypt(ORIGIN, it) }
         val datum = loggedInAt ?: previousToken?.let { old ->
-            (loggedInFrom(dataStore.data.first(), old, System.currentTimeMillis()) as? LoginStatus.At)?.ms
+            (signIn.read(dataStore.data.first(), old, System.currentTimeMillis()) as? LoginStatus.At)?.ms
         }
         // Not carried over (tampered): the old seal stays, does not match, and the next start signs out.
-        val sealed = datum?.let { sealLoggedIn(it, token) }
+        val sealed = datum?.let { signIn.seal(it, token) }
         _tokenOriginState.value = origin
         _authTokenState.value = token
         dataStore.edit {
@@ -401,26 +367,6 @@ class TokenStore @Inject constructor(
             if (originSecret != null) it.set(ORIGIN, originSecret) else it.remove(ORIGIN)
             if (sealed != null) { it[SIGNED_IN_SECRET] = sealed; it.remove(SIGNED_IN_AT) }
         }
-    }
-
-    /** The date with a tag of the token; AES-GCM under the details' key, which only works unlocked. */
-    private fun sealLoggedIn(ms: Long, token: String): String =
-        device.encryptDetail("$ms:${tokenTag(token)}", SIGNED_IN_SECRET.name)
-            ?: throw IOException("${SIGNED_IN_SECRET.name} gerade nicht verschlüsselbar")
-
-    /** Sealed date of [token]; otherwise a plaintext one of older versions until [LEGACY_DATE_UNTIL]. */
-    private fun loggedInFrom(prefs: Preferences, token: String, now: Long): LoginStatus {
-        prefs[SIGNED_IN_SECRET]?.let { secret ->
-            return when (val b = device.openDetail(secret, SIGNED_IN_SECRET.name)) {
-                is VaultFinding.Readable -> b.plaintext.split(':').takeIf { it.size == 2 && it[1] == tokenTag(token) }
-                    ?.get(0)?.toLongOrNull()?.let { LoginStatus.At(it, legacy = false) } ?: LoginStatus.Missing
-                VaultFinding.LockedState -> LoginStatus.Locked
-                VaultFinding.Gone -> LoginStatus.Missing
-            }
-        }
-        // A date in the future would extend the sign-in; at most now counts.
-        val old = prefs[SIGNED_IN_AT] ?: return LoginStatus.Missing
-        return if (now < LEGACY_DATE_UNTIL) LoginStatus.At(minOf(old, now), legacy = true) else LoginStatus.Missing
     }
 
     /** Screen off with a secure lock: the interceptor gets a placeholder until unlocking. */
@@ -469,7 +415,7 @@ class TokenStore @Inject constructor(
 
     /** For the swap: origin as in the guard — without binding none, then nothing swaps. */
     override suspend fun tokenStatus(): TokenStatus {
-        val origin = _tokenOriginState.value ?: value(dataStore.data.first(), ORIGIN)
+        val origin = _tokenOriginState.value ?: details.value(dataStore.data.first(), ORIGIN)
         return TokenStatus(tokenNow(), origin, tokenLimit.generation)
     }
 
@@ -486,7 +432,7 @@ class TokenStore @Inject constructor(
      */
     suspend fun loginExpired(now: Long = System.currentTimeMillis()): Boolean {
         val token = tokenNow().ifBlank { return false }
-        return when (val at = loggedInFrom(dataStore.data.first(), token, now)) {
+        return when (val at = signIn.read(dataStore.data.first(), token, now)) {
             is LoginStatus.At -> {
                 if (at.legacy) adoptLegacyDate(at.ms, token)
                 loginOverdue(at.ms, now)
@@ -499,14 +445,14 @@ class TokenStore @Inject constructor(
     /** Less than [LOGIN_WARNING_DAYS] left: the session asks for a new sign-in in time. */
     suspend fun loginExpiresSoon(now: Long = System.currentTimeMillis()): Boolean {
         val token = tokenNow().ifBlank { return false }
-        val at = loggedInFrom(dataStore.data.first(), token, now) as? LoginStatus.At ?: return false
+        val at = signIn.read(dataStore.data.first(), token, now) as? LoginStatus.At ?: return false
         return loginDueSoon(at.ms, now)
     }
 
     /** The plaintext date of older versions goes under the seal; only if the token is still the same. */
     private suspend fun adoptLegacyDate(ms: Long, token: String) = tokenLimit.write<Unit>(newSession = { false }) {
         if (tokenNow() != token) return@write
-        val sealed = catchUnlessCancelled { sealLoggedIn(ms, token) }.getOrNull() ?: return@write
+        val sealed = catchUnlessCancelled { signIn.seal(ms, token) }.getOrNull() ?: return@write
         dataStore.edit { it[SIGNED_IN_SECRET] = sealed; it.remove(SIGNED_IN_AT) }
     }
 
@@ -516,62 +462,13 @@ class TokenStore @Inject constructor(
      *
      * @return true if a plaintext token was removed.
      */
-    override suspend fun adoptOldToken(): Boolean {
-        var removed = false
-        var rekeyed = false
-        dataStore.edit { prefs ->
-            removed = !prefs[AUTH_TOKEN].isNullOrEmpty()
-            prefs.remove(AUTH_TOKEN)
-            rekeyed = rekey(prefs)
-        }
-        if (rekeyed) catchUnlessCancelled { vault.forgetLegacyStock() }
-        return removed
-    }
+    override suspend fun adoptOldToken(): Boolean = legacy.adoptOldToken()
 
-    /**
-     * A token of earlier versions under the weaker key would stay readable until the next start
-     * for anyone who reads out the locked device; hence right after unlocking
-     * (BrickInventoryApp, ACTION_USER_PRESENT). Without legacy stock no writing.
-     */
-    override suspend fun levelTokenHigh() {
-        if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(vault::stale) != true) return
-        var rekeyed = false
-        dataStore.edit { rekeyed = rekey(it) }
-        if (rekeyed) catchUnlessCancelled { vault.forgetLegacyStock() }
-    }
+    /** Right after unlocking (BrickInventoryApp, ACTION_USER_PRESENT); see [LegacyTokenTakeover]. */
+    override suspend fun levelTokenHigh() = legacy.levelTokenHigh()
 
-    /**
-     * Address, name and origin of earlier versions (plaintext or under the pins' key)
-     * under the details' key; if it fails (locked), at the next start. The earlier
-     * form goes only when the new one is there: nothing gets lost.
-     */
-    private fun adoptDetails(prefs: MutablePreferences) {
-        for (a in listOf(ADDRESS, NAME, ORIGIN)) {
-            if (prefs[a.secret] == null) {
-                val before = earlier(raw(prefs, a), a) ?: continue
-                prefs[a.secret] = device.encryptDetail(before, a.secret.name) ?: continue
-            }
-            a.old?.let { prefs.remove(it) }
-            prefs.remove(a.clear)
-        }
-    }
-
-    /**
-     * A ciphertext under the weaker key of earlier versions goes under the one that
-     * only works unlocked. In the same edit as the reading: a swap in between would otherwise
-     * be overwritten by the old token. The caller deletes the old key only after
-     * writing: if the edit fails, a ciphertext without a key would otherwise remain.
-     */
-    private fun rekey(prefs: MutablePreferences): Boolean {
-        val secret = prefs[AUTH_TOKEN_ENC]?.takeIf(vault::stale) ?: return false
-        val clear = (vault.open(secret) as? VaultFinding.Readable)?.plaintext ?: return false
-        val newValue = catchUnlessCancelled { vault.encrypt(clear) }.getOrNull() ?: return false
-        if (vault.stale(newValue)) return false
-        prefs[AUTH_TOKEN_ENC] = newValue
-        return true
-    }
     suspend fun saveUsername(name: String) {
-        val secret = encrypt(NAME, name)
+        val secret = details.encrypt(NAME, name)
         dataStore.edit { it.set(NAME, secret) }
     }
 
@@ -580,7 +477,7 @@ class TokenStore @Inject constructor(
         val plate = dataStore.data.first()
         val secret = plate[AUTH_TOKEN_ENC] ?: return null
         val server = serverUrlNow().ifBlank { return null }
-        val origin = value(plate, ORIGIN) ?: return null
+        val origin = details.value(plate, ORIGIN) ?: return null
         if (origin != NetworkPolicy.origin(server)) return null
         return RedemptionJob(server, secret, pinKey(server)?.let(device::pin), origin)
     }
@@ -602,22 +499,3 @@ class TokenStore @Inject constructor(
         }
     }
 }
-
-/** The sign-in date as found: readable and matching, not readable right now, or not to be trusted. */
-private sealed class LoginStatus {
-    class At(val ms: Long, val legacy: Boolean) : LoginStatus()
-    object Locked : LoginStatus()
-    object Missing : LoginStatus()
-}
-
-/** 128 bits of the token's SHA-256: binds the date without the token itself lying in it. */
-private fun tokenTag(token: String): String =
-    MessageDigest.getInstance("SHA-256").digest(token.toByteArray(Charsets.UTF_8)).take(16)
-        .joinToString("") { "%02x".format(it) }
-
-/** A detail in its forms: [secret] now, [old] under the pins' key, [clear] in plaintext. */
-private class Info(
-    val secret: Preferences.Key<String>,
-    val old: Preferences.Key<String>?,
-    val clear: Preferences.Key<String>,
-)

@@ -1,0 +1,9 @@
+Gegenprobe: eine Datei bekommt ihren deutschen Namen zurück (AreaHelpers.kt heisst wieder Bereichshelfer.kt)
+Modul: app
+Test: ch.brickinventoryapp.app.SourceRatchetTest
+Rot: file names, declarations and comments are English
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
+similarity index 100%
+rename from Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt
+rename to Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt

@@ -6,12 +6,12 @@ Rot: the public surface of the areas does not grow
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrLogin.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrLogin.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrLogin.kt
 +++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/QrLogin.kt
-@@ -52,7 +52,7 @@
+@@ -53,7 +53,7 @@ internal fun qrAdoptable(locked: Boolean, targetConfirmed: Boolean, type: Boolea
   * The host of the previous server, if the code leads elsewhere: the yes signs out
   * there and sends everything else to the new server, so the dialog says so.
   */
--internal fun qrSwitchesServer(previous: String, code: String): String? {
-+fun qrSwitchesServer(previous: String, code: String): String? {
-     if (previous.isBlank() || NetworkPolicy.sameOrigin(previous, NetworkPolicy.normalize(code))) return null
-     return NetworkPolicy.view(previous)?.host
+-internal fun qrSwitchesServer(previous: String, code: String, addresses: AddressRules): String? {
++fun qrSwitchesServer(previous: String, code: String, addresses: AddressRules): String? {
+     if (previous.isBlank() || addresses.sameOrigin(previous, addresses.normalize(code))) return null
+     return addresses.view(previous)?.host
  }

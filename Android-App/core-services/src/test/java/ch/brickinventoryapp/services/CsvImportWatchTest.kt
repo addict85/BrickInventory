@@ -2,9 +2,9 @@ package ch.brickinventoryapp.services
 
 import androidx.work.ListenableWorker
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.domain.RunStatus
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.services.service.CsvImportWatch
 import ch.brickinventoryapp.services.service.CsvNotifier
 import ch.brickinventoryapp.services.service.toWorkResult

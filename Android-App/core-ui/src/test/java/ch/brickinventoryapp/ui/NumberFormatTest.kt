@@ -51,7 +51,7 @@ class NumberFormatTest {
             "collection/ui/screens/GalleryFilter.kt",
             "collection/ui/screens/GalleryCard.kt",
             "collection/ui/screens/GalleryRecord.kt",
-            "account/ui/screens/SettingsAlarme.kt",
+            "account/ui/screens/SettingsAlarms.kt",
         )
         for (f in screens) {
             val c = code(read(f))

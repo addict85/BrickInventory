@@ -1,5 +1,5 @@
-// What the scopes share without knowing each other: Blickfeld, texts, the foundation
-// of the scope ViewModels and the AppViewModel — without Compose; the surroundings of destinations
+// What the areas share without knowing each other: the scope (Scope.kt), texts, the foundation
+// of the area ViewModels and the AppViewModel — without Compose; the surroundings of destinations
 // live in core-navigation. What only the app knows (widget) comes in as an interface.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
@@ -15,8 +15,10 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    implementation(project(":core-ui-state"))
     // Internal: the areas name core-data themselves.
     implementation(project(":core-data"))
+    implementation(project(":core-data-api"))
     implementation(project(":core-session"))
     implementation(project(":core-security"))
     // NetworkPolicy and the rule for who reports a 401.
@@ -31,6 +33,7 @@ dependencies {
     testFixturesApi(testFixtures(project(":core-data")))
     testFixturesApi(testFixtures(project(":core-session")))
     testFixturesImplementation(project(":core-data"))
+    testFixturesImplementation(project(":core-ui-state"))
     testFixturesImplementation(project(":core-session"))
     testFixturesImplementation(project(":core-offline"))
     testImplementation(project(":core-testing"))

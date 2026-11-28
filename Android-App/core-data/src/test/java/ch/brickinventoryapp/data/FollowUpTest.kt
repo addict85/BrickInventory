@@ -8,8 +8,8 @@ import ch.brickinventoryapp.contract.testing.testSetItem
 import ch.brickinventoryapp.contract.testing.testWantedItem
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
-import ch.brickinventoryapp.data.collection.WantedListRepositoryImpl
-import ch.brickinventoryapp.data.parts.FiguresRepositoryImpl
+import ch.brickinventoryapp.data.collection.WantedRepositoryImpl
+import ch.brickinventoryapp.data.parts.MinifigsRepositoryImpl
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.model.domain.Condition
@@ -59,9 +59,9 @@ class FollowUpTest {
     )
     private val api = paths.onTick()
     private val sets = SetsRepositoryImpl(api, store, RetryPolicy.ONCE)
-    private val wantedList = WantedListRepositoryImpl(api, store, RetryPolicy.ONCE)
+    private val wantedList = WantedRepositoryImpl(api, store, RetryPolicy.ONCE)
     private val parts = PartsRepositoryImpl(api, store, RetryPolicy.ONCE)
-    private val figures = FiguresRepositoryImpl(api, store, RetryPolicy.ONCE)
+    private val figures = MinifigsRepositoryImpl(api, store, RetryPolicy.ONCE)
 
     @Before
     fun setUp() = runBlocking {

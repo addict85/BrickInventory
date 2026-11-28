@@ -7,7 +7,7 @@ import ch.brickinventoryapp.model.domain.PriceHistoryView
 import ch.brickinventoryapp.model.domain.WantedItemPricesView
 import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.uistate.Load
 
 /**
  * The watchlist — what you'd like to have, separate from what you own. Its own state instead of

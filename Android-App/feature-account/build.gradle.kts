@@ -9,7 +9,9 @@ android {
 
 dependencies {
     implementation(project(":core-model"))
-    implementation(project(":core-data"))
+    implementation(project(":core-ui-state"))
+    // Interfaces only: the implementation reaches the area through Hilt in the app.
+    implementation(project(":core-data-api"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-inventory"))
     implementation(project(":core-state"))
@@ -18,5 +20,7 @@ dependencies {
     implementation(project(":core-resources"))
 
     testImplementation(project(":core-testing"))
+    // The tests build the repositories themselves (core-data testFixtures).
+    testImplementation(project(":core-data"))
     testImplementation(testFixtures(project(":core-state")))
 }

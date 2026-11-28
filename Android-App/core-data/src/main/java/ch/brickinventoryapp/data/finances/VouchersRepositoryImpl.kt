@@ -7,12 +7,12 @@ import ch.brickinventoryapp.contract.VoucherRequest
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.api.VouchersApi
 import ch.brickinventoryapp.data.collection.asRequest
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.reconciled
 import ch.brickinventoryapp.data.repository.safeCall
+import ch.brickinventoryapp.dataapi.finances.VouchersRepository
 import ch.brickinventoryapp.model.domain.BalanceInfo
 import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.domain.PlaintextView
@@ -21,6 +21,7 @@ import ch.brickinventoryapp.model.domain.VoucherStorage
 import ch.brickinventoryapp.model.domain.VoucherView
 import ch.brickinventoryapp.model.domain.asMoney
 import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.network.data.api.ErrorBody
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.Slots

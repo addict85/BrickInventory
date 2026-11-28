@@ -14,6 +14,8 @@ data class ModuleEdge(val of: String, val configuration: String, val after: Stri
 object ModuleEdges {
     val cores: Map<String, Set<String>> = mapOf(
         "core-model" to emptySet(),
+        // UI state without Compose: the state layer holds it, the data layer never sees it.
+        "core-ui-state" to setOf("core-model"),
         // The wire format knows domain and display types, not the other way round.
         "core-contract" to setOf("core-model"),
         "core-resources" to emptySet(),
@@ -21,30 +23,34 @@ object ModuleEdges {
         // Vault and TLS trust lie below Room and the offline store.
         "core-security" to setOf("core-model", "core-network"),
         "core-offline" to setOf("core-model", "core-security"),
-        "core-data" to setOf("core-model", "core-contract", "core-resources", "core-network", "core-security", "core-offline"),
+        // What the areas see of the data layer: interfaces and their types, without any implementation.
+        "core-data-api" to setOf("core-model"),
+        "core-data" to setOf("core-model", "core-data-api", "core-contract", "core-resources", "core-network", "core-security", "core-offline"),
         // It depends on core-data, never the other way round.
-        "core-services" to setOf("core-resources", "core-data"),
-        "core-ui" to setOf("core-model", "core-resources"),
+        "core-services" to setOf("core-resources", "core-data-api", "core-data"),
+        "core-ui" to setOf("core-model", "core-ui-state", "core-resources"),
         // Only presentation: with data or state it would become the detour on which areas know each other after all.
-        "core-ui-inventory" to setOf("core-model", "core-resources", "core-ui"),
+        "core-ui-inventory" to setOf("core-model", "core-ui-state", "core-resources", "core-ui"),
         // The session lies below the state: it knows neither filters nor ViewModels.
-        "core-session" to setOf("core-model", "core-resources", "core-network", "core-data"),
+        "core-session" to setOf("core-model", "core-resources", "core-network", "core-data-api", "core-data"),
         // The state lies below the UI: screens read it, it knows no Compose component.
-        "core-state" to setOf("core-model", "core-resources", "core-network", "core-data", "core-security", "core-session"),
+        "core-state" to setOf("core-model", "core-ui-state", "core-resources", "core-network", "core-data-api", "core-data", "core-security", "core-session"),
         // The environment of the areas (NavController, images, snackbar) above the state.
-        "core-navigation" to setOf("core-model", "core-session", "core-state"),
+        "core-navigation" to setOf("core-model", "core-ui-state", "core-session", "core-state"),
         // Only the source reader: fixtures that need a module live in its testFixtures.
         "core-testing" to emptySet(),
     )
 
     /**
-     * Network and vault lie below the state; an area knows them only if it checks
-     * server and certificates itself (sign-in) or resolves addresses of the server.
+     * Network and vault lie below the state. No area knows the network: address rules come as
+     * AddressRules (core-model). The vault only for the sign-in, which checks certificates itself.
      */
     val depthCores: Map<String, Set<String>> = mapOf(
-        "core-network" to setOf("feature-login", "feature-finances", "feature-catalog", "feature-collection"),
+        "core-network" to emptySet(),
         "core-security" to setOf("feature-login"),
         "core-offline" to emptySet(),
+        // The areas know the data layer only through core-data-api; Hilt in the app brings the implementation.
+        "core-data" to emptySet(),
     )
 
     /**
@@ -52,7 +58,7 @@ object ModuleEdges {
      * UI below the state, and via it an area would reach what it should not know.
      */
     val withoutUi: Set<String> = setOf(
-        "core-model", "core-contract", "core-network", "core-security", "core-offline", "core-data", "core-services",
+        "core-model", "core-ui-state", "core-contract", "core-network", "core-security", "core-offline", "core-data-api", "core-data", "core-services",
         "core-session", "core-state",
     )
 

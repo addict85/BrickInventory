@@ -9,9 +9,9 @@ android {
 
 dependencies {
     implementation(project(":core-model"))
-    implementation(project(":core-data"))
-    // NetworkPolicy: checking the server address.
-    implementation(project(":core-network"))
+    implementation(project(":core-ui-state"))
+    // Interfaces only: the implementation reaches the area through Hilt in the app.
+    implementation(project(":core-data-api"))
     implementation(project(":core-security"))
     implementation(project(":core-ui"))
     implementation(project(":core-state"))
@@ -24,5 +24,9 @@ dependencies {
     implementation(libs.androidx.credentials.play.services)
 
     testImplementation(project(":core-testing"))
+    // The tests build the repositories themselves (core-data testFixtures).
+    testImplementation(project(":core-data"))
+    // The real address rules (NetworkAddressRules) instead of a double.
+    testImplementation(project(":core-network"))
     testImplementation(testFixtures(project(":core-state")))
 }

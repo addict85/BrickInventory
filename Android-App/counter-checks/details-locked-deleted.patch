@@ -3,11 +3,11 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.TokenVaultTest
 Rot: locked the earlier form stays and the new one applies after unlocking
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -515,7 +515,7 @@
-         for (a in listOf(ADDRESS, NAME, ORIGIN)) {
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenDetails.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenDetails.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenDetails.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenDetails.kt
+@@ -64,7 +64,7 @@ internal class TokenDetails(
+         for (a in all) {
              if (prefs[a.secret] == null) {
                  val before = earlier(raw(prefs, a), a) ?: continue
 -                prefs[a.secret] = device.encryptDetail(before, a.secret.name) ?: continue

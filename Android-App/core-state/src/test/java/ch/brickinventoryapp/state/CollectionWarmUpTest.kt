@@ -1,9 +1,7 @@
 package ch.brickinventoryapp.state
 
 import ch.brickinventoryapp.data.Credentials
-import ch.brickinventoryapp.data.DevicesSettings
 import ch.brickinventoryapp.data.NetworkState
-import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.cache.PreviewPrewarmer
 import ch.brickinventoryapp.data.testing.PathServer
@@ -14,6 +12,8 @@ import ch.brickinventoryapp.data.testing.testMinifigsRepository
 import ch.brickinventoryapp.data.testing.testNetworkState
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.dataapi.device.DevicesSettings
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.state.testing.StorageStore

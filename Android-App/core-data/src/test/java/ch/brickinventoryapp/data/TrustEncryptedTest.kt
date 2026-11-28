@@ -32,7 +32,7 @@ import java.util.Base64
  *                                    “pin and switch do not lie in plaintext”
  *   trust-unreadable-allowed       userCaAllowed() takes an unreadable value as
  *                                    „on“ → red “a changed value does not count”
- *   trust-without-binding           Vertrauenschiffre does not bind the name → red
+ *   trust-without-binding           TrustCipher does not bind the name → red
  *                                    “a ciphertext under a foreign name does not count”
  *   trust-plaintext-stays        the takeover does not delete the plaintext → red
  *                                    “plaintext is taken over once”

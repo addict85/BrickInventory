@@ -8,7 +8,7 @@ import ch.brickinventoryapp.model.domain.PurchaseView
 import ch.brickinventoryapp.model.domain.SetPriceView
 import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.uistate.Load
 
 /**
  * Gallery: list, filter, paging state and figures. Its own flow, because

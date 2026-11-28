@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.account
 
 import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.RowsServer
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.text
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.dataapi.message.MessageChannel
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.testing.SessionFake
 import ch.brickinventoryapp.session.testing.testSession
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
+import ch.brickinventoryapp.uistate.running
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

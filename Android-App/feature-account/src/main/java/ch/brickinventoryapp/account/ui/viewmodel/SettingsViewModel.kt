@@ -4,13 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.account.ui.AlarmOverviewUiState
 import ch.brickinventoryapp.account.ui.CsvUploadUiState
-import ch.brickinventoryapp.data.account.AccountRepository
-import ch.brickinventoryapp.data.account.ManagementRepository
-import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.data.collection.AlarmRepository
-import ch.brickinventoryapp.data.local.StockReconciliation
-import ch.brickinventoryapp.data.parts.PartsRepository
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.ManagementRepository
+import ch.brickinventoryapp.dataapi.alarm.AlarmInput
+import ch.brickinventoryapp.dataapi.collection.AlarmRepository
+import ch.brickinventoryapp.dataapi.parts.PartsRepository
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CsvImportKind
@@ -20,8 +19,8 @@ import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.file.Read
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.outcome.Outcome
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
@@ -35,6 +34,7 @@ import ch.brickinventoryapp.state.ui.viewmodel.Observed
 import ch.brickinventoryapp.state.ui.viewmodel.loadPerServer
 import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
+import ch.brickinventoryapp.uistate.Operation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -197,7 +197,7 @@ class SettingsViewModel @Inject constructor(
     private val waitingThresholds = mutableMapOf<Pair<String, Condition>, Job>()
 
     /**
-     * Saves while typing, debounced like in the set detail (Alarmeingabe.QUIET_MS): the
+     * Saves while typing, debounced like in the set detail (AlarmInput.QUIET_MS): the
      * overview used to be the only place with a save button that only appeared on
      * change. In the ViewModel, so the input survives leaving the page.
      * An empty field doesn't delete here — the trash icon next to it is for that.

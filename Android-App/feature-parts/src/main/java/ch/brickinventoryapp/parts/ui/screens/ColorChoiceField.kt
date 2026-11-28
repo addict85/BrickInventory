@@ -26,12 +26,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.model.domain.ColorView
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
-import ch.brickinventoryapp.model.ui.colorName
-import ch.brickinventoryapp.model.ui.withoutNoColor
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.colorFromHex
+import ch.brickinventoryapp.uistate.colorName
+import ch.brickinventoryapp.uistate.withoutNoColor
 
 /**
  * Choose the color of a manually entered part — for correcting it if it

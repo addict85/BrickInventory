@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.session.testing
 
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.session.AccountValues
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.session.SessionState

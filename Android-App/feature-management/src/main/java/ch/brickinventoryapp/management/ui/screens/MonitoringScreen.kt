@@ -20,19 +20,18 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import ch.brickinventoryapp.data.PrewarmNetwork
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.management.ui.viewmodel.BackgroundUiState
 import ch.brickinventoryapp.management.ui.viewmodel.Jobstart
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringActions
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.BricksetEntryView
 import ch.brickinventoryapp.model.domain.JobStateView
 import ch.brickinventoryapp.model.domain.RunStatus
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.viewmodel.DevicesSettingsViewModel
 import ch.brickinventoryapp.ui.components.WithTooltip
@@ -43,6 +42,7 @@ import ch.brickinventoryapp.ui.theme.LocalStatusColors
 import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.centeredUntil
+import ch.brickinventoryapp.uistate.Load
 
 /** What the management page shows; the route collects it from the flows. */
 data class MonitoringState(

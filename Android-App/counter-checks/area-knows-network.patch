@@ -1,0 +1,16 @@
+Gegenprobe: feature-catalog bindet core-network wieder im Hauptcode ein; die Adressregeln kämen dann am Interface vorbei
+Modul: app
+Test: ch.brickinventoryapp.app.ModuleBoundariesTest
+Rot: no area depends on another area or on the app, none names foreign route types
+
+diff --git a/Android-App/feature-catalog/build.gradle.kts b/Android-App/feature-catalog/build.gradle.kts
+--- a/Android-App/feature-catalog/build.gradle.kts
++++ b/Android-App/feature-catalog/build.gradle.kts
+@@ -12,6 +12,7 @@ dependencies {
+     implementation(project(":core-ui-state"))
+     // Interfaces only: the implementation reaches the area through Hilt in the app.
+     implementation(project(":core-data-api"))
++    implementation(project(":core-network"))
+     implementation(project(":core-ui"))
+     implementation(project(":core-ui-inventory"))
+     implementation(project(":core-state"))

@@ -17,10 +17,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Spacing
+import ch.brickinventoryapp.uistate.Load
 
 /**
  * A part of a page that did not load (key figures, filter lists, a side value): one line with

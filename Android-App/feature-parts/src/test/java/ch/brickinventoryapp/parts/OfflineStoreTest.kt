@@ -28,9 +28,9 @@ import org.junit.Test
  * on top of it again. Separated per account.
  *
  * Counter-checks:
- *   A  in Offlineablage.uebernimm the loop over the outbox removed → red
+ *   A  in OfflineStore.uebernimm the loop over the outbox removed → red
  *      “a server response swallows no pending change” (quantity 1 instead of 2)
- *   B  in Offlineablage.puffere `applyChange` left out → red “what was edited offline
+ *   B  in OfflineStore.puffere `applyChange` left out → red “what was edited offline
  *      shows up in the list right away”
  *   C  in StorageInventory.cleanOther the filter reversed → red “a different
  *      account sees none of it”

@@ -41,10 +41,10 @@ import ch.brickinventoryapp.app.MainActivity
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.Credentials
 import ch.brickinventoryapp.data.WidgetStatusStore
-import ch.brickinventoryapp.data.finances.FinancesRepository
-import ch.brickinventoryapp.data.repository.Outcome
-import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.finances.FinancesRepository
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.security.DeviceLock
@@ -91,6 +91,7 @@ interface WidgetAccess {
     fun credentials(): Credentials
     fun appearance(): AppearanceStore
     fun widgetStatusStore(): WidgetStatusStore
+    fun appLanguage(): AppLanguage
 }
 
 /**
@@ -167,8 +168,8 @@ class CollectionWidget : GlanceAppWidget() {
         val show = access?.appearance()?.showWidgetValues() == true &&
             !AppLock.hiddenWidget(AppLockStore(context))
         val numbers = widgetDisplay(WidgetStore.read(context), loggedIn)
-        // The texts in the app's language, not the system's (LanguageManager).
-        val ctx = LanguageManager.localizedContext(context)
+        // The texts in the app's language, not the system's; without Hilt (a broken install) the system's.
+        val ctx = access?.appLanguage()?.localizedContext(context) ?: context
         val content = widgetContent(ctx, numbers, show, System.currentTimeMillis(), ZoneId.systemDefault())
         provideContent { GlanceTheme { Content(content) } }
     }

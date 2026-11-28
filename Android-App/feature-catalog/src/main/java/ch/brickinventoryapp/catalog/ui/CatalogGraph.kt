@@ -18,9 +18,9 @@ import ch.brickinventoryapp.catalog.ui.screens.CatalogRoute
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
-import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.navigation.AreaEnvironment
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.uistate.Load
 
 /**
  * What the catalog needs from other areas: entering belongs to the gallery, the

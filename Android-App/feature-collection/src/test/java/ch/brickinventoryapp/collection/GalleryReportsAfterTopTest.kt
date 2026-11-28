@@ -15,9 +15,9 @@ import ch.brickinventoryapp.collection.ui.GalleryUiState
 import ch.brickinventoryapp.collection.ui.screens.GalleryEvents
 import ch.brickinventoryapp.collection.ui.screens.GalleryScreen
 import ch.brickinventoryapp.collection.ui.screens.GalleryState
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.MetricsView
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.ScopeUiState

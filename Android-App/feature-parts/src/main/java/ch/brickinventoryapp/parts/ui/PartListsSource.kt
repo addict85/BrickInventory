@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.parts.ui
 
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.outcome.Outcome
 
 /** Where the parts list gets its rows from; a double without network in the ViewModel test. */
 interface PartListsSource {

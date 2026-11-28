@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.util
 
-import ch.brickinventoryapp.data.DownloadFailed
+import ch.brickinventoryapp.dataapi.instructions.DownloadFailed
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import okhttp3.OkHttpClient

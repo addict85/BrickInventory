@@ -42,7 +42,7 @@ fun LocationField(
     /** Label in the field; with it, the example sits as help text below it instead of as a placeholder. */
     label: String? = null,
 ) {
-    // Schluessel is the value from outside: if a different one arrives (a different set, or
+    // The key is the value from outside: if a different one arrives (a different set, or
     // the normalized value after saving), the field should show it
     // instead of keeping the old text.
     var text by rememberSaveable(value) { mutableStateOf(value) }

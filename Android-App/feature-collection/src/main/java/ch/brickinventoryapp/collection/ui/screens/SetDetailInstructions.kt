@@ -23,11 +23,9 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.collection.ui.SetDetailUiState
 import ch.brickinventoryapp.model.domain.InstructionView
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.network.util.externalAddress
-import ch.brickinventoryapp.network.util.ownAddress
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.SectionCard
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.secondaryButtonColors
 import ch.brickinventoryapp.ui.components.secondaryButtonRand
@@ -35,6 +33,7 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.openExtern
+import ch.brickinventoryapp.uistate.loading
 
 /**
  * Manuals — view, add and remove. The card exists even with no
@@ -102,11 +101,12 @@ private fun InstructionRow(
     onNoApp: () -> Unit,
 ) {
     val ctx = LocalContext.current
+    val addresses = LocalAddressRules.current
     // No `?token=` in the address: the session token would otherwise sit in the
     // back stack, as text under the manual and in the access log. The
     // in-app viewer loads via the shared client, which sets the
     // Authorization header (di/ServerClient.kt).
-    val own = instr.localPath?.let { ownAddress(serverUrl, it) }
+    val own = instr.localPath?.let { addresses.own(serverUrl, it) }
     val openUrl = own ?: instr.url
 
     // The whole row opens the manual — it looked like a reference.
@@ -116,7 +116,7 @@ private fun InstructionRow(
     val openInstruction: () -> Unit = {
         if (own != null) {
             onOpenPdf(own, instr.description ?: "")
-        } else if (!openExtern(ctx, externalAddress(instr.url))) {
+        } else if (!openExtern(ctx, addresses.external(instr.url))) {
             // Feedback instead of silence, see CatalogDetailScreen.
             onNoApp()
         }

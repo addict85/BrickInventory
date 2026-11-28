@@ -5,9 +5,9 @@ import ch.brickinventoryapp.data.api.MinifigsApi
 import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.local.Baseline.DiscardedChange
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.safeCall
 import ch.brickinventoryapp.model.local.StockKind
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.Outbox

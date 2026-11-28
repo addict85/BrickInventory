@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.session
 
 import ch.brickinventoryapp.data.LogoutPath
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.RightsSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SessionStore
-import ch.brickinventoryapp.data.account.AccountRepository
-import ch.brickinventoryapp.data.account.ManagementRepository
-import ch.brickinventoryapp.data.local.StockReconciliation
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.ManagementRepository
+import ch.brickinventoryapp.dataapi.message.MessageChannel
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.outcome.Outcome
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.resources.R
 import kotlinx.coroutines.CoroutineScope
@@ -79,7 +79,7 @@ class SessionService @Inject constructor(
     override fun launch() {
         if (!started.compareAndSet(false, true)) return
         reportFailedRedemption()
-        // The session reads currency and theme from the store (Kontowerte); here
+        // The session reads currency and theme from the store (AccountValues); here
         // only the server is asked whether the theme has changed.
         area.launch {
             launch { loadDesign() }

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.collection.SetFilesRepository
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.testSetFilesRepository
+import ch.brickinventoryapp.dataapi.collection.SetFilesRepository
 import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.RunStatus
+import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer

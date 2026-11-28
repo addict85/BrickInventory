@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.TileReadAloudTest
 Rot: parts tile reads name once and quantity with unit
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ReadAloud.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ReadAloud.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ReadAloud.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ReadAloud.kt
 @@ -16,7 +16,7 @@
   * Replaces what TalkBack reads for this text: abbreviations like „×12“, „✓“ or a
   * bare year number mean nothing when read out loud.

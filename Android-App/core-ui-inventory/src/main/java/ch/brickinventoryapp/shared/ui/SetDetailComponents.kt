@@ -32,7 +32,6 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.PriceChartView
 import ch.brickinventoryapp.model.domain.PricePerStateView
-import ch.brickinventoryapp.model.ui.*
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.components.LabelAndValue
@@ -53,6 +52,7 @@ import ch.brickinventoryapp.ui.util.fmtAmount
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyWhole
 import ch.brickinventoryapp.ui.util.fmtPercent
+import ch.brickinventoryapp.uistate.*
 
 // Shared detail composables, price chart and purchase-price capture row: set,
 // wishlist, parts and finance views all show them the same way, hence in core-ui.

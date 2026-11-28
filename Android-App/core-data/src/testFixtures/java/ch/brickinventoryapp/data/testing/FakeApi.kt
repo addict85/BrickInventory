@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.testing
 
 import ch.brickinventoryapp.data.SessionStore
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import okhttp3.MediaType.Companion.toMediaType

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.services.di
 
-import ch.brickinventoryapp.data.AlarmPlanner
+import ch.brickinventoryapp.dataapi.device.AlarmPlanner
 import ch.brickinventoryapp.services.alarm.PriceAlertPass
 import ch.brickinventoryapp.services.alarm.PriceAlertRepository
 import ch.brickinventoryapp.services.alarm.WorkManagerAlarmPlanner

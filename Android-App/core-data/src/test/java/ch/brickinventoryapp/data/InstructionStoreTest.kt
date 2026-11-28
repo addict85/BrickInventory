@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.util.INSTRUCTION_DISPLAY_FOLDER
 import ch.brickinventoryapp.data.util.InstructionStore
 import ch.brickinventoryapp.data.util.cleanUpInstructions
 import ch.brickinventoryapp.data.util.cleanUpPlaintextInstructions
-import ch.brickinventoryapp.data.util.pdfStore
+import ch.brickinventoryapp.dataapi.instructions.INSTRUCTION_DISPLAY_FOLDER
+import ch.brickinventoryapp.dataapi.instructions.pdfStore
 import ch.brickinventoryapp.security.StoreCipher
 import org.junit.After
 import org.junit.Assert.assertArrayEquals

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.errorTextToCode
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testVouchersRepository
 import ch.brickinventoryapp.model.domain.ErrorCode
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.network.data.api.ErrorBody
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse

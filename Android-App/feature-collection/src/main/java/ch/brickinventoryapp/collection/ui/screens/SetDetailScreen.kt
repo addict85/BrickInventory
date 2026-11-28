@@ -27,7 +27,6 @@ import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.util.resolveFullUrl
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
@@ -48,6 +47,7 @@ import ch.brickinventoryapp.ui.title
 import ch.brickinventoryapp.ui.twoColumn
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
+import ch.brickinventoryapp.uistate.Load
 import coil3.ImageLoader
 import kotlinx.coroutines.launch
 import java.time.Instant

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui.theme
 
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 
 /*
  * The rules of the dark variant; the generator produces the values in

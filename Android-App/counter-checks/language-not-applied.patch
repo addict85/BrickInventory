@@ -1,0 +1,16 @@
+Gegenprobe: Die Sprachwahl wird gespeichert, aber nicht über die eingespritzte App-Sprache angewendet
+Modul: core-state
+Test: ch.brickinventoryapp.state.RenderingAndTrustTest
+Rot: a language choice is stored and applied through the injected app language
+
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppearanceViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppearanceViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppearanceViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppearanceViewModel.kt
+@@ -72,7 +72,6 @@ class AppearanceViewModel @Inject constructor(
+     override fun setLanguage(languageCode: String) {
+         viewModelScope.launch {
+             prefs.saveLanguage(languageCode)
+-            appLanguage.applyLanguage(languageCode)
+         }
+     }
+ }
