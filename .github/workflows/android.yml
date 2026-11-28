@@ -99,13 +99,13 @@ jobs:
           # abgelegter Token wäre für jeden davon lesbar. Gebraucht wird er nicht.
           persist-credentials: false
 
-      # JDK 17 wie Java- und Kotlin-Ziel der Konventionen (build-logic, Shared.kt).
-      # Verlangt AGP eine neuere Fassung, steht das im Protokoll; dann hier '21'.
+      # JDK 21: Robolectric braucht es für SDK 36 (ServerTrustApi36Test). Das Java- und
+      # Kotlin-Ziel bleibt 17 (build-logic, Shared.kt), die App läuft also unverändert.
       - name: JDK einrichten
         uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       # Vorabprüfung: gradle-wrapper.jar fehlt nach dem Zippen eines Projekts
       # oft, und die späteren Fehlerbilder nennen die Ursache nicht.
@@ -518,7 +518,7 @@ jobs:
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
@@ -598,7 +598,7 @@ jobs:
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
@@ -649,7 +649,7 @@ jobs:
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
@@ -808,7 +808,7 @@ jobs:
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
