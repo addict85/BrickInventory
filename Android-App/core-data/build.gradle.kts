@@ -26,6 +26,7 @@ dependencies {
     api(project(":core-model"))
     // Only internally: the repositories map the wire format to domain and view types.
     implementation(project(":core-contract"))
+    testImplementation(testFixtures(project(":core-contract")))
     // Guards and network policy. Whoever names something from it themselves (NetworkPolicy, Protokoll)
     // includes core-network themselves; nothing of it reaches beyond core-data.
     implementation(project(":core-network"))
@@ -55,6 +56,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
 
     testFixturesImplementation(project(":core-offline"))
+    testFixturesImplementation(testFixtures(project(":core-contract")))
     testFixturesImplementation(project(":core-security"))
     testFixturesImplementation(libs.kotlinx.coroutines.android)
     testFixturesApi(libs.bundles.unit.tests)

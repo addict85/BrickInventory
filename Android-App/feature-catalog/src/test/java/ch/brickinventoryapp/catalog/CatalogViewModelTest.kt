@@ -1,20 +1,23 @@
 package ch.brickinventoryapp.catalog
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.catalog.ui.CatalogTarget
 import ch.brickinventoryapp.catalog.ui.WantedRequest
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogViewModel
-import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.contract.CatalogSetDetailResponse
-import ch.brickinventoryapp.contract.CatalogSetItem
-import ch.brickinventoryapp.contract.CatalogSetsResponse
 import ch.brickinventoryapp.contract.CatalogYearDistributionResponse
 import ch.brickinventoryapp.contract.PriceAlertRequest
 import ch.brickinventoryapp.contract.PriceAlertResponse
-import ch.brickinventoryapp.contract.WantedItem
 import ch.brickinventoryapp.contract.WantedItemReply
-import ch.brickinventoryapp.contract.WantedListResponse
 import ch.brickinventoryapp.contract.YearCount
+import ch.brickinventoryapp.contract.testing.testCatalogSetDetail
+import ch.brickinventoryapp.contract.testing.testCatalogSetDetailResponse
+import ch.brickinventoryapp.contract.testing.testCatalogSetItem
+import ch.brickinventoryapp.contract.testing.testCatalogSetsResponse
+import ch.brickinventoryapp.contract.testing.testWantedItem
+import ch.brickinventoryapp.contract.testing.testWantedItemReply
+import ch.brickinventoryapp.contract.testing.testWantedListResponse
 import ch.brickinventoryapp.data.testing.FakeApi
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.text
@@ -64,6 +67,7 @@ import org.junit.Test
  *   catalog-detail-error-swallowed loadCatalogDetail() doesn't put the error into the
  *                                  state → red "scheitert das Detail, steht der Grund …"
  *   catalog-does-not-load-on-observe  only the metadata loaded on observing → red "wer den Katalog sieht …"
+ *   catalog-filter-not-saved    setCatalogTheme() without `saved[THEME]` → red "search and filters come back …"
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogViewModelTest {
@@ -82,15 +86,36 @@ class CatalogViewModelTest {
     }
 
     private fun page(vararg numbers: String) =
-        CatalogSetsResponse(success = true, total = 120, sets = numbers.map { CatalogSetItem(setNumber = it, name = "Set $it") })
+        testCatalogSetsResponse(success = true, total = 120, sets = numbers.map { testCatalogSetItem(setNumber = it, name = "Set $it") })
+
+    private fun catalogVm(saved: SavedStateHandle = SavedStateHandle()) =
+        CatalogViewModel(testCatalogRepository(fake.api), t.messages, NumbersTexts, t.wantedList(), t.alerts(), t.scrollMemory, saved)
 
     private fun withVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(tick) {
-        val vm = CatalogViewModel(testCatalogRepository(fake.api), t.messages, NumbersTexts, t.wantedList(), t.alerts(), t.scrollMemory)
+        val vm = catalogVm()
         try {
             block(vm)
         } finally {
             vm.viewModelScope.cancel()
         }
+    }
+
+    @Test
+    fun `search and filters come back after a process death`() = runTest(tick) {
+        fake.responses["getCatalogSets"] = page("10294-1")
+        val saved = SavedStateHandle()
+        val first = catalogVm(saved)
+        first.setCatalogQuery("burg")
+        first.setCatalogTheme(158)
+        first.setCatalogYear(2021)
+        first.setCatalogSort(CatalogSort.NAME)
+        advanceUntilIdle()
+        first.viewModelScope.cancel()
+
+        val again = catalogVm(saved.afterProcessDeath())
+        val s = again.state.value
+        assertEquals(listOf("burg", 158, 2021, CatalogSort.NAME), listOf(s.query, s.themeId, s.year, s.sort))
+        again.viewModelScope.cancel()
     }
 
     /** The search text of the list fetches, in order. */
@@ -154,7 +179,7 @@ class CatalogViewModelTest {
         assertEquals(Message.Resource(R.string.err_server, listOf(500)), vm.state.value.fetch.errorMessage)
         assertNull("without a loaded list no second message", t.messages.text)
 
-        fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = false)
+        fake.responses["getCatalogSetDetail"] = testCatalogSetDetailResponse(success = false)
         vm.loadCatalogDetail("99999-1")
         advanceUntilIdle()
         assertEquals(Message.Resource(R.string.err_set_not_found), vm.state.value.detail.errorMessage)
@@ -171,7 +196,7 @@ class CatalogViewModelTest {
 
         fake.codes.remove("getCatalogSetDetail")
         fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true,
-            set = CatalogSetDetail(setNumber = "10305-1", name = "Lion Knights' Castle"))
+            set = testCatalogSetDetail(setNumber = "10305-1", name = "Lion Knights' Castle"))
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
         assertEquals("the new attempt clears the old error", "10305-1", vm.state.value.detail.dataOrNull()?.setNumber)
@@ -208,7 +233,7 @@ class CatalogViewModelTest {
     @Test
     fun `remembering creates the item, sets the alert in the chosen direction and reports`() = withVm { vm ->
         fake.responses["createWantedItem"] = WantedItemReply(success = true, wasNew = true,
-            item = WantedItem(setNumber = "10305-1", condition = Condition.USED))
+            item = testWantedItem(setNumber = "10305-1", condition = Condition.USED))
         fake.responses["setPriceAlarm"] = PriceAlertResponse(success = true)
         vm.track(WantedRequest("10305-1", Condition.USED, AlarmDirection.OVER, "120", account = null))
         advanceUntilIdle()
@@ -220,7 +245,7 @@ class CatalogViewModelTest {
 
     @Test
     fun `remembering without a threshold sets no alert`() = withVm { vm ->
-        fake.responses["createWantedItem"] = WantedItemReply(success = true, wasNew = false)
+        fake.responses["createWantedItem"] = testWantedItemReply(success = true, wasNew = false)
         vm.track(WantedRequest("10305-1", Condition.NEW, AlarmDirection.BELOW, "", account = null))
         advanceUntilIdle()
         assertEquals(0, fake.callsOf("setPriceAlarm"))
@@ -229,9 +254,9 @@ class CatalogViewModelTest {
 
     @Test
     fun `the detail knows the wishlist item from the store, another set does not`() = withVm { vm ->
-        fake.responses["getWantedList"] = WantedListResponse(success = true,
-            item = listOf(WantedItem(setNumber = "10305-1", condition = Condition.NEW)))
-        fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true, set = CatalogSetDetail(setNumber = "10305-1"))
+        fake.responses["getWantedList"] = testWantedListResponse(success = true,
+            item = listOf(testWantedItem(setNumber = "10305-1", condition = Condition.NEW)))
+        fake.responses["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true, set = testCatalogSetDetail(setNumber = "10305-1"))
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
         assertEquals("the detail fetches the watchlist into the store", 1, fake.callsOf("getWantedList"))
@@ -239,3 +264,6 @@ class CatalogViewModelTest {
         assertNull(vm.wanted("75192-1").first())
     }
 }
+
+/** What a recreated ViewModel finds after a process death: only the values saved in the handle. */
+private fun SavedStateHandle.afterProcessDeath() = SavedStateHandle(keys().associateWith { get<Any?>(it) })

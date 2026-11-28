@@ -20,6 +20,7 @@ import ch.brickinventoryapp.data.repository.sorted
 import ch.brickinventoryapp.data.repository.withoutContent
 import ch.brickinventoryapp.data.repository.write
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.WantedItemPricesView
@@ -61,7 +62,9 @@ internal class WantedListRepositoryImpl @Inject constructor(
         val request = wish.asRequest()
         return store.write(Editing.CreateWantedItem(wish), {
             WantedItemReply(success = true, wasNew = true,
-                item = WantedItem(setNumber = setNumber, condition = condition, userId = ownerUserId ?: 0))
+                item = WantedItem(themeId = null, setNumber = setNumber, condition = condition, createdAt = "",
+                    userId = ownerUserId ?: 0, name = null, year = null, numParts = null, imageUrl = null, imageLocal = null,
+                    marketPrice = null, currency = CurrencyCode.NONE, owned = false, alarm = null, priceComparisonUrl = null))
         }) { key -> safeCall { api.createWantedItem(request, key) } }.mapData { it.wasNew }
     }
 

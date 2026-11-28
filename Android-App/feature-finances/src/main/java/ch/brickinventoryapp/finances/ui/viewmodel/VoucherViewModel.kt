@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finances.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
@@ -50,15 +51,29 @@ class VoucherViewModel @Inject constructor(
     private val reader: FileReader,
     private val messages: MessageChannel,
     private val account: AccountRepository,
+    private val saved: SavedStateHandle,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(VoucherUiState())
+    private val _state = MutableStateFlow(VoucherUiState(
+        edited = saved[EDITED], amount = saved[AMOUNT] ?: "", currency = saved[CURRENCY] ?: "CHF"))
     val state = _state.asStateFlow()
 
     private var balanceJob: Job? = null
 
     init {
         observeLoadOn(_state) { loadVouchers(); loadRemoveEmpty() }
+    }
+
+    /**
+     * The form into the saved state, after every change to it. Number and PIN are secrets (the
+     * store keeps neither), and Android writes the saved state to disk: they stay out.
+     * Not by collecting [_state]: a collector would count as an observer and load the page.
+     */
+    private fun keepForm() {
+        val s = _state.value
+        saved[EDITED] = s.edited
+        saved[AMOUNT] = s.amount
+        saved[CURRENCY] = s.currency
     }
 
     fun loadVouchers() {
@@ -68,7 +83,12 @@ class VoucherViewModel @Inject constructor(
     private suspend fun load() {
         _state.update { it.copy(fetch = Load.Loads) }
         when (val r = repo.list()) {
-            is Outcome.Success -> _state.update { it.copy(vouchers = r.data, fetch = Load.Data(Unit)) }
+            is Outcome.Success -> _state.update { st ->
+                // After a process death the edited card has no number; its mask means "unchanged".
+                val g = r.data.find { it.id == st.edited }.takeIf { st.number.isEmpty() }
+                st.copy(vouchers = r.data, fetch = Load.Data(Unit),
+                    number = g?.number ?: st.number, pin = g?.pin ?: st.pin)
+            }
             is Outcome.Failure -> {
                 _state.update { it.copy(fetch = loadError(r)) }
                 messages.show(texts.messageForSnackbar(r))
@@ -109,6 +129,7 @@ class VoucherViewModel @Inject constructor(
                 currency = currency ?: it.currency,
             )
         }
+        keepForm()
     }
 
     /** Hiding happens right away; revealing needs the plain text from the server. */
@@ -220,6 +241,7 @@ class VoucherViewModel @Inject constructor(
                 pdfName = null,
             )
         }
+        keepForm()
     }
 
     fun emptyVoucherForm() {
@@ -227,6 +249,7 @@ class VoucherViewModel @Inject constructor(
             it.copy(edited = null, number = "", pin = "", amount = "",
                     currency = "CHF", pdfName = null)
         }
+        keepForm()
     }
 
     /**
@@ -283,6 +306,7 @@ class VoucherViewModel @Inject constructor(
                                 currency = g.currency?.code ?: it.currency,
                             )
                         }
+                        keepForm()
                         return@launch report(R.string.vouchers_pdf_incomplete)
                     }
                     handleResponse(r)
@@ -467,6 +491,10 @@ class VoucherViewModel @Inject constructor(
 
     private enum class BalanceQuery { DONE, REMOVED, ERROR, ABORT }
 }
+
+private const val EDITED = "voucher.edited"
+private const val AMOUNT = "voucher.amount"
+private const val CURRENCY = "voucher.currency"
 
 /** Steps the plain text handles; PDF and delete go to the server every time. */
 private val PLAINTEXT_STEPS = setOf(VoucherStep.PIN_SHOW, VoucherStep.NUMBER_COPY, VoucherStep.PIN_COPY)

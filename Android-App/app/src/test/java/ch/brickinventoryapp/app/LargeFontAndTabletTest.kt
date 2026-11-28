@@ -22,6 +22,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -283,7 +284,7 @@ class LargeFontAndTabletTest {
                     override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
-                }))
+                }, SavedStateHandle()))
             show(font) {
                 GalleryRoute(vm = vm, entryVm = entryVm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})

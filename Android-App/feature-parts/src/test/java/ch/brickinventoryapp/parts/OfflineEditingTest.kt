@@ -6,21 +6,19 @@ import ch.brickinventoryapp.data.local.ServerSender
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.completingConverter
 import ch.brickinventoryapp.data.testing.testMinifigsRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.data.testing.testWantedRepository
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.StorageInventory
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -110,7 +108,7 @@ class OfflineEditingTest {
             }
             response
         }.build())
-        .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
+        .addConverterFactory(completingConverter())
         .build().create(BrickApiService::class.java)
     private val repo = testSetsRepository(api, store)
     private val wantedList = testWantedRepository(api, store)

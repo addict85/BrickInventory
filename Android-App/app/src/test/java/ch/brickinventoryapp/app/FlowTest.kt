@@ -24,8 +24,8 @@ import androidx.compose.ui.test.performTextInput
 import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
-import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testVoucher
 import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.screens.VoucherCardActions
 import ch.brickinventoryapp.finances.ui.screens.VouchersCard
@@ -223,7 +223,7 @@ class FlowTest {
 
     /** The state of the voucher card; the tests of the confirmation change it. */
     private var condition by mutableStateOf(VoucherUiState(vouchers = listOf(
-        Voucher(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView())))
+        testVoucher(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView())))
 
     /** The Android level the page chooses by; Robolectric itself runs against API 35. */
     private var level by mutableStateOf(Build.VERSION.SDK_INT)

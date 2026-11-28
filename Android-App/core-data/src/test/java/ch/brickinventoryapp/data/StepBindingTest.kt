@@ -3,13 +3,11 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.account.StepBindingImpl
 import ch.brickinventoryapp.data.api.DeviceApi
 import ch.brickinventoryapp.data.testing.TestApi
-import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.data.testing.completingConverter
 import ch.brickinventoryapp.model.step.KeyNonce
 import ch.brickinventoryapp.model.step.StepAction
 import ch.brickinventoryapp.model.step.StepResponse
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -38,7 +36,7 @@ class StepBindingTest {
 
     private val server = MockWebServer().apply { start() }
     private val api = Retrofit.Builder().baseUrl(server.url("/"))
-        .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
+        .addConverterFactory(completingConverter())
         .build().create(DeviceApi::class.java)
     private val binding = StepBindingImpl(api)
 

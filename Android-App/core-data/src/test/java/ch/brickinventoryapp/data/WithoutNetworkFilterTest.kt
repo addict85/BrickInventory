@@ -2,11 +2,13 @@ package ch.brickinventoryapp.data
 
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.contract.ManualPartsResponse
-import ch.brickinventoryapp.contract.Part
-import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.PartsResponse
-import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.SetsResponse
+import ch.brickinventoryapp.contract.testing.testManualPartsResponse
+import ch.brickinventoryapp.contract.testing.testPart
+import ch.brickinventoryapp.contract.testing.testPartValuationItem
+import ch.brickinventoryapp.contract.testing.testPartsResponse
+import ch.brickinventoryapp.contract.testing.testSetItem
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.SetsApi
@@ -56,11 +58,11 @@ class WithoutNetworkFilterTest {
     fun tearDown() = room.close()
 
     private val sets = listOf(
-        SetItem(setNumber = "10001-1", name = "Burg am See", theme = "Castle", storage = "Kiste 1", year = 2001),
-        SetItem(setNumber = "10002-1", name = "Polizeiwache", theme = "City", storage = "Kiste 2", year = 2010),
-        SetItem(setNumber = "10003-1", name = "Seeräuber", theme = "Pirates", storage = "Kiste 1", year = 1999),
-        SetItem(setNumber = "21000-1", name = "Bahnhof", theme = "City", year = null),
-        SetItem(setNumber = "30000-1", name = "Rabatt 50_%", theme = "Promo", year = 2020),
+        testSetItem(setNumber = "10001-1", name = "Burg am See", theme = "Castle", storage = "Kiste 1", year = 2001),
+        testSetItem(setNumber = "10002-1", name = "Polizeiwache", theme = "City", storage = "Kiste 2", year = 2010),
+        testSetItem(setNumber = "10003-1", name = "Seeräuber", theme = "Pirates", storage = "Kiste 1", year = 1999),
+        testSetItem(setNumber = "21000-1", name = "Bahnhof", theme = "City", year = null),
+        testSetItem(setNumber = "30000-1", name = "Rabatt 50_%", theme = "Promo", year = 2020),
     )
 
     private val setsApi = object : SetsApi by fake<SetsApi>() {
@@ -75,10 +77,10 @@ class WithoutNetworkFilterTest {
     private val setsRepo = SetsRepositoryImpl(setsApi, store, RetryPolicy.ONCE)
 
     private val parts = listOf(
-        Part(partNumber = "3001", partName = "Brick 2 x 4", colorId = 4, colorName = "Red", categoryName = "11"),
-        Part(partNumber = "3001", partName = "Brick 2 x 4", colorId = 1, colorName = "Blue", categoryName = "11"),
-        Part(partNumber = "3023", partName = "Plate 1 x 2", colorId = 4, colorName = "Red", categoryName = "14", isSpare = true),
-        Part(partNumber = "3069b", blPartNumber = "87079", partName = "Tile 1 x 2", colorId = 1, colorName = "Blue",
+        testPart(partNumber = "3001", partName = "Brick 2 x 4", colorId = 4, colorName = "Red", categoryName = "11"),
+        testPart(partNumber = "3001", partName = "Brick 2 x 4", colorId = 1, colorName = "Blue", categoryName = "11"),
+        testPart(partNumber = "3023", partName = "Plate 1 x 2", colorId = 4, colorName = "Red", categoryName = "14", isSpare = true),
+        testPart(partNumber = "3069b", blPartNumber = "87079", partName = "Tile 1 x 2", colorId = 1, colorName = "Blue",
             categoryName = "19"),
     )
 
@@ -89,11 +91,11 @@ class WithoutNetworkFilterTest {
             if (offline) throw ConnectException("aus")
             // Two per page: that way the local list is only complete after page 2.
             val page = parts.drop((page - 1) * 2).take(2)
-            return Response.success(PartsResponse(success = true, total = parts.size, parts = page))
+            return Response.success(testPartsResponse(success = true, total = parts.size, parts = page))
         }
         override suspend fun getManualParts(accounts: String?, search: String?, storage: String?): Response<ManualPartsResponse> {
             if (offline) throw ConnectException("aus")
-            return Response.success(ManualPartsResponse(success = true, parts = listOf(PartValuationItem(partNumber = "m1"))))
+            return Response.success(testManualPartsResponse(success = true, parts = listOf(testPartValuationItem(partNumber = "m1"))))
         }
     }
     private val partsRepo = PartsRepositoryImpl(partsApi, store, RetryPolicy.ONCE)

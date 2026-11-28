@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finances
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.RowsServer
 import ch.brickinventoryapp.data.testing.TestApi
@@ -75,8 +76,7 @@ class VoucherRemoveEmptyTest {
             texts = NumbersTexts,
             reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
             messages = channel,
-            account = testAccountRepository(server.api, tick),
-        )
+            account = testAccountRepository(server.api, tick), SavedStateHandle())
     }
 
     @After

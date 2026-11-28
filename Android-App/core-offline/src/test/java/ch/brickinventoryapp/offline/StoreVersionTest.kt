@@ -8,8 +8,14 @@ import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.PriceAlert
 import ch.brickinventoryapp.contract.StatsResponse
 import ch.brickinventoryapp.contract.ValuationAcquisition
-import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testDashboardStats
+import ch.brickinventoryapp.contract.testing.testFigValuationItem
+import ch.brickinventoryapp.contract.testing.testMinifig
+import ch.brickinventoryapp.contract.testing.testPartValuationItem
+import ch.brickinventoryapp.contract.testing.testPriceAlert
+import ch.brickinventoryapp.contract.testing.testValuationAcquisition
+import ch.brickinventoryapp.contract.testing.testVoucher
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.CatalogMetaView
 import ch.brickinventoryapp.model.domain.CatalogThemeView
@@ -54,7 +60,7 @@ class StoreVersionTest {
         quantity = 1, imageUrl = "u", imageLocal = "l", unitPrice = 1.0, purchasePrice = 2.0, avgPurchasePrice = 3.0, qtyAvgPrice = 4.0,
         avgPrice = 5.0, pnlPct = "-1%", pnlPercent = -1.0, displayValue = "5,00", totalValue = "5,00", valueTotal = 5.0,
         condition = Condition.NEW, conditions = listOf(Condition.NEW), userId = 3, owners = listOf(account), acquisitions = listOf(purchase), storage = "Kiste")
-    private val voucher = Voucher(id = 7, number = "6061", amount = 20.0, currency = CurrencyCode.EUR, hasPdf = true,
+    private val voucher = testVoucher(id = 7, number = "6061", amount = 20.0, currency = CurrencyCode.EUR, hasPdf = true,
         createdAt = "2025-05-01T09:00:00Z", updatedAt = "2026-01-01T09:00:00Z", balanceCheckedAt = "2026-02-03")
     private val alarm = PriceAlert(setNumber = "75192-1", condition = Condition.USED, direction = AlarmDirection.OVER, threshold = 800.0,
         currencyCode = CurrencyCode.CHF, triggered = true, lastTriggeredAt = "2026-03-04T05:06:07Z", lastPrice = 810.0, name = "Falke", imageLocal = "l",
@@ -87,22 +93,22 @@ class StoreVersionTest {
     /** How the rows lay when the store still wrote the server model: frozen, not newly generated. */
     @Test
     fun `an old row of every compartment stays readable`() {
-        assertEquals(Minifig(figNumber = "sw0001", figName = "Luke", quantity = 2, owners = listOf(account)).asView(),
+        assertEquals(testMinifig(figNumber = "sw0001", figName = "Luke", quantity = 2, owners = listOf(account)).asView(),
             Slots.FIGURES.form.decode(BrickJson,
                 """{"fig_number":"sw0001","fig_name":"Luke","quantity":2,"owners":[{"id":3,"username":"lea"}],"source":"set"}"""))
-        assertEquals(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 3, userId = 3, storage = "Regal",
-            acquisitions = listOf(ValuationAcquisition(id = 4, purchasePrice = 1.5))).asView(),
+        assertEquals(testPartValuationItem(partNumber = "3001", colorId = 5, quantity = 3, userId = 3, storage = "Regal",
+            acquisitions = listOf(testValuationAcquisition(id = 4, quantity = 1, purchasePrice = 1.5))).asView(),
             Slots.MANUAL_PARTS.form.decode(BrickJson,
                 """{"part_number":"3001","color_id":5,"quantity":3,"user_id":3,"storage":"Regal","acquisitions":[{"id":4,"purchase_price":1.5}]}"""))
-        assertEquals(FigValuationItem(figNumber = "sw0002", blFigNumber = "sw0002a", quantity = 1, userId = 3).asView(),
+        assertEquals(testFigValuationItem(figNumber = "sw0002", blFigNumber = "sw0002a", quantity = 1, userId = 3).asView(),
             Slots.MANUAL_FIGURES.form.decode(BrickJson, """{"fig_number":"sw0002","bl_fig_number":"sw0002a","quantity":1,"user_id":3}"""))
-        assertEquals(Voucher(id = 7, number = "6061", amount = 20.0, currency = CurrencyCode.EUR, hasPdf = true).asView(),
+        assertEquals(testVoucher(id = 7, number = "6061", amount = 20.0, currency = CurrencyCode.EUR, hasPdf = true).asView(),
             Slots.VOUCHERS.form.decode(BrickJson, """{"id":7,"number":"6061","amount":20.0,"currency":"EUR","hat_pdf":true}"""))
-        assertEquals(PriceAlert(setNumber = "75192-1", condition = Condition.USED, direction = AlarmDirection.OVER, threshold = 800.0,
-            currencyCode = CurrencyCode.CHF, lastPrice = 810.0).asView(),
+        assertEquals(testPriceAlert(setNumber = "75192-1", condition = Condition.USED, direction = AlarmDirection.OVER, threshold = 800.0,
+            currencyCode = CurrencyCode.CHF, lastPrice = 810.0, owns = true).asView(),
             Slots.PRICE_ALARMS.form.decode(BrickJson,
                 """{"set_number":"75192-1","condition":"U","richtung":"ueber","schwelle":800.0,"currency_code":"CHF","zuletzt_preis":810.0}"""))
-        assertEquals(DashboardStats(totalSets = 1, totalQuantity = 2, totalPieces = 3,
+        assertEquals(testDashboardStats(totalSets = 1, totalQuantity = 2, totalPieces = 3,
             totalInstructions = 4, totalParts = 5, manualParts = 7, totalMinifigs = 8).asView(),
             Slots.METRICS.form.decode(BrickJson, """{"success":true,"stats":{"total_sets":1,"total_quantity":2,"total_pieces":3,""" +
                 """"total_instructions":4,"total_parts":5,"manual_parts":7,"total_minifigs":8}}"""))

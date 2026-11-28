@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.management
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.PathServer
@@ -63,7 +64,7 @@ class BackgroundWorkTest {
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-hg-${System.nanoTime()}")
     private val channel = MessageChannel()
     private val vm = TestApi.forTarget(paths.server).let { api ->
-        MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), channel)
+        MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), channel, SavedStateHandle())
     }
 
     @After

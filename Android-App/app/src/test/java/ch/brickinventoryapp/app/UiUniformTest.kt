@@ -27,6 +27,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.LocationsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
@@ -191,7 +192,7 @@ class UiUniformTest {
         object : SetCreator {
             override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
-        }))
+        }, SavedStateHandle()))
 
     // ── Tablet: reading width like the settings ──
 
@@ -217,7 +218,7 @@ class UiUniformTest {
         world.paths.responses["/api/v2/admin/job-queue"] = """{"success":true,"jobs":[],"summary":[],"pauses":[],
             "image_demand":0,"job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
         val api = world.t.api
-        val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages)
+        val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages, SavedStateHandle())
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         val background = vm.background.value

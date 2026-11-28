@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testSetItem
 import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ReconcileOutcome
 import ch.brickinventoryapp.data.local.SendOutcome
@@ -43,7 +43,7 @@ class ReconcileOnRoomTest {
     @Test
     fun `sends in order and counts attempts`() = runBlocking {
         val store = OfflineStore(stock, outbox, { "a" })
-        store.adopt(Slots.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1)).map { it.asView() })
+        store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "1-1", quantity = 1)).map { it.asView() })
         for (n in 1..3) store.buffer(Editing.SetQuantity("1-1", n))
         assertEquals(3, outbox.count("a").first())
         assertEquals(7, store.read(Slots.SETS)!!.list.single().quantity)

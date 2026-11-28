@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finances
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.RowsServer
 import ch.brickinventoryapp.data.testing.TestApi
@@ -39,6 +40,10 @@ import java.io.File
  *  - In the finally of queryAllBalances() back to `load()` instead of
  *    `loadVouchers()`: "a cancelled run cleans up and reloads" red — the
  *    cancelled coroutine no longer loads (two fetches instead of three).
+ *  - counter-checks/voucher-form-not-saved.patch: keepForm() no longer writes the amount →
+ *    red "amount and currency survive a process death, number and PIN do not".
+ *  - counter-checks/voucher-number-saved.patch: keepForm() also writes the number → red in
+ *    the same test (the handle holds a secret).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoucherViewModelTest {
@@ -49,6 +54,14 @@ class VoucherViewModelTest {
     private lateinit var cacheDir: File
     private lateinit var channel: MessageChannel
     private lateinit var vm: VoucherViewModel
+    private val saved = SavedStateHandle()
+
+    private fun voucherVm(handle: SavedStateHandle) = VoucherViewModel(
+        repo = testVouchersRepository(server.api),
+        texts = NumbersTexts,
+        reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
+        messages = channel,
+        account = testAccountRepository(server.api), saved = handle)
 
     private fun response(body: String, code: Int = 200) = TestApi.response(body, code)
 
@@ -68,15 +81,8 @@ class VoucherViewModelTest {
         server = RowsServer()
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-gut-${System.nanoTime()}")
         cacheDir.mkdirs()
-        val api = server.api
         channel = MessageChannel()
-        vm = VoucherViewModel(
-            repo = testVouchersRepository(api),
-            texts = NumbersTexts,
-            reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
-            messages = channel,
-            account = testAccountRepository(api),
-        )
+        vm = voucherVm(saved)
     }
 
     @After
@@ -85,6 +91,19 @@ class VoucherViewModelTest {
         server.checkReadIn()
         cacheDir.deleteRecursively()
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `amount and currency survive a process death, number and PIN do not`() {
+        vm.setVoucherField(number = "6000111122223333", pin = "1234", amount = "12,5", currency = "EUR")
+        clock.runCurrent()
+        val values = saved.keys().map { saved.get<Any?>(it) }
+        assertTrue("no secret in the saved state: $values", values.none { it == "6000111122223333" || it == "1234" })
+
+        val again = voucherVm(saved.afterProcessDeath())
+        clock.runCurrent()
+        val s = again.state.value
+        assertEquals(listOf("12,5", "EUR", "", ""), listOf(s.amount, s.currency, s.number, s.pin))
     }
 
     @Test
@@ -166,3 +185,6 @@ class VoucherViewModelTest {
         assertEquals("no second card after the account limit: $paths", 1, paths.count { "/balance" in it })
     }
 }
+
+/** What a recreated ViewModel finds after a process death: only the values saved in the handle. */
+private fun SavedStateHandle.afterProcessDeath() = SavedStateHandle(keys().associateWith { get<Any?>(it) })

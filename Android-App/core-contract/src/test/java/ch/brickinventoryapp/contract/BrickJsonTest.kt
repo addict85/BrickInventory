@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.contract
 
+import ch.brickinventoryapp.contract.testing.testStorageDefaultResponse
 import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
@@ -12,7 +13,7 @@ import org.junit.Test
  *
  * Counter-checks (measured with kotlinc against core-model):
  *   A  in BrickJson `coerceInputValues = true` added → red “null in a field with
- *      a default value is an error” (success silently becomes false)
+ *      a default value is an error” (trash silently becomes 0)
  *   B  `ignoreUnknownKeys = true` struck → red “unknown fields stay allowed”
  *   C  `encodeDefaults = true` struck → red “defaults are written along”
  */
@@ -21,18 +22,18 @@ class BrickJsonTest {
     @Test
     fun `null in a field with a default value is an error`() {
         assertThrows(SerializationException::class.java) {
-            BrickJson.decodeFromString<StorageDefaultResponse>("""{"success":null}""")
+            BrickJson.decodeFromString<QuantityChanged>("""{"success":true,"quantity":1,"trash":null}""")
         }
     }
 
     @Test
     fun `unknown fields stay allowed`() {
-        val r = BrickJson.decodeFromString<StorageDefaultResponse>("""{"success":true,"neu_vom_server":1}""")
+        val r = BrickJson.decodeFromString<StorageDefaultResponse>("""{"success":true,"preset":null,"neu_vom_server":1}""")
         assertEquals(true, r.success)
     }
 
     @Test
     fun `defaults are written along`() {
-        assertEquals("""{"success":false,"preset":null}""", BrickJson.encodeToString(StorageDefaultResponse()))
+        assertEquals("""{"success":false,"preset":null}""", BrickJson.encodeToString(testStorageDefaultResponse()))
     }
 }

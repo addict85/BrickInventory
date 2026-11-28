@@ -153,17 +153,17 @@ object Examples {
                     ExportResult.Failure(PdfFailure.Fetch(Outcome.Failure.Network()))
             }, handle))
 
-        fun entry() = t.track(EntryViewModel(t.session, t.filter(), t.hints, testSetsRepository(t.api), t.setCatalog(), t.wantedList(),
+        fun entry(handle: SavedStateHandle = SavedStateHandle()) = t.track(EntryViewModel(t.session, t.filter(), t.hints, testSetsRepository(t.api), t.setCatalog(), t.wantedList(),
             testCatalogRepository(t.api), object : SetCreator {
                 override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                     ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
-            }))
+            }, handle))
         fun settings() = t.track(SettingsViewModel(t.session, t.filter(), t.hints, t.sync, testAccountRepository(t.api, t.io),
             testManagementRepository(t.api), t.alerts(), testPartsRepository(t.api), noFiles))
         fun purchases() = t.track(PurchasesViewModel(t.session, t.filter(), t.hints, t.changes, testHouseholdRepository(t.api), t.sets(),
             testFinancesRepository(t.api), testPartsRepository(t.api), testMinifigsRepository(t.api)))
-        fun vouchers() = t.track(VoucherViewModel(testVouchersRepository(t.api), texts, noFiles, t.messages,
-            testAccountRepository(t.api, t.io)))
+        fun vouchers(handle: SavedStateHandle = SavedStateHandle()) = t.track(VoucherViewModel(testVouchersRepository(t.api), texts,
+            noFiles, t.messages, testAccountRepository(t.api, t.io), handle))
 
         override fun close() {
             t.cleanUp()

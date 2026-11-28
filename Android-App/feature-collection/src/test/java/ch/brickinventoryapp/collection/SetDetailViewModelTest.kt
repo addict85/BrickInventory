@@ -2,8 +2,8 @@ package ch.brickinventoryapp.collection
 
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testSetItem
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
@@ -113,7 +113,7 @@ class SetDetailViewModelTest {
 
     @Test
     fun `a changed quantity is shown immediately and in the store`() {
-        runBlocking { t.store.adopt(Slots.SETS, listOf(SetItem(setNumber = "75192-1", quantity = 1)).map { it.asView() }) }
+        runBlocking { t.store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "75192-1", quantity = 1)).map { it.asView() }) }
         val vm = vm()
         loaded(vm)
         serverHasThreeAfterwards()
@@ -142,7 +142,7 @@ class SetDetailViewModelTest {
 
     @Test
     fun `a changed purchase of another set loads nothing here, one of this set does`() {
-        runBlocking { t.store.adopt(Slots.SETS, listOf(SetItem(setNumber = "75192-1"), SetItem(setNumber = "10294-1")).map { it.asView() }) }
+        runBlocking { t.store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "75192-1"), testSetItem(setNumber = "10294-1")).map { it.asView() }) }
         val vm = vm()
         loaded(vm)
         val before = paths.requestsTo("GET /api/v2/sets/75192-1/acquisitions").size

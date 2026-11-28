@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testSetItem
 import ch.brickinventoryapp.model.local.StockKind
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,11 +52,11 @@ class OfflineStoreLockTest {
 
     @Test
     fun `a puffere during a server response is not lost`() = runBlocking {
-        store.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.asView() })
+        store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "10001-1", quantity = 1)).map { it.asView() })
         val gate = stock.hold()
         // The server doesn't know about the change yet: its response already read the
         // outbox (empty) and is waiting during the write.
-        val response = launch { store.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.asView() }) }
+        val response = launch { store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "10001-1", quantity = 1)).map { it.asView() }) }
         yield()
         val offline = launch { store.buffer(Editing.SetQuantity("10001-1", 1)) }
         repeat(3) { yield() }
@@ -67,7 +67,7 @@ class OfflineStoreLockTest {
 
     @Test
     fun `two simultaneous applyChange both count`() = runBlocking {
-        store.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.asView() })
+        store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "10001-1", quantity = 1)).map { it.asView() })
         val gate = stock.hold()
         val first = launch { store.applyChange(Editing.SetQuantity("10001-1", 1)) }
         yield()
@@ -83,7 +83,7 @@ class OfflineStoreLockTest {
         val session = MutableStateFlow<String?>("a")
         // The point query stays at „a“: only the flow of the session is observed.
         val store = OfflineStore(StorageInventory(), OutboxStorage(), { "a" }, areaFlow = session)
-        store.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1")).map { it.asView() })
+        store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "10001-1")).map { it.asView() })
         assertEquals(listOf("10001-1"), store.observe(Slots.SETS).first().list.map { it.setNumber })
         session.value = null
         assertEquals("signed out shows nothing", emptyList<String>(), store.observe(Slots.SETS).first().list.map { it.setNumber })

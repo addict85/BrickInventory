@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.testing
 
+import ch.brickinventoryapp.contract.testing.decodeCompleted
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.ui.Message
@@ -11,6 +12,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -19,6 +21,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import okio.Buffer
+import retrofit2.Converter
 import retrofit2.Invocation
 import retrofit2.Retrofit
 import java.io.IOException
@@ -55,7 +58,7 @@ object TestApi {
         return Retrofit.Builder()
             .baseUrl(basis)
             .callFactory(call)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(CompletingFactory(json.asConverterFactory("application/json".toMediaType())))
             .build()
             .create(BrickApiService::class.java)
     }
@@ -170,7 +173,7 @@ class PathServer(vararg rules: Pair<String, String>) {
     private fun checkAgainstDto(request: Request, path: String, text: String) {
         val type = request.tag(Invocation::class.java)?.let { responseType(it.method()) } ?: return
         try {
-            BrickJson.decodeFromString(BrickJson.serializersModule.serializer(type), text)
+            decodeCompleted(BrickJson.serializersModule.serializer(type), text)
         } catch (e: IllegalArgumentException) {
             val reason = "${request.method} $path: ${e.message?.lineSequence()?.firstOrNull()}"
             readError += reason
@@ -205,6 +208,24 @@ class PathServer(vararg rules: Pair<String, String>) {
     }
 
     fun requestsTo(path: String): List<String> = synchronized(requests) { requests.filter { path in it } }
+}
+
+/** The test's Retrofit converter: responses are read after [decodeCompleted], requests go out as the app writes them. */
+fun completingConverter(): Converter.Factory = CompletingFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
+
+private class CompletingFactory(private val real: Converter.Factory) : Converter.Factory() {
+    override fun responseBodyConverter(type: Type, annotations: Array<out Annotation>, retrofit: Retrofit): Converter<ResponseBody, *>? {
+        if (type == ResponseBody::class.java || type == Unit::class.java) return null
+        val serializer = BrickJson.serializersModule.serializer(type)
+        return Converter<ResponseBody, Any?> { body -> decodeCompleted(serializer, body.string()) }
+    }
+
+    override fun requestBodyConverter(type: Type, parameterAnnotations: Array<out Annotation>, methodAnnotations: Array<out Annotation>,
+                                      retrofit: Retrofit): Converter<*, RequestBody>? =
+        real.requestBodyConverter(type, parameterAnnotations, methodAnnotations, retrofit)
+
+    override fun stringConverter(type: Type, annotations: Array<out Annotation>, retrofit: Retrofit): Converter<*, String>? =
+        real.stringConverter(type, annotations, retrofit)
 }
 
 /** A repository against a test server; if it needs a store, its factory brings one along. */

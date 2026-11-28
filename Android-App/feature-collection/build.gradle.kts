@@ -26,6 +26,7 @@ dependencies {
     testImplementation(testFixtures(project(":core-state")))
     // The test servers answer in wire format.
     testImplementation(project(":core-contract"))
+    testImplementation(testFixtures(project(":core-contract")))
     // The tests build the cache and edits themselves.
     testImplementation(project(":core-offline"))
 }

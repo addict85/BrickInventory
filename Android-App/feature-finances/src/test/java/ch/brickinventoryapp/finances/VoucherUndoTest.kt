@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finances
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
@@ -52,8 +53,7 @@ class VoucherUndoTest {
             texts = NumbersTexts,
             reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
             messages = channel,
-            account = testAccountRepository(paths.onTick()),
-        )
+            account = testAccountRepository(paths.onTick()), SavedStateHandle())
         vm.loadVouchers()
     }
 

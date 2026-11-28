@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.AccountName
-import ch.brickinventoryapp.contract.FigValuationItem
-import ch.brickinventoryapp.contract.PartValuationItem
-import ch.brickinventoryapp.contract.SetItem
-import ch.brickinventoryapp.contract.WantedItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testFigValuationItem
+import ch.brickinventoryapp.contract.testing.testPartValuationItem
+import ch.brickinventoryapp.contract.testing.testSetItem
+import ch.brickinventoryapp.contract.testing.testWantedItem
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
 import ch.brickinventoryapp.data.collection.WantedListRepositoryImpl
@@ -65,13 +65,13 @@ class FollowUpTest {
 
     @Before
     fun setUp() = runBlocking {
-        store.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1, storage = "Kiste 1",
+        store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "10001-1", quantity = 1, storage = "Kiste 1",
             owners = listOf(AccountName(id = 1, username = "anna"), AccountName(id = 2, username = "ben")))).map { it.asView() })
-        store.adopt(Slots.WANTED_LIST, listOf(WantedItem(setNumber = "20001-1", condition = Condition.NEW, userId = 1),
-            WantedItem(setNumber = "20002-1", condition = Condition.NEW, userId = 1)).map { it.asView() })
-        store.adopt(Slots.MANUAL_PARTS, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 2, storage = "Kiste 1"),
-            PartValuationItem(partNumber = "3001", colorId = 7, quantity = 4)).map { it.asView() })
-        store.adopt(Slots.MANUAL_FIGURES, listOf(FigValuationItem(figNumber = "sw0001", storage = "Kiste 1")).map { it.asView() })
+        store.adopt(Slots.WANTED_LIST, listOf(testWantedItem(setNumber = "20001-1", condition = Condition.NEW, userId = 1),
+            testWantedItem(setNumber = "20002-1", condition = Condition.NEW, userId = 1)).map { it.asView() })
+        store.adopt(Slots.MANUAL_PARTS, listOf(testPartValuationItem(partNumber = "3001", colorId = 5, quantity = 2, storage = "Kiste 1"),
+            testPartValuationItem(partNumber = "3001", colorId = 7, quantity = 4)).map { it.asView() })
+        store.adopt(Slots.MANUAL_FIGURES, listOf(testFigValuationItem(figNumber = "sw0001", storage = "Kiste 1")).map { it.asView() })
     }
 
     @After
@@ -124,7 +124,7 @@ class FollowUpTest {
         // The device holds only one account; the new one loads its set while the old response is on its way.
         paths.priority = { _, _ ->
             area = "b"
-            runBlocking { store.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.asView() }) }
+            runBlocking { store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "10001-1", quantity = 1)).map { it.asView() }) }
             null
         }
         sets.setQuantity("10001-1", 5)

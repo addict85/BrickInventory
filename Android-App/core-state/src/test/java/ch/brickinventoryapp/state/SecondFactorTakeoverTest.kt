@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.state
 
 import ch.brickinventoryapp.contract.LoginResponse
+import ch.brickinventoryapp.contract.testing.decodeCompleted
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.session.adoptAccount
 import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.runBlocking
@@ -62,10 +62,10 @@ class SecondFactorTakeoverTest {
 
     @Test
     fun `sign-in and auth me read the field secondFactorRequired`() = runBlocking {
-        val login = BrickJson.decodeFromString(LoginResponse.serializer(),
+        val login = decodeCompleted(LoginResponse.serializer(),
             """{"success":true,"token":"t","user":{"id":1,"username":"marco","is_admin":true,"secondFactorRequired":true}}""")
         assertTrue("from the sign-in", login.user?.secondFactorRequired == true)
-        val without = BrickJson.decodeFromString(LoginResponse.serializer(),
+        val without = decodeCompleted(LoginResponse.serializer(),
             """{"success":true,"token":"t","user":{"id":1,"username":"marco"}}""")
         assertFalse("an older server does not name it", without.user?.secondFactorRequired == true)
 

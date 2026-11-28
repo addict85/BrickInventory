@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finances
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.testAccountRepository
@@ -83,8 +84,7 @@ class VoucherPlaintextTest {
             texts = NumbersTexts,
             reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
             messages = channel,
-            account = testAccountRepository(TestApi.forTarget(server)),
-        )
+            account = testAccountRepository(TestApi.forTarget(server)), SavedStateHandle())
         server.enqueue(response(masked))
         vm.loadVouchers()
         pollUntil("Liste") { vm.state.value.vouchers.size == 1 && !vm.state.value.fetch.loading }

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.management.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
@@ -60,6 +61,8 @@ data class MonitoringUiState(
     val accessRevoked: Boolean = false,
 )
 
+private const val LOG_MINUTES = "monitoring.logMinutes"
+
 private fun revoked(r: Outcome<*>) = r is Outcome.Failure && r.code == ErrorCode.ONLY_ADMINS
 
 /** The background work (job table); the view stays up while it is being fetched anew. */
@@ -77,6 +80,7 @@ class MonitoringViewModel @Inject constructor(
     private val admin: ManagementRepository,
     private val account: AccountRepository,
     private val messages: MessageChannel,
+    private val saved: SavedStateHandle,
 ) : ViewModel(), MonitoringActions {
 
     private val _state = MutableStateFlow(MonitoringUiState())
@@ -87,11 +91,13 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /** The server log — its own flow, it only loads on request. */
-    private val _managementState = MutableStateFlow(ManagementUiState())
+    private val _managementState = MutableStateFlow(ManagementUiState(logMinutes = saved[LOG_MINUTES] ?: ManagementUiState().logMinutes))
     val managementState = _managementState.asStateFlow()
 
     internal suspend fun loadLog(minutes: Int) {
         _managementState.update { it.copy(fetch = Load.Loads, logMinutes = minutes) }
+        // The chosen window survives a process death: reopening the log fetches the same span.
+        saved[LOG_MINUTES] = minutes
         when (val r = admin.getLog(minutes)) {
             is Outcome.Success -> _managementState.update { it.copy(log = r.data, fetch = Load.Data(Unit)) }
             is Outcome.Failure -> _managementState.update { it.copy(fetch = loadError(r)) }

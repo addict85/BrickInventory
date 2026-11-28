@@ -121,7 +121,8 @@ internal class SetCreateSseClient @Inject constructor(
         val r = json.decodeFromString(AddSetResponse.serializer(), text)
         if (r.success) SetCreateStep.Done(r.asRecorded()) else SetCreateStep.Failure(errorTextFrom(text))
     } catch (_: IllegalArgumentException) {
-        SetCreateStep.Failure("")
+        // A refusal carries only success and the sentence, not the fields of a created set.
+        SetCreateStep.Failure(errorTextFrom(text))
     }
 
     /** Get the sentence the server sent from an error response. */

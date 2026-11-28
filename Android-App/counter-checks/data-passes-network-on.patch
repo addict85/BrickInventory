@@ -3,11 +3,12 @@ Modul: app
 Test: ch.brickinventoryapp.app.ModuleBoundariesTest
 Rot: layering of the core modules
 
+
 diff --git a/Android-App/core-data/build.gradle.kts b/Android-App/core-data/build.gradle.kts
 --- a/Android-App/core-data/build.gradle.kts
 +++ b/Android-App/core-data/build.gradle.kts
-@@ -28,7 +28,7 @@
-     implementation(project(":core-contract"))
+@@ -29,7 +29,7 @@
+     testImplementation(testFixtures(project(":core-contract")))
      // Guards and network policy. Whoever names something from it themselves (NetworkPolicy, Protokoll)
      // includes core-network themselves; nothing of it reaches beyond core-data.
 -    implementation(project(":core-network"))

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app.csv
 
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.contract.CsvImportStatus
 import ch.brickinventoryapp.contract.GenericAdminResponse
+import ch.brickinventoryapp.contract.testing.testCsvImportStatus
 import ch.brickinventoryapp.data.CsvImportObserver
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStream
@@ -143,7 +143,7 @@ class CsvImportViewModelTest {
         val error = listOf(CsvImportSseClient.Event.Failed("weg"))
         val stream = Stream(error, error, error)
         withVm(stream, service) { vm ->
-            fake.responses["getCsvImportStatus"] = CsvImportStatus(success = true, status = RunStatus.RUNNING, total = 5, done = 2)
+            fake.responses["getCsvImportStatus"] = testCsvImportStatus(success = true, status = RunStatus.RUNNING, total = 5, done = 2)
             runCurrent()
             assertEquals("one query after the drop", 1, fake.callsOf("getCsvImportStatus"))
             assertEquals("the query fills the bar", 2, vm.csvImportState.value.done)

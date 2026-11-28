@@ -2,12 +2,14 @@ package ch.brickinventoryapp.offline
 
 import ch.brickinventoryapp.contract.AccountName
 import ch.brickinventoryapp.contract.BrickLinkRef
-import ch.brickinventoryapp.contract.Instruction
 import ch.brickinventoryapp.contract.Part
 import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.WantedItem
 import ch.brickinventoryapp.contract.WantedItemAlert
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testInstruction
+import ch.brickinventoryapp.contract.testing.testSetItem
+import ch.brickinventoryapp.contract.testing.testWantedItem
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
@@ -35,10 +37,10 @@ class StoreShapeTest {
     private fun <T : Any> round(domain: Domain<T>, value: T): T = domain.form.decode(BrickJson, domain.form.encode(BrickJson, value))
 
     // Every field with its own value, so that a swap stands out.
-    private val set = SetItem(setNumber = "10001-1", name = "Burg", year = 1990, theme = "Castle", pieces = 500, minifigs = 4, quantity = 2, imageUrl = "u", imageLocal = "l", addedAt = "2020-01-01", condition = Condition.USED,
+    private val set = testSetItem(setNumber = "10001-1", name = "Burg", year = 1990, theme = "Castle", pieces = 500, minifigs = 4, quantity = 2, imageUrl = "u", imageLocal = "l", addedAt = "2020-01-01", condition = Condition.USED,
         storage = "Kiste 1", conditions = listOf(Condition.NEW, Condition.USED), owners = listOf(AccountName(id = 3, username = "lea")), maxPurchasePrice = 99.5, avgPurchasePrice = 88.25, usedCount = 1,
-        instructions = listOf(Instruction(id = 4, url = "a.pdf", description = "Heft 1", localPath = "lokal/a.pdf", isManual = true)), bricklink = BrickLinkRef(type = "GEAR", number = "g1", url = "bl", exact = false, resolved = true), priceComparisonUrl = "pv")
-    private val remember = WantedItem(setNumber = "20001-1", condition = Condition.USED, createdAt = "2021-02-02", userId = 7, name = "Schiff", year = 2001, numParts = 900, imageUrl = "u", imageLocal = "l", marketPrice = 12.5,
+        instructions = listOf(testInstruction(id = 4, url = "a.pdf", description = "Heft 1", localPath = "lokal/a.pdf", isManual = true)), bricklink = BrickLinkRef(type = "GEAR", number = "g1", url = "bl", exact = false, resolved = true), priceComparisonUrl = "pv")
+    private val remember = testWantedItem(setNumber = "20001-1", condition = Condition.USED, createdAt = "2021-02-02", userId = 7, name = "Schiff", year = 2001, numParts = 900, imageUrl = "u", imageLocal = "l", marketPrice = 12.5,
         currency = CurrencyCode.CHF, owned = true, alarm = WantedItemAlert(direction = AlarmDirection.OVER, threshold = 30.0, triggered = true), priceComparisonUrl = "pv")
     private val part = Part(partNumber = "3001", blPartNumber = "3001b", partName = "Stein", colorId = 5, blColorId = 11, colorName = "Rot", colorHex = "FF0000", categoryName = "Steine", imageUrl = "u", imageLocal = "l", totalQuantity = 9, inSets = "10001-1", isSpare = true)
 

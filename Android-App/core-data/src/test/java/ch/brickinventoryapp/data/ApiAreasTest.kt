@@ -24,10 +24,8 @@ import ch.brickinventoryapp.data.parts.FiguresRepositoryImpl
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.TestApi
-import ch.brickinventoryapp.model.json.BrickJson
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import ch.brickinventoryapp.data.testing.completingConverter
 import kotlinx.coroutines.runBlocking
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -97,7 +95,7 @@ class ApiAreasTest {
         server.start()
         try {
             val sets = Retrofit.Builder().baseUrl(server.url("/"))
-                .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
+                .addConverterFactory(completingConverter())
                 .build().create(SetsApi::class.java)
             runBlocking { sets.getParts(page = 1, pageSize = 5, setNumber = "75192-1") }
             val path = server.takeRequest().path.orEmpty()

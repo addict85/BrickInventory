@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.login.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.LoginStore
@@ -72,6 +73,7 @@ internal class LoginViewModel @Inject constructor(
     private val store: LoginStore,
     private val question: CertificateQuestion,
     private val systemRoots: SystemRoots,
+    private val saved: SavedStateHandle,
 ) : ViewModel() {
 
     val state: StateFlow<AppUiState> = session.state
@@ -80,8 +82,21 @@ internal class LoginViewModel @Inject constructor(
         logoutSequence(session) { reset() }
     }
 
-    private val _loginState = MutableStateFlow(LoginUiState())
+    private val _loginState = MutableStateFlow(LoginUiState(
+        form = LoginForm.entries.firstOrNull { it.name == saved[FORM] } ?: LoginForm.LOGIN,
+        fullAccess = saved[FULL_ACCESS] ?: false))
     internal val loginState: StateFlow<LoginUiState> = _loginState.asStateFlow()
+
+    init {
+        // The open form and the admin checkbox survive a process death; the typed text lives
+        // in the screen (rememberSaveable), password and code deliberately nowhere.
+        viewModelScope.launch {
+            _loginState.collect {
+                saved[FORM] = it.form.name
+                saved[FULL_ACCESS] = it.fullAccess
+            }
+        }
+    }
 
     /**
      * Only an https address is saved; false means rejected, setup
@@ -460,3 +475,6 @@ internal class LoginViewModel @Inject constructor(
         _loginState.value = LoginUiState()
     }
 }
+
+private const val FORM = "login.form"
+private const val FULL_ACCESS = "login.fullAccess"

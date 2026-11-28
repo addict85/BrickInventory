@@ -44,6 +44,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -224,7 +225,7 @@ class FormsAndMarginsTest {
         object : SetCreator {
             override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
-        }))
+        }, SavedStateHandle()))
 
     // ── Kaufpreise ──
 
@@ -300,7 +301,7 @@ class FormsAndMarginsTest {
                "updated_at":null,"progress":null,"error_message":null,"user_id":4,"scheduled":false,"set_number":"75192-1"}],
             "summary":[],"pauses":[],"image_demand":0,
             "job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
-        val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages)
+        val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages, SavedStateHandle())
         runBlocking { vm.loadBackground() }
         val networks = mapOf(PrewarmNetwork.WIFI to true, PrewarmNetwork.MOBILE to false, PrewarmNetwork.ROAMING to false)
         val background = vm.background.value

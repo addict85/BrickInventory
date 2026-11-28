@@ -38,6 +38,7 @@ dependencies {
     testFixturesImplementation(libs.kotlinx.coroutines.android)
     // The tests build server responses as core-data maps them; the store itself does not know them.
     testImplementation(project(":core-contract"))
+    testImplementation(testFixtures(project(":core-contract")))
     // Room-Tests laufen unter Robolectric (StockMigrationTest).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

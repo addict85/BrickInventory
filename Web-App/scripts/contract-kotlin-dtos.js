@@ -1,13 +1,10 @@
 #!/usr/bin/env node
 'use strict';
 
-/**
- * Writes the app's Kotlin types (core-contract, package contract) from
- * docs/openapi-v2.json, without network and without Gradle: responses from the schemas,
- * bodies from the requests of the routes the app sends. Names and domain types
- * are in contract-kotlin-mapping.js. Checked in; with --pruefen only
- * compare (return 1 on a deviation). Call: npm run contract:kotlin
- */
+/* Writes the app's Kotlin types (core-contract) from docs/openapi-v2.json, without network or Gradle:
+ * responses from the schemas, bodies of the routes the app sends, one file per OpenAPI tag plus
+ * test builders (testFixtures). Names and domain types: contract-kotlin-mapping.js. Checked in;
+ * --pruefen only compares (exit 1 on a deviation). Call: npm run contract:kotlin */
 const fs = require('node:fs');
 const path = require('node:path');
 const STANDARD = require('./contract-kotlin-mapping.js');
@@ -17,19 +14,14 @@ let Z = STANDARD;
 
 const ROOT = path.join(__dirname, '..');
 const SOURCE_FILE = path.join(ROOT, 'docs', 'openapi-v2.json');
-const TARGET_FILE = path.join(
-  ROOT,
-  '..',
-  'Android-App',
-  'core-contract',
-  'src',
-  'main',
-  'java',
-  'ch',
-  'brickinventoryapp',
-  'contract',
-  'Contract.kt',
-);
+/** core-contract/src: the types in main, their test builders in testFixtures. */
+const SOURCE_ROOT = path.join(ROOT, '..', 'Android-App', 'core-contract', 'src');
+const MAIN = 'main/java/ch/brickinventoryapp/contract';
+const FIXTURES = 'testFixtures/java/ch/brickinventoryapp/contract/testing';
+/** Generated files are `Contract<Tag>.kt`; anything else in the folders is written by hand. */
+const GENERATED = /^Contract\w*\.kt$/;
+/** Shapes of no single tag (error body, shared items). */
+const COMMON = 'Common';
 
 const KEYWORDS = new Set([
   'as',
@@ -92,7 +84,7 @@ const constant = w => {
  *   | { form: 'class', name: string }} TypeKind
  * @typedef {TypeKind & { nullable: boolean }} Typ
  * @typedef {{ json: string, ktType: Typ, required: boolean }} Feld
- * @typedef {{ name: string, fields: Feld[], enumValues?: string[], isRequest: boolean, sources: string[] }} Form
+ * @typedef {{ name: string, fields: Feld[], enumValues?: string[], isRequest: boolean, sources: string[], tags: Set<string> }} Form
  */
 
 /** @param {string} name @returns {Typ} */
@@ -120,11 +112,8 @@ function objectType(s, suggestion, beside) {
   return primitive('JsonObject');
 }
 
-/**
- * The type of a schema; nested objects are collected as a shape of their own [neben],
- * under the raw name `<Parent><Field>` or `…Entry`.
- * @param {any} s @param {string} suggestion @param {(name: string, s: any) => void} beside @returns {Typ}
- */
+/** The type of a schema; nested objects become a shape of their own [beside], raw name `<Parent><Field>` or `…Entry`.
+ * @param {any} s @param {string} suggestion @param {(name: string, s: any) => void} beside @returns {Typ} */
 function type(s, suggestion, beside) {
   if (!s || typeof s !== 'object' || Object.keys(s).length === 0) return primitive('JsonElement', true);
   if (s.$ref)
@@ -180,17 +169,46 @@ function kotlin(t) {
   return `${t.name}${n}`;
 }
 
-/**
- * Collects all shapes: the schemas under components and the bodies of the
- * requests from Z.REQUESTS. Names are still raw (before Z.NAMES).
- * @param {any} doc @returns {Form[]}
- */
+/** Component schema names a value refers to, at any depth. @param {any} v @param {Set<string>} into */
+function refs(v, into) {
+  if (Array.isArray(v)) for (const x of v) refs(x, into);
+  else if (v && typeof v === 'object')
+    for (const [k, x] of Object.entries(v)) {
+      if (k === '$ref' && typeof x === 'string') into.add(x.split('/').pop() ?? '');
+      else refs(x, into);
+    }
+  return into;
+}
+
+/** The tags of the operations that use each component schema, also through other schemas. @param {any} doc @returns {Map<string, Set<string>>} */
+function schemaTags(doc) {
+  const schemas = doc.components?.schemas ?? {};
+  /** @type {Map<string, Set<string>>} */
+  const tags = new Map(Object.keys(schemas).map(n => [n, new Set()]));
+  for (const op of Object.values(doc.paths ?? {}).flatMap(p => Object.values(p ?? {}))) {
+    const open = [...refs(op, new Set())];
+    const seen = new Set(open);
+    while (open.length) {
+      const n = /** @type {string} */ (open.pop());
+      for (const t of op?.tags ?? []) tags.get(n)?.add(t);
+      for (const m of refs(schemas[n], new Set()))
+        if (!seen.has(m)) {
+          seen.add(m);
+          open.push(m);
+        }
+    }
+  }
+  return tags;
+}
+
+/** All shapes: component schemas and the bodies of Z.REQUESTS, raw names (before Z.NAMES); nested
+ * shapes carry the tags of their schema or route. @param {any} doc @returns {Form[]} */
 function collect(doc) {
   /** @type {Form[]} */
   const shapes = [];
-  /** @param {string} name @param {any} s @param {boolean} isRequest */
-  function form(name, s, isRequest) {
-    const beside = (/** @type {string} */ n, /** @type {any} */ x) => form(n, x, isRequest);
+  /** @param {string} name @param {any} s @param {boolean} isRequest @param {Set<string>} tags */
+  function form(name, s, isRequest, tags) {
+    const beside = (/** @type {string} */ n, /** @type {any} */ x) => form(n, x, isRequest, tags);
     if (s.enum) {
       shapes.push({
         name,
@@ -198,6 +216,7 @@ function collect(doc) {
         enumValues: s.enum,
         isRequest,
         sources: [name],
+        tags,
       });
       return;
     }
@@ -207,17 +226,20 @@ function collect(doc) {
       ktType: type(schema, name + className(json), beside),
       required: mandatory.has(json),
     }));
-    shapes.push({ name, fields, isRequest, sources: [name] });
+    shapes.push({ name, fields, isRequest, sources: [name], tags });
   }
   const schemas = doc.components?.schemas ?? {};
-  for (const n of Object.keys(schemas)) if (!Z.OMIT.has(className(n))) form(className(n), schemas[n], false);
+  const tags = schemaTags(doc);
+  for (const n of Object.keys(schemas))
+    if (!Z.OMIT.has(className(n))) form(className(n), schemas[n], false, tags.get(n) ?? new Set());
   const uniform = (/** @type {string} */ p) => p.replace(/\{\w+\}/g, '{}');
   for (const [route, name] of Object.entries(Z.REQUESTS)) {
     const [method, path] = route.split(' ');
     const op = Object.entries(doc.paths ?? {}).find(([p]) => uniform(p) === uniform(path ?? ''))?.[1];
-    const s = op?.[(method ?? '').toLowerCase()]?.requestBody?.content?.['application/json']?.schema;
+    const o = op?.[(method ?? '').toLowerCase()];
+    const s = o?.requestBody?.content?.['application/json']?.schema;
     if (!s) throw new Error(`${route}: kein Rumpf im Vertrag (contract-kotlin-mapping.js, ANFRAGEN)`);
-    form(name, s, true);
+    form(name, s, true, new Set(o.tags ?? []));
   }
   return shapes;
 }
@@ -248,11 +270,8 @@ function withSlotType(t, domain) {
   throw new Error(`Fachtyp ${domain} nur an Stelle eines String (${kotlin(t)})`);
 }
 
-/**
- * One field of two shapes with the same name: a JsonElement on either side opens the field, otherwise
- * the types must agree; required only where both require it.
- * @param {Feld} x @param {Feld} y @param {(ky: string, kx: string) => string} clash @returns {Feld}
- */
+/** One field of two shapes of one name: a JsonElement on either side opens it, otherwise the types agree; required where both require it.
+ * @param {Feld} x @param {Feld} y @param {(ky: string, kx: string) => string} clash @returns {Feld} */
 function mergedField(x, y, clash) {
   const open = [x.ktType, y.ktType].some(t => t.form === 'primitive' && t.name === 'JsonElement');
   if (open) return { ...y, required: false, ktType: primitive('JsonElement', true) };
@@ -265,11 +284,8 @@ function mergedField(x, y, clash) {
   };
 }
 
-/**
- * Shapes with the same final name become one: fields merged, required only where all of them
- * require it, nullable where one allows it; the same name means the same type.
- * @param {Form[]} shapes @returns {Map<string, Form>}
- */
+/** Shapes of one final name become one: required where all require it, nullable where one allows it.
+ * @param {Form[]} shapes @returns {Map<string, Form>} */
 function unite(shapes) {
   /** @type {Map<string, Form>} */
   const from = new Map();
@@ -302,16 +318,13 @@ function unite(shapes) {
       ...da,
       fields: [...all.values()],
       sources: [...da.sources, f.name],
+      tags: new Set([...da.tags, ...f.tags]),
     });
   }
   return from;
 }
 
-/**
- * The empty value of a response field. Every field has one: an older server
- * lacking a new field, and a stored older response, stay readable.
- * @param {Typ} t @returns {string}
- */
+/** The empty value of an optional response field, which may be missing. @param {Typ} t @returns {string} */
 function emptyValue(t) {
   if (t.nullable) return 'null';
   if (t.form === 'list') return 'emptyList()';
@@ -331,12 +344,9 @@ function emptyValue(t) {
   );
 }
 
-/**
- * A body field: required fields without a default (the caller names them), optional ones
- * only go out if they are set — encodeDefaults would otherwise send null,
- * and the server would read "delete" instead of "unchanged" (exceptions: Z.NULL_SEND).
- * @param {string} name @param {string} key @param {Feld} f @param {string | undefined} defaultValue
- */
+/** A body field: required ones without a default; optional ones only go out when set — encodeDefaults would
+ * send null, which the server reads as "delete", not "unchanged" (exceptions: Z.NULL_SEND).
+ * @param {string} name @param {string} key @param {Feld} f @param {string | undefined} defaultValue */
 function bodyField(name, key, f, defaultValue) {
   const t = kotlin(f.ktType);
   if (defaultValue !== undefined)
@@ -347,21 +357,19 @@ function bodyField(name, key, f, defaultValue) {
   return `@EncodeDefault(EncodeDefault.Mode.NEVER) val ${name}: ${kotlin({ ...f.ktType, nullable: true })} = null`;
 }
 
-/**
- * A response field that may be missing reads as the empty value, unless it is in
- * Z.NULLABLE: there "missing" means something different from "empty".
- * @param {string} kind @param {Feld} f @returns {Typ}
- */
+/** A missing optional field reads as its empty value; null where Z.NULLABLE says "missing" differs from "empty"
+ * or its shape has none. @param {string} kind @param {Feld} f @returns {Typ} */
 function responseType(kind, f) {
   if (f.required || f.ktType.nullable) return f.ktType;
-  const withoutEmptyValue = f.ktType.form === 'class' && STRICT.has(f.ktType.name);
-  return withoutEmptyValue || Z.NULLABLE.has(`${kind}.${f.json}`) ? { ...f.ktType, nullable: true } : f.ktType;
+  return withoutEmptyValue(f.ktType) || Z.NULLABLE.has(`${kind}.${f.json}`)
+    ? { ...f.ktType, nullable: true }
+    : f.ktType;
 }
 
-/** Response shapes with required fields: they have no empty value `Form()`. */
+/** Response shapes with a required field: they have no empty value `Form()`. */
 let STRICT = new Set();
-/** A required field of such a shape gets no default; the caller names it. @param {Typ} t */
-const withoutEmptyValue = t => t.form === 'class' && !t.nullable && STRICT.has(t.name);
+/** @param {Typ} t @returns {t is Typ & { form: 'class', name: string }} */
+const withoutEmptyValue = t => t.form === 'class' && STRICT.has(t.name);
 
 /** @param {Form} f @returns {string} */
 function kind(f) {
@@ -375,9 +383,12 @@ function kind(f) {
     const name = Z.PROPERTIES[key] ?? property(x.json);
     const defaultValue = Z.DEFAULTS[key];
     const t = responseType(f.name, x);
+    // A missing required field fails reading instead of showing false, 0 or "" as if the server said so.
+    if (!f.isRequest && x.required && defaultValue !== undefined)
+      throw new Error(`${key}: Pflichtfeld einer Antwort mit Vorgabe (contract-kotlin-mapping.js, DEFAULTS)`);
     const decl = f.isRequest
       ? bodyField(name, key, x, defaultValue)
-      : x.required && defaultValue === undefined && (Z.STRICT.has(key) || withoutEmptyValue(t))
+      : x.required
         ? `val ${name}: ${kotlin(t)}`
         : `val ${name}: ${kotlin(t)} = ${defaultValue ?? emptyValue(t)}`;
     const ser = x.ktType.form === 'primitive' ? Z.DOMAIN_TYPES[x.ktType.name]?.serializer : undefined;
@@ -387,29 +398,73 @@ function kind(f) {
   return `@Serializable\ndata class ${f.name}(\n${fields.join('\n')}\n)`;
 }
 
-/**
- * The Kotlin file from the OpenAPI document.
- * @param {any} doc @param {typeof STANDARD} [mapping] @returns {string}
- */
-function create(doc, mapping = STANDARD) {
+/** A test builder for a response shape with required fields: every parameter has a value, so a test names
+ * only what it checks; in testFixtures, out of the app's reach. @param {Form} f @returns {string} */
+function sample(f) {
+  const params = f.fields.map(x => {
+    const key = `${f.name}.${x.json}`;
+    const name = Z.PROPERTIES[key] ?? property(x.json);
+    const t = responseType(f.name, x);
+    const value = withoutEmptyValue(t) && !t.nullable ? `test${t.name}()` : (Z.DEFAULTS[key] ?? emptyValue(t));
+    return { name, decl: `    ${name}: ${kotlin(t)} = ${value},` };
+  });
+  const args = params.map(p => `    ${p.name} = ${p.name},`).join('\n');
+  return `fun test${f.name}(\n${params.map(p => p.decl).join('\n')}\n): ${f.name} = ${f.name}(\n${args}\n)`;
+}
+
+/** `sets` → `Sets`; a shape of several tags or none goes to ContractCommon.kt. @param {Set<string>} tags */
+const fileTag = tags => (tags.size === 1 ? className([...tags][0] ?? COMMON) : COMMON);
+
+/** The Kotlin files: path below core-contract/src → content. @param {any} doc @param {typeof STANDARD} [mapping] @returns {Map<string, string>} */
+function files(doc, mapping = STANDARD) {
   Z = mapping;
   try {
-    return file(doc);
+    const shapes = [...unite(collect(doc)).values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    STRICT = new Set(shapes.filter(f => !f.isRequest && f.fields.some(x => x.required)).map(f => f.name));
+    /** @type {Map<string, Form[]>} */
+    const byTag = new Map();
+    for (const f of shapes) byTag.set(fileTag(f.tags), [...(byTag.get(fileTag(f.tags)) ?? []), f]);
+    /** @type {[string, string][]} */
+    const main = [...byTag.keys()].sort().map(t => [
+      `${MAIN}/Contract${t}.kt`,
+      file(
+        shapes
+          .filter(f => fileTag(f.tags) === t)
+          .map(kind)
+          .join('\n\n'),
+      ),
+    ]);
+    const samples = shapes.filter(f => STRICT.has(f.name)).map(sample);
+    if (samples.length)
+      main.push([
+        `${FIXTURES}/ContractSamples.kt`,
+        file(
+          samples.join('\n\n'),
+          '"FunctionNaming", "LongParameterList"',
+          'ch.brickinventoryapp.contract.testing',
+          shapes,
+        ),
+      ]);
+    return new Map(main);
   } finally {
     Z = STANDARD;
   }
 }
 
-/** @param {any} doc @returns {string} */
-function file(doc) {
-  const shapes = [...unite(collect(doc)).values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  STRICT = new Set(
-    shapes
-      .filter(f => !f.isRequest && f.fields.some(x => x.required && Z.STRICT.has(`${f.name}.${x.json}`)))
-      .map(f => f.name),
-  );
-  const body = shapes.map(kind).join('\n\n');
-  const imports = ['kotlinx.serialization.SerialName', 'kotlinx.serialization.Serializable'];
+/** All files as one text, in file order (tests look for declarations in it). @param {any} doc @param {typeof STANDARD} [mapping] */
+const create = (doc, mapping = STANDARD) => [...files(doc, mapping).values()].join('\n');
+
+/** Fixtures live in a `.testing` package and import the [shapes] they name. @param {string} body @param {string} [suppress] @param {string} [pkg] @param {Form[]} [shapes] @returns {string} */
+function file(
+  body,
+  suppress = '"ConstructorParameterNaming", "MatchingDeclarationName", "LongParameterList"',
+  pkg = 'ch.brickinventoryapp.contract',
+  shapes = [],
+) {
+  const imports = shapes
+    .filter(f => new RegExp(`\\b${f.name}\\b`).test(body))
+    .map(f => `ch.brickinventoryapp.contract.${f.name}`);
+  if (/@SerialName/.test(body)) imports.push('kotlinx.serialization.SerialName', 'kotlinx.serialization.Serializable');
   if (/@EncodeDefault/.test(body))
     imports.push('kotlinx.serialization.EncodeDefault', 'kotlinx.serialization.ExperimentalSerializationApi');
   for (const j of ['JsonElement', 'JsonNull', 'JsonObject'])
@@ -423,9 +478,9 @@ function file(doc) {
   return (
     '// Generated from Web-App/docs/openapi-v2.json by Web-App/scripts/contract-kotlin-dtos.js.\n' +
     '// Do not edit by hand: npm run contract:kotlin (in the Web-App folder).\n' +
-    '@file:Suppress("ConstructorParameterNaming", "MatchingDeclarationName", "LongParameterList")\n' +
+    `@file:Suppress(${suppress})\n` +
     optIn +
-    '\npackage ch.brickinventoryapp.contract\n\n' +
+    `\npackage ${pkg}\n\n` +
     imports
       .sort()
       .map(i => `import ${i}`)
@@ -436,20 +491,49 @@ function file(doc) {
   );
 }
 
-if (require.main === module) {
-  const expected = create(JSON.parse(fs.readFileSync(SOURCE_FILE, 'utf8')));
-  // --pruefen does not write, it only reports a deviation (test and CI).
-  if (process.argv.includes('--pruefen')) {
-    const actual = fs.existsSync(TARGET_FILE) ? fs.readFileSync(TARGET_FILE, 'utf8') : '';
-    if (actual !== expected) {
-      console.error(`${path.relative(ROOT, TARGET_FILE)} ist veraltet — npm run contract:kotlin`);
-      process.exit(1);
-    }
-  } else {
-    fs.mkdirSync(path.dirname(TARGET_FILE), { recursive: true });
-    fs.writeFileSync(TARGET_FILE, expected);
-    console.log(`geschrieben: ${path.relative(ROOT, TARGET_FILE)}`);
+/** The generated files now on disk, as paths below core-contract/src. @returns {string[]} */
+const present = () =>
+  [MAIN, FIXTURES].flatMap(d =>
+    fs.existsSync(path.join(SOURCE_ROOT, d))
+      ? fs
+          .readdirSync(path.join(SOURCE_ROOT, d))
+          .filter(n => GENERATED.test(n))
+          .map(n => `${d}/${n}`)
+      : [],
+  );
+
+/** Writes the files and removes generated ones the contract no longer has. @param {Map<string, string>} want */
+function write(want) {
+  for (const n of present()) if (!want.has(n)) fs.rmSync(path.join(SOURCE_ROOT, n));
+  for (const [n, text] of want) {
+    fs.mkdirSync(path.dirname(path.join(SOURCE_ROOT, n)), { recursive: true });
+    fs.writeFileSync(path.join(SOURCE_ROOT, n), text);
   }
 }
 
-module.exports = { SOURCE_FILE, TARGET_FILE, create, collect, className };
+/** Names of the files that deviate from [want] or are left over. @param {Map<string, string>} want */
+function stale(want) {
+  const old = present().filter(n => !want.has(n));
+  const differ = [...want].filter(([n, text]) => {
+    const f = path.join(SOURCE_ROOT, n);
+    return !fs.existsSync(f) || fs.readFileSync(f, 'utf8') !== text;
+  });
+  return [...old, ...differ.map(([n]) => n)];
+}
+
+if (require.main === module) {
+  const want = files(JSON.parse(fs.readFileSync(SOURCE_FILE, 'utf8')));
+  // --pruefen does not write, it only reports a deviation (test and CI).
+  if (process.argv.includes('--pruefen')) {
+    const wrong = stale(want);
+    if (wrong.length) {
+      console.error(`veraltet: ${wrong.join(', ')} — npm run contract:kotlin`);
+      process.exit(1);
+    }
+  } else {
+    write(want);
+    console.log(`geschrieben: ${want.size} Dateien unter ${path.relative(ROOT, SOURCE_ROOT)}`);
+  }
+}
+
+module.exports = { SOURCE_FILE, SOURCE_ROOT, MAIN, create, files, write, present, collect, className };

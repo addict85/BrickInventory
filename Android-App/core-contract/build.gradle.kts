@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     // The app's Lint (checkDependencies) only includes the module with this plugin.
     alias(libs.plugins.android.lint)
+    // Generated test builders for the responses (ContractSamples.kt): only tests may fill in values.
+    `java-test-fixtures`
 }
 
 dependencies {

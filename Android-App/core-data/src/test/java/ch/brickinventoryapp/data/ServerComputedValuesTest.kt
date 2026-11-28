@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.AcquisitionsResponse
-import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.contract.testing.decodeCompleted
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -16,17 +16,14 @@ import org.junit.Test
 class ServerComputedValuesTest {
 
     /**
-     * Executed with the app's Json. Counter-check: the
-     * default `= AcquisitionTotals()` removed → red.
+     * Executed with the app's Json. Counter-check: `@SerialName("totals")` renamed → red
+     * (the required field is missing, reading fails).
      */
     @Test
-    fun `the response carries the total, with a safe default`() {
-        val newValue = BrickJson.decodeFromString(AcquisitionsResponse.serializer(),
+    fun `the response carries the total`() {
+        val newValue = decodeCompleted(AcquisitionsResponse.serializer(),
             """{"success":true,"acquisitions":[],"totals":{"quantity":3,"amount":42.5,"priced_rows":2}}""")
         assertEquals(3, newValue.totals.quantity)
         assertEquals(42.5, newValue.totals.amount ?: 0.0, 0.0)
-        // Older server versions send no total; the response does not fail because of it.
-        val old = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), """{"success":true,"acquisitions":[]}""")
-        assertEquals(0, old.totals.quantity)
     }
 }

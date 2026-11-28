@@ -45,6 +45,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -280,7 +281,7 @@ class ScreenPhotoVariantsTest {
         object : SetCreator {
             override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
-        }))
+        }, SavedStateHandle()))
 
     private fun galleryDone(vm: GalleryViewModel) =
         { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.fetch.loading } }
@@ -1306,7 +1307,7 @@ class ScreenPhotoVariantsTest {
             "image_demand":7,
             "job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
         val api = world.t.api
-        val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages)
+        val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages, SavedStateHandle())
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         val background = vm.background.value
@@ -1328,7 +1329,7 @@ class ScreenPhotoVariantsTest {
         val vm = world.t.track(VoucherViewModel(testVouchersRepository(world.t.api), ContextTexts(),
             object : FileReader {
                 override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
-            }, world.t.messages, testAccountRepository(world.t.api)))
+            }, world.t.messages, testAccountRepository(world.t.api), SavedStateHandle()))
         show("gutschein-formular") {
             VouchersRoute(vm, remember { SnackbarHostState() }, onBack = {})
         }
@@ -1589,7 +1590,7 @@ class ScreenPhotoVariantsTest {
         val vm = world.t.track(VoucherViewModel(testVouchersRepository(world.t.api), ContextTexts(),
             object : FileReader {
                 override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null
-            }, world.t.messages, testAccountRepository(world.t.api)))
+            }, world.t.messages, testAccountRepository(world.t.api), SavedStateHandle()))
         show(name, dark = dark, font = font) { VouchersRoute(vm, remember { SnackbarHostState() }, onBack = {}) }
         pause()
         photo(name, dark = dark)

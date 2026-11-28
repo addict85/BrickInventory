@@ -65,7 +65,7 @@ internal class SetsRepositoryImpl @Inject constructor(
 
     /** Change the quantity by [step]; the server computes under the stock lock. */
     override suspend fun changeQuantityBy(setNumber: String, step: Int): Outcome<Int?> =
-        store.write(Editing.SetQuantity(setNumber, step), { QuantityChanged(success = true) }) { key ->
+        store.write(Editing.SetQuantity(setNumber, step), { QuantityChanged(success = true, quantity = null) }) { key ->
             safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = step), key) }
         }.promised({ it.success }) { it.quantity }
 

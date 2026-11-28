@@ -149,8 +149,7 @@ class ErrorStateTest {
             texts = NumbersTexts,
             reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
             messages = t.messages,
-            account = testAccountRepository(t.api),
-        )
+            account = testAccountRepository(t.api), SavedStateHandle())
         vm.loadVouchers()
         assertTrue("Error", vm.state.value.fetch is Load.Failure)
         assertEquals(ErrorClass.SERVER, vm.state.value.fetch.errorKind)

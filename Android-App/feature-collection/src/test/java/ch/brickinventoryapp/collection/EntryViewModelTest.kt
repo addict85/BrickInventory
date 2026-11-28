@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.collection
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.collection.ui.CheckPhase
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.data.SetCreateStep
@@ -68,6 +69,8 @@ import org.junit.Test
  *   M  in the error branch of resolveBarcode() again always „nicht gefunden“ →
  *      red “a server error on scan does not mean …”; the code not
  *      checked (always the message) → red “an unsuccessful scan …”
+ *   N  storePendingScan() writes nothing (counter-checks/entry-scan-not-saved.patch) → red “a scanned
+ *      set waiting for confirmation survives a process death”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EntryViewModelTest {
@@ -104,8 +107,8 @@ class EntryViewModelTest {
         }
     }
 
-    private fun vm(creator: Creator = Creator(emptyList())) = t.track(
-        EntryViewModel(t.session, t.filter(), t.hints, t.sets(), t.setCatalog(), t.wantedList(), testCatalogRepository(t.api), creator)
+    private fun vm(creator: Creator = Creator(emptyList()), saved: SavedStateHandle = SavedStateHandle()) = t.track(
+        EntryViewModel(t.session, t.filter(), t.hints, t.sets(), t.setCatalog(), t.wantedList(), testCatalogRepository(t.api), creator, saved)
     ).also { creator.vm = it }
 
     @Before
@@ -124,6 +127,19 @@ class EntryViewModelTest {
         t.cleanUp()
         Dispatchers.resetMain()
         paths.server.shutdown()
+    }
+
+    @Test
+    fun `a scanned set waiting for confirmation survives a process death`() {
+        val saved = SavedStateHandle()
+        val first = vm(saved = saved)
+        first.resolveBarcode("5702016616316")
+        until("confirmation dialog") { first.barcodeState.value.result == "75192-1" }
+
+        val b = vm(saved = saved.afterProcessDeath()).barcodeState.value
+        assertEquals(listOf("75192-1", "Falke", ScannerOrigin.GALLERY), listOf(b.result, b.setName, b.source))
+        first.cancelBarcode()
+        until("a dismissed dialog stays dismissed") { vm(saved = saved.afterProcessDeath()).barcodeState.value.result == null }
     }
 
     @Test
@@ -354,3 +370,6 @@ class EntryViewModelTest {
         assertNull(vm.barcodeState.value.foundSet)
     }
 }
+
+/** What a recreated ViewModel finds after a process death: only the values saved in the handle. */
+private fun SavedStateHandle.afterProcessDeath() = SavedStateHandle(keys().associateWith { get<Any?>(it) })

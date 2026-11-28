@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.contract
 
+import ch.brickinventoryapp.contract.testing.decodeCompleted
+import ch.brickinventoryapp.contract.testing.testAppThemeResponse
+import ch.brickinventoryapp.contract.testing.testCsvImportStatus
+import ch.brickinventoryapp.contract.testing.testUserSettings
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.CategoryChoice
 import ch.brickinventoryapp.model.domain.ColorPicker
@@ -33,19 +37,19 @@ class DomainTypesTest {
     @Test
     fun `an empty or unknown design of the server means no information`() {
         for (raw in listOf("\"\"", "\"neonlila\"", "null")) {
-            val a = json.decodeFromString(AppThemeResponse.serializer(), """{"success":true,"theme":$raw,"preset":"noppe"}""")
+            val a = decodeCompleted(AppThemeResponse.serializer(), """{"success":true,"theme":$raw,"preset":"noppe"}""")
             assertNull(raw, a.theme)
             assertEquals(Design.STUD, a.preset)
         }
-        assertNull(json.decodeFromString(UserSettings.serializer(), """{"app_theme":"neonlila"}""").appTheme)
+        assertNull(decodeCompleted(UserSettings.serializer(), """{"app_theme":"neonlila"}""").appTheme)
     }
 
     @Test
     fun `a design travels as its identifier`() {
         for (d in Design.entries) {
-            val text = json.encodeToString(AppThemeResponse.serializer(), AppThemeResponse(success = true, theme = d))
+            val text = json.encodeToString(AppThemeResponse.serializer(), testAppThemeResponse(success = true, theme = d))
             assertTrue(text, "\"theme\":\"${d.identifier}\"" in text)
-            assertEquals(d, json.decodeFromString(AppThemeResponse.serializer(), text).theme)
+            assertEquals(d, decodeCompleted(AppThemeResponse.serializer(), text).theme)
         }
     }
 
@@ -62,22 +66,22 @@ class DomainTypesTest {
 
     @Test
     fun `a currency travels as plain text and may be unknown`() {
-        val s = json.decodeFromString(UserSettings.serializer(), """{"currency":"XAU"}""")
+        val s = decodeCompleted(UserSettings.serializer(), """{"currency":"XAU"}""")
         assertEquals(CurrencyCode("XAU"), s.currency)
-        val text = json.encodeToString(UserSettings.serializer(), UserSettings(currency = CurrencyCode.CHF))
+        val text = json.encodeToString(UserSettings.serializer(), testUserSettings(currency = CurrencyCode.CHF))
         assertTrue(text, "\"currency\":\"CHF\"" in text)
         assertEquals("CHF", "${CurrencyCode.CHF}")
     }
 
     @Test
     fun `an unknown run status does not run and aborts nothing`() {
-        val s = json.decodeFromString(CsvImportStatus.serializer(), """{"success":true,"status":"finished"}""")
+        val s = decodeCompleted(CsvImportStatus.serializer(), """{"success":true,"status":"finished"}""")
         assertEquals(RunStatus.UNKNOWN, s.status)
         assertTrue(!s.status.running)
         assertTrue(RunStatus.from("pending").running && RunStatus.from("running").running)
         // The server always sends the state; if it is missing after all, nothing runs.
-        assertEquals(RunStatus.UNKNOWN, json.decodeFromString(CsvImportStatus.serializer(), """{"success":true}""").status)
-        val text = json.encodeToString(CsvImportStatus.serializer(), CsvImportStatus(success = true, status = RunStatus.ERROR))
+        assertEquals(RunStatus.UNKNOWN, decodeCompleted(CsvImportStatus.serializer(), """{"success":true}""").status)
+        val text = json.encodeToString(CsvImportStatus.serializer(), testCsvImportStatus(success = true, status = RunStatus.ERROR))
         assertTrue(text, "\"status\":\"error\"" in text)
     }
 

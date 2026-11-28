@@ -21,6 +21,7 @@ dependencies {
     testImplementation(testFixtures(project(":core-state")))
     // The test servers answer in the wire format.
     testImplementation(project(":core-contract"))
+    testImplementation(testFixtures(project(":core-contract")))
     // The tests build the store and edits themselves.
     testImplementation(project(":core-offline"))
 }

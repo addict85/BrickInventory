@@ -1,20 +1,19 @@
 package ch.brickinventoryapp.management
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.completingConverter
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.ui.dataOrNull
 import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.ui.theme.Design
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -55,16 +54,14 @@ class MonitoringViewModelBehaviorTest {
 
         val client = OkHttpClient.Builder()
             .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
-        // The same JSON config as in di/AppModule — otherwise the
-        // test would check a leniency the app does not have.
-        val json = BrickJson
+        // The app's JSON configuration, with the test's missing required fields filled in.
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(completingConverter())
             .build()
             .create(BrickApiService::class.java)
-        vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), MessageChannel())
+        vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), MessageChannel(), SavedStateHandle())
     }
 
     @After

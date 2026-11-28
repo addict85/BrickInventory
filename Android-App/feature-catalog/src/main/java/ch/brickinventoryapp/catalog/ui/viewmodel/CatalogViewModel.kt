@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.catalog.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.catalog.ui.CatalogTarget
@@ -41,6 +42,11 @@ import javax.inject.Inject
  */
 internal const val VIEWPORT_REST_MS = 150L
 
+private const val QUERY = "catalog.query"
+private const val THEME = "catalog.theme"
+private const val YEAR = "catalog.year"
+private const val SORT = "catalog.sort"
+
 /**
  * The catalog as its own ViewModel: search, list and detail have jobs and a
  * filter generation, which belong as fields of one instance, not process-wide.
@@ -58,9 +64,12 @@ internal class CatalogViewModel @Inject constructor(
     private val wantedList: WantedRepository,
     private val alerts: AlarmRepository,
     private val scrollMemory: ScrollMemory,
+    /** Search and filters survive a process death: the list reloads with them, not unfiltered. */
+    private val saved: SavedStateHandle,
 ) : ViewModel(), CatalogActions {
 
-    private val _catalogState = MutableStateFlow(CatalogUiState())
+    private val _catalogState = MutableStateFlow(CatalogUiState(
+        query = saved[QUERY] ?: "", themeId = saved[THEME], year = saved[YEAR], sort = CatalogSort.from(saved[SORT])))
     val state = _catalogState.asStateFlow()
 
     init {
@@ -209,6 +218,7 @@ internal class CatalogViewModel @Inject constructor(
 
     override fun setCatalogQuery(q: String) {
         _catalogState.update { it.copy(query = q) }
+        saved[QUERY] = q
         catalogSearchJob?.cancel()
         catalogSearchJob = viewModelScope.launch {
             delay(350)
@@ -218,16 +228,19 @@ internal class CatalogViewModel @Inject constructor(
 
     override fun setCatalogTheme(themeId: Int?) {
         _catalogState.update { it.copy(themeId = themeId) }
+        saved[THEME] = themeId
         loadCatalogSets()
     }
 
     override fun setCatalogYear(year: Int?) {
         _catalogState.update { it.copy(year = year) }
+        saved[YEAR] = year
         loadCatalogSets()
     }
 
     override fun setCatalogSort(sort: CatalogSort) {
         _catalogState.update { it.copy(sort = sort) }
+        saved[SORT] = sort.identifier
         loadCatalogSets()
     }
 

@@ -38,6 +38,6 @@ names the former code term; user-facing texts stay German in `values-de/strings.
 
 ## Generated contract
 
-`core-contract/Contract.kt` is generated from API v2 (`Web-App/docs/openapi-v2.json`,
-Web-App/scripts/contract-kotlin-dtos.js) and is English like the rest of the source;
+`core-contract/ContractSets.kt` and one file per further OpenAPI tag are generated from API v2 (`Web-App/docs/openapi-v2.json`,
+Web-App/scripts/contract-kotlin-dtos.js) and are English like the rest of the source;
 `@SerialName` holds the wire names. `SourceRatchetTest` allows no German name, not even there.

@@ -1,14 +1,12 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.api.AccountApi
+import ch.brickinventoryapp.data.testing.completingConverter
 import ch.brickinventoryapp.data.testing.testAccountRepository
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -46,7 +44,7 @@ class LogoutAtServerTest {
         .addInterceptor(ServerGuard(situation, true, development = true, sessionExpired = {}))
         .readTimeout(2, TimeUnit.SECONDS).build()
     private val account = testAccountRepository(Retrofit.Builder().baseUrl(server.url("/")).client(client)
-        .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
+        .addConverterFactory(completingConverter())
         .build().create(AccountApi::class.java))
 
     @After

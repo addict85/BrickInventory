@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.finances
 
-import ch.brickinventoryapp.contract.PartsValuationResponse
-import ch.brickinventoryapp.contract.PnlResponse
-import ch.brickinventoryapp.contract.PnlTotals
-import ch.brickinventoryapp.contract.ValuationResponse
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testPartsValuationResponse
+import ch.brickinventoryapp.contract.testing.testPnlResponse
+import ch.brickinventoryapp.contract.testing.testPnlTotals
+import ch.brickinventoryapp.contract.testing.testValuationResponse
 import ch.brickinventoryapp.finances.ui.financeTotals
 import ch.brickinventoryapp.testing.Sources
 import org.junit.Assert.assertEquals
@@ -53,9 +53,9 @@ class ClientRendersOnlyTest {
      */
     @Test
     fun `the total value comes from the server`() {
-        val sums = financeTotals(ValuationResponse(success = true).asView(),
-            PartsValuationResponse(success = true, totalValue = "0.20").asView(),
-            null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")).asView())
+        val sums = financeTotals(testValuationResponse(success = true).asView(),
+            testPartsValuationResponse(success = true, totalValue = "0.20").asView(),
+            null, testPnlResponse(success = true, totals = testPnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")).asView())
         assertEquals(0, BigDecimal("4894.77").compareTo(sums.total))
         val sections = File(Sources.root,
             "finances/ui/screens/FinanceSections.kt").readText()

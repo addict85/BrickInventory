@@ -18,13 +18,20 @@
  *      replaces the text …”
  *   G  (15.11.2026) in klasse() `|| withoutEmptyValue(t)` deleted → red: “a required field
  *      whose shape has no empty value …” and “the checked-in Kotlin types …”
+ *   H  (28.11.2026) in kind() a required response field again `= emptyValue(t)` → red: “a required
+ *      response field has no default …”, “lists, references …” and the checked-in check
+ *   I  in kind() the refusal of DEFAULTS for required fields deleted → red: “a default for a
+ *      required response field is refused”
+ *   J  in fileTag() always the first tag instead of Common → red: “one file per tag …”
+ *   K  in sample() the class default `test${t.name}()` replaced by emptyValue(t) → red: “a response
+ *      shape with required fields gets a test builder …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const { create } = require('../scripts/contract-kotlin-dtos.js');
+const { create, files } = require('../scripts/contract-kotlin-dtos.js');
 
 test('the checked-in Kotlin types are generated from openapi-v2.json', () => {
   const r = spawnSync(
@@ -40,7 +47,6 @@ test('the checked-in Kotlin types are generated from openapi-v2.json', () => {
 /** An empty mapping, overridden as needed. @param {Record<string, any>} [more] */
 const mapping = (more = {}) => ({
   OMIT: new Set(),
-  STRICT: new Set(),
   DOMAIN_TYPES: { Condition: { pkg: 'ch.brickinventoryapp.model.domain.Condition', empty: 'Condition.NEU' } },
   NAMES: {},
   FIELD_TYPES: {},
@@ -57,7 +63,7 @@ const mapping = (more = {}) => ({
 /** The Kotlin file from a mini contract. @param {Record<string, any>} schemas @param {Record<string, any>} [z] @param {any} [paths] */
 const out = (schemas, z, paths = {}) => create({ components: { schemas }, paths }, /** @type {any} */ (mapping(z)));
 
-test('every response field has a default: empty value, null only with a null branch', () => {
+test('a required response field has no default, an optional one reads as its empty value', () => {
   const kt = out({
     Probe: {
       type: 'object',
@@ -65,7 +71,7 @@ test('every response field has a default: empty value, null only with a null bra
       required: ['set_number'],
     },
   });
-  assert.match(kt, /@SerialName\("set_number"\) val setNumber: String = "",/);
+  assert.match(kt, /@SerialName\("set_number"\) val setNumber: String,/);
   assert.match(kt, /@SerialName\("name"\) val name: String = "",/);
   assert.match(kt, /@SerialName\("quantity"\) val quantity: Int = 0,/);
   const nullable = out(
@@ -77,20 +83,30 @@ test('every response field has a default: empty value, null only with a null bra
   assert.match(nullable, /val name: String\? = null,/, 'NULLABLE: missing means null');
 });
 
-test('a required field whose shape has no empty value gets no default', () => {
-  const kt = out(
-    {
-      Account: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] },
-      Probe: {
-        type: 'object',
-        properties: { user: { $ref: '#/components/schemas/Account' }, alt: { $ref: '#/components/schemas/Account' } },
-        required: ['user'],
-      },
+test('an optional field of a shape with required fields is null when missing', () => {
+  const kt = out({
+    Account: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] },
+    Probe: {
+      type: 'object',
+      properties: { user: { $ref: '#/components/schemas/Account' }, alt: { $ref: '#/components/schemas/Account' } },
+      required: ['user'],
     },
-    { STRICT: new Set(['Account.id']) },
+  });
+  assert.match(kt, /val user: Account,/);
+  assert.match(
+    kt,
+    /val alt: Account\? = null,/,
+    'Account() would not exist: Account has a required field without a default',
   );
-  assert.match(kt, /val user: Account,/, 'Account() would not exist: Account has a required field without a default');
-  assert.match(kt, /val alt: Account\? = null,/);
+});
+
+test('a default for a required response field is refused', () => {
+  const schemas = { Probe: { type: 'object', properties: { n: { type: 'integer' } }, required: ['n'] } };
+  assert.throws(
+    () => out(schemas, { DEFAULTS: { 'Probe.n': '1' } }),
+    /Probe\.n: Pflichtfeld einer Antwort mit Vorgabe/,
+  );
+  assert.match(out(schemas, { DEFAULTS: {} }), /val n: Int,/);
 });
 
 test('a field with a null branch is nullable', () => {
@@ -101,7 +117,7 @@ test('a field with a null branch is nullable', () => {
       required: ['year'],
     },
   });
-  assert.match(kt, /val year: Int\? = null,/);
+  assert.match(kt, /val year: Int\?,/, 'required: the key must be there, its value may be null');
 });
 
 test('lists, references and nested objects get their type', () => {
@@ -116,9 +132,9 @@ test('lists, references and nested objects get their type', () => {
       required: ['sets', 'page'],
     },
   });
-  assert.match(kt, /val sets: List<SetItem> = emptyList\(\),/);
-  assert.match(kt, /val page: ProbePage = ProbePage\(\),/);
-  assert.match(kt, /data class ProbePage\(\n {4}@SerialName\("number"\) val number: Int = 0,/);
+  assert.match(kt, /val sets: List<SetItem>,/);
+  assert.match(kt, /val page: ProbePage,/);
+  assert.match(kt, /data class ProbePage\(\n {4}@SerialName\("number"\) val number: Int,/);
 });
 
 test('a domain type replaces the text, list and nullability stay', () => {
@@ -132,8 +148,8 @@ test('a domain type replaces the text, list and nullability stay', () => {
     },
     { FIELD_TYPES: { 'Probe.condition': 'Condition', 'Probe.conditions': 'Condition' } },
   );
-  assert.match(kt, /val condition: Condition = Condition\.NEU,/);
-  assert.match(kt, /val conditions: List<Condition> = emptyList\(\),/);
+  assert.match(kt, /val condition: Condition,/);
+  assert.match(kt, /val conditions: List<Condition>,/);
   assert.match(kt, /^import ch\.brickinventoryapp\.model\.domain\.Condition$/m);
 });
 
@@ -150,8 +166,8 @@ test('shapes with the same name become one: fields merged, required only where a
     { NAMES: { A: 'Account', B: 'Account' } },
   );
   assert.equal((kt.match(/data class Account\(/g) ?? []).length, 1);
-  assert.match(kt, /val id: Int = 0,/);
-  assert.match(kt, /val onlyA: String = "",/);
+  assert.match(kt, /val id: Int,/, 'both require id');
+  assert.match(kt, /val onlyA: String = "",/, 'only A requires only_a');
   const body = out(
     {},
     { REQUESTS: { 'POST /a': 'Rumpf', 'PUT /b/{id}': 'Rumpf' } },
@@ -195,4 +211,55 @@ test('an optional body field only goes out when set, unless it should say null',
   assert.match(kt, /@SerialName\("storage"\) val storage: String\? = null,/, 'null means clear on the server');
   assert.match(kt, /@SerialName\("name"\) val name: String,/, 'REQUIRED: always set');
   assert.match(kt, /^@file:OptIn\(ExperimentalSerializationApi::class\)$/m);
+});
+
+test('one file per tag; a shape of several tags goes to the common file', () => {
+  const ref = (/** @type {string} */ n) => ({
+    responses: { 200: { content: { 'application/json': { schema: { $ref: `#/components/schemas/${n}` } } } } },
+  });
+  const schemas = {
+    SetRow: { type: 'object', properties: { n: { type: 'string' } } },
+    PartRow: { type: 'object', properties: { owner: { $ref: '#/components/schemas/Owner' } } },
+    Owner: { type: 'object', properties: { id: { type: 'integer' } } },
+  };
+  const paths = {
+    '/sets': { get: { tags: ['sets'], ...ref('SetRow') } },
+    '/parts': { get: { tags: ['parts'], ...ref('PartRow') } },
+    '/owners': { get: { tags: ['household'], ...ref('Owner') } },
+  };
+  const f = files({ components: { schemas }, paths }, /** @type {any} */ (mapping()));
+  const at = (/** @type {RegExp} */ name) => [...f].find(([k]) => name.test(k))?.[1] ?? '';
+  assert.match(at(/^main\/.*\/ContractSets\.kt$/), /data class SetRow\(/);
+  assert.match(at(/^main\/.*\/ContractParts\.kt$/), /data class PartRow\(/);
+  assert.match(
+    at(/^main\/.*\/ContractCommon\.kt$/),
+    /data class Owner\(/,
+    'parts reach Owner through PartRow, household directly',
+  );
+  assert.doesNotMatch(at(/^main\/.*\/ContractParts\.kt$/), /class Owner\(/);
+});
+
+test('a response shape with required fields gets a test builder with values for all of them', () => {
+  const f = files(
+    {
+      components: {
+        schemas: {
+          Account: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] },
+          Probe: {
+            type: 'object',
+            properties: { user: { $ref: '#/components/schemas/Account' }, name: { type: 'string' } },
+            required: ['user'],
+          },
+        },
+      },
+      paths: {},
+    },
+    /** @type {any} */ (mapping()),
+  );
+  const kt = [...f].find(([k]) => /^testFixtures\/.*\/testing\/ContractSamples\.kt$/.test(k))?.[1] ?? '';
+  assert.match(
+    kt,
+    /fun testProbe\(\n {4}user: Account = testAccount\(\),\n {4}name: String = "",\n\): Probe = Probe\(/,
+  );
+  assert.match(kt, /fun testAccount\(\n {4}id: Int = 0,/);
 });

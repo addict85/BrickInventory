@@ -36,6 +36,7 @@ dependencies {
     testImplementation(project(":core-testing"))
     // The test servers answer in the wire format.
     testImplementation(project(":core-contract"))
+    testImplementation(testFixtures(project(":core-contract")))
     // OutboxSyncTest builds the store and the outbox in memory.
     testImplementation(project(":core-offline"))
 }

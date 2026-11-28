@@ -2,6 +2,19 @@ package ch.brickinventoryapp.contract
 
 import ch.brickinventoryapp.contract.mapping.asData
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testAcquisition
+import ch.brickinventoryapp.contract.testing.testComponentHeader
+import ch.brickinventoryapp.contract.testing.testCsvImportStatus
+import ch.brickinventoryapp.contract.testing.testHouseholdStatusResponse
+import ch.brickinventoryapp.contract.testing.testMinifig
+import ch.brickinventoryapp.contract.testing.testPortfolioHistoryResponse
+import ch.brickinventoryapp.contract.testing.testPriceAlert
+import ch.brickinventoryapp.contract.testing.testPriceChartData
+import ch.brickinventoryapp.contract.testing.testProfile
+import ch.brickinventoryapp.contract.testing.testStartupStatus
+import ch.brickinventoryapp.contract.testing.testUsingSet
+import ch.brickinventoryapp.contract.testing.testUsingSetsResponse
+import ch.brickinventoryapp.contract.testing.testVoucher
 import ch.brickinventoryapp.model.domain.AccountView
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.CsvImportKind
@@ -47,19 +60,19 @@ class UiModelFigureTest {
 
     @Test
     fun `the start state computes the share, without a total there is none`() {
-        val half = StartupStatus(ready = false, step = "Katalog", progress = 5.0, total = 10).asView()
+        val half = testStartupStatus(ready = false, step = "Katalog", progress = 5.0, total = 10).asView()
         assertEquals(0.5f, half.share!!, 0.0001f)
         assertEquals("Katalog", half.step)
-        assertNull("without a total there is no share", StartupStatus(progress = 3.0, total = 0).asView().share)
-        assertEquals("never over 100 %", 1f, StartupStatus(progress = 12.0, total = 10).asView().share!!, 0f)
+        assertNull("without a total there is no share", testStartupStatus(progress = 3.0, total = 0).asView().share)
+        assertEquals("never over 100 %", 1f, testStartupStatus(progress = 12.0, total = 10).asView().share!!, 0f)
     }
 
     @Test
     fun `the value history carries points, axis, days and change`() {
-        val v = PortfolioHistoryResponse(success = true, currency = CurrencyCode("CHF"), periodChangePct = 2.5,
+        val v = testPortfolioHistoryResponse(success = true, currency = CurrencyCode("CHF"), periodChangePct = 2.5,
             points = listOf(ChartPoint(xLabel = "Mo", value = 1200.0, yFrac = 0.4)),
             yAxis = listOf(ChartYAxis(label = "1200", value = 1200.0, frac = 0.4)),
-            chart = PriceChartData(x = listOf("2026-11-09"))).asView()
+            chart = testPriceChartData(x = listOf("2026-11-09"))).asView()
         assertEquals(CurrencyCode("CHF"), v.currency)
         assertEquals(2.5, v.changePercent!!, 0.0)
         assertEquals(Money(12_000_000), v.points.single().value)
@@ -69,16 +82,16 @@ class UiModelFigureTest {
 
     @Test
     fun `amounts come as Money to four places, points in time as Instant, the origin as enumeration`() {
-        val purchase = Acquisition(id = 1, quantity = 2, purchasePrice = 120.3333, createdAt = "2026-09-03T15:00:32.194Z").asView()
+        val purchase = testAcquisition(id = 1, quantity = 2, purchasePrice = 120.3333, createdAt = "2026-09-03T15:00:32.194Z").asView()
         assertEquals(Money(1_203_333), purchase.purchasePrice)
         assertEquals(Money(2_406_666), purchase.effectivePrice!! * 2)
         assertEquals(Instant.parse("2026-09-03T15:00:32.194Z"), purchase.createdAt)
-        assertNull("no price stays no price, not 0", Acquisition(id = 1, quantity = 1).asView().purchasePrice)
+        assertNull("no price stays no price, not 0", testAcquisition(id = 1, quantity = 1).asView().purchasePrice)
         assertEquals("a bare day is its start in UTC", Instant.parse("2026-09-03T00:00:00Z"),
-            Acquisition(id = 1, quantity = 1, createdAt = "2026-09-03").asView().createdAt)
-        assertNull("unreadable means no point in time", Acquisition(id = 1, quantity = 1, createdAt = "gestern").asView().createdAt)
-        assertEquals(Origin.MANUAL, Minifig(figNumber = "sw0001", source = "manual").asView().source)
-        assertEquals(Origin.SET, Minifig(figNumber = "sw0001", source = "irgendwas").asView().source)
+            testAcquisition(id = 1, quantity = 1, createdAt = "2026-09-03").asView().createdAt)
+        assertNull("unreadable means no point in time", testAcquisition(id = 1, quantity = 1, createdAt = "gestern").asView().createdAt)
+        assertEquals(Origin.MANUAL, testMinifig(figNumber = "sw0001", source = "manual").asView().source)
+        assertEquals(Origin.SET, testMinifig(figNumber = "sw0001", source = "irgendwas").asView().source)
     }
 
     @Test
@@ -89,11 +102,11 @@ class UiModelFigureTest {
 
     @Test
     fun `price alert, voucher, chart and color carry their values`() {
-        val alarm = PriceAlert(setNumber = "75192-1", direction = AlarmDirection.BELOW, threshold = 500.0).asView()
+        val alarm = testPriceAlert(setNumber = "75192-1", direction = AlarmDirection.BELOW, threshold = 500.0).asView()
         assertTrue(alarm.below)
-        assertFalse(PriceAlert(direction = AlarmDirection.OVER).asView().below)
+        assertFalse(testPriceAlert(direction = AlarmDirection.OVER).asView().below)
         assertEquals(Money(5_000_000), alarm.threshold)
-        val g = Voucher(id = 3, number = "6061", pin = "1", amount = 20.0, currency = CurrencyCode("CHF")).asView()
+        val g = testVoucher(id = 3, number = "6061", pin = "1", amount = 20.0, currency = CurrencyCode("CHF")).asView()
         assertEquals(listOf(3, Money(200_000), CurrencyCode.CHF), listOf(g.id, g.amount, g.currency))
         val p = ChartPoint(xLabel = "1. Okt", value = 12.5, yFrac = 0.25).asView()
         assertEquals(Triple("1. Okt", Money(125_000), 0.25), Triple(p.xLabel, p.value, p.yFrac))
@@ -104,18 +117,18 @@ class UiModelFigureTest {
 
     @Test
     fun `profile, household and CSV state are prepared for the UI`() {
-        assertTrue(Profile(id = 1, username = "m", emailVerified = true).asView().emailConfirmed)
-        assertFalse("false means unconfirmed", Profile(id = 1, username = "m", emailVerified = false).asView().emailConfirmed)
-        val oldField = HouseholdStatusResponse(linkedTo = AccountName(id = 7, username = "haupt")).asView()
+        assertTrue(testProfile(id = 1, username = "m", emailVerified = true).asView().emailConfirmed)
+        assertFalse("false means unconfirmed", testProfile(id = 1, username = "m", emailVerified = false).asView().emailConfirmed)
+        val oldField = testHouseholdStatusResponse(linkedTo = AccountName(id = 7, username = "haupt")).asView()
         assertEquals("without parents linked_to applies", listOf(AccountView(7, "haupt")), oldField.parentAccounts)
-        val state = CsvImportStatus(status = RunStatus.RUNNING, current = "75192-1").asView()
+        val state = testCsvImportStatus(status = RunStatus.RUNNING, current = "75192-1").asView()
         assertEquals(listOf(0, 0, 0, 0, 0), listOf(state.total, state.done, state.ok, state.warn, state.err))
         assertEquals(RunStatus.RUNNING, state.status)
     }
 
     @Test
     fun `the usage of a part carries the item as header`() {
-        val v = UsingSetsResponse(item = ComponentHeader(number = "3001"), sets = listOf(UsingSet(setNumber = "10294-1"))).asView()
+        val v = testUsingSetsResponse(item = testComponentHeader(number = "3001"), sets = listOf(testUsingSet(setNumber = "10294-1"))).asView()
         assertEquals("3001", v.header?.number)
         assertEquals(listOf("10294-1"), v.sets.map { it.setNumber })
     }

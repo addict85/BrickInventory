@@ -45,6 +45,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -381,7 +382,7 @@ class UisRulesTest {
                 override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                      ownerUserId: Int?, storage: String?) =
                     kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
-            }))
+            }, SavedStateHandle()))
         show(font) {
             GalleryRoute(vm = vm, entryVm = entryVm,
                 imageLoader = images, onScanBarcode = {}, onSetClick = {})
@@ -609,7 +610,7 @@ class UisRulesTest {
                     override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
-                }))
+                }, SavedStateHandle()))
             var scanned = 0
             var searched = 0
             show {

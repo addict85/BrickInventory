@@ -3,11 +3,14 @@ package ch.brickinventoryapp.finances
 import ch.brickinventoryapp.contract.FigsValuationResponse
 import ch.brickinventoryapp.contract.PartsValuationResponse
 import ch.brickinventoryapp.contract.PnlResponse
-import ch.brickinventoryapp.contract.PnlTotals
 import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.ValuationResponse
-import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.decodeCompleted
+import ch.brickinventoryapp.contract.testing.testPartsValuationResponse
+import ch.brickinventoryapp.contract.testing.testPnlResponse
+import ch.brickinventoryapp.contract.testing.testPnlTotals
+import ch.brickinventoryapp.contract.testing.testVoucher
 import ch.brickinventoryapp.finances.ui.FinanceRow
 import ch.brickinventoryapp.finances.ui.financeHeader
 import ch.brickinventoryapp.finances.ui.financeTotals
@@ -19,7 +22,6 @@ import ch.brickinventoryapp.finances.ui.voucherSum
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
-import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -53,7 +55,7 @@ import java.math.BigDecimal
  */
 class FinanceNumbersTest {
 
-    private val valuationLoad = BrickJson.decodeFromString(ValuationResponse.serializer(), """{
+    private val valuationLoad = decodeCompleted(ValuationResponse.serializer(), """{
         "success": true, "currency": "CHF", "cache_ttl_hours": 12, "foreign_currency_purchases": 1,
         "totals": {"min": "0.10", "avg": "0.10", "max": "0.10", "qty_avg": "0.10"},
         "sets": [
@@ -81,11 +83,11 @@ class FinanceNumbersTest {
 
     @Test
     fun `parts and figures read the same number fields`() {
-        val parts = BrickJson.decodeFromString(PartsValuationResponse.serializer(), """{
+        val parts = decodeCompleted(PartsValuationResponse.serializer(), """{
             "success": true, "total_value": "0.20", "foreign_currency_purchases": 2,
             "parts": [{"id": 3, "part_number": "3001", "quantity": 4, "display_value": "999.99",
                        "value_total": 1.2, "purchase_price": 0.25, "pnl_pct": "-50.0", "pnl_percent": 20.0}]}""").asView()
-        val figures = BrickJson.decodeFromString(FigsValuationResponse.serializer(), """{
+        val figures = decodeCompleted(FigsValuationResponse.serializer(), """{
             "success": true, "total_value": "0.00", "foreign_currency_purchases": 1,
             "figs": [{"id": 5, "fig_number": "sw0001", "display_value": "999.99", "value_total": 30.0,
                       "acquisitions": [{"id": 9, "condition": "U", "quantity": 1, "purchase_price": 20.0,
@@ -104,18 +106,18 @@ class FinanceNumbersTest {
 
     @Test
     fun `without grand_total the app adds exactly`() {
-        val parts = PartsValuationResponse(success = true, totalValue = "0.20").asView()
-        val without = financeTotals(valuationLoad, parts, null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00")).asView())
+        val parts = testPartsValuationResponse(success = true, totalValue = "0.20").asView()
+        val without = financeTotals(valuationLoad, parts, null, testPnlResponse(success = true, totals = testPnlTotals(purchase = "0.00", current = "0.00")).asView())
         assertEquals(0, BigDecimal("0.30").compareTo(without.total))
         assertEquals(0, BigDecimal("0.20").compareTo(without.partsAndMinifigs))
-        val with = financeTotals(valuationLoad, parts, null, BrickJson.decodeFromString(PnlResponse.serializer(),
+        val with = financeTotals(valuationLoad, parts, null, decodeCompleted(PnlResponse.serializer(),
             """{"success": true, "totals": {"purchase": "4000.00", "current": "4894.77", "grand_total": "4894.77"}}""").asView())
         assertEquals(0, BigDecimal("4894.77").compareTo(with.total))
     }
 
     @Test
     fun `foreign purchase prices count pnl over all three kinds`() {
-        val pnl = BrickJson.decodeFromString(PnlResponse.serializer(), """{"success": true,
+        val pnl = decodeCompleted(PnlResponse.serializer(), """{"success": true,
             "totals": {"purchase": "100.00", "current": "112.50", "pnl_pct": "-50.0", "pnl_percent": 12.5, "foreign_currency_purchases": 4},
             "sets": [{"set_number": "1-1", "pnl_abs": "9.00", "pnl_amount": 9.0, "pnl_percent": 3.4,
                       "baseline_pnl_percent": 3.4}]}""").asView()
@@ -127,16 +129,16 @@ class FinanceNumbersTest {
 
     @Test
     fun `the price history delivers the P&L as a number`() {
-        val h = BrickJson.decodeFromString(PriceHistoryResponse.serializer(),
+        val h = decodeCompleted(PriceHistoryResponse.serializer(),
             """{"success": true, "pnl_pct": "-50.0", "pnl_percent": 16.1}""")
         assertEquals(16.1, h.pnlPercent!!, 0.0)
     }
 
     @Test
     fun `vouchers in two currencies give no sum`() {
-        val chf = listOf(Voucher(id = 1, amount = 0.1), Voucher(id = 2, amount = 0.2)).map { it.asView() }
+        val chf = listOf(testVoucher(id = 1, amount = 0.1, currency = CurrencyCode.CHF), testVoucher(id = 2, amount = 0.2, currency = CurrencyCode.CHF)).map { it.asView() }
         assertEquals(BigDecimal("0.30") to CurrencyCode.CHF, voucherSum(chf))
-        assertNull(voucherSum(chf + Voucher(id = 3, amount = 5.0, currency = CurrencyCode("EUR")).asView()))
+        assertNull(voucherSum(chf + testVoucher(id = 3, amount = 5.0, currency = CurrencyCode("EUR")).asView()))
         assertNull(voucherSum(emptyList()))
     }
 
@@ -160,7 +162,7 @@ class FinanceNumbersTest {
     }
 
     private fun pnl(totals: String) =
-        BrickJson.decodeFromString(PnlResponse.serializer(), """{"success": true, "totals": $totals}""").asView()
+        decodeCompleted(PnlResponse.serializer(), """{"success": true, "totals": $totals}""").asView()
 
     /**
      * Cost basis, market value and P&L of the header card from the server's basis: computed

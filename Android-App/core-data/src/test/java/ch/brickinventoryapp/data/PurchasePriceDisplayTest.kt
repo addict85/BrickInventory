@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.displayPurchasePrice
-import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.contract.testing.decodeCompleted
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,7 +21,7 @@ class PurchasePriceDisplayTest {
     // counter-checks/setitem-reads-purchase-price.patch (the field back in SetItem) → red, the same test.
     @Test
     fun `the display rule is in the model and prefers the average`() {
-        val set = BrickJson.decodeFromString(SetItem.serializer(),
+        val set = decodeCompleted(SetItem.serializer(),
             """{"set_number":"75192-1","avg_purchase_price":712.5,"max_purchase_price":800,"purchase_price":99}""")
         assertEquals("The quantity-weighted value, never the old mirrored one", 712.5, set.displayPurchasePrice!!, 1e-9)
         // What SetItem reads from the response: purchase_price has always come empty since migration 0032

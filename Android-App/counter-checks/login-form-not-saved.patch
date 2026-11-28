@@ -1,0 +1,17 @@
+Gegenprobe: Das offene Anmeldeformular kommt nach dem Prozesstod nicht zurück
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginViewModelTest
+Rot: the open form and the admin checkbox
+
+
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
+@@ -92,7 +92,6 @@
+         // in the screen (rememberSaveable), password and code deliberately nowhere.
+         viewModelScope.launch {
+             _loginState.collect {
+-                saved[FORM] = it.form.name
+                 saved[FULL_ACCESS] = it.fullAccess
+             }
+         }

@@ -7,8 +7,8 @@ import android.app.NotificationManager
 import androidx.core.app.NotificationCompat
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testSetItem
 import ch.brickinventoryapp.data.account.AccountDataDeletion
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.testing.TestStore
@@ -118,7 +118,7 @@ class LogoutCleansEverythingTest {
         val storeKey = StoreKey(File(ctx.noBackupFilesDir, "test.key"), PlainVault)
         val secret = StoreCipher { storeKey.forTarget("x") }.encrypt("Sammlung von marco".toByteArray(), "x/1")
         val offline = TestStore()
-        offline.adopt(Slots.SETS, listOf(SetItem(setNumber = "10294-1")).map { it.asView() })
+        offline.adopt(Slots.SETS, listOf(testSetItem(setNumber = "10294-1")).map { it.asView() })
         offline.adopt(Slots.METRICS, listOf(MetricsView(totalSets = 1, totalQuantity = 1, totalInstructions = 0, totalParts = 0, totalMinifigs = 0)))
         offline.buffer(Editing.DeleteWantedItem("10294-1", Condition.NEW, 1))
         val preview = PreviewMemory({ File(ctx.filesDir, "vorschau") }, StoreCipher { storeKey.forTarget("vorschau") }) { storeKey.forTarget("namen") }

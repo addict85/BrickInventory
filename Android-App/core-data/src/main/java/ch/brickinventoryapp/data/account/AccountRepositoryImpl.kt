@@ -52,6 +52,7 @@ import ch.brickinventoryapp.model.util.parseInstant
 import ch.brickinventoryapp.network.util.AppLog
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -82,7 +83,7 @@ internal class AccountRepositoryImpl @Inject constructor(
      */
     override suspend fun login(serverUrl: String, username: String, password: String, code: String?,
                       scope: String, passkey: JsonObject?): Outcome<LoginReply> {
-        var routes = SecondFactorRoutes()
+        var routes = SecondFactorRefusal()
         val r = safeCall {
             // never_expires means „persistent up to the server's maximum lifetime“ (TOKEN_MAX_DAYS,
             // default 90), not „without an end“: the server caps it, the app signs out itself.
@@ -92,9 +93,8 @@ internal class AccountRepositoryImpl @Inject constructor(
             else api.login(LoginRequest(username = username, password = password, code = code, scope = scope, neverExpires = https))
             if (response.code() == 401) {
                 val body = response.errorBody()?.string()
-                val parsed = body?.let { runCatching { json.decodeFromString<LoginResponse>(it) }.getOrNull() }
-                body?.let { runCatching { json.decodeFromString<SecondFactorRoutes>(it) }.getOrNull() }?.let { routes = it }
-                if (parsed?.secondFactor == true) retrofit2.Response.success(parsed) else response
+                body?.let { runCatching { json.decodeFromString<SecondFactorRefusal>(it) }.getOrNull() }?.let { routes = it }
+                if (routes.secondFactor) retrofit2.Response.success(routes.asLoginResponse()) else response
             } else response
         }
         return when (r) {
@@ -258,6 +258,16 @@ private fun LoginResponse.asLogin() =
     Login(success = success, token = token, user = user?.username, admin = admin,
         secondFactor = secondFactor, error = error)
 
-/** From the 401 response to the second factor: does a passkey work instead of the code? Not in the contract (the error carries extra fields freely). */
+/**
+ * The 401 response to a missing second factor: an error body with extra fields, not a LoginResponse
+ * (that one requires never_expires and cookie_missing, which a refusal does not carry). Not in the
+ * contract: the error carries extra fields freely. [passkey]: a passkey works instead of the code.
+ */
 @Serializable
-private data class SecondFactorRoutes(val passkey: Boolean = false)
+private data class SecondFactorRefusal(
+    @SerialName("second_factor") val secondFactor: Boolean = false,
+    val passkey: Boolean = false,
+    val error: String? = null,
+) {
+    fun asLoginResponse() = LoginResponse(success = false, error = error, secondFactor = true, neverExpires = false, cookieMissing = false)
+}

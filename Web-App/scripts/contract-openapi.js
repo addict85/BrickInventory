@@ -35,7 +35,7 @@ if (require.main === module) {
   write(types.TARGET_FILE, types.create(JSON.parse(fs.readFileSync(OUT_FILE_V2, 'utf8'))));
   // The app speaks v2 as well; the v1 document stays for older app versions until the sunset.
   const kotlin = require('./contract-kotlin-dtos.js');
-  write(kotlin.TARGET_FILE, kotlin.create(JSON.parse(fs.readFileSync(OUT_FILE_V2, 'utf8'))));
+  kotlin.write(kotlin.files(JSON.parse(fs.readFileSync(OUT_FILE_V2, 'utf8'))));
 }
 
 module.exports = { OUT_FILE, OUT_FILE_V2, asText };

@@ -2,8 +2,8 @@ package ch.brickinventoryapp.offline
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testSetItem
 import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.offline.Outbox.DiscardedItem
 import ch.brickinventoryapp.offline.room.InventoryDatabase
@@ -78,7 +78,7 @@ class InventoryDatabaseTest {
     @Test
     fun `a local edit writes only the affected row`() = runBlocking {
         val store = OfflineStore(stock, outbox, { "a" })
-        store.adopt(Slots.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1), SetItem(setNumber = "2-1", quantity = 1), SetItem(setNumber = "3-1", quantity = 1)).map { it.asView() })
+        store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "1-1", quantity = 1), testSetItem(setNumber = "2-1", quantity = 1), testSetItem(setNumber = "3-1", quantity = 1)).map { it.asView() })
         val written = writeLog()
         store.buffer(Editing.SetQuantity("2-1", 1))
         assertEquals(listOf("UPDATE 2-1"), written())

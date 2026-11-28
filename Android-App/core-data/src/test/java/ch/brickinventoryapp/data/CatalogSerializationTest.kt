@@ -4,11 +4,13 @@ import ch.brickinventoryapp.contract.CatalogMetaResponse
 import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.contract.CatalogSetDetailResponse
 import ch.brickinventoryapp.contract.CatalogSetsResponse
+import ch.brickinventoryapp.contract.testing.decodeCompleted
 import ch.brickinventoryapp.data.util.BrickLinkUrls
 import ch.brickinventoryapp.model.json.BrickJson
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -16,15 +18,12 @@ import org.junit.Test
  * Client-side API contract: the catalog models must parse real
  * server responses of the /api/v2/catalog endpoints — including unknown
  * extra fields (the server may extend without breaking the app) and
- * missing optional fields. The JSON payloads match the format
- * that the server's integration test (test/catalog-api.test.js in the
- * manager repo) verifies.
+ * missing required fields, which are refused. The payloads name the fields each test
+ * checks; decodeCompleted fills in the other required ones.
  */
 class CatalogSerializationTest {
 
     // Same configuration as AppModule.provideJson()
-    private val json = BrickJson
-
     @Test
     fun `meta response is parsed`() {
         val payload = """{
@@ -37,7 +36,7 @@ class CatalogSerializationTest {
             "year_max": 2027,
             "year_counts": [{"year": 2026, "n": 812}, {"year": 2027, "n": 4}]
         }"""
-        val r = json.decodeFromString<CatalogMetaResponse>(payload)
+        val r = decodeCompleted<CatalogMetaResponse>(payload)
         assertTrue(r.success)
         assertEquals(2, r.themes.size)
         assertEquals("Star Wars › Ultimate Collector Series", r.themes[1].name)
@@ -60,7 +59,7 @@ class CatalogSerializationTest {
                  "image_url": null, "owned": false, "owned_quantity": 0}
             ]
         }"""
-        val r = json.decodeFromString<CatalogSetsResponse>(payload)
+        val r = decodeCompleted<CatalogSetsResponse>(payload)
         assertEquals(2, r.total)
         assertTrue(r.sets[0].owned)
         assertEquals(2, r.sets[0].ownedQuantity)
@@ -76,7 +75,7 @@ class CatalogSerializationTest {
                     "theme_id": 5, "theme_name": "Town › Launch Command", "num_parts": 154,
                     "image_url": null, "minifigs": 3, "owned": false, "owned_quantity": 0}
         }"""
-        val r = json.decodeFromString<CatalogSetDetailResponse>(payload)
+        val r = decodeCompleted<CatalogSetDetailResponse>(payload)
         assertEquals(3, r.set?.minifigs)
         assertEquals("Town › Launch Command", r.set?.themeName)
     }
@@ -88,25 +87,19 @@ class CatalogSerializationTest {
             "success": true, "total": 0, "page": 1, "pages": 1, "sets": [],
             "brandneues_feld": {"x": 1}, "noch_eins": [1, 2, 3]
         }"""
-        val r = json.decodeFromString<CatalogSetsResponse>(payload)
+        val r = decodeCompleted<CatalogSetsResponse>(payload)
         assertEquals(0, r.total)
     }
 
     @Test
-    fun `missing optional fields fall back to defaults`() {
-        val payload = """{"success": true, "sets": [{"set_number": "42100-1"}], "total": 1}"""
-        val r = json.decodeFromString<CatalogSetsResponse>(payload)
-        val s = r.sets.single()
-        assertEquals("42100-1", s.setNumber)
-        assertNull(s.name)
-        assertNull(s.year)
-        assertEquals(false, s.owned)
-        assertEquals(0, s.ownedQuantity)
+    fun `a set without its required fields is refused, not shown as not owned`() {
+        val payload = """{"success": true, "sets": [{"set_number": "42100-1"}], "total": 1, "page": 1, "page_size": 60}"""
+        assertThrows(SerializationException::class.java) { BrickJson.decodeFromString<CatalogSetsResponse>(payload) }
     }
 
     @Test
     fun `error response is parsed`() {
-        val r = json.decodeFromString<CatalogSetDetailResponse>(
+        val r = decodeCompleted<CatalogSetDetailResponse>(
             """{"success": false, "error": "Set nicht im Katalog gefunden"}"""
         )
         assertEquals(false, r.success)
@@ -134,18 +127,15 @@ class BrickLinkUrlsTest {
 
 /**
  * The catalog detail link now comes ready from the server. These tests secure
- * two things: that the new field deserializes correctly (even if it is missing —
- * older servers do not deliver it), and that the local fallback maps the
+ * two things: that the field deserializes correctly, and that the local fallback maps the
  * BrickLink item types correctly.
  */
 class BrickLinkRefTest {
 
-    private val json = Json { ignoreUnknownKeys = true }
-
     @Test
     fun `bricklink field is taken over`() {
         val raw = """{"set_number":"5005358-1","bricklink":{"type":"GEAR","number":"5005358","url":"https://x/","resolved":true}}"""
-        val d = json.decodeFromString<CatalogSetDetail>(raw)
+        val d = decodeCompleted<CatalogSetDetail>(raw)
         assertEquals("GEAR", d.bricklink?.type)
         assertEquals("5005358", d.bricklink?.number)
         assertEquals("https://x/", d.bricklink?.url)
@@ -153,15 +143,9 @@ class BrickLinkRefTest {
     }
 
     @Test
-    fun `missing bricklink field stays null (old server)`() {
-        val d = json.decodeFromString<CatalogSetDetail>("""{"set_number":"75192-1"}""")
-        assertEquals(null, d.bricklink)
-    }
-
-    @Test
     fun `unlisted item delivers url null`() {
         val raw = """{"set_number":"x-1","bricklink":{"type":"NONE","number":"x-1","url":null,"resolved":true}}"""
-        val d = json.decodeFromString<CatalogSetDetail>(raw)
+        val d = decodeCompleted<CatalogSetDetail>(raw)
         assertEquals("NONE", d.bricklink?.type)
         assertEquals(null, d.bricklink?.url)
     }
