@@ -24,6 +24,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /**
  * The barcode result form: quantity with the same −/+ stepper as the set page, and the
@@ -32,8 +33,12 @@ import org.robolectric.RobolectricTestRunner
  * Counter-checks (counter-checks/, measured with tools/counter-checks.py):
  *   barcode-stepper-ignored   plus no longer counts up → red “the stepper sets …” (1 instead of 3)
  *   barcode-without-currency  price field without the currency → red “the purchase price names …”
+ *
+ * A phone-sized screen: on Robolectric's 320×470 default the full dialog lays out at zero size
+ * and taps on the stepper land nowhere.
  */
 @RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "w411dp-h891dp-port-xxhdpi")
 class BarcodeFormTest {
 
     @get:Rule
