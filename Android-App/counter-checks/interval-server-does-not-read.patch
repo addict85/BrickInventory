@@ -1,7 +1,7 @@
 Gegenprobe: PathServer.onTick liest Antworten nicht mehr gegen das DTO
 Modul: core-data
 Test: ch.brickinventoryapp.data.PathServerInTickTest
-Rot: an incomplete response fails in the calling thread
+Rot: an unsuitable response fails in the calling thread
 
 diff --git a/Android-App/core-data/src/testFixtures/java/ch/brickinventoryapp/data/testing/TestApi.kt b/Android-App/core-data/src/testFixtures/java/ch/brickinventoryapp/data/testing/TestApi.kt
 --- a/Android-App/core-data/src/testFixtures/java/ch/brickinventoryapp/data/testing/TestApi.kt

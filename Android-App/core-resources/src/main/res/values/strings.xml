@@ -9,27 +9,28 @@
 
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Currency</string>
-    <string name="settings_price_condition">Price condition</string>
+    <string name="settings_price_condition">Prices for</string>
     <string name="common_condition">Condition</string>
     <string name="detail_edit_prices">Edit prices</string>
     <string name="detail_purchase_price">Purchase price</string>
     <string name="detail_price_placeholder">Market price</string>
         <string name="common_back">Back</string>
     <string name="acq_delete_title">Delete entry</string>
-    <string name="acq_delete_question">Delete entry?</string>
-    <string name="acq_delete_text">Delete this purchase price entry? The total quantity will be adjusted accordingly.</string>
     <string name="acq_deleted">Purchase deleted</string>
     <string name="common_delete">Delete</string>
     <string name="common_edit">Edit</string>
     <string name="common_cancel">Cancel</string>
-    <string name="settings_default_condition">My condition when adding</string>
-    <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
-    <string name="settings_default_condition_hint">A newly added set starts with this. “General” uses the default for all accounts.</string>
+    <string name="settings_default_condition">Preselected when adding</string>
+    <string name="settings_default_condition_effective">Currently: %1$s.</string>
+    <string name="settings_default_condition_hint">This condition is preselected when you add a set. “General” uses the default for all accounts.</string>
     <string name="settings_default_condition_global">General</string>
     <string name="condition_new">New</string>
     <string name="condition_used">Used</string>
     <string name="monitoring_default_condition">Condition when adding, for all accounts</string>
-    <string name="settings_price_basis">Price basis for BrickLink valuations</string>
+    <string name="settings_price_basis">Market value and gains use BrickLink prices for new or used sets.</string>
+    <string name="settings_group_device">This device</string>
+    <string name="settings_group_account">Account</string>
+    <string name="settings_group_account_hint">Applies to your account on all devices.</string>
     <string name="settings_condition_new">New</string>
     <string name="settings_condition_used">Used</string>
     <string name="settings_save">Save</string>
@@ -93,9 +94,9 @@
     <!-- ══════════════ Comparison screen ══════════════ -->
     <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
     <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">e.g. 75192-1 or barcode</string>
-    <string name="comparison_search">Search</string>
+    <string name="comparison_search">Compare on toppreise.ch</string>
     <string name="comparison_barcode_label">Barcode: %1$s</string>
-    <string name="comparison_title">Price comparison</string>
+    <string name="comparison_title">Compare prices</string>
     <string name="comparison_hint">Enter a set number or barcode, or scan one.\nThe search opens toppreise.ch in the browser.</string>
 
     <!-- ══════════════ Barcode result dialog ══════════════ -->
@@ -148,7 +149,7 @@
     <string name="gallery_pnl_profit">Gain %1$s</string>
     <string name="gallery_pnl_loss">Loss %1$s</string>
     <string name="gallery_card_market">Market price</string>
-    <string name="gallery_card_paid">Purchase price</string>
+    <string name="gallery_card_no_market">no market price</string>
     <string name="gallery_delete_title">Delete set?</string>
     <string name="gallery_delete_text">%1$s and its parts will be deleted. You can still undo it for a moment afterwards.</string>
     <string name="common_undo">Undo</string>
@@ -232,8 +233,6 @@
     <string name="storage_rename">Rename</string>
     <string name="storage_rename_title">Rename storage location</string>
     <string name="storage_menu_cd">Actions for %1$s</string>
-    <string name="storage_delete_title">Delete storage location?</string>
-    <string name="storage_delete_text">“%1$s” will be deleted. This only works while nothing is stored there.</string>
     <string name="detail_storage">Storage</string>
     <string name="detail_alert">Price alert</string>
     <string name="alert_channel_name">Price alerts</string>
@@ -241,6 +240,8 @@
     <string name="alert_locked">A set crossed one of your thresholds.</string>
     <string name="alert_notify">Notify me on this device</string>
     <string name="alert_notify_hint">Checks hourly in the background. Without it you only get the e-mail.</string>
+    <string name="alert_notify_blocked">Android does not show price alerts on this device right now: notifications are turned off in the system settings.</string>
+    <string name="alert_open_system_settings">Open system settings</string>
     <string name="alert_schedule_failed">Price alert could not be scheduled: %1$s</string>
     <string name="detail_alert_below">falls below</string>
     <string name="detail_alert_above">rises above</string>
@@ -429,7 +430,7 @@
     <string name="detail_section_price_history">Price history</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
-    <string name="settings_dark_label">Appearance on this device</string>
+    <string name="settings_dark_label">Appearance</string>
     <string name="settings_light_system">System</string>
     <string name="settings_light_light">Light</string>
     <string name="settings_light_dark">Dark</string>
@@ -440,7 +441,6 @@
     <string name="parts_breakdown">%1$s from sets · %2$s loose</string>
     <string name="nav_partslist">Build list</string>
     <string name="nav_finance">Finance</string>
-    <string name="nav_comparison">Price comparison</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_more">More</string>
     <string name="nav_group_prices">Prices and vouchers</string>
@@ -487,7 +487,7 @@
     <string name="parts_filter_spare">Spare parts only</string>
     <string name="common_quantity">Quantity</string>
     <string name="common_unit_price">Purchase price per piece (optional)</string>
-    <string name="common_unit_price_placeholder">Empty = current market price</string>
+    <string name="common_unit_price_placeholder">Leave empty to use today\'s market price</string>
     <string name="common_loading">Loading…</string>
     <string name="detail_price_loading">Loading price…</string>
     <string name="vm_saved">Saved</string>
@@ -671,17 +671,17 @@
     <string name="monitoring_cache_ttl_hours">%1$s hours</string>
     <string name="acq_total_quantity">Total ×%1$d</string>
     <string name="setup_build">Build %1$s</string>
-    <string name="err_generic">The server rejected the request without giving a reason</string>
-    <string name="err_login_failed">Sign-in failed</string>
+    <string name="err_generic">The server turned down the request without giving a reason. Please try again.</string>
+    <string name="err_login_failed">Sign-in did not work. Please check your username and password and try again.</string>
     <string name="login_qr_confirm_hint">Enter this code in the browser where you created the QR code. Only then does this device get access.</string>
     <string name="login_qr_account_title">Sign in with this account?</string>
     <string name="login_qr_account_text">The code signs this app in as “%1$s” on %2$s. Continue only if this is your account and your server.</string>
     <string name="login_qr_account_yes">Sign in</string>
-    <string name="err_qr_login_failed">QR sign-in failed</string>
+    <string name="err_qr_login_failed">Signing in with the QR code did not work. Create a new code in the web app and scan it again.</string>
     <string name="err_network">No connection to the server</string>
-    <string name="err_timeout">The server did not respond in time</string>
-    <string name="err_empty_response">The server sent no data</string>
-    <string name="err_server">Server error (%1$d)</string>
+    <string name="err_timeout">The server did not answer in time. Please try again in a moment.</string>
+    <string name="err_empty_response">The server sent no data. Please try again.</string>
+    <string name="err_server">The server could not handle the request. Please try again later. (Code %1$d)</string>
     <string name="err_session_expired">Session expired — please sign in again</string>
     <string name="err_plaintext">The server address is unencrypted (http). The app only connects via https – please enter the https address under “Change server” or scan the QR code again.</string>
     <string name="err_cancelled">The server declined the request.</string>
@@ -701,7 +701,7 @@
     <string name="pdfview_foreign_host">This PDF is not on your server. Open it from the set page in another app.</string>
     <string name="pdfview_page">Page %1$d</string>
     <string name="pdfview_unknown_error">Unknown error. Please try again.</string>
-    <string name="pdfview_download_failed">Download failed</string>
+    <string name="pdfview_download_failed">The PDF could not be downloaded. Please check the connection and try again.</string>
     <string name="pdfview_print_failed">Printing failed</string>
     <string name="pdfview_saved">Saved: %1$s</string>
     <string name="pdfview_save_failed">Saving failed</string>
@@ -799,11 +799,11 @@
     <string name="csv_desc_figs">Figure number (Rebrickable or BrickLink), quantity, unit price, condition and purchase date</string>
     <string name="csv_desc_wanted">Set number, condition and since when it is on the list</string>
     <string name="csv_desc_alerts">Set number, condition, direction (below/above), threshold and currency</string>
-    <string name="csv_upload_sets">Import sets …</string>
-    <string name="csv_upload_parts">Import parts …</string>
-    <string name="csv_upload_figs">Import minifigures …</string>
-    <string name="csv_upload_wanted">Import wishlist …</string>
-    <string name="csv_upload_alerts">Import price alerts …</string>
+    <string name="csv_upload_sets">Import sets…</string>
+    <string name="csv_upload_parts">Import parts…</string>
+    <string name="csv_upload_figs">Import minifigures…</string>
+    <string name="csv_upload_wanted">Import wishlist…</string>
+    <string name="csv_upload_alerts">Import price alerts…</string>
     <string name="vouchers_import_done">%1$s, %2$s</string>
     <string name="csv_upload_hint">The same files as in the web app, with a header row, at most %1$d MB.</string>
     <string name="csv_upload_unreadable">The selected file could not be read.</string>
@@ -849,7 +849,7 @@
     <!-- ══════════════ Meldungen der ViewModels ══════════════ -->
     <string name="err_set_not_found">Set not found</string>
     <string name="pdfexp_server_error">The server could not create the PDF</string>
-    <string name="pdfexp_http_error">The server answered with %1$d</string>
+    <string name="pdfexp_http_error">The server could not deliver the PDF. Please try again later. (Code %1$d)</string>
 
 
     <string name="price_from_other_condition_new">Purchase price taken from the "new" market price — BrickLink has no price for "used".</string>
@@ -912,21 +912,20 @@
     <string name="step_server_error">The server did not accept the confirmation. Please try again.</string>
     <string name="app_lock_set_up">On a new installation it is set to 5 minutes if the phone has a screen lock. It covers the app and asks for your fingerprint or device lock; you can change it at any time in Settings.</string>
     <string name="app_lock_title">Lock the app</string>
-    <string name="app_lock_hint">After this many minutes in the background the app asks for your fingerprint or device lock. Applies to this device.</string>
+    <string name="app_lock_hint">After this many minutes in the background the app asks for your fingerprint or device lock.</string>
     <string name="app_lock_without_screen_lock">Needs a screen lock on this device.</string>
     <string name="app_lock_from">Off</string>
     <string name="app_lock_minutes">%1$d min</string>
     <string name="app_lock_locked">BrickInventory is locked</string>
     <string name="app_lock_unlock">Unlock</string>
     <string name="step_without_lock_title">No screen lock</string>
-    <string name="step_without_lock_text">This step (%1$s) normally asks for the screen lock. This device has none: anyone holding the phone can get to voucher PINs, recovery codes and administration without further ado. Set up a PIN, pattern or password in the system settings under Security.</string>
+    <string name="step_without_lock_text">This step (%1$s) normally asks for the screen lock, but this device has none. Anyone holding the phone can reach voucher PINs, recovery codes and administration. Set up a lock under Settings → Security.</string>
     <string name="step_without_lock_next">Continue unprotected</string>
     <string name="step_voucher">Show voucher PIN</string>
     <string name="step_codes">Recovery codes</string>
     <string name="step_admin">Open administration</string>
     <string name="step_full_access">Sign in with administrator rights</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
-    <string name="vouchers_delete_confirm">Voucher %1$s and its stored PDF will be deleted. Right afterwards you can still undo it.</string>
     <string name="vouchers_saved">Voucher saved</string>
     <string name="vouchers_deleted">Voucher deleted</string>
     <string name="vouchers_restored">Voucher restored</string>
@@ -936,7 +935,6 @@
     <string name="vouchers_amount_invalid">Please enter a valid amount</string>
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
-    <string name="vouchers_delete_title">Delete voucher?</string>
     <string name="vouchers_mask_hint">Stays unchanged unless you type something new</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
@@ -961,7 +959,6 @@
     <string name="vouchers_balance_never">balance never queried</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>
     <string name="vouchers_balance_currency">Currency changed to %1$s.</string>
-    <string name="settings_group_display">Display &amp; prices</string>
     <string name="zf_title">Two-factor authentication</string>
     <string name="zf_hint">A code from an authenticator app in addition to your password. Protects you if someone knows your password.</string>
     <string name="zf_setup">Set up</string>
@@ -1002,45 +999,40 @@
     <string name="settings_system_colors">System colors (Material You)</string>
     <string name="settings_system_colors_hint">Colors from your wallpaper instead of the design\'s colors. Shapes and fonts stay.</string>
     <string name="settings_preview_hide">Hide preview in the app overview</string>
-    <string name="settings_preview_hide_hint">No preview in the recent apps overview and no screenshots of the app. Applies to this device.</string>
+    <string name="settings_preview_hide_hint">No preview in the recent apps overview and no screenshots of the app.</string>
     <string name="settings_widget_values">Show amounts in the widget</string>
-    <string name="settings_widget_values_hint">Otherwise the collection value and gains are hidden on the home screen, where anyone who sees the phone can read them. Applies to this device.</string>
+    <string name="settings_widget_values_hint">Otherwise the collection value and gains are hidden on the home screen, where anyone who sees the phone can read them.</string>
     <string name="cert_title_first_contact">Trust this server?</string>
     <string name="cert_title_unknown">Unknown certificate</string>
     <string name="cert_title_changed">The server\'s certificate has changed</string>
-    <string name="cert_text_first_contact">This is the first encrypted connection to %1$s. Its certificate comes from a publicly recognized authority; this device also checks that it is publicly logged (Certificate Transparency), so your yes is enough here — no QR code or comparison needed. Whoever wants to check anyway finds the fingerprint of this server in the browser\'s certificate details on a computer (topmost certificate, public key SHA-256; the web app does not know it for a public certificate). Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
-    <string name="cert_text_first_contact_type">This is the first encrypted connection to %1$s. This Android version does not check whether the certificate is publicly logged (Certificate Transparency, only from Android 16). A wrongly issued certificate would therefore look exactly the same. That is why the connection only counts once you copy the fingerprint:\n1. Open the web app in the browser on your computer.\n2. Open the certificate details (padlock next to the address) and select the topmost certificate of the chain.\n3. Type the last 12 pairs of “Public key, SHA-256” into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nOnly the beginning of the fingerprint is shown here.</string>
-    <string name="cert_first_contact_input">Last 12 pairs of the fingerprint (e.g. 3F:A2:…), copied from your browser\'s certificate details on the computer (topmost certificate, fingerprints → public key, SHA-256)</string>
-    <string name="cert_text_unknown">The app cannot check who %1$s is: the server issued its certificate itself, or your own authority did. That is normal for a server at home, but it could also be someone in between.\n\nThe easiest way is to scan the QR code from the web app (Menu → Android App). If no QR code is possible, do this:\n1. Open the web app on a computer.\n2. Go to Menu → Android App → Server certificate.\n3. Copy the last 12 pairs of the fingerprint into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nThe fingerprint is an ID that belongs to this server. If it matches, it is your server. This screen only shows its beginning.</string>
-    <string name="cert_text_changed">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the web app shows the new fingerprint (Menu → Android App → Server certificate); for a public certificate authority, so does your browser (certificate details, public key SHA-256 of the top authority). Copy its last 12 pairs, e.g. 3F:A2:…</string>
-    <string name="cert_fingerprint">Fingerprint (SHA-256 of the public key)</string>
+    <string name="cert_text_first_contact_type">This is the first encrypted connection to %1$s. A wrongly issued certificate would look exactly the same – so it only counts once you copy the fingerprint from the browser on your computer.</string>
+    <string name="cert_first_contact_input">In the browser on your computer: padlock next to the address → certificate details → topmost certificate → “Public key, SHA-256”. Copy the last 12 pairs, e.g. 3F:A2:…</string>
+    <string name="cert_text_unknown">The app cannot check who %1$s is: the certificate was issued by the server itself or by your own authority. Confirm it with the QR code or the fingerprint from the web app.</string>
+    <string name="cert_text_changed">%1$s shows a different certificate than the one you confirmed; nothing has been sent. Only accept it if you changed the server yourself – otherwise someone may be listening in.</string>
     <string name="cert_previous">Previously confirmed</string>
     <string name="cert_trust">Trust this certificate</string>
     <string name="cert_trust_new">Accept the new certificate</string>
-    <string name="cert_device_confirm">The server uses a new key. After tapping, confirm with your screen lock that it is really you.</string>
-    <string name="cert_device_title">Confirm the new server key</string>
     <string name="cert_title_key_new">The server has a new key</string>
-    <string name="cert_text_key_new">%1$s shows a valid certificate from the same certificate authority, but with a different key than before. That is normal after the server renewed its certificate – but it can also be a certificate issued to someone else. Nothing has been sent. Only accept it if the server\'s certificate was just renewed.</string>
-    <string name="cert_first_contact_type">Type the fingerprint instead</string>
+    <string name="cert_text_key_new">%1$s shows a certificate from the same authority, but with a new key; nothing has been sent. That is normal after a renewal – otherwise it may be a certificate issued to someone else.</string>
     <string name="cert_user_ca">Use an authority installed on this device instead</string>
-    <string name="cert_changed_input">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from the web app (Menu → Android App → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
-    <string name="cert_key_new_input">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from your computer\'s browser certificate details (Fingerprints → Public key, SHA-256)</string>
+    <string name="cert_changed_input">In the web app under Menu → Android App → Server certificate; for a public authority also in the certificate details of your browser. Copy the last 12 pairs, e.g. 3F:A2:…</string>
+    <string name="cert_key_new_input">In the browser on your computer: certificate details → topmost certificate → “Public key, SHA-256”. Copy the last 12 pairs of the new fingerprint, e.g. 3F:A2:…</string>
     <string name="cert_changed_qr">Alternatively, scan a new QR code from the web app.</string>
     <string name="cert_scan_qr">Scan QR code</string>
-    <string name="cert_scan_explain">Easier than copying: the web app shows a QR code under Menu → Android App → Server certificate. The app compares the whole fingerprint with it.</string>
+    <string name="cert_manual_compare">Compare manually</string>
     <string name="cert_scan_hint">Scan the server certificate\'s QR code</string>
     <string name="scanner_camera_purpose_cert">The camera reads the QR code with the fingerprint of the server certificate.</string>
     <string name="cert_scan_compare_instead">Compare by hand</string>
     <string name="cert_scan_mismatch">The QR code names a different fingerprint than the server. The certificate is not trusted. If the code comes from this server\'s web app, someone may be redirecting the connection.</string>
     <string name="cert_scan_not_code">This is not a certificate code. Scan the QR code under Menu → Android App → Server certificate in the web app.</string>
     <string name="cert_scan_unknown_version">This app version does not know this certificate code. Update the app or compare the fingerprint by hand.</string>
-    <string name="cert_unknown_input">Last 12 pairs of the fingerprint (e.g. 3F:A2:…), copied from the web app (Menu → Android App → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
+    <string name="cert_unknown_input">In the web app under Menu → Android App → Server certificate. Copy the last 12 pairs, e.g. 3F:A2:…</string>
     <string name="cert_input_wrong">That does not match this server\'s fingerprint.</string>
     <string name="cert_input_too_short">Characters so far: %1$d/%2$d. Copy the last 12 pairs.</string>
     <string name="cert_input_counter">%1$d/%2$d</string>
     <string name="cert_input_label">Last 12 pairs</string>
     <string name="cert_starts_with">Fingerprint starts with (for orientation only)</string>
-    <string name="cert_text_user_ca">The certificate of %1$s comes from an authority that was installed on this device. That may be your own – or one that someone with access to the device slipped in.\n\nWhat to do:\n1. Open the web app on a computer.\n2. Go to Menu → Android App → Server certificate.\n3. Copy the last 12 pairs of the fingerprint into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nThis screen only shows the beginning of the fingerprint.</string>
+    <string name="cert_text_user_ca">The certificate of %1$s comes from an authority installed on this device – by you or by someone with access to the device. Confirm it with the QR code or the fingerprint from the web app.</string>
     <string name="cert_title_user_ca">Certificate from an installed authority</string>
     <string name="cert_title_code_mismatch">The server does not match the QR code</string>
     <string name="cert_text_code_mismatch">%1$s shows a different key than the QR code you just scanned. Sign-in was cancelled; nothing has been sent. This happens when someone redirects the connection – or when the code is old. Create a new QR code in the web app (Menu → Android App) and scan it again.</string>
@@ -1088,6 +1080,7 @@
     <string name="widget_today">Today</string>
     <string name="widget_total">Overall</string>
     <string name="widget_empty">Open the app once to load the figures.</string>
+    <string name="widget_as_of">As of %1$s</string>
     <string name="widget_description">Collection value, profit/loss today and overall.</string>
     <string name="widget_preview_value">CHF 112,480.00</string>
     <string name="widget_preview_today">+CHF 1,035.20</string>
@@ -1105,10 +1098,10 @@
     <string name="kind_follow_up">Start-up follow-up</string>
     <string name="kind_csv_sync">Rebrickable catalog</string>
     <string name="kind_prices">Update prices</string>
-    <string name="kind_image_follow_up">Image download (CDN)</string>
+    <string name="kind_image_follow_up">Download images</string>
     <string name="kind_clean_up">Clean-up (hourly)</string>
     <string name="kind_clean_up_daily">Clean-up (daily)</string>
-    <string name="background_no_process">No job process reports in — is the “jobs” service running?</string>
+    <string name="background_no_process">Background jobs are not being processed: the background service is not running on the server. Please start it there (service “jobs”).</string>
     <string name="background_pause">%1$s paused until %2$s: %3$s</string>
     <string name="background_empty">No open or failed jobs</string>
     <string name="background_open">open</string>
@@ -1150,7 +1143,7 @@
         <item quantity="one">At least %1$d character</item>
         <item quantity="other">At least %1$d characters</item>
     </plurals>
-    <string name="login_extended">Advanced</string>
+    <string name="login_access_scope">Access scope</string>
     <!-- UI-Prüfung 11 (Android) -->
     <string name="login_server_edit">Change server: %1$s</string>
     <string name="zf_codes_saved">I have stored the codes safely</string>
@@ -1178,7 +1171,6 @@
     <string name="record_discard_title">Discard changes?</string>
     <string name="record_discard_text">What you entered will be lost.</string>
     <string name="record_discard">Discard</string>
-    <string name="gallery_quantity_hint">Number of identical sets</string>
     <string name="record_quantity_invalid">Enter a whole quantity of 1 or more.</string>
     <string name="record_price_invalid">Enter an amount such as 12.50 or 1,299.00.</string>
     <string name="record_number_invalid" tools:ignore="TypographyDashes">That is not a set number. Expected e.g. 10294 or 10294-1.</string>

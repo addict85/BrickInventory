@@ -72,14 +72,14 @@ class TestApp(
         )
         viewModels.apply {
             put { world.gallery(it) }
-            put<EntryViewModel> { world.entry() }
+            put<EntryViewModel> { world.entry(it) }
             put { world.setDetail(it) }
             put { world.wantedList(it) }
             put { world.parts(it) }
             put { world.figures(it) }
             put<PartListViewModel> { world.buildList(it, partLists) }
             put { world.finances(it) }
-            put<VoucherViewModel> { world.vouchers() }
+            put<VoucherViewModel> { world.vouchers(it) }
             put<SettingsViewModel> { world.settings() }
             put<PurchasesViewModel> { world.purchases() }
         }

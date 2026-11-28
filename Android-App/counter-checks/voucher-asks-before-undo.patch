@@ -1,0 +1,27 @@
+Gegenprobe: „Löschen“ im Gutscheinmenü fragt wieder nach, obwohl die Snackbar „Rückgängig“ anbietet
+Modul: app
+Test: ch.brickinventoryapp.app.FlowTest
+Rot: deleting a voucher asks no question and no password
+
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/VoucherCard.kt
+@@ -61,6 +61,9 @@
+     modifier: Modifier = Modifier,
+ ) {
+     var menu by rememberSaveable { mutableStateOf(false) }
++    var ask by rememberSaveable { mutableStateOf(false) }
++    if (ask) ch.brickinventoryapp.ui.components.Prompt(title = "?", text = "?", confirm = stringResource(R.string.common_delete),
++        onConfirm = { ask = false; events.delete() }, onCancel = { ask = false })
+     // The whole number only with the PIN revealed; otherwise the server's mask.
+     val number = inGroupsOfFour(if (pinVisible && plaintext != null) plaintext.number else g.number)
+ 
+@@ -94,7 +97,7 @@
+                     MenuEntry(stringResource(R.string.common_edit),
+                         stringResource(R.string.vouchers_cd_edit, number), Icons.Default.Edit) { menu = false; events.edit() }
+                     MenuEntry(stringResource(R.string.common_delete),
+-                        stringResource(R.string.vouchers_cd_delete, number), Icons.Default.Delete) { menu = false; events.delete() }
++                        stringResource(R.string.vouchers_cd_delete, number), Icons.Default.Delete) { menu = false; ask = true }
+                 }
+             }
+         }

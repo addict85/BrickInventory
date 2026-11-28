@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.shared
 
-import ch.brickinventoryapp.contract.ChartPoint
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testChartPoint
 import ch.brickinventoryapp.shared.ui.chartSummary
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -19,7 +19,7 @@ import org.junit.Test
  */
 class ChartSummaryTest {
 
-    private fun p(label: String, value: Double) = ChartPoint(xLabel = label, value = value).asView()
+    private fun p(label: String, value: Double) = testChartPoint(xLabel = label, value = value).asView()
 
     @Test
     fun `a single point is not a history`() {

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.contract
 
+import ch.brickinventoryapp.contract.testing.decodeCompleted
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
@@ -37,12 +38,11 @@ class AccountSelectionTest {
 
     @Test
     fun `the direction reads and writes the server's words`() {
-        val json = Json { ignoreUnknownKeys = true }
-        val alarm = json.decodeFromString(PriceAlert.serializer(), """{"set_number":"1-1","direction":"above","threshold":5.0}""")
+        val alarm = decodeCompleted(PriceAlert.serializer(), """{"set_number":"1-1","direction":"above","threshold":5.0}""")
         assertEquals(AlarmDirection.OVER, alarm.direction)
         assertEquals("""{"direction":"above","threshold":5.0,"condition":"U"}""",
             Json.encodeToString(PriceAlertRequest.serializer(), PriceAlertRequest(direction = AlarmDirection.OVER, threshold = 5.0, condition = Condition.USED)))
         // Unknown as at the server: „unter“, instead of discarding the list.
-        assertEquals(AlarmDirection.BELOW, json.decodeFromString(PriceAlert.serializer(), """{"direction":"seitwaerts"}""").direction)
+        assertEquals(AlarmDirection.BELOW, decodeCompleted(PriceAlert.serializer(), """{"direction":"seitwaerts"}""").direction)
     }
 }

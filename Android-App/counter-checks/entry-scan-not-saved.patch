@@ -1,0 +1,18 @@
+Gegenprobe: Ein gescanntes, noch nicht bestätigtes Set geht beim Prozesstod verloren
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.EntryViewModelTest
+Rot: a scanned set waiting for confirmation
+
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
+@@ -368,7 +368,7 @@
+ 
+ /** The confirmation dialog's values as a bundle-safe list; null without a pending result. */
+ private fun SavedStateHandle.storePendingScan(b: BarcodeUiState) {
+-    this[SCAN] = b.result?.let {
++    this[SCAN] = b.result?.takeIf { false }?.let {
+         arrayListOf(it, b.source.name, b.setName, b.imageUrl, b.imageLocal, b.year, b.pieces, b.theme, b.minifigs,
+             b.ownershipQuantity, b.unsafe)
+     }

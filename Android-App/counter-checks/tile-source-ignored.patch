@@ -1,17 +1,15 @@
-Gegenprobe: Galeriekachel nennt auch den Kaufpreis „Marktpreis“ (kachel_quelle übergangen)
+Gegenprobe: Galeriekachel zeigt den Kaufpreis wieder als Marktpreis (kachel_quelle übergangen)
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: gallery tile names the purchase price as purchase price
+Rot: gallery tile shows the market price only
 
-diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
---- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
-+++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryCard.kt
-@@ -322,7 +322,7 @@
-     // row, the label sits before the amount if the width allows.
-     val source = when (if (amount != null) tileSource(set, price) else null) {
-         TileSource.MARKET -> stringResource(R.string.gallery_card_market)
--        TileSource.PURCHASE -> stringResource(R.string.gallery_card_paid)
-+        TileSource.PURCHASE -> stringResource(R.string.gallery_card_market)
-         null -> ""
-     }
-     if (!row) Text(source, style = MaterialTheme.typography.bodySmall,
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/TilePrice.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/TilePrice.kt
+index 658b985..8efe2f3 100644
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/TilePrice.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/TilePrice.kt
+@@ -53,4 +53,4 @@ private fun tilePriceBeforeServer(z: List<GainRowView>): TilePrice {
+  * purchase-price fallback with source "purchase", older servers sent market prices only.
+  */
+ internal fun tileMarketPrice(price: TilePrice?): Money? =
+-    price?.takeIf { it.source != "purchase" }?.amount?.takeIf { it.positive }
++    price?.amount?.takeIf { it.positive }

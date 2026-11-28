@@ -94,11 +94,14 @@ fun CatalogScreen(
     val rasterEdge = PaddingValues(start = Spacing.medium, top = Spacing.medium, bottom = Spacing.medium,
         end = if (withYearsBar) TRACK_WIDTH else Spacing.medium)
     val error = state.fetch as? Load.Failure
+    // An empty catalog has nothing to filter or count; theme and year above the empty
+    // state only suggested that a filter was hiding the sets.
+    val emptyCatalog = state.total == 0 && error == null && !state.fetch.loading && !state.filtered
     Column(Modifier.fillMaxSize()) {
         CatalogSearchField(state, onQueryChange, onSortChange)
-        CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
+        if (!emptyCatalog) CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
         // Hit count — not on error: "0 sets in catalog" used to sit there next to the error.
-        if (error == null || state.total > 0) Text(
+        if ((error == null || state.total > 0) && !emptyCatalog) Text(
             // pluralStringResource instead of stringResource: "1 set in catalog",
             // not "1 sets".
             pluralStringResource(R.plurals.catalog_result_count, state.total, state.total),
@@ -161,6 +164,10 @@ private fun rememberCatalogGrid(state: CatalogUiState, catalog: CatalogActions, 
     return gridState
 }
 
+/** Whether search, theme or year narrow the result. */
+private val CatalogUiState.filtered: Boolean
+    get() = query.isNotBlank() || themeId != null || year != null
+
 /** Skeleton, error, no hits or an empty catalog — otherwise [grid]. */
 @Composable
 private fun CatalogContent(
@@ -170,7 +177,6 @@ private fun CatalogContent(
     onReset: () -> Unit,
     grid: @Composable () -> Unit,
 ) {
-    val filtered = state.query.isNotBlank() || state.themeId != null || state.year != null
     val error = state.fetch as? Load.Failure
     when {
         // The same dimensions as the grid below it, so nothing jumps on arrival.
@@ -182,7 +188,7 @@ private fun CatalogContent(
             ErrorHint(error.message.sentence(), onRefresh, error.kind)
         }
         // With search or filter: say why, and offer a way back.
-        state.total == 0 && filtered -> StateHint {
+        state.total == 0 && state.filtered -> StateHint {
             NoHitsHint(stringResource(R.string.catalog_no_results))
             Button(onClick = onReset) { Text(stringResource(R.string.filter_reset_all)) }
         }

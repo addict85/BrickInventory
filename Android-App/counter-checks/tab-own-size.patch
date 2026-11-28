@@ -6,16 +6,17 @@ Rot: tab bar breaks no word at 200 percent
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -320,10 +320,10 @@ private fun TabBar(
-             }
-             Row(Modifier.fillMaxWidth().heightIn(min = BAR_HEIGHT).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-                 targets.forEachIndexed { i, (screen, icon, name) ->
--                    val labeled = sentence.all || i == sentence.chosen
-+                    val labeled = true
-                     val space = Modifier.weight(if (i == sentence.chosen) sentence.weight else 1f)
-                     val target: @Composable (Modifier) -> Unit = { m ->
--                        TabTarget(chosen(screen), name, if (labeled) style.fontSize * sentence.factor else null, colors,
-+                        TabTarget(chosen(screen), name, if (labeled) style.fontSize * sentence.factor * (1f - 0.05f * i) else null, colors,
-                             { onChoice(screen) }, m) { icon() }
+@@ -323,11 +323,11 @@
+         }
+         NavigationBar(containerColor = colors.bar, windowInsets = insets) {
+             targets.forEachIndexed { i, (screen, icon, name) ->
+-                val labeled = sentence.all || i == sentence.chosen
++                val labeled = true
+                 // NavigationBarItem weighs itself 1f; the wider selected destination needs its own Row.
+                 Row(Modifier.weight(if (i == sentence.chosen) sentence.weight else 1f)) {
+                     val item: @Composable RowScope.() -> Unit = {
+-                        TabItem(chosen(screen), name, if (labeled) style.fontSize * sentence.factor else null, colors,
++                        TabItem(chosen(screen), name, if (labeled) style.fontSize * sentence.factor * (1f - 0.05f * i) else null, colors,
+                             { onChoice(screen) }) { icon() }
                      }
-                     if (labeled) target(space) else WithTooltip(name, space) { target(Modifier.fillMaxWidth()) }
+                     if (labeled) item() else WithTooltip(name, Modifier.fillMaxWidth()) { Row { item() } }

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finances.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MessageChannel
@@ -24,7 +25,6 @@ import ch.brickinventoryapp.model.file.Read
 import ch.brickinventoryapp.model.ui.Load
 import ch.brickinventoryapp.model.ui.Message
 import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.loadError
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
@@ -51,15 +51,29 @@ class VoucherViewModel @Inject constructor(
     private val reader: FileReader,
     private val messages: MessageChannel,
     private val account: AccountRepository,
+    private val saved: SavedStateHandle,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(VoucherUiState())
+    private val _state = MutableStateFlow(VoucherUiState(
+        edited = saved[EDITED], amount = saved[AMOUNT] ?: "", currency = saved[CURRENCY] ?: "CHF"))
     val state = _state.asStateFlow()
 
     private var balanceJob: Job? = null
 
     init {
         observeLoadOn(_state) { loadVouchers(); loadRemoveEmpty() }
+    }
+
+    /**
+     * The form into the saved state, after every change to it. Number and PIN are secrets (the
+     * store keeps neither), and Android writes the saved state to disk: they stay out.
+     * Not by collecting [_state]: a collector would count as an observer and load the page.
+     */
+    private fun keepForm() {
+        val s = _state.value
+        saved[EDITED] = s.edited
+        saved[AMOUNT] = s.amount
+        saved[CURRENCY] = s.currency
     }
 
     fun loadVouchers() {
@@ -69,7 +83,12 @@ class VoucherViewModel @Inject constructor(
     private suspend fun load() {
         _state.update { it.copy(fetch = Load.Loads) }
         when (val r = repo.list()) {
-            is Outcome.Success -> _state.update { it.copy(vouchers = r.data, fetch = Load.Data(Unit)) }
+            is Outcome.Success -> _state.update { st ->
+                // After a process death the edited card has no number; its mask means "unchanged".
+                val g = r.data.find { it.id == st.edited }.takeIf { st.number.isEmpty() }
+                st.copy(vouchers = r.data, fetch = Load.Data(Unit),
+                    number = g?.number ?: st.number, pin = g?.pin ?: st.pin)
+            }
             is Outcome.Failure -> {
                 _state.update { it.copy(fetch = loadError(r)) }
                 messages.show(texts.messageForSnackbar(r))
@@ -110,6 +129,7 @@ class VoucherViewModel @Inject constructor(
                 currency = currency ?: it.currency,
             )
         }
+        keepForm()
     }
 
     /** Hiding happens right away; revealing needs the plain text from the server. */
@@ -125,24 +145,17 @@ class VoucherViewModel @Inject constructor(
     fun copyAcknowledge() = _state.update { it.copy(copyTo = null) }
 
     /**
-     * A step that shows or destroys money. The login is enough (owner's decision): showing
-     * runs right away, deleting first asks „are you sure“ via [confirm], because a card
-     * deleted by a stray tap is only back through „undo“ while the snackbar lasts.
+     * A step that shows or destroys money. The login is enough (owner's decision), every step
+     * runs right away: a deleted card stays on the server until the snackbar's „undo“ has
+     * passed ([restoreVoucher]), a question before it made deleting two steps (user's decision).
      */
     private fun require(step: VoucherStep, id: Int?) {
         val clear = id?.let { _state.value.plaintext[it] }
         if (clear != null && step in PLAINTEXT_STEPS) return runFrom(step, clear)
-        val b = VoucherConfirmation(step, id)
-        if (step == VoucherStep.DELETE) _state.update { it.copy(confirmation = b) } else run(b)
+        run(VoucherConfirmation(step, id))
     }
 
     fun cancelConfirmation() = _state.update { it.copy(confirmation = null) }
-
-    /** „Delete“ in the follow-up question; a second tap while it runs does nothing. */
-    fun confirm() {
-        val b = _state.value.confirmation ?: return
-        if (!b.operation.running) run(b)
-    }
 
     /** The step at its route; a rejection closes the step and goes to the snackbar. */
     private fun run(b: VoucherConfirmation) {
@@ -199,15 +212,12 @@ class VoucherViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Plain text gone, PINs hidden again — when the app goes into the background. An
-     * open delete question remains: it shows no secret.
-     */
+    /** Plain text gone, PINs hidden again — when the app goes into the background. */
     fun forgetPlaintext() = _state.update {
         it.copy(plaintext = emptyMap(), pinVisible = emptySet(), copyTo = null)
     }
 
-    /** On leaving the page: the open prompt along with it. */
+    /** On leaving the page: a running step along with it. */
     fun leaveVouchers() {
         forgetPlaintext()
         cancelConfirmation()
@@ -231,6 +241,7 @@ class VoucherViewModel @Inject constructor(
                 pdfName = null,
             )
         }
+        keepForm()
     }
 
     fun emptyVoucherForm() {
@@ -238,6 +249,7 @@ class VoucherViewModel @Inject constructor(
             it.copy(edited = null, number = "", pin = "", amount = "",
                     currency = "CHF", pdfName = null)
         }
+        keepForm()
     }
 
     /**
@@ -294,6 +306,7 @@ class VoucherViewModel @Inject constructor(
                                 currency = g.currency?.code ?: it.currency,
                             )
                         }
+                        keepForm()
                         return@launch report(R.string.vouchers_pdf_incomplete)
                     }
                     handleResponse(r)
@@ -443,7 +456,7 @@ class VoucherViewModel @Inject constructor(
         }
     }
 
-    /** Asks first ([confirm]); afterwards the snackbar offers „undo“ ([restoreVoucher]). */
+    /** Runs at once; the snackbar offers „undo“ afterwards ([restoreVoucher]). */
     fun deleteVoucher(id: Int) = require(VoucherStep.DELETE, id)
 
     /** The UI does the copying (the clipboard is tied to the composition). */
@@ -479,7 +492,11 @@ class VoucherViewModel @Inject constructor(
     private enum class BalanceQuery { DONE, REMOVED, ERROR, ABORT }
 }
 
-/** Steps the plain text handles; PDF and delete ask every time. */
+private const val EDITED = "voucher.edited"
+private const val AMOUNT = "voucher.amount"
+private const val CURRENCY = "voucher.currency"
+
+/** Steps the plain text handles; PDF and delete go to the server every time. */
 private val PLAINTEXT_STEPS = setOf(VoucherStep.PIN_SHOW, VoucherStep.NUMBER_COPY, VoucherStep.PIN_COPY)
 
 /** Retry the same card at most this many times when the throttle slows things down. */

@@ -410,14 +410,29 @@ data class TabColors(
 )
 
 /**
- * The display of the selected destination in full main color: Material would color
- * it with secondaryContainer, which barely stood out from the bar (1.03:1). So the
- * surface carries the difference, not the icon's hue alone (WCAG 1.4.11).
+ * Material's quiet secondaryContainer for the selected destination, mixed toward the main
+ * color just far enough to stand out from bar and side bar (3:1, WCAG 1.4.11): as is it reached only
+ * 1.03:1, and the full main color shouted louder than the content.
  */
-fun tabColors(s: ColorScheme) = TabColors(
-    bar = s.surfaceContainer, display = s.primary, onDisplay = s.onPrimary,
-    chosen = s.primary, unselected = s.onSurfaceVariant,
-)
+fun tabColors(s: ColorScheme): TabColors {
+    val display = standingOut(s.secondaryContainer, s.primary, s.surfaceContainer, s.surface)
+    val onDisplay = listOf(s.onSecondaryContainer, s.onPrimary, Color.Black, Color.White)
+        .firstOrNull { contrast(it, display) >= TEXT_CONTRAST } ?: Color.White
+    return TabColors(
+        bar = s.surfaceContainer, display = display, onDisplay = onDisplay,
+        chosen = s.primary, unselected = s.onSurfaceVariant,
+    )
+}
+
+/** [color], mixed toward [toward] until it reaches 3:1 on both surfaces; the hue stays the design's. */
+private fun standingOut(color: Color, toward: Color, bar: Color, side: Color): Color {
+    var share = 0f
+    var c = color
+    while ((contrast(c, bar) < GRAPHIC_CONTRAST || contrast(c, side) < GRAPHIC_CONTRAST) && share < 1f) {
+        share += 0.05f; c = lerp(color, toward, share)
+    }
+    return c
+}
 
 /**
  * Base tone of the loading tiles (Skelett.kt), measured against the background

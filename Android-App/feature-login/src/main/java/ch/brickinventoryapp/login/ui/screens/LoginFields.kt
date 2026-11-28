@@ -140,7 +140,8 @@ private fun CredentialFields(
 /**
  * Without the checkbox, a token without admin rights, even for an admin account. Checking the
  * box asks for the device lock: a token with scope "voll" can do anything. Collapsed under
- * „Erweitert“: open, it pushed the sign-in button out of the first frame at 200 %.
+ * „Zugriffsumfang“ (the name says what it controls): open, it pushed the sign-in button
+ * out of the first frame at 200 %.
  */
 @Composable
 private fun FullAccessSection(fullAccess: Boolean, onFullAccess: (Boolean) -> Unit) {
@@ -153,7 +154,7 @@ private fun FullAccessSection(fullAccess: Boolean, onFullAccess: (Boolean) -> Un
         stateDescription = condition
         if (extended) collapse { extended = false; true } else expand { extended = true; true }
     }) {
-        Text(stringResource(R.string.login_extended))
+        Text(stringResource(R.string.login_access_scope))
         Icon(if (extended) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
     }
     // Flush at the top: the checkbox belongs to the first line, not the middle of the block

@@ -88,7 +88,7 @@ class PartListsStoreTest {
     @Test
     fun `the parts list lies only encrypted, reading returns the plaintext`() {
         val key = ByteArray(32) { it.toByte() }
-        val vault = PartListVault(StoreCipher { key })
+        val vault = PartListVault(StoreCipher { key.copyOf() })
         val pdf = "%PDF-1.7 Inventar 10294-1 Titanic".toByteArray()
         val file = vault.put(intern, extern, pdf)
         val raw = file.readBytes()

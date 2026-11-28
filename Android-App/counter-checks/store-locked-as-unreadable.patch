@@ -6,13 +6,13 @@ Rot: locked no new key is created, the store reports locked instead of unreadabl
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
 +++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
-@@ -153,8 +153,8 @@
+@@ -165,8 +165,8 @@
      // unreadable ciphertext; read as null, callers would delete the file.
      private fun open(data: ByteArray, identifier: ByteArray, binding: String?): ByteArray? {
          if (data.size <= identifier.size + IV_LENGTH || !data.copyOfRange(0, identifier.size).contentEquals(identifier)) return null
--        val k = SecretKeySpec(key(), "AES")
+-        val k = spec()
          return runCatching {
-+            val k = SecretKeySpec(key(), "AES")
++            val k = spec()
              val c = Cipher.getInstance(PROCEDURE)
              c.init(Cipher.DECRYPT_MODE, k,
                  GCMParameterSpec(TAG_BITS, data, identifier.size, IV_LENGTH))

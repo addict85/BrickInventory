@@ -8,7 +8,7 @@ diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/cata
 +++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogScreen.kt
 @@ -184,7 +184,6 @@
          // With search or filter: say why, and offer a way back.
-         state.total == 0 && filtered -> StateHint {
+         state.total == 0 && state.filtered -> StateHint {
              NoHitsHint(stringResource(R.string.catalog_no_results))
 -            Button(onClick = onReset) { Text(stringResource(R.string.filter_reset_all)) }
          }

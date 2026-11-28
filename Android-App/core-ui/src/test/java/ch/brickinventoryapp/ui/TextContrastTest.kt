@@ -42,7 +42,7 @@ import org.junit.Test
  *   primarycontainer-blue50    → red classic.primary/primaryContainer 4.24
  *   inverseprimary-unchecked  → red `farbfaecher`.inversePrimary/inverseSurface 3.73
  *   used-line-faint      → red `noppe.gebraucht`/surface 2.61
- *   tab-indicator-faint        → red `classic.anzeige/leiste` 1.02
+ *   tab-indicator-faint        → red `classic.anzeige/leiste` (secondaryContainer not mixed toward primary)
  *   warning-color-light             → red `classic.warnung`/surface 1.95
  */
 class TextContrastTest {

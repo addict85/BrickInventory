@@ -1,0 +1,17 @@
+Gegenprobe: Ein 206 mit anderem Start als dem Fortsetzungsbyte wird angehängt
+Modul: core-data
+Test: ch.brickinventoryapp.data.InstructionLimitTest
+Rot: a 206 from another offset
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
+@@ -159,7 +159,7 @@
+             if (!resp.isSuccessful) throw DownloadFailed(resp.code)
+             val resuming = resp.code == 206 && ab > 0
+             // A 206 from another offset would splice foreign bytes into the PDF; the next attempt starts at 0.
+-            if (resuming && rangeStart(resp.header("Content-Range")) != ab) {
++            if (resuming && rangeStart(resp.header("Content-Range")) == null) {
+                 part.delete()
+                 throw IOException("Content-Range does not start at byte $ab")
+             }

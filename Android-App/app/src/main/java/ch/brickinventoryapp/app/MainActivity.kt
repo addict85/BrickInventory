@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.app
 
-import android.app.KeyguardManager
 import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
@@ -38,7 +37,6 @@ import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.network.util.AppLog
 import ch.brickinventoryapp.resources.R
-import ch.brickinventoryapp.security.CertificateUnresolved
 import ch.brickinventoryapp.services.alarm.PriceAlertRepository
 import ch.brickinventoryapp.state.ui.AppViewModel
 import ch.brickinventoryapp.state.ui.MessageInbox
@@ -158,22 +156,6 @@ class MainActivity : OnlyLauncherStart() {
         drawWidgetNew()
     }
 
-    private fun deviceSecure(): Boolean = getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
-
-    /**
-     * A new server key from Android 16: the yes counts only after the screen lock (signature
-     * of the app lock's key). The dialog stays open until then; cancelling changes nothing.
-     */
-    private fun trustCertificate(question: CertificateUnresolved, input: String?): Boolean {
-        if (!question.deviceConfirmationNeeded || !deviceSecure()) return trust.trustCertificate(input)
-        val texts = LanguageManager.localizedContext(this)
-        unlockWithDevicesLock(this, texts.getString(R.string.cert_device_title), question.key.substringBeforeLast(':')) {
-            // Without a lock unlockWithDevicesLock lets through unasked; then the transcript must count.
-            trust.trustCertificate(input, deviceConfirmed = deviceSecure())
-        }
-        return true
-    }
-
     /** The widget hides its amounts depending on the app lock (AppLock.hiddenWidget); it redraws only when prompted. */
     private fun drawWidgetNew() {
         val ctx = applicationContext
@@ -283,10 +265,9 @@ class MainActivity : OnlyLauncherStart() {
             CertificateDialog(
                 question = question,
                 userCaEnabled = userCa,
-                trustOn = { input -> trustCertificate(question, input) },
+                trustOn = { input -> trust.trustCertificate(input) },
                 onUserCa = { trust.userCa.requests(); trust.discardCertificate() },
                 onCancel = trust::discardCertificate,
-                deviceSecure = deviceSecure(),
                 codeScan = CodeScan(trust::trustByCode) { onResult, onDismiss -> CertificateQrScanner(onResult, onDismiss) },
             )
         }

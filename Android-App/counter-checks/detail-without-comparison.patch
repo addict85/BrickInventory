@@ -1,0 +1,16 @@
+Gegenprobe: Das Set-Detail bietet keinen Preisvergleich mehr an
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.PriceComparisonActionTest
+Rot: the set detail opens the comparison
+
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailScreen.kt
+@@ -171,7 +171,6 @@
+             setDetailStatChips(set)
+             setDetailValueTiles(set, price, pnlPct, ::fmtPrice)
+             setDetailPriceSection(detailState, price, history, currency, actions::refresh)
+-            setDetailComparison(set) { coroutineScope.launch { messages.showSnackbar(noAppText) } }
+         }) {
+             setDetailDetailsSection(set, setNumber, condition.storageUiState, actions,
+                 PurchaseSummary(acquisitions, currency, ::fmtDate), onNavigateToAcqMgmt)

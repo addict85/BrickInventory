@@ -19,6 +19,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.PriceAlarmsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
@@ -227,7 +228,7 @@ class WrapGuardTest {
         object : SetCreator {
             override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
-        }))
+        }, SavedStateHandle()))
 
     private fun settings() = world.t.track(SettingsViewModel(world.t.session, world.t.filter(), world.t.hints, world.t.sync,
         testAccountRepository(world.t.api, world.t.io), testManagementRepository(world.t.api),
@@ -319,7 +320,7 @@ class WrapGuardTest {
                "progress":{"done":3,"total":12,"text":"Bilder"},"error_message":null,"user_id":4,"scheduled":false,"set_number":"75192-1"}],
             "summary":[],"pauses":[],"image_demand":7,
             "job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
-        val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages)
+        val vm = MonitoringViewModel(testManagementRepository(world.t.api), testAccountRepository(world.t.api, world.t.io), world.t.messages, SavedStateHandle())
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         val background = vm.background.value

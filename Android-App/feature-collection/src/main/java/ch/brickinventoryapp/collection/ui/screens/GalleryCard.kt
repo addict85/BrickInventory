@@ -29,9 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.collection.ui.TilePrice
-import ch.brickinventoryapp.collection.ui.TileSource
-import ch.brickinventoryapp.collection.ui.tileAmount
-import ch.brickinventoryapp.collection.ui.tileSource
+import ch.brickinventoryapp.collection.ui.tileMarketPrice
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.SetView
@@ -111,7 +109,7 @@ fun SetCard(
 
     // In the list row, the badges move from the image into the text: the image is too small there.
     val pct = price?.pnlPct
-    val amount = tileAmount(set, price)
+    val amount = tileMarketPrice(price)
     // What the badges on the image say, TalkBack reads at the end of the tile: the name comes first.
     val pnlAnnouncement = if (pct != null && amount != null) stringResource(
         if (pct >= 0) R.string.gallery_pnl_profit else R.string.gallery_pnl_loss, fmtPercent(pct)) else null
@@ -145,7 +143,7 @@ fun SetCard(
             })
     }
     val texts: @Composable (Modifier) -> Unit = { column ->
-        TileTexts(column, set, look, badges, TileMoney(price, amount, currency), listOfNotNull(pnlAnnouncement, quantityAnnouncement))
+        TileTexts(column, set, look, badges, TileMoney(amount, currency), listOfNotNull(pnlAnnouncement, quantityAnnouncement))
     }
     TileFrame(look, position, picked, onClick = { onClick(set.setNumber) }, canvas = canvas, texts = texts)
 }
@@ -159,8 +157,8 @@ private class TileBadges(val pnl: (@Composable () -> Unit)?, val quantity: (@Com
 /** Where the tile's image comes from; [retryNonce] makes Coil fetch it once more after an error. */
 private class TileImageSource(val imageUrl: String?, val imageLoader: ImageLoader, val retryNonce: Int)
 
-/** The tile's amount with its origin; [amount] is null without a price. */
-private class TileMoney(val price: TilePrice?, val amount: Money?, val currency: CurrencyCode)
+/** The tile's market price; [amount] is null without one. */
+private class TileMoney(val amount: Money?, val currency: CurrencyCode)
 
 /**
  * P&L as a badge: in the price line it wrapped next to "each", and the tile
@@ -303,7 +301,7 @@ private fun TileTexts(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            TileAmountRows(set, row, money.price, money.amount, money.currency)
+            TileAmountRows(set, row, money.amount, money.currency)
             if (!row) TileBalance(2 - namedRows)
         }
         // Without a surface: only the image badges' announcement, after the price.
@@ -312,26 +310,20 @@ private fun TileTexts(
     }
 }
 
-/** Where the amount comes from, below it the amount and, for more than one piece, "each". */
+/** "Marktpreis", below it the amount and, for more than one piece, "each"; without one "kein Marktpreis". */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TileAmountRows(set: SetView, row: Boolean, price: TilePrice?, amount: Money?, currency: CurrencyCode) {
-    // As in the web, a line above saying what the amount is: without a market price it's
-    // the purchase price (kachel_quelle), unlabeled it read as market value.
-    // Empty without an amount, so tiles in a row stay the same height; in the
-    // row, the label sits before the amount if the width allows.
-    val source = when (if (amount != null) tileSource(set, price) else null) {
-        TileSource.MARKET -> stringResource(R.string.gallery_card_market)
-        TileSource.PURCHASE -> stringResource(R.string.gallery_card_paid)
-        null -> ""
-    }
-    if (!row) Text(source, style = MaterialTheme.typography.bodySmall,
+private fun TileAmountRows(set: SetView, row: Boolean, amount: Money?, currency: CurrencyCode) {
+    // Every tile names the same value. Falling back to the purchase price made
+    // neighboring tiles look comparable when they were not.
+    val label = stringResource(R.string.gallery_card_market)
+    if (!row) Text(if (amount != null) label else "", style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1, overflow = TextOverflow.Ellipsis)
     // FlowRow with one line each: if the width doesn't suffice, "each" moves under
     // the amount instead of wrapping character by character.
     if (amount != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
-        if (row) Text(source, style = MaterialTheme.typography.bodySmall,
+        if (row) Text(label, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
             modifier = Modifier.align(Alignment.CenterVertically))
         Text(fmtMoney(amount, currency), style = MaterialTheme.typography.labelMedium,
@@ -344,7 +336,8 @@ private fun TileAmountRows(set: SetView, row: Boolean, price: TilePrice?, amount
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
-    } else if (!row) Text("", style = MaterialTheme.typography.labelMedium)
+    } else Text(stringResource(R.string.gallery_card_no_market), style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 /**

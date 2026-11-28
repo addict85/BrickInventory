@@ -3,6 +3,7 @@ Modul: app
 Test: ch.brickinventoryapp.app.LayerRulesTest
 Rot: a ViewModel knows neither Android nor network nor screen code
 
+
 diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
 --- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
 +++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/VoucherViewModel.kt
@@ -10,6 +11,6 @@ diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/fin
  package ch.brickinventoryapp.finances.ui.viewmodel
  
 +import android.net.Uri
+ import androidx.lifecycle.SavedStateHandle
  import androidx.lifecycle.ViewModel
  import androidx.lifecycle.viewModelScope
- import ch.brickinventoryapp.data.MessageChannel

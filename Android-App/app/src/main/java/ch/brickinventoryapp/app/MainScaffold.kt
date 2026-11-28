@@ -18,6 +18,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -295,10 +296,10 @@ private fun TabTarget(
 }
 
 /**
- * The bottom bar. All labels stand in one size and shrink at most
- * to one and a half times the normal size, otherwise the bar would override the system setting.
- * If the space is then not enough, only the selected destination is labelled and wider;
- * the others carry their name for TalkBack and as a tooltip.
+ * The bottom bar: Material's NavigationBar, every destination labelled in one size. Labels
+ * shrink at most to one and a half times the normal size, otherwise the bar would override the
+ * system setting; if even that does not fit, only the selected destination keeps its label and
+ * grows wider, the others carry their name for TalkBack and as a tooltip.
  */
 @Composable
 private fun TabBar(
@@ -309,28 +310,60 @@ private fun TabBar(
     val style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
     val meter = rememberTextMeasurer()
     val density = LocalDensity.current
-    Surface(color = colors.bar) {
-        // A margin left and right: at 200 % “More” hit the screen edge.
-        BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
-            .padding(horizontal = BAR_EDGE)) {
-            val sentence = with(density) {
-                tabSet(targets.map { meter.measure(it.label, style).size.width.toFloat() },
-                    targets.indexOfFirst { chosen(it.target) }, maxWidth.toPx(), (Spacing.tiny * 2).toPx(),
-                    DISPLAY_MIN.toPx(), fontScale)
-            }
-            Row(Modifier.fillMaxWidth().heightIn(min = BAR_HEIGHT).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-                targets.forEachIndexed { i, (screen, icon, name) ->
-                    val labeled = sentence.all || i == sentence.chosen
-                    val space = Modifier.weight(if (i == sentence.chosen) sentence.weight else 1f)
-                    val target: @Composable (Modifier) -> Unit = { m ->
-                        TabTarget(chosen(screen), name, if (labeled) style.fontSize * sentence.factor else null, colors,
-                            { onChoice(screen) }, m) { icon() }
+    val direction = LocalLayoutDirection.current
+    // A margin left and right: at 200 % “More” hit the screen edge.
+    val insets = NavigationBarDefaults.windowInsets.add(WindowInsets(left = BAR_EDGE, right = BAR_EDGE))
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val sentence = with(density) {
+            val inner = maxWidth.toPx() - insets.getLeft(this, direction) - insets.getRight(this, direction) -
+                ITEM_GAP.toPx() * (targets.size - 1)
+            tabSet(targets.map { meter.measure(it.label, style).size.width.toFloat() },
+                targets.indexOfFirst { chosen(it.target) }, inner, LABEL_SLACK.toPx(),
+                DISPLAY_MIN.toPx(), fontScale)
+        }
+        NavigationBar(containerColor = colors.bar, windowInsets = insets) {
+            targets.forEachIndexed { i, (screen, icon, name) ->
+                val labeled = sentence.all || i == sentence.chosen
+                // NavigationBarItem weighs itself 1f; the wider selected destination needs its own Row.
+                Row(Modifier.weight(if (i == sentence.chosen) sentence.weight else 1f)) {
+                    val item: @Composable RowScope.() -> Unit = {
+                        TabItem(chosen(screen), name, if (labeled) style.fontSize * sentence.factor else null, colors,
+                            { onChoice(screen) }) { icon() }
                     }
-                    if (labeled) target(space) else WithTooltip(name, space) { target(Modifier.fillMaxWidth()) }
+                    if (labeled) item() else WithTooltip(name, Modifier.fillMaxWidth()) { Row { item() } }
                 }
             }
         }
     }
+}
+
+/**
+ * One destination of the bottom bar. The indicator stays in the full main color: Material's
+ * secondaryContainer barely stood out from the bar (tabColors).
+ */
+@Composable
+private fun RowScope.TabItem(
+    chosen: Boolean, name: String, size: TextUnit?, colors: TabColors,
+    onClick: () -> Unit, symbol: @Composable () -> Unit,
+) {
+    NavigationBarItem(
+        selected = chosen, onClick = onClick, icon = symbol,
+        modifier = Modifier.focusFrame(Shapes.tile)
+            .then(if (size == null) Modifier.semantics { contentDescription = name } else Modifier),
+        label = size?.let { s ->
+            {
+                // Only as wide as the text: the slot is wider, and an unwrapped line laid out
+                // at slot width counts as overflowing.
+                Text(name, Modifier.width(IntrinsicSize.Max), fontSize = s,
+                    fontWeight = if (chosen) FontWeight.Bold else FontWeight.Medium,
+                    maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
+            }
+        },
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = colors.onDisplay, selectedTextColor = colors.chosen, indicatorColor = colors.display,
+            unselectedIconColor = colors.unselected, unselectedTextColor = colors.unselected,
+        ),
+    )
 }
 
 /** The side bar becomes as wide as the longest label needs at full size. */
@@ -379,7 +412,13 @@ private val DISPLAY_WIDTH = 56.dp
 private val DISPLAY_HEIGHT = 32.dp
 /** Width of an unlabelled destination: indicator and margin. */
 private val DISPLAY_MIN = 64.dp
-private val BAR_HEIGHT = 80.dp
+/** Material's gap between two NavigationBarItems; the labels have to fit without it. */
+private val ITEM_GAP = 8.dp
+/**
+ * The label may use its whole item; 2 dp absorb rounding. More, and „Sammlung“ no longer
+ * fitted a fifth of a phone at normal size: only the selected destination was labelled.
+ */
+private val LABEL_SLACK = 2.dp
 /** Distance of the outermost destinations to the screen edge. */
 private val BAR_EDGE = 8.dp
 private val SIDEBAR_WIDTH = 80.dp
@@ -395,12 +434,12 @@ private val COLLECTION: Set<KClass<out Any>> = COLLECTION_TARGETS.map { it::clas
 
 /** Pages with a bottom bar that are reached via “More” — there “More” stays selected. */
 private val MORE: Set<KClass<out Any>> = setOf(AppTarget.More::class, PartsTarget.PartsList::class,
-    CollectionTarget.Wanted::class, CollectionTarget.WantedItemDetail::class,
-    AccountTarget.Settings::class, ManagementTarget.Monitoring::class)
+    CollectionTarget.Comparison::class, AccountTarget.Settings::class, ManagementTarget.Monitoring::class)
 
 /** The destinations at which a bar destination counts as selected. */
 private fun targetsOf(screen: Any): Set<KClass<out Any>> = when (screen) {
     CollectionTarget.Gallery -> COLLECTION + CollectionTarget.SetDetail::class
+    CollectionTarget.Wanted -> setOf(CollectionTarget.Wanted::class, CollectionTarget.WantedItemDetail::class)
     AppTarget.More -> MORE
     else -> setOf(screen::class)
 }

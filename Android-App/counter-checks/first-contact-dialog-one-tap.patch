@@ -1,17 +1,17 @@
-Gegenprobe: Der Zertifikatsdialog lässt den Erstkontakt ohne CT-Pflicht mit einem Tipp zu
+Gegenprobe: Der Zertifikatsdialog lässt den Erstkontakt mit einem Tipp zu
 Modul: app
 Test: ch.brickinventoryapp.app.CertificateDialogTest
-Rot: without CT requirement it is typed on first contact, a tap is not enough
+Rot: on first contact it is typed, a tap is not enough
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
-@@ -116,7 +116,7 @@
- 
- /** Without CT, when chosen on first contact, or a new key from Android 16 without a screen lock. */
- private fun mustTranscribe(question: CertificateUnresolved, typeInSelected: Boolean, deviceSecure: Boolean): Boolean =
--    question.transcriptNeeded || question.kind == CertificateUnresolved.Kind.FIRST_CONTACT && typeInSelected ||
-+    (if (question.kind == CertificateUnresolved.Kind.FIRST_CONTACT) typeInSelected else question.transcriptNeeded) ||
-         question.deviceConfirmationNeeded && !deviceSecure
- 
- /** A changed key colors the button as a warning; otherwise the usual button. */
+@@ -159,7 +159,7 @@
+         },
+         confirmButton = {
+             // Folded away the button would trust nothing anyway; it appears with the field.
+-            if (manual) TrustButton(changed, active = input.isNotBlank()) {
++            if (manual) TrustButton(changed, active = input.isNotBlank() || question.kind == CertificateUnresolved.Kind.FIRST_CONTACT) {
+                 finding = findingAfter(trustOn(input), input, question.fingerprint)
+             }
+         },

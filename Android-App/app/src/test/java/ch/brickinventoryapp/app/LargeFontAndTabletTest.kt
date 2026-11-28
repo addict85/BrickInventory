@@ -22,6 +22,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -54,6 +55,7 @@ import ch.brickinventoryapp.shared.ui.PriceChart
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -74,6 +76,7 @@ import java.util.Locale
  *   tab-shrinks-to-7sp  lower bound again fixed 7 sp → red “tab bar never shrinks …”
  *   tab-floor-normal-size  lower bound again the normal size → red “tab label grows …”
  *   tab-own-size     all labelled, each in its own size → red “tab bar breaks …”
+ *   tab-label-slack-wide  8 dp kept free beside each label → red “at normal size every destination …”
  *   search-beside-filter-text    filter button with text already from 360 dp → red “search placeholder …”
  *   history-from-two-points   line already from two points → red “price history …”
  *   parts-detail-as-dialog   parts detail as a dialog on the tablet too → red “tablet shows part …”
@@ -165,6 +168,34 @@ class LargeFontAndTabletTest {
         assertTrue("tab bar in different sizes: $sizes", sizes.size == 1)
     }
 
+    /** The app's own five destinations at normal size: each carries its label, not only the selected one. */
+    @Test
+    fun `at normal size every destination of the bar is labelled`() = everyLabelled("de-rCH")
+
+    @Test
+    fun `at normal size every destination of the bar is labelled in English`() = everyLabelled("en-rGB")
+
+    private fun everyLabelled(language: String) {
+        RuntimeEnvironment.setQualifiers("$language-w411dp-h891dp-port-xxhdpi")
+        val r = ApplicationProvider.getApplicationContext<Context>()
+        val targets = listOf(CollectionTarget.Gallery to R.string.nav_collection, FinanceTarget.Finance to R.string.nav_finance,
+            CatalogTarget.Catalog to R.string.nav_catalog, CollectionTarget.Wanted to R.string.nav_wanted,
+            AppTarget.More to R.string.nav_more).map { (target, text) -> target to r.getString(text) }
+        show {
+            val nav = rememberNavController()
+            val tab = remember { targets.map { (target, text) -> Tab(target, { Icon(Icons.Default.ViewInAr, null) }, text) } }
+            MainScaffold(
+                title = "Titel", navController = nav, bottomNavItems = tab,
+                snackbarHostState = remember { SnackbarHostState() },
+                onTabTapped = {},
+            ) {
+                NavHost(nav, startDestination = CollectionTarget.Gallery) { composable<CollectionTarget.Gallery> { } }
+            }
+        }
+        assertEquals("$language: labelled destinations", targets.map { it.second }, visibleLabels(targets))
+        visibleLabels(targets).forEach { wholeOneRow(it, "$language bar") }
+    }
+
     /** At 200 % the labels stand at least one and a half times as large as at 100 %. */
     @Test
     fun `tab label grows at 200 percent at least to one and a half times`() {
@@ -253,7 +284,7 @@ class LargeFontAndTabletTest {
                     override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
-                }))
+                }, SavedStateHandle()))
             show(font) {
                 GalleryRoute(vm = vm, entryVm = entryVm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})

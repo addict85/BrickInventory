@@ -1,17 +1,18 @@
-Gegenprobe: Anzeige des gewählten Reiters wieder im blassen secondaryContainer (05.11.2026, thema.py lokal)
+Gegenprobe: gewählter Reiter wieder im blassen secondaryContainer ohne Abmischen (28.11.2026)
 Modul: core-ui
 Test: ch.brickinventoryapp.ui.TextContrastTest
 Rot: the indicator of the selected tab stands out from bar and side bar
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+index c0d88b40..6fc0eba2 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-@@ -415,7 +415,7 @@
-  * surface carries the difference, not the icon's hue alone (WCAG 1.4.11).
-  */
- fun tabColors(s: ColorScheme) = TabColors(
--    bar = s.surfaceContainer, display = s.primary, onDisplay = s.onPrimary,
-+    bar = s.surfaceContainer, display = s.secondaryContainer, onDisplay = s.onSecondaryContainer,
-     chosen = s.primary, unselected = s.onSurfaceVariant,
- )
- 
+@@ -428,7 +428,7 @@ fun tabColors(s: ColorScheme): TabColors {
+ private fun standingOut(color: Color, toward: Color, bar: Color, side: Color): Color {
+     var share = 0f
+     var c = color
+-    while ((contrast(c, bar) < GRAPHIC_CONTRAST || contrast(c, side) < GRAPHIC_CONTRAST) && share < 1f) {
++    while (false && share < 1f) {
+         share += 0.05f; c = lerp(color, toward, share)
+     }
+     return c

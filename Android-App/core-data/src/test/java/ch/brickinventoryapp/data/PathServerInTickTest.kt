@@ -16,12 +16,12 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 /**
- * PathServer.onTick reads every response against the DTO of the called method. An
- * incomplete test response thus fails in the calling thread instead of coming back via
+ * PathServer.onTick reads every response against the DTO of the called method. A
+ * test response that does not fit (missing required fields it fills in, a wrong type it does not) thus fails in the calling thread instead of coming back via
  * Dispatchers.Default and throwing the test out of tick.
  *
  * Counter-checks (measured locally with kotlinc):
- *   A  in onTick the call of checkAgainstDto struck → red “an incomplete
+ *   A  in onTick the call of checkAgainstDto struck → red “an unsuitable
  *      response fails …” (SerializationException instead of AssertionError)
  *   B  checkReadIn does not check the list → red “the cleanup names …”
  *   C  ImmediatelyCall does not ask staysFrom → red “a held-back response …”
@@ -32,7 +32,7 @@ import org.junit.Test
 class PathServerInTickTest {
 
     private val paths = PathServer(
-        "/api/v2/finance/parts-valuation" to """{"success":true,"parts":[]}""",
+        "/api/v2/finance/parts-valuation" to """{"success":true,"total_value":{"x":1},"parts":[]}""",
         "/api/v2/finance/minifigs-valuation" to """{"success":true,"total_value":"0.00","figs":[]}""",
     )
     private val api = paths.onTick()
@@ -41,11 +41,11 @@ class PathServerInTickTest {
     fun tearDown() = paths.server.shutdown()
 
     @Test
-    fun `an incomplete response fails in the calling thread`() {
+    fun `an unsuitable response fails in the calling thread`() {
         val thread = Thread.currentThread()
         try {
             runBlocking { api.getPartsValuation() }
-            fail("The answer without total_value was read")
+            fail("The answer with an object as total_value was read")
         } catch (e: AssertionError) {
             assertSame(thread, Thread.currentThread())
             assertTrue(e.message, "parts-valuation" in e.message.orEmpty() && "total_value" in e.message.orEmpty())

@@ -12,6 +12,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -20,14 +21,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.performTextReplacement
 import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.collection.ui.screens.AddSetDialog
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
-import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.contract.mapping.asView
-import ch.brickinventoryapp.finances.ui.VoucherConfirmation
-import ch.brickinventoryapp.finances.ui.VoucherStep
+import ch.brickinventoryapp.contract.testing.testVoucher
 import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.screens.VoucherCardActions
 import ch.brickinventoryapp.finances.ui.screens.VouchersCard
@@ -35,7 +33,6 @@ import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.Operation
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.StepGuard
@@ -69,9 +66,8 @@ import org.robolectric.annotation.GraphicsMode
  *       (counter-checks/voucher-pin-without-device-lock.patch)
  *   (f) the number copied without step guard → red “without device lock the
  *       number is not copied either” (counter-checks/voucher-number-without-device-lock.patch)
- *   (g) VouchersCard shows the delete question also while it runs (`&& !it.operation.running`
- *       removed) → red “deleting asks a plain question …”
- *       (counter-checks/voucher-question-while-running.patch)
+ *   (g) the voucher menu's „Löschen“ asks first again → red “deleting a voucher asks no question …”
+ *       (counter-checks/voucher-asks-before-undo.patch)
  *   (h) in the set detail the trash always with confirmation → red “a set deletes
  *       immediately with undo …” (counter-checks/set-delete-double-confirmed.patch)
  *   (i) adding without a number does not mark the field → red “a set without a number says …”
@@ -126,7 +122,10 @@ class FlowTest {
         var recorded: Pair<String, Int>? = null
         show { AddSetDialog(onDismiss = {}, onAdd = { recorded = it.setNumber to it.quantity }) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_set_number)).performTextInput("75192")
-        compose.onNodeWithText(ctx.getString(R.string.common_quantity)).performTextReplacement("3")
+        // The stepper as on the set page: twice plus, once minus below 1 has no effect.
+        val more = compose.onNodeWithContentDescription(ctx.getString(R.string.cd_qty_increase))
+        compose.onNodeWithContentDescription(ctx.getString(R.string.cd_qty_decrease)).performClick()
+        more.performClick(); more.performClick()
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
         assertEquals("75192" to 3, recorded)
     }
@@ -145,16 +144,13 @@ class FlowTest {
     /**
      * Every field of “Add set” carries a help line; without it the fields stood
      * unevenly far apart, and the hint about the price vanished as a placeholder while typing.
-     * Counter-check: quantity field again without help line (only on error) → red, „Anzahl“ missing
-     * (counter-checks/capture-quantity-without-help-line.patch).
      */
     @Test
     fun `every field when adding a set has a help line, also while typing`() {
         show { AddSetDialog(onDismiss = {}, onAdd = {}, immediatelyFocus = false) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_purchase_price)).performTextInput("12")
         compose.waitForIdle()
-        for (id in listOf(R.string.gallery_set_number_placeholder, R.string.gallery_quantity_hint,
-                R.string.common_unit_price_placeholder)) {
+        for (id in listOf(R.string.gallery_set_number_placeholder, R.string.common_unit_price_placeholder)) {
             compose.onNodeWithText(ctx.getString(id), useUnmergedTree = true).assertExists()
         }
     }
@@ -227,13 +223,13 @@ class FlowTest {
 
     /** The state of the voucher card; the tests of the confirmation change it. */
     private var condition by mutableStateOf(VoucherUiState(vouchers = listOf(
-        Voucher(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView())))
+        testVoucher(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView())))
 
     /** The Android level the page chooses by; Robolectric itself runs against API 35. */
     private var level by mutableStateOf(Build.VERSION.SDK_INT)
 
     /** A voucher with PIN 4711; [protection] stands for the device lock. */
-    private var confirmed = 0
+    private val deletedVouchers = mutableListOf<Int>()
 
     private fun showVoucher(protection: StepGuard, copied: MutableList<String> = mutableListOf()) {
         show {
@@ -243,7 +239,7 @@ class FlowTest {
                     actions = object : VoucherCardActions {
                         override fun switchPin(id: Int) { condition = condition.copy(pinVisible = condition.pinVisible + id) }
                         override fun copy(id: Int, isNumber: Boolean) { copied += id.toString() }
-                        override fun confirm() { confirmed++ }
+                        override fun delete(id: Int) { deletedVouchers += id }
                     },
                 )
             }
@@ -297,23 +293,17 @@ class FlowTest {
     }
 
     /**
-     * The login is enough: deleting asks only „are you sure“, without a password field, and
-     * a step that is already running (plain text, PDF, the delete itself) shows no dialog.
+     * The login and the device lock are enough: deleting asks neither „are you sure“ nor for a
+     * password; the snackbar's „Rückgängig“ is the safeguard (VoucherViewModel.restoreVoucher).
      */
     @Test
-    fun `deleting asks a plain question without a password, a running step shows none`() {
-        condition = condition.copy(confirmation = VoucherConfirmation(VoucherStep.PIN_SHOW, 7, Operation.Running))
+    fun `deleting a voucher asks no question and no password`() {
         showVoucher(protection = { _, next -> next() })
-        compose.onNodeWithText(ctx.getString(R.string.vouchers_delete_title)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_menu, "6061 2345 6789")).performClick()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, "6061 2345 6789")).performClick()
+        compose.waitForIdle()
+        assertEquals("deleted with the tap", listOf(7), deletedVouchers)
         compose.onNodeWithText(ctx.getString(R.string.account_password_current)).assertDoesNotExist()
-
-        condition = condition.copy(confirmation = VoucherConfirmation(VoucherStep.DELETE, 7))
-        compose.onNodeWithText(ctx.getString(R.string.vouchers_delete_title)).assertIsDisplayed()
-        compose.onNodeWithText(ctx.getString(R.string.account_password_current)).assertDoesNotExist()
-        compose.onNodeWithText(ctx.getString(R.string.common_delete)).performClick()
-        assertEquals(1, confirmed)
-
-        condition = condition.copy(confirmation = condition.confirmation?.copy(operation = Operation.Running))
-        compose.onNodeWithText(ctx.getString(R.string.vouchers_delete_title)).assertDoesNotExist()
+        assertTrue("a question before the undo", compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty())
     }
 }

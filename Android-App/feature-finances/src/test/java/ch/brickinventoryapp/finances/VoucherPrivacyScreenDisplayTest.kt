@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
@@ -53,8 +54,7 @@ class VoucherPrivacyScreenDisplayTest {
             texts = NumbersTexts,
             reader = object : FileReader { override suspend fun read(file: FileRef): Pair<String?, ByteArray>? = null },
             messages = MessageChannel(),
-            account = testAccountRepository(paths.onTick()),
-        )
+            account = testAccountRepository(paths.onTick()), SavedStateHandle())
         val visible = mutableStateOf(true)
         compose.setContent {
             BrickInventoryManagerTheme {

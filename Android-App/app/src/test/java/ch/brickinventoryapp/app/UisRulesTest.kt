@@ -45,6 +45,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -131,7 +132,8 @@ import java.util.Locale
  *                                   segments …”
  *   finances-purchase-per-piece         purchase of the row again per piece → red “finances name …”
  *   finances-header-without-base        header card from all positions instead of the basis → red “finance header …”
- *   tile-source-ignored         tile also calls the purchase price „Marktpreis“ → red “gallery tile …”
+ *   tile-source-ignored         tile shows the purchase price as „Marktpreis“ again → red “gallery tile …”
+ *   tile-falls-back-to-purchase tile without market price shows the own purchase price → red “gallery tile …”
  *   more-without-comparison             comparison not under “More” → red “comparison and build list mark …”
  *   more-arrow-differs-from-back   arrow always leads to “More” → red “the arrow of a More subpage …”
  *   gallery-tile-large            set tile at 200 % too with an image across the width → red “gallery at 200 percent …”
@@ -380,7 +382,7 @@ class UisRulesTest {
                 override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                      ownerUserId: Int?, storage: String?) =
                     kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
-            }))
+            }, SavedStateHandle()))
         show(font) {
             GalleryRoute(vm = vm, entryVm = entryVm,
                 imageLoader = images, onScanBarcode = {}, onSetClick = {})
@@ -455,17 +457,21 @@ class UisRulesTest {
     }
 
     /**
-     * Wishlist and build list are reached via “More”: there “More” stays selected, and the
-     * arrow at the top leads back there as on the other More subpages.
+     * Price comparison and build list are reached via “More”: there “More” stays selected, and
+     * the arrow at the top leads back there as on the other More subpages. The wishlist is a
+     * tab of its own: selected itself, without an arrow.
      */
     @Test
-    fun `wishlist and build list mark More and lead back there with Back`() {
+    fun `comparison and build list mark More and lead back there with Back, the wishlist is a tab`() {
         val more = ctx.getString(R.string.nav_more)
+        val wanted = ctx.getString(R.string.nav_wanted)
+        var navigation: NavHostController? = null
         show {
-            val nav = rememberNavController()
+            val nav = rememberNavController().also { navigation = it }
             val tab = remember {
                 listOf(
                     Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Tab(CollectionTarget.Wanted, { Icon(Icons.Default.ViewInAr, null) }, wanted),
                     Tab(AppTarget.More, { Icon(Icons.Default.ViewInAr, null) }, more))
             }
             MainScaffold(
@@ -477,6 +483,8 @@ class UisRulesTest {
                     composable<CollectionTarget.Gallery> { }
                     composable<AppTarget.More> { MoreScreen(nav::openOfMore, isAdmin = false, onLogout = {}) }
                     composable<CollectionTarget.Wanted> { Text("Merklisteseite") }
+                    composable<CollectionTarget.WantedItemDetail> { Text("Merkpostenseite") }
+                    composable<CollectionTarget.Comparison> { Text("Vergleichsseite") }
                     composable<PartsTarget.PartsList> { Text("Baulistenseite") }
                 }
             }
@@ -484,7 +492,7 @@ class UisRulesTest {
         val back = ctx.getString(R.string.common_back)
         // On a tab itself no back: it is a root.
         compose.onAllNodesWithContentDescription(back).assertCountEquals(0)
-        for ((entry, content) in listOf(R.string.nav_wanted to "Merklisteseite", R.string.nav_partslist to "Baulistenseite")) {
+        for ((entry, content) in listOf(R.string.comparison_title to "Vergleichsseite", R.string.nav_partslist to "Baulistenseite")) {
             compose.onNode(hasText(more) and hasClickAction()).performClick()
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(entry)).performClick()
@@ -497,6 +505,16 @@ class UisRulesTest {
             // Back on “More”: its entries are there again.
             compose.onNodeWithText(ctx.getString(R.string.vouchers_title)).fetchSemanticsNode()
         }
+        compose.onNode(hasText(wanted) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Merklisteseite").fetchSemanticsNode()
+        compose.onNode(hasText(wanted) and androidx.compose.ui.test.isSelected())
+            .fetchSemanticsNode("the wishlist tab is not selected on its own page")
+        compose.onAllNodesWithContentDescription(back).assertCountEquals(0)
+        compose.runOnIdle { navigation!!.navigate(CollectionTarget.WantedItemDetail("75192-1", Condition.NEW)) }
+        compose.onNodeWithText("Merkpostenseite").fetchSemanticsNode()
+        compose.onNode(hasText(wanted) and androidx.compose.ui.test.isSelected())
+            .fetchSemanticsNode("the wishlist tab is not selected on an item's detail")
     }
 
     /**
@@ -522,13 +540,13 @@ class UisRulesTest {
                 NavHost(n, startDestination = CollectionTarget.Gallery) {
                     composable<CollectionTarget.Gallery> { Text("Galerieseite") }
                     composable<AppTarget.More> { MoreScreen(n::openOfMore, isAdmin = false, onLogout = {}) }
-                    composable<CollectionTarget.Wanted> { Text("Merklisteseite") }
+                    composable<PartsTarget.PartsList> { Text("Baulistenseite") }
                 }
             }
         }
-        // As from within a set: the wishlist directly above the gallery, without “More”.
-        compose.runOnIdle { nav!!.navigate(CollectionTarget.Wanted) }
-        compose.onNodeWithText("Merklisteseite").fetchSemanticsNode()
+        // As from within a set: the build list directly above the gallery, without “More”.
+        compose.runOnIdle { nav!!.navigate(PartsTarget.PartsList) }
+        compose.onNodeWithText("Baulistenseite").fetchSemanticsNode()
         compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Galerieseite").fetchSemanticsNode("Der Pfeil führte nicht dorthin, wohin Zurück führt")
@@ -592,7 +610,7 @@ class UisRulesTest {
                     override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetCreateStep>()
-                }))
+                }, SavedStateHandle()))
             var scanned = 0
             var searched = 0
             show {
@@ -922,16 +940,19 @@ class UisRulesTest {
         }
     }
 
-    /** Without market price the server delivers the purchase price (kachel_quelle "kauf"); the tile says so. */
+    /**
+     * Without market price the server delivers the purchase price (kachel_quelle "kauf"); the
+     * tile still shows only market prices and says „kein Marktpreis“ instead of switching value.
+     */
     @Test
-    fun `gallery tile names the purchase price as purchase price`() {
+    fun `gallery tile shows the market price only and names a missing one`() {
         val images = coil3.ImageLoader.Builder(ctx).build()
         val market = ctx.getString(R.string.gallery_card_market)
-        val purchase = ctx.getString(R.string.gallery_card_paid)
+        val none = ctx.getString(R.string.gallery_card_no_market)
         show {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
-                    SetCard(SetView(setNumber = "21318-1", name = "Baumhaus"), "", images, {},
+                    SetCard(SetView(setNumber = "21318-1", name = "Baumhaus", avgPurchasePrice = Money.from(170.0)), "", images, {},
                         price = TilePrice(Money.from(180.0), null, "purchase"), currency = CurrencyCode("CHF"))
                 }
                 // Older servers without kachel_quelle delivered only market prices.
@@ -941,8 +962,10 @@ class UisRulesTest {
                 }
             }
         }
-        compose.onAllNodesWithText(purchase, useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithText(none, useUnmergedTree = true).assertCountEquals(1)
         compose.onAllNodesWithText(market, useUnmergedTree = true).assertCountEquals(1)
-        assertTrue(showsText(fmtMoney(180.0, CurrencyCode("CHF"))))
+        assertTrue("market price", showsText(fmtMoney(812.5, CurrencyCode("CHF"))))
+        assertTrue("purchase price shown on the tile", !showsText(fmtMoney(180.0, CurrencyCode("CHF"))))
+        assertTrue("own purchase price shown on the tile", !showsText(fmtMoney(170.0, CurrencyCode("CHF"))))
     }
 }

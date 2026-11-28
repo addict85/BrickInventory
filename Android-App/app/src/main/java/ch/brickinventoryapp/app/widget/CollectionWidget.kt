@@ -1,23 +1,28 @@
 package ch.brickinventoryapp.app.widget
 
 import android.content.Context
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalSize
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
@@ -51,6 +56,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 /**
  * The most recently fetched numbers. The widget reads only here and thus shows the last state
@@ -138,8 +144,22 @@ class WidgetWorker @AssistedInject constructor(
     }
 }
 
+/** What the widget shows: title, value, the two P&L rows, when they are from and whether dimmed. */
+internal class WidgetContent(
+    val title: String,
+    val empty: String,
+    val value: Pair<String, String>?,
+    val rows: List<Pair<String, String>>,
+    val stamp: String?,
+    val stale: Boolean,
+)
+
 /** Collection value, P&L today and in total; a tap opens the app. */
 class CollectionWidget : GlanceAppWidget() {
+    // Glance lays out for the largest size that fits: small only the value, from the default
+    // size on both P&L rows, tall with the label and a larger value.
+    override val sizeMode = SizeMode.Responsive(setOf(SMALL, MEDIUM, TALL))
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val access = runCatching { EntryPointAccessors.fromApplication(context, WidgetAccess::class.java) }.getOrNull()
         val loggedIn = catchUnlessCancelled { access?.credentials()?.tokenNow()?.isNotBlank() == true }.getOrDefault(false)
@@ -149,35 +169,72 @@ class CollectionWidget : GlanceAppWidget() {
         val numbers = widgetDisplay(WidgetStore.read(context), loggedIn)
         // The texts in the app's language, not the system's (LanguageManager).
         val ctx = LanguageManager.localizedContext(context)
-        val title = ctx.getString(R.string.widget_title)
-        val rows = numbers?.let {
-            val (value, today, total) = widgetValues(it, show)
-            listOf(
-                ctx.getString(R.string.widget_value) to value,
-                ctx.getString(R.string.widget_today) to today,
-                ctx.getString(R.string.widget_total) to total,
-            )
-        }
-        val empty = ctx.getString(R.string.widget_empty)
-        provideContent { GlanceTheme { Content(title, rows, empty) } }
+        val content = widgetContent(ctx, numbers, show, System.currentTimeMillis(), ZoneId.systemDefault())
+        provideContent { GlanceTheme { Content(content) } }
     }
 
     @Composable
-    private fun Content(title: String, rows: List<Pair<String, String>>?, empty: String) {
+    private fun Content(c: WidgetContent) {
+        val size = LocalSize.current
+        val wide = size.width >= MEDIUM.width
+        val rows = wide && size.height >= MEDIUM.height
+        val tall = rows && size.height >= TALL.height
+        val colors = GlanceTheme.colors
+        // Old numbers in the secondary color: still there, but not to be read as today's.
+        val main = if (c.stale) colors.onSurfaceVariant else colors.onSurface
+        val stamp = @Composable { text: String ->
+            Text(text, maxLines = 1, style = TextStyle(fontSize = Type.labelSmall.fontSize, color = colors.onSurfaceVariant))
+        }
         Column(
-            GlanceModifier.fillMaxSize().background(GlanceTheme.colors.widgetBackground)
+            GlanceModifier.fillMaxSize().background(colors.widgetBackground)
                 .cornerRadius(16.dp).padding(Spacing.medium).clickable(actionStartActivity<MainActivity>()),
         ) {
-            Text(title, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GlanceTheme.colors.onSurface))
-            Spacer(GlanceModifier.height(6.dp))
-            if (rows == null) {
-                Text(empty, style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant))
-            } else for ((name, value) in rows) {
-                Text(name, style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant))
-                Text(value, style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = GlanceTheme.colors.onSurface))
+            Row(GlanceModifier.fillMaxWidth()) {
+                Text(c.title, GlanceModifier.defaultWeight(), maxLines = 1,
+                    style = TextStyle(fontWeight = FontWeight.Bold, fontSize = Type.titleSmall.fontSize, color = colors.onSurface))
+                if (wide) c.stamp?.let { stamp(it) }
             }
+            Spacer(GlanceModifier.height(Spacing.tiny))
+            val value = c.value
+            if (value == null) {
+                Text(c.empty, style = TextStyle(fontSize = Type.bodySmall.fontSize, color = colors.onSurfaceVariant))
+                return@Column
+            }
+            if (tall) Text(value.first, style = TextStyle(fontSize = Type.labelMedium.fontSize, color = colors.onSurfaceVariant))
+            Text(value.second, maxLines = 1,
+                style = TextStyle(fontSize = (if (tall) Type.headlineSmall else Type.titleMedium).fontSize,
+                    fontWeight = FontWeight.Medium, color = main))
+            if (rows) for ((name, amount) in c.rows) {
+                Row(GlanceModifier.fillMaxWidth()) {
+                    Text(name, GlanceModifier.defaultWeight(), maxLines = 1,
+                        style = TextStyle(fontSize = Type.bodySmall.fontSize, color = colors.onSurfaceVariant))
+                    Text(amount, maxLines = 1,
+                        style = TextStyle(fontSize = Type.bodySmall.fontSize, fontWeight = FontWeight.Medium, color = main))
+                }
+            }
+            if (!wide) c.stamp?.let { stamp(it) }
         }
     }
+
+    private companion object {
+        val SMALL = DpSize(110.dp, 60.dp)
+        val MEDIUM = DpSize(180.dp, 100.dp)
+        val TALL = DpSize(180.dp, 150.dp)
+
+        /** Material's type scale: Glance has none of its own, and the app's sizes follow it. */
+        val Type = Typography()
+    }
+}
+
+/** The texts of the widget in the app's language; signed out or never fetched, the hint to open the app. */
+internal fun widgetContent(ctx: Context, numbers: WidgetNumbers?, show: Boolean, now: Long, zone: ZoneId): WidgetContent {
+    val title = ctx.getString(R.string.widget_title)
+    if (numbers == null) return WidgetContent(title, ctx.getString(R.string.widget_empty), null, emptyList(), null, false)
+    val (value, today, total) = widgetValues(numbers, show)
+    val age = widgetAge(numbers.state, now, zone, ctx.resources.configuration.locales[0])
+    return WidgetContent(title, "", ctx.getString(R.string.widget_value) to value,
+        listOf(ctx.getString(R.string.widget_today) to today, ctx.getString(R.string.widget_total) to total),
+        age.stamp?.let { ctx.getString(R.string.widget_as_of, it) }, age.stale)
 }
 
 /** Registers the widget with Android; updating begins with the first widget. */

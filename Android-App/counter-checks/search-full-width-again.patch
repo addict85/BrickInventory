@@ -1,0 +1,18 @@
+Gegenprobe: Das Suchfeld über Galerie, Teilen und Figuren läuft auf dem Tablet wieder über die ganze Breite
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.SearchWithFilterWidthTest
+Rot: on the tablet the search field stops at reading width
+
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
+index af766af..caa6cc2 100644
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/FilterSheet.kt
+@@ -134,7 +134,7 @@ private fun SearchAndButtons(value: String, onValue: (String) -> Unit, placehold
+             verticalAlignment = Alignment.CenterVertically) {
+             // Centered at reading width: left-aligned at 720 dp the row ended in the middle
+             // over the tiles, across 1200 dp a short query sat lost at the left.
+-            SearchField(value = value, onValue = onValue, placeholder = placeholder, modifier = Modifier.searchFieldWidth(this))
++            SearchField(value = value, onValue = onValue, placeholder = placeholder, modifier = Modifier.weight(1f))
+             buttons()
+         }
+     }

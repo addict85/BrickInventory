@@ -5,6 +5,10 @@ import ch.brickinventoryapp.contract.BrickColor
 import ch.brickinventoryapp.contract.Part
 import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.decodeCompleted
+import ch.brickinventoryapp.contract.testing.testBrickColor
+import ch.brickinventoryapp.contract.testing.testPart
+import ch.brickinventoryapp.contract.testing.testPartValuationItem
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.model.domain.ItemKind
@@ -22,9 +26,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -32,7 +40,7 @@ import org.junit.Test
 /**
  * "Keine Farbe" is 9999 as on the server (`utils/validate.ts`, NO_COLOR);
  * 0 is black. The app sends 9999 for a part without a color, shows 9999 as
- * "keine Farbe" and does not take a missing color_id as black.
+ * "keine Farbe" and refuses a missing color_id instead of taking it as black.
  *
  * Counter-checks:
  *   A  in Teilerfassung the default `colorId = 0` → red “a part
@@ -43,7 +51,7 @@ import org.junit.Test
  *      no color, 0 stays black” ([No Color/Any Color] instead of none)
  *   D  in withoutNoColor() `!= NO_COLOR` replaced with `!= 0` → red there as well
  *   E  Part.colorId back to a default of 0 → red “a missing color_id is
- *      no color, not black”
+ *      refused, not taken as black”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NoColorTest {
@@ -98,7 +106,7 @@ class NoColorTest {
 
     @Test
     fun `9999 means no color, 0 stays black`() {
-        val list = listOf(BrickColor(id = NO_COLOR, name = "[No Color/Any Color]"), BrickColor(id = 0, name = "Black", hex = "05131D"),
+        val list = listOf(testBrickColor(id = NO_COLOR, name = "[No Color/Any Color]"), BrickColor(id = 0, name = "Black", hex = "05131D"),
                            BrickColor(id = 4, name = "Red", hex = "C91A09")).map { it.asView() }
         assertEquals(listOf(0, 4), withoutNoColor(list).map { it.id })
         assertEquals("keine", colorName(list, NO_COLOR, "[No Color/Any Color]", "keine"))
@@ -108,10 +116,14 @@ class NoColorTest {
     }
 
     @Test
-    fun `a missing color_id is no color, not black`() {
-        assertEquals(NO_COLOR, BrickJson.decodeFromString(Part.serializer(), """{"part_number":"3001"}""").colorId)
-        assertEquals(NO_COLOR, BrickJson.decodeFromString(PartValuationItem.serializer(), """{"part_number":"3001"}""").colorId)
-        assertEquals(0, BrickJson.decodeFromString(Part.serializer(), """{"part_number":"3001","color_id":0}""").colorId)
+    fun `a missing color_id is refused, not taken as black`() {
+        val part = BrickJson.encodeToJsonElement(Part.serializer(), testPart(partNumber = "3001")).jsonObject
+        assertThrows(SerializationException::class.java) { BrickJson.decodeFromJsonElement(Part.serializer(), JsonObject(part - "color_id")) }
+        val item = BrickJson.encodeToJsonElement(PartValuationItem.serializer(), testPartValuationItem(partNumber = "3001")).jsonObject
+        assertThrows(SerializationException::class.java) {
+            BrickJson.decodeFromJsonElement(PartValuationItem.serializer(), JsonObject(item - "color_id"))
+        }
+        assertEquals(0, decodeCompleted(Part.serializer(), """{"part_number":"3001","color_id":0}""").colorId)
         assertEquals(NO_COLOR, ManualItemDetailUiState().colorId)
         assertEquals(NO_COLOR, PartsTarget.ManualItemDetail(ItemKind.FIG, "sw0001", title = "Luke").colorId)
     }

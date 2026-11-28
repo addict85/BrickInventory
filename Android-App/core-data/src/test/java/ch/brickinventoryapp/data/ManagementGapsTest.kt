@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.JobsResponse
+import ch.brickinventoryapp.contract.testing.decodeCompleted
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.testManagementRepository
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -52,7 +52,7 @@ class ManagementGapsTest {
     /** The server has always sent the schedule along; the app reads it in. */
     @Test
     fun `the schedule is read in and shown`() {
-        val r = BrickJson.decodeFromString(JobsResponse.serializer(),
+        val r = decodeCompleted(JobsResponse.serializer(),
             """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""")
         assertEquals("07:05", r.schedules["prices"]?.time)
         // Into the state and onto the job card: MonitoringReloadTest and MonitoringJobsDisplayTest (app).

@@ -1,0 +1,17 @@
+Gegenprobe: Das gewählte Protokollfenster geht beim Prozesstod verloren
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringReloadTest
+Rot: the chosen log window
+
+
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+@@ -97,7 +97,6 @@
+     internal suspend fun loadLog(minutes: Int) {
+         _managementState.update { it.copy(fetch = Load.Loads, logMinutes = minutes) }
+         // The chosen window survives a process death: reopening the log fetches the same span.
+-        saved[LOG_MINUTES] = minutes
+         when (val r = admin.getLog(minutes)) {
+             is Outcome.Success -> _managementState.update { it.copy(log = r.data, fetch = Load.Data(Unit)) }
+             is Outcome.Failure -> _managementState.update { it.copy(fetch = loadError(r)) }

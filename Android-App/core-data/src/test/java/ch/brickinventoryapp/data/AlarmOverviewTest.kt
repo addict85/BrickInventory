@@ -1,14 +1,11 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.contract.PriceAlert
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.testAlarmRepository
-import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.http.DELETE
@@ -19,9 +16,7 @@ import retrofit2.http.PUT
  * that only stands in the detail of its set can only be found if one already knows the set.
  * The web app checks the opposite direction (test/webapp-endpoints.test.js).
  *
- * Counter-check (counter-checks/alarm-owns-default-false.patch): default of `owns`
- * to false → red “a missing owns field …”. Loading, changing, deleting after confirmation,
- * click, state words, preview image and saving on “Done” are checked, drawn, by PriceAlertsDisplayTest.
+ * Loading, changing, deleting after confirmation, click, state words, preview image and saving on “Done” are checked, drawn, by PriceAlertsDisplayTest.
  */
 class AlarmOverviewTest {
 
@@ -56,21 +51,6 @@ class AlarmOverviewTest {
         assertTrue("No changing addresses found — does reflection still work?", changing.size > 10)
         val secondRoute = changing.filter { it.startsWith("api/v2/alerts") }
         assertTrue("A second write path has appeared: $secondRoute", secondRoute.isEmpty())
-    }
-
-    /**
-     * A missing field does not switch off the section. An older server does not send
-     * `owns`; with the default `false` „field missing“ would mean the same as „set does not exist“
-     * , and no row would be clickable any more. When in doubt, try: a click
-     * that ends in an error message is better than a list in which nothing works.
-     */
-    @Test
-    fun `a missing besitzt field does not kill the row`() {
-        val alarm = BrickJson.decodeFromString(PriceAlert.serializer(),
-            """{"set_number":"75192-1","condition":"N","direction":"below","threshold":750.0,"currency_code":"CHF"}""")
-        assertTrue("Without the field the set counts as not present — the whole section would be dead", alarm.owns)
-        val gone = BrickJson.decodeFromString(PriceAlert.serializer(), """{"set_number":"75192-1","owns":false}""")
-        assertFalse(gone.owns)
     }
 
     // The opposite direction — „does the WEB APP have the section too?“ — deliberately does

@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.contract.PartValuationItem
 import ch.brickinventoryapp.contract.SetItem
-import ch.brickinventoryapp.contract.WantedItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testPartValuationItem
+import ch.brickinventoryapp.contract.testing.testSetItem
+import ch.brickinventoryapp.contract.testing.testWantedItem
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.PartEntry
@@ -40,7 +41,7 @@ class OfflineStoreTest {
     private val outbox = OutboxStorage()
     private val store = OfflineStore(StorageInventory(), outbox, { account })
 
-    private fun set(nr: String, quantity: Int) = SetItem(setNumber = nr, name = "Set $nr", quantity = quantity)
+    private fun set(nr: String, quantity: Int) = testSetItem(setNumber = nr, name = "Set $nr", quantity = quantity)
 
     @Test
     fun `things edited offline are in the list immediately`() = runBlocking {
@@ -73,13 +74,13 @@ class OfflineStoreTest {
 
     @Test
     fun `wishlist items and manual parts are created and changed locally`() = runBlocking {
-        store.adopt(Slots.WANTED_LIST, listOf(WantedItem(setNumber = "20001-1", condition = Condition.NEW, userId = 7)).map { it.asView() })
+        store.adopt(Slots.WANTED_LIST, listOf(testWantedItem(setNumber = "20001-1", condition = Condition.NEW, userId = 7)).map { it.asView() })
         store.buffer(Editing.CreateWantedItem(WantedRequest("20002-1", Condition.USED, 7)))
         store.buffer(Editing.DeleteWantedItem("20001-1", Condition.NEW, 7))
         assertEquals(listOf("20002-1|U|7"),
             store.read(Slots.WANTED_LIST)!!.list.map { "${it.setNumber}|${it.condition.identifier}|${it.userId}" })
 
-        store.adopt(Slots.MANUAL_PARTS, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 4, userId = 7)).map { it.asView() })
+        store.adopt(Slots.MANUAL_PARTS, listOf(testPartValuationItem(partNumber = "3001", colorId = 5, quantity = 4, userId = 7)).map { it.asView() })
         store.buffer(Editing.EditPart("3001", 5, QuantityChange(quantity = 9), 7))
         store.buffer(Editing.RecordPart(PartEntry(number = "3002", colorId = 1, quantity = 2)))
         assertEquals(listOf("3002" to 2, "3001" to 9),

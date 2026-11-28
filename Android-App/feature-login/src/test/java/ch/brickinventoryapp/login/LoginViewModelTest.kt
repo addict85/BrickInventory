@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.login
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.LoginStore
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.PasskeyQuery
 import ch.brickinventoryapp.login.ui.PasskeyResult
 import ch.brickinventoryapp.login.ui.QrAccount
@@ -109,6 +111,8 @@ import java.util.concurrent.ConcurrentHashMap
  *   AE in leavePreviousServer() without `pairingTarget(null)` → red “… only after the yes …”
  *      (signed out while requests were still going to the new server);
  *      counter-checks/qr-switch-logout-on-new.patch
+ *   AF the collector in init no longer writes the form → red “the open form and the admin
+ *      checkbox survive a process death”; counter-checks/login-form-not-saved.patch
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
@@ -136,7 +140,7 @@ class LoginViewModelTest {
     private lateinit var question: CertificateQuestion
 
     /** The filter store reports its clearing into the same log; [roots] plays the system roots. */
-    private fun vm(roots: Set<String> = emptySet()): LoginViewModel {
+    private fun vm(roots: Set<String> = emptySet(), saved: SavedStateHandle = SavedStateHandle()): LoginViewModel {
         val viewStore = object : FilterStore by StorageStore() {
             override suspend fun forgetAll() { store.log += "filter-leer" }
         }
@@ -145,7 +149,7 @@ class LoginViewModelTest {
             testPartsRepository(t.api))
         val logout = SessionFake { store.log += "abmelden" }
         return t.track(LoginViewModel(t.session, viewport, t.hints, logout,
-            testAccountRepository(t.api), store, question) { it in roots })
+            testAccountRepository(t.api), store, question, { it in roots }, saved))
     }
 
     @Before
@@ -162,6 +166,18 @@ class LoginViewModelTest {
         t.cleanUp()
         Dispatchers.resetMain()
         paths.server.shutdown()
+    }
+
+    @Test
+    fun `the open form and the admin checkbox survive a process death`() {
+        val saved = SavedStateHandle()
+        val first = vm(saved = saved)
+        first.showLoginForm(LoginForm.REGISTER)
+        first.setFullAccess(true)
+
+        val s = vm(saved = saved.afterProcessDeath()).loginState.value
+        assertEquals(LoginForm.REGISTER, s.form)
+        assertTrue("admin rights stay chosen", s.fullAccess)
     }
 
     @Test
@@ -249,7 +265,7 @@ class LoginViewModelTest {
         paths.priority = { _, path ->
             if (first && path == "/api/v2/auth/qr-login") {
                 first = false
-                question.report(CertificateUnresolved("brick.example.org:443", fp, CertificateUnresolved.Kind.FIRST_CONTACT, ctForced = true))
+                question.report(CertificateUnresolved("brick.example.org:443", fp, CertificateUnresolved.Kind.FIRST_CONTACT))
                 503 to """{"success":false}"""
             } else null
         }
@@ -268,7 +284,7 @@ class LoginViewModelTest {
         assertTrue("Waits for the dialog instead of „Keine Verbindung“", vm.loginState.value.login.running)
         assertNull(vm.loginState.value.login.errorMessage)
 
-        assertTrue(question.confirm(pinsTheStore))
+        assertTrue(question.confirm(pinsTheStore, fp))
         assertEquals("Second attempt", 2, paths.requests.count { it == "POST /api/v2/auth/qr-login" })
         vm.decideQrAccount(true)
         assertTrue("signed in: ${store.log}", t.session.state.value.isLoggedIn)
@@ -648,3 +664,6 @@ class LoginViewModelTest {
         assertTrue(paths.requests.toString(), paths.requests.none { it == "POST /api/v2/auth/passkey/login" })
     }
 }
+
+/** What a recreated ViewModel finds after a process death: only the values saved in the handle. */
+private fun SavedStateHandle.afterProcessDeath() = SavedStateHandle(keys().associateWith { get<Any?>(it) })

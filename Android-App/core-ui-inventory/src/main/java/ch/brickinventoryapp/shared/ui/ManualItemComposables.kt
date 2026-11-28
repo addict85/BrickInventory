@@ -294,13 +294,24 @@ fun CountField(value: String, onValue: (String) -> Unit, hint: String) {
 
 /**
  * The purchase-price field of every capture. The hint sits as a help line instead of a
- * placeholder: that one disappeared on the first keystroke.
+ * placeholder: that one disappeared on the first keystroke. The currency stands at the end
+ * so nobody wonders whether „12“ means francs or euros — as a trailing text, because
+ * Material's `suffix` stays hidden while the empty field shows its label.
  */
 @Composable
-fun PurchasePriceField(value: String, onValue: (String) -> Unit, label: String, onDone: (() -> Unit)? = null) {
+fun PurchasePriceField(
+    value: String,
+    onValue: (String) -> Unit,
+    label: String,
+    currency: CurrencyCode = CurrencyCode.NONE,
+    onDone: (() -> Unit)? = null,
+) {
     OutlinedTextField(
         value = value, onValueChange = { onValue(NumericInput.price(it)) },
         label = { Text(label) },
+        trailingIcon = if (currency.known) ({
+            Text(currency.code, Modifier.padding(end = Spacing.medium), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }) else null,
         isError = NumericInput.priceInvalid(value),
         supportingText = {
             if (NumericInput.priceInvalid(value)) Text(stringResource(R.string.record_price_invalid), Modifier.announce())

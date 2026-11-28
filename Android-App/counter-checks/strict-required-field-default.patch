@@ -1,0 +1,18 @@
+Gegenprobe: Ein Pflichtfeld der Antwort hat wieder eine Vorgabe (Gutscheinbetrag liest fehlend als 0)
+Modul: core-contract
+Test: ch.brickinventoryapp.contract.StrictResponseTest
+Rot: a voucher without amount
+
+
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/ContractVouchers.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/ContractVouchers.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/ContractVouchers.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/ContractVouchers.kt
+@@ -35,7 +35,7 @@
+     @SerialName("id") val id: Int,
+     @SerialName("number") val number: String,
+     @SerialName("pin") val pin: String?,
+-    @SerialName("amount") val amount: Double,
++    @SerialName("amount") val amount: Double = 0.0,
+     @SerialName("currency") val currency: CurrencyCode,
+     @SerialName("has_pdf") val hasPdf: Boolean,
+     @SerialName("created_at") val createdAt: String,

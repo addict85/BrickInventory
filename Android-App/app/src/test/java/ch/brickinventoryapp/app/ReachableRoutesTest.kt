@@ -100,10 +100,11 @@ class ReachableRoutesTest {
             items[i].performScrollTo().performClick()
         }
         compose.waitForIdle()
-        // Material provides at most five tabs: the inventory destinations, the comparison
-        // tool between the catalog and “More”, and “More” itself. The wishlist moved there.
-        assertEquals(listOf(CollectionTarget.Gallery, FinanceTarget.Finance, CatalogTarget.Catalog, CollectionTarget.Comparison, AppTarget.More),
+        // Material provides at most five tabs: the inventory destinations, the wishlist and
+        // “More”. The price comparison only opens the browser and stands on “More”.
+        assertEquals(listOf(CollectionTarget.Gallery, FinanceTarget.Finance, CatalogTarget.Catalog, CollectionTarget.Wanted, AppTarget.More),
             bar.map { it.target })
+        assertTrue("the price comparison is on “More”", CollectionTarget.Comparison in ofMore)
         assertEquals("every entry on “More” names exactly one destination", count, ofMore.size)
         assertTrue("the settings are on “More”", AccountTarget.Settings in ofMore)
         assertFalse("the server switch belongs in the settings, not on “More”", LoginTarget.Setup in ofMore)

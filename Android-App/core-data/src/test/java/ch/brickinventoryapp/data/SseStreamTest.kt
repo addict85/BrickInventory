@@ -87,7 +87,7 @@ class SseStreamTest {
     @Test
     fun `the CSV client reports an unreadable event as Failed`() {
         server.enqueue(response(
-            "data: {\"success\":true,\"status\":\"running\",\"total\":3,\"done\":1}\n\ndata: [kaputt\n\n"))
+            "data: {\"success\":true,\"status\":\"running\",\"total\":3,\"done\":1,\"error\":null}\n\ndata: [kaputt\n\n"))
         val events = collect(CsvImportSseClient(TestApi.redirected(server), json).stream())
 
         assertEquals(1, (events[0] as CsvImportSseClient.Event.Status).status.done)

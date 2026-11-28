@@ -22,6 +22,7 @@ dependencies {
     testImplementation(project(":core-testing"))
     // The chart test builds its points from server responses; only the test knows the contract.
     testImplementation(project(":core-contract"))
+    testImplementation(testFixtures(project(":core-contract")))
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

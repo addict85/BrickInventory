@@ -3,14 +3,12 @@ package ch.brickinventoryapp.state
 import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.BrickApiService
+import ch.brickinventoryapp.data.testing.completingConverter
 import ch.brickinventoryapp.data.testing.testAccountRepository
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -56,13 +54,11 @@ class BrickRepositoryErrorMappingTest {
             .readTimeout(readDeadlineMs, TimeUnit.MILLISECONDS)
             .connectTimeout(readDeadlineMs, TimeUnit.MILLISECONDS)
             .build()
-        // The same JSON configuration as in di/AppModule — otherwise the
-        // test would be checking a leniency the app doesn't have.
-        val json = BrickJson
+        // The app's JSON configuration, with the test's missing required fields filled in.
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(completingConverter())
             .build()
             .create(BrickApiService::class.java)
         // AccountRepository instead of BrickRepository: getMe() has lived

@@ -266,7 +266,7 @@ class SourceRatchetTest {
     @Test
     fun `long comments in the workflow and in tests become fewer`() {
         val WORKFLOW = 1
-        val TESTS = 42
+        val TESTS = 41
         val DATE_AND_ID = 0
         val HISTORY = 0
         val wf = File(Sources.project, "../.github/workflows/android.yml").readLines()

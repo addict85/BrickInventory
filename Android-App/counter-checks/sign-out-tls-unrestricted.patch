@@ -1,0 +1,16 @@
+Gegenprobe: Der Client für späte Abmeldungen setzt keine connectionSpecs
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerClientsTest
+Rot: every server client offers only restricted TLS
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
+@@ -194,7 +194,6 @@
+         val tm = trustServer(prefs, question)
+         sslSocketFactory(serverTls(prefs.trust, tm), tm)
+     }
+-    .connectionSpecs(serverConnectionSpecs())
+     .connectTimeout(15, TimeUnit.SECONDS)
+     .readTimeout(30, TimeUnit.SECONDS)
+     .build()

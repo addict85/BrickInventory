@@ -55,6 +55,7 @@ import ch.brickinventoryapp.ui.components.SearchField
 import ch.brickinventoryapp.ui.components.ViewToggle
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.searchFieldWidth
 import ch.brickinventoryapp.ui.theme.Spacing
 
 /**
@@ -129,10 +130,11 @@ private fun SearchAndButtons(value: String, onValue: (String) -> Unit, placehold
             SearchField(value = value, onValue = onValue, placeholder = placeholder, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically) { buttons() }
-        } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            // Across the full width, the buttons at the grid's right edge: limited to 720 dp,
-            // the row ended on the tablet right in the middle over the tiles, empty to its right.
-            SearchField(value = value, onValue = onValue, placeholder = placeholder, modifier = Modifier.weight(1f))
+        } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically) {
+            // Centered at reading width: left-aligned at 720 dp the row ended in the middle
+            // over the tiles, across 1200 dp a short query sat lost at the left.
+            SearchField(value = value, onValue = onValue, placeholder = placeholder, modifier = Modifier.searchFieldWidth(this))
             buttons()
         }
     }

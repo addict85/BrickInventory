@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testSetItem
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.data.testing.testMinifigsRepository
@@ -88,7 +88,7 @@ class PurchasesViewModelTest {
 
     @Test
     fun `a changed purchase of a set writes its summary into the store and reloads the list`() {
-        runBlocking { t.store.adopt(Slots.SETS, listOf(SetItem(setNumber = "75192-1", usedCount = 0)).map { it.asView() }) }
+        runBlocking { t.store.adopt(Slots.SETS, listOf(testSetItem(setNumber = "75192-1", usedCount = 0)).map { it.asView() }) }
         val vm = vm()
         vm.loadAcquisitions("75192-1")
         assertTrue("List loaded", vm.manDetailState.value.acquisitions.isNotEmpty())

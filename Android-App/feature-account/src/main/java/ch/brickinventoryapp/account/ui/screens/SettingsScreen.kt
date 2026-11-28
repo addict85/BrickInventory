@@ -101,7 +101,7 @@ internal fun SettingsRoute(
 }
 
 /**
- * Settings — a few cards instead of a stack: display & prices (every
+ * Settings — a few cards instead of a stack: this device, account (every
  * choice applies right away), server and privacy. The categories with their own page sit on "More"
  * (MoreScreen.kt) and in SettingsUnterseiten.kt.
  */
@@ -128,14 +128,17 @@ fun SettingsScreen(
         // few and large, and there should be air between them.
         verticalArrangement = Arrangement.spacedBy(Spacing.large)
     ) {
-        // Here stands only what a setting is in the narrow sense: display & prices,
-        // server, privacy; the categories with their own page sit on "More".
-        // Every choice applies right away and announces itself: a save button below
-        // the card was a second rule, and whoever missed it lost the choice.
-        SettingsCard(title = stringResource(R.string.settings_group_display),
-                     icon = Icons.Default.Tune) {
+        // Device and account apart: in one card nobody could tell that the language stays
+        // on this phone while the currency follows the account to every device.
+        // Every choice applies right away; a save button was a second rule to miss.
+        SettingsCard(title = stringResource(R.string.settings_group_device),
+                     icon = Icons.Default.Smartphone) {
             DisplaySettings(condition, appearance)
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        SettingsCard(title = stringResource(R.string.settings_group_account),
+                     icon = Icons.Default.Person) {
+            Text(stringResource(R.string.settings_group_account_hint), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             PriceSettings(condition.appState, actions)
         }
 
@@ -313,7 +316,9 @@ private fun ServerCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Spacing.small))
-        OutlinedButton(onClick = switchOn, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+        // 48 dp like the logout button: at the screen edge the touch area got clipped to the 40 dp shape.
+        OutlinedButton(onClick = switchOn, modifier = Modifier.heightIn(min = 48.dp),
+            colors = secondaryButtonColors(), border = secondaryButtonRand()) {
             Icon(Icons.Default.Cloud, null, modifier = Modifier.size(withFont(18.dp)))
             Spacer(Modifier.width(Spacing.small))
             Text(stringResource(R.string.main_menu_change_server))

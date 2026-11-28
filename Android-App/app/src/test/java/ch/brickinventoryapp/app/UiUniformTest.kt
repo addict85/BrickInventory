@@ -7,7 +7,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
@@ -16,6 +19,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -23,6 +27,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.LocationsRoute
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
@@ -104,8 +109,11 @@ import java.util.Locale
  *   gallery-without-filter-chips      gallery passes no active filters → red “active filter stands as a chip …”
  *   figures-number-unsorted     NUMMER does not sort → red “minifigures can be sorted“
  *   part-deletes-immediately           marking deletes right away → red “deleting a part offers undo …”
+ *   part-detail-asks-before-undo  the trash icon asks also with undo → red “the part detail deletes …”
+ *   part-detail-deletes-without-undo  the trash icon never asks → red “the part detail deletes …”
  *   location-deleted-at-once     marking deletes right away → red “deleting a storage location offers undo …”
  *   purchase-deletes-immediately           marking deletes right away → red “deleting a purchase offers undo …”
+ *   purchase-asks-before-undo    the trash icon asks first again → red “deleting a purchase offers undo …”
  *   part-without-price-dash        market value without price again „—“ → red “part without market price …”
  *   setitem-own-header          part from sets again with 140 dp image → red “part from sets has the same header …”
  */
@@ -184,7 +192,7 @@ class UiUniformTest {
         object : SetCreator {
             override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
-        }))
+        }, SavedStateHandle()))
 
     // ── Tablet: reading width like the settings ──
 
@@ -210,7 +218,7 @@ class UiUniformTest {
         world.paths.responses["/api/v2/admin/job-queue"] = """{"success":true,"jobs":[],"summary":[],"pauses":[],
             "image_demand":0,"job_process":{"heartbeat":null,"age_seconds":null,"running":true}}"""
         val api = world.t.api
-        val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages)
+        val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), world.t.messages, SavedStateHandle())
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         val background = vm.background.value
@@ -291,7 +299,9 @@ class UiUniformTest {
             val r = ApplicationProvider.getApplicationContext<Context>()
             assertEquals("$language: title and button for the part", r.getString(R.string.parts_add), r.getString(R.string.parts_add_title))
             assertEquals("$language: title and button for the figure", r.getString(R.string.minifigs_add), r.getString(R.string.minifigs_add_title))
-            assertEquals("$language: destination and side of the comparison", r.getString(R.string.comparison_title), r.getString(R.string.nav_comparison))
+            // The action on set detail and scan result opens the same thing as the page on “More”.
+            assertEquals("$language: one name for the price comparison",
+                r.getString(R.string.comparison_title), r.getString(R.string.detail_compare))
         }
         RuntimeEnvironment.setQualifiers("de-rCH")
         val de = ApplicationProvider.getApplicationContext<Context>()
@@ -371,6 +381,35 @@ class UiUniformTest {
         drive("deleted") { requests("DELETE /api/v2/parts/3001/5").isNotEmpty() }
     }
 
+    /** With „Rückgängig“ in the list behind it the trash icon marks at once; without, it still asks. */
+    @Test
+    fun `the part detail deletes without a question only where undo exists`() {
+        world.paths.responses["/api/v2/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
+            "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12}]}"""
+        val parts = world.parts().also { it.loadParts() }
+        drive("parts") { parts.partsState.value.manualParts?.isNotEmpty() == true }
+        var undo by mutableStateOf(false)
+        var back = 0
+        show {
+            ManualItemDetailRoute(purchases(), parts, world.figures(), item = PartsTarget.ManualItemDetail(ItemKind.PART, "3001", 5, "Brick 2 x 4"),
+                imageLoader = images, onBack = { back++ }, onNavigateToAcqMgmt = { _, _, _, _ -> }, undo = undo)
+        }
+        val trash = compose.onNode(hasContentDescription(ctx.getString(R.string.common_delete)) and hasClickAction())
+        trash.performClick()
+        compose.waitForIdle()
+        assertEquals("without undo it asks first", 1, compose.onAllNodes(isDialog()).fetchSemanticsNodes().size)
+        assertEquals(0, back)
+        compose.onNodeWithText(ctx.getString(R.string.common_cancel)).performClick()
+        undo = true
+        compose.waitForIdle()
+        trash.performClick()
+        short()
+        assertTrue("a question before the undo", compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty())
+        assertEquals("the detail closes", 1, back)
+        assertTrue("marked is missing in the list", parts.partsState.value.manualParts.orEmpty().isEmpty())
+        assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v2/parts/3001/5").isEmpty())
+    }
+
     @Test
     fun `deleting a storage location offers undo and deletes only afterwards`() {
         world.paths.responses["/api/v2/storage/locations"] = """{"success":true,"locations":[
@@ -396,8 +435,10 @@ class UiUniformTest {
         val vm = purchases()
         show { AcquisitionManagementRoute(vm, type = ItemKind.SET, id = Examples.SET, title = "Millennium Falcon", onBack = {}) }
         drive("purchases") { compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isNotEmpty() }
-        vm.purchaseDeleteReserve(ItemKind.SET, Examples.SET, 0, 1)
+        // The trash icon marks right away: the undo is the safeguard, no question before it.
+        compose.onNodeWithContentDescription(ctx.getString(R.string.acq_delete_title)).performClick()
         short()
+        assertTrue("a question before the undo", compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty())
         assertTrue("marked is missing in the list",
             compose.onAllNodes(hasText(ctx.getString(R.string.common_quantity))).fetchSemanticsNodes().isEmpty())
         assertTrue("nothing deleted before the end of the snackbar", requests("DELETE /api/v2/sets/75192-1/acquisitions/1").isEmpty())

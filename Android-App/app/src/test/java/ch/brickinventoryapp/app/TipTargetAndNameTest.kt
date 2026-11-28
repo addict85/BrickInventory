@@ -10,6 +10,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.AccountUiState
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
@@ -138,7 +139,7 @@ class TipTargetAndNameTest {
         object : SetCreator {
             override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
-        }))
+        }, SavedStateHandle()))
 
     @Test
     fun gallery() {

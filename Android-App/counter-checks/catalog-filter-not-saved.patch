@@ -1,0 +1,17 @@
+Gegenprobe: Das Themenfilter des Katalogs kommt nach dem Prozesstod nicht zurück
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
+Rot: search and filters come back
+
+
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+@@ -228,7 +228,6 @@
+ 
+     override fun setCatalogTheme(themeId: Int?) {
+         _catalogState.update { it.copy(themeId = themeId) }
+-        saved[THEME] = themeId
+         loadCatalogSets()
+     }
+ 

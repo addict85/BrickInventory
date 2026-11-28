@@ -52,6 +52,7 @@ import ch.brickinventoryapp.ui.components.ScanButton
 import ch.brickinventoryapp.ui.components.SearchField
 import ch.brickinventoryapp.ui.components.SelectionChip
 import ch.brickinventoryapp.ui.components.SortMenu
+import ch.brickinventoryapp.ui.components.searchFieldWidth
 import ch.brickinventoryapp.ui.components.secondaryButtonColors
 import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
@@ -302,15 +303,16 @@ private fun WantedSearchRow(
     actions: WantedListActions,
     onScan: () -> Unit,
 ) {
-Row(
+    Row(
         Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SearchField(
             value = searchInput,
             onValue = onSearch,
             placeholder = stringResource(R.string.wanted_search),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.searchFieldWidth(this),
         )
         SortMenu(
             options = WantedSort.entries.map { it to it.label() },

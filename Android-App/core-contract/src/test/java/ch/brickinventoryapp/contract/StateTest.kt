@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.contract
 
+import ch.brickinventoryapp.contract.testing.decodeCompleted
+import ch.brickinventoryapp.contract.testing.testWantedItem
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.StateSerializer
 import kotlinx.serialization.json.Json
@@ -29,23 +31,23 @@ class StateTest {
         assertTrue(text, text.contains("\"condition\":\"U\""))
         val without = json.encodeToString(AddSetRequest.serializer(), AddSetRequest(setNumber = "75192-1"))
         assertTrue(without, without.contains("\"condition\":null"))
-        val remember = json.encodeToString(WantedItem.serializer(), WantedItem(setNumber = "10294-1"))
+        val remember = json.encodeToString(WantedItem.serializer(), testWantedItem(setNumber = "10294-1"))
         assertTrue(remember, remember.contains("\"condition\":\"N\""))
     }
 
     @Test
     fun `the type comes in`() {
-        val set = json.decodeFromString(SetItem.serializer(),
+        val set = decodeCompleted(SetItem.serializer(),
             """{"set_number":"75192-1","condition":"U","conditions":["N","U"]}""")
         assertEquals(Condition.USED, set.condition)
         assertEquals(listOf(Condition.NEW, Condition.USED), set.conditions)
-        assertNull(json.decodeFromString(SetItem.serializer(), """{"set_number":"1-1","condition":null}""").condition)
+        assertNull(decodeCompleted(SetItem.serializer(), """{"set_number":"1-1","condition":null}""").condition)
     }
 
     @Test
     fun `an unknown condition does not discard the response`() {
         // Like the server (`=== 'U' ? 'U' : 'N'`): unknown counts as new.
-        val set = json.decodeFromString(SetItem.serializer(),
+        val set = decodeCompleted(SetItem.serializer(),
             """{"set_number":"75192-1","condition":"X","conditions":["U","?"]}""")
         assertEquals(Condition.NEW, set.condition)
         assertEquals(listOf(Condition.USED, Condition.NEW), set.conditions)

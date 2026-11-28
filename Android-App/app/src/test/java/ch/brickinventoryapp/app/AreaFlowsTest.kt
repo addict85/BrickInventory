@@ -15,8 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
@@ -30,7 +28,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.screens.HouseholdRoute
@@ -48,7 +45,6 @@ import ch.brickinventoryapp.collection.ui.screens.WantedItemUndoRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryActions
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
-import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogSetView
@@ -223,15 +219,10 @@ class AreaFlowsTest {
         val rotate = StateRestorationTester(compose)
         rotate.setContent { BrickInventoryManagerTheme { BarcodeResultDialog(condition, actions, images) } }
         compose.onNodeWithText(ctx.getString(R.string.barcode_already_owned, 2)).fetchSemanticsNode("Besitz nicht genannt")
-        val count = hasSetTextAction() and hasText(ctx.getString(R.string.common_quantity))
-        compose.onNode(count).performTextClearance()
-        compose.onNode(count).performTextInput("2")
+        compose.onNodeWithContentDescription(ctx.getString(R.string.cd_qty_increase)).performClick()
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.barcode_purchase_price))).performTextInput("650")
         rotate.emulateSavedInstanceStateRestore()
-        compose.onNode(count).fetchSemanticsNode().let { n ->
-            val text = n.config.getOrNull(SemanticsProperties.EditableText)?.text
-            assertEquals("count after rotation", "2", text)
-        }
+        compose.onNodeWithText("2", useUnmergedTree = true).fetchSemanticsNode("count after rotation")
         compose.onNodeWithText(ctx.getString(R.string.barcode_add)).performClick()
         assertEquals(2, quantity)
         assertEquals(Money.from(650.0), price)

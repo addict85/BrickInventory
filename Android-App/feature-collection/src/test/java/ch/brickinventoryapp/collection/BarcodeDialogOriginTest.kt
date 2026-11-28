@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.collection
 
 import android.content.Context
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -65,6 +66,9 @@ class BarcodeDialogOriginTest {
     private fun fieldCount(label: Int) =
         compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(label))).fetchSemanticsNodes().size
 
+    private fun stepperCount() =
+        compose.onAllNodes(hasContentDescription(ctx.getString(R.string.cd_qty_increase))).fetchSemanticsNodes().size
+
     private fun confirm(actions: Recorder): EntryRequest? {
         compose.onNodeWithText(ctx.getString(R.string.barcode_add)).performClick()
         compose.waitForIdle()
@@ -76,7 +80,7 @@ class BarcodeDialogOriginTest {
         val actions = show(ScannerOrigin.PART_LIST)
         compose.onNodeWithContentDescription("Millennium Falcon").fetchSemanticsNode("image missing")
         assertEquals("purchase price field", 0, fieldCount(R.string.barcode_purchase_price))
-        assertEquals("quantity field", 0, fieldCount(R.string.common_quantity))
+        assertEquals("quantity stepper", 0, stepperCount())
         assertEquals(EntryRequest("75192-1"), confirm(actions))
     }
 
@@ -85,7 +89,7 @@ class BarcodeDialogOriginTest {
         val actions = show(ScannerOrigin.GALLERY)
         compose.onNodeWithContentDescription("Millennium Falcon").fetchSemanticsNode("image missing")
         assertEquals("purchase price field", 1, fieldCount(R.string.barcode_purchase_price))
-        assertEquals("quantity field", 1, fieldCount(R.string.common_quantity))
+        assertEquals("quantity stepper", 1, stepperCount())
         assertEquals(EntryRequest("75192-1", quantity = 1, condition = Condition.NEW), confirm(actions))
     }
 }

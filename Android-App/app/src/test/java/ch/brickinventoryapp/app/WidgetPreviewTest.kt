@@ -8,6 +8,9 @@ import android.widget.FrameLayout
 import android.widget.RemoteViews
 import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.app.widget.WidgetNumbers
+import ch.brickinventoryapp.app.widget.widgetContent
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -15,6 +18,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import ch.brickinventoryapp.R as AppR
 import ch.brickinventoryapp.resources.R as Texts
 
@@ -25,6 +30,8 @@ import ch.brickinventoryapp.resources.R as Texts
  *
  * Counter-checks (patches under counter-checks/, Robolectric, measured by CI):
  *   widget-without-preview   previewLayout and description removed from xml-v31 → red “the widget carries …”
+ *   widget-without-stamp     widgetContent() drops the fetch time → red “the widget says when …”
+ *   widget-stale-not-dimmed  widgetContent() passes stale = false → red “the widget says when …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH")
@@ -61,5 +68,22 @@ class WidgetPreviewTest {
         for (id in listOf(Texts.string.widget_title, Texts.string.widget_value, Texts.string.widget_preview_value)) {
             assertTrue("“${ctx.getString(id)}” missing in the preview: $shown", ctx.getString(id) in shown)
         }
+    }
+
+    /** The worker can be stuck for days; the home screen then says from when the numbers are. */
+    @Test
+    fun `the widget says when its numbers are from and dims them after a day`() {
+        val zone = ZoneId.of("Europe/Zurich")
+        val fetched = ZonedDateTime.of(2026, 11, 28, 14, 5, 0, 0, zone).toInstant().toEpochMilli()
+        val numbers = WidgetNumbers(CurrencyCode.CHF, value = 1250.5, total = 250.5, today = 10.5, state = fetched)
+        val fresh = widgetContent(ctx, numbers, show = true, now = fetched + 60_000, zone = zone)
+        assertEquals(ctx.getString(Texts.string.widget_as_of, "14:05"), fresh.stamp)
+        assertEquals("Stand 14:05", fresh.stamp)
+        assertTrue("fresh numbers are dimmed", !fresh.stale)
+        assertEquals(listOf(ctx.getString(Texts.string.widget_today), ctx.getString(Texts.string.widget_total)),
+            fresh.rows.map { it.first })
+        val old = widgetContent(ctx, numbers, show = true, now = fetched + 25 * 3_600_000L, zone = zone)
+        assertTrue("a day later the numbers are not dimmed", old.stale)
+        assertTrue("a day later the time alone is named: ${old.stamp}", old.stamp!!.contains("28.11."))
     }
 }

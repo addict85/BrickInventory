@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.data.di
 
-import android.os.Build
 import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.NetworkTrust
@@ -27,6 +26,7 @@ import ch.brickinventoryapp.security.SystemRoots
 import ch.brickinventoryapp.security.pinKey
 import ch.brickinventoryapp.security.spkiFingerprint
 import ch.brickinventoryapp.security.trustJob
+import okhttp3.ConnectionSpec
 import okhttp3.OkHttpClient
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -104,12 +104,16 @@ private fun trustServer(prefs: NetworkStores, question: CertificateQuestion): Pi
         ownServer = { pinKey(prefs.token.pairingTargetState.value ?: prefs.token.serverUrlState.value.orEmpty()) },
         question = question,
         foreignHosts = system,
-        ctForced = Build.VERSION.SDK_INT >= ANDROID_16,
     ).also { trustShared = it }
 }
 
-/** From here on network_security_config requires Certificate Transparency for public CAs. */
-private const val ANDROID_16 = 36
+/**
+ * Only AEAD suites with forward secrecy: MODERN_TLS would still allow CBC and static RSA
+ * on TLS 1.2. Plaintext only in the debug build, where the guard lets http to the
+ * development hosts through (NetworkPolicy.connectionAllowed).
+ */
+internal fun serverConnectionSpecs(development: Boolean = NetworkPolicy.development): List<ConnectionSpec> =
+    listOf(ConnectionSpec.RESTRICTED_TLS) + if (development) listOf(ConnectionSpec.CLEARTEXT) else emptyList()
 
 /** Token and trust together: the server clients need both, nothing else from the stores. */
 class NetworkStores @Inject constructor(val token: TokenMirror, val trust: NetworkTrust)
@@ -166,6 +170,7 @@ internal fun buildInterceptorClient(
             val tm = trustServer(prefs, question)
             sslSocketFactory(serverTls(prefs.trust, tm), tm)
         }
+        .connectionSpecs(serverConnectionSpecs())
         .connectTimeout(15, TimeUnit.SECONDS)
         // An inter-byte timeout; PDF generation runs via job polling.
         .readTimeout(60, TimeUnit.SECONDS)
@@ -189,6 +194,7 @@ internal fun buildRedemptionBase(
         val tm = trustServer(prefs, question)
         sslSocketFactory(serverTls(prefs.trust, tm), tm)
     }
+    .connectionSpecs(serverConnectionSpecs())
     .connectTimeout(15, TimeUnit.SECONDS)
     .readTimeout(30, TimeUnit.SECONDS)
     .build()

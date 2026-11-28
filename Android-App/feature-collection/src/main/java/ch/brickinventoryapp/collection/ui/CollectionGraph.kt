@@ -62,7 +62,7 @@ fun NavGraphBuilder.collectionGraph(navigation: CollectionNavigation) {
     }
     scannerTarget(navigation)
     composable<CollectionTarget.Comparison> {
-        navigation.Tab(stringResource(R.string.nav_comparison)) {
+        navigation.Tab(stringResource(R.string.comparison_title)) {
             ComparisonRoute()
         }
     }

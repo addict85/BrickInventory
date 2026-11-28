@@ -1,0 +1,17 @@
+Gegenprobe: „Vergleich“ steht wieder in der Leiste statt der Merkliste
+Modul: app
+Test: ch.brickinventoryapp.app.ReachableRoutesTest
+Rot: a path leads to every destination without values
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/AppNavigation.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/AppNavigation.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/AppNavigation.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/AppNavigation.kt
+@@ -157,7 +157,7 @@
+             Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, collection),
+             Tab(FinanceTarget.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finances),
+             Tab(CatalogTarget.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, catalog),
+-            Tab(CollectionTarget.Wanted, { Icon(Icons.Default.Bookmark, null) }, wanted),
++            Tab(CollectionTarget.Comparison, { Icon(Icons.Default.Bookmark, null) }, wanted),
+             Tab(AppTarget.More, { Icon(Icons.Default.MoreHoriz, null) }, more),
+         )
+     }

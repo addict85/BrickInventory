@@ -5,13 +5,16 @@
 
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Währung</string>
-    <string name="settings_price_condition">Preiszustand</string>
-    <string name="settings_default_condition">Mein Zustand beim Hinzufügen</string>
-    <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
-    <string name="settings_default_condition_hint">Damit beginnt ein neu hinzugefügtes Set. „Allgemein“ übernimmt die Vorgabe für alle Konten.</string>
+    <string name="settings_price_condition">Preise für</string>
+    <string name="settings_default_condition">Vorauswahl beim Hinzufügen</string>
+    <string name="settings_default_condition_effective">Aktuell: %1$s.</string>
+    <string name="settings_default_condition_hint">Dieser Zustand ist vorgewählt, wenn du ein Set hinzufügst. „Allgemein“ übernimmt die Vorgabe für alle Konten.</string>
     <string name="settings_default_condition_global">Allgemein</string>
     <string name="monitoring_default_condition">Zustand beim Hinzufügen für alle Konten</string>
-    <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
+    <string name="settings_price_basis">Marktwert und Gewinn rechnen mit BrickLink-Preisen für neue oder gebrauchte Sets.</string>
+    <string name="settings_group_device">Dieses Gerät</string>
+    <string name="settings_group_account">Konto</string>
+    <string name="settings_group_account_hint">Gilt für dein Konto, auf allen Geräten.</string>
     <string name="settings_condition_new">Neuware</string>
     <string name="settings_condition_used">Gebraucht</string>
     <string name="settings_save">Speichern</string>
@@ -38,7 +41,7 @@
     <string name="login_passkey_rpid_missing">Der Server hat nicht gesagt, für welche Domain der Passkey gilt. Aus Sicherheitsgründen wurde abgebrochen; melde dich mit Passwort an.</string>
     <string name="login_passkey_rpid_foreign">Der Server verlangt einen Passkey für eine andere Domain als %1$s. Aus Sicherheitsgründen wurde abgebrochen: Prüfe die Serveradresse oder melde dich mit Passwort an.</string>
     <string name="settings_user_ca">Nutzer-Zertifizierungsstellen vertrauen (Risiko)</string>
-    <string name="settings_user_ca_hint">Nur für die Verbindung zu deinem Server. Risiko: Eine vom Nutzer installierte Zertifizierungsstelle – etwa von der Firma oder von Schadsoftware – kann Zertifikate für jeden Server ausstellen und so den Verkehr mitlesen. Nur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
+    <string name="settings_user_ca_hint">Gilt nur für deinen Server. Risiko: Eine vom Nutzer installierte Stelle (etwa der Firma oder Schadsoftware) kann für jeden Server Zertifikate ausstellen und mitlesen. Nur einschalten, wenn du sie selbst installiert hast.</string>
     <string name="user_ca_question_title">Nutzer-Zertifizierungsstellen vertrauen?</string>
     <string name="user_ca_question_text">Die App nimmt dann für deinen Server auch Zertifikate an, die eine vom Nutzer installierte Zertifizierungsstelle ausgestellt hat.\n\nEine solche Stelle kann von deiner Firma, einem Netzwerkverwalter oder von Schadsoftware stammen. Wer sie kontrolliert, kann den Verkehr mitlesen und verändern, auch Passwort und Anmeldetoken. Schutz bleibt dann nur der Vergleich des Fingerabdrucks mit der Web-App.\n\nUpdates von GitHub prüft die App weiter nur gegen die Zertifizierungsstellen des Systems.\n\nNur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
     <string name="user_ca_question_yes">Trotzdem einschalten</string>
@@ -75,7 +78,7 @@
     <!-- ══════════════ Comparison screen ══════════════ -->
     <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
     <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">z. B. 75192-1 oder Barcode</string>
-    <string name="comparison_search">Auf Top Preise vergleichen</string>
+    <string name="comparison_search">Auf toppreise.ch vergleichen</string>
     <string name="comparison_barcode_label">Barcode: %1$s</string>
     <string name="comparison_title">Preisvergleich</string>
     <string name="comparison_hint">Setnummer oder Barcode eingeben, oder Barcode scannen.\nDie Suche öffnet toppreise.ch im Browser.</string>
@@ -89,7 +92,7 @@
     <string name="scanner_hint_detected">Erkannt: %1$s</string>
     <string name="scanner_hint_confirming">Barcode erkannt, bestätige…</string>
     <string name="scanner_hint_aim">Kamera auf Barcode richten</string>
-    <string name="scanner_hint_error">Scan fehlgeschlagen — Code ruhig halten und nochmals versuchen</string>
+    <string name="scanner_hint_error">Scan fehlgeschlagen – Code ruhig halten und nochmals versuchen</string>
     <string name="scanner_torch_off">Licht aus</string>
     <string name="scanner_torch_on">Licht ein</string>
     <string name="scanner_camera_needed">Kamerazugriff benötigt</string>
@@ -105,7 +108,7 @@
     <string name="scanner_hint_slow">Noch nichts erkannt? Mehr Licht, 10–20 cm Abstand und ruhig halten – oder die Nummer eintippen.</string>
 
     <!-- ══════════════ Setup screen ══════════════ -->
-    <string name="setup_invalid_qr">Ungültiger QR-Code — bitte BrickInventory QR-Code verwenden</string>
+    <string name="setup_invalid_qr">Ungültiger QR-Code – bitte BrickInventory QR-Code verwenden</string>
     <string name="setup_subtitle">Server-Einrichtung</string>
     <string name="setup_scan_qr">QR-Code scannen</string>
     <string name="setup_or_manual">oder manuell</string>
@@ -114,7 +117,7 @@
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
     <string name="setup_url_supporting">Die Adresse der BrickInventory Manager Web-App, z. B. brick.fritz.box oder brick.example.com – https:// darf fehlen</string>
     <string name="api_app_too_old">Diese App ist zu alt für den Server. Bitte die App in Google Play aktualisieren.</string>
-    <string name="api_server_too_old">Der Server ist älter als diese App. Manches fehlt womöglich — bitte den Server aktualisieren.</string>
+    <string name="api_server_too_old">Der Server ist älter als diese App. Manches fehlt womöglich – bitte den Server aktualisieren.</string>
     <string name="setup_continue">Weiter</string>
     <string name="setup_qr_detected">QR-Code erkannt</string>
     <string name="setup_qr_scan_hint">BrickInventory QR-Code scannen</string>
@@ -130,7 +133,7 @@
     <string name="gallery_pnl_profit">Gewinn %1$s</string>
     <string name="gallery_pnl_loss">Verlust %1$s</string>
     <string name="gallery_card_market">Marktpreis</string>
-    <string name="gallery_card_paid">Kaufpreis</string>
+    <string name="gallery_card_no_market">kein Marktpreis</string>
     <string name="gallery_delete_title">Set löschen?</string>
     <string name="gallery_delete_text">%1$s und seine Teile werden gelöscht. Danach bleibt kurz Zeit für „Rückgängig“.</string>
     <string name="common_undo">Rückgängig</string>
@@ -163,7 +166,7 @@
     <string name="minifigs_fig_number">Minifigur-Nummer</string>
     <string name="minifigs_fig_number_placeholder">z. B. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink-Nr. (optional)</string>
-    <string name="minifigs_bl_number_placeholder">z. B. sw0001 — für Marktpreis</string>
+    <string name="minifigs_bl_number_placeholder">z. B. sw0001 – für Marktpreis</string>
     <string name="minifigs_bl_hint">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis näherungsweise aus den einzelnen Teilen der Figur berechnet.</string>
     <string name="minifigs_add_button">Hinzufügen</string>
     <string name="minifigs_delete_title">Minifigur löschen?</string>
@@ -214,8 +217,6 @@
     <string name="storage_rename">Umbenennen</string>
     <string name="storage_rename_title">Lagerort umbenennen</string>
     <string name="storage_menu_cd">Aktionen für %1$s</string>
-    <string name="storage_delete_title">Lagerort löschen?</string>
-    <string name="storage_delete_text">„%1$s“ wird gelöscht. Das geht nur, solange nichts darin liegt.</string>
     <string name="detail_storage">Lagerort</string>
     <string name="detail_alert">Preisalarm</string>
     <string name="alert_channel_name">Preisalarme</string>
@@ -223,13 +224,15 @@
     <string name="alert_locked">Ein Set hat eine deiner Schwellen gerissen.</string>
     <string name="alert_notify">Auf diesem Gerät melden</string>
     <string name="alert_notify_hint">Fragt stündlich im Hintergrund nach. Ohne ihn kommt nur die E-Mail.</string>
+    <string name="alert_notify_blocked">Android zeigt Preisalarme auf diesem Gerät zurzeit nicht an: Benachrichtigungen sind in den Systemeinstellungen ausgeschaltet.</string>
+    <string name="alert_open_system_settings">Systemeinstellungen öffnen</string>
     <string name="alert_schedule_failed">Preisalarm konnte nicht eingeplant werden: %1$s</string>
     <string name="detail_alert_below">fällt unter</string>
     <string name="detail_alert_above">steigt über</string>
     <string name="detail_alert_chip_below">Fällt unter</string>
     <string name="detail_alert_chip_above">Steigt über</string>
     <string name="detail_alert_armed">aktiv</string>
-    <string name="detail_alert_fired">ausgelöst — wieder aktiv, sobald der Preis zurückkehrt</string>
+    <string name="detail_alert_fired">ausgelöst – wieder aktiv, sobald der Preis zurückkehrt</string>
     <string name="detail_alert_threshold">Schwelle (%1$s)</string>
     <string name="detail_alert_hint">Wird nach dem Tippen gespeichert</string>
     <string name="detail_alert_saved">Gespeichert: Preis %1$s %2$s · %3$s</string>
@@ -262,7 +265,7 @@
     </plurals>
     <string name="partslist_only_loose">nur manuell erfasste Teile berücksichtigen</string>
     <string name="partslist_include_subs">Unterkonten mit einbeziehen</string>
-    <string name="partslist_owned_complete">Alles vorhanden — das lässt sich bauen.</string>
+    <string name="partslist_owned_complete">Alles vorhanden – das lässt sich bauen.</string>
     <plurals name="partslist_owned_missing">
         <item quantity="one">Es fehlt %1$d Teil.</item>
         <item quantity="other">Es fehlen %1$d Teile (%2$s).</item>
@@ -272,7 +275,7 @@
         <item quantity="other">%1$d verschiedene</item>
     </plurals>
     <string name="partslist_owned_error">Der eigene Bestand liess sich nicht laden.</string>
-    <string name="partslist_empty_hint">Setnummer eingeben und „Bauliste erstellen“ tippen. Nach der Eingabe nimmt das Plus im Feld weitere Sets dazu — für den Nachbau oder um Fehlendes zu bestellen.</string>
+    <string name="partslist_empty_hint">Setnummer eingeben und „Bauliste erstellen“ tippen. Nach der Eingabe nimmt das Plus im Feld weitere Sets dazu – für den Nachbau oder um Fehlendes zu bestellen.</string>
     <string name="partslist_empty_title">Noch keine Bauliste</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
     <plurals name="partslist_group_summary">
@@ -414,7 +417,7 @@
     <string name="detail_section_price_history">Preisverlauf</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
-    <string name="settings_dark_label">Darstellung auf diesem Gerät</string>
+    <string name="settings_dark_label">Darstellung</string>
     <string name="settings_light_system">System</string>
     <string name="settings_light_light">Hell</string>
     <string name="settings_light_dark">Dunkel</string>
@@ -425,7 +428,6 @@
     <string name="parts_breakdown">%1$s aus Sets · %2$s einzeln</string>
     <string name="nav_partslist">Bauliste</string>
     <string name="nav_finance">Finanzen</string>
-    <string name="nav_comparison">Preisvergleich</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="nav_more">Mehr</string>
     <string name="nav_group_prices">Preise und Gutscheine</string>
@@ -434,7 +436,7 @@
     <string name="nav_monitoring">Hintergrundarbeiten</string>
     <string name="main_barcode_add_partslist">Zur Bauliste hinzufügen?</string>
     <string name="main_barcode_add_set">Set hinzufügen?</string>
-    <string name="main_barcode_unsure">Nicht sicher erkannt — bitte Bild und Namen prüfen</string>
+    <string name="main_barcode_unsure">Nicht sicher erkannt – bitte Bild und Namen prüfen</string>
     <string name="main_barcode_year">Jahr</string>
     <string name="main_barcode_pieces">Teile</string>
     <string name="main_barcode_figs">Minifiguren</string>
@@ -466,7 +468,7 @@
     <string name="parts_filter_spare">Nur Ersatzteile</string>
     <string name="common_quantity">Anzahl</string>
     <string name="common_unit_price">Kaufpreis je Stück (optional)</string>
-    <string name="common_unit_price_placeholder">Leer = aktueller Marktpreis</string>
+    <string name="common_unit_price_placeholder">Leer lassen: Der heutige Marktpreis wird übernommen</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="common_loading">Lädt…</string>
     <string name="detail_price_loading">Preis wird geladen…</string>
@@ -482,18 +484,18 @@
     <string name="check_create_master_data">Stammdaten zu %1$s werden geholt…</string>
     <string name="check_create_image">Bild zu %1$s wird geladen…</string>
     <string name="check_create_completion">%1$s wird abgeschlossen…</string>
-    <string name="check_hint">Das Hinzufügen läuft danach im Hintergrund — kurz warten vor dem nächsten Scan.</string>
+    <string name="check_hint">Das Hinzufügen läuft danach im Hintergrund – kurz warten vor dem nächsten Scan.</string>
     <string name="vm_set_added">„%1$s“ hinzugefügt</string>
-    <string name="vm_set_added_no_catalog">Set %1$s gespeichert — Name und Bild kommen nach, sobald der Katalog erreichbar ist.</string>
+    <string name="vm_set_added_no_catalog">Set %1$s gespeichert – Name und Bild kommen nach, sobald der Katalog erreichbar ist.</string>
     <string name="vm_error">Das hat nicht geklappt: %1$s</string>
     <string name="vm_login_too_old">Die Anmeldung ist abgelaufen (höchstens 90 Tage) oder liess sich nicht prüfen. Bitte melde dich neu an.</string>
     <string name="vm_login_running_ab">Deine Anmeldung läuft in weniger als einer Woche ab. Bitte melde dich neu an, damit die App ohne Unterbruch weiterläuft.</string>
-    <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
+    <string name="vm_session_expired">Sitzung abgelaufen – bitte erneut anmelden</string>
     <string name="vm_logout_caught_up">Abgemeldet. Der Server war nicht erreichbar; die App entwertet die Anmeldung dort, sobald er wieder erreichbar ist. Zur Sicherheit in der Web-App unter „Angemeldete Geräte“ nachsehen.</string>
     <string name="logout_channel">Abmeldung</string>
     <string name="logout_failed_title">Abmeldung nicht bestätigt</string>
     <string name="logout_failed_text">Dieses Gerät konnte sich bei %1$s nicht abmelden. Die Anmeldung gilt dort womöglich noch: In der Web-App unter „Angemeldete Geräte“ widerrufen.</string>
-    <string name="vm_rights_revoked">Deine Administratorrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
+    <string name="vm_rights_revoked">Deine Administratorrechte gelten nicht mehr – die Verwaltungsbereiche sind ausgeblendet.</string>
 
     <!-- Notifications of the CSV import and PDF export workers -->
     <string name="notif_csv_title">BrickInventory – CSV-Import</string>
@@ -520,8 +522,6 @@
     <string name="condition_new">Neuware</string>
     <string name="condition_used">Gebraucht</string>
     <string name="acq_delete_title">Erfassung löschen</string>
-    <string name="acq_delete_question">Erfassung löschen?</string>
-    <string name="acq_delete_text">Diese Kaufpreis-Erfassung wirklich löschen? Die Gesamtanzahl wird angepasst.</string>
     <string name="acq_deleted">Kauf gelöscht</string>
     <string name="common_back">Zurück</string>
     <string name="common_delete">Löschen</string>
@@ -545,7 +545,7 @@
     <string name="monitoring_prewarm_wifi">WLAN</string>
     <string name="monitoring_prewarm_mobile">Mobilfunk</string>
     <string name="monitoring_prewarm_roaming">Roaming</string>
-    <string name="monitoring_prewarm_hint">Ein gemessenes WLAN — der Hotspot eines anderen Telefons — zählt als Mobilfunk.</string>
+    <string name="monitoring_prewarm_hint">Ein gemessenes WLAN – der Hotspot eines anderen Telefons – zählt als Mobilfunk.</string>
     <string name="monitoring_theme_classic">Klassisch</string>
     <string name="monitoring_theme_brick">Stein</string>
     <string name="monitoring_theme_workbench">Werkbank (dunkel)</string>
@@ -625,7 +625,7 @@
     <string name="household_redeem_locked">Zu viele Fehlversuche. Bitte versuche es später erneut.</string>
     <string name="household_unlink">Verknüpfung lösen</string>
     <string name="household_remove">Entfernen</string>
-    <string name="household_move_ok">Set verschoben — %1$s und %2$s mitgenommen.</string>
+    <string name="household_move_ok">Set verschoben – %1$s und %2$s mitgenommen.</string>
     <plurals name="household_move_parts">
         <item quantity="one">%1$d Teil</item>
         <item quantity="other">%1$d Teile</item>
@@ -658,22 +658,22 @@
     <string name="monitoring_cache_ttl_hours">%1$s Stunden</string>
     <string name="acq_total_quantity">Total ×%1$d</string>
     <string name="setup_build">Build %1$s</string>
-    <string name="err_generic">Der Server hat die Anfrage ohne Begründung abgelehnt</string>
-    <string name="err_login_failed">Anmeldung fehlgeschlagen</string>
+    <string name="err_generic">Der Server hat die Anfrage abgelehnt, ohne einen Grund zu nennen. Bitte nochmals versuchen.</string>
+    <string name="err_login_failed">Die Anmeldung hat nicht geklappt. Bitte Benutzername und Passwort prüfen und nochmals versuchen.</string>
     <string name="login_qr_confirm_hint">Gib diesen Code im Browser ein, in dem du den QR-Code erzeugt hast. Erst dann bekommt dieses Gerät Zugang.</string>
     <string name="login_qr_account_title">Mit diesem Konto anmelden?</string>
     <string name="login_qr_account_text">Der Code meldet diese App als „%1$s“ bei %2$s an. Nur weiter, wenn das dein Konto und dein Server ist.</string>
     <string name="login_qr_account_yes">Anmelden</string>
-    <string name="err_qr_login_failed">QR-Anmeldung fehlgeschlagen</string>
+    <string name="err_qr_login_failed">Die Anmeldung per QR-Code hat nicht geklappt. Erzeuge in der Web-App einen neuen Code und scanne ihn nochmals.</string>
     <string name="err_network">Keine Verbindung zum Server</string>
-    <string name="err_timeout">Der Server hat nicht rechtzeitig geantwortet</string>
-    <string name="err_empty_response">Der Server hat keine Daten geschickt</string>
-    <string name="err_server">Serverfehler (%1$d)</string>
-    <string name="err_session_expired">Sitzung abgelaufen — bitte neu anmelden</string>
+    <string name="err_timeout">Der Server hat nicht rechtzeitig geantwortet. Bitte gleich nochmals versuchen.</string>
+    <string name="err_empty_response">Der Server hat keine Daten geschickt. Bitte nochmals versuchen.</string>
+    <string name="err_server">Der Server konnte die Anfrage nicht erledigen. Bitte später nochmals versuchen. (Code %1$d)</string>
+    <string name="err_session_expired">Sitzung abgelaufen – bitte neu anmelden</string>
     <string name="err_plaintext">Die Serveradresse ist unverschlüsselt (http). Die App verbindet sich nur über https – bitte unter „Server wechseln“ die https-Adresse eintragen oder den QR-Code neu scannen.</string>
     <string name="err_cancelled">Der Server hat die Anfrage abgelehnt.</string>
     <string name="err_unknown">Etwas ist schiefgelaufen</string>
-    <string name="err_upload_running">Für dieses Konto läuft schon ein Upload dieser Art. Bitte warten, bis er fertig ist.</string>
+    <string name="err_upload_running">Für dieses Konto wird schon eine solche Datei hochgeladen. Bitte warten, bis das fertig ist.</string>
     <string name="err_too_many_connections">Zu viele offene Verbindungen für dieses Konto. Bitte andere Fenster oder Geräte schliessen und es gleich noch einmal versuchen.</string>
     <string name="err_pdf_too_many_pages">Das PDF hat zu viele Seiten. Bitte in kleinere Dateien teilen.</string>
     <string name="pdfview_print">Drucken</string>
@@ -688,7 +688,7 @@
     <string name="pdfview_foreign_host">Dieses PDF liegt nicht auf deinem Server. Öffne es auf der Set-Seite mit einer anderen App.</string>
     <string name="pdfview_page">Seite %1$d</string>
     <string name="pdfview_unknown_error">Unbekannter Fehler. Bitte nochmals versuchen.</string>
-    <string name="pdfview_download_failed">Download fehlgeschlagen</string>
+    <string name="pdfview_download_failed">Das PDF liess sich nicht herunterladen. Bitte Verbindung prüfen und nochmals versuchen.</string>
     <string name="pdfview_print_failed">Drucken fehlgeschlagen</string>
     <string name="pdfview_saved">Gespeichert: %1$s</string>
     <string name="pdfview_save_failed">Speichern fehlgeschlagen</string>
@@ -697,7 +697,7 @@
     <string name="pdfview_default_name">Anleitung</string>
     <!-- Angemeldete Geraete (Token-Verwaltung) -->
     <string name="tokens_title">Angemeldete Geräte</string>
-    <string name="tokens_hint">Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.</string>
+    <string name="tokens_hint">Jede Anmeldung – im Browser, in der App oder per QR-Code – stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.</string>
     <string name="tokens_none">Keine Zugänge.</string>
     <string name="tokens_reload">Aktualisieren</string>
     <string name="tokens_current">dieses Gerät</string>
@@ -723,7 +723,7 @@
         <item quantity="other">%1$d Zugänge abgemeldet</item>
     </plurals>
     <string name="tokens_no_others">Es gibt keine anderen Zugänge.</string>
-    <string name="tokens_self_unknown">Der eigene Zugang ist nicht erkennbar — ohne ihn liesse sich nicht sagen, welche die „anderen" sind.</string>
+    <string name="tokens_self_unknown">Der eigene Zugang ist nicht erkennbar – ohne ihn liesse sich nicht sagen, welche die „anderen" sind.</string>
 
     <!-- ══════════════ Konto anlegen / Passwort vergessen ══════════════ -->
     <string name="login_no_account">Noch kein Konto? Registrieren</string>
@@ -741,9 +741,9 @@
     <string name="register_password_short">Das Passwort muss mindestens 12 Zeichen lang sein.</string>
     <string name="register_password_mismatch">Die Passwörter stimmen nicht überein.</string>
     <string name="register_done">Konto erstellt. Bitte bestätige deine E-Mail-Adresse.</string>
-    <string name="register_console_hint">SMTP ist nicht eingerichtet — der Bestätigungslink steht in der Server-Konsole.</string>
+    <string name="register_console_hint">SMTP ist nicht eingerichtet – der Bestätigungslink steht in der Server-Konsole.</string>
     <string name="forgot_title">Passwort zurücksetzen</string>
-    <string name="forgot_hint">Wir schicken dir einen Link, mit dem du ein neues Passwort setzt. Öffne ihn auf diesem Gerät — er führt zur Weboberfläche deines Servers.</string>
+    <string name="forgot_hint">Wir schicken dir einen Link, mit dem du ein neues Passwort setzt. Öffne ihn auf diesem Gerät – er führt zur Weboberfläche deines Servers.</string>
     <string name="forgot_button">Link senden</string>
     <string name="forgot_email_required">Bitte gib deine E-Mail-Adresse ein.</string>
     <string name="forgot_done">Falls die Adresse existiert, wurde ein Link gesendet.</string>
@@ -759,7 +759,7 @@
     <string name="account_password_title">Passwort ändern</string>
     <string name="account_password_current">Aktuelles Passwort</string>
     <string name="account_password_new">Neues Passwort</string>
-    <string name="account_password_hint">Alle Zugänge dieses Kontos werden verworfen — auch diese App. Du musst dich danach neu anmelden.</string>
+    <string name="account_password_hint">Alle Zugänge dieses Kontos werden verworfen – auch diese App. Du musst dich danach neu anmelden.</string>
     <string name="account_password_changed">Passwort geändert. Bitte melde dich neu an.</string>
     <string name="account_password_button">Passwort ändern</string>
     <string name="start_password_title">Startpasswort ersetzen</string>
@@ -786,11 +786,11 @@
     <string name="csv_desc_figs">Figurennummer (Rebrickable oder BrickLink), Anzahl, Stückpreis, Zustand und Kaufdatum</string>
     <string name="csv_desc_wanted">Setnummer, Zustand und seit wann es auf der Liste steht</string>
     <string name="csv_desc_alerts">Setnummer, Zustand, Richtung (unter/über), Schwelle und Währung</string>
-    <string name="csv_upload_sets">Sets importieren …</string>
-    <string name="csv_upload_parts">Teile importieren …</string>
-    <string name="csv_upload_figs">Minifiguren importieren …</string>
-    <string name="csv_upload_wanted">Merkliste importieren …</string>
-    <string name="csv_upload_alerts">Preisalarme importieren …</string>
+    <string name="csv_upload_sets">Sets importieren…</string>
+    <string name="csv_upload_parts">Teile importieren…</string>
+    <string name="csv_upload_figs">Minifiguren importieren…</string>
+    <string name="csv_upload_wanted">Merkliste importieren…</string>
+    <string name="csv_upload_alerts">Preisalarme importieren…</string>
     <string name="vouchers_import_done">%1$s, %2$s</string>
     <string name="csv_upload_hint">Dieselben Dateien wie in der Web-App, mit Kopfzeile, höchstens %1$d MB.</string>
     <string name="csv_upload_unreadable">Die gewählte Datei liess sich nicht lesen.</string>
@@ -836,11 +836,11 @@
     <!-- ══════════════ Meldungen der ViewModels ══════════════ -->
     <string name="err_set_not_found">Set nicht gefunden</string>
     <string name="pdfexp_server_error">Der Server konnte das PDF nicht erstellen</string>
-    <string name="pdfexp_http_error">Der Server antwortete mit %1$d</string>
+    <string name="pdfexp_http_error">Der Server konnte das PDF nicht liefern. Bitte später nochmals versuchen. (Code %1$d)</string>
 
 
-    <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
-    <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
+    <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu“ übernommen – für „Gebraucht“ führt BrickLink keinen Preis.</string>
+    <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht“ übernommen – für „Neu“ führt BrickLink keinen Preis.</string>
 
 
     <!-- Merkliste -->
@@ -858,7 +858,7 @@
     <string name="wanted_deleted">„%1$s“ von der Merkliste entfernt</string>
     <string name="wanted_take">Zur Sammlung hinzufügen</string>
     <string name="wanted_taken">In die Sammlung übernommen</string>
-    <string name="wanted_taken_existing">War schon in der Sammlung — von der Merkliste entfernt</string>
+    <string name="wanted_taken_existing">War schon in der Sammlung – von der Merkliste entfernt</string>
     <string name="wanted_need_number">Bitte Setnummer eingeben</string>
     <string name="wanted_threshold">Schwelle (optional)</string>
     <string name="detail_compare">Preisvergleich</string>
@@ -899,21 +899,20 @@
     <string name="step_server_error">Der Server hat die Bestätigung nicht angenommen. Bitte erneut versuchen.</string>
     <string name="app_lock_set_up">Neu installiert ist sie auf 5 Minuten gestellt, wenn das Telefon eine Displaysperre hat. Sie verdeckt die App und fragt nach Fingerabdruck oder Gerätesperre; ändern lässt sie sich jederzeit in den Einstellungen.</string>
     <string name="app_lock_title">App sperren</string>
-    <string name="app_lock_hint">Nach so vielen Minuten im Hintergrund fragt die App nach Fingerabdruck oder Gerätesperre. Gilt für dieses Gerät.</string>
+    <string name="app_lock_hint">Nach so vielen Minuten im Hintergrund fragt die App nach Fingerabdruck oder Gerätesperre.</string>
     <string name="app_lock_without_screen_lock">Braucht eine Displaysperre auf diesem Gerät.</string>
     <string name="app_lock_from">Aus</string>
     <string name="app_lock_minutes">%1$d Min.</string>
     <string name="app_lock_locked">BrickInventory ist gesperrt</string>
     <string name="app_lock_unlock">Entsperren</string>
     <string name="step_without_lock_title">Keine Displaysperre</string>
-    <string name="step_without_lock_text">Dieser Schritt (%1$s) fragt sonst nach der Displaysperre. Dieses Gerät hat keine: Wer das Telefon in der Hand hat, kommt ohne Weiteres an Gutschein-PINs, Wiederherstellungscodes und die Verwaltung. Richte in den Systemeinstellungen unter Sicherheit eine PIN, ein Muster oder ein Passwort ein.</string>
+    <string name="step_without_lock_text">Dieser Schritt (%1$s) fragt sonst nach der Displaysperre, doch dieses Gerät hat keine. So kommt jeder mit dem Telefon an Gutschein-PINs, Wiederherstellungscodes und die Verwaltung. Richte unter Einstellungen → Sicherheit eine Sperre ein.</string>
     <string name="step_without_lock_next">Ungeschützt fortfahren</string>
     <string name="step_voucher">Gutschein-PIN anzeigen</string>
     <string name="step_codes">Wiederherstellungscodes</string>
     <string name="step_admin">Verwaltung öffnen</string>
     <string name="step_full_access">Mit Administratorrechten anmelden</string>
     <string name="vouchers_pin_hide">PIN verbergen</string>
-    <string name="vouchers_delete_confirm">Gutschein %1$s und das hinterlegte PDF werden gelöscht. Gleich danach kannst du es noch rückgängig machen.</string>
     <string name="vouchers_saved">Gutschein gespeichert</string>
     <string name="vouchers_deleted">Gutschein gelöscht</string>
     <string name="vouchers_restored">Gutschein wiederhergestellt</string>
@@ -923,14 +922,13 @@
     <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
     <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
-    <string name="vouchers_delete_title">Gutschein löschen?</string>
     <string name="vouchers_mask_hint">Bleibt unverändert, solange du nichts Neues eintippst</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
     <string name="vouchers_balance_all">Guthaben aller Karten abfragen</string>
     <string name="vouchers_balance_progress">Karte %1$s von %2$s (%3$s)</string>
     <string name="vouchers_balance_wait">noch %1$s s bis zur nächsten Abfrage (%2$s)</string>
-    <string name="vouchers_balance_none">Keine Karte mit PIN — für die Abfrage braucht es die PIN.</string>
+    <string name="vouchers_balance_none">Keine Karte mit PIN – für die Abfrage braucht es die PIN.</string>
     <string name="vouchers_balance_occupied">Die Abfrage ist belegt (eine Karte alle 30 Sekunden). Bitte später erneut.</string>
     <string name="vouchers_balance_all_done">%1$s abgefragt, %2$s nicht</string>
     <string name="vouchers_remove_empty">Leere Gutscheine entfernen</string>
@@ -943,18 +941,17 @@
     <string name="vouchers_balance_never">Guthaben noch nie abgefragt</string>
     <string name="vouchers_balance_done">%1$s: %2$s</string>
     <string name="vouchers_balance_currency">Währung auf %1$s geändert.</string>
-    <string name="settings_group_display">Anzeige &amp; Preise</string>
     <string name="zf_title">Zweiter Faktor</string>
     <string name="zf_hint">Zusätzlich zum Passwort ein Code aus einer Authenticator-App. Schützt, falls jemand dein Passwort kennt.</string>
     <string name="zf_setup">Einrichten</string>
     <string name="zf_step_app">Den Schlüssel in die Authenticator-App übernehmen und den Code eingeben, den sie zeigt.</string>
     <string name="zf_open_app">In Authenticator-App öffnen</string>
-    <string name="zf_no_app">Keine Authenticator-App gefunden — den Schlüssel kopieren und von Hand eingeben.</string>
+    <string name="zf_no_app">Keine Authenticator-App gefunden – den Schlüssel kopieren und von Hand eingeben.</string>
     <string name="zf_copy_key">Schlüssel kopieren</string>
     <string name="zf_confirm_code">Code aus der App zur Bestätigung</string>
     <string name="zf_confirm">Bestätigen</string>
     <string name="zf_codes_title">Deine Wiederherstellungscodes</string>
-    <string name="zf_codes_hint">Jeder gilt einmal, falls das Telefon fehlt. Jetzt sicher ablegen — sie werden nicht noch einmal angezeigt.</string>
+    <string name="zf_codes_hint">Jeder gilt einmal, falls das Telefon fehlt. Jetzt sicher ablegen – sie werden nicht noch einmal angezeigt.</string>
     <string name="zf_codes_done">Gespeichert</string>
     <string name="zf_new_codes">Neue Wiederherstellungscodes</string>
     <string name="zf_disable">Abschalten</string>
@@ -984,45 +981,40 @@
     <string name="settings_system_colors">Systemfarben (Material You)</string>
     <string name="settings_system_colors_hint">Farben aus dem Hintergrundbild statt der Farben des Designs. Formen und Schrift bleiben.</string>
     <string name="settings_preview_hide">Vorschau in der App-Übersicht verbergen</string>
-    <string name="settings_preview_hide_hint">Kein Vorschaubild in der App-Übersicht und keine Bildschirmfotos der App. Gilt für dieses Gerät.</string>
+    <string name="settings_preview_hide_hint">Kein Vorschaubild in der App-Übersicht und keine Bildschirmfotos der App.</string>
     <string name="settings_widget_values">Beträge im Widget zeigen</string>
-    <string name="settings_widget_values_hint">Sonst sind Sammlungswert und Gewinn auf dem Startbildschirm verdeckt; dort liest sie jeder, der das Telefon sieht. Gilt für dieses Gerät.</string>
+    <string name="settings_widget_values_hint">Sonst sind Sammlungswert und Gewinn auf dem Startbildschirm verdeckt; dort liest sie jeder, der das Telefon sieht.</string>
     <string name="cert_title_first_contact">Diesem Server vertrauen?</string>
     <string name="cert_title_unknown">Unbekanntes Zertifikat</string>
     <string name="cert_title_changed">Das Zertifikat des Servers hat sich geändert</string>
-    <string name="cert_text_first_contact">Das ist die erste verschlüsselte Verbindung zu %1$s. Ihr Zertifikat stammt von einer öffentlich anerkannten Stelle; dieses Gerät prüft zusätzlich, dass es öffentlich protokolliert ist (Certificate Transparency) – dein Ja reicht deshalb hier, ohne QR-Code oder Vergleich. Wer trotzdem nachsehen möchte: Der Fingerabdruck in den Zertifikatdetails des Browsers am Rechner (oberstes Zertifikat, Öffentlicher Schlüssel, SHA-256) gehört zu diesem Server; die Web-App kennt ihn bei einem öffentlichen Zertifikat nicht. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
-    <string name="cert_text_first_contact_type">Das ist die erste verschlüsselte Verbindung zu %1$s. Diese Android-Version prüft nicht, ob das Zertifikat öffentlich eingetragen ist (Certificate Transparency, erst ab Android 16). Ein falsch ausgestelltes Zertifikat sähe darum genau gleich aus. Deshalb gilt die Verbindung erst, wenn du den Fingerabdruck abschreibst:\n1. Öffne die Web-App im Browser am Computer.\n2. Öffne die Zertifikatdetails (Schloss neben der Adresse) und wähle das oberste Zertifikat der Kette.\n3. Schreibe die letzten 12 Paare von „Öffentlicher Schlüssel, SHA-256“ unten ins Feld, z. B. 3F:A2:…; die Doppelpunkte setzt die App selbst.\n\nHier steht nur der Anfang des Fingerabdrucks.</string>
-    <string name="cert_first_contact_input">Die letzten 12 Paare des Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus den Zertifikatdetails des Browsers am Rechner (oberstes Zertifikat, Fingerabdrücke → Öffentlicher Schlüssel, SHA-256)</string>
-    <string name="cert_text_unknown">Die App kann nicht prüfen, wer hinter %1$s steht: Der Server hat sein Zertifikat selbst ausgestellt, oder deine eigene Stelle hat es getan. Bei einem Server zu Hause ist das üblich, es könnte aber auch jemand dazwischen sein.\n\nAm einfachsten scannst du den QR-Code aus der Web-App (Menü → Android-App). Wenn kein QR-Code möglich ist, gehst du so vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Menü → Android-App → Server-Zertifikat.\n3. Schreibe die letzten 12 Paare des Fingerabdrucks unten ins Feld, z. B. 3F:A2:…; die Doppelpunkte setzt die App selbst.\n\nDer Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Stimmt sie überein, ist es dein Server. Hier steht nur sein Anfang.</string>
-    <string name="cert_text_changed">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast: Den neuen Fingerabdruck zeigt die Web-App (Menü → Android-App → Server-Zertifikat), bei einer öffentlichen Zertifizierungsstelle auch der Browser (Zertifikatdetails, SHA-256 des öffentlichen Schlüssels der obersten Stelle). Schreibe seine letzten 12 Paare ab, z. B. 3F:A2:…</string>
-    <string name="cert_fingerprint">Fingerabdruck (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="cert_text_first_contact_type">Das ist die erste verschlüsselte Verbindung zu %1$s. Ein falsch ausgestelltes Zertifikat sähe genau gleich aus – deshalb gilt sie erst, wenn du den Fingerabdruck aus dem Browser am Computer abschreibst.</string>
+    <string name="cert_first_contact_input">Im Browser am Computer: Schloss neben der Adresse → Zertifikatdetails → oberstes Zertifikat → „Öffentlicher Schlüssel, SHA-256“. Die letzten 12 Paare abschreiben, z. B. 3F:A2:…</string>
+    <string name="cert_text_unknown">Die App kann nicht prüfen, wer hinter %1$s steht: Das Zertifikat ist selbst ausgestellt oder stammt von deiner eigenen Stelle. Bestätige es mit dem QR-Code oder dem Fingerabdruck aus der Web-App.</string>
+    <string name="cert_text_changed">%1$s zeigt ein anderes Zertifikat als das bestätigte; es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast – sonst hört womöglich jemand mit.</string>
     <string name="cert_previous">Bisher bestätigt</string>
     <string name="cert_trust">Diesem Zertifikat vertrauen</string>
     <string name="cert_trust_new">Neues Zertifikat annehmen</string>
-    <string name="cert_device_confirm">Der Server verwendet einen neuen Schlüssel. Bestätige nach dem Tippen mit deiner Displaysperre, dass du es bist.</string>
-    <string name="cert_device_title">Neuen Serverschlüssel bestätigen</string>
     <string name="cert_title_key_new">Der Server hat einen neuen Schlüssel</string>
-    <string name="cert_text_key_new">%1$s zeigt ein gültiges Zertifikat derselben Zertifizierungsstelle, aber mit einem anderen Schlüssel als bisher. Das ist nach einer Erneuerung des Zertifikats normal – es kann aber auch ein Zertifikat sein, das jemand anderem ausgestellt wurde. Es wurde nichts gesendet. Nur annehmen, wenn das Zertifikat des Servers gerade erneuert wurde.</string>
-    <string name="cert_first_contact_type">Fingerabdruck stattdessen abtippen</string>
+    <string name="cert_text_key_new">%1$s zeigt ein Zertifikat derselben Stelle, aber mit einem neuen Schlüssel; es wurde nichts gesendet. Nach einer Erneuerung ist das normal – sonst kann es ein Zertifikat für jemand anderen sein.</string>
     <string name="cert_user_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
-    <string name="cert_changed_input">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Menü → Android-App → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
-    <string name="cert_key_new_input">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus den Zertifikatdetails des Browsers am Rechner (Fingerabdrücke → Öffentlicher Schlüssel, SHA-256)</string>
+    <string name="cert_changed_input">In der Web-App unter Menü → Android-App → Server-Zertifikat, bei einer öffentlichen Stelle auch in den Zertifikatdetails des Browsers. Die letzten 12 Paare abschreiben, z. B. 3F:A2:…</string>
+    <string name="cert_key_new_input">Im Browser am Computer: Zertifikatdetails → oberstes Zertifikat → „Öffentlicher Schlüssel, SHA-256“. Die letzten 12 Paare des neuen Fingerabdrucks abschreiben, z. B. 3F:A2:…</string>
     <string name="cert_changed_qr">Oder einen neuen QR-Code aus der Web-App scannen.</string>
     <string name="cert_scan_qr">QR-Code scannen</string>
-    <string name="cert_scan_explain">Bequemer als Abschreiben: Die Web-App zeigt unter Menü → Android-App → Server-Zertifikat einen QR-Code. Die App vergleicht damit den ganzen Fingerabdruck.</string>
+    <string name="cert_manual_compare">Manuell vergleichen</string>
     <string name="cert_scan_hint">QR-Code des Server-Zertifikats scannen</string>
     <string name="scanner_camera_purpose_cert">Die Kamera liest den QR-Code mit dem Fingerabdruck des Server-Zertifikats.</string>
     <string name="cert_scan_compare_instead">Von Hand vergleichen</string>
     <string name="cert_scan_mismatch">Der QR-Code nennt einen anderen Fingerabdruck als der Server. Dem Zertifikat wird nicht vertraut. Stammt der Code aus der Web-App dieses Servers, leitet womöglich jemand die Verbindung um.</string>
     <string name="cert_scan_not_code">Das ist kein Zertifikats-Code. Scanne den QR-Code unter Menü → Android-App → Server-Zertifikat in der Web-App.</string>
     <string name="cert_scan_unknown_version">Diesen Zertifikats-Code kennt diese App-Version nicht. Aktualisiere die App oder vergleiche den Fingerabdruck von Hand.</string>
-    <string name="cert_unknown_input">Die letzten 12 Paare des Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Menü → Android-App → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="cert_unknown_input">In der Web-App unter Menü → Android-App → Server-Zertifikat. Die letzten 12 Paare abschreiben, z. B. 3F:A2:…</string>
     <string name="cert_input_wrong">Das passt nicht zum Fingerabdruck dieses Servers.</string>
     <string name="cert_input_too_short">Noch zu kurz: %1$d von %2$d Zeichen. Abgeschrieben werden die letzten 12 Paare.</string>
     <string name="cert_input_counter">%1$d/%2$d</string>
     <string name="cert_input_label">Letzte 12 Paare</string>
     <string name="cert_starts_with">Fingerabdruck beginnt mit (nur zur Orientierung)</string>
-    <string name="cert_text_user_ca">Das Zertifikat von %1$s stammt von einer Stelle, die auf diesem Gerät installiert wurde. Das kann deine eigene sein – oder eine, die jemand mit Zugriff auf das Gerät eingeschleust hat.\n\nSo gehst du vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Menü → Android-App → Server-Zertifikat.\n3. Schreibe die letzten 12 Paare des Fingerabdrucks unten ins Feld, z. B. 3F:A2:…; die Doppelpunkte setzt die App selbst.\n\nHier steht nur der Anfang des Fingerabdrucks.</string>
+    <string name="cert_text_user_ca">Das Zertifikat von %1$s stammt von einer Stelle, die auf diesem Gerät installiert wurde – von dir oder von jemandem mit Zugriff auf das Gerät. Bestätige es mit dem QR-Code oder dem Fingerabdruck aus der Web-App.</string>
     <string name="cert_title_user_ca">Zertifikat einer installierten Zertifizierungsstelle</string>
     <string name="cert_title_code_mismatch">Der Server passt nicht zum QR-Code</string>
     <string name="cert_text_code_mismatch">%1$s zeigt einen anderen Schlüssel als der eben gescannte QR-Code. Die Anmeldung wurde abgebrochen, nichts wurde gesendet. Das passiert, wenn jemand die Verbindung umleitet – oder wenn der Code alt ist. Erzeuge in der Web-App (Menü → Android-App) einen neuen QR-Code und scanne ihn noch einmal.</string>
@@ -1070,6 +1062,7 @@
     <string name="widget_today">Heute</string>
     <string name="widget_total">Gesamt</string>
     <string name="widget_empty">Öffne die App einmal, um die Zahlen zu laden.</string>
+    <string name="widget_as_of">Stand %1$s</string>
     <string name="widget_description">Wert der Sammlung, Gewinn/Verlust heute und gesamt.</string>
     <string name="widget_preview_value">CHF 112’480.00</string>
     <string name="widget_preview_today">+CHF 1’035.20</string>
@@ -1087,10 +1080,10 @@
     <string name="kind_follow_up">Nachlauf beim Start</string>
     <string name="kind_csv_sync">Rebrickable-Katalog</string>
     <string name="kind_prices">Preise aktualisieren</string>
-    <string name="kind_image_follow_up">Bild-Download (CDN)</string>
+    <string name="kind_image_follow_up">Bilder herunterladen</string>
     <string name="kind_clean_up">Aufräumen (stündlich)</string>
     <string name="kind_clean_up_daily">Aufräumen (täglich)</string>
-    <string name="background_no_process">Kein Job-Prozess meldet sich — läuft der Dienst „jobs“?</string>
+    <string name="background_no_process">Hintergrundarbeiten werden zurzeit nicht erledigt: Auf dem Server läuft der Hintergrunddienst nicht. Bitte ihn dort starten (Dienst „jobs“).</string>
     <string name="background_pause">%1$s pausiert bis %2$s: %3$s</string>
     <string name="background_empty">Keine offenen oder gescheiterten Aufträge</string>
     <string name="background_open">offen</string>
@@ -1132,7 +1125,7 @@
         <item quantity="one">Mindestens %1$d Zeichen</item>
         <item quantity="other">Mindestens %1$d Zeichen</item>
     </plurals>
-    <string name="login_extended">Erweitert</string>
+    <string name="login_access_scope">Zugriffsumfang</string>
     <!-- UI-Prüfung 11 (Android) -->
     <string name="login_server_edit">Server ändern: %1$s</string>
     <string name="zf_codes_saved">Ich habe die Codes sicher abgelegt</string>
@@ -1149,7 +1142,7 @@
         <item quantity="one">Schritt %1$d von %2$d: %3$s</item>
         <item quantity="other">Schritt %1$d von %2$d: %3$s</item>
     </plurals>
-    <string name="alerts_intro_more">Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
+    <string name="alerts_intro_more">Gemeldet wird einmal je Übergang – erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
     <string name="zf_required_short">Administratorrechte brauchen einen zweiten Faktor.</string>
     <string name="zf_share">Teilen</string>
     <string name="zf_codes_save">Als Datei speichern</string>
@@ -1160,7 +1153,6 @@
     <string name="record_discard_title">Änderungen verwerfen?</string>
     <string name="record_discard_text">Was du eingegeben hast, geht verloren.</string>
     <string name="record_discard">Verwerfen</string>
-    <string name="gallery_quantity_hint">Anzahl gleicher Sets</string>
     <string name="record_quantity_invalid">Eine ganze Anzahl ab 1 eingeben.</string>
     <string name="record_price_invalid">Einen Betrag wie 12,50 oder 1.299,00 eingeben.</string>
     <string name="record_number_invalid" tools:ignore="TypographyDashes">Das ist keine Setnummer. Erwartet wird z. B. 10294 oder 10294-1.</string>

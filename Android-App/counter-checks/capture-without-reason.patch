@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.app.FlowTest
 Rot: a set without a number says what is missing when tapping Add
 
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt
+index aae3f29..361a7c9 100644
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt
 +++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalleryRecord.kt
-@@ -115,7 +115,6 @@
+@@ -118,7 +118,6 @@ fun AddSetDialog(
  
      fun submit() {
          if (numberError(setNumber, checked = true) != null) {
 -            numberMissing = true
              if (immediatelyFocus) setFieldFocus.openFocusIf()
-         } else if (!entryInvalid(quantity, purchasePrice)) {
-             // On an unreadable quantity or price the dialog stays open; the fields show the error.
+         } else if (!NumericInput.priceInvalid(purchasePrice)) {
+             // On an unreadable price the dialog stays open; the fields show the error.

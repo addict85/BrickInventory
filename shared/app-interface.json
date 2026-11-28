@@ -2398,7 +2398,10 @@
         "is_active",
         "effective_at"
       ],
-      "required": []
+      "required": [
+        "success",
+        "is_active"
+      ]
     },
     "AccountInList": {
       "fields": [
@@ -2411,28 +2414,46 @@
         "awaiting_confirmation",
         "announced"
       ],
-      "required": []
+      "required": [
+        "id",
+        "username",
+        "is_admin",
+        "is_active",
+        "created_at",
+        "second_factor",
+        "awaiting_confirmation",
+        "announced"
+      ]
     },
     "AccountInListAnnouncedEntry": {
       "fields": [
         "type",
         "effective_at"
       ],
-      "required": []
+      "required": [
+        "type",
+        "effective_at"
+      ]
     },
     "AccountList": {
       "fields": [
         "success",
         "users"
       ],
-      "required": []
+      "required": [
+        "success",
+        "users"
+      ]
     },
     "AccountName": {
       "fields": [
         "id",
         "username"
       ],
-      "required": []
+      "required": [
+        "id",
+        "username"
+      ]
     },
     "Acquisition": {
       "fields": [
@@ -2449,7 +2470,13 @@
       ],
       "required": [
         "id",
-        "quantity"
+        "quantity",
+        "condition",
+        "created_at",
+        "owner_user_id",
+        "price_estimated",
+        "currency",
+        "account_price"
       ]
     },
     "AcquisitionManagement": {
@@ -2474,7 +2501,9 @@
         "degraded"
       ],
       "required": [
-        "success"
+        "success",
+        "acquisitions",
+        "totals"
       ]
     },
     "AcquisitionTotals": {
@@ -2485,7 +2514,10 @@
         "currency",
         "without_rate"
       ],
-      "required": []
+      "required": [
+        "quantity",
+        "priced_rows"
+      ]
     },
     "AddMinifigRequest": {
       "fields": [
@@ -2513,7 +2545,9 @@
         "price_from_condition"
       ],
       "required": [
-        "success"
+        "success",
+        "action",
+        "fig_number"
       ]
     },
     "AddPartRequest": {
@@ -2545,7 +2579,9 @@
         "price_from_condition"
       ],
       "required": [
-        "success"
+        "success",
+        "action",
+        "part_number"
       ]
     },
     "AddSetRequest": {
@@ -2574,7 +2610,11 @@
         "owner_user_id",
         "is_self"
       ],
-      "required": []
+      "required": [
+        "success",
+        "action",
+        "set_number"
+      ]
     },
     "ApiLimits": {
       "fields": [
@@ -2582,7 +2622,11 @@
         "bricklink",
         "brickset"
       ],
-      "required": []
+      "required": [
+        "rebrickable",
+        "bricklink",
+        "brickset"
+      ]
     },
     "ApiLimitsResponse": {
       "fields": [
@@ -2590,7 +2634,8 @@
         "limits"
       ],
       "required": [
-        "success"
+        "success",
+        "limits"
       ]
     },
     "AppThemeResponse": {
@@ -2600,7 +2645,12 @@
         "preset",
         "own"
       ],
-      "required": []
+      "required": [
+        "success",
+        "theme",
+        "preset",
+        "own"
+      ]
     },
     "AppToken": {
       "fields": [
@@ -2618,7 +2668,18 @@
         "rotated_at"
       ],
       "required": [
-        "token_id"
+        "token_id",
+        "label",
+        "created_at",
+        "last_used",
+        "expires_at",
+        "never_expires",
+        "current",
+        "token_prefix",
+        "hard_expires_at",
+        "scope",
+        "ip_range",
+        "rotated_at"
       ]
     },
     "Backup": {
@@ -2629,7 +2690,13 @@
         "global",
         "user_settings"
       ],
-      "required": []
+      "required": [
+        "version",
+        "exported_at",
+        "exported_by",
+        "global",
+        "user_settings"
+      ]
     },
     "BackupRestored": {
       "fields": [
@@ -2638,7 +2705,12 @@
         "note",
         "smtp_skipped"
       ],
-      "required": []
+      "required": [
+        "success",
+        "imported",
+        "note",
+        "smtp_skipped"
+      ]
     },
     "BalanceReply": {
       "fields": [
@@ -2652,7 +2724,13 @@
         "error",
         "code"
       ],
-      "required": []
+      "required": [
+        "success",
+        "voucher",
+        "displayed",
+        "currency_changed",
+        "removed"
+      ]
     },
     "BarcodeResponse": {
       "fields": [
@@ -2669,7 +2747,17 @@
         "uncertain"
       ],
       "required": [
-        "success"
+        "success",
+        "set_number",
+        "name",
+        "year",
+        "pieces",
+        "theme",
+        "minifigs",
+        "image_url",
+        "image_local",
+        "source",
+        "uncertain"
       ]
     },
     "BarcodeScanner": {
@@ -2687,7 +2775,11 @@
         "map",
         "degraded"
       ],
-      "required": []
+      "required": [
+        "success",
+        "source",
+        "map"
+      ]
     },
     "BrickColor": {
       "fields": [
@@ -2697,7 +2789,8 @@
       ],
       "required": [
         "id",
-        "name"
+        "name",
+        "hex"
       ]
     },
     "BrickColorsResponse": {
@@ -2706,7 +2799,8 @@
         "colors"
       ],
       "required": [
-        "success"
+        "success",
+        "colors"
       ]
     },
     "BricklinkLinks": {
@@ -2714,7 +2808,10 @@
         "success",
         "links"
       ],
-      "required": []
+      "required": [
+        "success",
+        "links"
+      ]
     },
     "BrickLinkRef": {
       "fields": [
@@ -2724,7 +2821,12 @@
         "exact",
         "resolved"
       ],
-      "required": []
+      "required": [
+        "type",
+        "number",
+        "exact",
+        "resolved"
+      ]
     },
     "BricksetQueueEntry": {
       "fields": [
@@ -2736,7 +2838,12 @@
         "last_error"
       ],
       "required": [
-        "set_number"
+        "created_at",
+        "set_number",
+        "name",
+        "attempts",
+        "retry_after",
+        "last_error"
       ]
     },
     "BricksetQueueResponse": {
@@ -2749,7 +2856,12 @@
         "entries"
       ],
       "required": [
-        "success"
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "count",
+        "entries"
       ]
     },
     "CacheStatsResponse": {
@@ -2764,7 +2876,13 @@
         "degraded"
       ],
       "required": [
-        "success"
+        "db_pool",
+        "success",
+        "prices",
+        "subsets",
+        "catalog",
+        "price_stale",
+        "rate_limits"
       ]
     },
     "CacheTtlResponse": {
@@ -2773,7 +2891,8 @@
         "ttl"
       ],
       "required": [
-        "success"
+        "success",
+        "ttl"
       ]
     },
     "CatalogDetail": {
@@ -2792,7 +2911,13 @@
         "year_max",
         "year_counts"
       ],
-      "required": []
+      "required": [
+        "success",
+        "themes",
+        "year_min",
+        "year_max",
+        "year_counts"
+      ]
     },
     "CatalogSetDetail": {
       "fields": [
@@ -2811,7 +2936,18 @@
         "price_comparison_url"
       ],
       "required": [
-        "set_number"
+        "set_number",
+        "name",
+        "year",
+        "theme_id",
+        "theme_name",
+        "num_parts",
+        "image_url",
+        "minifigs",
+        "owned",
+        "owned_quantity",
+        "bricklink",
+        "price_comparison_url"
       ]
     },
     "CatalogSetDetailResponse": {
@@ -2820,7 +2956,8 @@
         "set"
       ],
       "required": [
-        "success"
+        "success",
+        "set"
       ]
     },
     "CatalogSetItem": {
@@ -2836,7 +2973,18 @@
         "owned",
         "owned_quantity"
       ],
-      "required": []
+      "required": [
+        "set_number",
+        "name",
+        "year",
+        "theme_id",
+        "theme_name",
+        "num_parts",
+        "image_url",
+        "image_local",
+        "owned",
+        "owned_quantity"
+      ]
     },
     "CatalogSetsResponse": {
       "fields": [
@@ -2847,7 +2995,14 @@
         "pages",
         "sets"
       ],
-      "required": []
+      "required": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "pages",
+        "sets"
+      ]
     },
     "CatalogTheme": {
       "fields": [
@@ -2855,21 +3010,31 @@
         "name",
         "set_count"
       ],
-      "required": []
+      "required": [
+        "id",
+        "name",
+        "set_count"
+      ]
     },
     "CatalogYearCount": {
       "fields": [
         "year",
         "n"
       ],
-      "required": []
+      "required": [
+        "year",
+        "n"
+      ]
     },
     "CatalogYearDistributionResponse": {
       "fields": [
         "success",
         "years"
       ],
-      "required": []
+      "required": [
+        "success",
+        "years"
+      ]
     },
     "ChartPoint": {
       "fields": [
@@ -2877,7 +3042,11 @@
         "value",
         "y_frac"
       ],
-      "required": []
+      "required": [
+        "x_label",
+        "value",
+        "y_frac"
+      ]
     },
     "ChartYAxis": {
       "fields": [
@@ -2885,7 +3054,11 @@
         "value",
         "frac"
       ],
-      "required": []
+      "required": [
+        "label",
+        "value",
+        "frac"
+      ]
     },
     "ComponentHeader": {
       "fields": [
@@ -2903,7 +3076,10 @@
         "total_quantity"
       ],
       "required": [
-        "number"
+        "number",
+        "is_spare",
+        "owner_ids",
+        "total_quantity"
       ]
     },
     "ConditionValuation": {
@@ -2913,7 +3089,11 @@
         "pnl_pct",
         "pnl_percent"
       ],
-      "required": []
+      "required": [
+        "market_price",
+        "purchase_price",
+        "pnl_percent"
+      ]
     },
     "ConfigExport": {
       "fields": [
@@ -2949,7 +3129,8 @@
         "existing_numbers"
       ],
       "required": [
-        "success"
+        "success",
+        "total"
       ]
     },
     "CsvImportRow": {
@@ -2989,7 +3170,10 @@
         "error",
         "finished_at"
       ],
-      "required": []
+      "required": [
+        "success",
+        "error"
+      ]
     },
     "CurrentByCondition": {
       "fields": [
@@ -3006,7 +3190,9 @@
         "max_price",
         "fetched_at"
       ],
-      "required": []
+      "required": [
+        "condition"
+      ]
     },
     "DashboardStats": {
       "fields": [
@@ -3023,6 +3209,9 @@
         "total_minifigs"
       ],
       "required": [
+        "currency",
+        "default_condition",
+        "user_default_condition",
         "total_sets",
         "total_quantity",
         "total_pieces",
@@ -3037,7 +3226,8 @@
         "condition"
       ],
       "required": [
-        "success"
+        "success",
+        "condition"
       ]
     },
     "Deleted": {
@@ -3045,7 +3235,10 @@
         "success",
         "deleted"
       ],
-      "required": []
+      "required": [
+        "success",
+        "deleted"
+      ]
     },
     "DeleteFigure": {
       "fields": [
@@ -3100,7 +3293,9 @@
       "fields": [
         "success"
       ],
-      "required": []
+      "required": [
+        "success"
+      ]
     },
     "EditFigure": {
       "fields": [
@@ -3131,7 +3326,10 @@
         "success",
         "username"
       ],
-      "required": []
+      "required": [
+        "success",
+        "username"
+      ]
     },
     "EndOthersRequest": {
       "fields": [
@@ -3149,7 +3347,11 @@
         "version",
         "endpoints"
       ],
-      "required": []
+      "required": [
+        "api",
+        "version",
+        "endpoints"
+      ]
     },
     "ErrorResponse": {
       "fields": [
@@ -3157,7 +3359,11 @@
         "error",
         "code"
       ],
-      "required": []
+      "required": [
+        "success",
+        "error",
+        "code"
+      ]
     },
     "FigsValuationResponse": {
       "fields": [
@@ -3174,8 +3380,17 @@
         "foreign_currency_purchases"
       ],
       "required": [
+        "converted_purchase_prices",
         "success",
-        "total_value"
+        "total",
+        "page",
+        "page_size",
+        "currency",
+        "figs",
+        "total_value",
+        "value_total",
+        "prices_pending",
+        "foreign_currency_purchases"
       ]
     },
     "FigValuationItem": {
@@ -3213,7 +3428,23 @@
         "storage",
         "unit_price"
       ],
-      "required": []
+      "required": [
+        "id",
+        "quantity",
+        "image_url",
+        "image_local",
+        "purchase_price",
+        "avg_price",
+        "condition",
+        "conditions",
+        "user_id",
+        "fig_number",
+        "bl_fig_number",
+        "fig_name",
+        "set_number",
+        "source",
+        "storage_id"
+      ]
     },
     "ForgotPasswordRequest": {
       "fields": [
@@ -3230,7 +3461,8 @@
         "error"
       ],
       "required": [
-        "success"
+        "success",
+        "message"
       ]
     },
     "GenericAdminResponse": {
@@ -3287,13 +3519,17 @@
         "db_pool",
         "uptime_seconds"
       ],
-      "required": []
+      "required": [
+        "status"
+      ]
     },
     "Heartbeat": {
       "fields": [
         "status"
       ],
-      "required": []
+      "required": [
+        "status"
+      ]
     },
     "HoldingCleared": {
       "fields": [
@@ -3303,14 +3539,23 @@
         "minifigs",
         "trash"
       ],
-      "required": []
+      "required": [
+        "success",
+        "sets",
+        "parts",
+        "minifigs",
+        "trash"
+      ]
     },
     "HoldingEntry": {
       "fields": [
         "total",
         "loose"
       ],
-      "required": []
+      "required": [
+        "total",
+        "loose"
+      ]
     },
     "HoldingPart": {
       "fields": [
@@ -3335,21 +3580,30 @@
         "success",
         "holding"
       ],
-      "required": []
+      "required": [
+        "success",
+        "holding"
+      ]
     },
     "HouseholdInviteCheckResponse": {
       "fields": [
         "success",
         "inviter"
       ],
-      "required": []
+      "required": [
+        "success",
+        "inviter"
+      ]
     },
     "HouseholdInviteCheckResponseInviter": {
       "fields": [
         "id",
         "username"
       ],
-      "required": []
+      "required": [
+        "id",
+        "username"
+      ]
     },
     "HouseholdInviteResponse": {
       "fields": [
@@ -3357,7 +3611,11 @@
         "code",
         "expires_in"
       ],
-      "required": []
+      "required": [
+        "success",
+        "code",
+        "expires_in"
+      ]
     },
     "HouseholdMember": {
       "fields": [
@@ -3366,14 +3624,22 @@
         "username",
         "is_self"
       ],
-      "required": []
+      "required": [
+        "depth",
+        "id",
+        "username",
+        "is_self"
+      ]
     },
     "HouseholdMembersResponse": {
       "fields": [
         "success",
         "members"
       ],
-      "required": []
+      "required": [
+        "success",
+        "members"
+      ]
     },
     "HouseholdStatusResponse": {
       "fields": [
@@ -3389,7 +3655,18 @@
         "former_links",
         "degraded"
       ],
-      "required": []
+      "required": [
+        "view",
+        "success",
+        "is_main",
+        "is_sub",
+        "currency",
+        "linked_to",
+        "parents",
+        "sub_accounts",
+        "open_invites",
+        "former_links"
+      ]
     },
     "ImageDiagnosis": {
       "fields": [
@@ -3401,7 +3678,15 @@
         "proxy",
         "marker"
       ],
-      "required": []
+      "required": [
+        "success",
+        "set_number",
+        "hints",
+        "database",
+        "local",
+        "proxy",
+        "marker"
+      ]
     },
     "ImageDiagnosisDatabase": {
       "fields": [
@@ -3410,14 +3695,22 @@
         "image_url",
         "catalog_image"
       ],
-      "required": []
+      "required": [
+        "account_count",
+        "image_local",
+        "image_url",
+        "catalog_image"
+      ]
     },
     "ImageDiagnosisLocal": {
       "fields": [
         "original",
         "preview"
       ],
-      "required": []
+      "required": [
+        "original",
+        "preview"
+      ]
     },
     "ImageDiagnosisLocalOriginal": {
       "fields": [
@@ -3425,7 +3718,10 @@
         "bytes",
         "changed"
       ],
-      "required": []
+      "required": [
+        "existing",
+        "bytes"
+      ]
     },
     "ImageDiagnosisLocalPreview": {
       "fields": [
@@ -3433,21 +3729,29 @@
         "bytes",
         "changed"
       ],
-      "required": []
+      "required": [
+        "existing",
+        "bytes"
+      ]
     },
     "ImageDiagnosisMarker": {
       "fields": [
         "since",
         "reason"
       ],
-      "required": []
+      "required": [
+        "since",
+        "reason"
+      ]
     },
     "ImageDiagnosisProxy": {
       "fields": [
         "cached",
         "address"
       ],
-      "required": []
+      "required": [
+        "cached"
+      ]
     },
     "ImageMarkerForgotten": {
       "fields": [
@@ -3455,7 +3759,11 @@
         "removed",
         "hint"
       ],
-      "required": []
+      "required": [
+        "success",
+        "removed",
+        "hint"
+      ]
     },
     "Instruction": {
       "fields": [
@@ -3470,7 +3778,12 @@
         "is_manual"
       ],
       "required": [
-        "url"
+        "set_number",
+        "id",
+        "url",
+        "description",
+        "local_path",
+        "is_manual"
       ]
     },
     "InstructionsLoaded": {
@@ -3480,7 +3793,12 @@
         "instructions",
         "job_id"
       ],
-      "required": []
+      "required": [
+        "success",
+        "count",
+        "instructions",
+        "job_id"
+      ]
     },
     "InstructionUploadedInstruction": {
       "fields": [
@@ -3488,7 +3806,11 @@
         "description",
         "local_path"
       ],
-      "required": []
+      "required": [
+        "url",
+        "description",
+        "local_path"
+      ]
     },
     "Job": {
       "fields": [
@@ -3522,6 +3844,7 @@
         "progress",
         "error_message",
         "scheduled",
+        "waiting",
         "set_number"
       ]
     },
@@ -3629,7 +3952,9 @@
         "time",
         "minutes"
       ],
-      "required": []
+      "required": [
+        "type"
+      ]
     },
     "JobsResponse": {
       "fields": [
@@ -3641,7 +3966,10 @@
         "proxy_hint"
       ],
       "required": [
-        "success"
+        "db",
+        "success",
+        "jobs",
+        "schedules"
       ]
     },
     "JobsResponseProxyHint": {
@@ -3649,7 +3977,10 @@
         "kind",
         "vars"
       ],
-      "required": []
+      "required": [
+        "kind",
+        "vars"
+      ]
     },
     "JobsResponseProxyHintVars": {
       "fields": [
@@ -3657,7 +3988,9 @@
         "minutes",
         "count"
       ],
-      "required": []
+      "required": [
+        "ip"
+      ]
     },
     "JobStatus": {
       "fields": [
@@ -3672,7 +4005,12 @@
         "sub",
         "sub_parts"
       ],
-      "required": []
+      "required": [
+        "label",
+        "status",
+        "progress",
+        "total"
+      ]
     },
     "JobStatusSubPartsEntry": {
       "fields": [
@@ -3680,7 +4018,9 @@
         "values",
         "ago"
       ],
-      "required": []
+      "required": [
+        "code"
+      ]
     },
     "KeyNonceResponse": {
       "fields": [
@@ -3697,7 +4037,10 @@
         "success",
         "entries"
       ],
-      "required": []
+      "required": [
+        "success",
+        "entries"
+      ]
     },
     "LoginRequest": {
       "fields": [
@@ -3727,7 +4070,9 @@
         "cookie_missing"
       ],
       "required": [
-        "success"
+        "success",
+        "never_expires",
+        "cookie_missing"
       ]
     },
     "LogResponse": {
@@ -3738,7 +4083,10 @@
         "logs"
       ],
       "required": [
-        "success"
+        "success",
+        "minutes",
+        "count",
+        "logs"
       ]
     },
     "LogRow": {
@@ -3759,7 +4107,13 @@
         "figs",
         "degraded"
       ],
-      "required": []
+      "required": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "figs"
+      ]
     },
     "ManualItemDetail": {
       "fields": [
@@ -3783,7 +4137,13 @@
         "parts",
         "degraded"
       ],
-      "required": []
+      "required": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "parts"
+      ]
     },
     "MeResponse": {
       "fields": [
@@ -3795,7 +4155,8 @@
         "token_info"
       ],
       "required": [
-        "success"
+        "success",
+        "loggedIn"
       ]
     },
     "Minifig": {
@@ -3820,7 +4181,13 @@
         "set_added_at"
       ],
       "required": [
-        "fig_number"
+        "fig_number",
+        "conditions",
+        "fig_name",
+        "quantity",
+        "total_quantity",
+        "image_url",
+        "source"
       ]
     },
     "MinifigParts": {
@@ -3829,7 +4196,11 @@
         "source",
         "parts"
       ],
-      "required": []
+      "required": [
+        "success",
+        "source",
+        "parts"
+      ]
     },
     "MinifigsResponse": {
       "fields": [
@@ -3840,7 +4211,8 @@
         "error"
       ],
       "required": [
-        "success"
+        "success",
+        "figs"
       ]
     },
     "MinifigStats": {
@@ -3850,14 +4222,22 @@
         "total_quantity",
         "manual"
       ],
-      "required": []
+      "required": [
+        "unique_figs",
+        "types",
+        "total_quantity",
+        "manual"
+      ]
     },
     "MinifigStatsResponse": {
       "fields": [
         "success",
         "stats"
       ],
-      "required": []
+      "required": [
+        "success",
+        "stats"
+      ]
     },
     "MoveSetRequest": {
       "fields": [
@@ -3883,7 +4263,19 @@
         "from_user_id",
         "to_user_id"
       ],
-      "required": []
+      "required": [
+        "success",
+        "set_number",
+        "quantity",
+        "acquisitions",
+        "merged",
+        "parts",
+        "minifigs",
+        "instructions",
+        "source_emptied",
+        "from_user_id",
+        "to_user_id"
+      ]
     },
     "OthersEnded": {
       "fields": [
@@ -3892,7 +4284,8 @@
         "accesses"
       ],
       "required": [
-        "success"
+        "success",
+        "deleted"
       ]
     },
     "ParsedVoucher": {
@@ -3902,7 +4295,11 @@
         "amount",
         "currency"
       ],
-      "required": []
+      "required": [
+        "number",
+        "pin",
+        "currency"
+      ]
     },
     "Part": {
       "fields": [
@@ -3923,7 +4320,15 @@
         "bl_color_id"
       ],
       "required": [
-        "part_number"
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "image_url",
+        "total_quantity",
+        "is_spare"
       ]
     },
     "PartColorRequest": {
@@ -3944,14 +4349,23 @@
         "moved",
         "united"
       ],
-      "required": []
+      "required": [
+        "image",
+        "success",
+        "combined",
+        "moved",
+        "united"
+      ]
     },
     "PartsCategoriesResponse": {
       "fields": [
         "success",
         "categories"
       ],
-      "required": []
+      "required": [
+        "success",
+        "categories"
+      ]
     },
     "PartsCategory": {
       "fields": [
@@ -3960,7 +4374,12 @@
         "unique_parts",
         "total_quantity"
       ],
-      "required": []
+      "required": [
+        "category_name",
+        "label",
+        "unique_parts",
+        "total_quantity"
+      ]
     },
     "PartsFilterColor": {
       "fields": [
@@ -3969,21 +4388,32 @@
         "unique_parts",
         "total_quantity"
       ],
-      "required": []
+      "required": [
+        "color_name",
+        "color_hex",
+        "unique_parts",
+        "total_quantity"
+      ]
     },
     "PartsFilterColorsResponse": {
       "fields": [
         "success",
         "colors"
       ],
-      "required": []
+      "required": [
+        "success",
+        "colors"
+      ]
     },
     "PartsLoaded": {
       "fields": [
         "success",
         "count"
       ],
-      "required": []
+      "required": [
+        "success",
+        "count"
+      ]
     },
     "PartsResponse": {
       "fields": [
@@ -3997,7 +4427,12 @@
         "error"
       ],
       "required": [
-        "success"
+        "source",
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "parts"
       ]
     },
     "PartsStats": {
@@ -4007,7 +4442,11 @@
         "total_parts",
         "manual_parts"
       ],
-      "required": []
+      "required": [
+        "unique_parts",
+        "unique_colors",
+        "total_parts"
+      ]
     },
     "PartsStatsResponse": {
       "fields": [
@@ -4015,7 +4454,8 @@
         "stats"
       ],
       "required": [
-        "success"
+        "success",
+        "stats"
       ]
     },
     "PartsValuationResponse": {
@@ -4033,8 +4473,17 @@
         "foreign_currency_purchases"
       ],
       "required": [
+        "converted_purchase_prices",
         "success",
-        "total_value"
+        "total",
+        "page",
+        "page_size",
+        "currency",
+        "parts",
+        "total_value",
+        "value_total",
+        "prices_pending",
+        "foreign_currency_purchases"
       ]
     },
     "PartValuationItem": {
@@ -4075,7 +4524,24 @@
         "value_total",
         "acquisitions"
       ],
-      "required": []
+      "required": [
+        "id",
+        "quantity",
+        "image_url",
+        "image_local",
+        "purchase_price",
+        "avg_price",
+        "condition",
+        "conditions",
+        "user_id",
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "unit_price"
+      ]
     },
     "Passkey": {
       "fields": [
@@ -4085,21 +4551,33 @@
         "created_at",
         "last_used"
       ],
-      "required": []
+      "required": [
+        "id",
+        "name",
+        "transports",
+        "created_at",
+        "last_used"
+      ]
     },
     "PasskeyCreated": {
       "fields": [
         "success",
         "passkey"
       ],
-      "required": []
+      "required": [
+        "success",
+        "passkey"
+      ]
     },
     "PasskeyCreatedPasskey": {
       "fields": [
         "id",
         "name"
       ],
-      "required": []
+      "required": [
+        "id",
+        "name"
+      ]
     },
     "PasskeyList": {
       "fields": [
@@ -4107,7 +4585,11 @@
         "available",
         "passkeys"
       ],
-      "required": []
+      "required": [
+        "success",
+        "available",
+        "passkeys"
+      ]
     },
     "PasskeyLoginRequest": {
       "fields": [
@@ -4124,7 +4606,10 @@
         "success",
         "options"
       ],
-      "required": []
+      "required": [
+        "success",
+        "options"
+      ]
     },
     "PasskeyOptionsRequest": {
       "fields": [
@@ -4152,7 +4637,9 @@
         "success",
         "effective_at"
       ],
-      "required": []
+      "required": [
+        "success"
+      ]
     },
     "PdfInput": {
       "fields": [
@@ -4174,14 +4661,19 @@
         "image_url",
         "image_local"
       ],
-      "required": []
+      "required": [
+        "part_number",
+        "quantity"
+      ]
     },
     "PdfInputSetsEntry": {
       "fields": [
         "set_number",
         "name"
       ],
-      "required": []
+      "required": [
+        "set_number"
+      ]
     },
     "PdfJobPart": {
       "fields": [
@@ -4213,7 +4705,10 @@
         "success",
         "jobId"
       ],
-      "required": []
+      "required": [
+        "success",
+        "jobId"
+      ]
     },
     "PdfJobSet": {
       "fields": [
@@ -4232,7 +4727,13 @@
         "etaSeconds",
         "missingImages"
       ],
-      "required": []
+      "required": [
+        "success",
+        "status",
+        "error",
+        "etaSeconds",
+        "missingImages"
+      ]
     },
     "PdfViewer": {
       "fields": [
@@ -4248,7 +4749,11 @@
         "alerts",
         "now"
       ],
-      "required": []
+      "required": [
+        "success",
+        "alerts",
+        "now"
+      ]
     },
     "PnlResponse": {
       "fields": [
@@ -4262,7 +4767,12 @@
       ],
       "required": [
         "success",
-        "totals"
+        "total",
+        "page",
+        "page_size",
+        "currency",
+        "totals",
+        "sets"
       ]
     },
     "PnlSetRow": {
@@ -4289,7 +4799,21 @@
         "tile_source"
       ],
       "required": [
-        "set_number"
+        "added_at",
+        "condition",
+        "image_local",
+        "image_url",
+        "name",
+        "pnl_abs",
+        "purchase_price",
+        "year",
+        "set_number",
+        "quantity",
+        "current_price",
+        "baseline_price",
+        "pnl_amount",
+        "pnl_percent",
+        "baseline_pnl_percent"
       ]
     },
     "PnlTotals": {
@@ -4317,8 +4841,17 @@
         "market_value_without_purchase_price"
       ],
       "required": [
+        "converted_purchase_prices",
+        "pnl_current",
+        "pnl_purchase",
         "purchase",
-        "current"
+        "current",
+        "pnl_percent",
+        "foreign_currency_purchases",
+        "sets_purchase",
+        "parts_purchase",
+        "figs_purchase",
+        "grand_total"
       ]
     },
     "PortfolioHistoryResponse": {
@@ -4334,7 +4867,13 @@
         "purchase_total"
       ],
       "required": [
-        "success"
+        "data_points",
+        "success",
+        "currency",
+        "period",
+        "points",
+        "y_axis",
+        "period_change_pct"
       ]
     },
     "PriceAlert": {
@@ -4353,7 +4892,17 @@
         "set_img_url",
         "owns"
       ],
-      "required": []
+      "required": [
+        "set_number",
+        "condition",
+        "direction",
+        "threshold",
+        "currency_code",
+        "triggered",
+        "last_triggered_at",
+        "last_price",
+        "owns"
+      ]
     },
     "PriceAlertRequest": {
       "fields": [
@@ -4372,14 +4921,19 @@
         "alert",
         "removed"
       ],
-      "required": []
+      "required": [
+        "success"
+      ]
     },
     "PriceAlertsResponse": {
       "fields": [
         "success",
         "alerts"
       ],
-      "required": []
+      "required": [
+        "success",
+        "alerts"
+      ]
     },
     "PriceByCondition": {
       "fields": [
@@ -4393,14 +4947,20 @@
         "values",
         "x"
       ],
-      "required": []
+      "required": [
+        "values",
+        "x"
+      ]
     },
     "PriceChartPoint": {
       "fields": [
         "x",
         "y"
       ],
-      "required": []
+      "required": [
+        "x",
+        "y"
+      ]
     },
     "PriceChartSeries": {
       "fields": [
@@ -4408,7 +4968,11 @@
         "values",
         "firstRealIndex"
       ],
-      "required": []
+      "required": [
+        "name",
+        "values",
+        "firstRealIndex"
+      ]
     },
     "PriceHistoryPoint": {
       "fields": [
@@ -4419,7 +4983,11 @@
         "min_price",
         "max_price"
       ],
-      "required": []
+      "required": [
+        "recorded_at",
+        "qty_avg_price",
+        "avg_price"
+      ]
     },
     "PriceHistoryResponse": {
       "fields": [
@@ -4437,7 +5005,12 @@
         "purchase_price"
       ],
       "required": [
-        "success"
+        "success",
+        "currency",
+        "history_new",
+        "history_used",
+        "by_condition",
+        "chart"
       ]
     },
     "PriceJobState": {
@@ -4446,7 +5019,11 @@
         "job",
         "rate_limit"
       ],
-      "required": []
+      "required": [
+        "success",
+        "job",
+        "rate_limit"
+      ]
     },
     "PriceJobStateJob": {
       "fields": [
@@ -4459,7 +5036,13 @@
         "lastUpdated",
         "progress"
       ],
-      "required": []
+      "required": [
+        "running",
+        "lastRun",
+        "nextRun",
+        "lastErrors",
+        "log"
+      ]
     },
     "PriceJobStateJobProgress": {
       "fields": [
@@ -4467,7 +5050,11 @@
         "total",
         "set"
       ],
-      "required": []
+      "required": [
+        "current",
+        "total",
+        "set"
+      ]
     },
     "PriceJobStateRateLimit": {
       "fields": [
@@ -4476,7 +5063,11 @@
         "remaining",
         "date"
       ],
-      "required": []
+      "required": [
+        "count",
+        "limit",
+        "remaining"
+      ]
     },
     "Profile": {
       "fields": [
@@ -4490,7 +5081,12 @@
       ],
       "required": [
         "id",
-        "username"
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "email_verified",
+        "new_email"
       ]
     },
     "ProfileRequest": {
@@ -4516,7 +5112,8 @@
         "error"
       ],
       "required": [
-        "success"
+        "success",
+        "user"
       ]
     },
     "ProfileSavedResponse": {
@@ -4564,7 +5161,11 @@
         "expires_in"
       ],
       "required": [
-        "success"
+        "success",
+        "waiting",
+        "pickup",
+        "code",
+        "expires_in"
       ]
     },
     "QrPairingState": {
@@ -4574,7 +5175,12 @@
         "device",
         "ip_range"
       ],
-      "required": []
+      "required": [
+        "success",
+        "state",
+        "device",
+        "ip_range"
+      ]
     },
     "QrPickup": {
       "fields": [
@@ -4593,7 +5199,8 @@
         "key_nonce"
       ],
       "required": [
-        "success"
+        "success",
+        "waiting"
       ]
     },
     "QrToken": {
@@ -4607,7 +5214,14 @@
         "fp",
         "cert_sha256"
       ],
-      "required": []
+      "required": [
+        "success",
+        "token",
+        "pairing",
+        "expires_in",
+        "url",
+        "token_days"
+      ]
     },
     "QuantityChanged": {
       "fields": [
@@ -4617,7 +5231,10 @@
         "degraded",
         "dropped"
       ],
-      "required": []
+      "required": [
+        "success",
+        "quantity"
+      ]
     },
     "QuantityChangedDroppedEntry": {
       "fields": [
@@ -4629,7 +5246,15 @@
         "condition",
         "date"
       ],
-      "required": []
+      "required": [
+        "id",
+        "quantity",
+        "purchase_price",
+        "currency",
+        "price_estimated",
+        "condition",
+        "date"
+      ]
     },
     "RateLimit": {
       "fields": [
@@ -4638,7 +5263,11 @@
         "limit",
         "remaining"
       ],
-      "required": []
+      "required": [
+        "count",
+        "limit",
+        "remaining"
+      ]
     },
     "RateLimits": {
       "fields": [
@@ -4646,14 +5275,21 @@
         "rebrickable",
         "brickset"
       ],
-      "required": []
+      "required": [
+        "bricklink",
+        "rebrickable",
+        "brickset"
+      ]
     },
     "RawSettings": {
       "fields": [
         "success",
         "settings"
       ],
-      "required": []
+      "required": [
+        "success",
+        "settings"
+      ]
     },
     "RecordFigure": {
       "fields": [
@@ -4703,7 +5339,10 @@
         "error"
       ],
       "required": [
-        "success"
+        "success",
+        "message",
+        "email_sent",
+        "console_mode"
       ]
     },
     "RegistrationStatusResponse": {
@@ -4713,7 +5352,9 @@
         "forgot_password",
         "mail_delivery"
       ],
-      "required": []
+      "required": [
+        "enabled"
+      ]
     },
     "Restored": {
       "fields": [
@@ -4722,7 +5363,12 @@
         "number",
         "user_id"
       ],
-      "required": []
+      "required": [
+        "success",
+        "type",
+        "number",
+        "user_id"
+      ]
     },
     "SecondFactorCodes": {
       "fields": [
@@ -4731,7 +5377,8 @@
         "error"
       ],
       "required": [
-        "success"
+        "success",
+        "codes"
       ]
     },
     "SecondFactorRequest": {
@@ -4750,7 +5397,9 @@
         "error"
       ],
       "required": [
-        "success"
+        "success",
+        "secret",
+        "otpauth"
       ]
     },
     "SecondFactorStateResponse": {
@@ -4762,7 +5411,10 @@
         "error"
       ],
       "required": [
-        "success"
+        "success",
+        "active",
+        "codes_left",
+        "old_codes_until"
       ]
     },
     "SeparatedAccount": {
@@ -4772,7 +5424,9 @@
         "via"
       ],
       "required": [
-        "id"
+        "id",
+        "username",
+        "via"
       ]
     },
     "SetAggregate": {
@@ -4785,7 +5439,15 @@
         "max_purchase_price",
         "avg_purchase_price"
       ],
-      "required": []
+      "required": [
+        "set_number",
+        "condition",
+        "acq_count",
+        "used_count",
+        "conditions",
+        "max_purchase_price",
+        "avg_purchase_price"
+      ]
     },
     "SetDetail": {
       "fields": [
@@ -4803,7 +5465,11 @@
         "owner_user_id",
         "is_self"
       ],
-      "required": []
+      "required": [
+        "success",
+        "exists",
+        "set_number"
+      ]
     },
     "SetInfoResponse": {
       "fields": [
@@ -4818,7 +5484,12 @@
         "name",
         "in_catalog"
       ],
-      "required": []
+      "required": [
+        "success",
+        "set_number",
+        "name",
+        "in_catalog"
+      ]
     },
     "SetItem": {
       "fields": [
@@ -4852,7 +5523,24 @@
         "price_comparison_url"
       ],
       "required": [
-        "set_number"
+        "acq_count",
+        "set_number",
+        "name",
+        "year",
+        "theme",
+        "pieces",
+        "minifigs",
+        "quantity",
+        "image_url",
+        "image_local",
+        "added_at",
+        "condition",
+        "storage",
+        "conditions",
+        "max_purchase_price",
+        "avg_purchase_price",
+        "used_count",
+        "instructions"
       ]
     },
     "SetPriceResponse": {
@@ -4869,7 +5557,14 @@
         "error"
       ],
       "required": [
-        "success"
+        "success",
+        "set_number",
+        "currency",
+        "avg_price",
+        "min_price",
+        "max_price",
+        "qty_avg_price",
+        "no_price"
       ]
     },
     "SetQuantity": {
@@ -4888,7 +5583,8 @@
         "set"
       ],
       "required": [
-        "success"
+        "success",
+        "set"
       ]
     },
     "SetsResponse": {
@@ -4900,7 +5596,10 @@
         "themes"
       ],
       "required": [
-        "success"
+        "success",
+        "count",
+        "sets",
+        "total"
       ]
     },
     "SettingsResponse": {
@@ -4909,7 +5608,8 @@
         "settings"
       ],
       "required": [
-        "success"
+        "success",
+        "settings"
       ]
     },
     "Setup": {
@@ -4919,7 +5619,12 @@
         "change_password",
         "sources"
       ],
-      "required": []
+      "required": [
+        "success",
+        "open",
+        "change_password",
+        "sources"
+      ]
     },
     "SetupSources": {
       "fields": [
@@ -4927,7 +5632,11 @@
         "bricklink",
         "brickset"
       ],
-      "required": []
+      "required": [
+        "rebrickable",
+        "bricklink",
+        "brickset"
+      ]
     },
     "SetupState": {
       "fields": [
@@ -4940,7 +5649,15 @@
         "https",
         "degraded"
       ],
-      "required": []
+      "required": [
+        "success",
+        "done",
+        "configured",
+        "steps",
+        "ca",
+        "base_url",
+        "https"
+      ]
     },
     "SetupStateCa": {
       "fields": [
@@ -4950,7 +5667,10 @@
         "valid_until",
         "download"
       ],
-      "required": []
+      "required": [
+        "existing",
+        "download"
+      ]
     },
     "SetupStateStepsEntry": {
       "fields": [
@@ -4958,14 +5678,21 @@
         "ok",
         "required"
       ],
-      "required": []
+      "required": [
+        "id",
+        "ok",
+        "required"
+      ]
     },
     "SmtpProbe": {
       "fields": [
         "mode",
         "success"
       ],
-      "required": []
+      "required": [
+        "mode",
+        "success"
+      ]
     },
     "StartupStatus": {
       "fields": [
@@ -4977,7 +5704,13 @@
         "total",
         "sub"
       ],
-      "required": []
+      "required": [
+        "ready",
+        "step",
+        "progress",
+        "total",
+        "sub"
+      ]
     },
     "StatsResponse": {
       "fields": [
@@ -4985,7 +5718,8 @@
         "stats"
       ],
       "required": [
-        "success"
+        "success",
+        "stats"
       ]
     },
     "StepApprovalRequest": {
@@ -5040,7 +5774,10 @@
         "parts"
       ],
       "required": [
-        "location"
+        "minifigs",
+        "location",
+        "sets",
+        "parts"
       ]
     },
     "StorageDefaultRequest": {
@@ -5054,7 +5791,10 @@
         "success",
         "preset"
       ],
-      "required": []
+      "required": [
+        "success",
+        "preset"
+      ]
     },
     "StorageEntry": {
       "fields": [
@@ -5062,14 +5802,21 @@
         "user_id",
         "name"
       ],
-      "required": []
+      "required": [
+        "id",
+        "user_id",
+        "name"
+      ]
     },
     "StorageEntryResponse": {
       "fields": [
         "success",
         "location"
       ],
-      "required": []
+      "required": [
+        "success",
+        "location"
+      ]
     },
     "StorageNameRequest": {
       "fields": [
@@ -5094,14 +5841,19 @@
         "storage",
         "changed"
       ],
-      "required": []
+      "required": [
+        "success"
+      ]
     },
     "StoragesResponse": {
       "fields": [
         "success",
         "locations"
       ],
-      "required": []
+      "required": [
+        "success",
+        "locations"
+      ]
     },
     "StorageStockResponse": {
       "fields": [
@@ -5109,7 +5861,11 @@
         "locations",
         "preset"
       ],
-      "required": []
+      "required": [
+        "success",
+        "locations",
+        "preset"
+      ]
     },
     "TlsState": {
       "fields": [
@@ -5122,7 +5878,11 @@
         "valid_until",
         "download"
       ],
-      "required": []
+      "required": [
+        "success",
+        "https",
+        "fp"
+      ]
     },
     "TokenCreated": {
       "fields": [
@@ -5132,7 +5892,13 @@
         "never_expires",
         "token_info"
       ],
-      "required": []
+      "required": [
+        "success",
+        "token",
+        "label",
+        "never_expires",
+        "token_info"
+      ]
     },
     "TokenInfo": {
       "fields": [
@@ -5145,6 +5911,7 @@
       ],
       "required": [
         "scope",
+        "hard_expires_at",
         "never_expires"
       ]
     },
@@ -5154,7 +5921,8 @@
         "deleted"
       ],
       "required": [
-        "success"
+        "success",
+        "deleted"
       ]
     },
     "TokenRotation": {
@@ -5166,7 +5934,11 @@
         "overlap_seconds"
       ],
       "required": [
-        "success"
+        "success",
+        "token",
+        "token_info",
+        "old_valid_until",
+        "overlap_seconds"
       ]
     },
     "TokensResponse": {
@@ -5176,7 +5948,8 @@
         "error"
       ],
       "required": [
-        "success"
+        "success",
+        "tokens"
       ]
     },
     "Totals": {
@@ -5186,21 +5959,32 @@
         "max",
         "qty_avg"
       ],
-      "required": []
+      "required": [
+        "min",
+        "avg",
+        "max",
+        "qty_avg"
+      ]
     },
     "Trash": {
       "fields": [
         "success",
         "entries"
       ],
-      "required": []
+      "required": [
+        "success",
+        "entries"
+      ]
     },
     "TrashEmptied": {
       "fields": [
         "success",
         "removed"
       ],
-      "required": []
+      "required": [
+        "success",
+        "removed"
+      ]
     },
     "TrashEntry": {
       "fields": [
@@ -5214,7 +5998,17 @@
         "deleted_at",
         "purge_at"
       ],
-      "required": []
+      "required": [
+        "id",
+        "type",
+        "number",
+        "color_id",
+        "label",
+        "count",
+        "user_id",
+        "deleted_at",
+        "purge_at"
+      ]
     },
     "UpdateAcquisitionRequest": {
       "fields": [
@@ -5274,7 +6068,16 @@
         "app_theme",
         "remove_empty_vouchers"
       ],
-      "required": []
+      "required": [
+        "currency",
+        "price_condition",
+        "price_cache_ttl",
+        "default_price_condition",
+        "user_default_condition",
+        "effective_condition",
+        "app_theme",
+        "remove_empty_vouchers"
+      ]
     },
     "UsingSet": {
       "fields": [
@@ -5286,7 +6089,9 @@
         "owner_user_id"
       ],
       "required": [
-        "set_number"
+        "set_number",
+        "quantity",
+        "owner_user_id"
       ]
     },
     "UsingSetsResponse": {
@@ -5295,7 +6100,10 @@
         "item",
         "sets"
       ],
-      "required": []
+      "required": [
+        "success",
+        "sets"
+      ]
     },
     "ValuationAcquisition": {
       "fields": [
@@ -5313,7 +6121,17 @@
         "purchase_currency",
         "price_estimated"
       ],
-      "required": []
+      "required": [
+        "id",
+        "condition",
+        "quantity",
+        "purchase_price",
+        "avg_price",
+        "total_avg",
+        "value_total",
+        "pnl_percent",
+        "created_at"
+      ]
     },
     "ValuationResponse": {
       "fields": [
@@ -5335,7 +6153,22 @@
         "totals"
       ],
       "required": [
-        "success"
+        "converted_purchase_prices",
+        "guide_type",
+        "ttl_hours",
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "total_value",
+        "value_total",
+        "prices_pending",
+        "currency",
+        "condition",
+        "cache_ttl_hours",
+        "foreign_currency_purchases",
+        "sets",
+        "totals"
       ]
     },
     "ValuationSet": {
@@ -5373,7 +6206,32 @@
         "error"
       ],
       "required": [
-        "set_number"
+        "bl_unknown",
+        "condition",
+        "conditions",
+        "user_id",
+        "set_number",
+        "added_at",
+        "name",
+        "year",
+        "quantity",
+        "image_local",
+        "image_url",
+        "min_price",
+        "avg_price",
+        "max_price",
+        "qty_avg_price",
+        "total_qty_avg",
+        "price_pending",
+        "total_avg",
+        "value_total",
+        "pnl_percent",
+        "purchase_price",
+        "from_cache",
+        "is_fallback",
+        "no_price",
+        "acquisitions",
+        "mixed"
       ]
     },
     "Voucher": {
@@ -5388,7 +6246,17 @@
         "updated_at",
         "balance_checked_at"
       ],
-      "required": []
+      "required": [
+        "id",
+        "number",
+        "pin",
+        "amount",
+        "currency",
+        "has_pdf",
+        "created_at",
+        "updated_at",
+        "balance_checked_at"
+      ]
     },
     "VoucherBatch": {
       "fields": [
@@ -5398,7 +6266,13 @@
         "errors",
         "total"
       ],
-      "required": []
+      "required": [
+        "results",
+        "added",
+        "updated",
+        "errors",
+        "total"
+      ]
     },
     "VoucherList": {
       "fields": [
@@ -5408,7 +6282,13 @@
         "page_size",
         "vouchers"
       ],
-      "required": []
+      "required": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "vouchers"
+      ]
     },
     "VoucherPdfGrant": {
       "fields": [
@@ -5416,7 +6296,11 @@
         "ticket",
         "valid_seconds"
       ],
-      "required": []
+      "required": [
+        "success",
+        "ticket",
+        "valid_seconds"
+      ]
     },
     "VoucherPlaintext": {
       "fields": [
@@ -5425,7 +6309,12 @@
         "number",
         "pin"
       ],
-      "required": []
+      "required": [
+        "success",
+        "id",
+        "number",
+        "pin"
+      ]
     },
     "VoucherReply": {
       "fields": [
@@ -5436,7 +6325,9 @@
         "error",
         "code"
       ],
-      "required": []
+      "required": [
+        "success"
+      ]
     },
     "VoucherRequest": {
       "fields": [
@@ -5468,7 +6359,23 @@
         "alarm",
         "price_comparison_url"
       ],
-      "required": []
+      "required": [
+        "theme_id",
+        "set_number",
+        "condition",
+        "created_at",
+        "user_id",
+        "name",
+        "year",
+        "num_parts",
+        "image_url",
+        "image_local",
+        "market_price",
+        "currency",
+        "owned",
+        "alarm",
+        "price_comparison_url"
+      ]
     },
     "WantedItemAlert": {
       "fields": [
@@ -5476,7 +6383,11 @@
         "threshold",
         "triggered"
       ],
-      "required": []
+      "required": [
+        "direction",
+        "threshold",
+        "triggered"
+      ]
     },
     "WantedItemDetail": {
       "fields": [
@@ -5495,7 +6406,12 @@
         "merged",
         "owner_user_id"
       ],
-      "required": []
+      "required": [
+        "success",
+        "moved",
+        "merged",
+        "owner_user_id"
+      ]
     },
     "WantedItemOwnerRequest": {
       "fields": [
@@ -5515,7 +6431,12 @@
         "current",
         "degraded"
       ],
-      "required": []
+      "required": [
+        "success",
+        "set_number",
+        "currency",
+        "current"
+      ]
     },
     "WantedItemReply": {
       "fields": [
@@ -5523,7 +6444,11 @@
         "was_new",
         "item"
       ],
-      "required": []
+      "required": [
+        "success",
+        "was_new",
+        "item"
+      ]
     },
     "WantedItemRequest": {
       "fields": [
@@ -5553,7 +6478,11 @@
         "action",
         "set_number"
       ],
-      "required": []
+      "required": [
+        "success",
+        "action",
+        "set_number"
+      ]
     },
     "WantedListResponse": {
       "fields": [
@@ -5563,7 +6492,13 @@
         "page_size",
         "item"
       ],
-      "required": []
+      "required": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "item"
+      ]
     },
     "WantedXmlResult": {
       "fields": [
@@ -5584,14 +6519,26 @@
         "corrections",
         "rebrickable"
       ],
-      "required": []
+      "required": [
+        "success",
+        "preview",
+        "parsed",
+        "created",
+        "topped_up",
+        "failed",
+        "items",
+        "open"
+      ]
     },
     "WantedXmlResultCorrections": {
       "fields": [
         "applied",
         "rejected"
       ],
-      "required": []
+      "required": [
+        "applied",
+        "rejected"
+      ]
     },
     "WantedXmlResultItemsEntry": {
       "fields": [
@@ -5613,7 +6560,12 @@
         "reason",
         "reasonCode"
       ],
-      "required": []
+      "required": [
+        "kind",
+        "blId",
+        "quantity",
+        "outcome"
+      ]
     },
     "WantedXmlResultOpenEntry": {
       "fields": [
@@ -5621,7 +6573,10 @@
         "blId",
         "blColor"
       ],
-      "required": []
+      "required": [
+        "kind",
+        "blId"
+      ]
     },
     "WantedXmlResultRebrickable": {
       "fields": [
@@ -5630,7 +6585,11 @@
         "filterIneffective",
         "aborted"
       ],
-      "required": []
+      "required": [
+        "asked",
+        "found",
+        "filterIneffective"
+      ]
     },
     "WidgetNumbers": {
       "fields": [
@@ -5651,7 +6610,10 @@
         "year",
         "n"
       ],
-      "required": []
+      "required": [
+        "year",
+        "n"
+      ]
     }
   }
 }

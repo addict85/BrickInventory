@@ -3,19 +3,23 @@ package ch.brickinventoryapp.app.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,9 +27,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.expand
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -38,8 +45,6 @@ import ch.brickinventoryapp.security.fingerprintStart
 import ch.brickinventoryapp.ui.components.FingerprintField
 import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.components.announce
-import ch.brickinventoryapp.ui.components.secondaryButtonColors
-import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.windowSurface
 
@@ -54,13 +59,11 @@ fun CertificateDialog(
     trustOn: (input: String?) -> Boolean,
     onUserCa: () -> Unit,
     onCancel: () -> Unit,
-    /** With a screen lock a new key from Android 16 is confirmed with it; without one, typed off. */
-    deviceSecure: Boolean = true,
     /** Scanning the web app's certificate code; null where there is no camera (previews). */
     codeScan: CodeScan? = null,
 ) {
     if (question.kind == CertificateUnresolved.Kind.CODE_MISMATCH) CodeDeviationDialog(question, onCancel)
-    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure, codeScan)
+    else CertificateQuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, codeScan)
 }
 
 /**
@@ -72,7 +75,7 @@ class CodeScan(
     val scanner: @Composable (onResult: (String) -> Unit, onDismiss: () -> Unit) -> Unit,
 )
 
-/** Everything except CODE_MISMATCH: trust after scanning the web app's code, comparing or typing. */
+/** Everything except CODE_MISMATCH: trust after scanning the web app's code or typing. */
 @Composable
 private fun CertificateQuestionDialog(
     question: CertificateUnresolved,
@@ -80,7 +83,6 @@ private fun CertificateQuestionDialog(
     trustOn: (input: String?) -> Boolean,
     onUserCa: () -> Unit,
     onCancel: () -> Unit,
-    deviceSecure: Boolean,
     codeScan: CodeScan?,
 ) {
     var scanning by rememberSaveable(question.fingerprint) { mutableStateOf(false) }
@@ -92,12 +94,18 @@ private fun CertificateQuestionDialog(
         ScannerDialog(scan, onDone = { scanning = false }) { codeFinding = it }
         return
     }
-    val scanChoice: (@Composable () -> Unit)? =
-        scan?.let { { ScanChoice(codeFinding) { codeFinding = null; scanning = true } } }
-    QuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel, deviceSecure, scanChoice)
+    QuestionDialog(question, userCaEnabled, trustOn, onUserCa, onCancel,
+        scan?.let { ScanOffer(codeFinding) { codeFinding = null; scanning = true } })
 }
 
-/** [scanChoice] replaces the old hint to scan a new sign-in code. */
+/** The QR route of a question: the last scan's result and how to start a new one. */
+private class ScanOffer(val finding: CodeCheck?, val start: () -> Unit)
+
+/**
+ * With a QR route the scan comes first and typing waits folded below it: the dialog used
+ * to be a screen of text with the instructions twice. Without one, typing is the only way
+ * and stands open. Either way the yes needs the code or the transcript ([CertificateUnresolved.transcriptNeeded]).
+ */
 @Composable
 private fun QuestionDialog(
     question: CertificateUnresolved,
@@ -105,20 +113,19 @@ private fun QuestionDialog(
     trustOn: (input: String?) -> Boolean,
     onUserCa: () -> Unit,
     onCancel: () -> Unit,
-    deviceSecure: Boolean,
-    scanChoice: (@Composable () -> Unit)?,
+    scan: ScanOffer?,
 ) {
     var input by rememberSaveable(question.fingerprint) { mutableStateOf("") }
     var finding by remember(question.fingerprint) { mutableStateOf<Transcript?>(null) }
-    // Voluntary on first contact with CT requirement: whoever types sees only the beginning as usual.
-    var typeInSelected by rememberSaveable(question.fingerprint) { mutableStateOf(false) }
+    var manualChosen by rememberSaveable(question.fingerprint) { mutableStateOf(false) }
     val host = question.key.substringBeforeLast(':')
     val (title, text) = titleAndText(question)
     val changed = question.kind == CertificateUnresolved.Kind.CHANGED || question.kind == CertificateUnresolved.Kind.KEY_NEW
-    val firstContact = question.kind == CertificateUnresolved.Kind.FIRST_CONTACT
-    val public = firstContact || question.kind == CertificateUnresolved.Kind.KEY_NEW
-    val byDevice = question.deviceConfirmationNeeded && deviceSecure
-    val writeOff = mustTranscribe(question, typeInSelected, deviceSecure)
+    val public = question.kind == CertificateUnresolved.Kind.FIRST_CONTACT || question.kind == CertificateUnresolved.Kind.KEY_NEW
+    // A failed scan opens the way by hand: its message points there.
+    val scanFailed = scan?.let { scanError(it.finding) } != null
+    LaunchedEffect(scanFailed) { if (scanFailed) manualChosen = true }
+    val manual = scan == null || manualChosen
     val window = stringResource(title)
     AlertDialog(
         containerColor = windowSurface(),
@@ -130,13 +137,12 @@ private fun QuestionDialog(
             OverlayGuard()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
                 Text(stringResource(text, host))
-                FingerprintDisplay(question, writeOff, changed)
-                if (byDevice) Text(stringResource(R.string.cert_device_confirm), style = MaterialTheme.typography.bodySmall)
-                scanChoice?.invoke()
-                if (firstContact && !writeOff) {
-                    TextButton(onClick = { typeInSelected = true }) { Text(stringResource(R.string.cert_first_contact_type)) }
+                if (scan != null) {
+                    ScanChoice(scan)
+                    ManualToggle(manual) { manualChosen = !manual }
                 }
-                if (writeOff) {
+                if (manual) {
+                    FingerprintDisplay(question, changed)
                     FingerprintField(
                         input = input,
                         onInput = { input = it; finding = null },
@@ -145,7 +151,7 @@ private fun QuestionDialog(
                         error = { counted -> transcriptError(finding, counted) },
                     )
                     // Under a public CA the code carries no fingerprint; there it does not help.
-                    if (!public && scanChoice == null) Text(stringResource(R.string.cert_changed_qr), style = MaterialTheme.typography.bodySmall)
+                    if (!public && scan == null) Text(stringResource(R.string.cert_changed_qr), style = MaterialTheme.typography.bodySmall)
                 }
                 // The only place where user CAs are asked about: on the error,
                 // with an explanation. Afterwards the dialog asks again (USER_CA), again for typing.
@@ -155,12 +161,26 @@ private fun QuestionDialog(
             }
         },
         confirmButton = {
-            TrustButton(changed, active = !writeOff || input.isNotBlank()) {
-                finding = findingAfter(trustOn(input.takeIf { writeOff }), input, question.fingerprint)
+            // Folded away the button would trust nothing anyway; it appears with the field.
+            if (manual) TrustButton(changed, active = input.isNotBlank()) {
+                finding = findingAfter(trustOn(input), input, question.fingerprint)
             }
         },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) } },
     )
+}
+
+/** „Manuell vergleichen“ folds the field in and out; TalkBack hears the state and both actions. */
+@Composable
+private fun ManualToggle(open: Boolean, onToggle: () -> Unit) {
+    val state = stringResource(if (open) R.string.state_expanded else R.string.state_collapsed)
+    TextButton(onClick = onToggle, modifier = Modifier.semantics {
+        stateDescription = state
+        if (open) collapse { onToggle(); true } else expand { onToggle(); true }
+    }) {
+        Text(stringResource(R.string.cert_manual_compare))
+        Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+    }
 }
 
 /** The scanner over everything; a full match closes the question, anything else comes back as [onFinding]. */
@@ -171,16 +191,15 @@ private fun ScannerDialog(scan: CodeScan, onDone: () -> Unit, onFinding: (CodeCh
     }
 }
 
-/** The comfortable way first; the result of the last scan below it, the manual comparison stays. */
+/** The comfortable way first, as the dialog's main action; a failed scan says why below it. */
 @Composable
-private fun ScanChoice(finding: CodeCheck?, onScan: () -> Unit) {
-    OutlinedButton(onClick = onScan, colors = secondaryButtonColors(), border = secondaryButtonRand()) {
+private fun ScanChoice(scan: ScanOffer) {
+    Button(onClick = scan.start, modifier = Modifier.fillMaxWidth()) {
         Icon(Icons.Default.QrCodeScanner, null)
         Spacer(Modifier.width(Spacing.small))
         Text(stringResource(R.string.cert_scan_qr))
     }
-    Text(stringResource(R.string.cert_scan_explain), style = MaterialTheme.typography.bodySmall)
-    scanError(finding)?.let {
+    scanError(scan.finding)?.let {
         Text(stringResource(it), Modifier.announce(), color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall)
     }
@@ -193,11 +212,6 @@ internal fun scanError(finding: CodeCheck?): Int? = when (finding) {
     CodeCheck.UNKNOWN_VERSION -> R.string.cert_scan_unknown_version
     CodeCheck.NOT_A_CODE -> R.string.cert_scan_not_code
 }
-
-/** Without CT, when chosen on first contact, or a new key from Android 16 without a screen lock. */
-private fun mustTranscribe(question: CertificateUnresolved, typeInSelected: Boolean, deviceSecure: Boolean): Boolean =
-    question.transcriptNeeded || question.kind == CertificateUnresolved.Kind.FIRST_CONTACT && typeInSelected ||
-        question.deviceConfirmationNeeded && !deviceSecure
 
 /** A changed key colors the button as a warning; otherwise the usual button. */
 @Composable
@@ -215,9 +229,9 @@ private fun findingAfter(accepted: Boolean, input: String, fingerprint: String):
     if (accepted) null
     else Transcript.of(input, fingerprint).takeIf { it != Transcript.MATCHES } ?: Transcript.FITS_NOT
 
-/** Previous and new fingerprint; when typing only the beginning. */
+/** Previous and new fingerprint; of the new one only the beginning. */
 @Composable
-private fun FingerprintDisplay(question: CertificateUnresolved, writeOff: Boolean, changed: Boolean) {
+private fun FingerprintDisplay(question: CertificateUnresolved, changed: Boolean) {
     question.expected?.let {
         Text(stringResource(R.string.cert_previous), style = MaterialTheme.typography.labelMedium)
         Text(fingerprintReadable(it), fontFamily = FontFamily.Monospace,
@@ -226,12 +240,9 @@ private fun FingerprintDisplay(question: CertificateUnresolved, writeOff: Boolea
     }
     // What is to be typed is not shown: otherwise one would copy it from an attacker's
     // screen instead of from the web app. The beginning only shows which line.
-    Text(stringResource(if (writeOff) R.string.cert_starts_with else R.string.cert_fingerprint),
-        style = MaterialTheme.typography.labelMedium)
-    Text(if (writeOff) fingerprintStart(question.fingerprint) else fingerprintReadable(question.fingerprint),
-        fontFamily = FontFamily.Monospace,
-        // Without typing the comparison is the whole check: large enough to read.
-        style = if (writeOff) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,
+    Text(stringResource(R.string.cert_starts_with), style = MaterialTheme.typography.labelMedium)
+    Text(fingerprintStart(question.fingerprint), fontFamily = FontFamily.Monospace,
+        style = MaterialTheme.typography.bodySmall,
         color = if (changed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
 }
 
@@ -286,10 +297,9 @@ private fun inputHelp(kind: CertificateUnresolved.Kind): Int = when (kind) {
     else -> R.string.cert_unknown_input
 }
 
-/** Heading and explanation per kind of question; without CT requirement the first contact explains typing. */
+/** Heading and explanation per kind of question. */
 private fun titleAndText(question: CertificateUnresolved): Pair<Int, Int> = when (question.kind) {
-    CertificateUnresolved.Kind.FIRST_CONTACT -> R.string.cert_title_first_contact to
-        if (question.transcriptNeeded) R.string.cert_text_first_contact_type else R.string.cert_text_first_contact
+    CertificateUnresolved.Kind.FIRST_CONTACT -> R.string.cert_title_first_contact to R.string.cert_text_first_contact_type
     CertificateUnresolved.Kind.UNKNOWN_CA -> R.string.cert_title_unknown to R.string.cert_text_unknown
     CertificateUnresolved.Kind.USER_CA -> R.string.cert_title_user_ca to R.string.cert_text_user_ca
     CertificateUnresolved.Kind.CHANGED -> R.string.cert_title_changed to R.string.cert_text_changed

@@ -29,6 +29,7 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.SearchField
 import ch.brickinventoryapp.ui.components.SelectionChip
 import ch.brickinventoryapp.ui.components.SortMenu
+import ch.brickinventoryapp.ui.components.searchFieldWidth
 import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Spacing
 
@@ -77,12 +78,12 @@ internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?,
 internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (CatalogSort) -> Unit) {
     // Search field — the same building block as in gallery, parts and minifigures
     // (TableRow.kt), so the clear button is named the same everywhere.
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         SearchField(
             value = state.query,
             onValue = onQueryChange,
             placeholder = stringResource(R.string.catalog_search_placeholder),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.searchFieldWidth(this),
         )
         SortMenu(
             options = CatalogSort.entries.map { it to it.label() },

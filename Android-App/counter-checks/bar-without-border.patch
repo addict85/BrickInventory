@@ -6,12 +6,12 @@ Rot: the bar keeps distance to the screen edge at 200 percent
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -312,7 +312,7 @@ private fun TabBar(
-     Surface(color = colors.bar) {
-         // A margin left and right: at 200 % “More” hit the screen edge.
-         BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
--            .padding(horizontal = BAR_EDGE)) {
-+) {
-             val sentence = with(density) {
-                 tabSet(targets.map { meter.measure(it.label, style).size.width.toFloat() },
-                     targets.indexOfFirst { chosen(it.target) }, maxWidth.toPx(), (Spacing.tiny * 2).toPx(),
+@@ -312,7 +312,7 @@
+     val density = LocalDensity.current
+     val direction = LocalLayoutDirection.current
+     // A margin left and right: at 200 % “More” hit the screen edge.
+-    val insets = NavigationBarDefaults.windowInsets.add(WindowInsets(left = BAR_EDGE, right = BAR_EDGE))
++    val insets = NavigationBarDefaults.windowInsets
+     BoxWithConstraints(Modifier.fillMaxWidth()) {
+         val sentence = with(density) {
+             val inner = maxWidth.toPx() - insets.getLeft(this, direction) - insets.getRight(this, direction) -

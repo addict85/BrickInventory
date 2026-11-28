@@ -16,7 +16,6 @@ import ch.brickinventoryapp.model.domain.LocationEntryView
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.AddDialog
-import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.Section
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.withFont
@@ -36,7 +35,6 @@ internal fun LocationsCard(storage: StorageUiState, actions: SettingsActions) {
     // shouldn't stand in front of the list again afterward.
     var newValue by rememberSaveable { mutableStateOf(false) }
     var rename by rememberSaveable { mutableStateOf<Int?>(null) }
-    var delete by rememberSaveable { mutableStateOf<Int?>(null) }
 
     Text(stringResource(R.string.storage_manage_hint),
         style = MaterialTheme.typography.bodyMedium,
@@ -54,7 +52,9 @@ internal fun LocationsCard(storage: StorageUiState, actions: SettingsActions) {
                 isDefault = storage.default?.id == location.id,
                 onDefault = { actions.switchLocationDefault(location.id, it) },
                 renameOn = { rename = location.id },
-                deleteOn = { delete = location.id },
+                // No question first: the snackbar's "Rückgängig" is the safeguard, asking as well
+                // made every delete two steps (the user's decision).
+                deleteOn = { actions.locationDeleteReserve(location) },
             )
         }
     }
@@ -83,16 +83,6 @@ internal fun LocationsCard(storage: StorageUiState, actions: SettingsActions) {
             confirm = stringResource(R.string.settings_save),
             onDone = { name -> rename = null; if (name != location.name) actions.renameLocation(location.id, name) },
             onCancel = { rename = null },
-        )
-    }
-    storage.own.firstOrNull { it.id == delete }?.let { location ->
-        Prompt(
-            title = stringResource(R.string.storage_delete_title),
-            text = stringResource(R.string.storage_delete_text, location.name),
-            confirm = stringResource(R.string.common_delete),
-            onConfirm = { delete = null; actions.locationDeleteReserve(location) },
-            onCancel = { delete = null },
-            symbol = Icons.Default.Delete,
         )
     }
 }

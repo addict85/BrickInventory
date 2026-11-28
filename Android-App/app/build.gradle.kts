@@ -260,6 +260,7 @@ dependencies {
     constraints.add("testFixturesCompileOnly", "com.google.guava:guava:${libs.versions.guavaAtLeast.get()}")
     // The test servers respond in wire format.
     testImplementation(project(":core-contract"))
+    testImplementation(testFixtures(project(":core-contract")))
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     // DevicesProtectionTest builds the TokenStore on its own DataStore.

@@ -6,12 +6,12 @@ Rot: whoever types it sees no part that is to be typed
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
-@@ -148,7 +148,7 @@
+@@ -238,7 +238,7 @@
+     // What is to be typed is not shown: otherwise one would copy it from an attacker's
      // screen instead of from the web app. The beginning only shows which line.
-     Text(stringResource(if (writeOff) R.string.cert_starts_with else R.string.cert_fingerprint),
-         style = MaterialTheme.typography.labelMedium)
--    Text(if (writeOff) fingerprintStart(question.fingerprint) else fingerprintReadable(question.fingerprint),
-+    Text(fingerprintReadable(question.fingerprint),
-         fontFamily = FontFamily.Monospace,
-         // Without typing the comparison is the whole check: large enough to read.
-         style = if (writeOff) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,
+     Text(stringResource(R.string.cert_starts_with), style = MaterialTheme.typography.labelMedium)
+-    Text(fingerprintStart(question.fingerprint), fontFamily = FontFamily.Monospace,
++    Text(fingerprintReadable(question.fingerprint), fontFamily = FontFamily.Monospace,
+         style = MaterialTheme.typography.bodySmall,
+         color = if (changed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+ }

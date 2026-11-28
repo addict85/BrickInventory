@@ -23,6 +23,7 @@ dependencies {
     testImplementation(testFixtures(project(":core-state")))
     // The test servers answer in the wire format.
     testImplementation(project(":core-contract"))
+    testImplementation(testFixtures(project(":core-contract")))
     // The test factories name the store cipher in their signatures.
     testImplementation(project(":core-security"))
 }

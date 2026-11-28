@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.contract.AppThemeResponse
-import ch.brickinventoryapp.contract.MeResponse
-import ch.brickinventoryapp.contract.StartupStatus
 import ch.brickinventoryapp.contract.TokenInfo
 import ch.brickinventoryapp.contract.User
+import ch.brickinventoryapp.contract.testing.testAppThemeResponse
+import ch.brickinventoryapp.contract.testing.testMeResponse
+import ch.brickinventoryapp.contract.testing.testStartupStatus
 import ch.brickinventoryapp.data.RightsSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.SessionExpiredSignal
@@ -194,7 +194,7 @@ class SessionServiceTest {
     fun `a server end within a week asks for a new sign-in, a later one does not`() = withVm {
         val tag = 24L * 60 * 60 * 1000
         val soon = Instant.ofEpochMilli(System.currentTimeMillis() + 3 * tag).toString()
-        fake.responses["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna"),
+        fake.responses["getMe"] = testMeResponse(success = true, user = User(id = 1, username = "anna"),
             tokenInfo = TokenInfo(scope = "app", hardExpiresAt = soon, neverExpires = false))
         loggedIn()
         advanceUntilIdle()
@@ -208,12 +208,12 @@ class SessionServiceTest {
 
     @Test
     fun `revoked admin rights apply immediately and are reported once`() = withVm {
-        fake.responses["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = true))
+        fake.responses["getMe"] = testMeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = true))
         loggedIn()
         advanceUntilIdle()
         assertTrue(session.state.value.isAdmin)
 
-        fake.responses["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = false))
+        fake.responses["getMe"] = testMeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = false))
         rights.report()
         advanceUntilIdle()
         assertFalse(session.state.value.isAdmin)
@@ -237,7 +237,7 @@ class SessionServiceTest {
         assertEquals(Design.BRICK, store.design.value)
 
         fake.codes.clear()
-        fake.responses["getAppTheme"] = AppThemeResponse(success = true, theme = Design.STUD)
+        fake.responses["getAppTheme"] = testAppThemeResponse(success = true, theme = Design.STUD)
         loggedIn()
         advanceUntilIdle()
         assertEquals(Design.STUD, session.state.value.appTheme)
@@ -272,7 +272,7 @@ class SessionServiceTest {
     @Test
     fun `the server start is followed at intervals until the server is ready`() = withVm {
         store.server.value = "https://brick.example"
-        fake.responses["getStartupStatus"] = StartupStatus(ready = false, step = "Katalog", progress = 2.0, total = 8)
+        fake.responses["getStartupStatus"] = testStartupStatus(ready = false, step = "Katalog", progress = 2.0, total = 8)
         runCurrent()
         assertNotNull(session.state.value.startupStatus)
         val first = fake.callsOf("getStartupStatus")
@@ -281,7 +281,7 @@ class SessionServiceTest {
         advanceTimeBy(2_001)
         assertEquals("a query every two seconds", 2, fake.callsOf("getStartupStatus"))
 
-        fake.responses["getStartupStatus"] = StartupStatus(ready = true)
+        fake.responses["getStartupStatus"] = testStartupStatus(ready = true)
         advanceTimeBy(2_001)
         assertNull(session.state.value.startupStatus)
         advanceTimeBy(60_000)

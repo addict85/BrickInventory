@@ -50,7 +50,7 @@ jobs:
         uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Gradle-Prüfsumme gegen die amtliche
         if: matrix.bau == 'manual'
@@ -318,7 +318,7 @@ jobs:
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:

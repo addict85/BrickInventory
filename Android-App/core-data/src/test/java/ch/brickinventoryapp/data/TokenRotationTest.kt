@@ -4,18 +4,16 @@ import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.TestApi
+import ch.brickinventoryapp.data.testing.completingConverter
 import ch.brickinventoryapp.data.testing.testAccountRepository
-import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
 import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.mockwebserver.Dispatcher
@@ -122,7 +120,7 @@ class TokenRotationTest {
 
     init {
         account = testAccountRepository(Retrofit.Builder().baseUrl(PLACEHOLDER_BASE).client(client)
-            .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(completingConverter())
             .build().create(AccountApi::class.java))
     }
 
@@ -156,7 +154,7 @@ class TokenRotationTest {
             .addInterceptor(ServerGuard(situation, true, development = true, sessionExpired = { expired++ }, rotation = t))
             .readTimeout(2, TimeUnit.SECONDS).build()
         k = testAccountRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
-            .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(completingConverter())
             .build().create(AccountApi::class.java))
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
         repeat(2) {

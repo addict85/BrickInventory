@@ -1,0 +1,16 @@
+Gegenprobe: Im Detail eines Merkpostens ist der Reiter „Merkliste“ nicht mehr gewählt
+Modul: app
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: the wishlist is a tab
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -439,7 +439,6 @@
+ /** The destinations at which a bar destination counts as selected. */
+ private fun targetsOf(screen: Any): Set<KClass<out Any>> = when (screen) {
+     CollectionTarget.Gallery -> COLLECTION + CollectionTarget.SetDetail::class
+-    CollectionTarget.Wanted -> setOf(CollectionTarget.Wanted::class, CollectionTarget.WantedItemDetail::class)
+     AppTarget.More -> MORE
+     else -> setOf(screen::class)
+ }

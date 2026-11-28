@@ -1,0 +1,39 @@
+Gegenprobe: Lagerort löschen fragt wieder nach, obwohl die Snackbar „Rückgängig“ anbietet
+Modul: app
+Test: ch.brickinventoryapp.app.SubpagesTest
+Rot: storage locations stand as rows with a menu and delete without a question
+
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsStorageLocations.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsStorageLocations.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsStorageLocations.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/SettingsStorageLocations.kt
+@@ -35,6 +35,7 @@
+     // shouldn't stand in front of the list again afterward.
+     var newValue by rememberSaveable { mutableStateOf(false) }
+     var rename by rememberSaveable { mutableStateOf<Int?>(null) }
++    var delete by rememberSaveable { mutableStateOf<Int?>(null) }
+ 
+     Text(stringResource(R.string.storage_manage_hint),
+         style = MaterialTheme.typography.bodyMedium,
+@@ -54,7 +55,7 @@
+                 renameOn = { rename = location.id },
+                 // No question first: the snackbar's "Rückgängig" is the safeguard, asking as well
+                 // made every delete two steps (the user's decision).
+-                deleteOn = { actions.locationDeleteReserve(location) },
++                deleteOn = { delete = location.id },
+             )
+         }
+     }
+@@ -83,6 +84,13 @@
+             confirm = stringResource(R.string.settings_save),
+             onDone = { name -> rename = null; if (name != location.name) actions.renameLocation(location.id, name) },
+             onCancel = { rename = null },
++        )
++    }
++    storage.own.firstOrNull { it.id == delete }?.let { location ->
++        ch.brickinventoryapp.ui.components.Prompt(
++            title = location.name, text = location.name, confirm = stringResource(R.string.common_delete),
++            onConfirm = { delete = null; actions.locationDeleteReserve(location) },
++            onCancel = { delete = null },
+         )
+     }
+ }

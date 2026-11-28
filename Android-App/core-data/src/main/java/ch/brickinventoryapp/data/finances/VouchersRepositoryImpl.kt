@@ -24,6 +24,7 @@ import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.network.data.api.ErrorBody
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.Slots
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -93,7 +94,7 @@ internal class VouchersRepositoryImpl @Inject constructor(
                 (raw ?: "").toResponseBody("application/json".toMediaType()))
         }
         val parsed = raw?.let {
-            runCatching { json.decodeFromString<BalanceReply>(it) }.getOrNull()
+            runCatching { json.decodeFromString<BalanceRefusal>(it) }.getOrNull()?.asReply()
         }
         if (parsed != null) retrofit2.Response.success(parsed)
         else retrofit2.Response.error(response.code(), (raw ?: "").toResponseBody("application/json".toMediaType()))
@@ -172,6 +173,17 @@ internal class VouchersRepositoryImpl @Inject constructor(
     /** Empty means „do not send" — see the reasoning at fromPdf(). */
     private fun asPart(value: String?): okhttp3.RequestBody? =
         value?.trim()?.takeIf { it.isNotEmpty() }?.toRequestBody("text/plain".toMediaType())
+}
+
+/**
+ * A deferred balance query: an error body with `reason` and `waitSeconds`, not a BalanceReply
+ * (that one requires the voucher and the flags of an answered query, which a refusal lacks).
+ */
+@Serializable
+private data class BalanceRefusal(val reason: String? = null, val waitSeconds: Int? = null, val error: String? = null,
+                                  val code: String? = null) {
+    fun asReply() = BalanceReply(success = false, voucher = null, displayed = null, currencyChanged = false, removed = false,
+        reason = reason, waitSeconds = waitSeconds, error = error, code = code)
 }
 
 /** A refusal when creating or changing is an error with the server's sentence. */

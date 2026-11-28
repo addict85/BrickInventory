@@ -4,17 +4,17 @@ Test: ch.brickinventoryapp.data.ServerStartTest
 Rot: a progress with share is read
 
 
-diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
---- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
-+++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Contract.kt
-@@ -2018,7 +2018,7 @@
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/ContractSettings.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/ContractSettings.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/ContractSettings.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/ContractSettings.kt
+@@ -123,7 +123,7 @@
      @SerialName("path") val path: String? = null,
-     @SerialName("ready") val ready: Boolean = false,
-     @SerialName("step") val step: String? = null,
--    @SerialName("progress") val progress: Double = 0.0,
-+    @SerialName("progress") val progress: Int = 0,
-     @SerialName("total") val total: Int = 0,
-     @SerialName("sub") val sub: String? = null,
+     @SerialName("ready") val ready: Boolean,
+     @SerialName("step") val step: String?,
+-    @SerialName("progress") val progress: Double,
++    @SerialName("progress") val progress: Int,
+     @SerialName("total") val total: Int,
+     @SerialName("sub") val sub: String?,
  )
 diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/SingleMappings.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/SingleMappings.kt
 --- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/SingleMappings.kt
@@ -28,3 +28,15 @@ diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contra
  
  fun ChartPoint.asView() = PricePoint(xLabel, value.asMoneyRequired(), yFrac)
  
+diff --git a/Android-App/core-contract/src/testFixtures/java/ch/brickinventoryapp/contract/testing/ContractSamples.kt b/Android-App/core-contract/src/testFixtures/java/ch/brickinventoryapp/contract/testing/ContractSamples.kt
+--- a/Android-App/core-contract/src/testFixtures/java/ch/brickinventoryapp/contract/testing/ContractSamples.kt
++++ b/Android-App/core-contract/src/testFixtures/java/ch/brickinventoryapp/contract/testing/ContractSamples.kt
+@@ -2983,7 +2983,7 @@
+     path: String? = null,
+     ready: Boolean = false,
+     step: String? = null,
+-    progress: Double = 0.0,
++    progress: Int = 0,
+     total: Int = 0,
+     sub: String? = null,
+ ): StartupStatus = StartupStatus(

@@ -71,9 +71,9 @@ class CatalogDetailServerTest {
     private fun registerCatalog() {
         val t = app.world.t
         val type = Class.forName("ch.brickinventoryapp.catalog.ui.viewmodel.CatalogViewModel") as Class<ViewModel>
-        app.viewModels.put(type) {
+        app.viewModels.put(type) { handle ->
             type.constructors.single().newInstance(testCatalogRepository(t.api), t.messages, NumbersTexts,
-                t.wantedList(), t.alerts(), t.scrollMemory) as ViewModel
+                t.wantedList(), t.alerts(), t.scrollMemory, handle) as ViewModel
         }
     }
 

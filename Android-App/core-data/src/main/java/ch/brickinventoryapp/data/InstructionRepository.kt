@@ -20,6 +20,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -44,15 +46,32 @@ interface InstructionRepository {
 }
 
 /**
+ * Generous upper bound for one instruction PDF on disk. Without it a broken or
+ * hostile server could fill the cache partition through the partial file.
+ */
+internal const val INSTRUCTION_MAX_BYTES: Long = 300L * 1024 * 1024
+
+/** Over [INSTRUCTION_MAX_BYTES]: no retry, the partial file goes. */
+private class TooLarge : IOException()
+
+/**
  * Via the api client (token, cleartext ban, 401 message), with a Wi-Fi lock:
  * if the screen goes black, Android would otherwise put Wi-Fi to sleep.
  */
-internal class InstructionDownload @Inject constructor(
-    @param:ApplicationContext private val ctx: Context,
-    @param:ApiClient private val httpClient: OkHttpClient,
+internal class InstructionDownload(
+    private val ctx: Context,
+    private val httpClient: OkHttpClient,
     private val instructions: InstructionStore,
-    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    private val io: CoroutineDispatcher,
+    private val limit: Long,
 ) : InstructionRepository {
+
+    @Inject constructor(
+        @ApplicationContext ctx: Context,
+        @ApiClient httpClient: OkHttpClient,
+        instructions: InstructionStore,
+        @Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher,
+    ) : this(ctx, httpClient, instructions, io, INSTRUCTION_MAX_BYTES)
 
     override suspend fun load(url: String, target: File, once: Boolean, progress: (Long, Long) -> Unit) =
         withWifi {
@@ -119,6 +138,10 @@ internal class InstructionDownload @Inject constructor(
                         }
                         return
                     }.onFailure { e ->
+                        if (e is TooLarge) {
+                            part.delete()
+                            throw DownloadFailed()
+                        }
                         lastError = e
                         if (attempt < maxAttempts) delay((1000L * attempt).coerceAtMost(4000L))
                     }
@@ -135,40 +158,58 @@ internal class InstructionDownload @Inject constructor(
         client.newCall(reqBuilder.build()).execute().use { resp ->
             if (!resp.isSuccessful) throw DownloadFailed(resp.code)
             val resuming = resp.code == 206 && ab > 0
-            // No `?:`: `resp.body` is not nullable since OkHttp 5.
-            val body = resp.body
-            val total: Long = if (resuming) {
-                resp.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
-                    ?: (ab + body.contentLength())
-            } else {
-                body.contentLength()
+            // A 206 from another offset would splice foreign bytes into the PDF; the next attempt starts at 0.
+            if (resuming && rangeStart(resp.header("Content-Range")) != ab) {
+                part.delete()
+                throw IOException("Content-Range does not start at byte $ab")
             }
-            var downloaded = if (resuming) ab else 0L
-            instructions.write(part, resume = resuming).use { from ->
-                body.byteStream().use { input ->
-                    val buf = ByteArray(64 * 1024)
-                    var lastPct = -1
-                    var lastEmit = 0L
-                    var read = input.read(buf)
-                    while (read != -1) {
-                        // Leaving cancels instead of continuing to load in the background.
-                        currentCoroutineContext().ensureActive()
-                        from.write(buf, 0, read)
-                        downloaded += read
-                        val now = System.currentTimeMillis()
-                        val pct = if (total > 0) (downloaded * 100 / total).toInt() else -1
-                        if (pct != lastPct || now - lastEmit > 300) {
-                            lastPct = pct; lastEmit = now
-                            onProgress(downloaded, total)
-                        }
-                        read = input.read(buf)
-                    }
-                }
-            }
-            onProgress(downloaded, total)
+            val total = announcedTotal(resp, ab, resuming)
+            if (total > limit) throw TooLarge()
+            copyInto(resp.body, part, if (resuming) ab else 0L, total, onProgress)
         }
     }
+
+    /** Appends from byte [start] (0: anew); stops at [limit] whatever the server announced. */
+    private suspend fun copyInto(body: ResponseBody, part: File, start: Long, total: Long, onProgress: (Long, Long) -> Unit) {
+        var downloaded = start
+        instructions.write(part, resume = start > 0).use { from ->
+            body.byteStream().use { input ->
+                val buf = ByteArray(64 * 1024)
+                var lastPct = -1
+                var lastEmit = 0L
+                var read = input.read(buf)
+                while (read != -1) {
+                    // Leaving cancels instead of continuing to load in the background.
+                    currentCoroutineContext().ensureActive()
+                    // The announced length can be missing or lie; the bytes written count.
+                    if (downloaded + read > limit) throw TooLarge()
+                    from.write(buf, 0, read)
+                    downloaded += read
+                    val now = System.currentTimeMillis()
+                    val pct = if (total > 0) (downloaded * 100 / total).toInt() else -1
+                    if (pct != lastPct || now - lastEmit > 300) {
+                        lastPct = pct; lastEmit = now
+                        onProgress(downloaded, total)
+                    }
+                    read = input.read(buf)
+                }
+            }
+        }
+        onProgress(downloaded, total)
+    }
 }
+
+/** The whole file's length: from Content-Range on a resume, otherwise the body's; -1 if unknown. */
+private fun announcedTotal(resp: Response, ab: Long, resuming: Boolean): Long =
+    if (resuming) {
+        resp.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull() ?: (ab + resp.body.contentLength())
+    } else {
+        resp.body.contentLength()
+    }
+
+/** The first byte of `bytes <first>-<last>/<total>`, or null if the header is missing or unreadable. */
+internal fun rangeStart(contentRange: String?): Long? =
+    contentRange?.trim()?.removePrefix("bytes")?.trim()?.substringBefore('-')?.toLongOrNull()
 
 /**
  * Derived from the shared api client: newBuilder() takes over the interceptors

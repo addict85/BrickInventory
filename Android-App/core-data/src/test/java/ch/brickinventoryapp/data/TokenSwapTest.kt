@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.TokenRotation
+import ch.brickinventoryapp.contract.testing.testTokenRotation
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.ErrorCode
 import kotlinx.coroutines.CompletableDeferred
@@ -92,7 +93,7 @@ class TokenSwapTest {
                 log += "rotiere $old"
                 brake?.await()
                 rotateOn()
-                when (val r = responses.removeFirstOrNull() ?: Outcome.Success(TokenRotation(success = true, token = "neu"))) {
+                when (val r = responses.removeFirstOrNull() ?: Outcome.Success(testTokenRotation(success = true, token = "neu"))) {
                     is Outcome.Success -> Outcome.Success(SwappedToken(r.data.token, responseOrigin))
                     is Outcome.Failure -> r
                 }

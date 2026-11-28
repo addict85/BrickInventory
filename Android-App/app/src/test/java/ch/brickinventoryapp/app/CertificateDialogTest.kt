@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
 import ch.brickinventoryapp.app.ui.components.CodeScan
 import ch.brickinventoryapp.app.ui.components.closable
@@ -30,18 +32,19 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import java.util.Base64
 
 /**
  * What the certificate dialog shows: where typing is required, the part to be typed
- * is not on the screen (only the beginning); on first contact via a public
- * CA the whole fingerprint for comparison.
+ * is not on the screen (only the beginning). Every question except a code deviation,
+ * first contact and a new key under a public CA included, is typed.
  *
  * Counter-checks (Robolectric, measurable only in CI; job `counter-checks`):
  *   (a) in the dialog again `fingerprintReadable(question.fingerprint)` instead of the
  *       beginning → red “whoever types it sees no part that is to be typed”
  *       (counter-checks/certificate-shows-everything.patch)
- *   (b) `writeOff` only for GEAENDERT → red “via a user CA …”
+ *   (b) the trust button active without input for USER_CA → red “via a user CA …”
  *       (counter-checks/user-ca-one-tap.patch)
  *   (c) CertificateDialog without the branch for CODE_MISMATCH → red “if the
  *       server deviates from the code …” (counter-checks/code-mismatch-in-dialog.patch)
@@ -53,18 +56,20 @@ import java.util.Base64
  *       (counter-checks/transcript-too-short-as-wrong.patch)
  *   (g) schliessbar() with `dismissOnClickOutside = true` → red “tapping outside never closes
  *       the dialog …” (counter-checks/certificate-mismatch-discarded.patch)
- *   (h) `writeOff` also for KEY_NEW → red “with CT requirement a new server key is
- *       shown in full …” (counter-checks/key-new-typing.patch)
- *   (i) the button „stattdessen abtippen“ removed → red “on first contact it can be
- *       typed instead …” (counter-checks/first-contact-without-typing.patch)
- *   (j) `writeOff` for KEY_NEW always off again → red “without CT requirement a
- *       new server key is typed …” (counter-checks/key-new-dialog-without-field.patch)
- *   (k) `writeOff` on first contact again only on request → red “without CT requirement it is
- *       typed on first contact …” (counter-checks/first-contact-dialog-one-tap.patch)
+ *   (j) no field for KEY_NEW → red “a new server key is typed …”
+ *       (counter-checks/key-new-dialog-without-field.patch)
+ *   (k) the trust button active without input on first contact → red “on first contact it is typed …”
+ *       (counter-checks/first-contact-dialog-one-tap.patch)
  *   (l) the scan offered under a public CA too (`codeScan.takeIf { true }`) → red “under a public
  *       CA there is nothing to scan” (counter-checks/certificate-scan-public.patch)
  *   (m) scanError() silent for FITS_NOT → red “a scanned code that does not fit …”
  *       (counter-checks/certificate-scan-mismatch-silent.patch)
+ *   (n) the manual comparison open from the start despite a QR route → red “with a QR route the
+ *       scan comes first …” (counter-checks/certificate-manual-open-with-qr.patch)
+ *   (o) a third sentence in a German explanation → red “every explanation has at most two
+ *       sentences …” (counter-checks/certificate-text-three-sentences.patch)
+ *   (p) a failed scan leaves the manual comparison folded → red “a scanned code that does not fit …”
+ *       (counter-checks/certificate-scan-error-folded.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class CertificateDialogTest {
@@ -79,11 +84,10 @@ class CertificateDialogTest {
     private fun show(
         kind: CertificateUnresolved.Kind,
         expected: String? = null,
-        ct: Boolean = false,
         codeScan: CodeScan? = null,
         trustOn: (String?) -> Boolean = { false },
     ) {
-        val question = CertificateUnresolved("nas:8443", fp, kind, expected, ctForced = ct)
+        val question = CertificateUnresolved("nas:8443", fp, kind, expected)
         compose.setContent {
             BrickInventoryManagerTheme {
                 CertificateDialog(question, userCaEnabled = false, trustOn = trustOn, onUserCa = {}, onCancel = {},
@@ -163,13 +167,6 @@ class CertificateDialogTest {
     }
 
     @Test
-    fun `on first contact via a public CA the whole fingerprint is shown`() {
-        show(CertificateUnresolved.Kind.FIRST_CONTACT, ct = true)
-        assertEquals(1, shown(hex))
-        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsEnabled()
-    }
-
-    @Test
     fun `if the server deviates from the code there is nothing to confirm`() {
         val aloud = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         show(CertificateUnresolved.Kind.CODE_MISMATCH, expected = aloud)
@@ -200,20 +197,7 @@ class CertificateDialogTest {
     }
 
     @Test
-    fun `with CT requirement a new server key is shown in full and applies without typing`() {
-        val previous = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-        var accepted: String? = "nie"
-        show(CertificateUnresolved.Kind.KEY_NEW, expected = previous, ct = true) { accepted = it; true }
-        compose.onNodeWithText(ctx.getString(R.string.cert_title_key_new)).assertExists()
-        assertEquals("the new key is shown in full", 1, shown(hex))
-        assertEquals("the previous one too", 1, shown(fingerprintReadable(previous)))
-        assertEquals("no field to type it in", 0, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
-        compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsEnabled().performClick()
-        assertEquals(null, accepted)
-    }
-
-    @Test
-    fun `without CT requirement a new server key is typed, only the beginning is shown`() {
+    fun `a new server key is typed, only the beginning is shown`() {
         var accepted: String? = null
         show(CertificateUnresolved.Kind.KEY_NEW, expected = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") { accepted = it; true }
         assertEquals("what is to be typed in is not shown", 0, shown(hex.takeLast(35)))
@@ -221,19 +205,6 @@ class CertificateDialogTest {
         compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsNotEnabled()
         field().performTextInput(hex.replace(":", "").takeLast(24))
         compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsEnabled().performClick()
-        assertEquals(hex.replace(":", "").takeLast(24), accepted?.replace(":", ""))
-    }
-
-    @Test
-    fun `on first contact it can be typed instead, then only the beginning is shown`() {
-        var accepted: String? = null
-        show(CertificateUnresolved.Kind.FIRST_CONTACT, ct = true) { accepted = it; true }
-        compose.onNodeWithText(ctx.getString(R.string.cert_first_contact_type)).performClick()
-        compose.waitForIdle()
-        assertEquals("what is to be typed in is no longer shown", 0, shown(hex.takeLast(35)))
-        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsNotEnabled()
-        field().performTextInput(hex.replace(":", "").takeLast(24))
-        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsEnabled().performClick()
         assertEquals(hex.replace(":", "").takeLast(24), accepted?.replace(":", ""))
     }
 
@@ -258,22 +229,55 @@ class CertificateDialogTest {
         compose.onNodeWithText(ctx.getString(R.string.cert_trust_new)).assertIsNotEnabled()
     }
 
+    /** One main action instead of a screen of text: the scan on top, typing folded below it. */
+    @Test
+    fun `with a QR route the scan comes first, comparing by hand waits folded below it`() {
+        show(CertificateUnresolved.Kind.UNKNOWN_CA,
+            codeScan = fakeScan("brickinventory-cert:v1:spki-sha256:00", CodeCheck.MATCHES, mutableListOf()))
+        val scan = compose.onNodeWithText(ctx.getString(R.string.cert_scan_qr)).fetchSemanticsNode().boundsInRoot
+        val manual = compose.onNodeWithText(ctx.getString(R.string.cert_manual_compare))
+        assertTrue("the scan does not stand above the manual comparison", scan.bottom <= manual.fetchSemanticsNode().boundsInRoot.top)
+        assertEquals("no field before choosing to compare", 0, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
+        assertEquals("no trust button without a way to trust", 0, shown(ctx.getString(R.string.cert_trust)))
+        manual.performClick()
+        compose.waitForIdle()
+        assertEquals(1, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
+        compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsNotEnabled()
+        assertEquals("the beginning only", 0, shown(hex.takeLast(35)))
+    }
+
+    /** Where to find the fingerprint is said once, below the field; the explanation stays short. */
+    @Test
+    fun `every explanation has at most two sentences in both languages`() {
+        val texts = listOf(R.string.cert_text_first_contact_type, R.string.cert_text_unknown, R.string.cert_text_user_ca,
+            R.string.cert_text_changed, R.string.cert_text_key_new)
+        for (language in listOf("de-rCH", "en-rGB")) {
+            RuntimeEnvironment.setQualifiers(language)
+            val r = ApplicationProvider.getApplicationContext<Context>()
+            for (id in texts) {
+                val text = r.getString(id, "nas")
+                val sentences = text.trim().split(Regex("""(?<=[.!?])\s+(?=\p{Lu}|%|\d)""")).size
+                assertTrue("$language: „$text“ has $sentences sentences", sentences <= 2)
+                assertFalse("$language: „$text“ repeats the instructions", '\n' in text)
+            }
+        }
+    }
+
     @Test
     fun `under a public CA there is nothing to scan`() {
         val seen = mutableListOf<String>()
-        show(CertificateUnresolved.Kind.FIRST_CONTACT, ct = true,
+        show(CertificateUnresolved.Kind.FIRST_CONTACT,
             codeScan = fakeScan("brickinventory-cert:v1:spki-sha256:00", CodeCheck.MATCHES, seen))
         assertEquals(0, shown(ctx.getString(R.string.cert_scan_qr)))
     }
 
-    /** Android 11–15: without CT a misissued chain would get through with a tap. */
+    /** On every API level: a misissued public chain would otherwise get through with a tap. */
     @Test
-    fun `without CT requirement it is typed on first contact, a tap is not enough`() {
+    fun `on first contact it is typed, a tap is not enough`() {
         var accepted: String? = null
         show(CertificateUnresolved.Kind.FIRST_CONTACT) { accepted = it; true }
         compose.onNodeWithText(ctx.getString(R.string.cert_text_first_contact_type, "nas")).assertExists()
         assertEquals("what is to be typed in is not shown", 0, shown(hex.takeLast(35)))
-        assertEquals("typing it in is not a choice", 0, shown(ctx.getString(R.string.cert_first_contact_type)))
         compose.onNodeWithText(ctx.getString(R.string.cert_first_contact_input)).assertExists()
         compose.onNodeWithText(ctx.getString(R.string.cert_trust)).assertIsNotEnabled()
         field().performTextInput(hex.replace(":", "").takeLast(24))

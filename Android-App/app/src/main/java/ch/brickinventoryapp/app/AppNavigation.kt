@@ -8,7 +8,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
@@ -143,21 +142,22 @@ internal fun startRoute(target: StartTarget): Any = when (target) {
 /**
  * Four inventory destinations and “More” — Material provides at most five; the rest stands
  * grouped on “More”. Icons without description: the label stands next to them,
- * otherwise TalkBack reads twice. The watchlist moved to “More” for the comparison tool.
+ * otherwise TalkBack reads twice. The wishlist holds data of its own; the price comparison
+ * only opens toppreise.ch and sits as an action on set detail and scan result instead.
  */
 @Composable
 internal fun tabTheBar(): List<Tab> {
     val collection = stringResource(R.string.nav_collection)
     val finances = stringResource(R.string.nav_finance)
     val catalog = stringResource(R.string.nav_catalog)
-    val comparison = stringResource(R.string.nav_comparison)
+    val wanted = stringResource(R.string.nav_wanted)
     val more = stringResource(R.string.nav_more)
-    return remember(collection, finances, catalog, comparison, more) {
+    return remember(collection, finances, catalog, wanted, more) {
         listOf(
             Tab(CollectionTarget.Gallery, { Icon(Icons.Default.ViewInAr, null) }, collection),
             Tab(FinanceTarget.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finances),
             Tab(CatalogTarget.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, catalog),
-            Tab(CollectionTarget.Comparison, { Icon(Icons.AutoMirrored.Filled.CompareArrows, null) }, comparison),
+            Tab(CollectionTarget.Wanted, { Icon(Icons.Default.Bookmark, null) }, wanted),
             Tab(AppTarget.More, { Icon(Icons.Default.MoreHoriz, null) }, more),
         )
     }

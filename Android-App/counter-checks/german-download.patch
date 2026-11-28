@@ -1,0 +1,17 @@
+Gegenprobe: „Download“ wieder in einem deutschen Text
+Modul: app
+Test: ch.brickinventoryapp.app.StringResourceParityTest
+Rot: one term per thing in both languages
+
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
+@@ -688,7 +688,7 @@
+     <string name="pdfview_foreign_host">Dieses PDF liegt nicht auf deinem Server. Öffne es auf der Set-Seite mit einer anderen App.</string>
+     <string name="pdfview_page">Seite %1$d</string>
+     <string name="pdfview_unknown_error">Unbekannter Fehler. Bitte nochmals versuchen.</string>
+-    <string name="pdfview_download_failed">Das PDF liess sich nicht herunterladen. Bitte Verbindung prüfen und nochmals versuchen.</string>
++    <string name="pdfview_download_failed">Download fehlgeschlagen</string>
+     <string name="pdfview_print_failed">Drucken fehlgeschlagen</string>
+     <string name="pdfview_saved">Gespeichert: %1$s</string>
+     <string name="pdfview_save_failed">Speichern fehlgeschlagen</string>

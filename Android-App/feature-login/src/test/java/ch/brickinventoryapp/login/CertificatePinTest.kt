@@ -123,25 +123,17 @@ import javax.net.ssl.X509ExtendedTrustManager
  *      counter-checks/leaf-pin-unchecked.patch
  *   AC sameOperator() back to the O= in the subject → red “the same O= in the subject
  *      does not yet make a family …”; counter-checks/family-by-subject.patch
- *   AD in confirm() typing it off on first contact not checked (`optional` even with
- *      input) → red “on first contact, typing it off is optional …”;
- *      counter-checks/first-contact-transcript-unchecked.patch
+ *   AD in confirm() the transcript not checked on first contact → red “on first contact
+ *      a tap is not enough …”; counter-checks/first-contact-transcript-unchecked.patch
  *   AE in checkSheet() `|| fromCode` removed → red “a code from the signed-in screen
  *      swaps the server key …”; counter-checks/leaf-pin-code-asks.patch
- * Counter-checks for the new server key without a CT requirement (check 476e4a4, M1; CI):
+ * Counter-checks for the new server key and the first contact (local JUnit):
  *   AF transcriptNeeded for KEY_NEW back to `false` → red “a new server key
- *      under the same public root …” (“without a CT requirement, a tap is not enough”);
+ *      under the same public root …” (“A tap is not enough”);
  *      counter-checks/key-new-one-tap.patch
- *   AG checkSheet() does not pass ctForced on → red “with a CT requirement …”;
- *      counter-checks/key-new-without-ct-knowledge.patch
- * Counter-checks for first contact without a CT requirement (deep review A-S-5; kotlinc, local JUnit):
- *   AH transcriptNeeded for ERSTKONTAKT back to `false` → red “without a CT requirement, on
- *      first contact, no tap is enough …”; counter-checks/first-contact-one-tap-without-ct.patch
- *   AI check() reports first contact without ctForced → red “on first contact with
- *      a CT requirement, the comparison is enough”; counter-checks/first-contact-without-ct-knowledge.patch
- * Counter-check for the key change from Android 16 (local JUnit):
- *   AJ in confirm() the line with deviceConfirmationNeeded removed → red “with CT requirement a
- *      new server key needs the screen lock …” (“a tap alone …”)
+ *   AH transcriptNeeded for FIRST_CONTACT back to `false` → red “on first contact a tap is
+ *      not enough …”; counter-checks/first-contact-one-tap-without-ct.patch
+ * That this holds on API 36 too is checked by core-data's ServerTrustApi36Test.
  */
 class CertificatePinTest {
 
@@ -187,10 +179,8 @@ class CertificatePinTest {
         own: String = own(),
         foreign: X509ExtendedTrustManager = userCaTrust,
         families: Map<String, String> = PROBE_FAMILY,
-        ct: Boolean = false,
     ): Boolean {
-        val tm = PinTrust(userCaTrust, pins, ownServer = { own }, question = question, foreignHosts = foreign, families = families,
-            ctForced = ct)
+        val tm = PinTrust(userCaTrust, pins, ownServer = { own }, question = question, foreignHosts = foreign, families = families)
         val ctx = SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
         val c = OkHttpClient.Builder().sslSocketFactory(ctx.socketFactory, tm)
             .connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build()
@@ -351,18 +341,9 @@ class CertificatePinTest {
         assertTrue(fetch(system(FOREIGN)))
     }
 
+    /** On every API level: a misissued chain from any public CA would otherwise get through with a tap. */
     @Test
-    fun `on first contact with CT requirement the comparison suffices`() {
-        launch()
-        assertFalse(fetch(system(ROOT), ct = true))
-        assertEquals(CertificateUnresolved.Kind.FIRST_CONTACT, question.open.value?.kind)
-        assertFalse(question.open.value!!.transcriptNeeded)
-        assertTrue("The chain was checked by the system including CT", question.confirm(pins))
-    }
-
-    /** Android 11–15: without CT, a misissued chain from any public CA would get through with a tap. */
-    @Test
-    fun `without CT requirement a tap is not enough on first contact, the fingerprint is transcribed`() {
+    fun `on first contact a tap is not enough, the fingerprint is transcribed`() {
         launch()
         assertFalse(fetch(system(ROOT)))
         val f = question.open.value!!
@@ -722,27 +703,12 @@ class CertificatePinTest {
         assertEquals(spkiFingerprint(cert(PUB_SHEET_B)), f.fingerprint)
         assertEquals("The root pin stays", spkiFingerprint(cert(PUB_ROOT)), pins.pin(own()))
         assertTrue(f.transcriptNeeded)
-        assertFalse("Without CT obligation a tap is not enough", question.confirm(pins))
+        assertFalse("A tap is not enough", question.confirm(pins))
         assertFalse("Typed off wrongly", question.confirm(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
         assertEquals(spkiFingerprint(cert(PUB_SHEET_A)), pins.pin(sheetPinKey(own())))
         assertTrue("Typed off, the new key applies", question.confirm(pins, copied()))
         assertEquals(spkiFingerprint(cert(PUB_SHEET_B)), pins.pin(sheetPinKey(own())))
         assertTrue(fetch(system(PUB_ROOT)))
-    }
-
-    @Test
-    fun `with CT requirement a new server key needs the screen lock, not a transcript`() {
-        launch(PUB_SHEET_B_KEY, listOf(PUB_SHEET_B, PUB_ZW_B))
-        pins.rememberPin(own(), spkiFingerprint(cert(PUB_ROOT)))
-        pins.rememberPin(sheetPinKey(own()), spkiFingerprint(cert(PUB_SHEET_A)))
-        assertFalse(fetch(system(PUB_ROOT), ct = true))
-        val f = question.open.value!!
-        assertEquals(CertificateUnresolved.Kind.KEY_NEW, f.kind)
-        assertFalse("The system checked CT", f.transcriptNeeded)
-        assertTrue(f.deviceConfirmationNeeded)
-        assertFalse("A tap alone does not change the key", question.confirm(pins))
-        assertTrue("After the screen lock the new key applies", question.confirm(pins, deviceConfirmed = true))
-        assertTrue(fetch(system(PUB_ROOT), ct = true))
     }
 
     @Test
@@ -787,17 +753,6 @@ class CertificatePinTest {
         assertFalse("ISRG and Google are different operators",
             CA_FAMILIES["C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M="] == CA_FAMILIES["hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc="])
         assertTrue(CA_FAMILIES.keys.all { Base64.getDecoder().decode(it).size == 32 })
-    }
-
-    @Test
-    fun `on first contact one may type, wrongly typed input does not apply`() {
-        launch()
-        assertFalse(fetch(system(ROOT), ct = true))
-        assertEquals(CertificateUnresolved.Kind.FIRST_CONTACT, question.open.value?.kind)
-        assertFalse("Typed off wrongly", question.confirm(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
-        assertNull(pins.pin(own()))
-        assertTrue("Typed off correctly", question.confirm(pins, copied()))
-        assertTrue(fetch(system(ROOT), ct = true))
     }
 
     private companion object {

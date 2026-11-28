@@ -22,9 +22,18 @@ if (require.main === module) {
     stdio: 'inherit',
   });
   const { openapi } = require(path.join(ROOT, 'dist', 'src', 'contract', 'openapi.js'));
+  /** The file's text, or null when it does not exist yet; read once, no separate exists check. */
+  const current = (/** @type {string} */ file) => {
+    try {
+      return fs.readFileSync(file, 'utf8');
+    } catch (e) {
+      if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') return null;
+      throw e;
+    }
+  };
   /** Only a changed file is written: an unchanged run leaves the tree untouched. */
   const write = (/** @type {string} */ file, /** @type {string} */ text) => {
-    if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === text) return;
+    if (current(file) === text) return;
     fs.writeFileSync(file, text);
     console.log(`geschrieben: ${path.relative(ROOT, file)}`);
   };
@@ -35,7 +44,7 @@ if (require.main === module) {
   write(types.TARGET_FILE, types.create(JSON.parse(fs.readFileSync(OUT_FILE_V2, 'utf8'))));
   // The app speaks v2 as well; the v1 document stays for older app versions until the sunset.
   const kotlin = require('./contract-kotlin-dtos.js');
-  write(kotlin.TARGET_FILE, kotlin.create(JSON.parse(fs.readFileSync(OUT_FILE_V2, 'utf8'))));
+  kotlin.write(kotlin.files(JSON.parse(fs.readFileSync(OUT_FILE_V2, 'utf8'))));
 }
 
 module.exports = { OUT_FILE, OUT_FILE_V2, asText };

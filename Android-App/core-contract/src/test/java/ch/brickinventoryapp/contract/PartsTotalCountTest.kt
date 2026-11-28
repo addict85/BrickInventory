@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.contract
 
 import ch.brickinventoryapp.contract.mapping.asView
-import kotlinx.serialization.json.Json
+import ch.brickinventoryapp.contract.testing.decodeCompleted
+import ch.brickinventoryapp.contract.testing.testDashboardStats
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -19,10 +20,8 @@ import org.junit.Test
  */
 class PartsTotalCountTest {
 
-    private val json = Json { ignoreUnknownKeys = true }
-
-    private fun parts(text: String) = json.decodeFromString(PartsStatsResponse.serializer(), text).stats!!.asView()
-    private fun stats(text: String) = json.decodeFromString(StatsResponse.serializer(), text).stats!!.asView()
+    private fun parts(text: String) = decodeCompleted(PartsStatsResponse.serializer(), text).stats!!.asView()
+    private fun stats(text: String) = decodeCompleted(StatsResponse.serializer(), text).stats!!.asView()
 
     private val state = """{"total_sets":3,"total_quantity":4,"total_pieces":394,"total_instructions":0,
         "total_minifigs":0,"total_parts":394"""
@@ -50,6 +49,6 @@ class PartsTotalCountTest {
         assertEquals(144, tab.partsTotal)
         assertNull(tab.partsSingle)
         assertNull(collection.partsFromSets)
-        assertEquals(394, DashboardStats(totalSets = 3, totalQuantity = 4, totalPieces = 394, totalInstructions = 0, totalParts = 394, totalMinifigs = 0).asView().totalParts)
+        assertEquals(394, testDashboardStats(totalSets = 3, totalQuantity = 4, totalPieces = 394, totalInstructions = 0, totalParts = 394, totalMinifigs = 0).asView().totalParts)
     }
 }

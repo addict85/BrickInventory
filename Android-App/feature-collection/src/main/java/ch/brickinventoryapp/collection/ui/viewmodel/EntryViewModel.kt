@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.collection.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.collection.ui.BarcodeUiState
@@ -54,6 +55,7 @@ class EntryViewModel @Inject constructor(
     private val wantedList: WantedRepository,
     private val catalog: CatalogRepository,
     private val creator: SetCreator,
+    private val saved: SavedStateHandle,
 ) : ViewModel(), FilterChoice by filter, EntryActions {
 
     val state: StateFlow<AppUiState> = session.state
@@ -62,8 +64,14 @@ class EntryViewModel @Inject constructor(
         logoutSequence(session) { reset() }
     }
 
-    private val _barcodeState = MutableStateFlow(BarcodeUiState())
+    private val _barcodeState = MutableStateFlow(saved.pendingScan() ?: BarcodeUiState())
     val barcodeState: StateFlow<BarcodeUiState> = _barcodeState.asStateFlow()
+
+    init {
+        // A scanned set waiting for "add" survives a process death: scanning again in a shop
+        // is the effort the dialog saves. What is running (add, check) does not come back.
+        viewModelScope.launch { _barcodeState.collect { saved.storePendingScan(it) } }
+    }
 
     private val entryVm = Entry()
     val entryState: StateFlow<EntryUiState> = entryVm.state
@@ -355,3 +363,23 @@ class EntryViewModel @Inject constructor(
 
 /** The job starts right away, in the event stream after one minute. */
 private const val SUPPLEMENT_AFTER_MS = 70_000L
+
+private const val SCAN = "entry.scan"
+
+/** The confirmation dialog's values as a bundle-safe list; null without a pending result. */
+private fun SavedStateHandle.storePendingScan(b: BarcodeUiState) {
+    this[SCAN] = b.result?.let {
+        arrayListOf(it, b.source.name, b.setName, b.imageUrl, b.imageLocal, b.year, b.pieces, b.theme, b.minifigs,
+            b.ownershipQuantity, b.unsafe)
+    }
+}
+
+private fun SavedStateHandle.pendingScan(): BarcodeUiState? {
+    val v = get<ArrayList<Any?>>(SCAN) ?: return null
+    return BarcodeUiState(
+        result = v[0] as String, source = ScannerOrigin.entries.firstOrNull { it.name == v[1] } ?: ScannerOrigin.GALLERY,
+        setName = v[2] as String?, imageUrl = v[3] as String?, imageLocal = v[4] as String?, year = v[5] as Int?,
+        pieces = v[6] as Int?, theme = v[7] as String?, minifigs = v[8] as Int?, ownershipQuantity = v[9] as Int,
+        unsafe = v[10] as Boolean,
+    )
+}

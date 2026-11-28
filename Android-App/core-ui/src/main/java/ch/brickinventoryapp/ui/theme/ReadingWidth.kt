@@ -26,6 +26,9 @@ object ReadingWidth {
      */
     val valueRow = 440.dp
 
+    /** Search fields above grids and lists ([searchFieldWidth][ch.brickinventoryapp.ui.components.searchFieldWidth]). */
+    val search = 720.dp
+
     /** Buttons and input fields in detail cards: with phone proportions beyond 900 dp, they looked unfinished. */
     val controls = 400.dp
 }

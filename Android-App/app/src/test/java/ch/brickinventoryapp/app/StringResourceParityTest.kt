@@ -283,19 +283,24 @@ class StringResourceParityTest {
 
     /**
      * One word per thing (glossary): „Setnummer“, list footers „Total“, „Kaufsumme“ for the
-     * cost; English „Sign in/out“, „Profit/loss“, „administrator rights“.
+     * cost; English „Sign in/out“, „Profit/loss“, „administrator rights“. German typography:
+     * „…“ without a space before it, the dash „ – “, no formal „Ihr“ (the app says „du“).
+     *
      * Counter-check (counter-checks/term-set-number.patch): gallery_set_number again
-     * „Set-Nummer“ → red. Likewise capitals-in-text (PREISSPEICHER) and
-     * default-with-dashes („— Global default —“).
+     * „Set-Nummer“ → red. Likewise capitals-in-text (PREISSPEICHER),
+     * default-with-dashes („— Global default —“) and german-download
+     * (pdfview_download_failed again „Download fehlgeschlagen“).
      */
     @Test
     fun `one term per thing in both languages`() {
         val forbidden = mapOf(
             // Kinds as in the web app, not „Teileart“; „Stück gesamt“ was called „Teile“ in the gallery.
             "values-de/strings.xml" to listOf(Regex("Set-Nummer"), Regex("""\bSumme\b"""), Regex("Kauf gesamt"),
-                Regex("Teileart|Figurenart|Stück gesamt|Webapp|Android App")),
+                Regex("Teileart|Figurenart|Stück gesamt|Webapp|Android App"),
+                Regex("""(?i)(?:down|up)load"""), Regex("Top ?Preise"), Regex("""\bIhr(?:e[mnrs]?)?\b|\bIhnen\b"""),
+                Regex(""" …|\.\.\."""), Regex(""" — """)),
             "values/strings.xml" to listOf(Regex("""(?i)\blog(?:ged)? (?:in|out)\b"""), Regex("Gain/loss"),
-                Regex("""\badmin rights\b""")),
+                Regex("""\badmin rights\b"""), Regex(""" …|\.\.\.""")),
         )
         // No form in the word either: capitals are set by section titles (read out as written),
         // and a choice in dashes read like a placeholder.

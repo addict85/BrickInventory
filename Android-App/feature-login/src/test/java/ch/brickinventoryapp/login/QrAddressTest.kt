@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.login
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.LoginStore
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
@@ -142,7 +143,7 @@ class QrAddressTest {
             testHouseholdRepository(t.api),
             testPartsRepository(t.api))
         val vm = t.track(LoginViewModel(t.session, viewport, t.hints, logout,
-            testAccountRepository(t.api), store, CertificateQuestion(), { false }))
+            testAccountRepository(t.api), store, CertificateQuestion(), { false }, SavedStateHandle()))
         vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x")
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
         assertEquals(emptyList<String>(), store.log.toList())

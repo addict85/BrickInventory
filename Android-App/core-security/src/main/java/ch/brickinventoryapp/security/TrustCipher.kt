@@ -9,6 +9,7 @@ import javax.crypto.spec.SecretKeySpec
  * and the user-CA switch decide on every TLS connection; an error there means „not trusted“.
  * [info] only works unlocked: address, name and orders reveal where the account lives.
  * Which is why there are three outcomes there ([openDetail]); without its own (tests) the first applies there too.
+ * Both hand out a fresh array per call; it is zeroed after use.
  */
 class TrustCipher(
     info: (() -> ByteArray)? = null,
@@ -31,8 +32,13 @@ class TrustCipher(
      * pin). HMAC under a dedicated, derived key; null if the Keystore can't do it.
      */
     fun name(binding: String): String? = runCatching {
-        val nameKey = hmac(trust(), NAMES)
-        Base64.getUrlEncoder().withoutPadding().encodeToString(hmac(nameKey, binding)).take(NAME_LENGTH)
+        val base = trust()
+        val nameKey = try { hmac(base, NAMES) } finally { base.fill(0) }
+        try {
+            Base64.getUrlEncoder().withoutPadding().encodeToString(hmac(nameKey, binding)).take(NAME_LENGTH)
+        } finally {
+            nameKey.fill(0)
+        }
     }.getOrNull()
 
     /** null if the key isn't working right now (locked): then nothing is stored. */

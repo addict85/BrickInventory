@@ -3,10 +3,7 @@ package ch.brickinventoryapp.collection.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableIntStateOf
@@ -20,8 +17,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.collection.ui.ALARM_STATE_DEFAULT
 import ch.brickinventoryapp.collection.ui.SetDetailUiState
@@ -53,13 +48,11 @@ import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.CrossLink
 import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.ProductImage
-import ch.brickinventoryapp.ui.components.QuantitiesButton
+import ch.brickinventoryapp.ui.components.QuantityStepper
 import ch.brickinventoryapp.ui.components.SegmentChoice
 import ch.brickinventoryapp.ui.components.SharedImage
-import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.components.largeFont
 import ch.brickinventoryapp.ui.components.movementReduced
-import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
@@ -219,41 +212,9 @@ private fun SetQuantityRow(set: SetView, actions: SetDetailActions) {
     // A quiet tick per step: the number changes without needing to look.
     val haptics = LocalHapticFeedback.current
     val tick = { haptics.performHapticFeedback(HapticFeedbackType.SegmentTick) }
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = Spacing.tiny),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            stringResource(R.string.common_quantity),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.medium)
-        ) {
-            WithTooltip(stringResource(R.string.cd_qty_decrease)) {
-                QuantitiesButton(onClick = { if (qty > 1) { qty--; tick(); actions.changeQuantityBy(set.setNumber, -1) } }) {
-                    Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
-                        Modifier.size(withFont(18.dp)))
-                }
-            }
-            Text(
-                "$qty",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.widthIn(min = 24.dp),
-                textAlign = TextAlign.Center
-            )
-            WithTooltip(stringResource(R.string.cd_qty_increase)) {
-                QuantitiesButton(onClick = { qty++; tick(); actions.changeQuantityBy(set.setNumber, 1) }) {
-                    Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
-                        Modifier.size(withFont(18.dp)))
-                }
-            }
-        }
-    }
+    QuantityStepper(qty,
+        onFewer = { if (qty > 1) { qty--; tick(); actions.changeQuantityBy(set.setNumber, -1) } },
+        onMore = { qty++; tick(); actions.changeQuantityBy(set.setNumber, 1) })
 }
 
 /** Value tiles above the details — in every design (ValueTiles, core-ui). */

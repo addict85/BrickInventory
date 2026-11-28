@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.management
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
@@ -49,7 +50,7 @@ class MonitoringStartButtonsTest {
     private fun TestScope.vm(): MonitoringViewModel {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val api = paths.onTick()
-        return MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), channel)
+        return MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), channel, SavedStateHandle())
     }
 
     @After

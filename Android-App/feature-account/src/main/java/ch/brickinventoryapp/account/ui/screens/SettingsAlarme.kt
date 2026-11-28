@@ -1,6 +1,10 @@
 package ch.brickinventoryapp.account.ui.screens
 
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -15,12 +19,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import ch.brickinventoryapp.account.ui.AlarmOverviewUiState
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
 import ch.brickinventoryapp.data.alarm.AlarmInput
@@ -28,6 +35,7 @@ import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PriceAlertView
+import ch.brickinventoryapp.model.util.PRICE_ALERT_CHANNEL
 import ch.brickinventoryapp.model.util.resolveThumbUrl
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ConditionRow
@@ -341,9 +349,17 @@ private fun AlarmStateBadge(triggered: Boolean) {
  */
 @Composable
 internal fun PriceAlertCard(an: Boolean, toggleOn: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    var blocked by rememberSaveable { mutableStateOf(priceAlertsBlocked(context)) }
+    // Re-read on every return: the way out of the hint is the system settings.
+    LifecycleResumeEffect(context) {
+        blocked = priceAlertsBlocked(context)
+        onPauseOrDispose { }
+    }
+    // The answer only changes the hint; the switch keeps the wish either way.
     val question = androidx.activity.compose.rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* The answer doesn't matter — reasoning in the comment above this function. */ }
+    ) { blocked = priceAlertsBlocked(context) }
 
     SettingsCard(
         title = stringResource(R.string.detail_alert),
@@ -357,5 +373,45 @@ internal fun PriceAlertCard(an: Boolean, toggleOn: (Boolean) -> Unit) {
             }
             toggleOn(newValue)
         }, hint = stringResource(R.string.alert_notify_hint))
+        if (an && blocked) NotificationsBlockedHint { openNotificationSettings(context) }
+    }
+}
+
+/**
+ * The switch is on, but Android drops the notifications: without this the switch looked
+ * like it worked while nothing arrived. Only the system settings can change it.
+ */
+@Composable
+private fun NotificationsBlockedHint(onOpenSettings: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = Spacing.small)) {
+        Row(verticalAlignment = Alignment.Top) {
+            Icon(Icons.Default.NotificationsOff, null, Modifier.size(withFont(18.dp)),
+                tint = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.width(Spacing.small))
+            Text(stringResource(R.string.alert_notify_blocked), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.alert_open_system_settings)) }
+    }
+}
+
+/**
+ * Whether Android would drop a price alert: notifications off for the app (from Android 13 also
+ * a refused permission) or the price-alert channel muted. The switch only records the wish.
+ */
+private fun priceAlertsBlocked(context: Context): Boolean {
+    val manager = NotificationManagerCompat.from(context)
+    if (!manager.areNotificationsEnabled()) return true
+    return manager.getNotificationChannel(PRICE_ALERT_CHANNEL)?.importance == NotificationManager.IMPORTANCE_NONE
+}
+
+/** This app's notification page; quirky devices without it simply stay where they are. */
+private fun openNotificationSettings(context: Context) {
+    runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
     }
 }

@@ -5,7 +5,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Redeem
@@ -19,7 +18,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.finances.ui.BalanceRun
-import ch.brickinventoryapp.finances.ui.VoucherStep
 import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.voucherSum
 import ch.brickinventoryapp.model.domain.VoucherView
@@ -33,7 +31,6 @@ import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.HintText
 import ch.brickinventoryapp.ui.components.LabelAndValue
 import ch.brickinventoryapp.ui.components.LocalStepGuard
-import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.SecretCopyWarning
 import ch.brickinventoryapp.ui.components.SettingsCard
 import ch.brickinventoryapp.ui.components.WithTooltip
@@ -69,10 +66,6 @@ interface VoucherCardActions {
 
     /** The account's switch: the server removes cards at 0.00 after a balance query. */
     fun setRemoveEmpty(on: Boolean) = Unit
-
-    /** „Delete“ in the open follow-up question ([VoucherUiState.confirmation]). */
-    fun confirm() = Unit
-    fun cancelConfirmation() = Unit
 }
 
 /**
@@ -141,19 +134,6 @@ fun VouchersCard(
         }
         }
       }
-    }
-
-    // Only deleting asks, and only until it runs (VoucherViewModel.require).
-    condition.confirmation?.takeIf { it.step == VoucherStep.DELETE && !it.operation.running }?.let { question ->
-        val number = condition.vouchers.find { it.id == question.id }?.number.orEmpty()
-        Prompt(
-            title = stringResource(R.string.vouchers_delete_title),
-            text = stringResource(R.string.vouchers_delete_confirm, number),
-            confirm = stringResource(R.string.common_delete),
-            onConfirm = actions::confirm,
-            onCancel = actions::cancelConfirmation,
-            symbol = Icons.Default.Delete,
-        )
     }
 
     if (newValue || condition.edited != null) {

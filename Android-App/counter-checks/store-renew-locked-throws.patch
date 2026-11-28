@@ -6,12 +6,12 @@ Rot: sign-out with a locked device deletes the old key, the new one exists only 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
 +++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/StoreKey.kt
-@@ -107,7 +107,7 @@
+@@ -108,7 +108,7 @@
          state++
          // Locked, the new one is only created on the next access: a sign-out in the background
          // should not fail just because the device isn't letting anything be encrypted right now.
--        catchUnlessCancelled { fetch() }
-+        fetch()
+-        catchUnlessCancelled { fetch().fill(0) }
++        fetch().fill(0)
      }
  
      /** Derived with HMAC-SHA256: database and files don't share a key. */

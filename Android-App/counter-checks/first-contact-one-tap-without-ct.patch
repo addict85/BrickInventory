@@ -1,19 +1,18 @@
-Gegenprobe: Der Erstkontakt unter öffentlicher CA gilt auch ohne CT-Pflicht mit einem Tipp
+Gegenprobe: Der Erstkontakt unter öffentlicher CA gilt wieder mit einem Tipp
 Modul: feature-login
 Test: ch.brickinventoryapp.login.CertificatePinTest
-Rot: without CT requirement a tap is not enough on first contact, the fingerprint is transcribed
+Rot: on first contact a tap is not enough, the fingerprint is transcribed
 
 diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
 --- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
 +++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerTrust.kt
-@@ -140,8 +140,8 @@
-      * be confirmed.
+@@ -140,7 +140,8 @@
       */
      val transcriptNeeded: Boolean get() = when (kind) {
--        Kind.CODE_MISMATCH -> false
--        Kind.FIRST_CONTACT, Kind.KEY_NEW -> !ctForced
-+        Kind.FIRST_CONTACT, Kind.CODE_MISMATCH -> false
-+        Kind.KEY_NEW -> !ctForced
-         Kind.UNKNOWN_CA, Kind.USER_CA, Kind.CHANGED -> true
+         Kind.CODE_MISMATCH -> false
+-        Kind.FIRST_CONTACT, Kind.KEY_NEW, Kind.UNKNOWN_CA, Kind.USER_CA, Kind.CHANGED -> true
++        Kind.FIRST_CONTACT -> false
++        Kind.KEY_NEW, Kind.UNKNOWN_CA, Kind.USER_CA, Kind.CHANGED -> true
      }
  
+     enum class Kind {

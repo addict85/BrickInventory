@@ -1,0 +1,17 @@
+Gegenprobe: Der Vertrauensschlüssel bleibt nach dem Bilden eines Eintragsnamens im Speicher
+Modul: core-security
+Test: ch.brickinventoryapp.security.KeyCopyZeroedTest
+Rot: an entry name zeroes
+
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TrustCipher.kt
+@@ -33,7 +33,7 @@
+      */
+     fun name(binding: String): String? = runCatching {
+         val base = trust()
+-        val nameKey = try { hmac(base, NAMES) } finally { base.fill(0) }
++        val nameKey = hmac(base, NAMES)
+         try {
+             Base64.getUrlEncoder().withoutPadding().encodeToString(hmac(nameKey, binding)).take(NAME_LENGTH)
+         } finally {

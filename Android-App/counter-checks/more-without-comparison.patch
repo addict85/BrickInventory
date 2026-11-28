@@ -1,15 +1,17 @@
-Gegenprobe: Merkliste steht nicht unter „Mehr“ (kein gewählter Reiter, kein Zurück)
+Gegenprobe: Preisvergleich steht nicht unter „Mehr“ (kein gewählter Reiter, kein Zurück)
 Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
-Rot: wishlist and build list mark More and lead back there with Back
+Rot: comparison and build list mark More
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -414,6 +414,5 @@
+@@ -434,7 +434,7 @@
+ 
  /** Pages with a bottom bar that are reached via “More” — there “More” stays selected. */
  private val MORE: Set<KClass<out Any>> = setOf(AppTarget.More::class, PartsTarget.PartsList::class,
--    CollectionTarget.Wanted::class, CollectionTarget.WantedItemDetail::class,
-     AccountTarget.Settings::class, ManagementTarget.Monitoring::class)
-
+-    CollectionTarget.Comparison::class, AccountTarget.Settings::class, ManagementTarget.Monitoring::class)
++    AccountTarget.Settings::class, ManagementTarget.Monitoring::class)
+ 
  /** The destinations at which a bar destination counts as selected. */
+ private fun targetsOf(screen: Any): Set<KClass<out Any>> = when (screen) {

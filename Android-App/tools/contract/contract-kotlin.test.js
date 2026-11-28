@@ -1,7 +1,7 @@
 /**
  * The app's routes against the server's contract (src/contract/, as JSON schema as in
  * docs/openapi-v2.json). The Kotlin types themselves are generated from the contract
- * (contract-kotlin-dtos.test.js checks that the file is up to date); what remains here is that every
+ * (contract-kotlin-dtos.test.js checks that the files are up to date); what remains here is that every
  * route of the app reads and sends exactly the generated type of its schema.
  *
  * Counter-checks (measured 14.11.2026):
@@ -30,7 +30,7 @@ const { kotlinFehlercodes, apiRouten, schreibRouten } = require('./kotlin-contra
 const { ANDROID, API } = require('./app-interface.js');
 // Generator and name mapping of the Kotlin types live with the contract (Web-App/scripts).
 const SKRIPTE = path.join(ANDROID, '..', 'Web-App', 'scripts');
-const { className: klassenname, TARGET_FILE } = require(path.join(SKRIPTE, 'contract-kotlin-dtos.js'));
+const { className: klassenname, SOURCE_ROOT, MAIN, present } = require(path.join(SKRIPTE, 'contract-kotlin-dtos.js'));
 const Z = require(path.join(SKRIPTE, 'contract-kotlin-mapping.js'));
 // The contract as the server publishes it (npm run contract:openapi).
 const dok = JSON.parse(fs.readFileSync(path.join(ANDROID, '..', 'Web-App', 'docs', 'openapi-v2.json'), 'utf8'));
@@ -44,7 +44,11 @@ const routen = [
   })),
   ...schreibRouten(API),
 ];
-const erzeugt = new Set([...fs.readFileSync(TARGET_FILE, 'utf8').matchAll(/^(?:data |enum )?class (\w+)/gm)].map(m => m[1]));
+const generated = present()
+  .filter((/** @type {string} */ n) => n.startsWith(`${MAIN}/`))
+  .map((/** @type {string} */ n) => fs.readFileSync(path.join(SOURCE_ROOT, n), 'utf8'))
+  .join('\n');
+const erzeugt = new Set([...generated.matchAll(/^(?:data |enum )?class (\w+)/gm)].map(m => m[1]));
 /** @param {string} p */
 const gleichfoermig = p => p.replace(/\{\w+\}/g, '{}');
 /** Path of the app → operation in the contract. @param {string} methode @param {string} pfad */
@@ -82,7 +86,7 @@ test('the app reads every response with the generated type of its schema', () =>
     geprueft++;
     const soll = kotlinName(ref);
     if (r.typ !== soll) falsch.push(`${r.methode} ${r.pfad}: Kotlin ${r.typ}, erzeugt ${soll}`);
-    if (!erzeugt.has(soll)) falsch.push(`${r.methode} ${r.pfad}: ${soll} fehlt in Contract.kt`);
+    if (!erzeugt.has(soll)) falsch.push(`${r.methode} ${r.pfad}: ${soll} fehlt in den erzeugten Contract*.kt`);
   }
   assert.deepEqual(falsch, []);
   assert.ok(geprueft >= 140, `nur ${geprueft} Antworttypen verglichen`);

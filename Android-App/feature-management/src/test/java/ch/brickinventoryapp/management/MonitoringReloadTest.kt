@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.management
 
+import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.PathServer
@@ -22,6 +23,8 @@ import java.io.File
  * Counter-checks (patches under counter-checks/, not compilable locally, measured by CI):
  *   schedule-without-reload   loadJobs() removed after setJobSchedule → red “after setting …”
  *   cache-clear-without-numbers  loadCacheAndLimits() removed after clearCache → red “after clearing …”
+ *   monitoring-log-window-not-saved  loadLog() without `saved[LOG_MINUTES]` → red “the chosen log
+ *                                    window survives a process death”
  */
 class MonitoringReloadTest {
 
@@ -29,10 +32,15 @@ class MonitoringReloadTest {
         "/api/v2/admin/job-schedule" to """{"success":true}""",
         "/api/v2/admin/jobs" to """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""",
         "/api/v2/admin/cache-clear" to """{"success":true}""",
+        "/api/v2/admin/logs" to """{"success":true}""",
     )
     private val folder = File(System.getProperty("java.io.tmpdir"), "bim-mon-nach-${System.nanoTime()}").apply { mkdirs() }
     private val api = TestApi.forTarget(paths.server)
-    private val vm = MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), MessageChannel())
+    private val saved = SavedStateHandle()
+    private val vm = monitoringVm(saved)
+
+    private fun monitoringVm(handle: SavedStateHandle) =
+        MonitoringViewModel(testManagementRepository(api), testAccountRepository(api), MessageChannel(), handle)
 
     @After
     fun tearDown() {
@@ -48,6 +56,12 @@ class MonitoringReloadTest {
     }
 
     @Test
+    fun `the chosen log window survives a process death`() = runTest {
+        vm.loadLog(60)
+        assertEquals(60, monitoringVm(saved.afterProcessDeath()).managementState.value.logMinutes)
+    }
+
+    @Test
     fun `after clearing the cache the numbers come anew`() = runTest {
         assertTrue(vm.emptyCache(everything = true) is Outcome.Success)
         val after = paths.requests.toList().drop(1)
@@ -55,3 +69,6 @@ class MonitoringReloadTest {
         assertTrue("the cache figures are not fetched again: $after", "GET /api/v2/admin/cache-stats" in after)
     }
 }
+
+/** What a recreated ViewModel finds after a process death: only the values saved in the handle. */
+private fun SavedStateHandle.afterProcessDeath() = SavedStateHandle(keys().associateWith { get<Any?>(it) })

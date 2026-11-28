@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.collection.ui.BarcodeUiState
+import ch.brickinventoryapp.collection.ui.PriceComparisonButton
+import ch.brickinventoryapp.collection.ui.setComparisonUrl
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryActions
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.model.domain.Condition
@@ -30,7 +32,6 @@ import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.shared.ui.ConditionRow
-import ch.brickinventoryapp.shared.ui.CountField
 import ch.brickinventoryapp.shared.ui.InfoBadge
 import ch.brickinventoryapp.shared.ui.OwnerPicker
 import ch.brickinventoryapp.shared.ui.PurchasePriceField
@@ -39,6 +40,8 @@ import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.AddDialog
 import ch.brickinventoryapp.ui.components.ProductImage
+import ch.brickinventoryapp.ui.components.QuantityStepper
+import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.components.movementReduced
 import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Spacing
@@ -81,7 +84,7 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
 
     // Fresh per scanned barcode, and across a rotation (rememberSaveable): price
     // and storage location got lost on rotating.
-    var barcodeQuantity by rememberSaveable(barcodeState.result) { mutableStateOf("1") }
+    var barcodeQuantity by rememberSaveable(barcodeState.result) { mutableIntStateOf(1) }
     var barcodePriceText by rememberSaveable(barcodeState.result) { mutableStateOf("") }
     var barcodeUiState by rememberSaveable(barcodeState.result) { mutableStateOf(state.userDefaultCondition ?: Condition.NEW) }
     // Pre-fill the owner as in the gallery dialog: one's own account. The repository, API
@@ -110,7 +113,7 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
             } else {
                 actions.confirmAddBarcode(EntryRequest(
                     setNumber = barcodeState.result,
-                    quantity = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+                    quantity = barcodeQuantity,
                     purchasePrice = NumericInput.readMoney(barcodePriceText),
                     condition = barcodeUiState,
                     // Without a household, send nothing at all — the server then stays on
@@ -137,9 +140,11 @@ fun BarcodeResultDialog(condition: BarcodeDialogState, actions: EntryActions, im
             OwnerPicker(
                 glance.householdMembers, barcodeOwner, { barcodeOwner = it }
             )
-            // The same fields as "Add set": label, help line, check.
-            CountField(barcodeQuantity, { barcodeQuantity = it }, stringResource(R.string.gallery_quantity_hint))
-            PurchasePriceField(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price))
+            // The same fields as "Add set" and the same stepper as on the set page.
+            QuantityStepper(barcodeQuantity, onFewer = { if (barcodeQuantity > 1) barcodeQuantity-- },
+                onMore = { barcodeQuantity++ })
+            PurchasePriceField(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price),
+                currency = state.currency)
             ConditionRow(
                 condition = barcodeUiState,
                 onUiState = { barcodeUiState = it }
@@ -197,6 +202,20 @@ private fun BarcodeFound(barcodeState: BarcodeUiState, serverUrl: String, imageL
         InfoBadge(stringResource(R.string.barcode_already_owned, barcodeState.ownershipQuantity), icon = Icons.Default.Check)
     HorizontalDivider()
     BarcodeStats(barcodeState)
+    if (!forPartList) ScanComparison(barcodeState)
+}
+
+/**
+ * In the shop the scan answers "what does it cost elsewhere?" before "add it". The dialog has
+ * no snackbar, so a missing browser is said right below the button.
+ */
+@Composable
+private fun ScanComparison(barcodeState: BarcodeUiState) {
+    val url = setComparisonUrl(barcodeState.result.orEmpty(), barcodeState.setName) ?: return
+    var noBrowser by remember(url) { mutableStateOf(false) }
+    PriceComparisonButton(url, onNoApp = { noBrowser = true }, modifier = Modifier.fillMaxWidth())
+    if (noBrowser) Text(stringResource(R.string.common_no_app_to_open), Modifier.announce(),
+        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
 }
 
 /**

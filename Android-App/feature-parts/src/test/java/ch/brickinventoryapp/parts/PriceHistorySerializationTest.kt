@@ -6,8 +6,8 @@ import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.SetsResponse
 import ch.brickinventoryapp.contract.ValuationResponse
 import ch.brickinventoryapp.contract.present
+import ch.brickinventoryapp.contract.testing.decodeCompleted
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -27,9 +27,6 @@ import org.junit.Test
  * that is exactly what is checked here too.
  */
 class PriceHistorySerializationTest {
-
-    // Same configuration as AppModule.provideJson()
-    private val json = BrickJson
 
     private val payload = """{
         "success": true,
@@ -70,7 +67,7 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `both history series arrive separately`() {
-        val r = json.decodeFromString<PriceHistoryResponse>(payload)
+        val r = decodeCompleted<PriceHistoryResponse>(payload)
         assertEquals(2, r.historyNew.size)
         assertEquals(1, r.historyUsed.size)
         assertEquals(780.0, r.historyNew[1].avgPrice!!, 0.0001)
@@ -78,7 +75,7 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `the chart data carry firstRealIndex`() {
-        val chart = json.decodeFromString<PriceHistoryResponse>(payload).chart
+        val chart = decodeCompleted<PriceHistoryResponse>(payload).chart
         assertEquals(listOf("2026-01-01", "2026-02-01"), chart.x)
         val used = chart.values.first { it.name == "U" }
         assertEquals("the key is camelCase, not first_real_index",
@@ -88,7 +85,7 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `market price and development per condition`() {
-        val r = json.decodeFromString<PriceHistoryResponse>(payload)
+        val r = decodeCompleted<PriceHistoryResponse>(payload)
         assertEquals(812.5, r.byCondition.new!!.marketPrice!!, 0.0001)
         assertEquals(6.7, r.byCondition.used!!.pnlPct!!, 0.0001)
         assertEquals(2, r.byCondition.present().size)
@@ -99,7 +96,7 @@ class PriceHistorySerializationTest {
         // The server delivers no entry for conditions without an entry —
         // otherwise there would be a market price without a reference figure, and the
         // percentage next to it would be computed against nothing.
-        val r = json.decodeFromString<PriceHistoryResponse>("""{
+        val r = decodeCompleted<PriceHistoryResponse>("""{
             "success": true, "set_number": "10290-1", "currency": "CHF", "condition": "N",
             "by_condition": {"N": {"market_price": 148.72, "purchase_price": 120.0, "pnl_pct": "23.9", "pnl_percent": 23.9}},
             "history_new": [], "history_used": [],
@@ -113,19 +110,8 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `an old response without the new fields does not break`() {
-        // In case the app and the server ever drift apart: better an empty
-        // chart than a crash in the detail dialog.
-        val r = json.decodeFromString<PriceHistoryResponse>(
-            """{"success": true, "set_number": "75192-1", "currency": "CHF"}""")
-        assertTrue(r.historyNew.isEmpty())
-        assertTrue(r.chart.values.isEmpty())
-        assertTrue(r.byCondition.present().isEmpty())
-    }
-
-    @Test
     fun `the valuation delivers one row per purchase price`() {
-        val v = json.decodeFromString<ValuationResponse>("""{
+        val v = decodeCompleted<ValuationResponse>("""{
             "success": true, "currency": "CHF", "condition": "U",
             "totals": {"min": "0.00", "avg": "390.00", "max": "0.00", "qty_avg": "390.00"},
             "sets": [{
@@ -156,7 +142,7 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `a set without acquisitions stays a single row`() {
-        val v = json.decodeFromString<ValuationResponse>("""{
+        val v = decodeCompleted<ValuationResponse>("""{
             "success": true, "currency": "CHF",
             "totals": {"min": "0.00", "avg": "50.00", "max": "0.00", "qty_avg": "50.00"},
             "sets": [{"set_number": "10290-1", "quantity": 1, "avg_price": 50.0,
@@ -172,7 +158,7 @@ class PriceHistorySerializationTest {
         // "Gebraucht", because `condition` is an aggregate and knows only one
         // value. `conditions` carries both — that is decided on the
         // server, the app computes nothing itself.
-        val r = json.decodeFromString<SetsResponse>("""{
+        val r = decodeCompleted<SetsResponse>("""{
             "success": true, "count": 1,
             "sets": [{"set_number": "75192-1", "condition": "U",
                       "conditions": ["N", "U"], "acq_count": 2, "used_count": 1,
@@ -186,17 +172,8 @@ class PriceHistorySerializationTest {
     }
 
     @Test
-    fun `an old response without conditions stays usable`() {
-        // Then the tile looks as before — a badge from `condition`.
-        val r = json.decodeFromString<SetsResponse>("""{
-            "success": true, "sets": [{"set_number": "10290-1", "condition": "N"}]
-        }""")
-        assertTrue(r.sets.first().conditions.isEmpty())
-    }
-
-    @Test
     fun `manual minifigures also carry the condition list`() {
-        val r = json.decodeFromString<MinifigsResponse>("""{
+        val r = decodeCompleted<MinifigsResponse>("""{
             "success": true,
             "figs": [{"fig_number": "sw0001", "condition": "U",
                       "conditions": ["N", "U"], "source": "manual",
@@ -210,7 +187,7 @@ class PriceHistorySerializationTest {
     fun `manual parts also deliver one row per purchase price`() {
         // The same shape as for sets — the finances tab shows the same pattern
         // for all three kinds.
-        val v = json.decodeFromString<PartsValuationResponse>("""{
+        val v = decodeCompleted<PartsValuationResponse>("""{
             "success": true, "currency": "CHF", "total_value": "3.20",
             "parts": [{
                 "part_number": "6251", "part_name": "Kitten", "color_id": 0,
@@ -240,7 +217,7 @@ class PriceHistorySerializationTest {
         // /api/v2/minifigs/…/price-history deliver the same envelope without the
         // set fields. Those must land on their defaults instead of throwing —
         // otherwise the dialog would stay empty, with nobody seeing why.
-        val r = json.decodeFromString<PriceHistoryResponse>("""{
+        val r = decodeCompleted<PriceHistoryResponse>("""{
             "success": true, "currency": "CHF",
             "by_condition": {"N": {"market_price": 0.6, "purchase_price": 0.5, "pnl_pct": "20.0", "pnl_percent": 20.0}},
             "history_new": [

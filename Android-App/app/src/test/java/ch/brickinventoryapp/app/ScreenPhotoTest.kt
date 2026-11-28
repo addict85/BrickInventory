@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.account.ui.AccountUiState
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
@@ -18,8 +19,8 @@ import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.contract.Voucher
 import ch.brickinventoryapp.contract.mapping.asView
+import ch.brickinventoryapp.contract.testing.testVoucher
 import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.repository.Outcome
@@ -132,7 +133,7 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
         object : SetCreator {
             override fun create(setNumber: String, quantity: Int, purchasePrice: Money?, condition: Condition?,
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
-        }))
+        }, SavedStateHandle()))
 
     @Test
     fun gallery() {
@@ -246,8 +247,8 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
 @Composable
 internal fun Vouchers() {
     val vouchers = VoucherUiState(vouchers = listOf(
-        Voucher(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView(),
-        Voucher(id = 2, number = "6061 9876 5432", amount = 20.0, currency = CurrencyCode("CHF")).asView()))
+        testVoucher(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = CurrencyCode("CHF")).asView(),
+        testVoucher(id = 2, number = "6061 9876 5432", amount = 20.0, currency = CurrencyCode("CHF")).asView()))
     VouchersPage(vouchers, remember { SnackbarHostState() }, onBack = {}, onBalanceAll = {}, exportOn = {}) { newValue, onNew ->
         VouchersCard(
             condition = vouchers, actions = object : VoucherCardActions {}, newValue = newValue, onNew = onNew,

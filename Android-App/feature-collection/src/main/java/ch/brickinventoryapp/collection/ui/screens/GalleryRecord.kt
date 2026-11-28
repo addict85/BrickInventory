@@ -12,16 +12,16 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ConditionRow
-import ch.brickinventoryapp.shared.ui.CountField
 import ch.brickinventoryapp.shared.ui.OwnerPicker
 import ch.brickinventoryapp.shared.ui.PurchasePriceField
 import ch.brickinventoryapp.shared.ui.StorageLocationEntry
-import ch.brickinventoryapp.shared.ui.entryInvalid
 import ch.brickinventoryapp.ui.components.AddDialog
+import ch.brickinventoryapp.ui.components.QuantityStepper
 import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.title
@@ -41,6 +41,7 @@ internal fun GalleryRecord(condition: GalleryState, events: GalleryEvents, onClo
         defaultCondition = condition.app.userDefaultCondition ?: Condition.NEW,
         storageLocations = condition.storage.own.map { it.name },
         default = condition.storage.default?.name ?: "",
+        currency = condition.app.currency,
     )
 }
 
@@ -84,11 +85,13 @@ fun AddSetDialog(
      * no default.
      */
     default: String = "",
+    /** Shown at the purchase price; [CurrencyCode.NONE] shows none. */
+    currency: CurrencyCode = CurrencyCode.NONE,
     /** Tests only: a blinking cursor never lets Robolectric settle. */
     immediatelyFocus: Boolean = true,
 ) {
     var setNumber by rememberSaveable { mutableStateOf("") }
-    var quantity  by rememberSaveable { mutableStateOf("1") }
+    var quantity  by rememberSaveable { mutableIntStateOf(1) }
     // Key is the default: if it only arrives after the dialog opens, the field
     // takes it over; whatever someone has typed in the meantime stays, because the default
     // only changes once.
@@ -117,11 +120,11 @@ fun AddSetDialog(
         if (numberError(setNumber, checked = true) != null) {
             numberMissing = true
             if (immediatelyFocus) setFieldFocus.openFocusIf()
-        } else if (!entryInvalid(quantity, purchasePrice)) {
-            // On an unreadable quantity or price the dialog stays open; the fields show the error.
+        } else if (!NumericInput.priceInvalid(purchasePrice)) {
+            // On an unreadable price the dialog stays open; the fields show the error.
             onAdd(EntryRequest(
                 setNumber = setNumber,
-                quantity = quantity.toIntOrNull() ?: 1,
+                quantity = quantity,
                 purchasePrice = NumericInput.readMoney(purchasePrice),
                 condition = condition,
                 owner = ownerForEntry(householdMembers, owner),
@@ -136,7 +139,7 @@ fun AddSetDialog(
         confirm = stringResource(R.string.gallery_add),
         onConfirm = { submit() },
         onCancel = onDismiss,
-        changed = setNumber.isNotBlank() || quantity != "1" || purchasePrice.isNotEmpty() ||
+        changed = setNumber.isNotBlank() || quantity != 1 || purchasePrice.isNotEmpty() ||
             condition != defaultCondition || storageLocation != default,
         // Without its own "please enter set number" line: the same hint three times
         // at 200% pushed the buttons out of frame; what's missing is said by the field once typing starts.
@@ -157,8 +160,8 @@ fun AddSetDialog(
             shape = Shapes.field,
             keyboardOptions = NumericInput.setNumberKeyboard()
         )
-        CountField(quantity, { quantity = it }, stringResource(R.string.gallery_quantity_hint))
-        PurchasePriceField(purchasePrice, { purchasePrice = it }, stringResource(R.string.gallery_purchase_price)) {
+        QuantityStepper(quantity, onFewer = { if (quantity > 1) quantity-- }, onMore = { quantity++ })
+        PurchasePriceField(purchasePrice, { purchasePrice = it }, stringResource(R.string.gallery_purchase_price), currency) {
             keyboard?.hide(); submit()
         }
         ConditionRow(condition = condition, onUiState = { condition = it })

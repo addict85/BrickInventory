@@ -11,7 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -43,7 +42,6 @@ import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.viewmodel.PurchasesActions
 import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
-import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.UndoMessage
 import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.theme.ReadingWidth
@@ -289,7 +287,6 @@ private fun AcquisitionManagementRow(
         mutableStateOf(acquisition.effectivePrice?.let { fmtInput(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
-    var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
     // Capture unsaved input: onFocusChanged for the normal case,
     // DisposableEffect for navigating back. lastSaved prevents a double save
@@ -320,22 +317,11 @@ private fun AcquisitionManagementRow(
 
     DisposableEffect(acquisition.id) { onDispose { flushPending() } }
 
-    if (showDeleteConfirm) {
-        Prompt(
-            title = stringResource(R.string.acq_delete_question),
-            text = stringResource(R.string.acq_delete_text),
-            confirm = stringResource(R.string.common_delete),
-            onConfirm = { showDeleteConfirm = false; onDelete() },
-            onCancel = { showDeleteConfirm = false },
-        )
-    }
-
     PurchaseDateEdit(acquisition, onSave)
 
     Column(Modifier.fillMaxWidth()) {
-        QuantityPriceRow(acquisition, qtyText, { qtyText = it }, priceText, { priceText = it }, ::flushPending) {
-            showDeleteConfirm = true
-        }
+        // Deletes at once: the page's snackbar offers „Rückgängig“ (purchaseDeleteReserve).
+        QuantityPriceRow(acquisition, qtyText, { qtyText = it }, priceText, { priceText = it }, ::flushPending, onDelete)
         // The condition below quantity and price, full width: in the row the
         // segmented button left the price barely any room on the phone.
         ConditionToggle(
@@ -355,7 +341,7 @@ private fun QuantityPriceRow(
     priceText: String,
     onPrice: (String) -> Unit,
     flush: () -> Unit,
-    onDeleteAsk: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     val estimatedText = stringResource(R.string.acq_price_estimated)
@@ -413,7 +399,7 @@ private fun QuantityPriceRow(
 
         // Delete
         WithTooltip(stringResource(R.string.acq_delete_title)) {
-            IconButton(onClick = onDeleteAsk) {
+            IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
                     tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
             }
