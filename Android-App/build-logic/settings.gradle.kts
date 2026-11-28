@@ -10,12 +10,11 @@ pluginManagement {
             filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
         }
         google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
+        // Google's copy of Central first: on shared CI runners Central answered 429 or broke off,
+        // and Gradle does not fall through to the next repository on an error, only on a miss.
+        // Checksums and signatures (verification-metadata.xml) check every file, whichever copy served it.
+        maven("https://maven-central.storage-download.googleapis.com/maven2/") { name = "CentralMirror" }
         mavenCentral()
-        // Single Central edge nodes answered 404 for fresh Kotlin artifacts on CI runners;
-        // Google's copy of Central is asked only then, and only for Kotlin's groups.
-        maven("https://maven-central.storage-download.googleapis.com/maven2/") {
-            content { includeGroupByRegex("org\\.jetbrains\\.kotlin(\\..*)?") }
-        }
         gradlePluginPortal()
     }
 }
@@ -30,12 +29,11 @@ dependencyResolutionManagement {
             filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
         }
         google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
+        // Google's copy of Central first: on shared CI runners Central answered 429 or broke off,
+        // and Gradle does not fall through to the next repository on an error, only on a miss.
+        // Checksums and signatures (verification-metadata.xml) check every file, whichever copy served it.
+        maven("https://maven-central.storage-download.googleapis.com/maven2/") { name = "CentralMirror" }
         mavenCentral()
-        // Single Central edge nodes answered 404 for fresh Kotlin artifacts on CI runners;
-        // Google's copy of Central is asked only then, and only for Kotlin's groups.
-        maven("https://maven-central.storage-download.googleapis.com/maven2/") {
-            content { includeGroupByRegex("org\\.jetbrains\\.kotlin(\\..*)?") }
-        }
     }
     versionCatalogs {
         create("libs") {
