@@ -6,9 +6,9 @@ Rot: token and address apply already while writing to disk
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -370,13 +370,13 @@
+@@ -360,13 +360,13 @@ class TokenStore @Inject constructor(
          // Not carried over (tampered): the old seal stays, does not match, and the next start signs out.
-         val sealed = datum?.let { sealLoggedIn(it, token) }
+         val sealed = datum?.let { signIn.seal(it, token) }
          _tokenOriginState.value = origin
 -        _authTokenState.value = token
          dataStore.edit {
@@ -20,4 +20,4 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Token
 +        _authTokenState.value = token
      }
  
-     /** The date with a tag of the token; AES-GCM under the details' key, which only works unlocked. */
+     /** Screen off with a secure lock: the interceptor gets a placeholder until unlocking. */

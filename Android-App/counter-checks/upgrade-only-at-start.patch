@@ -3,13 +3,13 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.TokenVaultTest
 Rot: after unlocking a token under the old key goes under the strict one immediately
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -501,6 +501,7 @@
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/LegacyTokenTakeover.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/LegacyTokenTakeover.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/LegacyTokenTakeover.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/LegacyTokenTakeover.kt
+@@ -37,6 +37,7 @@ internal class LegacyTokenTakeover(
       */
-     override suspend fun levelTokenHigh() {
-         if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(vault::stale) != true) return
+     suspend fun levelTokenHigh() {
+         if (dataStore.data.first()[TokenStore.AUTH_TOKEN_ENC]?.let(vault::stale) != true) return
 +        return
          var rekeyed = false
          dataStore.edit { rekeyed = rekey(it) }

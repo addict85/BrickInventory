@@ -6,9 +6,9 @@ Rot: no broad catch swallows the cancellation of a suspending call
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -274,7 +274,7 @@
+@@ -264,7 +264,7 @@ class TokenStore @Inject constructor(
                  catchUnlessCancelled { bindLegacyStock() }
-                 catchUnlessCancelled { dataStore.edit { adoptDetails(it) } }
+                 catchUnlessCancelled { dataStore.edit { details.adoptDetails(it, listOf(ADDRESS, NAME, ORIGIN)) } }
                  // Cleaning up is secondary: if it fails, the app starts anyway.
 -                catchUnlessCancelled { dataStore.edit { PlaintextRemainder.remove(it) } }
 +                try { dataStore.edit { PlaintextRemainder.remove(it) } } catch (_: Exception) { }

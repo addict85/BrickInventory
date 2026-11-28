@@ -6,12 +6,12 @@ Rot: a disk change read while locked keeps the placeholder
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenStore.kt
-@@ -286,7 +286,7 @@
+@@ -252,7 +252,7 @@ class TokenStore @Inject constructor(
              if (secret == null) return@mirror report("")
              var last: VaultFinding? = null
              readPatient({ vault.open(secret).also { last = it } }, null,
 -                report = { report(it.takeUnless { last == VaultFinding.LockedState }) }, pauseUntilUnlock, lock)
 +                report = { report(it) }, pauseUntilUnlock, lock)
          }
-         mirror<List<String?>, String?>({ raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
-             readPatient({ open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
+         mirror<List<String?>, String?>({ details.raw(it, ORIGIN) }, _tokenOriginState) { r, report ->
+             readPatient({ details.open(r, ORIGIN) }, null, report = { report(it.ifEmpty { null }) }, pauseUntilUnlock, lock)
