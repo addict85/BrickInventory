@@ -5,7 +5,7 @@ import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.contract.CatalogSetDetailResponse
 import ch.brickinventoryapp.contract.CatalogSetsResponse
 import ch.brickinventoryapp.contract.testing.decodeCompleted
-import ch.brickinventoryapp.data.util.BrickLinkUrls
+import ch.brickinventoryapp.dataapi.catalog.BrickLinkUrls
 import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals

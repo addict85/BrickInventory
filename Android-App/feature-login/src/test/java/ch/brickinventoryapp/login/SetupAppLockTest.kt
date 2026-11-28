@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.login
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.AppLock
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.LocalAppLock
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
@@ -47,13 +47,13 @@ class SetupAppLockTest {
     @Test
     fun `the setup offers the app lock, with an explanation`() {
         val lock = AppLock({ 0L }, Memory())
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme {
                 CompositionLocalProvider(LocalAppLock provides lock) {
                     SetupScreen(currentUrl = "", onSave = {})
                 }
             }
-         }}
+         } }
         val ctx = compose.activity
         compose.onNodeWithText(ctx.getString(R.string.app_lock_set_up)).performScrollTo()
         compose.onNodeWithText(ctx.getString(R.string.app_lock_title)).assertExists()

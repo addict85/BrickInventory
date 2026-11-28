@@ -41,8 +41,8 @@ import ch.brickinventoryapp.app.MainActivity
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.Credentials
 import ch.brickinventoryapp.data.WidgetStatusStore
-import ch.brickinventoryapp.data.finances.FinancesRepository
 import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.finances.FinancesRepository
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled

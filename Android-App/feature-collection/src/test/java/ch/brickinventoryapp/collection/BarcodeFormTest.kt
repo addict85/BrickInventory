@@ -1,9 +1,7 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
-import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -16,10 +14,12 @@ import ch.brickinventoryapp.collection.ui.dialogs.BarcodeResultDialog
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryActions
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.EntryRequest
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -60,9 +60,9 @@ class BarcodeFormTest {
         val actions = Recorder()
         val state = BarcodeDialogState(AppUiState(currency = CurrencyCode.CHF), ScopeUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon"), StorageUiState())
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme { BarcodeResultDialog(state, actions, coil3.ImageLoader.Builder(ctx).build()) }
-         }}
+         } }
         compose.waitForIdle()
         return actions
     }

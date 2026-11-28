@@ -30,7 +30,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import ch.brickinventoryapp.account.ui.AlarmOverviewUiState
 import ch.brickinventoryapp.account.ui.viewmodel.SettingsActions
-import ch.brickinventoryapp.data.alarm.AlarmInput
+import ch.brickinventoryapp.dataapi.alarm.AlarmInput
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money

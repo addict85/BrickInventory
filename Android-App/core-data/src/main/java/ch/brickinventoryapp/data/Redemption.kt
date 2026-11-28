@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.RedemptionOutcome
 import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
@@ -50,8 +51,6 @@ class LogoutState @Inject constructor(
         }
     }
 }
-
-enum class RedemptionOutcome { REDEEMED, LATER, GIVE_UP }
 
 /**
  * 401 means: the token is already no longer valid, the goal is reached. A

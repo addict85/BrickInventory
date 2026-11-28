@@ -13,7 +13,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import ch.brickinventoryapp.data.PrewarmNetwork
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
 import ch.brickinventoryapp.management.ui.screens.CacheAndLimitsSection
 import ch.brickinventoryapp.management.ui.screens.CacheEvents
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState

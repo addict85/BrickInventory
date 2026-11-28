@@ -1,14 +1,12 @@
 package ch.brickinventoryapp.login
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
-import androidx.compose.runtime.CompositionLocalProvider
 import android.graphics.drawable.ColorDrawable
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -42,7 +40,9 @@ import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.model.appearance.Design
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -95,11 +95,11 @@ class LoginEdgeTest {
     private fun px(dp: Int) = dp * density
 
     private fun show(design: String = "classic", dark: Boolean = false, content: @Composable () -> Unit) {
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = checkNotNull(Design.from(design)) { design }, dark = dark) {
                 Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
-         }}
+         } }
         compose.waitForIdle()
     }
 
@@ -141,12 +141,12 @@ class LoginEdgeTest {
     private fun checkOwnBackground(content: @Composable () -> Unit) {
         compose.runOnUiThread { compose.activity.window.setBackgroundDrawable(ColorDrawable(0xFFF1F5F9.toInt())) }
         var background = Color.Unspecified
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = checkNotNull(Design.from("classic")), dark = true) {
                 background = MaterialTheme.colorScheme.background
                 content()
             }
-         }}
+         } }
         compose.waitForIdle()
         val image = compose.onRoot().captureToImage().toPixelMap()
         // The left edge beside the centered column: no card lies there.
@@ -282,7 +282,7 @@ class LoginEdgeTest {
         // One setContent per test: theme and address switch via the state.
         var fall by mutableStateOf(Triple("classic", false, "https://brick.fritz.box"))
         var card = Color.Unspecified
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             val (design, dark, url) = fall
             BrickInventoryManagerTheme(theme = checkNotNull(Design.from(design)) { design }, dark = dark) {
                 card = MaterialTheme.colorScheme.surface
@@ -290,7 +290,7 @@ class LoginEdgeTest {
                     key(fall) { SetupScreen(currentUrl = url, onSave = {}, development = false) }
                 }
             }
-         }}
+         } }
         val findings = listOf("classic", "brick", "noppe").flatMap { d -> listOf(false, true).map { d to it } }
             .flatMap { (design, dark) ->
                 fall = Triple(design, dark, "https://brick.fritz.box")

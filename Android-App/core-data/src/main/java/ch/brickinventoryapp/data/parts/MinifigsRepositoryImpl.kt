@@ -15,6 +15,7 @@ import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.refreshPaged
 import ch.brickinventoryapp.data.repository.safeCall
 import ch.brickinventoryapp.data.repository.write
+import ch.brickinventoryapp.dataapi.parts.MinifigsRepository
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.FigureEntry

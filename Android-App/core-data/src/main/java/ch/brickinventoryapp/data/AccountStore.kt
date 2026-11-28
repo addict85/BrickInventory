@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.dataapi.session.LoginStore
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import kotlinx.coroutines.flow.Flow

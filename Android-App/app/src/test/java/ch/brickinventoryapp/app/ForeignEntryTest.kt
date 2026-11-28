@@ -16,7 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.createGraph
 import ch.brickinventoryapp.app.ui.components.UserCaDialog
 import ch.brickinventoryapp.data.service.PartListsProvider
-import ch.brickinventoryapp.data.service.partListsSelection
+import ch.brickinventoryapp.dataapi.parts.partListsSelection
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.services.alarm.PriceAlarmWorker
 import ch.brickinventoryapp.state.ui.MessageInbox

@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
-import ch.brickinventoryapp.data.account.AccountView
+import ch.brickinventoryapp.data.account.StoreAccountView
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
 import ch.brickinventoryapp.data.testing.PathServer
+import ch.brickinventoryapp.dataapi.account.AccountView
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.SetSort
@@ -52,7 +53,7 @@ class AccountViewTest {
         "/api/v2/sets" to """{"success":true,"total":2,"sets":[{"set_number":"10-1","name":"Haus"},{"set_number":"11-1","name":"Burg"}]}""",
     )
     private val api = paths.onTick()
-    private val view = AccountView(api, api, api, store, RetryPolicy.ONCE)
+    private val view = StoreAccountView(api, api, api, store, RetryPolicy.ONCE)
     private val sets = SetsRepositoryImpl(api, store, RetryPolicy.ONCE)
 
     @After

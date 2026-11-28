@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.services
 
-import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.dataapi.parts.PdfFailure
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
 import ch.brickinventoryapp.model.outcome.Outcome

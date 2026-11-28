@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.collection.SetFilesRepository
+import ch.brickinventoryapp.dataapi.collection.SetFilesRepository
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled

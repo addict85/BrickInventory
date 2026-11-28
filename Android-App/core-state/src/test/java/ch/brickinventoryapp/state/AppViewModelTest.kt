@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.testing.FakeApi
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.session.SessionRepository

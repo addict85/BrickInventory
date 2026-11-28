@@ -1,13 +1,11 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
-import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -24,10 +22,10 @@ import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.contract.testing.testVoucher
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.dataapi.collection.SetCreateStep
+import ch.brickinventoryapp.dataapi.collection.SetCreator
 import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.finances.ui.screens.VoucherCardActions
@@ -43,11 +41,13 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.outcome.Outcome
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.state.ui.errorTextArgument
 import ch.brickinventoryapp.state.ui.errorTextId
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.uistate.loading
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -125,11 +125,11 @@ class ScreenPhotoTest(private val design: String, private val dark: Boolean, pri
         RuntimeEnvironment.setQualifiers("de-rCH-" + DEVICES.getValue(device))
         Locale.setDefault(Locale.forLanguageTag("de-CH"))
         provide(name, ready, condition)
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = photoDesign(design), dark = dark) {
                 Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
-         }}
+         } }
         // The screen partly loads more on appearing (e.g. the purchases). These
         // responses also come via the main looper, so drive it again.
         provide("$name (shown)", ready, condition)

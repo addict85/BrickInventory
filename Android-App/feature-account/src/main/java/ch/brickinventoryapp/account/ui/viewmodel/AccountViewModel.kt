@@ -7,8 +7,8 @@ import ch.brickinventoryapp.account.ui.DesignChoice
 import ch.brickinventoryapp.account.ui.DevicesPrompt
 import ch.brickinventoryapp.account.ui.DevicesUiState
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
-import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.DesignState
 import ch.brickinventoryapp.model.domain.ErrorCode

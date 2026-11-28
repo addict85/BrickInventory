@@ -9,12 +9,12 @@ import ch.brickinventoryapp.data.RightsSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SessionStore
-import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.testing.FakeApi
 import ch.brickinventoryapp.data.testing.StorageSessionStore
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.account.AccountRepository
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.AccountSettings
 import ch.brickinventoryapp.model.domain.Condition

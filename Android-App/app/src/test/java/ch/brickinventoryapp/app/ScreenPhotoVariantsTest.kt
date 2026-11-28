@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -97,9 +95,6 @@ import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonUiState
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.data.PrewarmNetwork
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testFinancesRepository
@@ -110,6 +105,9 @@ import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.data.testing.testVouchersRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.collection.SetCreateStep
+import ch.brickinventoryapp.dataapi.collection.SetCreator
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.finances.ui.screens.VouchersRoute
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
@@ -135,6 +133,7 @@ import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.text.Message
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.parts.ui.PartListUiState
 import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
 import ch.brickinventoryapp.parts.ui.PartsTarget
@@ -153,6 +152,7 @@ import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.state.ui.viewmodel.AppearanceActions
 import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.OfflineHint
 import ch.brickinventoryapp.ui.screens.CameraPermissionHint
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -248,14 +248,14 @@ class ScreenPhotoVariantsTest {
         if (font != 1f) RuntimeEnvironment.setFontScale(font)
         if (language != null) Locale.setDefault(Locale.forLanguageTag(language.replace("-r", "-")))
         if (wait) provide(name, ready, condition)
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = photoDesign(design), dark = dark) {
                 val density = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(density.density, font)) {
                     Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
-         }}
+         } }
         if (wait) {
             provide("$name (shown)", ready, condition)
             compose.waitForIdle()

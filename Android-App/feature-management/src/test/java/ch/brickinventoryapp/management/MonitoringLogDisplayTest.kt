@@ -11,7 +11,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
-import ch.brickinventoryapp.data.PrewarmNetwork
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.management.ui.screens.CacheEvents
 import ch.brickinventoryapp.management.ui.screens.MonitoringScreen

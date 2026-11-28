@@ -2,35 +2,39 @@ package ch.brickinventoryapp.data.di
 
 import ch.brickinventoryapp.data.account.AccountDataDeleter
 import ch.brickinventoryapp.data.account.AccountDataDeletion
-import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.account.AccountRepositoryImpl
-import ch.brickinventoryapp.data.account.HouseholdRepository
 import ch.brickinventoryapp.data.account.HouseholdRepositoryImpl
-import ch.brickinventoryapp.data.account.ManagementRepository
 import ch.brickinventoryapp.data.account.ManagementRepositoryImpl
 import ch.brickinventoryapp.data.account.StepBindingImpl
-import ch.brickinventoryapp.data.catalog.CatalogRepository
+import ch.brickinventoryapp.data.account.StoreAccountView
 import ch.brickinventoryapp.data.catalog.CatalogRepositoryImpl
-import ch.brickinventoryapp.data.catalog.SetCatalogRepository
 import ch.brickinventoryapp.data.catalog.SetCatalogRepositoryImpl
-import ch.brickinventoryapp.data.collection.AlarmRepository
 import ch.brickinventoryapp.data.collection.AlarmRepositoryImpl
-import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.collection.SetFilesRepositoryImpl
-import ch.brickinventoryapp.data.collection.SetsRepository
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
-import ch.brickinventoryapp.data.collection.WantedRepository
 import ch.brickinventoryapp.data.collection.WantedRepositoryImpl
-import ch.brickinventoryapp.data.finances.FinancesRepository
 import ch.brickinventoryapp.data.finances.FinancesRepositoryImpl
-import ch.brickinventoryapp.data.finances.VouchersRepository
 import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
 import ch.brickinventoryapp.data.local.StoreStockReconciliation
-import ch.brickinventoryapp.data.parts.MinifigsRepository
 import ch.brickinventoryapp.data.parts.MinifigsRepositoryImpl
-import ch.brickinventoryapp.data.parts.PartsRepository
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.data.util.InstructionStore
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.AccountView
+import ch.brickinventoryapp.dataapi.account.HouseholdRepository
+import ch.brickinventoryapp.dataapi.account.ManagementRepository
+import ch.brickinventoryapp.dataapi.catalog.CatalogRepository
+import ch.brickinventoryapp.dataapi.catalog.SetCatalogRepository
+import ch.brickinventoryapp.dataapi.collection.AlarmRepository
+import ch.brickinventoryapp.dataapi.collection.SetFilesRepository
+import ch.brickinventoryapp.dataapi.collection.SetsRepository
+import ch.brickinventoryapp.dataapi.collection.WantedRepository
+import ch.brickinventoryapp.dataapi.finances.FinancesRepository
+import ch.brickinventoryapp.dataapi.finances.VouchersRepository
+import ch.brickinventoryapp.dataapi.instructions.InstructionFiles
+import ch.brickinventoryapp.dataapi.parts.MinifigsRepository
+import ch.brickinventoryapp.dataapi.parts.PartsRepository
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.step.StepBinding
 import dagger.Binds
 import dagger.Module
@@ -57,4 +61,6 @@ internal abstract class RepositoryModule {
     @Binds abstract fun accountData(l: AccountDataDeletion): AccountDataDeleter
     @Binds abstract fun stepBinding(s: StepBindingImpl): StepBinding
     @Binds abstract fun stock(s: StoreStockReconciliation): StockReconciliation
+    @Binds abstract fun accountView(v: StoreAccountView): AccountView
+    @Binds abstract fun instructionFiles(s: InstructionStore): InstructionFiles
 }

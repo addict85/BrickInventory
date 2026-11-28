@@ -2,12 +2,12 @@ package ch.brickinventoryapp.app
 
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.testing.Sources

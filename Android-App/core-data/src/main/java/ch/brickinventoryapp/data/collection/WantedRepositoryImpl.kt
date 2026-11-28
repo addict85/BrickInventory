@@ -18,6 +18,7 @@ import ch.brickinventoryapp.data.repository.safeCall
 import ch.brickinventoryapp.data.repository.sorted
 import ch.brickinventoryapp.data.repository.withoutContent
 import ch.brickinventoryapp.data.repository.write
+import ch.brickinventoryapp.dataapi.collection.WantedRepository
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.EntryRequest

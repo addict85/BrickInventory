@@ -1,8 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
-import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.ui.test.hasClickAction

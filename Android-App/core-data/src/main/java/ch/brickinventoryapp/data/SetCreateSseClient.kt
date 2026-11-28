@@ -2,6 +2,8 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.AddSetResponse
 import ch.brickinventoryapp.data.di.SseClient
+import ch.brickinventoryapp.dataapi.collection.SetCreateStep
+import ch.brickinventoryapp.dataapi.collection.SetCreator
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher
 import ch.brickinventoryapp.model.domain.Condition

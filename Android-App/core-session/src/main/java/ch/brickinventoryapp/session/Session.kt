@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.session
 
 import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.AccountRepository
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.model.domain.AccountOwner

@@ -1,8 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
-import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import android.os.Looper
 import androidx.compose.foundation.layout.Box
@@ -13,6 +10,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,11 +58,13 @@ import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.WantedItemAlarmView
 import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.text.Message
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.uistate.ErrorClass
@@ -117,11 +117,11 @@ class AreaFlowsTest {
     }
 
     private fun show(content: @Composable () -> Unit) {
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
-         }}
+         } }
         compose.waitForIdle()
     }
 
@@ -220,7 +220,7 @@ class AreaFlowsTest {
         val condition = BarcodeDialogState(AppUiState(), ScopeUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", ownershipQuantity = 2), StorageUiState())
         val rotate = StateRestorationTester(compose)
-        rotate.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { BarcodeResultDialog(condition, actions, images) }  }}
+        rotate.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { BarcodeResultDialog(condition, actions, images) }  } }
         compose.onNodeWithText(ctx.getString(R.string.barcode_already_owned, 2)).fetchSemanticsNode("Besitz nicht genannt")
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_qty_increase)).performClick()
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.barcode_purchase_price))).performTextInput("650")

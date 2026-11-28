@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.testing.testTrustCipher
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
 import ch.brickinventoryapp.security.StoreKey
 import ch.brickinventoryapp.security.TokenEncryption
 import kotlinx.coroutines.flow.first

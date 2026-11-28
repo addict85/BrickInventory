@@ -3,7 +3,7 @@ package ch.brickinventoryapp.app.csv
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportRepository
-import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R

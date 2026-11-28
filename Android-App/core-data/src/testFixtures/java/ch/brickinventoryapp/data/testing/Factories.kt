@@ -4,13 +4,10 @@ package ch.brickinventoryapp.data.testing
 
 import ch.brickinventoryapp.data.NetworkState
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
-import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.account.AccountRepositoryImpl
-import ch.brickinventoryapp.data.account.AccountView
-import ch.brickinventoryapp.data.account.HouseholdRepository
 import ch.brickinventoryapp.data.account.HouseholdRepositoryImpl
-import ch.brickinventoryapp.data.account.ManagementRepository
 import ch.brickinventoryapp.data.account.ManagementRepositoryImpl
+import ch.brickinventoryapp.data.account.StoreAccountView
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.api.CatalogApi
 import ch.brickinventoryapp.data.api.FinancesApi
@@ -20,28 +17,32 @@ import ch.brickinventoryapp.data.api.MinifigsApi
 import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.VouchersApi
-import ch.brickinventoryapp.data.catalog.CatalogRepository
 import ch.brickinventoryapp.data.catalog.CatalogRepositoryImpl
-import ch.brickinventoryapp.data.catalog.SetCatalogRepository
 import ch.brickinventoryapp.data.catalog.SetCatalogRepositoryImpl
-import ch.brickinventoryapp.data.collection.AlarmRepository
 import ch.brickinventoryapp.data.collection.AlarmRepositoryImpl
-import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.collection.SetFilesRepositoryImpl
-import ch.brickinventoryapp.data.collection.SetsRepository
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
-import ch.brickinventoryapp.data.collection.WantedRepository
 import ch.brickinventoryapp.data.collection.WantedRepositoryImpl
-import ch.brickinventoryapp.data.finances.FinancesRepository
 import ch.brickinventoryapp.data.finances.FinancesRepositoryImpl
-import ch.brickinventoryapp.data.finances.VouchersRepository
 import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
 import ch.brickinventoryapp.data.local.StoreStockReconciliation
-import ch.brickinventoryapp.data.parts.MinifigsRepository
 import ch.brickinventoryapp.data.parts.MinifigsRepositoryImpl
-import ch.brickinventoryapp.data.parts.PartsRepository
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.AccountView
+import ch.brickinventoryapp.dataapi.account.HouseholdRepository
+import ch.brickinventoryapp.dataapi.account.ManagementRepository
+import ch.brickinventoryapp.dataapi.catalog.CatalogRepository
+import ch.brickinventoryapp.dataapi.catalog.SetCatalogRepository
+import ch.brickinventoryapp.dataapi.collection.AlarmRepository
+import ch.brickinventoryapp.dataapi.collection.SetFilesRepository
+import ch.brickinventoryapp.dataapi.collection.SetsRepository
+import ch.brickinventoryapp.dataapi.collection.WantedRepository
+import ch.brickinventoryapp.dataapi.finances.FinancesRepository
+import ch.brickinventoryapp.dataapi.finances.VouchersRepository
+import ch.brickinventoryapp.dataapi.parts.MinifigsRepository
+import ch.brickinventoryapp.dataapi.parts.PartsRepository
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.Outbox
 import ch.brickinventoryapp.offline.OutboxPlanner
@@ -101,7 +102,7 @@ fun testCatalogRepository(api: CatalogApi, store: OfflineStore = TestStore()): C
 
 /** The view over chosen accounts; with the same [store] as the repositories, so writing asks it again. */
 fun testAccountView(api: BrickApiService, store: OfflineStore = TestStore()): AccountView =
-    AccountView(api, api, api, store, RetryPolicy.ONCE)
+    StoreAccountView(api, api, api, store, RetryPolicy.ONCE)
 
 /** Sets, parts and figures on one shared [store]. */
 fun testStockReconciliation(api: BrickApiService, store: OfflineStore): StockReconciliation =

@@ -3,11 +3,11 @@ package ch.brickinventoryapp.collection
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.collection.ui.CheckPhase
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.collection.SetCreateStep
+import ch.brickinventoryapp.dataapi.collection.SetCreator
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.Money

@@ -6,10 +6,10 @@ Rot: the edge rule forbids area to area, wrong layering, api and core-testing in
 diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
 --- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
 +++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/edges/ModuleEdges.kt
-@@ -55,7 +55,7 @@ object ModuleEdges {
+@@ -59,7 +59,7 @@ object ModuleEdges {
       */
      val withoutUi: Set<String> = setOf(
-         "core-model", "core-ui-state", "core-contract", "core-network", "core-security", "core-offline", "core-data", "core-services",
+         "core-model", "core-ui-state", "core-contract", "core-network", "core-security", "core-offline", "core-data-api", "core-data", "core-services",
 -        "core-session", "core-state",
 +        "core-session",
      )

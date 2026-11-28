@@ -1,13 +1,11 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
-import androidx.compose.runtime.CompositionLocalProvider
 import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.performClick
@@ -16,6 +14,8 @@ import androidx.compose.ui.test.performTextInput
 import ch.brickinventoryapp.collection.ui.screens.ComparisonScreen
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonActions
 import ch.brickinventoryapp.collection.ui.viewmodel.ComparisonUiState
+import ch.brickinventoryapp.network.util.NetworkAddressRules
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -54,7 +54,7 @@ class ComparisonSearchFieldTest {
     }
 
     private fun show() {
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { ComparisonScreen(ComparisonUiState(), actions) }  }}
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { ComparisonScreen(ComparisonUiState(), actions) }  } }
         compose.waitForIdle()
     }
 

@@ -13,4 +13,4 @@ diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/ScreenPhotoV
 -        if (font != 1f) RuntimeEnvironment.setFontScale(font)
          if (language != null) Locale.setDefault(Locale.forLanguageTag(language.replace("-r", "-")))
          if (wait) provide(name, ready, condition)
-         compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+         compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {

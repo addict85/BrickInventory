@@ -11,6 +11,7 @@ import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.safeCall
+import ch.brickinventoryapp.dataapi.account.HouseholdRepository
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.HouseholdStatusView
 import ch.brickinventoryapp.model.domain.InvitationView

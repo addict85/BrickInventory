@@ -6,11 +6,11 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.catalog.ui.CatalogTarget
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.WantedRequest
-import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.data.catalog.CatalogRepository
-import ch.brickinventoryapp.data.collection.AlarmRepository
-import ch.brickinventoryapp.data.collection.WantedRepository
+import ch.brickinventoryapp.dataapi.alarm.AlarmInput
+import ch.brickinventoryapp.dataapi.catalog.CatalogRepository
+import ch.brickinventoryapp.dataapi.collection.AlarmRepository
+import ch.brickinventoryapp.dataapi.collection.WantedRepository
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.WantedItemView

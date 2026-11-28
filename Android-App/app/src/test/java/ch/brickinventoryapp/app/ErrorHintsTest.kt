@@ -1,8 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
-import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -10,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -22,7 +20,9 @@ import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailActions
 import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.text.Message
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.screens.CameraPermissionHint
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.uistate.ErrorClass
@@ -61,11 +61,11 @@ class ErrorHintsTest {
     fun tearDown() = Locale.setDefault(before)
 
     private fun show(content: @Composable () -> Unit) {
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
-         }}
+         } }
         compose.waitForIdle()
     }
 

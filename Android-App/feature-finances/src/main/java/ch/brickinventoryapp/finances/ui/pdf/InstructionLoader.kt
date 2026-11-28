@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.finances.ui.pdf
 
 import android.content.Context
-import ch.brickinventoryapp.data.InstructionRepository
-import ch.brickinventoryapp.data.util.INSTRUCTION_DISPLAY_FOLDER
-import ch.brickinventoryapp.data.util.InstructionStore
-import ch.brickinventoryapp.data.util.pdfStore
+import ch.brickinventoryapp.dataapi.instructions.INSTRUCTION_DISPLAY_FOLDER
+import ch.brickinventoryapp.dataapi.instructions.InstructionFiles
+import ch.brickinventoryapp.dataapi.instructions.InstructionRepository
+import ch.brickinventoryapp.dataapi.instructions.pdfStore
 import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
 import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
@@ -36,14 +36,14 @@ internal interface PdfLoaderModule {
 /**
  * Download, storage and preparation of large instruction manuals, outside the composition:
  * a rotation rebuilds the screen, the download in the ViewModel keeps running.
- * Instruction manuals go onto disk streamed and encrypted ([InstructionStore]),
+ * Instruction manuals go onto disk streamed and encrypted ([InstructionFiles]),
  * vouchers only into memory.
  */
 internal class InstructionLoader @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     /** The network lives in the data layer; here only storage, preparation and page count. */
     private val network: InstructionRepository,
-    private val instructions: InstructionStore,
+    private val instructions: InstructionFiles,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
     /** Counts the pages in the isolated process (PdfRenderService), at the same time the readability test. */
     private val renderer: PdfRenderConnection,

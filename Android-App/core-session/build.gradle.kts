@@ -16,6 +16,7 @@ android {
 dependencies {
     api(project(":core-model"))
     implementation(project(":core-data"))
+    implementation(project(":core-data-api"))
     // NetworkPolicy: address of a failed sign-out, plaintext legacy stock.
     implementation(project(":core-network"))
     implementation(project(":core-resources"))

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.state.ui
 
 import ch.brickinventoryapp.data.ScopeFilterStorage
-import ch.brickinventoryapp.data.account.HouseholdRepository
-import ch.brickinventoryapp.data.parts.PartsRepository
+import ch.brickinventoryapp.dataapi.account.HouseholdRepository
+import ch.brickinventoryapp.dataapi.parts.PartsRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.accountOptions

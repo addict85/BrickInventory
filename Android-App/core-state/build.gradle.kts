@@ -18,6 +18,7 @@ dependencies {
     implementation(project(":core-ui-state"))
     // Internal: the areas name core-data themselves.
     implementation(project(":core-data"))
+    implementation(project(":core-data-api"))
     implementation(project(":core-session"))
     implementation(project(":core-security"))
     // NetworkPolicy and the rule for who reports a 401.

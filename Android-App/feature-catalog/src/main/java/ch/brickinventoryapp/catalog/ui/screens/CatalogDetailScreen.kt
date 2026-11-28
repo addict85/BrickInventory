@@ -28,7 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.catalog.ui.WantedRequest
-import ch.brickinventoryapp.data.util.BrickLinkUrls
+import ch.brickinventoryapp.dataapi.catalog.BrickLinkUrls
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.Condition

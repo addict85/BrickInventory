@@ -7,10 +7,10 @@ import ch.brickinventoryapp.collection.ui.Gallery
 import ch.brickinventoryapp.collection.ui.GalleryUiState
 import ch.brickinventoryapp.collection.ui.TilePrice
 import ch.brickinventoryapp.collection.ui.tilePrices
-import ch.brickinventoryapp.data.account.AccountView
-import ch.brickinventoryapp.data.collection.SetsRepository
-import ch.brickinventoryapp.data.finances.FinancesRepository
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.dataapi.account.AccountView
+import ch.brickinventoryapp.dataapi.collection.SetsRepository
+import ch.brickinventoryapp.dataapi.finances.FinancesRepository
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.MetricsView
 import ch.brickinventoryapp.model.domain.SetSort

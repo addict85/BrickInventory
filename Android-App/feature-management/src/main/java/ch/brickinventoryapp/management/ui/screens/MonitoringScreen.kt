@@ -20,7 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import ch.brickinventoryapp.data.PrewarmNetwork
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.management.ui.viewmodel.BackgroundUiState
 import ch.brickinventoryapp.management.ui.viewmodel.Jobstart

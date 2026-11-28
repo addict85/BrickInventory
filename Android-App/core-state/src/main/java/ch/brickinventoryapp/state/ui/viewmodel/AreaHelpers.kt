@@ -2,7 +2,7 @@ package ch.brickinventoryapp.state.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AccountSelection

@@ -3,10 +3,10 @@ package ch.brickinventoryapp.parts.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.account.AccountView
-import ch.brickinventoryapp.data.alarm.AlarmInput
-import ch.brickinventoryapp.data.parts.PartsRepository
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.dataapi.account.AccountView
+import ch.brickinventoryapp.dataapi.alarm.AlarmInput
+import ch.brickinventoryapp.dataapi.parts.PartsRepository
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.CategoryChoice

@@ -3,8 +3,8 @@ package ch.brickinventoryapp.finances.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.finances.FinancesRepository
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.dataapi.finances.FinancesRepository
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.finances.ui.FinanceUiState
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.outcome.Outcome

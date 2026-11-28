@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.login
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.LoginStore
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.dataapi.session.LoginStore
 import ch.brickinventoryapp.login.ui.qrAddressInvalid
 import ch.brickinventoryapp.login.ui.qrSwitchesServer
 import ch.brickinventoryapp.login.ui.viewmodel.LoginViewModel

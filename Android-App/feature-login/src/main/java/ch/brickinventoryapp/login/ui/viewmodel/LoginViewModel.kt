@@ -3,8 +3,8 @@ package ch.brickinventoryapp.login.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.LoginStore
-import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.session.LoginStore
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.LoginUiState
 import ch.brickinventoryapp.login.ui.PasskeyQuery

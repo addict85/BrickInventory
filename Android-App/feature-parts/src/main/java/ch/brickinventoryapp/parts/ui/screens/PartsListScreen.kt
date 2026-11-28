@@ -31,7 +31,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.data.service.partListsSelection
+import ch.brickinventoryapp.dataapi.parts.partListsSelection
 import ch.brickinventoryapp.parts.ui.PartListUiState
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.PlSet

@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.safeCall
+import ch.brickinventoryapp.dataapi.catalog.SetCatalogRepository
 import ch.brickinventoryapp.model.domain.BarcodeView
 import javax.inject.Inject
 import javax.inject.Singleton

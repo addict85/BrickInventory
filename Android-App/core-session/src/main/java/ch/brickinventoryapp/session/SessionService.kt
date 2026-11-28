@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.session
 
 import ch.brickinventoryapp.data.LogoutPath
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.RightsSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SessionStore
-import ch.brickinventoryapp.data.account.AccountRepository
-import ch.brickinventoryapp.data.account.ManagementRepository
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.ManagementRepository
+import ch.brickinventoryapp.dataapi.message.MessageChannel
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.text.Message

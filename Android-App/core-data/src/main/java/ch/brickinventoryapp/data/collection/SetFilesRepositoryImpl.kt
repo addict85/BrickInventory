@@ -10,6 +10,7 @@ import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.safeCall
+import ch.brickinventoryapp.dataapi.collection.SetFilesRepository
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfJobStatus

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.finances
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testVouchersRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.finances.ui.CopyJob
 import ch.brickinventoryapp.finances.ui.VoucherPdfTarget
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel

@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,10 +61,10 @@ import ch.brickinventoryapp.collection.ui.screens.SetCard
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.dataapi.collection.SetCreateStep
+import ch.brickinventoryapp.dataapi.collection.SetCreator
 import ch.brickinventoryapp.finances.ui.FinanceTarget
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.finances.ui.setRows
@@ -75,11 +73,13 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.SegmentChoice
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
@@ -162,14 +162,14 @@ class UisRulesTest {
     fun tearDown() = Locale.setDefault(before)
 
     private fun show(font: Float = 1f, content: @Composable () -> Unit) {
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
                     Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
-         }}
+         } }
         compose.waitForIdle()
     }
 

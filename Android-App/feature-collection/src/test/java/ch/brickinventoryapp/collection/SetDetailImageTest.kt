@@ -1,10 +1,8 @@
 package ch.brickinventoryapp.collection
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
-import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -20,8 +18,10 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import coil3.ImageLoader
 import coil3.asImage
@@ -83,12 +83,12 @@ class SetDetailImageTest {
         val set = SetView("75192-1", name = "Millennium Falcon", quantity = 1,
             imageLocal = "/images/sets/75192-1_thumb.jpg", imageUrl = "https://cdn.rebrickable.com/media/sets/75192-1.jpg")
         val condition = SetDetailState(AppUiState(currency = CurrencyCode.CHF), SetDetailUiState(setDetail = set), StorageUiState())
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 SetDetailScreen(setNumber = "75192-1", condition = condition, actions = Silent,
                     serverUrl = server, imageLoader = images, onBack = {}, onDelete = {})
             }
-         }}
+         } }
         compose.waitForIdle()
         val full = "$server/images/sets/75192-1.jpg"
         assertEquals(listOf(full), recorder.requests.distinct())

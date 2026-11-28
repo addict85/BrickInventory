@@ -3,9 +3,9 @@ package ch.brickinventoryapp.parts.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.account.AccountView
-import ch.brickinventoryapp.data.parts.MinifigsRepository
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.dataapi.account.AccountView
+import ch.brickinventoryapp.dataapi.parts.MinifigsRepository
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.FigureEntry

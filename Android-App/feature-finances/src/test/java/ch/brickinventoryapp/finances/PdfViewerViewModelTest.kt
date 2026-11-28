@@ -4,7 +4,7 @@ import android.os.ParcelFileDescriptor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
-import ch.brickinventoryapp.data.DownloadFailed
+import ch.brickinventoryapp.dataapi.instructions.DownloadFailed
 import ch.brickinventoryapp.finances.ui.pdf.PdfError
 import ch.brickinventoryapp.finances.ui.pdf.PdfHolder
 import ch.brickinventoryapp.finances.ui.pdf.PdfLoadState

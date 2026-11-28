@@ -2,6 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.TokenRotation
 import ch.brickinventoryapp.contract.testing.testTokenRotation
+import ch.brickinventoryapp.dataapi.account.SwappedToken
 import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.coroutines.CompletableDeferred

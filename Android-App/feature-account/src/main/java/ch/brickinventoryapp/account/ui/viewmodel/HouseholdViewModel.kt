@@ -3,8 +3,8 @@ package ch.brickinventoryapp.account.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.account.ui.HouseholdUiState
-import ch.brickinventoryapp.data.account.HouseholdRepository
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.dataapi.account.HouseholdRepository
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.text.Message

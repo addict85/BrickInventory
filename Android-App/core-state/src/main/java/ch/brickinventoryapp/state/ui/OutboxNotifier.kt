@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.state.ui
 
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.local.Baseline
 import ch.brickinventoryapp.data.local.Baseline.DiscardedChange
 import ch.brickinventoryapp.data.local.ReconcileEvent
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.dataapi.message.MessageChannel
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R

@@ -1,10 +1,8 @@
 package ch.brickinventoryapp.catalog
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
-import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
@@ -15,6 +13,8 @@ import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.CatalogSort
+import ch.brickinventoryapp.network.util.NetworkAddressRules
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.uistate.Load
 import coil3.ImageLoader
@@ -83,7 +83,7 @@ class CatalogLocalImagesTest {
         val set = CatalogSetView(setNumber = "75192-1", name = "Millennium Falcon",
             imageLocal = "/images/sets/75192-1_thumb.jpg", imageUrl = cdn)
         val state = CatalogUiState(total = 1, loadedPages = mapOf(1 to listOf(set)))
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { CatalogScreen(state, server, Silent, images, onSetClick = {}) }  }}
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { CatalogScreen(state, server, Silent, images, onSetClick = {}) }  } }
         compose.waitForIdle()
         assertEquals(listOf("$server/images/sets/75192-1_thumb.jpg"), recorder.requests.distinct())
     }
@@ -92,12 +92,12 @@ class CatalogLocalImagesTest {
     fun `the catalog detail loads the server's own full image`() {
         val detail = CatalogDetailView(setNumber = "75192-1", name = "Millennium Falcon",
             imageLocal = "/images/sets/75192-1_thumb.jpg", imageUrl = cdn)
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme {
                 CatalogDetailScreen(setNumber = "75192-1", loaded = Load.Data(detail), imageLoader = images,
                     serverUrl = server, actions = object : CatalogDetailActions {})
             }
-         }}
+         } }
         compose.waitForIdle()
         assertTrue("requested: ${recorder.requests}", recorder.requests.isNotEmpty())
         assertEquals(listOf("$server/images/sets/75192-1.jpg"), recorder.requests.distinct())

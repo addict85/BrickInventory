@@ -2,7 +2,7 @@ package ch.brickinventoryapp.finances.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.DownloadFailed
+import ch.brickinventoryapp.dataapi.instructions.DownloadFailed
 import ch.brickinventoryapp.finances.ui.pdf.PdfError
 import ch.brickinventoryapp.finances.ui.pdf.PdfHolder
 import ch.brickinventoryapp.finances.ui.pdf.PdfLoadState

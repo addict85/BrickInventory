@@ -11,8 +11,8 @@ import androidx.core.content.ContextCompat
 import ch.brickinventoryapp.data.AlarmStore
 import ch.brickinventoryapp.data.Credentials
 import ch.brickinventoryapp.data.StartDestination
-import ch.brickinventoryapp.data.collection.AlarmRepository
 import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.collection.AlarmRepository
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.util.numbersLocale
 import ch.brickinventoryapp.resources.R

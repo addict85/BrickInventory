@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
 import android.content.Context
 import android.os.Looper
 import android.provider.Settings
@@ -84,6 +82,7 @@ import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.model.util.PASSWORD_MIN_CHARS
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.GalleryStatChip
 import ch.brickinventoryapp.shared.ui.MetricsSeries
@@ -92,6 +91,7 @@ import ch.brickinventoryapp.shared.ui.partsBreakdown
 import ch.brickinventoryapp.ui.components.AddFab
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.OfflineHint
 import ch.brickinventoryapp.ui.components.movementReduced
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -166,14 +166,14 @@ class ScaffoldAndFormTest {
     fun tearDown() = Locale.setDefault(before)
 
     private fun show(font: Float = 1f, content: @Composable () -> Unit) {
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
                     Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
-         }}
+         } }
         compose.waitForIdle()
     }
 

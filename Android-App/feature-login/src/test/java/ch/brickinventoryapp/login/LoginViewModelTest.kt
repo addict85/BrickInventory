@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.login
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.LoginStore
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.session.LoginStore
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.PasskeyQuery
 import ch.brickinventoryapp.login.ui.PasskeyResult

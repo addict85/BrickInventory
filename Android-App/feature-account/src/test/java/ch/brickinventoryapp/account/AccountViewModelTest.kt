@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.account
 
 import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.RowsServer
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.testing.SessionFake

@@ -6,9 +6,9 @@ Rot: no reference to the reasoning archive, and no KDoc hangs on nothing
 diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt
 --- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt
 +++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/AlarmFetch.kt
-@@ -14,6 +14,7 @@
+@@ -14,6 +14,7 @@ import ch.brickinventoryapp.model.outcome.Outcome as FetchOutcome
   */
- typealias Question = suspend (String?) -> FetchOutcome<AlarmFetchView>
+ internal typealias Question = suspend (String?) -> FetchOutcome<AlarmFetchView>
  
 +/** A orphaned Block. */
  /**

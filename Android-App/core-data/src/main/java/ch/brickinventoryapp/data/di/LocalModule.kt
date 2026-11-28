@@ -10,13 +10,10 @@ import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStream
 import ch.brickinventoryapp.data.DevicesCleanup
-import ch.brickinventoryapp.data.DevicesSettings
 import ch.brickinventoryapp.data.DevicesStore
 import ch.brickinventoryapp.data.InstructionDownload
-import ch.brickinventoryapp.data.InstructionRepository
 import ch.brickinventoryapp.data.LanguageStore
 import ch.brickinventoryapp.data.LoginState
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.NetworkTrust
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.RedemptionLog
@@ -41,6 +38,9 @@ import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ServerSender
 import ch.brickinventoryapp.data.local.WorkManagerPlanner
 import ch.brickinventoryapp.data.local.WorkManagerRedemption
+import ch.brickinventoryapp.dataapi.device.DevicesSettings
+import ch.brickinventoryapp.dataapi.instructions.InstructionRepository
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher

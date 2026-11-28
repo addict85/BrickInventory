@@ -7,6 +7,7 @@ import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.reconciledSingle
 import ch.brickinventoryapp.data.repository.safeCall
+import ch.brickinventoryapp.dataapi.catalog.CatalogRepository
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogMetaView
 import ch.brickinventoryapp.model.domain.CatalogPageView

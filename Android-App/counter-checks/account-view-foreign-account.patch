@@ -3,10 +3,10 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.AccountViewTest
 Rot: the account view does not show a response for a different account
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/AccountView.kt
-@@ -79,7 +79,7 @@
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/StoreAccountView.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/StoreAccountView.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/StoreAccountView.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/account/StoreAccountView.kt
+@@ -73,7 +73,7 @@ internal class StoreAccountView @Inject constructor(
              launch { store.altered(*trigger).collectLatest { refresh(query) } }
              launch {
                  last.map { e ->

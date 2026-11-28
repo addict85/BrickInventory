@@ -2,8 +2,8 @@ package ch.brickinventoryapp.finances
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.InstructionRepository
 import ch.brickinventoryapp.data.util.InstructionStore
+import ch.brickinventoryapp.dataapi.instructions.InstructionRepository
 import ch.brickinventoryapp.finances.ui.pdf.InstructionLoader
 import ch.brickinventoryapp.finances.ui.pdf.PdfHolder
 import ch.brickinventoryapp.finances.ui.pdf.PdfRenderConnection

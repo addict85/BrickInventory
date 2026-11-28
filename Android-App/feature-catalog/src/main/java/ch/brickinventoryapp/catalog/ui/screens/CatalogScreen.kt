@@ -23,7 +23,7 @@ import ch.brickinventoryapp.catalog.ui.CatalogTarget
 import ch.brickinventoryapp.catalog.ui.CatalogUiState
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogActions
 import ch.brickinventoryapp.catalog.ui.viewmodel.CatalogViewModel
-import ch.brickinventoryapp.data.catalog.CATALOG_PAGE_SIZE
+import ch.brickinventoryapp.dataapi.catalog.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.resources.R

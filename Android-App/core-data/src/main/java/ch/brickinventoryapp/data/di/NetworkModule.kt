@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data.di
 
 import ch.brickinventoryapp.data.ConnectionDrop
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.Redeemer
 import ch.brickinventoryapp.data.RightsSignal
@@ -10,6 +9,7 @@ import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.TokenSwap
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.cache.WarmUp
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.network.util.ImageHostGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.network.util.isOwnImageServer

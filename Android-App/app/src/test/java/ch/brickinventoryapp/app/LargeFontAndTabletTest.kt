@@ -34,10 +34,10 @@ import ch.brickinventoryapp.catalog.ui.CatalogTarget
 import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.dataapi.collection.SetCreateStep
+import ch.brickinventoryapp.dataapi.collection.SetCreator
 import ch.brickinventoryapp.finances.ui.FinanceTarget
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.Condition

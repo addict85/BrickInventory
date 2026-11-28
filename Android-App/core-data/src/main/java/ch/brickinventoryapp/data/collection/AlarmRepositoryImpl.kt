@@ -8,6 +8,7 @@ import ch.brickinventoryapp.data.repository.caughtUp
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.refreshPaged
 import ch.brickinventoryapp.data.repository.safeCall
+import ch.brickinventoryapp.dataapi.collection.AlarmRepository
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.AlarmFetchView
 import ch.brickinventoryapp.model.domain.Condition

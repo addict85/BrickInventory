@@ -3,10 +3,10 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.MessageQueueTest
 Rot: the second message waits for the acknowledgement of the first
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MessageChannel.kt
-@@ -42,7 +42,7 @@
+diff --git a/Android-App/core-data-api/src/main/java/ch/brickinventoryapp/dataapi/message/MessageChannel.kt b/Android-App/core-data-api/src/main/java/ch/brickinventoryapp/dataapi/message/MessageChannel.kt
+--- a/Android-App/core-data-api/src/main/java/ch/brickinventoryapp/dataapi/message/MessageChannel.kt
++++ b/Android-App/core-data-api/src/main/java/ch/brickinventoryapp/dataapi/message/MessageChannel.kt
+@@ -42,7 +42,7 @@ internal class MessageQueue : MessageChannel {
          if (message == null) return
          synchronized(queue) {
              when {

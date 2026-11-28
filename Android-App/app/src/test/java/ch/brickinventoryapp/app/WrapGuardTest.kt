@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.ui.components.LocalAddressRules
-import ch.brickinventoryapp.network.util.NetworkAddressRules
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -31,13 +29,13 @@ import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
 import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.data.SetCreateStep
-import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
+import ch.brickinventoryapp.dataapi.collection.SetCreateStep
+import ch.brickinventoryapp.dataapi.collection.SetCreator
 import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.LoginScreenState
@@ -54,6 +52,8 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.network.util.NetworkAddressRules
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.uistate.Load
 import ch.brickinventoryapp.uistate.loading
@@ -122,14 +122,14 @@ class WrapGuardTest {
         if (font != 1f) RuntimeEnvironment.setFontScale(font)
         Locale.setDefault(Locale.forLanguageTag("de-CH"))
         drive(name, ready)
-        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
                     Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
-         }}
+         } }
         drive("$name (shown)", ready)
         compose.waitForIdle()
         // Stop the clock and advance: fade-ins have then run to completion.

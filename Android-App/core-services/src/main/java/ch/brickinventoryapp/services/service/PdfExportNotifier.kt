@@ -6,9 +6,9 @@ import android.app.PendingIntent
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import ch.brickinventoryapp.data.onlyUnlocked
-import ch.brickinventoryapp.data.service.PdfFailure
-import ch.brickinventoryapp.data.service.partListsSelection
 import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.parts.PdfFailure
+import ch.brickinventoryapp.dataapi.parts.partListsSelection
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.resources.R
 

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.management
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.completingConverter
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.Condition

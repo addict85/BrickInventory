@@ -3,7 +3,6 @@ package ch.brickinventoryapp.data.service
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
@@ -15,31 +14,12 @@ import android.os.storage.StorageManager
 import android.provider.OpenableColumns
 import ch.brickinventoryapp.data.util.PartListVault
 import ch.brickinventoryapp.data.util.readFromStorage
+import ch.brickinventoryapp.dataapi.parts.PART_LIST_NAME
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.io.FileNotFoundException
-
-/** The name under which the target app sees the parts list. */
-internal const val PART_LIST_NAME = "teileliste.pdf"
-
-/** The address of the parts list at the [PartListsProvider]; the authority stands like this in the manifest. */
-internal fun partListsUri(ctx: Context): Uri =
-    Uri.Builder().scheme("content").authority("${ctx.packageName}.teileliste").path(PART_LIST_NAME).build()
-
-/**
- * Open the parts list, always via the system's chooser: it carries the whole
- * inventory, and an app that registered itself as default for PDFs would otherwise get
- * it unnoticed including read permission.
- */
-fun partListsSelection(ctx: Context, title: String): Intent {
-    val view = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(partListsUri(ctx), "application/pdf")
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    return Intent.createChooser(view, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-}
 
 /**
  * Passes on the encrypted parts list without plaintext on disk:

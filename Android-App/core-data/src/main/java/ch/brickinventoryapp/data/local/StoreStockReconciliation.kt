@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.local
 
-import ch.brickinventoryapp.data.collection.SetsRepository
-import ch.brickinventoryapp.data.collection.WantedRepository
-import ch.brickinventoryapp.data.parts.MinifigsRepository
-import ch.brickinventoryapp.data.parts.PartsRepository
-import ch.brickinventoryapp.data.stock.StockReconciliation
+import ch.brickinventoryapp.dataapi.collection.SetsRepository
+import ch.brickinventoryapp.dataapi.collection.WantedRepository
+import ch.brickinventoryapp.dataapi.parts.MinifigsRepository
+import ch.brickinventoryapp.dataapi.parts.PartsRepository
+import ch.brickinventoryapp.dataapi.stock.StockReconciliation
 import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.Slots

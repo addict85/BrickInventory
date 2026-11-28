@@ -13,7 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.data.PrewarmNetwork
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CacheMetricsView

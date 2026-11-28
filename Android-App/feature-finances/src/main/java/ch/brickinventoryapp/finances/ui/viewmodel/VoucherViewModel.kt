@@ -3,9 +3,9 @@ package ch.brickinventoryapp.finances.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.account.AccountRepository
-import ch.brickinventoryapp.data.finances.VouchersRepository
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.finances.VouchersRepository
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.finances.ui.BalanceRun
 import ch.brickinventoryapp.finances.ui.CopyJob
 import ch.brickinventoryapp.finances.ui.VoucherConfirmation

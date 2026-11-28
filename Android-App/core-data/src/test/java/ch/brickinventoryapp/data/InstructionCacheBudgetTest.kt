@@ -2,9 +2,9 @@ package ch.brickinventoryapp.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.util.INSTRUCTION_EXTENSION
-import ch.brickinventoryapp.data.util.INSTRUCTION_PREFIX
 import ch.brickinventoryapp.data.util.InstructionStore
+import ch.brickinventoryapp.dataapi.instructions.INSTRUCTION_EXTENSION
+import ch.brickinventoryapp.dataapi.instructions.INSTRUCTION_PREFIX
 import ch.brickinventoryapp.security.StoreCipher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking

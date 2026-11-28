@@ -2,7 +2,7 @@ package ch.brickinventoryapp.finances
 
 import ch.brickinventoryapp.data.util.PDF_CONFIDENTIAL_FOLDER
 import ch.brickinventoryapp.data.util.cleanUpConfidentialPdfs
-import ch.brickinventoryapp.data.util.pdfStore
+import ch.brickinventoryapp.dataapi.instructions.pdfStore
 import ch.brickinventoryapp.finances.ui.viewmodel.pdfMaySavedBecome
 import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
 import ch.brickinventoryapp.finances.ui.viewmodel.voucherExportAddress

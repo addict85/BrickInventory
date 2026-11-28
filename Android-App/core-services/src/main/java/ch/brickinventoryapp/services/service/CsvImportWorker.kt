@@ -12,8 +12,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.di.Scopes
+import ch.brickinventoryapp.dataapi.collection.SetFilesRepository
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled

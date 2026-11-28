@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.AlarmPlanner
-import ch.brickinventoryapp.data.DevicesSettings
-import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.device.AlarmPlanner
+import ch.brickinventoryapp.dataapi.device.DevicesSettings
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.security.StoreCipher

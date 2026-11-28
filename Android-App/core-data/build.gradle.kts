@@ -24,6 +24,8 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    // What it implements; the areas know only this.
+    implementation(project(":core-data-api"))
     // Only internally: the repositories map the wire format to domain and view types.
     implementation(project(":core-contract"))
     testImplementation(testFixtures(project(":core-contract")))
@@ -55,6 +57,7 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.appcompat)
 
+    testFixturesApi(project(":core-data-api"))
     testFixturesImplementation(project(":core-offline"))
     testFixturesImplementation(testFixtures(project(":core-contract")))
     testFixturesImplementation(project(":core-security"))
