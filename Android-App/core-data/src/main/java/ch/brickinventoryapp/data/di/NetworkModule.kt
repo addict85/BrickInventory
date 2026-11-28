@@ -9,6 +9,7 @@ import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.TokenSwap
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.cache.WarmUp
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.network.util.ImageHostGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
@@ -47,6 +48,7 @@ internal object NetworkModule {
     fun provideApiOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: NetworkStores,
+        appLanguage: AppLanguage,
         sessionExpired: SessionExpiredSignal,
         messages: MessageChannel,
         question: CertificateQuestion,
@@ -55,7 +57,7 @@ internal object NetworkModule {
         required: PasswordRequired,
         factorRequired: SecondFactorRequired,
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, appLanguage = appLanguage,
             messages = messages, question = question, rotation = swapping, rights = rights, required = required,
             factorRequired = factorRequired)
 
@@ -67,12 +69,13 @@ internal object NetworkModule {
         // as for provideImageLoader in this file.
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: NetworkStores,
+        appLanguage: AppLanguage,
         sessionExpired: SessionExpiredSignal,
         preview: PreviewMemory,
         question: CertificateQuestion,
         store: StoreKey,
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, question = question)
+        buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, appLanguage = appLanguage, question = question)
             .newBuilder()
             // ── Persistent store of the thumbnails ──
             //
@@ -176,11 +179,12 @@ internal object NetworkModule {
     fun provideSseOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: NetworkStores,
+        appLanguage: AppLanguage,
         sessionExpired: SessionExpiredSignal,
         question: CertificateQuestion,
         swapping: TokenSwap,
     ): OkHttpClient =
-        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, question = question,
+        buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, appLanguage = appLanguage, question = question,
             rotation = swapping)
             .newBuilder()
             .readTimeout(0, TimeUnit.SECONDS)

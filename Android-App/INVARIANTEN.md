@@ -166,9 +166,9 @@ solange „läuft nicht“ gilt. Datei: `app/csv/CsvImportViewModel.kt` · Test:
 ## Dienste, Dateien, Caches
 
 **Meldungen lokalisiert.** Texte aus den Ressourcen über
-`LanguageManager.localizedContext(…)`; `setSmallIcon()` nur mit monochromem Drawable.
+`AppLanguage.localizedContext(…)` (injiziert); `setSmallIcon()` nur mit monochromem Drawable.
 Dateien: `services/service/CsvImportNotifier.kt`, `services/service/PdfExportNotifier.kt`,
-`services/service/PdfExportManager.kt`, `data/util/LanguageManager.kt` · Test: `ServicePolishTest`
+`services/service/PdfExportManager.kt`, `data/util/AppCompatLanguage.kt` · Test: `ServicePolishTest`
 
 **Keine Vordergrunddienste.** CSV-Import und PDF-Export laufen nach dem Verlassen der App als
 gewöhnliche Worker ohne `setForeground()` weiter und melden ihr Ende; `FOREGROUND_SERVICE`

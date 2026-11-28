@@ -27,7 +27,7 @@ import ch.brickinventoryapp.catalog.ui.CatalogTarget
 import ch.brickinventoryapp.catalog.ui.catalogGraph
 import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.collection.ui.collectionGraph
-import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.finances.ui.FinanceTarget
 import ch.brickinventoryapp.finances.ui.financesGraph
 import ch.brickinventoryapp.login.ui.LoginTarget
@@ -68,7 +68,7 @@ fun BrickInventoryRoute(
     val ctx = LocalContext.current
     LaunchedEffect(snackbarMsg) {
         snackbarMsg?.let {
-            snackbarHostState.showSnackbar(it.asSet(ctx))
+            snackbarHostState.showSnackbar(it.asSet(ctx, activity.appLanguage))
             vm.clearSnackbar()
         }
     }
@@ -164,17 +164,17 @@ internal fun tabTheBar(): List<Tab> {
 }
 
 /**
- * The UI forms the snackbar sentence, in the app's language (LanguageManager);
+ * The UI forms the snackbar sentence, in the app's language ([AppLanguage]);
  * outside the composition, hence not via [ch.brickinventoryapp.ui.sentence]. A value
  * that is itself a message is formed first.
  */
-internal fun Message.asSet(ctx: Context): String {
-    val c = LanguageManager.localizedContext(ctx)
+internal fun Message.asSet(ctx: Context, appLanguage: AppLanguage): String {
+    val c = appLanguage.localizedContext(ctx)
     return when (this) {
         is Message.Text -> text
         is Message.Resource ->
-            if (values.isEmpty()) c.getString(id) else c.getString(id, *values.map { w -> if (w is Message) w.asSet(ctx) else w }.toTypedArray())
-        is Message.Quantity -> c.resources.getQuantityString(id, count, *values.map { w -> if (w is Message) w.asSet(ctx) else w }.toTypedArray())
+            if (values.isEmpty()) c.getString(id) else c.getString(id, *values.map { w -> if (w is Message) w.asSet(ctx, appLanguage) else w }.toTypedArray())
+        is Message.Quantity -> c.resources.getQuantityString(id, count, *values.map { w -> if (w is Message) w.asSet(ctx, appLanguage) else w }.toTypedArray())
     }
 }
 

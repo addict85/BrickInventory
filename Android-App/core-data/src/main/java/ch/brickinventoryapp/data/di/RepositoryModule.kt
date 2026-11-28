@@ -18,6 +18,7 @@ import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
 import ch.brickinventoryapp.data.local.StoreStockReconciliation
 import ch.brickinventoryapp.data.parts.MinifigsRepositoryImpl
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
+import ch.brickinventoryapp.data.util.AppCompatLanguage
 import ch.brickinventoryapp.data.util.InstructionStore
 import ch.brickinventoryapp.dataapi.account.AccountRepository
 import ch.brickinventoryapp.dataapi.account.AccountView
@@ -32,6 +33,7 @@ import ch.brickinventoryapp.dataapi.collection.WantedRepository
 import ch.brickinventoryapp.dataapi.finances.FinancesRepository
 import ch.brickinventoryapp.dataapi.finances.VouchersRepository
 import ch.brickinventoryapp.dataapi.instructions.InstructionFiles
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.dataapi.parts.MinifigsRepository
 import ch.brickinventoryapp.dataapi.parts.PartsRepository
 import ch.brickinventoryapp.dataapi.stock.StockReconciliation
@@ -62,5 +64,6 @@ internal abstract class RepositoryModule {
     @Binds abstract fun stepBinding(s: StepBindingImpl): StepBinding
     @Binds abstract fun stock(s: StoreStockReconciliation): StockReconciliation
     @Binds abstract fun accountView(v: StoreAccountView): AccountView
+    @Binds abstract fun appLanguage(l: AppCompatLanguage): AppLanguage
     @Binds abstract fun instructionFiles(s: InstructionStore): InstructionFiles
 }

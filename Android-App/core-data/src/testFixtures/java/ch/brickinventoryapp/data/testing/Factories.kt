@@ -2,6 +2,7 @@
 
 package ch.brickinventoryapp.data.testing
 
+import android.content.Context
 import ch.brickinventoryapp.data.NetworkState
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.account.AccountRepositoryImpl
@@ -40,6 +41,7 @@ import ch.brickinventoryapp.dataapi.collection.SetsRepository
 import ch.brickinventoryapp.dataapi.collection.WantedRepository
 import ch.brickinventoryapp.dataapi.finances.FinancesRepository
 import ch.brickinventoryapp.dataapi.finances.VouchersRepository
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.dataapi.parts.MinifigsRepository
 import ch.brickinventoryapp.dataapi.parts.PartsRepository
 import ch.brickinventoryapp.dataapi.stock.StockReconciliation
@@ -115,3 +117,9 @@ fun testTrustCipher(key: Byte = 7): TrustCipher = TrustCipher { ByteArray(32) { 
 
 /** A network situation the test sets; the device measures it via the ConnectivityManager. */
 fun testNetworkState(kind: () -> NetworkState.Kind): NetworkState = NetworkState(kind)
+
+/** The app language as tests see it: no AppCompat locale switch, texts from the context as given. */
+object TestAppLanguage : AppLanguage {
+    override fun applyLanguage(languageCode: String) = Unit
+    override fun localizedContext(base: Context): Context = base
+}

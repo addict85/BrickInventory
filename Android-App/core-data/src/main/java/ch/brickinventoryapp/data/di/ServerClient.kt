@@ -8,8 +8,8 @@ import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.TokenMirror
 import ch.brickinventoryapp.data.TokenStore
-import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.data.util.networkRecording
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.network.di.AccessState
@@ -125,6 +125,7 @@ internal fun buildInterceptorClient(
     isApiClient: Boolean,
     sessionExpired: SessionExpiredSignal,
     ctx: android.content.Context,
+    appLanguage: AppLanguage,
     /** Where a version hint goes; only the API client reports. */
     messages: MessageChannel? = null,
     /** Waits for the decision about an unknown certificate. */
@@ -162,7 +163,7 @@ internal fun buildInterceptorClient(
             // The language from the resources: the server answers in the one the UI shows.
             ownHeaders = { original, target ->
                 if (original.header("Accept-Language") == null) target.header("Accept-Language",
-                    LanguageManager.localizedContext(ctx)
+                    appLanguage.localizedContext(ctx)
                         .getString(R.string.lang_code))
             }, rotation = rotation, rightsRevoked = { rights?.report() },
             passwordSwitchNeeded = { required?.report() }, secondFactorRequired = { factorRequired?.report() }))

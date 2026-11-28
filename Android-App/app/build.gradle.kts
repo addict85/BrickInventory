@@ -149,7 +149,7 @@ android {
             "**/libandroidx.graphics.path.so"
         )
     }
-    // The language switches inside the app (LanguageManager); in the app bundle all
+    // The language switches inside the app (AppLanguage); in the app bundle all
     // languages must therefore be in the base APK, otherwise the others' texts would be missing.
     bundle {
         language {

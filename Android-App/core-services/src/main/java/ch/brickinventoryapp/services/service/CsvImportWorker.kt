@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.dataapi.collection.SetFilesRepository
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
@@ -67,10 +68,11 @@ internal class CsvImportWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val files: SetFilesRepository,
     private val sseClient: CsvImportSseClient,
+    private val appLanguage: AppLanguage,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val notifier = AndroidCsvNotifier(applicationContext)
+        val notifier = AndroidCsvNotifier(applicationContext, appLanguage)
         val watch = CsvImportWatch(sseClient::stream, files::getCsvImportStatus, notifier, System::currentTimeMillis)
         return watch.run(BUDGET_MS).toWorkResult()
     }

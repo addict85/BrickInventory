@@ -2,8 +2,6 @@ package ch.brickinventoryapp.app
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.SystemClock
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -30,10 +28,9 @@ import ch.brickinventoryapp.app.ui.components.CertificateDialog
 import ch.brickinventoryapp.app.ui.components.CodeScan
 import ch.brickinventoryapp.app.ui.components.UserCaDialog
 import ch.brickinventoryapp.app.widget.CollectionWidget
-import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.login.ui.screens.CertificateQrScanner
 import ch.brickinventoryapp.model.address.AddressRules
-import ch.brickinventoryapp.model.step.StepBinding
 import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.network.util.AppLog
@@ -75,7 +72,7 @@ class MainActivity : OnlyLauncherStart() {
 
     /** Fetched here once so that no destination searches the activity's ViewModelStore itself. */
     private fun activityState() = ActivityState(
-        app = vm, csvImport = csvImport, appearance = appearance, trust = trust,
+        app = vm, csvImport = csvImport, appearance = appearance, trust = trust, appLanguage = appLanguage,
     )
 
     // Only for the mandatory forms (start password, second factor) that lie above everything.
@@ -86,34 +83,19 @@ class MainActivity : OnlyLauncherStart() {
     // DiskCache instances would run on the same directory.
     @Inject lateinit var imageLoader: ImageLoader
 
-    /** Confirmation via device lock before sensitive steps; valid until the app goes to the background. */
-    private val stepGuard by lazy {
-        DevicesStepProtection(this, noKey = {
-            android.widget.Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.step_no_key),
-                android.widget.Toast.LENGTH_LONG).show()
-        }, binding = stepBinding, declined = { message ->
-            // The server's sentence says what to do (sign in again, set up a screen lock).
-            Toast.makeText(this, message ?: LanguageManager.localizedContext(this).getString(R.string.step_server_error),
-                Toast.LENGTH_LONG).show()
-        }, withoutAttestation = {
-            Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.step_without_attestation),
-                Toast.LENGTH_LONG).show()
-        }) {
-            LanguageManager.localizedContext(this)
-                .getString(R.string.step_subtitle)
-        }
-    }
+    /** Confirmation via device lock before sensitive steps; valid until the app goes to the background (di/ActivityModule). */
+    @Inject lateinit var stepGuard: DevicesStepProtection
 
     /** Optional, default off: after N minutes in the background continue only after the device lock. */
-    private val appLock by lazy { AppLock(SystemClock::elapsedRealtime, AppLockStore(this)) { devicesStarts(this) } }
-
-    /** Binds the step guard to the server (`routes/api/device.ts`). */
-    @Inject lateinit var stepBinding: StepBinding
+    @Inject lateinit var appLock: AppLock
 
     /** The target of a tapped notification; stored only by the non-exported MessageEntryPoint. */
     @Inject lateinit var messageInbox: MessageInbox
 
     @Inject lateinit var priceAlarms: PriceAlertRepository
+
+    /** The app language for texts outside the composition (toasts, the lock prompt). */
+    @Inject lateinit var appLanguage: AppLanguage
 
     /** For the screens that check a server address or open a link (LocalAddressRules). */
     @Inject lateinit var addressRules: AddressRules
@@ -224,7 +206,7 @@ class MainActivity : OnlyLauncherStart() {
                     TrustDialogs()
                     // Topmost: the app lock also covers the mandatory forms.
                     if (locked) AppLockScreen {
-                        val texts = LanguageManager.localizedContext(this@MainActivity)
+                        val texts = appLanguage.localizedContext(this@MainActivity)
                         unlockWithDevicesLock(this@MainActivity, texts.getString(R.string.app_lock_locked),
                             texts.getString(R.string.step_subtitle)) { appLock.unlocked(); drawWidgetNew() }
                     }

@@ -3,7 +3,7 @@ package ch.brickinventoryapp.state.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AppearanceStore
-import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.session.Session
@@ -27,6 +27,7 @@ import javax.inject.Inject
 class AppearanceViewModel @Inject constructor(
     private val prefs: AppearanceStore,
     session: Session,
+    private val appLanguage: AppLanguage,
     private val widget: WidgetKick,
 ) : ViewModel(), AppearanceActions {
 
@@ -71,7 +72,7 @@ class AppearanceViewModel @Inject constructor(
     override fun setLanguage(languageCode: String) {
         viewModelScope.launch {
             prefs.saveLanguage(languageCode)
-            LanguageManager.applyLanguage(languageCode)
+            appLanguage.applyLanguage(languageCode)
         }
     }
 }

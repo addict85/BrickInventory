@@ -6,7 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import ch.brickinventoryapp.data.onlyUnlocked
-import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.dataapi.parts.PdfFailure
 import ch.brickinventoryapp.dataapi.parts.partListsSelection
 import ch.brickinventoryapp.model.domain.PdfProgress
@@ -16,9 +16,9 @@ import ch.brickinventoryapp.resources.R
  * The PDF export's notifications, in the app's language: setApplicationLocales() only
  * localizes activities, so below Android 13 a worker would otherwise speak the system language.
  */
-internal class AndroidPdfNotifier(context: Context) : PdfNotifier {
+internal class AndroidPdfNotifier(context: Context, appLanguage: AppLanguage) : PdfNotifier {
 
-    private val loc: Context = LanguageManager.localizedContext(context)
+    private val loc: Context = appLanguage.localizedContext(context)
     private val manager = loc.getSystemService(NotificationManager::class.java)
     private val sentence: Sentence = { id, args -> loc.getString(id, *args.toTypedArray()) }
 

@@ -15,6 +15,7 @@ import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.TrustStore
+import ch.brickinventoryapp.data.testing.TestAppLanguage
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
@@ -70,8 +71,9 @@ class TestApp(
                 PasswordRequired(), SecondFactorRequired())),
             csvImport = t.track(CsvImportViewModel(CsvImportCoordinator(NoCsvImport, NoCsvImport, t.sync), NoCsvImport, texts,
                 t.messages, t.session)),
-            appearance = t.track(AppearanceViewModel(InMemoryAppearance, t.session) {}),
+            appearance = t.track(AppearanceViewModel(InMemoryAppearance, t.session, TestAppLanguage) {}),
             trust = t.track(TrustViewModel(InMemoryTrust(), {}, CertificateQuestion())),
+            appLanguage = TestAppLanguage,
         )
         viewModels.apply {
             put { world.gallery(it) }

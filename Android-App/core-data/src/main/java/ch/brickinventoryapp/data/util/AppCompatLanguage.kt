@@ -2,6 +2,9 @@ package ch.brickinventoryapp.data.util
 
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import ch.brickinventoryapp.dataapi.language.AppLanguage
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Applies the saved language preference ("system", "en", "de") via
@@ -9,10 +12,11 @@ import androidx.core.os.LocaleListCompat
  * AppCompatDelegate saves the choice itself and recreates the activity; an own
  * context wrapper would be duplicate work.
  */
-object LanguageManager {
+@Singleton
+internal class AppCompatLanguage @Inject constructor() : AppLanguage {
 
     /** Called at app start (Application.onCreate) from the saved value. */
-    fun applyLanguage(languageCode: String) {
+    override fun applyLanguage(languageCode: String) {
         val localeList = if (languageCode == "system") {
             LocaleListCompat.getEmptyLocaleList()
         } else {
@@ -33,7 +37,7 @@ object LanguageManager {
     // The app bundle does not split the languages (build.gradle.kts, bundle.language),
     // and the APK is distributed anyway: all texts are always on board.
     @Suppress("AppBundleLocaleChanges")
-    fun localizedContext(base: android.content.Context): android.content.Context {
+    override fun localizedContext(base: android.content.Context): android.content.Context {
         if (android.os.Build.VERSION.SDK_INT >= 33) return base
         val locales = AppCompatDelegate.getApplicationLocales()
         if (locales.isEmpty) return base

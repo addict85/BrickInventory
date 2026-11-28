@@ -11,6 +11,7 @@ import ch.brickinventoryapp.data.di.buildInterceptorClient
 import ch.brickinventoryapp.data.di.buildRedemptionBase
 import ch.brickinventoryapp.data.di.serverConnectionSpecs
 import ch.brickinventoryapp.data.testing.testTrustCipher
+import ch.brickinventoryapp.data.util.AppCompatLanguage
 import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.ImageHostGuard
 import ch.brickinventoryapp.security.CertificateQuestion
@@ -95,14 +96,14 @@ class ServerClientsTest {
     }
 
     private fun apiClient() = buildInterceptorClient(network, isApiClient = true, sessionExpired = SessionExpiredSignal(),
-        ctx = ctx, question = CertificateQuestion())
+        ctx = ctx, appLanguage = AppCompatLanguage(), question = CertificateQuestion())
 
     private val previews = PreviewMemory({ File(ctx.filesDir, "vorschau-clients") }, StoreCipher { ByteArray(32) { 2 } }, { ByteArray(32) { 12 } })
 
-    private fun imageClient() = NetworkModule.provideImageOkHttpClient(ctx, network, SessionExpiredSignal(), previews,
+    private fun imageClient() = NetworkModule.provideImageOkHttpClient(ctx, network, AppCompatLanguage(), SessionExpiredSignal(), previews,
         CertificateQuestion(), StoreKey(File(ctx.noBackupFilesDir, "clients.schluessel"), PlainVault))
 
-    private fun sseClient() = NetworkModule.provideSseOkHttpClient(ctx, network, SessionExpiredSignal(), CertificateQuestion(),
+    private fun sseClient() = NetworkModule.provideSseOkHttpClient(ctx, network, AppCompatLanguage(), SessionExpiredSignal(), CertificateQuestion(),
         TokenSwap(state = { error("not used") }, replace = { _, _, _ -> false }, rotate = { error("not used") },
             background = CoroutineScope(Job())))
 

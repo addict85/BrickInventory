@@ -4,7 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
-import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.resources.R
 
@@ -13,9 +13,9 @@ import ch.brickinventoryapp.resources.R
  * setApplicationLocales() only localizes activities, so below Android 13 a worker would
  * otherwise speak the system language.
  */
-internal class AndroidCsvNotifier(context: Context) : CsvNotifier {
+internal class AndroidCsvNotifier(context: Context, appLanguage: AppLanguage) : CsvNotifier {
 
-    private val loc: Context = LanguageManager.localizedContext(context)
+    private val loc: Context = appLanguage.localizedContext(context)
     private val manager = loc.getSystemService(NotificationManager::class.java)
 
     init {

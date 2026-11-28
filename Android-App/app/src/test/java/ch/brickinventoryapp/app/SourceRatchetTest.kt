@@ -691,7 +691,7 @@ class SourceRatchetTest {
     @Test
     fun `fully qualified names of foreign packages become fewer`() {
         // Written out only for a real name clash, and then better with `import … as`.
-        val MAIN = 156
+        val MAIN = 154
         val TESTS = 0
         val full = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun count(files: Sequence<File>) = files.sumOf { f ->

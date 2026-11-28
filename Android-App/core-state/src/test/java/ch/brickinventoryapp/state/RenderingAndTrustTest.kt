@@ -1,9 +1,12 @@
 package ch.brickinventoryapp.state
 
+import android.content.Context
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.TrustStore
 import ch.brickinventoryapp.data.testing.StorageSessionStore
+import ch.brickinventoryapp.data.testing.TestAppLanguage
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
@@ -40,6 +43,7 @@ import java.util.Base64
  *   unknown-ca-without-typing in CertificateQuestion.confirm() the typing-in requirement removed → red „ohne bekannte CA …“
  *   certificate-code-trusts-any    confirmByCode() adopts the pin whatever check() says → red „only a scanned code …“
  *   certificate-code-without-discard trustByCode() without `drop.discard()` → red „only a scanned code …“
+ *   language-not-applied  setLanguage() without `appLanguage.applyLanguage(…)` → red „a language choice is stored …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RenderingAndTrustTest {
@@ -69,6 +73,25 @@ class RenderingAndTrustTest {
         override suspend fun saveLanguage(lang: String) { language = lang }
     }
 
+    /** Records what the ViewModel applies; AppCompat itself is not the subject here. */
+    private class RecordingLanguage : AppLanguage {
+        val applied = mutableListOf<String>()
+        override fun applyLanguage(languageCode: String) { applied += languageCode }
+        override fun localizedContext(base: Context): Context = base
+    }
+
+    @Test
+    fun `a language choice is stored and applied through the injected app language`() = runTest(tick) {
+        val store = StorageRendering()
+        val language = RecordingLanguage()
+        val vm = AppearanceViewModel(store, testSession(), language) {}
+        vm.setLanguage("en")
+        advanceUntilIdle()
+        assertEquals("en", store.language)
+        assertEquals(listOf("en"), language.applied)
+        vm.viewModelScope.cancel()
+    }
+
     private class StorageTrust : TrustStore {
         val pins = mutableMapOf<String, String>()
         var caOn = false
@@ -84,7 +107,7 @@ class RenderingAndTrustTest {
         val account = StorageSessionStore().apply { design.value = Design.STUD }
         // As on the device: currency and theme from the store, the first from the synchronous mirror.
         val session = testSession(StoreAccountValues(account, store, backgroundScope))
-        val vm = AppearanceViewModel(store, session) {}
+        val vm = AppearanceViewModel(store, session, TestAppLanguage) {}
         // Without a single tick of the clock: the first frame already shows the remembered theme.
         assertEquals(Design.STUD, vm.appTheme.value)
         assertEquals(Design.STUD, session.state.value.appTheme)
@@ -95,7 +118,7 @@ class RenderingAndTrustTest {
     fun `a choice is remembered and applies immediately, the widget learns of its values`() = runTest(tick) {
         val store = StorageRendering()
         var widgetKicks = 0
-        val vm = AppearanceViewModel(store, testSession()) { widgetKicks++ }
+        val vm = AppearanceViewModel(store, testSession(), TestAppLanguage) { widgetKicks++ }
         assertTrue("default: preview hidden", vm.hidePreview.value)
 
         vm.setBrightness("dunkel")

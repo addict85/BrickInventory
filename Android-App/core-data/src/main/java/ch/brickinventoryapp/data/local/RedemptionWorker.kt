@@ -29,7 +29,7 @@ import ch.brickinventoryapp.data.RedemptionStep
 import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.data.onlyUnlocked
 import ch.brickinventoryapp.data.redemptionStep
-import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.network.util.AppLog
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.resources.R
@@ -57,6 +57,7 @@ class RedemptionWorker @AssistedInject constructor(
     private val lock: DeviceLock,
     /** Reads the job (JobStore) and records a failed one (RedemptionLog). */
     private val device: DevicesStore,
+    private val appLanguage: AppLanguage,
 ) : CoroutineWorker(context, params) {
 
     /** New ones only encrypted ([JOB]); a job of an older version still carries fields. */
@@ -93,7 +94,7 @@ class RedemptionWorker @AssistedInject constructor(
                 AppLog.warning("Abmelden", "Token am Server nicht entwertet, Auftrag aufgegeben")
                 // Giving up silently would mean: the token keeps applying at the server, and nobody knows.
                 device.rememberFailedRedemption(server)
-                showMessage(applicationContext, server)
+                showMessage(applicationContext, server, appLanguage)
                 Result.failure()
             }
         }
@@ -110,11 +111,11 @@ class RedemptionWorker @AssistedInject constructor(
         private const val CHANNEL = "abmeldung"
 
         /** The hint to sign out users in the web app under „Angemeldete Geräte“. */
-        fun showMessage(context: Context, server: String) {
+        fun showMessage(context: Context, server: String, appLanguage: AppLanguage) {
             // From Android 13 a runtime permission; without it the hint stays for the next start (AppViewModel).
             if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
                     context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
-            val texts = LanguageManager.localizedContext(context)
+            val texts = appLanguage.localizedContext(context)
             val mgr = context.getSystemService(NotificationManager::class.java) ?: return
             mgr.createNotificationChannel(NotificationChannel(CHANNEL,
                 texts.getString(R.string.logout_channel), NotificationManager.IMPORTANCE_DEFAULT))
@@ -145,6 +146,7 @@ internal fun DevicesStore.jobStore() = JobStore(this::encryptDetail, this::openD
 internal class WorkManagerRedemption @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val device: DevicesStore,
+    private val appLanguage: AppLanguage,
 ) : RedemptionPlanner {
     override fun plane(job: RedemptionJob) {
         // Locked no ciphertext arises; then the user learns of it at the next start,
