@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app.csv
 
-import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.uistate.Operation
 
 /**
  * CSV import progress — its own flow, because it changes every 1.5 s during an import;

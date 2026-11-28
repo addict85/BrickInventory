@@ -12,6 +12,7 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    implementation(project(":core-ui-state"))
     implementation(project(":core-session"))
     implementation(project(":core-state"))
     implementation(libs.kotlinx.coroutines.android)

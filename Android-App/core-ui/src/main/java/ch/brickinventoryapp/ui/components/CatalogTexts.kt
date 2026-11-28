@@ -9,9 +9,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.intl.LocaleList
-import ch.brickinventoryapp.model.ui.CategoryGerman
-import ch.brickinventoryapp.model.ui.ColorGerman
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.uistate.CategoryGerman
+import ch.brickinventoryapp.uistate.ColorGerman
 
 /** Is the UI in German? Rebrickable's catalog data never is. */
 @Composable

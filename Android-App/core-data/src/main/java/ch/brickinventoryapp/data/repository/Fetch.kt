@@ -4,6 +4,7 @@ import ch.brickinventoryapp.contract.GenericResponse
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.network.data.api.ErrorBody
 import ch.brickinventoryapp.network.util.PlaintextRejected

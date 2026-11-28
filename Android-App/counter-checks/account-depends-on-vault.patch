@@ -6,9 +6,9 @@ Rot: no area depends on another area or on the app, none names foreign route typ
 diff --git a/Android-App/feature-account/build.gradle.kts b/Android-App/feature-account/build.gradle.kts
 --- a/Android-App/feature-account/build.gradle.kts
 +++ b/Android-App/feature-account/build.gradle.kts
-@@ -10,6 +10,7 @@ android {
- dependencies {
+@@ -11,6 +11,7 @@ dependencies {
      implementation(project(":core-model"))
+     implementation(project(":core-ui-state"))
      implementation(project(":core-data"))
 +    implementation(project(":core-security"))
      implementation(project(":core-ui"))

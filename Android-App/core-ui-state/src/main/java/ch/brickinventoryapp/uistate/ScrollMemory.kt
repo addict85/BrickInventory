@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui
+package ch.brickinventoryapp.uistate
 
 /**
  * Remembered scroll positions per tab. Lies below the UI because the state

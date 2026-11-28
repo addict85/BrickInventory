@@ -5,12 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.LoginStore
 import ch.brickinventoryapp.data.account.AccountRepository
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.LoginUiState
 import ch.brickinventoryapp.login.ui.PasskeyQuery
 import ch.brickinventoryapp.login.ui.PasskeyResult
 import ch.brickinventoryapp.login.ui.QrAccount
+import ch.brickinventoryapp.model.address.AddressError
+import ch.brickinventoryapp.model.address.AddressRules
 import ch.brickinventoryapp.model.domain.AccountCreation
 import ch.brickinventoryapp.model.domain.Login
 import ch.brickinventoryapp.model.domain.PASSKEY_SECOND_FACTOR
@@ -19,11 +20,8 @@ import ch.brickinventoryapp.model.domain.QrPairing
 import ch.brickinventoryapp.model.domain.QrPickupState
 import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_APP
 import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_FULL
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.ended
-import ch.brickinventoryapp.model.ui.withoutError
-import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.model.outcome.Outcome
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.security.RpIdFinding
@@ -41,6 +39,9 @@ import ch.brickinventoryapp.state.ui.errorMessage
 import ch.brickinventoryapp.state.ui.failed
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
 import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
+import ch.brickinventoryapp.uistate.Operation
+import ch.brickinventoryapp.uistate.ended
+import ch.brickinventoryapp.uistate.withoutError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
@@ -74,6 +75,7 @@ internal class LoginViewModel @Inject constructor(
     private val question: CertificateQuestion,
     private val systemRoots: SystemRoots,
     private val saved: SavedStateHandle,
+    private val addresses: AddressRules,
 ) : ViewModel() {
 
     val state: StateFlow<AppUiState> = session.state
@@ -104,14 +106,14 @@ internal class LoginViewModel @Inject constructor(
      * (via the SessionService, the app's usual path), because the token belongs to the old one.
      */
     fun saveServerUrl(url: String): Boolean {
-        val newValue = NetworkPolicy.normalize(url)
-        if (NetworkPolicy.addressError(newValue, NetworkPolicy.development) != null) return false
+        val newValue = addresses.normalize(url)
+        if (addresses.addressError(newValue, addresses.development) != null) return false
         viewModelScope.launch { setUpOne(newValue) }
         return true
     }
 
     private suspend fun setUpOne(newValue: String) {
-        if (session.state.value.isLoggedIn && !NetworkPolicy.sameServer(store.serverUrlNow(), newValue)) {
+        if (session.state.value.isLoggedIn && !addresses.sameServer(store.serverUrlNow(), newValue)) {
             sessionService.logout().join()
         }
         store.saveServerUrl(newValue)
@@ -224,7 +226,7 @@ internal class LoginViewModel @Inject constructor(
         serverUrl: String, token: String, fingerprint: String? = null,
         pinSwitchInput: String? = null, device: String = "Android App",
     ) {
-        val newValue = NetworkPolicy.normalize(serverUrl)
+        val newValue = addresses.normalize(serverUrl)
         qrRejected(serverUrl, newValue, fingerprint, pinSwitchInput)?.let { sentence ->
             _loginState.update { it.copy(login = Operation.Failed(Message.Resource(sentence))) }
             return
@@ -235,7 +237,7 @@ internal class LoginViewModel @Inject constructor(
             if (key != null && fingerprint != null) store.holdBefore(key, fingerprint)
             // Signed in to a different server: it stays until the browser and account-yes confirm the
             // pairing (pairQr); a cancel would otherwise leave no sign-in at all.
-            val switch = session.state.value.isLoggedIn && !NetworkPolicy.sameServer(store.serverUrlNow(), newValue)
+            val switch = session.state.value.isLoggedIn && !addresses.sameServer(store.serverUrlNow(), newValue)
             pairingWithSwitch = switch
             try {
                 if (switch) store.pairingTarget(newValue) else store.saveServerUrl(newValue)
@@ -346,9 +348,9 @@ internal class LoginViewModel @Inject constructor(
      * attacker's pin would stay remembered.
      */
     private fun qrRejected(serverUrl: String, newValue: String, fingerprint: String?, input: String?): Int? {
-        when (NetworkPolicy.addressError(serverUrl, NetworkPolicy.development)) {
+        when (addresses.addressError(serverUrl, addresses.development)) {
             null -> Unit
-            NetworkPolicy.AddressError.PLAINTEXT -> return R.string.setup_qr_plaintext_declined
+            AddressError.PLAINTEXT -> return R.string.setup_qr_plaintext_declined
             else -> return R.string.setup_invalid_qr
         }
         if (fingerprint == null || pinKey(newValue) == null || !mustTypeIn(newValue, fingerprint) ||
@@ -363,7 +365,7 @@ internal class LoginViewModel @Inject constructor(
      */
     fun previousPin(serverUrl: String, fingerprint: String?): String? {
         if (fingerprint == null) return null
-        val key = pinKey(NetworkPolicy.normalize(serverUrl)) ?: return null
+        val key = pinKey(addresses.normalize(serverUrl)) ?: return null
         return store.rememberedPin(key)?.takeIf { it != fingerprint }
     }
 
@@ -374,7 +376,7 @@ internal class LoginViewModel @Inject constructor(
      */
     fun mustTypeIn(serverUrl: String, fingerprint: String?): Boolean {
         if (fingerprint == null) return false
-        val key = pinKey(NetworkPolicy.normalize(serverUrl)) ?: return false
+        val key = pinKey(addresses.normalize(serverUrl)) ?: return false
         val wanted = store.rememberedPin(key)
         return if (wanted != null) wanted != fingerprint else !systemRoots.contains(fingerprint)
     }

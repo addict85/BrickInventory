@@ -3,7 +3,7 @@ package ch.brickinventoryapp.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 
 /**
  * For screens: the string of a [Message] in the language the composition

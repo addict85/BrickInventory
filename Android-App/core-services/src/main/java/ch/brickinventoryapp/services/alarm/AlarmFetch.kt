@@ -6,7 +6,7 @@ import ch.brickinventoryapp.model.domain.PriceAlertView
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
-import ch.brickinventoryapp.data.repository.Outcome as FetchOutcome
+import ch.brickinventoryapp.model.outcome.Outcome as FetchOutcome
 
 /**
  * The query itself — a type alias, so the signature of [AlarmFetch.fetch]

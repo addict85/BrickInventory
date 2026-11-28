@@ -3,11 +3,11 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.account.AccountView
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.SetSort
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage

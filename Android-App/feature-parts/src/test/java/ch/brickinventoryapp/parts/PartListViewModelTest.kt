@@ -2,7 +2,6 @@ package ch.brickinventoryapp.parts
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.ExportResult
 import ch.brickinventoryapp.data.service.PartListsExport
 import ch.brickinventoryapp.data.service.PdfFailure
@@ -11,15 +10,16 @@ import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.outcome.Outcome
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.parts.ui.PartListsSource
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.uistate.Operation
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

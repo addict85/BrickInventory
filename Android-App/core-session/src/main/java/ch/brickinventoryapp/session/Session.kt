@@ -2,13 +2,13 @@ package ch.brickinventoryapp.session
 
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.account.AccountRepository
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.model.domain.AccountOwner
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.StartStateView
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

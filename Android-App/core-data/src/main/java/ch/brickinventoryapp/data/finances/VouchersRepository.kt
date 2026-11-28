@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.finances
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.BalanceInfo
 import ch.brickinventoryapp.model.domain.PlaintextView
 import ch.brickinventoryapp.model.domain.VoucherInfo
 import ch.brickinventoryapp.model.domain.VoucherStorage
 import ch.brickinventoryapp.model.domain.VoucherView
+import ch.brickinventoryapp.model.outcome.Outcome
 
 /**
  * Vouchers including PDF and balance query.

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui.theme
 
-import ch.brickinventoryapp.model.ui.theme.Brightness
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Brightness
+import ch.brickinventoryapp.model.appearance.Design
 
 /**
  * What is drawn: the server's theme, in its dark variant where

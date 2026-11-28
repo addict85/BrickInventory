@@ -3,12 +3,12 @@ package ch.brickinventoryapp.state.ui
 import ch.brickinventoryapp.data.ScopeFilterStorage
 import ch.brickinventoryapp.data.account.HouseholdRepository
 import ch.brickinventoryapp.data.parts.PartsRepository
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.accountOptions
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.session.FilterSource
+import ch.brickinventoryapp.uistate.Load
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

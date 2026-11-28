@@ -32,6 +32,7 @@ import ch.brickinventoryapp.app.ui.components.UserCaDialog
 import ch.brickinventoryapp.app.widget.CollectionWidget
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.login.ui.screens.CertificateQrScanner
+import ch.brickinventoryapp.model.address.AddressRules
 import ch.brickinventoryapp.model.step.StepBinding
 import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
@@ -47,6 +48,7 @@ import ch.brickinventoryapp.ui.components.AppLockScreen
 import ch.brickinventoryapp.ui.components.AppOverviewProtection
 import ch.brickinventoryapp.ui.components.DevicesStepProtection
 import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.LocalAppLock
 import ch.brickinventoryapp.ui.components.LocalAppVersion
 import ch.brickinventoryapp.ui.components.LocalStepGuard
@@ -112,6 +114,9 @@ class MainActivity : OnlyLauncherStart() {
     @Inject lateinit var messageInbox: MessageInbox
 
     @Inject lateinit var priceAlarms: PriceAlertRepository
+
+    /** For the screens that check a server address or open a link (LocalAddressRules). */
+    @Inject lateinit var addressRules: AddressRules
 
     /**
      * A tapped notification while the app is already running (singleTop). The
@@ -204,6 +209,7 @@ class MainActivity : OnlyLauncherStart() {
                     LocalAppVersion provides AppVersion(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                     LocalStepGuard provides stepGuard,
                     LocalAppLock provides appLock,
+                    LocalAddressRules provides addressRules,
                 ) { KeyboardWithoutLearn {
                     // App-wide: voucher number and PIN, passwords, codes and
                     // invitations; the keyboard therefore does not learn set names either.

@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.collection
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.AlarmFetchView
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.coroutines.flow.Flow
 
 /**

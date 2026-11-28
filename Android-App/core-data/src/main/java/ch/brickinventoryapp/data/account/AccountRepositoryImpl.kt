@@ -20,12 +20,12 @@ import ch.brickinventoryapp.data.RedemptionOutcome
 import ch.brickinventoryapp.data.SwappedToken
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.classifyRedemption
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.safeCall
 import ch.brickinventoryapp.data.repository.withoutContent
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher
 import ch.brickinventoryapp.model.domain.AccountCreation
@@ -46,7 +46,7 @@ import ch.brickinventoryapp.model.domain.RegistrationState
 import ch.brickinventoryapp.model.domain.SecondFactorSetup
 import ch.brickinventoryapp.model.domain.SecondFactorStatus
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.model.util.parseInstant
 import ch.brickinventoryapp.network.util.AppLog

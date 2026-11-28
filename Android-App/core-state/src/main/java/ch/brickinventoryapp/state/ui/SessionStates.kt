@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.LocationEntryView
 import ch.brickinventoryapp.model.domain.LocationView
 import ch.brickinventoryapp.model.domain.MemberView
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.uistate.Load
 
 /*
  * The state classes live per area in ui/<Area>States.kt; here, what applies alongside

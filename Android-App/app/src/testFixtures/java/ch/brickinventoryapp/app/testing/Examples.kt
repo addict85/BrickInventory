@@ -8,7 +8,6 @@ import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
 import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.service.ExportResult
 import ch.brickinventoryapp.data.service.PartListsExport
 import ch.brickinventoryapp.data.service.PdfFailure
@@ -31,6 +30,7 @@ import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.parts.ui.PartListsSource
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel

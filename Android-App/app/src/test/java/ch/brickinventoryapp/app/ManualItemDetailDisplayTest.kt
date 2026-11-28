@@ -13,9 +13,9 @@ import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
 import ch.brickinventoryapp.data.testing.testMinifigsRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.parts.ui.screens.ManualItemDetailRoute
 import ch.brickinventoryapp.resources.R

@@ -15,9 +15,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CacheMetricsView
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ConditionToggle
 import ch.brickinventoryapp.ui.components.PartialLoadFailed

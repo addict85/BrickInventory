@@ -17,8 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.account.ui.HouseholdUiState
 import ch.brickinventoryapp.model.domain.HouseholdStatusView
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.DateYear
 import ch.brickinventoryapp.model.util.fmtStatus
 import ch.brickinventoryapp.resources.R
@@ -40,6 +38,8 @@ import ch.brickinventoryapp.ui.util.SecretClipboard
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.ui.util.secretCopyable
 import ch.brickinventoryapp.ui.util.twentyFourHours
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 
 /**
  * Household: linked accounts, invite an account, accept an invitation — three sections

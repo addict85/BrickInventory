@@ -46,6 +46,7 @@ include(":app")
 // core-state → core-session → core-data.
 // The rule: build-logic/…/edges/ModuleEdges.kt (task moduleEdgesCheck, ModuleBoundariesTest).
 include(":core-model")
+include(":core-ui-state")
 include(":core-contract")
 include(":core-resources")
 include(":core-network")

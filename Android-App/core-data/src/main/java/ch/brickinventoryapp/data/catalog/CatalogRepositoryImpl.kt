@@ -3,7 +3,6 @@ package ch.brickinventoryapp.data.catalog
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.api.CatalogApi
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.reconciledSingle
@@ -13,6 +12,7 @@ import ch.brickinventoryapp.model.domain.CatalogMetaView
 import ch.brickinventoryapp.model.domain.CatalogPageView
 import ch.brickinventoryapp.model.domain.CatalogSort
 import ch.brickinventoryapp.model.domain.YearCountView
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.Slots
 import javax.inject.Inject

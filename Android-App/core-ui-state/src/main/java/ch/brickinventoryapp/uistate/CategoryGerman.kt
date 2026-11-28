@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui
+package ch.brickinventoryapp.uistate
 
 /**
  * Part categories from Rebrickable in German, word by word like [ColorGerman]: next to

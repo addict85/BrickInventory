@@ -6,7 +6,6 @@ import ch.brickinventoryapp.contract.PdfJobSet
 import ch.brickinventoryapp.contract.PdfJobState
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
@@ -14,6 +13,7 @@ import ch.brickinventoryapp.data.repository.safeCall
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfJobStatus
+import ch.brickinventoryapp.model.outcome.Outcome
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody

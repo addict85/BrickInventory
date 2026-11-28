@@ -6,8 +6,8 @@ import android.system.OsConstants
 import ch.brickinventoryapp.data.DownloadFailed
 import ch.brickinventoryapp.data.util.INSTRUCTION_IN_STORAGE_UNTIL
 import ch.brickinventoryapp.data.util.InstructionStore
-import ch.brickinventoryapp.model.ui.ErrorClass
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.uistate.ErrorClass
 import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.File

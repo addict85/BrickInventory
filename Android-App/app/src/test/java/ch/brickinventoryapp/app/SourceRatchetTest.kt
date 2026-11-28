@@ -514,7 +514,7 @@ class SourceRatchetTest {
         // interface for all areas. Counted at the top level, across core-data and
         // everything split off from it; otherwise the number would sink spuriously when moving.
         val LIMIT_AREAS = 180
-        val other = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
+        val other = setOf("core-model", "core-ui-state", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
         val module = Sources.module.filter { it.name.startsWith("core-") && it.name !in other }
         assert("core-data" in module.map { it.name }) { "core-data not under ${module.map { it.name }} — does the search still apply?" }
@@ -747,9 +747,9 @@ class SourceRatchetTest {
         assertTrue("The pattern no longer recognizes $unrecognized", unrecognized.isEmpty())
         assertTrue("Only $states state files — does the search still apply?", states >= 10)
         ratchet("old loading forms (Boolean loading/…running/saves/…ing)", OLD, old,
-            "Take Load<T> (model/ui/Load.kt) for fetches, Operation (model/ui/Operation.kt) for actions.")
+            "Take Load<T> (uistate/Load.kt) for fetches, Operation (uistate/Operation.kt) for actions.")
         ratchet("finished texts in the state (String error/message/…)", TEXT, texts,
-            "Store a Message (model/ui/Message.kt) or error class; the screen forms the sentence.")
+            "Store a Message (model/text/Message.kt) or error class; the screen forms the sentence.")
     }
 
     @Test

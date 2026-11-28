@@ -12,14 +12,13 @@ import ch.brickinventoryapp.data.catalog.CatalogRepository
 import ch.brickinventoryapp.data.collection.AlarmRepository
 import ch.brickinventoryapp.data.collection.WantedRepository
 import ch.brickinventoryapp.data.finances.FinancesRepository
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.domain.WantedSort
 import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
@@ -32,6 +31,7 @@ import ch.brickinventoryapp.state.ui.viewmodel.Observed
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
+import ch.brickinventoryapp.uistate.Load
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job

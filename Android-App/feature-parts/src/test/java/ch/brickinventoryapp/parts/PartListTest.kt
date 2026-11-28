@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.parts
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetCatalogRepository
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.parts.ui.PartList
 import ch.brickinventoryapp.state.testing.TestServices
 import kotlinx.coroutines.runBlocking

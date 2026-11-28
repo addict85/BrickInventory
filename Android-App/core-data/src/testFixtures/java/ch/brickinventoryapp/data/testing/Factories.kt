@@ -7,10 +7,10 @@ import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.account.AccountRepositoryImpl
 import ch.brickinventoryapp.data.account.AccountView
-import ch.brickinventoryapp.data.account.ManagementRepositoryImpl
 import ch.brickinventoryapp.data.account.HouseholdRepository
 import ch.brickinventoryapp.data.account.HouseholdRepositoryImpl
 import ch.brickinventoryapp.data.account.ManagementRepository
+import ch.brickinventoryapp.data.account.ManagementRepositoryImpl
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.api.CatalogApi
 import ch.brickinventoryapp.data.api.FinancesApi
@@ -30,17 +30,18 @@ import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.collection.SetFilesRepositoryImpl
 import ch.brickinventoryapp.data.collection.SetsRepository
 import ch.brickinventoryapp.data.collection.SetsRepositoryImpl
-import ch.brickinventoryapp.data.collection.WantedRepositoryImpl
 import ch.brickinventoryapp.data.collection.WantedRepository
+import ch.brickinventoryapp.data.collection.WantedRepositoryImpl
 import ch.brickinventoryapp.data.finances.FinancesRepository
 import ch.brickinventoryapp.data.finances.FinancesRepositoryImpl
 import ch.brickinventoryapp.data.finances.VouchersRepository
 import ch.brickinventoryapp.data.finances.VouchersRepositoryImpl
-import ch.brickinventoryapp.data.local.StockReconciliation
-import ch.brickinventoryapp.data.parts.MinifigsRepositoryImpl
+import ch.brickinventoryapp.data.local.StoreStockReconciliation
 import ch.brickinventoryapp.data.parts.MinifigsRepository
+import ch.brickinventoryapp.data.parts.MinifigsRepositoryImpl
 import ch.brickinventoryapp.data.parts.PartsRepository
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
+import ch.brickinventoryapp.data.stock.StockReconciliation
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.Outbox
 import ch.brickinventoryapp.offline.OutboxPlanner
@@ -104,7 +105,7 @@ fun testAccountView(api: BrickApiService, store: OfflineStore = TestStore()): Ac
 
 /** Sets, parts and figures on one shared [store]. */
 fun testStockReconciliation(api: BrickApiService, store: OfflineStore): StockReconciliation =
-    StockReconciliation(SetsRepositoryImpl(api, store, RetryPolicy.ONCE), WantedRepositoryImpl(api, store, RetryPolicy.ONCE),
+    StoreStockReconciliation(SetsRepositoryImpl(api, store, RetryPolicy.ONCE), WantedRepositoryImpl(api, store, RetryPolicy.ONCE),
         PartsRepositoryImpl(api, store, RetryPolicy.ONCE),
         MinifigsRepositoryImpl(api, store, RetryPolicy.ONCE), store)
 

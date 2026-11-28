@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui
+package ch.brickinventoryapp.model.text
 
 /**
  * A sentence in building blocks, for the snackbar as for error fields in the state. ViewModel

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.app.csv
 
 import ch.brickinventoryapp.data.CsvImportRepository
-import ch.brickinventoryapp.data.local.StockReconciliation
+import ch.brickinventoryapp.data.stock.StockReconciliation
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.services.service.CsvImportRunner
+import ch.brickinventoryapp.uistate.Operation
+import ch.brickinventoryapp.uistate.running
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

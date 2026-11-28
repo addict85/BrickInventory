@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.state.di
 
-import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.model.ui.ScrollStorage
 import ch.brickinventoryapp.session.FilterSource
 import ch.brickinventoryapp.session.LogoutProcess
 import ch.brickinventoryapp.session.WarmUp
@@ -19,6 +17,8 @@ import ch.brickinventoryapp.state.ui.viewmodel.AreaFilter
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.uistate.ScrollMemory
+import ch.brickinventoryapp.uistate.ScrollStorage
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.state.ui.viewmodel
 
 import ch.brickinventoryapp.data.LoginState
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.errorTextToCode
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.TextSource
 import ch.brickinventoryapp.state.ui.errorTextArgument
 import ch.brickinventoryapp.state.ui.errorTextId

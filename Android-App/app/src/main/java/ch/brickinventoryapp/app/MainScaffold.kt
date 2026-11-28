@@ -46,7 +46,6 @@ import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.app.ui.components.CsvProgress
 import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.management.ui.ManagementTarget
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.NavigationMode
@@ -67,6 +66,7 @@ import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.TabColors
 import ch.brickinventoryapp.ui.theme.tabColors
 import ch.brickinventoryapp.ui.title
+import ch.brickinventoryapp.uistate.running
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
 import kotlin.reflect.KClass

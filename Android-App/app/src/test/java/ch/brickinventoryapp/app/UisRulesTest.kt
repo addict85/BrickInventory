@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.ui.components.LocalAddressRules
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,13 +70,11 @@ import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.finances.ui.FinanceTarget
 import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
 import ch.brickinventoryapp.finances.ui.setRows
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.resources.R
@@ -84,6 +84,8 @@ import ch.brickinventoryapp.ui.components.SegmentChoice
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtPercent
+import ch.brickinventoryapp.uistate.ErrorClass
+import ch.brickinventoryapp.uistate.loading
 import coil3.intercept.Interceptor
 import coil3.request.ErrorResult
 import org.junit.After
@@ -160,14 +162,14 @@ class UisRulesTest {
     fun tearDown() = Locale.setDefault(before)
 
     private fun show(font: Float = 1f, content: @Composable () -> Unit) {
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
                     Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
-        }
+         }}
         compose.waitForIdle()
     }
 

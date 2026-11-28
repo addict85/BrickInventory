@@ -7,9 +7,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import ch.brickinventoryapp.model.appearance.Design
+import ch.brickinventoryapp.model.appearance.brightnessApplies
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.ui.theme.brightnessApplies
 import ch.brickinventoryapp.network.util.AppLog
 import ch.brickinventoryapp.security.TrustCipher
 import ch.brickinventoryapp.security.VaultFinding

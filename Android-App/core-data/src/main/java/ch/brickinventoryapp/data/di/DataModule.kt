@@ -14,8 +14,10 @@ import ch.brickinventoryapp.data.TokenStore
 import ch.brickinventoryapp.data.TokenSwap
 import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.cache.CacheOwner
+import ch.brickinventoryapp.model.address.AddressRules
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.security.DeviceLock
 import dagger.Module
 import dagger.Provides
@@ -33,6 +35,10 @@ internal object DataModule {
     @Provides
     @Singleton
     fun provideJson(): Json = BrickJson
+
+    /** The guard's address rules, for screens that must not know the network layer. */
+    @Provides
+    fun provideAddressRules(): AddressRules = NetworkAddressRules
 
     /** One DataStore per file and process; via Hilt instead of via an extension on Context. */
     @Provides

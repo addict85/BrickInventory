@@ -8,10 +8,10 @@ import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SessionStore
 import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.account.ManagementRepository
-import ch.brickinventoryapp.data.local.StockReconciliation
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.stock.StockReconciliation
 import ch.brickinventoryapp.model.coroutines.ApplicationScope
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.outcome.Outcome
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.resources.R
 import kotlinx.coroutines.CoroutineScope

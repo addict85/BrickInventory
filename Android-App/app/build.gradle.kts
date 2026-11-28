@@ -220,6 +220,7 @@ dependencies {
     // The app assembles: navigation, Hilt entry point, widget. Everything else
     // lives in the modules below.
     implementation(project(":core-model"))
+    implementation(project(":core-ui-state"))
     implementation(project(":core-resources"))
     implementation(project(":core-data"))
     // Logging and NetworkPolicy.
@@ -248,7 +249,7 @@ dependencies {
         libs.androidx.navigation.compose, libs.coil.compose, libs.hilt.android)) {
         testFixturesCompileOnly(lib)
     }
-    for (m in listOf(":core-model", ":core-resources", ":core-data", ":core-security", ":core-services", ":core-ui",
+    for (m in listOf(":core-model", ":core-ui-state", ":core-resources", ":core-data", ":core-network", ":core-security", ":core-services", ":core-ui",
         ":core-state", ":core-session", ":feature-collection", ":feature-parts", ":feature-finances", ":feature-account")) {
         testFixturesCompileOnly(project(m))
     }

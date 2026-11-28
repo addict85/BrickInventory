@@ -4,7 +4,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.TrustStore
 import ch.brickinventoryapp.data.testing.StorageSessionStore
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.security.CertificateQuestion.CodeCheck
 import ch.brickinventoryapp.security.CertificateUnresolved

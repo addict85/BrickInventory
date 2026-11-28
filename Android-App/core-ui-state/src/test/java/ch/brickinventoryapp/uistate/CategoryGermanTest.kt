@@ -1,6 +1,5 @@
-package ch.brickinventoryapp.model
+package ch.brickinventoryapp.uistate
 
-import ch.brickinventoryapp.model.ui.CategoryGerman
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

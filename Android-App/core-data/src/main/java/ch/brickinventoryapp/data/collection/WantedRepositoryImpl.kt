@@ -9,7 +9,6 @@ import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.local.asRequest
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.caughtUp
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
@@ -28,6 +27,7 @@ import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.domain.WantedRequest
 import ch.brickinventoryapp.model.domain.WantedSort
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.FilterColumns
 import ch.brickinventoryapp.offline.OfflineStore

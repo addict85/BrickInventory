@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.ui.components.LocalAddressRules
+import ch.brickinventoryapp.network.util.NetworkAddressRules
+import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import android.os.Looper
 import androidx.compose.foundation.layout.Box
@@ -45,6 +48,7 @@ import ch.brickinventoryapp.collection.ui.screens.WantedItemUndoRoute
 import ch.brickinventoryapp.collection.ui.screens.WantedRoute
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryActions
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogSetView
@@ -55,11 +59,7 @@ import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.WantedItemAlarmView
 import ch.brickinventoryapp.model.domain.WantedItemView
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
@@ -67,6 +67,9 @@ import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.uistate.ErrorClass
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -114,11 +117,11 @@ class AreaFlowsTest {
     }
 
     private fun show(content: @Composable () -> Unit) {
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) { content() }
             }
-        }
+         }}
         compose.waitForIdle()
     }
 
@@ -217,7 +220,7 @@ class AreaFlowsTest {
         val condition = BarcodeDialogState(AppUiState(), ScopeUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", ownershipQuantity = 2), StorageUiState())
         val rotate = StateRestorationTester(compose)
-        rotate.setContent { BrickInventoryManagerTheme { BarcodeResultDialog(condition, actions, images) } }
+        rotate.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { BarcodeResultDialog(condition, actions, images) }  }}
         compose.onNodeWithText(ctx.getString(R.string.barcode_already_owned, 2)).fetchSemanticsNode("Besitz nicht genannt")
         compose.onNodeWithContentDescription(ctx.getString(R.string.cd_qty_increase)).performClick()
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.barcode_purchase_price))).performTextInput("650")

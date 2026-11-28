@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.data.parts
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.data.SparePartChoice
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.CategoryChoice
@@ -22,6 +21,7 @@ import ch.brickinventoryapp.model.domain.Recorded
 import ch.brickinventoryapp.model.domain.StockLocationView
 import ch.brickinventoryapp.model.domain.UsageView
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.coroutines.flow.Flow
 
 /**

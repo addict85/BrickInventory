@@ -9,10 +9,9 @@ import ch.brickinventoryapp.data.collection.AlarmRepository
 import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.collection.SetsRepository
 import ch.brickinventoryapp.data.collection.WantedRepository
-import ch.brickinventoryapp.data.local.StockReconciliation
 import ch.brickinventoryapp.data.parts.MinifigsRepository
 import ch.brickinventoryapp.data.parts.PartsRepository
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.stock.StockReconciliation
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.FakeApi
 import ch.brickinventoryapp.data.testing.PathServer
@@ -29,7 +28,7 @@ import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.data.testing.testStockReconciliation
 import ch.brickinventoryapp.data.testing.testWantedRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.session.testing.testSession
 import ch.brickinventoryapp.state.ui.FilterStore
 import ch.brickinventoryapp.state.ui.ScopeService
@@ -37,6 +36,7 @@ import ch.brickinventoryapp.state.ui.viewmodel.AppMessages
 import ch.brickinventoryapp.state.ui.viewmodel.AreaFilter
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.uistate.ScrollMemory
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel

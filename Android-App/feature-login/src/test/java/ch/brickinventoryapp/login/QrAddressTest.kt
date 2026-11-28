@@ -9,13 +9,15 @@ import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.login.ui.qrAddressInvalid
 import ch.brickinventoryapp.login.ui.qrSwitchesServer
 import ch.brickinventoryapp.login.ui.viewmodel.LoginViewModel
-import ch.brickinventoryapp.model.ui.errorMessage
+import ch.brickinventoryapp.model.address.AddressError
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.session.testing.SessionFake
 import ch.brickinventoryapp.state.testing.StorageStore
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.state.ui.ScopeService
+import ch.brickinventoryapp.uistate.errorMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -39,7 +41,7 @@ import java.util.Collections
  *   A  NetworkPolicy.adressfehler() reverted to ad4a297 (only UNLESBAR/PLAINTEXT)
  *      → red “user info, line break and backslash …” and “the ViewModel
  *      does not accept an address with user info”
- *   B  in qrAddressInvalid() the check for blank/control characters removed → red
+ *   B  in qrAddressInvalid(, NetworkAddressRules) the check for blank/control characters removed → red
  *      “whitespace at the edge of a code …”
  *   C  in NetworkPolicy.view() `url.host` replaced with the host's raw text
  *      (Unicode instead of Punycode) → red “an international host appears in Punycode …”
@@ -62,23 +64,23 @@ class QrAddressTest {
     @Test
     fun `user info, line break and backslash make the code invalid`() {
         for (url in deceptive) {
-            assertTrue("accepted: $url", qrAddressInvalid(url))
+            assertTrue("accepted: $url", qrAddressInvalid(url, NetworkAddressRules))
             assertTrue("accepted by hand: $url", NetworkPolicy.addressError(url, development = false) != null)
         }
-        assertEquals(NetworkPolicy.AddressError.USER_INPUT,
+        assertEquals(AddressError.USER_INPUT,
             NetworkPolicy.addressError("https://brick.meinserver.ch@evil.example", development = false))
-        assertEquals(NetworkPolicy.AddressError.EXTRA,
+        assertEquals(AddressError.EXTRA,
             NetworkPolicy.addressError("https://evil.example/x\n\nbrick.meinserver.ch", development = false))
         // What a real server needs stays allowed: port, subpath, capitalization.
         for (good in listOf("https://brick.meinserver.ch", "https://nas:8443/brick", "HTTPS://Brick.Example.org/")) {
-            assertFalse(good, qrAddressInvalid(good))
+            assertFalse(good, qrAddressInvalid(good, NetworkAddressRules))
         }
     }
 
     @Test
     fun `whitespace at the edge of a code makes it invalid, by hand it does not`() {
-        assertTrue(qrAddressInvalid("https://evil.example\n"))
-        assertTrue(qrAddressInvalid(" https://evil.example"))
+        assertTrue(qrAddressInvalid("https://evil.example\n", NetworkAddressRules))
+        assertTrue(qrAddressInvalid(" https://evil.example", NetworkAddressRules))
         assertNull("typed by hand, the edge carries nothing", NetworkPolicy.addressError(" brick.fritz.box ", development = false))
     }
 
@@ -97,10 +99,10 @@ class QrAddressTest {
 
     @Test
     fun `a code for a different host names the previous one, the same server does not`() {
-        assertEquals("brick.meinserver.ch", qrSwitchesServer("https://brick.meinserver.ch", "https://xn--brck-m9d.meinserver.ch"))
-        assertEquals("brick.meinserver.ch", qrSwitchesServer("https://brick.meinserver.ch", "https://brick.meinserver.ch:8443"))
-        assertNull(qrSwitchesServer("https://brick.meinserver.ch", "https://BRICK.meinserver.ch/"))
-        assertNull("no switch without a previous server", qrSwitchesServer("", "https://brick.meinserver.ch"))
+        assertEquals("brick.meinserver.ch", qrSwitchesServer("https://brick.meinserver.ch", "https://xn--brck-m9d.meinserver.ch", NetworkAddressRules))
+        assertEquals("brick.meinserver.ch", qrSwitchesServer("https://brick.meinserver.ch", "https://brick.meinserver.ch:8443", NetworkAddressRules))
+        assertNull(qrSwitchesServer("https://brick.meinserver.ch", "https://BRICK.meinserver.ch/", NetworkAddressRules))
+        assertNull("no switch without a previous server", qrSwitchesServer("", "https://brick.meinserver.ch", NetworkAddressRules))
     }
 
     // ── The ViewModel as a second line ─────────────────────────────────────────
@@ -143,7 +145,7 @@ class QrAddressTest {
             testHouseholdRepository(t.api),
             testPartsRepository(t.api))
         val vm = t.track(LoginViewModel(t.session, viewport, t.hints, logout,
-            testAccountRepository(t.api), store, CertificateQuestion(), { false }, SavedStateHandle()))
+            testAccountRepository(t.api), store, CertificateQuestion(), { false }, SavedStateHandle(), NetworkAddressRules))
         vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x")
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
         assertEquals(emptyList<String>(), store.log.toList())

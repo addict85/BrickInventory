@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.collection
 
+import ch.brickinventoryapp.ui.components.LocalAddressRules
+import ch.brickinventoryapp.network.util.NetworkAddressRules
+import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -54,7 +57,7 @@ class EntryPathsTest {
     private val ownerRow get() = ctx.getString(R.string.household_for_account) + ": ich"
 
     private fun show(content: @Composable () -> Unit) {
-        compose.setContent { BrickInventoryManagerTheme { content() } }
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { content() }  }}
         compose.waitForIdle()
     }
 

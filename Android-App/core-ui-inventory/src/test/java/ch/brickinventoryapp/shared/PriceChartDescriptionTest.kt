@@ -6,12 +6,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PriceChartView
 import ch.brickinventoryapp.model.domain.PricePointView
 import ch.brickinventoryapp.model.domain.PriceSeriesView
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.PriceChart
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

@@ -31,7 +31,6 @@ import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.PurchaseSumsView
 import ch.brickinventoryapp.model.domain.PurchaseView
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.calendarDay
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
@@ -52,6 +51,7 @@ import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.util.fmtInput
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
+import ch.brickinventoryapp.uistate.loading
 import java.time.Instant
 import java.time.ZoneOffset
 

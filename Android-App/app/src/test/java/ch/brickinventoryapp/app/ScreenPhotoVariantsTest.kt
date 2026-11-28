@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.ui.components.LocalAddressRules
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -122,6 +124,7 @@ import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
 import ch.brickinventoryapp.management.ui.screens.MonitoringState
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.BrickLinkView
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.domain.CatalogSetView
@@ -131,11 +134,7 @@ import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.parts.ui.PartListUiState
 import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
 import ch.brickinventoryapp.parts.ui.PartsTarget
@@ -157,6 +156,9 @@ import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import ch.brickinventoryapp.ui.components.OfflineHint
 import ch.brickinventoryapp.ui.screens.CameraPermissionHint
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.uistate.ErrorClass
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -246,14 +248,14 @@ class ScreenPhotoVariantsTest {
         if (font != 1f) RuntimeEnvironment.setFontScale(font)
         if (language != null) Locale.setDefault(Locale.forLanguageTag(language.replace("-r", "-")))
         if (wait) provide(name, ready, condition)
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
             BrickInventoryManagerTheme(theme = photoDesign(design), dark = dark) {
                 val density = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(density.density, font)) {
                     Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
-        }
+         }}
         if (wait) {
             provide("$name (shown)", ready, condition)
             compose.waitForIdle()

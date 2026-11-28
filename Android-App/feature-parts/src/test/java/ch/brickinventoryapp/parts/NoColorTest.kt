@@ -15,12 +15,12 @@ import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.NO_COLOR
 import ch.brickinventoryapp.model.domain.PartEntry
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.ui.colorName
-import ch.brickinventoryapp.model.ui.withoutNoColor
 import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.state.ui.ManualItemDetailUiState
+import ch.brickinventoryapp.uistate.colorName
+import ch.brickinventoryapp.uistate.withoutNoColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

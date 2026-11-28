@@ -12,4 +12,4 @@ diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session
 +import android.content.Context
  import ch.brickinventoryapp.data.SecondFactorRequired
  import ch.brickinventoryapp.data.account.AccountRepository
- import ch.brickinventoryapp.data.repository.Outcome
+ import ch.brickinventoryapp.model.appearance.Design

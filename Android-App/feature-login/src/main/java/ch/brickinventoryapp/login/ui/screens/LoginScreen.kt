@@ -24,10 +24,7 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.QrAccount
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
@@ -39,6 +36,9 @@ import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.windowSurface
+import ch.brickinventoryapp.uistate.Operation
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.running
 
 /** What the sign-in screen shows; LoginGraph fills it from the session and LoginUiState. The screen forms the sentences. */
 data class LoginScreenState(

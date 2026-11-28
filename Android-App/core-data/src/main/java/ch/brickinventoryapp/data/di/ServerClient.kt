@@ -11,7 +11,7 @@ import ch.brickinventoryapp.data.TokenMirror
 import ch.brickinventoryapp.data.TokenStore
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.data.util.networkRecording
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.RotationReason
 import ch.brickinventoryapp.network.di.ServerGuard

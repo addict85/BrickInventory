@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.collection
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.WantedItemPricesView
 import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.domain.WantedSort
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.coroutines.flow.Flow
 
 /** The wishlist: sets one does not have yet, in the store, and their takeover into the stock. */

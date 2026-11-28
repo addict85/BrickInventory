@@ -2,17 +2,17 @@ package ch.brickinventoryapp.management
 
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MessageChannel
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.completingConverter
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.Condition
-import ch.brickinventoryapp.model.ui.dataOrNull
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.outcome.Outcome
+import ch.brickinventoryapp.uistate.dataOrNull
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse

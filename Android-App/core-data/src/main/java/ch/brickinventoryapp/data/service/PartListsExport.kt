@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.service
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfProgress
+import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 

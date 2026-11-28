@@ -9,10 +9,10 @@ import ch.brickinventoryapp.model.domain.FigureEntry
 import ch.brickinventoryapp.model.domain.FigureOrder
 import ch.brickinventoryapp.model.domain.NO_COLOR
 import ch.brickinventoryapp.model.domain.PartEntry
-import ch.brickinventoryapp.model.ui.ListView
 import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.SetItemUiState
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
+import ch.brickinventoryapp.uistate.ListView
 import kotlinx.coroutines.flow.StateFlow
 
 /**

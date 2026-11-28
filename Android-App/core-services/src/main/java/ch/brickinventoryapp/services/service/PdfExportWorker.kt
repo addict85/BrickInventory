@@ -11,11 +11,11 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.errorTextToCode
 import ch.brickinventoryapp.data.service.PdfFailure
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.resources.R
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject

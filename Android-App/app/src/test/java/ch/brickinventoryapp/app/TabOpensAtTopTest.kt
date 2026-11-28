@@ -18,7 +18,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.app.nav.Tab
 import ch.brickinventoryapp.collection.ui.CollectionTarget
 import ch.brickinventoryapp.finances.ui.FinanceTarget
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.testing.Sources

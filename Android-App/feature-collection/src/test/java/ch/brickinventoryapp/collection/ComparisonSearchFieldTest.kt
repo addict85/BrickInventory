@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.collection
 
+import ch.brickinventoryapp.ui.components.LocalAddressRules
+import ch.brickinventoryapp.network.util.NetworkAddressRules
+import androidx.compose.runtime.CompositionLocalProvider
 import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
@@ -51,7 +54,7 @@ class ComparisonSearchFieldTest {
     }
 
     private fun show() {
-        compose.setContent { BrickInventoryManagerTheme { ComparisonScreen(ComparisonUiState(), actions) } }
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { ComparisonScreen(ComparisonUiState(), actions) }  }}
         compose.waitForIdle()
     }
 

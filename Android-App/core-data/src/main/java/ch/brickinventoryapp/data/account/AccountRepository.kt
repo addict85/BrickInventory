@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data.account
 
 import ch.brickinventoryapp.data.RedemptionOutcome
 import ch.brickinventoryapp.data.SwappedToken
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.AccountCreation
 import ch.brickinventoryapp.model.domain.AccountOwner
 import ch.brickinventoryapp.model.domain.AccountSettings
@@ -21,7 +21,7 @@ import ch.brickinventoryapp.model.domain.RegistrationState
 import ch.brickinventoryapp.model.domain.SecondFactorSetup
 import ch.brickinventoryapp.model.domain.SecondFactorStatus
 import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_APP
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.serialization.json.JsonObject
 
 /**

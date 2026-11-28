@@ -19,12 +19,12 @@ import ch.brickinventoryapp.management.ui.ManagementNavigation
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.ui.ScannerOrigin
 import ch.brickinventoryapp.parts.ui.PartListsScan
 import ch.brickinventoryapp.parts.ui.PartsNavigation
 import ch.brickinventoryapp.parts.ui.PartsTarget
 import ch.brickinventoryapp.state.ui.viewmodel.AppearanceViewModel
 import ch.brickinventoryapp.state.ui.viewmodel.TrustViewModel
+import ch.brickinventoryapp.uistate.ScannerOrigin
 import coil3.ImageLoader
 
 /** A destination of the bottom bar: route, icon and label. */

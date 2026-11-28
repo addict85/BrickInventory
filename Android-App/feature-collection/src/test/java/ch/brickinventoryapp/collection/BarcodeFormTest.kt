@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.collection
 
+import ch.brickinventoryapp.ui.components.LocalAddressRules
+import ch.brickinventoryapp.network.util.NetworkAddressRules
+import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -57,9 +60,9 @@ class BarcodeFormTest {
         val actions = Recorder()
         val state = BarcodeDialogState(AppUiState(currency = CurrencyCode.CHF), ScopeUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon"), StorageUiState())
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
             BrickInventoryManagerTheme { BarcodeResultDialog(state, actions, coil3.ImageLoader.Builder(ctx).build()) }
-        }
+         }}
         compose.waitForIdle()
         return actions
     }

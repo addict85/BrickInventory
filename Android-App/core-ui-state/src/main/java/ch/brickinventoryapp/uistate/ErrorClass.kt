@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui
+package ch.brickinventoryapp.uistate
 
 /**
  * What a loading error stands for, coarse enough for icon, heading and advice: whoever is

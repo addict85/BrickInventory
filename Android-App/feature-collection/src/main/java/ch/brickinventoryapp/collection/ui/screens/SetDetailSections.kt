@@ -31,8 +31,6 @@ import ch.brickinventoryapp.model.domain.PriceHistoryView
 import ch.brickinventoryapp.model.domain.PurchaseView
 import ch.brickinventoryapp.model.domain.SetPriceView
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.AcquisitionSummarySection
 import ch.brickinventoryapp.shared.ui.DetailRow2
@@ -60,6 +58,8 @@ import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.util.fmtInput
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade

@@ -116,7 +116,7 @@ class ModuleBoundariesTest {
         // Every module has its own package root (table in `README.md`): an import
         // thus reveals the module, and no package spreads across two modules.
         val master = mapOf(
-            "app" to "app", "core-model" to "model", "core-contract" to "contract", "core-network" to "network", "core-data" to "data",
+            "app" to "app", "core-model" to "model", "core-ui-state" to "uistate", "core-contract" to "contract", "core-network" to "network", "core-data" to "data",
             "core-security" to "security", "core-offline" to "offline",
             "core-services" to "services", "core-ui" to "ui", "core-state" to "state",
             "core-navigation" to "navigation",

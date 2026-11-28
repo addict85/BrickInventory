@@ -7,7 +7,6 @@ import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.asQuery
 import ch.brickinventoryapp.data.api.withSetsAsQuery
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.allPages
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.safeCall
@@ -25,6 +24,7 @@ import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.domain.WantedItemView
 import ch.brickinventoryapp.model.domain.WantedSort
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.Domain
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.Slots

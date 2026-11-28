@@ -35,10 +35,7 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.WantedItemView
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.dataOrNull
 import ch.brickinventoryapp.model.util.resolveFullUrl
-import ch.brickinventoryapp.network.util.externalAddress
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.ConditionRow
 import ch.brickinventoryapp.shared.ui.OwnerPicker
@@ -49,6 +46,7 @@ import ch.brickinventoryapp.ui.components.CatalogDetailRow
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.ErrorHint
 import ch.brickinventoryapp.ui.components.LoadCircle
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.ProductImage
 import ch.brickinventoryapp.ui.components.SegmentChoice
 import ch.brickinventoryapp.ui.components.StateHint
@@ -67,6 +65,8 @@ import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.openExtern
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.dataOrNull
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -113,6 +113,7 @@ fun CatalogDetailScreen(
     LaunchedEffect(setNumber) { actions.load(setNumber) }
     var open by rememberSaveable { mutableStateOf<CatalogDialog?>(null) }
     val ctx = LocalContext.current
+    val addresses = LocalAddressRules.current
     // `stringResource` instead of `ctx.getString` in the callback: a context grabbed from
     // LocalContext.current can deliver stale values after a config change (language, dark mode,
     // rotation) (Lint: LocalContextGetResourceValueCall). In
@@ -145,7 +146,7 @@ fun CatalogDetailScreen(
                     onOpenInGallery = actions::openInGallery,
                     onBrickLink = { url ->
                         // Don't swallow silently: with no browser present, otherwise nothing would happen.
-                        if (!openExtern(ctx, externalAddress(url))) {
+                        if (!openExtern(ctx, addresses.external(url))) {
                             area.launch { messages.showSnackbar(noAppText) }
                         }
                     },

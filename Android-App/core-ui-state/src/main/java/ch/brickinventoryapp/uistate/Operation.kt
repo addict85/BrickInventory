@@ -1,4 +1,6 @@
-package ch.brickinventoryapp.model.ui
+package ch.brickinventoryapp.uistate
+
+import ch.brickinventoryapp.model.text.Message
 
 /**
  * An action of the user (save, send, export) in one form instead of a

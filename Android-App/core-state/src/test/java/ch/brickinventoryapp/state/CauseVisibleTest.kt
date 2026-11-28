@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.state
 
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.session.qrError
 import ch.brickinventoryapp.state.ui.withTechnicalCause
 import org.junit.Assert.assertEquals

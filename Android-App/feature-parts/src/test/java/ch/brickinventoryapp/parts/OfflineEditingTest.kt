@@ -3,7 +3,6 @@ package ch.brickinventoryapp.parts
 import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ReconcileOutcome
 import ch.brickinventoryapp.data.local.ServerSender
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.completingConverter
@@ -12,6 +11,7 @@ import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.data.testing.testWantedRepository
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage

@@ -14,8 +14,8 @@ import androidx.work.WorkerParameters
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.collection.SetFilesRepository
 import ch.brickinventoryapp.data.di.Scopes
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject

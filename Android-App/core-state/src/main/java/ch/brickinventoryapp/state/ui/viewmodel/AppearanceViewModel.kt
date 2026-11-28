@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AppearanceStore
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.state.ui.WidgetKick

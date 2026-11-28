@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui
+package ch.brickinventoryapp.uistate
 
 /** Presentation of a list: cards or table (parts-view and figs-view of the web app). */
 

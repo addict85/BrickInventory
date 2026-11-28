@@ -14,6 +14,7 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    implementation(project(":core-ui-state"))
     implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)

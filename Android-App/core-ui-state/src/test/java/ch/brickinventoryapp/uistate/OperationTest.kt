@@ -1,11 +1,6 @@
-package ch.brickinventoryapp.model
+package ch.brickinventoryapp.uistate
 
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.ended
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.running
-import ch.brickinventoryapp.model.ui.withoutError
+import ch.brickinventoryapp.model.text.Message
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

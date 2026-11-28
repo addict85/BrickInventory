@@ -15,6 +15,7 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    implementation(project(":core-ui-state"))
     // Internal: the areas name core-data themselves.
     implementation(project(":core-data"))
     implementation(project(":core-session"))
@@ -31,6 +32,7 @@ dependencies {
     testFixturesApi(testFixtures(project(":core-data")))
     testFixturesApi(testFixtures(project(":core-session")))
     testFixturesImplementation(project(":core-data"))
+    testFixturesImplementation(project(":core-ui-state"))
     testFixturesImplementation(project(":core-session"))
     testFixturesImplementation(project(":core-offline"))
     testImplementation(project(":core-testing"))

@@ -5,7 +5,6 @@ import ch.brickinventoryapp.collection.ui.CheckPhase
 import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.text
@@ -13,11 +12,12 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.EntryRequest
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.SetRecorded
-import ch.brickinventoryapp.model.ui.ScannerOrigin
-import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.uistate.ScannerOrigin
+import ch.brickinventoryapp.uistate.running
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow

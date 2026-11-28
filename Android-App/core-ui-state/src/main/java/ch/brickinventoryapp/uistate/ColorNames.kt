@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui
+package ch.brickinventoryapp.uistate
 
 import ch.brickinventoryapp.model.domain.ColorView
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR

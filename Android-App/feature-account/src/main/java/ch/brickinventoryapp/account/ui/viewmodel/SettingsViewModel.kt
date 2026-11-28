@@ -8,9 +8,8 @@ import ch.brickinventoryapp.data.account.AccountRepository
 import ch.brickinventoryapp.data.account.ManagementRepository
 import ch.brickinventoryapp.data.alarm.AlarmInput
 import ch.brickinventoryapp.data.collection.AlarmRepository
-import ch.brickinventoryapp.data.local.StockReconciliation
 import ch.brickinventoryapp.data.parts.PartsRepository
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.stock.StockReconciliation
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CsvImportKind
@@ -20,8 +19,8 @@ import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.file.Read
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.outcome.Outcome
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
@@ -35,6 +34,7 @@ import ch.brickinventoryapp.state.ui.viewmodel.Observed
 import ch.brickinventoryapp.state.ui.viewmodel.loadPerServer
 import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
+import ch.brickinventoryapp.uistate.Operation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

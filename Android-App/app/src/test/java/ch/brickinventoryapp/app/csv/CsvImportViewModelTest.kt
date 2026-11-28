@@ -11,11 +11,11 @@ import ch.brickinventoryapp.data.testing.testSetFilesRepository
 import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.domain.RunStatus
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.services.service.CsvImportRunner
 import ch.brickinventoryapp.state.testing.NumbersTexts
 import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.uistate.running
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation

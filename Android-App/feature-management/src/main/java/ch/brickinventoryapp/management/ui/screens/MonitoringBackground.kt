@@ -29,8 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.management.ui.viewmodel.BackgroundUiState
 import ch.brickinventoryapp.model.domain.JobView
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.SectionTitle
@@ -38,6 +36,8 @@ import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.AppCard
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtTag
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 
 /**
  * The background work from the job table, as in the web app. The

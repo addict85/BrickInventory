@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.model.domain
 
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import java.time.Instant
 
 // What the account repository delivers, in domain values: the areas read no field of the

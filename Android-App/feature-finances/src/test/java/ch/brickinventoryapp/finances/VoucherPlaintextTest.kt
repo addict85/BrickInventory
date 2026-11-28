@@ -14,9 +14,9 @@ import ch.brickinventoryapp.finances.ui.viewmodel.pdfWithOnceTicket
 import ch.brickinventoryapp.finances.ui.viewmodel.voucherPdfAddress
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.state.testing.NumbersTexts
+import ch.brickinventoryapp.uistate.loading
+import ch.brickinventoryapp.uistate.running
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

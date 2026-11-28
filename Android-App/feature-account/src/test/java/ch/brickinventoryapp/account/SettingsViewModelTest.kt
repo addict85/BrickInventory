@@ -13,10 +13,10 @@ import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.testing.TestServices
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.errorMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first

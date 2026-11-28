@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.account.AccountRepositoryImpl
-import ch.brickinventoryapp.data.account.ManagementRepositoryImpl
 import ch.brickinventoryapp.data.account.HouseholdRepositoryImpl
+import ch.brickinventoryapp.data.account.ManagementRepositoryImpl
 import ch.brickinventoryapp.data.account.StepBindingImpl
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.api.CatalogApi

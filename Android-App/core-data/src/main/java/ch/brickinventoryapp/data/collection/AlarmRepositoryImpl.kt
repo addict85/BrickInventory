@@ -4,7 +4,6 @@ import ch.brickinventoryapp.contract.PriceAlertRequest
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.caughtUp
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.refreshPaged
@@ -15,6 +14,7 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OfflineStore.FollowUp
 import ch.brickinventoryapp.offline.Slots

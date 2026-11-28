@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui
+package ch.brickinventoryapp.uistate
 
 /**
  * Color names from Rebrickable in German — the same rule as colorName() of the web app

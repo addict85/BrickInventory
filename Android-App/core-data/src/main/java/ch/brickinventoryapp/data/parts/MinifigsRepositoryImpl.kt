@@ -8,7 +8,6 @@ import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.api.MinifigsApi
 import ch.brickinventoryapp.data.collection.asRequest
 import ch.brickinventoryapp.data.local.asRequest
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.caughtUp
 import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.mapData
@@ -28,6 +27,7 @@ import ch.brickinventoryapp.model.domain.Recorded
 import ch.brickinventoryapp.model.domain.UsageView
 import ch.brickinventoryapp.model.domain.asMoney
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.FilterColumns
 import ch.brickinventoryapp.offline.OfflineStore

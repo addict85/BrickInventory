@@ -15,8 +15,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
+import ch.brickinventoryapp.uistate.ScrollMemory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Rule

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.ui.components.LocalAddressRules
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
@@ -95,7 +97,7 @@ class FlowTest {
     fun tearDown() { world?.close() }
 
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) =
-        compose.setContent { BrickInventoryManagerTheme { Surface { content() } } }
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { Surface { content() } }  }}
 
     @Test
     fun `sign-in passes on name and password`() {

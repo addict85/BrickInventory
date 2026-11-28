@@ -1,4 +1,6 @@
-package ch.brickinventoryapp.model.ui
+package ch.brickinventoryapp.uistate
+
+import ch.brickinventoryapp.model.text.Message
 
 /**
  * The state of a fetch for the UI, one form for all screens instead of

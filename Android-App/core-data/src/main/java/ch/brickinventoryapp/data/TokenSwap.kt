@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.network.di.RotationReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi

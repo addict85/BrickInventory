@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui.theme
+package ch.brickinventoryapp.model.appearance
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer

@@ -6,11 +6,11 @@ Rot: dialogSetAddFont200
 diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/ScreenPhotoVariantsTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/ScreenPhotoVariantsTest.kt
 --- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/ScreenPhotoVariantsTest.kt
 +++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/ScreenPhotoVariantsTest.kt
-@@ -245,7 +245,6 @@
+@@ -245,7 +245,6 @@ class ScreenPhotoVariantsTest {
          RuntimeEnvironment.setQualifiers(if (language != null) "$language-$mask" else mask)
          // The font in the configuration too: a dialog has its own window and
          // takes the density from there, LocalDensity below does not reach into it.
 -        if (font != 1f) RuntimeEnvironment.setFontScale(font)
          if (language != null) Locale.setDefault(Locale.forLanguageTag(language.replace("-r", "-")))
          if (wait) provide(name, ready, condition)
-         compose.setContent {
+         compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 

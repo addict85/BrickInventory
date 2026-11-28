@@ -27,13 +27,13 @@ import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.collection.ui.viewmodel.WantedListViewModel
-import ch.brickinventoryapp.model.ui.ScannerOrigin
 import ch.brickinventoryapp.navigation.AreaEnvironment
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.WithTarget
 import ch.brickinventoryapp.ui.listAndDetail
+import ch.brickinventoryapp.uistate.ScannerOrigin
 
 /** What the collection needs from the app; the entry flow hangs on the destination that scans. */
 interface CollectionNavigation : AreaEnvironment {

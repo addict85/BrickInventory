@@ -16,6 +16,7 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    implementation(project(":core-ui-state"))
     implementation(project(":core-ui"))
     implementation(project(":core-resources"))
 

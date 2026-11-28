@@ -18,8 +18,6 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.management.ui.ManagementUiState
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringActions
 import ch.brickinventoryapp.model.domain.LogRowView
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.fmtClockTime
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.SearchField
@@ -31,6 +29,8 @@ import ch.brickinventoryapp.ui.theme.AppCard
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.ui.util.twentyFourHours
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.loading
 
 /**
  * The server log, like "Logs" in the web app. Not loaded on its own: up to

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.catalog
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.BarcodeView
 import ch.brickinventoryapp.model.domain.FigureView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.SetView
+import ch.brickinventoryapp.model.outcome.Outcome
 
 /**
  * Information about a set when adding and looking up: does it exist already, what

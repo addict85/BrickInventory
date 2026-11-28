@@ -5,11 +5,11 @@ import ch.brickinventoryapp.contract.GenericAdminResponse
 import ch.brickinventoryapp.contract.mapping.asData
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.api.ManagementApi
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.safeCall
 import ch.brickinventoryapp.data.repository.withoutContent
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.ApiLimitsView
 import ch.brickinventoryapp.model.domain.BackgroundView
 import ch.brickinventoryapp.model.domain.BricksetEntryView
@@ -20,7 +20,7 @@ import ch.brickinventoryapp.model.domain.CsvResultView
 import ch.brickinventoryapp.model.domain.JobsView
 import ch.brickinventoryapp.model.domain.LogRowView
 import ch.brickinventoryapp.model.domain.StartStateView
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import okhttp3.MediaType.Companion.toMediaType

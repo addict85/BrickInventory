@@ -3,7 +3,6 @@ package ch.brickinventoryapp.data.finances
 import ch.brickinventoryapp.contract.PriceHistoryResponse
 import ch.brickinventoryapp.contract.mapping.asView
 import ch.brickinventoryapp.data.api.FinancesApi
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.mapData
 import ch.brickinventoryapp.data.repository.promised
 import ch.brickinventoryapp.data.repository.reconciledSingle
@@ -17,6 +16,7 @@ import ch.brickinventoryapp.model.domain.ProfitView
 import ch.brickinventoryapp.model.domain.SetPriceView
 import ch.brickinventoryapp.model.domain.ValuationView
 import ch.brickinventoryapp.model.domain.ValueHistoryView
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.Slots
 import javax.inject.Inject

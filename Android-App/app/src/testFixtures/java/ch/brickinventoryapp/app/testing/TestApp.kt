@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.app.testing
 
+import ch.brickinventoryapp.ui.components.LocalAddressRules
+import ch.brickinventoryapp.network.util.NetworkAddressRules
+import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.test.core.app.ApplicationProvider
@@ -14,10 +17,10 @@ import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.TrustStore
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.finances.ui.viewmodel.VoucherViewModel
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
 import ch.brickinventoryapp.security.CertificateQuestion
@@ -88,7 +91,7 @@ class TestApp(
     /** Draws the app in [compose]'s activity; the destinations find their ViewModels there. */
     fun show(compose: AndroidComposeTestRule<*, HiltTestActivity>) {
         compose.activity.viewModels = viewModels
-        compose.setContent { BrickInventoryManagerTheme(theme = Design.CLASSIC) { BrickInventoryRoute(activity, images) } }
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme(theme = Design.CLASSIC) { BrickInventoryRoute(activity, images) }  }}
     }
 
     override fun close() = world.close()

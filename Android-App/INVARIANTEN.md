@@ -77,7 +77,7 @@ Dateien: `finances/ui/pdf/InstructionLoader.kt`, `data/di/ServerClient.kt` · Te
 
 **Ergebnis hat zwei Varianten.** Kein `else` in einem `when` über `Ergebnis`: Eine neue
 Variante soll den Bau dort brechen, wo sie behandelt werden muss.
-Datei: `data/repository/Outcome.kt` · Test: `MediaAuthTest`
+Datei: `model/outcome/Outcome.kt` · Test: `MediaAuthTest`
 
 **Fehlermeldungen an einer Stelle.** Die Datenschicht meldet die Art des Fehlers, keinen
 Satz; den Satz bildet `AppTexte.meldung()`, die Meldung des Servers hat Vorrang.

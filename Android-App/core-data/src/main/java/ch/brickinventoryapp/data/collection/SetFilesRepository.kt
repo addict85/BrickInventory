@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.collection
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import ch.brickinventoryapp.model.domain.PartListJob
 import ch.brickinventoryapp.model.domain.PdfJobStatus
+import ch.brickinventoryapp.model.outcome.Outcome
 
 /** Files for sets, in and out: PDF of the parts list, CSV import, instructions. */
 interface SetFilesRepository {

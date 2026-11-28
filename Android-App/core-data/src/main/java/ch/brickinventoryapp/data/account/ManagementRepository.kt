@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.account
 
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.ApiLimitsView
 import ch.brickinventoryapp.model.domain.BackgroundView
 import ch.brickinventoryapp.model.domain.BricksetEntryView
@@ -11,7 +11,7 @@ import ch.brickinventoryapp.model.domain.CsvResultView
 import ch.brickinventoryapp.model.domain.JobsView
 import ch.brickinventoryapp.model.domain.LogRowView
 import ch.brickinventoryapp.model.domain.StartStateView
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.outcome.Outcome
 
 /**
  * The management of the server (admins only), in views: the wire format stays

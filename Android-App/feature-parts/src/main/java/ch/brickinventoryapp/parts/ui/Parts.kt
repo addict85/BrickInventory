@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.parts.ui
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.CategoryView
 import ch.brickinventoryapp.model.domain.ColorView
 import ch.brickinventoryapp.model.domain.FigureView
@@ -11,9 +10,10 @@ import ch.brickinventoryapp.model.domain.MinifigsMetricsView
 import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartsMetricsView
 import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.model.ui.ListView
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.uistate.ListView
+import ch.brickinventoryapp.uistate.Load
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

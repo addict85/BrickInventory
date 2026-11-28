@@ -8,7 +8,7 @@ import ch.brickinventoryapp.data.testing.FakeApi
 import ch.brickinventoryapp.data.testing.TestStore
 import ch.brickinventoryapp.data.testing.testStockReconciliation
 import ch.brickinventoryapp.model.local.StockKind
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.InitialObserver
 import kotlinx.coroutines.ExperimentalCoroutinesApi

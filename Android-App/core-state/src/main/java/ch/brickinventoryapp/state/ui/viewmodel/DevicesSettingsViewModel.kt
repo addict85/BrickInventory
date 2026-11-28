@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.DevicesSettings
 import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.data.cache.PreviewStore
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -4,13 +4,13 @@ import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.testing.FakeApi
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.session.SessionRepository
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.state.ui.AppViewModel
 import ch.brickinventoryapp.state.ui.OutboxNotifier
+import ch.brickinventoryapp.uistate.ScrollMemory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow

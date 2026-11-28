@@ -6,7 +6,7 @@ import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.PrewarmNetwork
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.testing.text
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.state.ui.viewmodel.DevicesSettingsViewModel

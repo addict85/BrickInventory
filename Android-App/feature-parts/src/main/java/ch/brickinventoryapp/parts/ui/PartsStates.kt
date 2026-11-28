@@ -19,11 +19,11 @@ import ch.brickinventoryapp.model.domain.PartView
 import ch.brickinventoryapp.model.domain.PartsMetricsView
 import ch.brickinventoryapp.model.domain.UsingSetView
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
-import ch.brickinventoryapp.model.ui.ListView
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.uistate.ListView
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.Operation
 import java.io.Serializable
 
 /**

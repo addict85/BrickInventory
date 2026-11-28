@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.login.ui
 
-import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.model.address.AddressError
+import ch.brickinventoryapp.model.address.AddressRules
 import ch.brickinventoryapp.security.isFingerprint
 
 /**
@@ -11,29 +12,29 @@ import ch.brickinventoryapp.security.isFingerprint
 data class QrLoginPayload(val url: String, val token: String, val fingerprint: String? = null)
 
 /** http is rejected only by the dialog, with an explanation; these errors make the code invalid. */
-private val QR_REJECTED = setOf(NetworkPolicy.AddressError.UNREADABLE, NetworkPolicy.AddressError.USER_INPUT,
-    NetworkPolicy.AddressError.EXTRA)
+private val QR_REJECTED = setOf(AddressError.UNREADABLE, AddressError.USER_INPUT,
+    AddressError.EXTRA)
 
 /**
  * Checked before trimming: a code has no reason for whitespace, but with a
  * line break an attacker could place a second, harmless-looking name in the dialog.
  */
-internal fun qrAddressInvalid(url: String): Boolean =
+internal fun qrAddressInvalid(url: String, addresses: AddressRules): Boolean =
     url.any { it.isWhitespace() || it.isISOControl() } ||
-        NetworkPolicy.addressError(url, NetworkPolicy.development) in QR_REJECTED
+        addresses.addressError(url) in QR_REJECTED
 
 /**
  * An unreadable `fp` makes the whole code invalid: silently continuing without
  * a pin would mean leaving out the check the server demands.
  */
-internal fun parseQrPayload(raw: String): QrLoginPayload? = try {
+internal fun parseQrPayload(raw: String, addresses: AddressRules): QrLoginPayload? = try {
     val obj = org.json.JSONObject(raw)
     val url = obj.optString("url", "")
     val token = obj.optString("token", "")
     val fp = obj.optString("fp", "").trim().ifEmpty { null }
     when {
         url.isBlank() || !token.startsWith("bim:") -> null
-        qrAddressInvalid(url) -> null
+        qrAddressInvalid(url, addresses) -> null
         fp != null && !isFingerprint(fp) -> null
         // A pin over http gives nothing: there is no certificate there.
         fp != null && !url.trim().lowercase().startsWith("https://") -> null
@@ -52,7 +53,7 @@ internal fun qrAdoptable(locked: Boolean, targetConfirmed: Boolean, type: Boolea
  * The host of the previous server, if the code leads elsewhere: the yes signs out
  * there and sends everything else to the new server, so the dialog says so.
  */
-internal fun qrSwitchesServer(previous: String, code: String): String? {
-    if (previous.isBlank() || NetworkPolicy.sameOrigin(previous, NetworkPolicy.normalize(code))) return null
-    return NetworkPolicy.view(previous)?.host
+internal fun qrSwitchesServer(previous: String, code: String, addresses: AddressRules): String? {
+    if (previous.isBlank() || addresses.sameOrigin(previous, addresses.normalize(code))) return null
+    return addresses.view(previous)?.host
 }

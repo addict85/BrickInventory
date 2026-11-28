@@ -39,14 +39,13 @@ import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.data.testing.testCatalogRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.finances.ui.FinanceTarget
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PriceChartView
 import ch.brickinventoryapp.model.domain.PricePointView
 import ch.brickinventoryapp.model.domain.PriceSeriesView
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
 import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.resources.R
@@ -54,6 +53,7 @@ import ch.brickinventoryapp.shared.ui.ConditionRow
 import ch.brickinventoryapp.shared.ui.PriceChart
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.uistate.loading
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

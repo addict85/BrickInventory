@@ -33,7 +33,7 @@ import ch.brickinventoryapp.finances.ui.financesGraph
 import ch.brickinventoryapp.login.ui.LoginTarget
 import ch.brickinventoryapp.login.ui.loginGraph
 import ch.brickinventoryapp.management.ui.managementGraph
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.parts.ui.partsGraph
 import ch.brickinventoryapp.resources.R

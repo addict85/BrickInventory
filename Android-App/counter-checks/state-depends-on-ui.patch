@@ -90,8 +90,8 @@ diff --git a/Android-App/core-navigation/gradle.lockfile b/Android-App/core-navi
 diff --git a/Android-App/core-state/build.gradle.kts b/Android-App/core-state/build.gradle.kts
 --- a/Android-App/core-state/build.gradle.kts
 +++ b/Android-App/core-state/build.gradle.kts
-@@ -17,6 +17,7 @@ dependencies {
-     api(project(":core-model"))
+@@ -18,6 +18,7 @@ dependencies {
+     implementation(project(":core-ui-state"))
      // Internal: the areas name core-data themselves.
      implementation(project(":core-data"))
 +    implementation(project(":core-ui"))

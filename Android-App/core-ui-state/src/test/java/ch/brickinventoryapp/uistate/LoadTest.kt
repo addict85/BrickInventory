@@ -1,12 +1,6 @@
-package ch.brickinventoryapp.model
+package ch.brickinventoryapp.uistate
 
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.dataOrNull
-import ch.brickinventoryapp.model.ui.errorKind
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.text.Message
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

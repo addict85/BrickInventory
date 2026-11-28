@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.ui.components.LocalAddressRules
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import android.content.Context
 import android.os.Looper
 import android.view.View
@@ -81,13 +83,12 @@ import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
 import ch.brickinventoryapp.management.ui.screens.MonitoringState
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.PartListUiState
 import ch.brickinventoryapp.parts.ui.PlSet
 import ch.brickinventoryapp.parts.ui.screens.PartsListScreen
@@ -100,6 +101,7 @@ import ch.brickinventoryapp.state.ui.viewmodel.PurchasesViewModel
 import ch.brickinventoryapp.ui.components.ProductImage
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.uistate.loading
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -168,14 +170,14 @@ class FormsAndMarginsTest {
     private fun text(id: Int, vararg values: Any): String = if (values.isEmpty()) ctx.getString(id) else ctx.getString(id, *values)
 
     private fun show(font: Float = 1f, content: @Composable () -> Unit) {
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
                     Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
-        }
+         }}
         compose.waitForIdle()
     }
 
@@ -434,12 +436,12 @@ class FormsAndMarginsTest {
 
     @Test
     fun `in the dark the image lies on a dark surface`() {
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) { 
             BrickInventoryManagerTheme(theme = Design.CLASSIC, dark = true) {
                 ProductImage(model = "/beispiel/set1.png", imageLoader = SampleImages.loader(ctx), contentDescription = "Bild",
                     modifier = Modifier.size(300.dp, 100.dp), imageBackground = true)
             }
-        }
+         }}
         compose.waitForIdle()
         val image = compose.onNodeWithContentDescription("Bild").captureToImage().asAndroidBitmap()
         // Left of the image, which stands centered with „Fit“: only the surface.

@@ -9,6 +9,7 @@ android {
 
 dependencies {
     implementation(project(":core-model"))
+    implementation(project(":core-ui-state"))
     implementation(project(":core-data"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-inventory"))

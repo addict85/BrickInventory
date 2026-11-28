@@ -4,12 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.finances.FinancesRepository
-import ch.brickinventoryapp.data.local.StockReconciliation
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.stock.StockReconciliation
 import ch.brickinventoryapp.finances.ui.FinanceUiState
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.state.ui.loadError
@@ -17,6 +15,8 @@ import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
 import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

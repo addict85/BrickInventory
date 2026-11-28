@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.network.util
 
 import ch.brickinventoryapp.core.network.BuildConfig
+import ch.brickinventoryapp.model.address.AddressError
+import ch.brickinventoryapp.model.address.AddressView
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.IOException
@@ -35,13 +37,6 @@ object NetworkPolicy {
     fun connectionAllowed(url: HttpUrl, development: Boolean): Boolean =
         url.isHttps || (development && url.host.lowercase() in DEVELOPMENT_HOSTS)
 
-    /**
-     * Why setup won't accept an address. USER_INPUT and EXTRA: `a@b`, line
-     * breaks, `\`, `?` or `#` can make an address look like it points at one
-     * server and lead to another; a server address needs none of that.
-     */
-    enum class AddressError { UNREADABLE, PLAINTEXT, USER_INPUT, EXTRA }
-
     /** Input without a scheme counts as https: "nas.fritz.box" means https://nas.fritz.box. */
     fun normalize(input: String): String {
         val t = input.trim()
@@ -58,13 +53,6 @@ object NetworkPolicy {
         if (url.query != null || url.fragment != null) return AddressError.EXTRA
         return if (connectionAllowed(url, development)) null else AddressError.PLAINTEXT
     }
-
-    /**
-     * What the app understands under an address, for confirmation: host in
-     * ASCII (punycode), because a Cyrillic "і" is indistinguishable from "i" in
-     * the Unicode rendering. [international]: the host contains an `xn--` label.
-     */
-    data class AddressView(val host: String, val address: String, val international: Boolean)
 
     fun view(serverUrl: String): AddressView? {
         val url = normalize(serverUrl).toHttpUrlOrNull() ?: return null

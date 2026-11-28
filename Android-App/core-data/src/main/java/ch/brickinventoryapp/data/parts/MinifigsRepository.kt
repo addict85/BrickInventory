@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.data.parts
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.FigureView
@@ -10,6 +9,7 @@ import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.Recorded
 import ch.brickinventoryapp.model.domain.UsageView
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import kotlinx.coroutines.flow.Flow
 
 /**

@@ -11,7 +11,7 @@ import ch.brickinventoryapp.data.testing.text
 import ch.brickinventoryapp.management.ui.screens.jobKindText
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.model.domain.JobStatus
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

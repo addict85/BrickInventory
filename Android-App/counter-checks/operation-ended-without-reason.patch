@@ -1,12 +1,12 @@
 Gegenprobe: beendet ohne Grund gilt als gescheitert
-Modul: core-model
-Test: ch.brickinventoryapp.model.OperationTest
+Modul: core-ui-state
+Test: ch.brickinventoryapp.uistate.OperationTest
 Rot: ended without a reason is finished, with a reason failed
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt
-@@ -19,4 +19,4 @@
+diff --git a/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/Operation.kt b/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/Operation.kt
+--- a/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/Operation.kt
++++ b/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/Operation.kt
+@@ -21,4 +21,4 @@ val Operation.errorMessage: Message? get() = (this as? Operation.Failed)?.messag
  fun Operation.withoutError(): Operation = if (this is Operation.Failed) Operation.Done else this
  
  /** A finished operation: failed with a reason, without finished. */

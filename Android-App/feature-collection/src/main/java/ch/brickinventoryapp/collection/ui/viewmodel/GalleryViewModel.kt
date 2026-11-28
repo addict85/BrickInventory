@@ -10,14 +10,12 @@ import ch.brickinventoryapp.collection.ui.tilePrices
 import ch.brickinventoryapp.data.account.AccountView
 import ch.brickinventoryapp.data.collection.SetsRepository
 import ch.brickinventoryapp.data.finances.FinancesRepository
-import ch.brickinventoryapp.data.local.StockReconciliation
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.data.stock.StockReconciliation
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.domain.MetricsView
 import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.model.domain.SetView
-import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Session
@@ -27,6 +25,8 @@ import ch.brickinventoryapp.state.ui.viewmodel.Observed
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
 import ch.brickinventoryapp.state.ui.viewmodel.loadPerServer
 import ch.brickinventoryapp.state.ui.viewmodel.logoutSequence
+import ch.brickinventoryapp.uistate.ScrollMemory
+import ch.brickinventoryapp.uistate.loading
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

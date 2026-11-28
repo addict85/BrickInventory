@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui.theme
+package ch.brickinventoryapp.model.appearance
 
 /**
  * Does „dark by system" apply? Without a saved choice yes — an app that stays light

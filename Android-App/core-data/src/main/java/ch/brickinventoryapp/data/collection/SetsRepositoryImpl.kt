@@ -11,7 +11,6 @@ import ch.brickinventoryapp.data.account.GALLERY_PAGE_SIZE
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.asRecorded
 import ch.brickinventoryapp.data.local.asRequest
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.caughtUp
 import ch.brickinventoryapp.data.repository.done
 import ch.brickinventoryapp.data.repository.promised
@@ -27,6 +26,7 @@ import ch.brickinventoryapp.model.domain.SetRecorded
 import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.FilterColumns
 import ch.brickinventoryapp.offline.OfflineStore

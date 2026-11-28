@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.state.ui.viewmodel
 
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.network.util.reportsTheSessionLayer
 
 /**

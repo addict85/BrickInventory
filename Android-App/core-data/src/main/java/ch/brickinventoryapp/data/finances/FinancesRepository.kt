@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.data.finances
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.AccountSelection
 import ch.brickinventoryapp.model.domain.FiguresValuationView
 import ch.brickinventoryapp.model.domain.MetricsView
@@ -10,6 +9,7 @@ import ch.brickinventoryapp.model.domain.ProfitView
 import ch.brickinventoryapp.model.domain.SetPriceView
 import ch.brickinventoryapp.model.domain.ValuationView
 import ch.brickinventoryapp.model.domain.ValueHistoryView
+import ch.brickinventoryapp.model.outcome.Outcome
 /**
  * Prices, valuation, history and profit/loss.
  * An interface so that ViewModels and tests do not depend on the implementation with

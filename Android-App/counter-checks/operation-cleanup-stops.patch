@@ -1,12 +1,12 @@
 Gegenprobe: das Wegräumen eines Fehlers beendet auch einen laufenden Vorgang
-Modul: core-model
-Test: ch.brickinventoryapp.model.OperationTest
+Modul: core-ui-state
+Test: ch.brickinventoryapp.uistate.OperationTest
 Rot: clearing an error does not stop a running operation
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Operation.kt
-@@ -16,7 +16,7 @@
+diff --git a/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/Operation.kt b/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/Operation.kt
+--- a/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/Operation.kt
++++ b/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/Operation.kt
+@@ -18,7 +18,7 @@ val Operation.running: Boolean get() = this is Operation.Running
  val Operation.errorMessage: Message? get() = (this as? Operation.Failed)?.message
  
  /** Take away the reason when nobody shall see it any more; a running operation keeps running. */
