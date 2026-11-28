@@ -33,7 +33,7 @@ class StoreUnlockedTest {
     private val folder = File(System.getProperty("java.io.tmpdir"), "bim-entsperrt-${System.nanoTime()}").apply { mkdirs() }
     private val file = File(folder, "ablage.schluessel")
 
-    /** What Ablageschluessel wrote: a result of the run, not source code. */
+    /** What StoreKey wrote: a result of the run, not source code. */
     private fun stored() = file.readBytes().decodeToString()
 
     @After

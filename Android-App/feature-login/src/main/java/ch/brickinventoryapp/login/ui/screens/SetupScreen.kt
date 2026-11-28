@@ -23,10 +23,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.login.ui.QrLoginPayload
 import ch.brickinventoryapp.login.ui.parseQrPayload
-import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.model.address.AddressError
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.AppLockChoice
 import ch.brickinventoryapp.ui.components.BrandsHeader
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.LocalAppLock
 import ch.brickinventoryapp.ui.components.LocalAppVersion
 import ch.brickinventoryapp.ui.components.announce
@@ -45,7 +46,7 @@ fun SetupScreen(
     onSave: (url: String) -> Unit,
     /** Second value: the typed-off fingerprint, if [mustTypeIn] demands it, otherwise null. */
     onQrScanned: ((QrLoginPayload, String?) -> Unit)? = null,
-    development: Boolean = NetworkPolicy.development,
+    development: Boolean = LocalAddressRules.current.development,
     /** The remembered pin for the code's address and fingerprint, if it deviates. */
     previousPin: (url: String, fingerprint: String?) -> String? = { _, _ -> null },
     /** Whether the code's fingerprint needs to be typed off (LoginViewModel.mustTypeIn); when in doubt, yes. */
@@ -61,11 +62,12 @@ fun SetupScreen(
     // rotation, one simply scans it again.
     var qrSuggestion  by remember { mutableStateOf<QrLoginPayload?>(null) }
     val keyboard     = LocalSoftwareKeyboardController.current
-    val error       = if (url.isBlank()) null else NetworkPolicy.addressError(url, development)
+    val addresses = LocalAddressRules.current
+    val error       = if (url.isBlank()) null else addresses.addressError(url, development)
 
     fun save() {
         if (url.isBlank() || error != null) return
-        keyboard?.hide(); onSave(NetworkPolicy.normalize(url))
+        keyboard?.hide(); onSave(addresses.normalize(url))
     }
 
     if (showScanner) {
@@ -73,7 +75,7 @@ fun SetupScreen(
         QrSetupScannerScreen(
             onResult = { raw ->
                 showScanner = false
-                val payload = parseQrPayload(raw)
+                val payload = parseQrPayload(raw, addresses)
                 if (payload != null) {
                     qrSuggestion = payload
                 } else {
@@ -108,7 +110,7 @@ fun SetupScreen(
         singlePadding = PaddingValues(Spacing.huge),
         header = {
             BrandsHeader(subtitle = stringResource(R.string.setup_subtitle))
-            if (NetworkPolicy.plaintextLegacyStock(currentUrl, development)) {
+            if (addresses.plaintextLegacyStock(currentUrl, development)) {
                 Spacer(Modifier.height(Spacing.large))
                 LegacyStockCard(currentUrl)
             }
@@ -201,7 +203,7 @@ private fun ScanChoice(main: Boolean, scanInvalid: Boolean, onScan: () -> Unit) 
  * elevation like every card in the app, inner spacing from the scale.
  */
 @Composable
-private fun AddressCard(url: String, onUrl: (String) -> Unit, error: NetworkPolicy.AddressError?, save: () -> Unit) {
+private fun AddressCard(url: String, onUrl: (String) -> Unit, error: AddressError?, save: () -> Unit) {
     AppCard {
         Column(Modifier.padding(Spacing.large)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -236,12 +238,12 @@ private fun AddressCard(url: String, onUrl: (String) -> Unit, error: NetworkPoli
 
 /** The line below the address field: what is wrong with it, or how it should look. */
 @Composable
-private fun AddressHint(error: NetworkPolicy.AddressError?) {
+private fun AddressHint(error: AddressError?) {
     val text = when (error) {
-        NetworkPolicy.AddressError.PLAINTEXT -> R.string.setup_plaintext_declined
-        NetworkPolicy.AddressError.UNREADABLE -> R.string.setup_url_unreadable
-        NetworkPolicy.AddressError.USER_INPUT -> R.string.setup_url_user_input
-        NetworkPolicy.AddressError.EXTRA -> R.string.setup_url_extra
+        AddressError.PLAINTEXT -> R.string.setup_plaintext_declined
+        AddressError.UNREADABLE -> R.string.setup_url_unreadable
+        AddressError.USER_INPUT -> R.string.setup_url_user_input
+        AddressError.EXTRA -> R.string.setup_url_extra
         null -> R.string.setup_url_supporting
     }
     if (error != null) Text(stringResource(text), color = MaterialTheme.colorScheme.error)

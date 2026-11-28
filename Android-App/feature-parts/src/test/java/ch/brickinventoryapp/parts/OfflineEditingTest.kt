@@ -3,7 +3,6 @@ package ch.brickinventoryapp.parts
 import ch.brickinventoryapp.data.local.Reconcile
 import ch.brickinventoryapp.data.local.ReconcileOutcome
 import ch.brickinventoryapp.data.local.ServerSender
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.BrickApiService
 import ch.brickinventoryapp.data.testing.TestApi
 import ch.brickinventoryapp.data.testing.completingConverter
@@ -12,6 +11,7 @@ import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.data.testing.testWantedRepository
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
@@ -43,7 +43,7 @@ import java.util.Collections
  *      “if something waits, new things go behind it” (the second change went out directly)
  *   C  in ServerSender for SetQuantity `quantity = step` instead of `quantityDelta` →
  *      red “what is sent is the step”
- *   D  in Offlineablage.refreshPaged (Fetch.kt) the empty list taken over even on an
+ *   D  in OfflineStore.refreshPaged (Fetch.kt) the empty list taken over even on an
  *      error → red “without a connection the list stays in the store”
  *   (E–I measured)
  *   E  in the store's write (Fetch.kt) take a new key when buffering after the direct

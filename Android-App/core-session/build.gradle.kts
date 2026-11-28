@@ -16,6 +16,7 @@ android {
 dependencies {
     api(project(":core-model"))
     implementation(project(":core-data"))
+    implementation(project(":core-data-api"))
     // NetworkPolicy: address of a failed sign-out, plaintext legacy stock.
     implementation(project(":core-network"))
     implementation(project(":core-resources"))
@@ -24,5 +25,5 @@ dependencies {
 
     testFixturesImplementation(project(":core-data"))
     testFixturesImplementation(libs.kotlinx.coroutines.android)
-    // SessionService is tested in core-state: its tests assemble it together with the Blickfeld.
+    // SessionService is tested in core-state: its tests assemble it together with the scope.
 }

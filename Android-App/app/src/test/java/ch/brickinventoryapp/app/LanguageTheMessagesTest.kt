@@ -10,7 +10,7 @@ import org.junit.Test
  * `AppCompatDelegate.setApplicationLocales()` only localizes
  * AppCompat ACTIVITIES. Below Android 13 the application context keeps
  * the SYSTEM language — minSdk is 30, so affected are
- * Android 11 and 12. That has long been in LanguageManager.localizedContext()
+ * Android 11 and 12. That has long been in AppLanguage.localizedContext()
  *
  * The ViewModels were the gap: thirty-two direct
  * `ctx.getString(...)` on the application context stood there. Whoever had their phone set to
@@ -26,7 +26,7 @@ import org.junit.Test
  * ── What is checked ──────────────────────────────────────────────────────────
  * In the ViewModels, the feature files and the services `getString(`
  * may only stand on a receiver that comes from
- * `LanguageManager.localizedContext(...)` in the SAME file. The receiver's name
+ * `AppLanguage.localizedContext(...)` in the SAME file. The receiver's name
  * does not matter — its origin is checked.
  *
  * NOT checked are the screens under `ui/screens/` and `shared/ui/`: there `ctx`
@@ -100,7 +100,7 @@ class LanguageTheMessagesTest {
             "These places fetch texts via a Context that below " +
                 "Android 13 carries the SYSTEM language instead of the chosen app language:\n  " +
                 error.distinct().joinToString("\n  ") +
-                "\nRichtig ist LanguageManager.localizedContext(...) — siehe TextSource.text()."
+                "\nRichtig ist AppLanguage.localizedContext(...) — siehe TextSource.text()."
         }
     }
 

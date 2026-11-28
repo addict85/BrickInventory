@@ -3,9 +3,9 @@ Modul: core-state
 Test: ch.brickinventoryapp.state.LoadOnObserveTest
 Rot: Observed counts the observers and reports only the first
 
-diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
---- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
-+++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt
 @@ -159,7 +159,8 @@
      override val value: T get() = source.value
      override val replayCache: List<T> get() = source.replayCache

@@ -26,9 +26,6 @@ import ch.brickinventoryapp.model.domain.LocationView
 import ch.brickinventoryapp.model.domain.ManualPartView
 import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.PartsMetricsView
-import ch.brickinventoryapp.model.ui.ListView
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.parts.ui.PartsFilter
 import ch.brickinventoryapp.parts.ui.PartsSessionUiState
 import ch.brickinventoryapp.parts.ui.PartsUiState
@@ -69,6 +66,9 @@ import ch.brickinventoryapp.ui.loadingIndicator
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.colorFromHex
+import ch.brickinventoryapp.uistate.ListView
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
 import coil3.ImageLoader
 
 /** What the parts tab shows; the route collects it from the flows. */

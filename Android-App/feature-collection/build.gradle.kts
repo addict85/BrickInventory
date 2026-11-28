@@ -9,9 +9,9 @@ android {
 
 dependencies {
     implementation(project(":core-model"))
-    implementation(project(":core-data"))
-    // openExtern and ownAddress.
-    implementation(project(":core-network"))
+    implementation(project(":core-ui-state"))
+    // Interfaces only: the implementation reaches the area through Hilt in the app.
+    implementation(project(":core-data-api"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-inventory"))
     implementation(project(":core-state"))
@@ -23,6 +23,10 @@ dependencies {
     implementation(libs.mlkit.textrec)
 
     testImplementation(project(":core-testing"))
+    // The tests build the repositories themselves (core-data testFixtures).
+    testImplementation(project(":core-data"))
+    // The real address rules (NetworkAddressRules) instead of a double.
+    testImplementation(project(":core-network"))
     testImplementation(testFixtures(project(":core-state")))
     // The test servers answer in wire format.
     testImplementation(project(":core-contract"))

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.services.alarm
 
 import android.content.Context
-import ch.brickinventoryapp.data.AlarmPlanner
+import ch.brickinventoryapp.dataapi.device.AlarmPlanner
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext

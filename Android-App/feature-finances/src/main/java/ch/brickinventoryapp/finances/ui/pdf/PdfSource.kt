@@ -3,11 +3,11 @@ package ch.brickinventoryapp.finances.ui.pdf
 import android.os.ParcelFileDescriptor
 import android.system.Os
 import android.system.OsConstants
-import ch.brickinventoryapp.data.DownloadFailed
-import ch.brickinventoryapp.data.util.INSTRUCTION_IN_STORAGE_UNTIL
-import ch.brickinventoryapp.data.util.InstructionStore
-import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.dataapi.instructions.DownloadFailed
+import ch.brickinventoryapp.dataapi.instructions.INSTRUCTION_IN_STORAGE_UNTIL
+import ch.brickinventoryapp.dataapi.instructions.InstructionFiles
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
+import ch.brickinventoryapp.uistate.ErrorClass
 import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.File
@@ -111,7 +111,7 @@ internal class PdfArea(private val area: ParcelFileDescriptor, private val openI
         }
 
         /** An instruction manual from the encrypted store; large ones not into working memory ([INSTRUCTION_IN_STORAGE_UNTIL]). */
-        fun instruction(store: InstructionStore, file: File, display: File): PdfArea {
+        fun instruction(store: InstructionFiles, file: File, display: File): PdfArea {
             val inStorage = file.length() <= INSTRUCTION_IN_STORAGE_UNTIL
             val (writer, area) = if (inStorage) memfd().let { it to it } else nameless(display)
             catchUnlessCancelled {

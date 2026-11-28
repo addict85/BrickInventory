@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.collection.ui
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.MetricsView
 import ch.brickinventoryapp.model.domain.SetSort
 import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.local.Local
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.loading
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.state.ui.loadError
 import ch.brickinventoryapp.ui.LoadingIndicator
 import ch.brickinventoryapp.ui.loadingIndicator
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

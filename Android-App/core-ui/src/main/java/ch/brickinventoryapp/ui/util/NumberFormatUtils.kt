@@ -23,7 +23,7 @@ import java.util.Locale
 
 /**
  * Number locale for the configured APP language (AppCompat, the same source as
- * LanguageManager), country from the device. Without an app language, the device's applies.
+ * AppLanguage), country from the device. Without an app language, the device's applies.
  */
 fun appNumberLocale(): Locale {
     val device = Locale.getDefault()

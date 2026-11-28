@@ -4,8 +4,8 @@ import ch.brickinventoryapp.contract.DeviceKeyRequest
 import ch.brickinventoryapp.contract.StepApprovalRequest
 import ch.brickinventoryapp.contract.StepChallengeRequest
 import ch.brickinventoryapp.data.api.DeviceApi
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.safeCall
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.step.KeyNonce
 import ch.brickinventoryapp.model.step.StepAction
 import ch.brickinventoryapp.model.step.StepBinding

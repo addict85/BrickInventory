@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.collection
 
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -17,6 +18,7 @@ import ch.brickinventoryapp.collection.ui.SetDetailUiState
 import ch.brickinventoryapp.collection.ui.screens.SetDetailScreen
 import ch.brickinventoryapp.collection.ui.screens.SetDetailState
 import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailActions
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
@@ -24,15 +26,16 @@ import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.SetPriceView
 import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.text.Message
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.uistate.ErrorClass
+import ch.brickinventoryapp.uistate.Load
 import coil3.ImageLoader
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -84,12 +87,12 @@ class SetDetailDisplayTest {
     @Test
     fun `the purchase price tile shows the quantity-weighted average, not the last purchase`() {
         val images = ImageLoader.Builder(ctx).build()
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 SetDetailScreen(setNumber = "75192-1", condition = condition(falcon), actions = Actions(),
                     serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
             }
-        }
+         } }
         compose.waitForIdle()
         assertEquals(1, count(fmtMoney(712.5, CurrencyCode.CHF)))
         assertEquals(0, count(fmtMoney(800.0, CurrencyCode.CHF)))
@@ -98,12 +101,12 @@ class SetDetailDisplayTest {
     @Test
     fun `the market price appears once in the value tiles, not again in the price card`() {
         val images = ImageLoader.Builder(ctx).build()
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 SetDetailScreen(setNumber = "75192-1", condition = condition(falcon), actions = Actions(),
                     serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
             }
-        }
+         } }
         compose.waitForIdle()
         // The price card is there (its title stands next to the tile's), but does not repeat the amount.
         assertEquals(2, count(ctx.getString(R.string.detail_section_market)))
@@ -115,12 +118,12 @@ class SetDetailDisplayTest {
         val images = ImageLoader.Builder(ctx).build()
         val actions = Actions()
         var set by mutableStateOf(falcon)
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 SetDetailScreen(setNumber = "75192-1", condition = condition(set), actions = actions,
                     serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
             }
-        }
+         } }
         compose.waitForIdle()
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.cd_qty_decrease)).onFirst().performClick()
         compose.waitForIdle()
@@ -139,12 +142,12 @@ class SetDetailDisplayTest {
         val withoutNetwork = SetDetailState(AppUiState(currency = CurrencyCode.CHF),
             SetDetailUiState(setDetail = falcon, setPrice = price,
                 historyFetch = Load.Failure(ErrorClass.OFFLINE, Message.Text("Zeitüberschreitung"))), StorageUiState())
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 SetDetailScreen(setNumber = "75192-1", condition = withoutNetwork, actions = Actions(),
                     serverUrl = "", imageLoader = images, onBack = {}, onDelete = {})
             }
-        }
+         } }
         compose.waitForIdle()
         val advice = ctx.getString(R.string.error_offline_text)
         // The price card sits at the bottom of the list; which scroll range it carries depends on the width.

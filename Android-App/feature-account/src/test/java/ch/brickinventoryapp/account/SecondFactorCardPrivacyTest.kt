@@ -7,7 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
 import ch.brickinventoryapp.account.ui.screens.SecondFactorCard
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.StepGuard
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

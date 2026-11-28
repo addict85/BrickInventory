@@ -3,10 +3,10 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.InstructionLimitTest
 Rot: a resume announcing a total over the limit
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
-@@ -164,7 +164,6 @@
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionDownload.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionDownload.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionDownload.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionDownload.kt
+@@ -148,7 +148,6 @@ internal class InstructionDownload(
                  throw IOException("Content-Range does not start at byte $ab")
              }
              val total = announcedTotal(resp, ab, resuming)

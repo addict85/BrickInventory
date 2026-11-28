@@ -6,10 +6,10 @@
 # tools/apk-check.py prüft am fertigen APK, dass ein Modell umbenannt ist.
 
 # Navigation lädt den Typ eines Enum-Felds einer Route über seinen Namen (Class.forName);
-# umbenannt fände es ihn nicht. core-model ist reines Kotlin und kennt kein @Keep.
+# umbenannt fände es ihn nicht. core-model und core-ui-state sind reines Kotlin und kennen kein @Keep.
 -keep enum ch.brickinventoryapp.model.domain.ItemKind { *; }
 -keep enum ch.brickinventoryapp.model.domain.Condition { *; }
--keep enum ch.brickinventoryapp.model.ui.ScannerOrigin { *; }
+-keep enum ch.brickinventoryapp.uistate.ScannerOrigin { *; }
 
 # ── ML Kit / Play Services ────────────────────────────────────────────────────
 # ML Kit ist Closed Source und stark reflexionsbasiert (Registrar-Discovery über

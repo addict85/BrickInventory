@@ -3,7 +3,7 @@ package ch.brickinventoryapp.catalog
 import ch.brickinventoryapp.catalog.ui.CatalogYearMath
 import ch.brickinventoryapp.catalog.ui.viewmodel.VIEWPORT_REST_MS
 import ch.brickinventoryapp.catalog.ui.viewmodel.ViewportLoader
-import ch.brickinventoryapp.data.catalog.CATALOG_PAGE_SIZE
+import ch.brickinventoryapp.dataapi.catalog.CATALOG_PAGE_SIZE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel

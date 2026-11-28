@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.outcome.Outcome
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import javax.inject.Inject

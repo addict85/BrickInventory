@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.login
 
 import ch.brickinventoryapp.login.ui.parseQrPayload
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.network.util.RenewableTlsFactory
 import ch.brickinventoryapp.security.CA_FAMILIES
 import ch.brickinventoryapp.security.CertificateQuestion
@@ -660,17 +661,17 @@ class CertificatePinTest {
     @Test
     fun `a QR code carries the fingerprint along`() {
         val fp = spkiFingerprint(cert(LEAF))
-        val p = parseQrPayload("""{"url":"https://nas:8443","token":"bim:abc","fp":"$fp"}""")!!
+        val p = parseQrPayload("""{"url":"https://nas:8443","token":"bim:abc","fp":"$fp"}""", NetworkAddressRules)!!
         assertEquals(fp, p.fingerprint)
-        assertNull(parseQrPayload("""{"url":"https://nas:8443","token":"bim:abc"}""")!!.fingerprint)
+        assertNull(parseQrPayload("""{"url":"https://nas:8443","token":"bim:abc"}""", NetworkAddressRules)!!.fingerprint)
     }
 
     @Test
     fun `a QR code with an unreadable fingerprint does not apply`() {
-        assertNull(parseQrPayload("""{"url":"https://nas:8443","token":"bim:abc","fp":"kurz"}"""))
+        assertNull(parseQrPayload("""{"url":"https://nas:8443","token":"bim:abc","fp":"kurz"}""", NetworkAddressRules))
         val fp = spkiFingerprint(cert(LEAF))
-        assertNull("A pin over http yields nothing", parseQrPayload("""{"url":"http://nas:3000","token":"bim:abc","fp":"$fp"}"""))
-        assertNull(parseQrPayload("""{"url":"https://nas","token":"fremd"}"""))
+        assertNull("A pin over http yields nothing", parseQrPayload("""{"url":"http://nas:3000","token":"bim:abc","fp":"$fp"}""", NetworkAddressRules))
+        assertNull(parseQrPayload("""{"url":"https://nas","token":"fremd"}""", NetworkAddressRules))
     }
 
     /**

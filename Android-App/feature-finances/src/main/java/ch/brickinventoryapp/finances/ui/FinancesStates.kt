@@ -9,8 +9,8 @@ import ch.brickinventoryapp.model.domain.PricePoint
 import ch.brickinventoryapp.model.domain.ProfitView
 import ch.brickinventoryapp.model.domain.ValuationView
 import ch.brickinventoryapp.model.domain.VoucherView
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Operation
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.Operation
 
 /**
  * Finances: valuation, profit/loss and portfolio history — its own flow because

@@ -425,7 +425,7 @@ fun ManualTile(
                 }
                 Box(Modifier.padding(top = 3.dp)) { ConditionBadges(item.states, item.condition) }
                 // Who owns the entry? The server only attaches owners when
-                // several accounts are in the Blickfeld — in a single account, "mine" would sit on
+                // several accounts are in the scope — in a single account, "mine" would sit on
                 // every single tile.
                 OwnerBadges(item.owner, Modifier.padding(top = Spacing.hairline))
                 ManualTileFooter(price = item.price, currency = currency)

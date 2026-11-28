@@ -1,20 +1,19 @@
 package ch.brickinventoryapp.login
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.LoginStore
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testHouseholdRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.session.LoginStore
 import ch.brickinventoryapp.login.ui.LoginForm
 import ch.brickinventoryapp.login.ui.PasskeyQuery
 import ch.brickinventoryapp.login.ui.PasskeyResult
 import ch.brickinventoryapp.login.ui.QrAccount
 import ch.brickinventoryapp.login.ui.viewmodel.LoginViewModel
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.running
+import ch.brickinventoryapp.model.text.Message
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.security.CertificateQuestion
 import ch.brickinventoryapp.security.CertificateUnresolved
@@ -24,6 +23,8 @@ import ch.brickinventoryapp.state.testing.StorageStore
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.state.ui.FilterStore
 import ch.brickinventoryapp.state.ui.ScopeService
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.running
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -149,7 +150,7 @@ class LoginViewModelTest {
             testPartsRepository(t.api))
         val logout = SessionFake { store.log += "abmelden" }
         return t.track(LoginViewModel(t.session, viewport, t.hints, logout,
-            testAccountRepository(t.api), store, question, { it in roots }, saved))
+            testAccountRepository(t.api), store, question, { it in roots }, saved, NetworkAddressRules))
     }
 
     @Before

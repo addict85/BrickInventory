@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.ui.theme.Brightness
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.ui.theme.brightnessApplies
-import ch.brickinventoryapp.model.ui.theme.darkAfterSystemApplies
+import ch.brickinventoryapp.model.appearance.Brightness
+import ch.brickinventoryapp.model.appearance.Design
+import ch.brickinventoryapp.model.appearance.brightnessApplies
+import ch.brickinventoryapp.model.appearance.darkAfterSystemApplies
 import ch.brickinventoryapp.testing.Sources
 import ch.brickinventoryapp.ui.theme.Appearance
 import ch.brickinventoryapp.ui.theme.appearance

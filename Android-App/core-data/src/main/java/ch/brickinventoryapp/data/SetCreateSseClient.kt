@@ -2,6 +2,8 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.contract.AddSetResponse
 import ch.brickinventoryapp.data.di.SseClient
+import ch.brickinventoryapp.dataapi.collection.SetCreateStep
+import ch.brickinventoryapp.dataapi.collection.SetCreator
 import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import ch.brickinventoryapp.model.coroutines.Dispatcher
 import ch.brickinventoryapp.model.domain.Condition
@@ -40,7 +42,7 @@ internal class SetCreateSseClient @Inject constructor(
     /**
      * Cold flow: the request only goes out on collecting. Cancelling the collection
      * closes the connection, the creation on the server keeps running — hence there is
-     * no cancel button. The last step is always Fertig, Fehler or NoConnection.
+     * no cancel button. The last step is always Done, Failure or NoConnection.
      */
     override fun create(
         setNumber: String, quantity: Int, purchasePrice: Money?,

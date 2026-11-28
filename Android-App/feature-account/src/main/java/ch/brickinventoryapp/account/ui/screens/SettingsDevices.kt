@@ -13,9 +13,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.account.ui.DevicesUiState
 import ch.brickinventoryapp.model.domain.DeviceView
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.SettingsCard
@@ -27,6 +24,9 @@ import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.title
 import ch.brickinventoryapp.ui.util.fmtTag
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
+import ch.brickinventoryapp.uistate.running
 
 /**
  * Signed-in devices: see and lock out the issued access tokens.

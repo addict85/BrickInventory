@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.collection.ui
 
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.ScannerOrigin
+import ch.brickinventoryapp.uistate.Operation
+import ch.brickinventoryapp.uistate.ScannerOrigin
 /**
  * State around the barcode and OCR scanner — its own flow, because a scan
  * produces many intermediate states that would otherwise redraw every tab. The fields

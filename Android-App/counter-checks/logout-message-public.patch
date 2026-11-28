@@ -1,4 +1,4 @@
-Gegenprobe: Die Meldung zur gescheiterten Abmeldung zeigt den Server auch auf dem Sperrbildschirm
+Gegenprobe: Die Meldung zur gescheiterten Abmeldung zeigt den Server auch auf dem LockScreenNotification
 Modul: core-data
 Test: ch.brickinventoryapp.data.LockScreenMessageTest
 Rot: the failed sign-out names the server only when unlocked

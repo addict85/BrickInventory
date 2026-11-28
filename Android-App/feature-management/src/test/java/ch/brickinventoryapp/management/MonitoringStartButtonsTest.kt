@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.management
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.management.ui.viewmodel.Jobstart
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.uistate.Load
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

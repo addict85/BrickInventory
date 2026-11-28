@@ -15,8 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.model.domain.ComponentHeaderView
 import ch.brickinventoryapp.model.domain.UsingSetView
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.parts.ui.SetItemUiState
 import ch.brickinventoryapp.parts.ui.screens.PartDetailHeader
@@ -34,6 +32,8 @@ import ch.brickinventoryapp.ui.components.colorTranslator
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
 import coil3.ImageLoader
 
 /**

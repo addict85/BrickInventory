@@ -75,17 +75,14 @@ import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.BrickLinkView
 import ch.brickinventoryapp.model.domain.CatalogDetailView
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.ErrorClass
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.Message
-import ch.brickinventoryapp.model.ui.Operation
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.model.util.PASSWORD_MIN_CHARS
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.GalleryStatChip
 import ch.brickinventoryapp.shared.ui.MetricsSeries
@@ -94,12 +91,17 @@ import ch.brickinventoryapp.shared.ui.partsBreakdown
 import ch.brickinventoryapp.ui.components.AddFab
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.OfflineHint
 import ch.brickinventoryapp.ui.components.movementReduced
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.theme.ReadingWidth
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtInt
+import ch.brickinventoryapp.uistate.ErrorClass
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.Operation
+import ch.brickinventoryapp.uistate.loading
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -164,14 +166,14 @@ class ScaffoldAndFormTest {
     fun tearDown() = Locale.setDefault(before)
 
     private fun show(font: Float = 1f, content: @Composable () -> Unit) {
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, font)) {
                     Surface(color = MaterialTheme.colorScheme.background) { content() }
                 }
             }
-        }
+         } }
         compose.waitForIdle()
     }
 

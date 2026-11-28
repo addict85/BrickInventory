@@ -9,7 +9,7 @@ import androidx.fragment.app.FragmentActivity
  * NavHost reads deep link targets from the start intent (deepLinkIds/-Args, data).
  * That is why extras and data lose their way before anything sees them:
  * only the launcher start remains. Notifications come via MessageEntryPoint.
- * FragmentActivity because BiometricPrompt (ui/components/Schrittschutz) needs one.
+ * FragmentActivity because BiometricPrompt (ui/components/StepGuard) needs one.
  */
 abstract class OnlyLauncherStart : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

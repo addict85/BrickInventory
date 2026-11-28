@@ -6,9 +6,9 @@ Rot: an own key from the QR code applies on the first setup only when typed
 diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
 --- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
 +++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/viewmodel/LoginViewModel.kt
-@@ -361,7 +361,7 @@
+@@ -378,7 +378,7 @@ internal class LoginViewModel @Inject constructor(
          if (fingerprint == null) return false
-         val key = pinKey(NetworkPolicy.normalize(serverUrl)) ?: return false
+         val key = pinKey(addresses.normalize(serverUrl)) ?: return false
          val wanted = store.rememberedPin(key)
 -        return if (wanted != null) wanted != fingerprint else !systemRoots.contains(fingerprint)
 +        return if (wanted != null) wanted != fingerprint else false

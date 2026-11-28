@@ -17,12 +17,12 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.account.ui.CsvUploadUiState
 import ch.brickinventoryapp.account.ui.viewmodel.CSV_MAX_BYTES
 import ch.brickinventoryapp.model.domain.CsvImportKind
-import ch.brickinventoryapp.model.ui.errorMessage
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.Section
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.title
+import ch.brickinventoryapp.uistate.errorMessage
+import ch.brickinventoryapp.uistate.running
 import kotlinx.coroutines.launch
 
 /**

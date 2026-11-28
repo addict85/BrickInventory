@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.dataapi.account.RedemptionOutcome
 import ch.brickinventoryapp.security.spkiFingerprint
 import ch.brickinventoryapp.security.trustJob
 import okhttp3.OkHttpClient

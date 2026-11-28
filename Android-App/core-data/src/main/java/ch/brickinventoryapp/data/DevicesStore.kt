@@ -7,9 +7,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import ch.brickinventoryapp.dataapi.device.DevicesSettings
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
+import ch.brickinventoryapp.model.appearance.Design
+import ch.brickinventoryapp.model.appearance.brightnessApplies
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.ui.theme.brightnessApplies
 import ch.brickinventoryapp.network.util.AppLog
 import ch.brickinventoryapp.security.TrustCipher
 import ch.brickinventoryapp.security.VaultFinding
@@ -53,7 +55,7 @@ class DevicesStore @Inject constructor(
         const val PIN_PREFIX = "pin:"
         /** Older versions: host and port in the name. Read only until the takeover ([PIN_NAME_PREFIX]). */
         const val PIN_SECRET_PREFIX = "pin_geheim:"
-        /** The name from Vertrauenschiffre.name(): whoever reads the file does not learn the server. */
+        /** The name from TrustCipher.name(): whoever reads the file does not learn the server. */
         const val PIN_NAME_PREFIX = "pin_n:"
         /** Set after the takeover: plaintext that appears afterwards is only deleted. */
         const val TRUST_ADOPTED = "vertrauen_uebernommen"
@@ -99,7 +101,7 @@ class DevicesStore @Inject constructor(
         /**
          * The point in time of the last successful fetch, as ISO text from the server — not
          * the phone's clock, whose deviation would decide about duplicate or missing notifications
-         * (see Alarmabholung). Text, because it is only passed on and a
+         * (see AlarmFetch). Text, because it is only passed on and a
          * conversion would lose the time zone.
          */
         val ALARM_BRAND = stringPreferencesKey("alarm_marke")
@@ -116,10 +118,10 @@ class DevicesStore @Inject constructor(
     val warmUpRoaming: Flow<Boolean> = dataStore.data.map { it[WARM_UP_ROAMING] ?: false }
     val appTheme:  Flow<Design> = dataStore.data.map { p -> Design.from(p[APP_THEME]) ?: Design.DEFAULT }
 
-    // Vorgabe AUS — Begruendung am Schluessel oben.
+    // Default off; the reason stands at the key above.
     override val alarmMessagesEnabled: Flow<Boolean> = dataStore.data.map { it[ALARM_MESSAGES] ?: false }
     /**
-     * null = never fetched: on the very first pass Alarmabholung only marks
+     * null = never fetched: on the very first pass AlarmFetch only marks
      * and reports nothing. An empty text would bring everything old at once.
      */
     override val alarmBrand: Flow<String?> = dataStore.data.map { it[ALARM_BRAND] }
@@ -292,7 +294,7 @@ class DevicesStore @Inject constructor(
 
     /**
      * Address, name and origin of the TokenStore and sign-out jobs: under the key that
-     * only works unlocked and survives sign-out. null or Gesperrt means „not
+     * only works unlocked and survives sign-out. null or LockedState means „not
      * now“; never a fallback to plaintext or to the pins' key.
      */
     internal fun encryptDetail(value: String, name: String): String? = trustCipher.encryptDetail(value, name)

@@ -24,16 +24,18 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    // What it implements; the areas know only this.
+    implementation(project(":core-data-api"))
     // Only internally: the repositories map the wire format to domain and view types.
     implementation(project(":core-contract"))
     testImplementation(testFixtures(project(":core-contract")))
-    // Guards and network policy. Whoever names something from it themselves (NetworkPolicy, Protokoll)
+    // Guards and network policy. Whoever names something from it themselves (NetworkPolicy, AppLog)
     // includes core-network themselves; nothing of it reaches beyond core-data.
     implementation(project(":core-network"))
     // Vault, store key and TLS trust; the areas that show something of it name it themselves.
     implementation(project(":core-security"))
-    // Room and offline store only internally: the repositories deliver Lokal from core-model,
-    // the UI sees the outbox via Ausgangslage.
+    // Room and offline store only internally: the repositories deliver Local from core-model,
+    // the UI sees the outbox only through what the repositories report.
     implementation(project(":core-offline"))
     implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
@@ -55,6 +57,7 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.appcompat)
 
+    testFixturesApi(project(":core-data-api"))
     testFixturesImplementation(project(":core-offline"))
     testFixturesImplementation(testFixtures(project(":core-contract")))
     testFixturesImplementation(project(":core-security"))
@@ -64,7 +67,7 @@ dependencies {
     testFixturesApi(libs.retrofit.kotlinx.serialization)
     testImplementation(project(":core-testing"))
     testImplementation(testFixtures(project(":core-offline")))
-    // Robolectric-Tests (InventoryDatabaseTest, Ablagen, Netz-Clients).
+    // Robolectric-Tests (InventoryDatabaseTest, stores, network clients).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
 }

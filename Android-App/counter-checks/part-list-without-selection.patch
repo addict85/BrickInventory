@@ -3,15 +3,13 @@ Modul: app
 Test: ch.brickinventoryapp.app.ForeignEntryTest
 Rot: the parts list goes out only via the system's chooser
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/service/PartListsProvider.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/service/PartListsProvider.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/service/PartListsProvider.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/service/PartListsProvider.kt
-@@ -38,7 +38,7 @@
+diff --git a/Android-App/core-data-api/src/main/java/ch/brickinventoryapp/dataapi/parts/PartListsSelection.kt b/Android-App/core-data-api/src/main/java/ch/brickinventoryapp/dataapi/parts/PartListsSelection.kt
+--- a/Android-App/core-data-api/src/main/java/ch/brickinventoryapp/dataapi/parts/PartListsSelection.kt
++++ b/Android-App/core-data-api/src/main/java/ch/brickinventoryapp/dataapi/parts/PartListsSelection.kt
+@@ -21,5 +21,5 @@ fun partListsSelection(ctx: Context, title: String): Intent {
          setDataAndType(partListsUri(ctx), "application/pdf")
          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
      }
 -    return Intent.createChooser(view, title).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 +    return view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
  }
- 
- /**

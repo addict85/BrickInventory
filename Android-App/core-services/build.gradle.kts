@@ -13,6 +13,7 @@ android {
 
 dependencies {
     implementation(project(":core-data"))
+    implementation(project(":core-data-api"))
     // Texts and icon of the notifications: the R classes are not transitive.
     implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)

@@ -4,6 +4,7 @@ import ch.brickinventoryapp.contract.GenericResponse
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.model.domain.ErrorCode
 import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.network.data.api.ErrorBody
 import ch.brickinventoryapp.network.util.PlaintextRejected
@@ -155,11 +156,11 @@ internal suspend fun <T : Any, E : T?> OfflineStore.reconciledSingle(domain: Dom
 }
 
 /**
- * A Retrofit response as Ergebnis: server message and code are kept,
+ * A Retrofit response as Outcome: server message and code are kept,
  * transport errors are marked as temporary. Top-level because the
  * outbox (data/local) also sends with it without being a repository.
  */
-@Suppress("TooGenericExceptionCaught") // The boundary: every error becomes Ergebnis here.
+@Suppress("TooGenericExceptionCaught") // The boundary: every error becomes an Outcome here.
 internal suspend fun <T> safeCall(call: suspend () -> Response<T>): Outcome<T> {
     return try {
         val response = call()
@@ -194,7 +195,7 @@ internal suspend fun <T> safeCall(call: suspend () -> Response<T>): Outcome<T> {
     } catch (e: java.io.IOException) {
         // Every other IOException is a transport problem and retryable, no matter
         // which subtype OkHttp chooses. Errors when evaluating the response are
-        // no IOException and pass below as Unbekannt.
+        // no IOException and pass below as Unknown.
         Outcome.Failure.Network(technical = e.message)
     } catch (e: Exception) {
         // e.message here is throughout English library text ("Socket

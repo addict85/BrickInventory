@@ -10,10 +10,10 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.WantedRequest
 import ch.brickinventoryapp.model.domain.WantedSort
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.state.testing.newProcess
+import ch.brickinventoryapp.uistate.loading
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

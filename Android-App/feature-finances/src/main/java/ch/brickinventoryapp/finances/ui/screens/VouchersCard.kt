@@ -22,9 +22,6 @@ import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.voucherSum
 import ch.brickinventoryapp.model.domain.VoucherView
 import ch.brickinventoryapp.model.step.StepAction
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.loading
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.BoxRow
 import ch.brickinventoryapp.ui.components.ErrorHint
@@ -37,6 +34,9 @@ import ch.brickinventoryapp.ui.components.WithTooltip
 import ch.brickinventoryapp.ui.sentence
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
+import ch.brickinventoryapp.uistate.running
 
 /** What the vouchers card can trigger; every action does nothing unless overridden (preview, test). */
 interface VoucherCardActions {

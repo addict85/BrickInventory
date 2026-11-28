@@ -3,9 +3,9 @@ Modul: core-state
 Test: ch.brickinventoryapp.state.LoadOnObserveTest
 Rot: loadJeServer loads once per address as long as someone observes
 
-diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
---- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
-+++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AreaHelpers.kt
 @@ -142,7 +142,7 @@
  private fun ViewModel.loadPerServer(session: Session, observer: StateFlow<Int>, load: () -> Unit) {
      viewModelScope.launch {

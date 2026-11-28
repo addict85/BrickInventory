@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.login
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -9,7 +10,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import ch.brickinventoryapp.login.ui.QrLoginPayload
 import ch.brickinventoryapp.login.ui.screens.QrSuggestionDialog
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -36,7 +39,7 @@ class QrSuggestionDialogTest {
     @Test
     fun `it is taken over only after the yes to the named server`() {
         var adopted = 0
-        compose.setContent {
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {
             BrickInventoryManagerTheme {
                 QrSuggestionDialog(
                     suggestion = QrLoginPayload("https://brick.example.org", "bim:abc"),
@@ -48,7 +51,7 @@ class QrSuggestionDialogTest {
                     onAdopt = { adopted++ },
                 )
             }
-        }
+         } }
         compose.waitForIdle()
         val button = compose.onNodeWithText(ctx.getString(R.string.setup_qr_adopt))
         button.assertIsNotEnabled()

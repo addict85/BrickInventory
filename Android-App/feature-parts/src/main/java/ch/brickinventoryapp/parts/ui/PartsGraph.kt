@@ -21,7 +21,6 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.ui.ScannerOrigin
 import ch.brickinventoryapp.navigation.AreaEnvironment
 import ch.brickinventoryapp.parts.ui.dialogs.SetItemDetailArea
 import ch.brickinventoryapp.parts.ui.dialogs.SetItemDetailDialog
@@ -40,6 +39,7 @@ import ch.brickinventoryapp.ui.components.LocalOpenDetail
 import ch.brickinventoryapp.ui.components.UndoMessage
 import ch.brickinventoryapp.ui.components.detailKey
 import ch.brickinventoryapp.ui.listAndDetail
+import ch.brickinventoryapp.uistate.ScannerOrigin
 import coil3.ImageLoader
 
 /** What the scanner found for the parts list, along with the receipts. */

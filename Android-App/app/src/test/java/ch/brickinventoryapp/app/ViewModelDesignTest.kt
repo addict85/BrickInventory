@@ -61,7 +61,7 @@ class ViewModelDesignTest {
         // recourse to some other source.
         for ((name, s) in viewModelFiles()) {
             // `ctx\.` with a dot no longer applies here: since the messages run via
-            // LanguageManager.localizedContext(ctx), the context stands
+            // AppLanguage.localizedContext(ctx), the context stands
             // almost everywhere as an ARGUMENT, not as receiver. The first version
             // of this rule was thus ineffective — it stood out in the
             // counter-check that stayed green.

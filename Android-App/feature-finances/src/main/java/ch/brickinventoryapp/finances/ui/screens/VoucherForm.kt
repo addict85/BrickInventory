@@ -22,7 +22,6 @@ import ch.brickinventoryapp.finances.ui.VoucherUiState
 import ch.brickinventoryapp.finances.ui.viewmodel.inputViaMask
 import ch.brickinventoryapp.model.domain.PIN_MASK_DISPLAY
 import ch.brickinventoryapp.model.domain.isMaskedNumber
-import ch.brickinventoryapp.model.ui.running
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.ButtonRow
 import ch.brickinventoryapp.ui.components.SelectionField
@@ -33,6 +32,7 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.util.NumericInput
+import ch.brickinventoryapp.uistate.running
 
 /**
  * The form for creating and editing as a sheet from the bottom, right away fully open: half open

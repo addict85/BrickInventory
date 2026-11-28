@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.parts.ui
 
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.UsageView
-import ch.brickinventoryapp.model.ui.Load
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.state.ui.loadError
+import ch.brickinventoryapp.uistate.Load
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

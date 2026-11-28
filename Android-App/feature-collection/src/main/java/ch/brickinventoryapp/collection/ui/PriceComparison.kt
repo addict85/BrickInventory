@@ -14,8 +14,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import ch.brickinventoryapp.network.util.externalAddress
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.secondaryButtonColors
 import ch.brickinventoryapp.ui.components.secondaryButtonRand
 import ch.brickinventoryapp.ui.components.withFont
@@ -44,8 +44,9 @@ internal fun setComparisonUrl(setNumber: String, name: String?): String? {
 @Composable
 internal fun PriceComparisonButton(url: String, onNoApp: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val addresses = LocalAddressRules.current
     OutlinedButton(
-        onClick = { if (!openExtern(context, externalAddress(url))) onNoApp() },
+        onClick = { if (!openExtern(context, addresses.external(url))) onNoApp() },
         modifier = modifier,
         colors = secondaryButtonColors(),
         border = secondaryButtonRand(),

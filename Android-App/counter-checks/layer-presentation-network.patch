@@ -4,7 +4,6 @@ Test: ch.brickinventoryapp.app.LayerRulesTest
 Rot: presentation fetches nothing from the network itself
 
 diff --git a/Android-App/feature-collection/build.gradle.kts b/Android-App/feature-collection/build.gradle.kts
-index 3315a8f..51d88a9 100644
 --- a/Android-App/feature-collection/build.gradle.kts
 +++ b/Android-App/feature-collection/build.gradle.kts
 @@ -21,6 +21,7 @@ dependencies {
@@ -14,9 +13,8 @@ index 3315a8f..51d88a9 100644
 +    implementation(libs.retrofit)
  
      testImplementation(project(":core-testing"))
-     testImplementation(testFixtures(project(":core-state")))
+     // The tests build the repositories themselves (core-data testFixtures).
 diff --git a/Android-App/feature-collection/gradle.lockfile b/Android-App/feature-collection/gradle.lockfile
-index 42d8c65..6cddd80 100644
 --- a/Android-App/feature-collection/gradle.lockfile
 +++ b/Android-App/feature-collection/gradle.lockfile
 @@ -231,10 +231,11 @@ com.squareup.okhttp3:mockwebserver3:5.5.1=debugUnitTestCompileClasspath,debugUni
@@ -43,10 +41,9 @@ index 42d8c65..6cddd80 100644
  org.jetbrains.kotlinx:atomicfu-jvm:0.28.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
  org.jetbrains.kotlinx:atomicfu:0.28.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
 diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
-index 1ac0a09..dcb7cb8 100644
 --- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
 +++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/WantedListScreen.kt
-@@ -54,6 +54,7 @@ import ch.brickinventoryapp.ui.components.SelectionChip
+@@ -51,6 +51,7 @@ import ch.brickinventoryapp.ui.components.SelectionChip
  import ch.brickinventoryapp.ui.components.SortMenu
  import ch.brickinventoryapp.ui.components.searchFieldWidth
  import ch.brickinventoryapp.ui.components.secondaryButtonColors

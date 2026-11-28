@@ -10,7 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.uistate.ScrollMemory
 
 /**
  * The order is the whole rule: jump back first, then report.

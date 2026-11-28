@@ -3,8 +3,8 @@ package ch.brickinventoryapp.state.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AppearanceStore
-import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.dataapi.language.AppLanguage
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.util.catchUnlessCancelled
 import ch.brickinventoryapp.session.Session
 import ch.brickinventoryapp.state.ui.WidgetKick
@@ -27,12 +27,13 @@ import javax.inject.Inject
 class AppearanceViewModel @Inject constructor(
     private val prefs: AppearanceStore,
     session: Session,
+    private val appLanguage: AppLanguage,
     private val widget: WidgetKick,
 ) : ViewModel(), AppearanceActions {
 
     /**
      * Only the theme, so MainActivity doesn't recompose on every state change.
-     * The first value comes from the store's synchronous mirror (Kontowerte), before the first frame.
+     * The first value comes from the store's synchronous mirror (AccountValues), before the first frame.
      */
     val appTheme: StateFlow<Design> =
         session.state.map { it.appTheme }.stateIn(viewModelScope, SharingStarted.Eagerly, session.state.value.appTheme)
@@ -71,7 +72,7 @@ class AppearanceViewModel @Inject constructor(
     override fun setLanguage(languageCode: String) {
         viewModelScope.launch {
             prefs.saveLanguage(languageCode)
-            LanguageManager.applyLanguage(languageCode)
+            appLanguage.applyLanguage(languageCode)
         }
     }
 }

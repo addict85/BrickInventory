@@ -72,12 +72,12 @@ import ch.brickinventoryapp.collection.ui.screens.SetCard
 import ch.brickinventoryapp.data.testing.testAccountRepository
 import ch.brickinventoryapp.data.testing.testManagementRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CatalogSetView
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.SetView
 import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.file.FileRef
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.PartListUiState
 import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.parts.ui.screens.PartsListScreen

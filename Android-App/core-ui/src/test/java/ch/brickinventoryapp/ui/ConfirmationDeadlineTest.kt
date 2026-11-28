@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * How long a device-lock confirmation lasts (ui/components/Schrittschutz).
+ * How long a device-lock confirmation lasts (ui/components/StepGuard).
  * The prompt itself (BiometricPrompt) needs a device; the voucher page checks
  * expiry with a step guard that never confirms.
  *

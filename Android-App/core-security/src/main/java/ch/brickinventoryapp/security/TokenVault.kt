@@ -54,7 +54,7 @@ internal object AndroidKeychain : Keychain {
  * and without AAD stay readable and count as [stale]. The Keystore chooses the IV
  * (setRandomizedEncryptionRequired stays on).
  */
-// [alias]: the local stores wrap their key under one of their own (Ablageschluessel).
+// [alias]: the local stores wrap their key under one of their own (StoreKey).
 internal class KeystoreTokenVault(
     private val alias: String = ALIAS,
     /** setUnlockedDeviceRequired: token and stores (UnlockVault), not trust (pins). */

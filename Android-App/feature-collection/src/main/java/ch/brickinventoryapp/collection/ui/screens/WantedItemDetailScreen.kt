@@ -24,9 +24,7 @@ import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.WantedItemView
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.resolveFullUrl
-import ch.brickinventoryapp.network.util.externalAddress
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.OwnerPicker
 import ch.brickinventoryapp.shared.ui.PriceChart
@@ -34,6 +32,7 @@ import ch.brickinventoryapp.shared.ui.PriceLoadsRow
 import ch.brickinventoryapp.state.ui.StorageUiState
 import ch.brickinventoryapp.ui.components.CatalogDetailRow
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.PartialLoadFailed
 import ch.brickinventoryapp.ui.components.ProductImage
 import ch.brickinventoryapp.ui.components.SectionTitle
@@ -50,6 +49,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.util.openExtern
+import ch.brickinventoryapp.uistate.loading
 import kotlinx.coroutines.launch
 
 /**
@@ -77,6 +77,7 @@ internal fun WantedItemDetailScreen(
     val list    = view.list
     val detail   = view.detail
     val ctx = LocalContext.current
+    val addresses = LocalAddressRules.current
     // stringResource instead of ctx.getString in the callback: a context grabbed from
     // LocalContext delivers stale values after a config change (Lint
     // LocalContextGetResourceValueCall).
@@ -134,7 +135,7 @@ internal fun WantedItemDetailScreen(
 
             item {
                 WantedItemLinks(wantedItem, detail, onTakeOver = { openTakeover = true }) { url ->
-                    if (!openExtern(ctx, externalAddress(url))) {
+                    if (!openExtern(ctx, addresses.external(url))) {
                         area.launch { messages.showSnackbar(noAppText) }
                     }
                 }

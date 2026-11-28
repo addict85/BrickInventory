@@ -3,10 +3,10 @@ package ch.brickinventoryapp.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
-import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.state.ui.ScopeUiState
 import ch.brickinventoryapp.state.ui.StorageUiState
+import ch.brickinventoryapp.uistate.ScrollMemory
 import coil3.ImageLoader
 import kotlinx.coroutines.flow.StateFlow
 

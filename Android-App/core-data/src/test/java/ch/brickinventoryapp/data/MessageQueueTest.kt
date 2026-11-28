@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.testing.text
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.dataapi.message.MessageChannel
+import ch.brickinventoryapp.model.text.Message
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

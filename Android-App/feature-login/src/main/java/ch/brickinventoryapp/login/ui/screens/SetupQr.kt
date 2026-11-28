@@ -37,12 +37,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import ch.brickinventoryapp.login.ui.QrLoginPayload
 import ch.brickinventoryapp.login.ui.qrAdoptable
 import ch.brickinventoryapp.login.ui.qrSwitchesServer
-import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.security.Transcript
 import ch.brickinventoryapp.security.fingerprintReadable
 import ch.brickinventoryapp.security.fingerprintStart
 import ch.brickinventoryapp.ui.components.FingerprintField
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.OverlayGuard
 import ch.brickinventoryapp.ui.components.PrivacyShield
 import ch.brickinventoryapp.ui.components.WithTooltip
@@ -74,7 +74,8 @@ internal fun QrSuggestionDialog(
     onCancel: () -> Unit,
     onAdopt: (typed: String?) -> Unit,
 ) {
-    val qrLocked = NetworkPolicy.addressError(suggestion.url, development) != null
+    val addresses = LocalAddressRules.current
+    val qrLocked = addresses.addressError(suggestion.url, development) != null
     // A code with a different key than the confirmed one: like "certificate changed", with both values.
     val previous = remember(suggestion) { previousPin(suggestion.url, suggestion.fingerprint) }
     val type = remember(suggestion) { mustTypeIn(suggestion.url, suggestion.fingerprint) }
@@ -129,8 +130,9 @@ internal fun QrSuggestionDialog(
  */
 @Composable
 private fun QrTarget(suggestion: QrLoginPayload, currentUrl: String, confirmed: Boolean, onConfirmed: (Boolean) -> Unit) {
-    val view = remember(suggestion) { NetworkPolicy.view(suggestion.url) }
-    val sofarHost = remember(suggestion, currentUrl) { qrSwitchesServer(currentUrl, suggestion.url) }
+    val addresses = LocalAddressRules.current
+    val view = remember(suggestion) { addresses.view(suggestion.url) }
+    val sofarHost = remember(suggestion, currentUrl) { qrSwitchesServer(currentUrl, suggestion.url, addresses) }
     Text(stringResource(R.string.setup_qr_target))
     if (view != null) {
         Text(view.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,

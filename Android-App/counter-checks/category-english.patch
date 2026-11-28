@@ -1,12 +1,12 @@
 Gegenprobe: Teilekategorien unübersetzt
-Modul: core-model
-Test: ch.brickinventoryapp.model.CategoryGermanTest
+Modul: core-ui-state
+Test: ch.brickinventoryapp.uistate.CategoryGermanTest
 Rot: known categories read in German
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt
-@@ -39,7 +39,7 @@
+diff --git a/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/CategoryGerman.kt b/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/CategoryGerman.kt
+--- a/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/CategoryGerman.kt
++++ b/Android-App/core-ui-state/src/main/java/ch/brickinventoryapp/uistate/CategoryGerman.kt
+@@ -39,7 +39,7 @@ object CategoryGerman {
          val separator = Regex("""\s*(,|-)\s*|\s+""").findAll(en.trim()).map { it.value.trim() }.toList()
          val sb = StringBuilder()
          parts.forEachIndexed { i, word ->

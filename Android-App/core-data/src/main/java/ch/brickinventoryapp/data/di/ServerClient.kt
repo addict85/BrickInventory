@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data.di
 
 import ch.brickinventoryapp.core.data.BuildConfig
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.NetworkTrust
 import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.RightsSignal
@@ -9,9 +8,10 @@ import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.TokenMirror
 import ch.brickinventoryapp.data.TokenStore
-import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.data.util.networkRecording
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.dataapi.language.AppLanguage
+import ch.brickinventoryapp.dataapi.message.MessageChannel
+import ch.brickinventoryapp.model.text.Message
 import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.RotationReason
 import ch.brickinventoryapp.network.di.ServerGuard
@@ -116,7 +116,7 @@ internal fun serverConnectionSpecs(development: Boolean = NetworkPolicy.developm
     listOf(ConnectionSpec.RESTRICTED_TLS) + if (development) listOf(ConnectionSpec.CLEARTEXT) else emptyList()
 
 /** Token and trust together: the server clients need both, nothing else from the stores. */
-class NetworkStores @Inject constructor(val token: TokenMirror, val trust: NetworkTrust)
+internal class NetworkStores @Inject constructor(val token: TokenMirror, val trust: NetworkTrust)
 
 /** API, image and SSE client: the same guard (ServerGuard.kt), own timeouts. */
 @Suppress("LongParameterList") // One building block for three clients; the parts differ per client.
@@ -125,6 +125,7 @@ internal fun buildInterceptorClient(
     isApiClient: Boolean,
     sessionExpired: SessionExpiredSignal,
     ctx: android.content.Context,
+    appLanguage: AppLanguage,
     /** Where a version hint goes; only the API client reports. */
     messages: MessageChannel? = null,
     /** Waits for the decision about an unknown certificate. */
@@ -162,7 +163,7 @@ internal fun buildInterceptorClient(
             // The language from the resources: the server answers in the one the UI shows.
             ownHeaders = { original, target ->
                 if (original.header("Accept-Language") == null) target.header("Accept-Language",
-                    LanguageManager.localizedContext(ctx)
+                    appLanguage.localizedContext(ctx)
                         .getString(R.string.lang_code))
             }, rotation = rotation, rightsRevoked = { rights?.report() },
             passwordSwitchNeeded = { required?.report() }, secondFactorRequired = { factorRequired?.report() }))

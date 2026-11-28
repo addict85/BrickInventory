@@ -3,6 +3,8 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.cache.PreviewMemory
 import ch.brickinventoryapp.data.cache.PreviewPrewarmer
 import ch.brickinventoryapp.data.cache.WarmUp
+import ch.brickinventoryapp.dataapi.device.DevicesSettings
+import ch.brickinventoryapp.dataapi.device.PrewarmNetwork
 import ch.brickinventoryapp.security.StoreCipher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow

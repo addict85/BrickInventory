@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.network
 
+import ch.brickinventoryapp.model.address.AddressError
 import ch.brickinventoryapp.network.util.NetworkPolicy
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
@@ -76,10 +77,10 @@ class NetworkPolicyTest {
         assertEquals("http://nas:3000", NetworkPolicy.normalize("http://nas:3000/"))
         assertNull(NetworkPolicy.addressError("brick.fritz.box", development = false))
         assertNull(NetworkPolicy.addressError("HTTPS://nas:8443/brick", development = false))
-        assertEquals(NetworkPolicy.AddressError.PLAINTEXT, NetworkPolicy.addressError("http://nas:3000", development = false))
-        assertEquals(NetworkPolicy.AddressError.PLAINTEXT, NetworkPolicy.addressError("HTTP://nas:3000", development = true))
-        assertEquals(NetworkPolicy.AddressError.UNREADABLE, NetworkPolicy.addressError("https://", development = false))
-        assertEquals(NetworkPolicy.AddressError.UNREADABLE, NetworkPolicy.addressError("https://nas:abc", development = false))
+        assertEquals(AddressError.PLAINTEXT, NetworkPolicy.addressError("http://nas:3000", development = false))
+        assertEquals(AddressError.PLAINTEXT, NetworkPolicy.addressError("HTTP://nas:3000", development = true))
+        assertEquals(AddressError.UNREADABLE, NetworkPolicy.addressError("https://", development = false))
+        assertEquals(AddressError.UNREADABLE, NetworkPolicy.addressError("https://nas:abc", development = false))
         assertNull("the emulator host in the debug build", NetworkPolicy.addressError("http://10.0.2.2:3000", development = true))
     }
 

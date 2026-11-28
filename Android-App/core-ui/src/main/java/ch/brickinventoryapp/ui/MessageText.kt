@@ -3,13 +3,13 @@ package ch.brickinventoryapp.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 
 /**
  * For screens: the string of a [Message] in the language the composition
  * carries. A value that is itself a message is built first, so one string
  * can embed another. The snackbar builds its string outside the
- * composition (AppNavigation, via LanguageManager).
+ * composition (AppNavigation, via AppLanguage).
  */
 @Composable
 fun Message.sentence(): String = when (this) {

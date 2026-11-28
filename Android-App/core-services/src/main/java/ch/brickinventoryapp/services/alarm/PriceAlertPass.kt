@@ -11,8 +11,8 @@ import androidx.core.content.ContextCompat
 import ch.brickinventoryapp.data.AlarmStore
 import ch.brickinventoryapp.data.Credentials
 import ch.brickinventoryapp.data.StartDestination
-import ch.brickinventoryapp.data.collection.AlarmRepository
-import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.dataapi.collection.AlarmRepository
+import ch.brickinventoryapp.dataapi.language.AppLanguage
 import ch.brickinventoryapp.model.domain.PriceAlertView
 import ch.brickinventoryapp.model.util.numbersLocale
 import ch.brickinventoryapp.resources.R
@@ -30,6 +30,7 @@ interface PriceAlertRepository {
 /** Query, display, set marker — with the stores from the constructor instead of from an EntryPoint. */
 internal class PriceAlertPass @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val appLanguage: AppLanguage,
     private val alerts: AlarmRepository,
     private val alarm: AlarmStore,
     private val access: Credentials,
@@ -97,7 +98,7 @@ internal class PriceAlertPass @Inject constructor(
         )
 
         // In the app's language: before Android 13 the background would otherwise see the system's.
-        val texts = LanguageManager.localizedContext(context)
+        val texts = appLanguage.localizedContext(context)
         val below = texts.getString(R.string.detail_alert_below)
         val over = texts.getString(R.string.detail_alert_above)
         val numbers = numbersLocale(texts.resources.configuration.locales[0], Locale.getDefault())

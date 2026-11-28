@@ -2,12 +2,12 @@ package ch.brickinventoryapp.app
 
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
-import ch.brickinventoryapp.data.MessageChannel
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.data.testing.testFinancesRepository
 import ch.brickinventoryapp.data.testing.testPartsRepository
 import ch.brickinventoryapp.data.testing.testSetsRepository
 import ch.brickinventoryapp.data.testing.text
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import ch.brickinventoryapp.state.testing.TestServices
 import ch.brickinventoryapp.testing.Sources
@@ -127,8 +127,8 @@ class MessageChannelTest {
             name.endsWith("ViewModel.kt") && Regex("""\bzeigeMeldung\(|\bmessages\.show\(""").containsMatchIn(s)
         }
         assert(writer.isNotEmpty()) { "No ViewModel writes messages — pattern outdated?" }
-        // The area ViewModels get it as Meldungen (Bereichshelfer.kt).
-        val helper = allWithoutComments().single { it.first == "Bereichshelfer.kt" }.second
+        // The area ViewModels get it as Meldungen (AreaHelpers.kt).
+        val helper = allWithoutComments().single { it.first == "AreaHelpers.kt" }.second
         assert(helper.contains("override fun show(text: String?) = channel.show(text)")) {
             "messages are no longer passed on into the app's channel"
         }

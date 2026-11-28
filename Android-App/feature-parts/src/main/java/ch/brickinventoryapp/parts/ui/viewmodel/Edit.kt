@@ -2,8 +2,8 @@ package ch.brickinventoryapp.parts.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.model.domain.Condition
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
 import kotlinx.coroutines.launch

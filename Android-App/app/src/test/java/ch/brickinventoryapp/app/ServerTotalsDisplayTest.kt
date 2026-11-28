@@ -10,9 +10,9 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.app.testing.Examples
 import ch.brickinventoryapp.app.testing.TestApp
 import ch.brickinventoryapp.collection.ui.screens.AcquisitionManagementRoute
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.model.domain.CurrencyCode
 import ch.brickinventoryapp.model.domain.ItemKind
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

@@ -4,10 +4,10 @@
 
 package ch.brickinventoryapp.contract
 
+import ch.brickinventoryapp.model.appearance.Design
+import ch.brickinventoryapp.model.appearance.DesignOrNothing
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.CurrencyCode
-import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.ui.theme.DesignOrNothing
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject

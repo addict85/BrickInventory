@@ -149,7 +149,7 @@ android {
             "**/libandroidx.graphics.path.so"
         )
     }
-    // The language switches inside the app (LanguageManager); in the app bundle all
+    // The language switches inside the app (AppLanguage); in the app bundle all
     // languages must therefore be in the base APK, otherwise the others' texts would be missing.
     bundle {
         language {
@@ -220,8 +220,10 @@ dependencies {
     // The app assembles: navigation, Hilt entry point, widget. Everything else
     // lives in the modules below.
     implementation(project(":core-model"))
+    implementation(project(":core-ui-state"))
     implementation(project(":core-resources"))
     implementation(project(":core-data"))
+    implementation(project(":core-data-api"))
     // Logging and NetworkPolicy.
     implementation(project(":core-network"))
     implementation(project(":core-security"))
@@ -248,7 +250,7 @@ dependencies {
         libs.androidx.navigation.compose, libs.coil.compose, libs.hilt.android)) {
         testFixturesCompileOnly(lib)
     }
-    for (m in listOf(":core-model", ":core-resources", ":core-data", ":core-security", ":core-services", ":core-ui",
+    for (m in listOf(":core-model", ":core-ui-state", ":core-resources", ":core-data-api", ":core-data", ":core-network", ":core-security", ":core-services", ":core-ui",
         ":core-state", ":core-session", ":feature-collection", ":feature-parts", ":feature-finances", ":feature-account")) {
         testFixturesCompileOnly(project(m))
     }

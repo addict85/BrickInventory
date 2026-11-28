@@ -3,10 +3,10 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.InstructionLimitTest
 Rot: a 206 from another offset
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionRepository.kt
-@@ -159,7 +159,7 @@
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionDownload.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionDownload.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionDownload.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/InstructionDownload.kt
+@@ -143,7 +143,7 @@ internal class InstructionDownload(
              if (!resp.isSuccessful) throw DownloadFailed(resp.code)
              val resuming = resp.code == 206 && ab > 0
              // A 206 from another offset would splice foreign bytes into the PDF; the next attempt starts at 0.

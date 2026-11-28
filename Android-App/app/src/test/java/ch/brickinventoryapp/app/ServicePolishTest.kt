@@ -63,19 +63,19 @@ class ServicePolishTest {
     fun `notifiers use the localized context`() {
         // setApplicationLocales() only localizes activities. A worker that
         // calls getString() on the application context gets the SYSTEM language below
-        // Android 13 — the wrapper from LanguageManager
+        // Android 13 — the wrapper from AppLanguage
         // is therefore mandatory, otherwise the localization is only apparently there.
         for (rel in listOf(
             "java/ch/brickinventoryapp/services/service/CsvImportNotifier.kt",
             "java/ch/brickinventoryapp/services/service/PdfExportNotifier.kt",
         )) {
-            assert(code(read(rel)).contains("LanguageManager.localizedContext(context)")) {
-                "$rel calls getString() without LanguageManager.localizedContext()"
+            assert(code(read(rel)).contains("appLanguage.localizedContext(context)")) {
+                "$rel calls getString() without AppLanguage.localizedContext()"
             }
         }
-        assert(code(read("java/ch/brickinventoryapp/data/util/LanguageManager.kt"))
+        assert(code(read("java/ch/brickinventoryapp/data/util/AppCompatLanguage.kt"))
             .contains("createConfigurationContext")) {
-            "LanguageManager.localizedContext() is missing or no longer wraps the Context"
+            "AppCompatLanguage.localizedContext() is missing or no longer wraps the Context"
         }
     }
 

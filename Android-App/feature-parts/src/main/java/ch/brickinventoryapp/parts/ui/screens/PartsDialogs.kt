@@ -16,7 +16,6 @@ import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.PartEntry
 import ch.brickinventoryapp.model.domain.WITHOUT_COLOR
-import ch.brickinventoryapp.model.ui.withoutNoColor
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.shared.ui.EntryFields
 import ch.brickinventoryapp.shared.ui.OwnerPicker
@@ -27,6 +26,7 @@ import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.theme.colorFromHex
+import ch.brickinventoryapp.uistate.withoutNoColor
 
 @Composable
 internal fun AddPartDialog(

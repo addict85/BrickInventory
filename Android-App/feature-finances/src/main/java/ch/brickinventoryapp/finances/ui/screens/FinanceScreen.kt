@@ -30,8 +30,6 @@ import ch.brickinventoryapp.model.domain.ItemKind
 import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.domain.Money
 import ch.brickinventoryapp.model.domain.PricePoint
-import ch.brickinventoryapp.model.ui.Load
-import ch.brickinventoryapp.model.ui.loading
 import ch.brickinventoryapp.model.util.numbersLocale
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.session.AppUiState
@@ -58,6 +56,8 @@ import ch.brickinventoryapp.ui.theme.Shapes
 import ch.brickinventoryapp.ui.theme.Spacing
 import ch.brickinventoryapp.ui.twoColumn
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
+import ch.brickinventoryapp.uistate.Load
+import ch.brickinventoryapp.uistate.loading
 import coil3.ImageLoader
 
 /** What the finances tab shows; the route collects it from the flows. */

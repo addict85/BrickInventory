@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.state.di
 
-import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.model.ui.ScrollStorage
 import ch.brickinventoryapp.session.FilterSource
 import ch.brickinventoryapp.session.LogoutProcess
 import ch.brickinventoryapp.session.WarmUp
@@ -19,6 +17,8 @@ import ch.brickinventoryapp.state.ui.viewmodel.AreaFilter
 import ch.brickinventoryapp.state.ui.viewmodel.FilterChoice
 import ch.brickinventoryapp.state.ui.viewmodel.Messages
 import ch.brickinventoryapp.state.ui.viewmodel.Texts
+import ch.brickinventoryapp.uistate.ScrollMemory
+import ch.brickinventoryapp.uistate.ScrollStorage
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -46,7 +46,7 @@ object StateModule {
 
     // The ViewModels only see interfaces, so tests can swap them out without Hilt; the implementations are singletons.
     @Provides fun provideScope(b: ScopeService): Scope = b
-    // The session (core-session) loads after sign-in via these steps of the Blickfeld.
+    // The session (core-session) loads after sign-in via these steps of the scope.
     @Provides fun provideFilterSource(b: ScopeService): FilterSource = b
     @Provides fun provideOutboxNotifier(a: InitialObserver): OutboxNotifier = a
     // One holder for all tabs: a second one wouldn't have the first one's positions.

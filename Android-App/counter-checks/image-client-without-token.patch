@@ -6,9 +6,9 @@ Rot: both clients hook in the server guard
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetworkModule.kt
-@@ -96,6 +96,7 @@
+@@ -77,6 +77,7 @@ internal object NetworkModule {
      ): OkHttpClient =
-         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, question = question)
+         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, appLanguage = appLanguage, question = question)
              .newBuilder()
 +            .apply { interceptors().removeAll { it is ch.brickinventoryapp.network.di.ServerGuard } }
              // ── Persistent store of the thumbnails ──

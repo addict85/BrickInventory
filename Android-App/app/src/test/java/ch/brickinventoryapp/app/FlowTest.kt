@@ -33,7 +33,9 @@ import ch.brickinventoryapp.login.ui.screens.LoginActions
 import ch.brickinventoryapp.login.ui.screens.LoginScreen
 import ch.brickinventoryapp.login.ui.screens.LoginScreenState
 import ch.brickinventoryapp.model.domain.CurrencyCode
+import ch.brickinventoryapp.network.util.NetworkAddressRules
 import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.components.LocalAddressRules
 import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.StepGuard
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -95,7 +97,7 @@ class FlowTest {
     fun tearDown() { world?.close() }
 
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) =
-        compose.setContent { BrickInventoryManagerTheme { Surface { content() } } }
+        compose.setContent { CompositionLocalProvider(LocalAddressRules provides NetworkAddressRules) {  BrickInventoryManagerTheme { Surface { content() } }  } }
 
     @Test
     fun `sign-in passes on name and password`() {

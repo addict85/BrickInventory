@@ -11,6 +11,6 @@ diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/
  
  import ch.brickinventoryapp.data.LoginState
 +import ch.brickinventoryapp.data.api.AccountApi
- import ch.brickinventoryapp.data.repository.Outcome
  import ch.brickinventoryapp.data.repository.errorTextToCode
+ import ch.brickinventoryapp.model.outcome.Outcome
  import ch.brickinventoryapp.model.util.TextSource

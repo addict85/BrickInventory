@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.AccountRepository
+import ch.brickinventoryapp.dataapi.account.RedemptionOutcome
 import ch.brickinventoryapp.network.di.AccessState
 import ch.brickinventoryapp.network.di.ServerGuard
 import ch.brickinventoryapp.network.util.NetworkPolicy
@@ -50,8 +51,6 @@ class LogoutState @Inject constructor(
         }
     }
 }
-
-enum class RedemptionOutcome { REDEEMED, LATER, GIVE_UP }
 
 /**
  * 401 means: the token is already no longer valid, the goal is reached. A
@@ -126,7 +125,7 @@ internal const val REDEMPTION_MAX_ATTEMPTS = 40
 
 /**
  * One run of the worker. A locked keystore is, like a missing network, a
- * reason to wait (util/Tresorbefund); a lost key makes the token
+ * reason to wait (util/VaultFinding); a lost key makes the token
  * unusable for a thief too, so there is nothing left to do.
  */
 // [deviceLocked]: the token's key only releases after unlocking; waiting

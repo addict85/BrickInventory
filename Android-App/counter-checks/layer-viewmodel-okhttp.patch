@@ -6,28 +6,18 @@ Rot: presentation fetches nothing from the network itself
 diff --git a/Android-App/feature-account/build.gradle.kts b/Android-App/feature-account/build.gradle.kts
 --- a/Android-App/feature-account/build.gradle.kts
 +++ b/Android-App/feature-account/build.gradle.kts
-@@ -17,6 +17,7 @@
+@@ -18,6 +18,7 @@ dependencies {
      implementation(project(":core-navigation"))
      implementation(project(":core-session"))
      implementation(project(":core-resources"))
 +    implementation(libs.okhttp.sse)
  
      testImplementation(project(":core-testing"))
-     testImplementation(testFixtures(project(":core-state")))
-diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt
---- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt
-+++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt
-@@ -1,5 +1,6 @@
- package ch.brickinventoryapp.account.ui.viewmodel
- 
-+import okhttp3.OkHttpClient
- import androidx.lifecycle.ViewModel
- import androidx.lifecycle.viewModelScope
- import ch.brickinventoryapp.account.ui.AlarmOverviewUiState
+     // The tests build the repositories themselves (core-data testFixtures).
 diff --git a/Android-App/feature-account/gradle.lockfile b/Android-App/feature-account/gradle.lockfile
 --- a/Android-App/feature-account/gradle.lockfile
 +++ b/Android-App/feature-account/gradle.lockfile
-@@ -205,9 +205,9 @@ com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0=debugAn
+@@ -207,9 +207,9 @@ com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0=debugAn
  com.squareup.okhttp3:logging-interceptor:5.5.1=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
  com.squareup.okhttp3:mockwebserver3:5.5.1=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
  com.squareup.okhttp3:mockwebserver:5.5.1=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
@@ -40,3 +30,13 @@ diff --git a/Android-App/feature-account/gradle.lockfile b/Android-App/feature-a
  com.squareup.okio:okio-jvm:3.18.1=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
  com.squareup.okio:okio:3.18.1=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseCompileClasspath,releaseRuntimeClasspath
  com.squareup.retrofit2:retrofit:3.0.0=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/SettingsViewModel.kt
+@@ -1,5 +1,6 @@
+ package ch.brickinventoryapp.account.ui.viewmodel
+ 
++import okhttp3.OkHttpClient
+ import androidx.lifecycle.ViewModel
+ import androidx.lifecycle.viewModelScope
+ import ch.brickinventoryapp.account.ui.AlarmOverviewUiState

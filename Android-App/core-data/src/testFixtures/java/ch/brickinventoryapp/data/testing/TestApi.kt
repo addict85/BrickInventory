@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.testing
 
 import ch.brickinventoryapp.contract.testing.decodeCompleted
-import ch.brickinventoryapp.data.MessageChannel
+import ch.brickinventoryapp.dataapi.message.MessageChannel
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.ui.Message
+import ch.brickinventoryapp.model.text.Message
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.serializer
 import okhttp3.Call

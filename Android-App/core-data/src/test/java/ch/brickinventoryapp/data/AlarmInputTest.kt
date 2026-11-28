@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.alarm.AlarmInput
+import ch.brickinventoryapp.dataapi.alarm.AlarmInput
 import ch.brickinventoryapp.model.domain.Money
 import org.junit.Test
 

@@ -4,7 +4,7 @@ import android.os.ParcelFileDescriptor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
-import ch.brickinventoryapp.data.DownloadFailed
+import ch.brickinventoryapp.dataapi.instructions.DownloadFailed
 import ch.brickinventoryapp.finances.ui.pdf.PdfError
 import ch.brickinventoryapp.finances.ui.pdf.PdfHolder
 import ch.brickinventoryapp.finances.ui.pdf.PdfLoadState
@@ -12,7 +12,8 @@ import ch.brickinventoryapp.finances.ui.pdf.PdfLoader
 import ch.brickinventoryapp.finances.ui.pdf.PdfPagesSource
 import ch.brickinventoryapp.finances.ui.pdf.PdfSource
 import ch.brickinventoryapp.finances.ui.viewmodel.PdfViewerViewModel
-import ch.brickinventoryapp.model.ui.ErrorClass
+import ch.brickinventoryapp.network.util.NetworkAddressRules
+import ch.brickinventoryapp.uistate.ErrorClass
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -92,7 +93,7 @@ class PdfViewerViewModelTest {
     private val rendered = mutableListOf<Int>()
     private val pageSource = PdfPagesSource { _, index, _ -> rendered += index; null }
 
-    private fun vm(loader: Loader) = PdfViewerViewModel(loader, pageSource, tick)
+    private fun vm(loader: Loader) = PdfViewerViewModel(loader, pageSource, tick, NetworkAddressRules)
 
     @Test
     fun `a page renders the page source in its own process, not the ViewModel`() = runTest(tick) {

@@ -11,11 +11,12 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.repository.errorTextToCode
-import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.dataapi.language.AppLanguage
+import ch.brickinventoryapp.dataapi.parts.PdfFailure
 import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.resources.R
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -36,10 +37,11 @@ internal class PdfExportWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val manager: PdfExportManager,
+    private val appLanguage: AppLanguage,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result =
-        PdfFollowUp(manager::follow, manager.state, AndroidPdfNotifier(applicationContext))
+        PdfFollowUp(manager::follow, manager.state, AndroidPdfNotifier(applicationContext, appLanguage))
             .run(inputData.keyValueMap[KEY_JOB] as? String)
 
     companion object {

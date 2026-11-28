@@ -32,7 +32,7 @@ import androidx.core.content.IntentCompat
 import ch.brickinventoryapp.account.ui.SecondFactorUiState
 import ch.brickinventoryapp.account.ui.screens.CODES_FILE
 import ch.brickinventoryapp.account.ui.screens.SecondFactorRequiredMask
-import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.appearance.Design
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LocalStepGuard
 import ch.brickinventoryapp.ui.components.StepGuard

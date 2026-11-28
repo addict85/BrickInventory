@@ -3,11 +3,11 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.NetworkState.RetryPolicy
 import ch.brickinventoryapp.data.collection.AlarmRepositoryImpl
 import ch.brickinventoryapp.data.parts.PartsRepositoryImpl
-import ch.brickinventoryapp.data.repository.Outcome
 import ch.brickinventoryapp.data.testing.PathServer
 import ch.brickinventoryapp.model.domain.AlarmDirection
 import ch.brickinventoryapp.model.domain.Condition
 import ch.brickinventoryapp.model.domain.Money
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
 import ch.brickinventoryapp.offline.StorageInventory

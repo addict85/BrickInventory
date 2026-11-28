@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.local.ReconcileOutcome
 import ch.brickinventoryapp.data.local.SendOutcome
 import ch.brickinventoryapp.data.local.classify
 import ch.brickinventoryapp.data.local.deleteClassify
-import ch.brickinventoryapp.data.repository.Outcome
+import ch.brickinventoryapp.model.outcome.Outcome
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.OfflineStore
 import ch.brickinventoryapp.offline.OutboxStorage
